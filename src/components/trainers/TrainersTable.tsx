@@ -27,8 +27,11 @@ export function TrainersTable() {
       
       // Map trainers data to match our Trainer interface
       return trainersData.map((trainer) => {
-        // Handle the migration from branch_id to branch_ids
-        const branchIds = trainer.branch_ids || (trainer.branch_id ? [trainer.branch_id] : []);
+        // Handle the migration from branch_id to branch_ids by checking if either property exists
+        // TypeScript doesn't know about branch_ids yet, so we need to use a type assertion
+        const trainerAny = trainer as any;
+        const branchIds = trainerAny.branch_ids || 
+                         (trainer.branch_id ? [trainer.branch_id] : []);
         
         // Get branch names from branch IDs
         const branchNames = branchIds
