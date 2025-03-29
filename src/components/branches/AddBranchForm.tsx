@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -6,10 +5,9 @@ import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface AddBranchFormProps {
   onSuccess: () => void;
@@ -29,19 +27,6 @@ export function AddBranchForm({ onSuccess }: AddBranchFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  
-  // Fetch profiles for admin dropdown
-  const { data: profiles } = useQuery({
-    queryKey: ["profiles"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id, full_name, username");
-      
-      if (error) throw error;
-      return data;
-    }
-  });
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -77,13 +62,8 @@ export function AddBranchForm({ onSuccess }: AddBranchFormProps) {
         description: `${values.name} has been added as a new branch.`,
       });
       
-      // Reset form
       form.reset();
-      
-      // Refresh branches data
       queryClient.invalidateQueries({ queryKey: ["branches-with-trainers"] });
-      
-      // Close modal via callback
       onSuccess();
     } catch (error) {
       console.error("Error adding branch:", error);
