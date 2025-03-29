@@ -26,17 +26,10 @@ export function BranchesTable() {
   const { data: branches, isLoading, error } = useQuery({
     queryKey: ["branches-with-trainers"],
     queryFn: async () => {
-      // First query to get branches data with admin profiles
+      // First query to get branches data
       const { data: branchesData, error: branchesError } = await supabase
         .from("branches")
-        .select(`
-          *,
-          profiles:admin_id (
-            full_name,
-            username,
-            avatar_url
-          )
-        `);
+        .select("*");
       
       if (branchesError) throw branchesError;
       
@@ -54,13 +47,37 @@ export function BranchesTable() {
           countMap[item.branch_id] = (countMap[item.branch_id] || 0) + 1;
         }
       });
+
+      // If there are branches with admin_id, fetch their profile information
+      const branchesWithAdmin = branchesData.filter(branch => branch.admin_id);
+      const adminProfiles: Record<string, { full_name?: string, username?: string, avatar_url?: string }> = {};
+      
+      if (branchesWithAdmin.length > 0) {
+        const adminIds = branchesWithAdmin.map(branch => branch.admin_id);
+        const { data: profilesData } = await supabase
+          .from("profiles")
+          .select("id, full_name, username, avatar_url")
+          .in("id", adminIds);
+        
+        if (profilesData) {
+          profilesData.forEach(profile => {
+            adminProfiles[profile.id] = {
+              full_name: profile.full_name,
+              username: profile.username,
+              avatar_url: profile.avatar_url
+            };
+          });
+        }
+      }
       
       // Combine the data
       return branchesData.map((branch) => {
-        const adminProfile = branch.profiles;
+        const adminProfile = branch.admin_id ? adminProfiles[branch.admin_id] : null;
         return {
           ...branch,
-          admin_name: adminProfile ? (adminProfile.full_name || adminProfile.username || "Unnamed Admin") : "Unassigned",
+          admin_name: adminProfile 
+            ? (adminProfile.full_name || adminProfile.username || "Unnamed Admin") 
+            : "Unassigned",
           admin_avatar: adminProfile ? adminProfile.avatar_url : null,
           trainers_count: countMap[branch.id] || 0
         } as Branch;
