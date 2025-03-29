@@ -166,7 +166,8 @@ Photo Permission: ${data.photoPermission ? "Yes" : "No"}`,
         <div className="pt-4">
           <Button
             type="submit"
-            className="w-full bg-mckaynine-600 hover:bg-mckaynine-700"
+            variant="mckaynine"
+            className="w-full"
             disabled={isSubmitting}
           >
             {isSubmitting ? "Adding Handler..." : "Add Handler"}

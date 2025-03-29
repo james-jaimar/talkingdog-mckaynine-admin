@@ -25,8 +25,7 @@ export function AddHandlerModal() {
       <DialogTrigger asChild>
         <Button 
           id="add-handler-trigger"
-          variant="default"
-          className="bg-mckaynine-600 hover:bg-mckaynine-700 text-white flex items-center gap-2"
+          variant="mckaynine"
           size="lg"
         >
           <PlusCircle className="h-5 w-5" />

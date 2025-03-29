@@ -21,12 +21,12 @@ const NavItem = ({ to, icon: Icon, label }: NavItemProps) => {
       className={cn(
         "flex items-center gap-3 px-3 py-2 rounded-md transition-colors",
         isActive 
-          ? "bg-mckaynine-700 text-white" 
-          : "text-gray-700 hover:bg-mckaynine-100"
+          ? "bg-mckaynine-700 text-white font-medium" 
+          : "text-gray-700 hover:bg-mckaynine-100 hover:text-mckaynine-700"
       )}
     >
       <Icon className="h-5 w-5" />
-      <span className="font-medium">{label}</span>
+      <span>{label}</span>
     </Link>
   );
 };

@@ -1,4 +1,3 @@
-
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -141,11 +140,11 @@ export default function Handlers() {
                 <div className="text-center py-16">
                   <h3 className="text-xl font-medium mb-2">No handlers found</h3>
                   <p className="text-sm text-gray-500 mb-8">
-                    {searchQuery ? "Try a different search term" : "Add your first handler to get started"}
+                  {searchQuery ? "Try a different search term" : "Add your first handler to get started"}
                   </p>
                   <Button 
                     onClick={() => document.getElementById('add-handler-trigger')?.click()}
-                    className="bg-mckaynine-600 hover:bg-mckaynine-700"
+                    variant="mckaynine"
                   >
                     <Plus className="h-5 w-5 mr-2" />
                     <span>Add Your First Handler</span>
