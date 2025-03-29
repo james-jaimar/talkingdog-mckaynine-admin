@@ -23,7 +23,6 @@ const formSchema = z.object({
   email: z.string().email("Please enter a valid email address.").optional().or(z.literal("")),
   phone: z.string().optional().or(z.literal("")),
   capacity: z.coerce.number().positive("Capacity must be a positive number").int("Capacity must be a whole number").optional(),
-  adminId: z.string().optional().or(z.literal("")),
 });
 
 export function AddBranchForm({ onSuccess }: AddBranchFormProps) {
@@ -54,7 +53,6 @@ export function AddBranchForm({ onSuccess }: AddBranchFormProps) {
       email: "",
       phone: "",
       capacity: 10,
-      adminId: "",
     },
   });
   
@@ -70,7 +68,6 @@ export function AddBranchForm({ onSuccess }: AddBranchFormProps) {
         email: values.email || null,
         phone: values.phone || null,
         capacity: values.capacity || 10,
-        admin_id: values.adminId || null,
       });
       
       if (error) throw error;
@@ -207,31 +204,9 @@ export function AddBranchForm({ onSuccess }: AddBranchFormProps) {
           />
         </div>
         
-        <FormField
-          control={form.control}
-          name="adminId"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Branch Admin</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a branch admin" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  {profiles?.map((profile) => (
-                    <SelectItem key={profile.id} value={profile.id}>
-                      {profile.full_name || profile.username}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <div className="text-sm text-muted-foreground mt-2 mb-4">
+          <p>* Admin assignment feature will be available once the database schema is updated.</p>
+        </div>
         
         <Button 
           type="submit" 
