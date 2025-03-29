@@ -2,13 +2,14 @@
 import { z } from "zod";
 
 export const branchFormSchema = z.object({
-  name: z.string().min(2, "Branch name must be at least 2 characters."),
-  address: z.string().min(5, "Address must be at least 5 characters."),
-  city: z.string().min(2, "City must be at least 2 characters."),
-  postalCode: z.string().min(2, "Postal code must be at least 2 characters."),
-  email: z.string().email("Please enter a valid email address.").optional().or(z.literal("")),
+  name: z.string().min(1, "Branch name is required"),
+  address: z.string().min(1, "Address is required"),
+  city: z.string().min(1, "City is required"),
+  postalCode: z.string().min(1, "Postal code is required"),
+  email: z.string().email("Invalid email format").optional().or(z.literal("")),
   phone: z.string().optional().or(z.literal("")),
-  capacity: z.coerce.number().positive("Capacity must be a positive number").int("Capacity must be a whole number").optional(),
+  capacity: z.number().min(1, "Capacity must be at least 1").default(10),
+  adminId: z.string().optional().or(z.literal("")),
 });
 
 export type BranchFormValues = z.infer<typeof branchFormSchema>;
@@ -21,4 +22,5 @@ export const defaultBranchFormValues: BranchFormValues = {
   email: "",
   phone: "",
   capacity: 10,
+  adminId: "",
 };

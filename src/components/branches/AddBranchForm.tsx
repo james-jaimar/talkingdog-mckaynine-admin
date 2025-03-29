@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { BranchLocationFields } from "./form-sections/BranchLocationFields";
 import { BranchContactFields } from "./form-sections/BranchContactFields";
+import { BranchAdminFields } from "./form-sections/BranchAdminFields";
 import { branchFormSchema, defaultBranchFormValues, BranchFormValues } from "./schemas/branchFormSchema";
 
 interface AddBranchFormProps {
@@ -37,6 +38,7 @@ export function AddBranchForm({ onSuccess }: AddBranchFormProps) {
         email: values.email || null,
         phone: values.phone || null,
         capacity: values.capacity || 10,
+        admin_id: values.adminId || null,
       });
       
       if (error) throw error;
@@ -66,10 +68,7 @@ export function AddBranchForm({ onSuccess }: AddBranchFormProps) {
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 mt-4">
         <BranchLocationFields control={form.control} />
         <BranchContactFields control={form.control} />
-        
-        <div className="text-sm text-muted-foreground mt-2 mb-4">
-          <p>* Admin assignment feature will be available once the database schema is updated.</p>
-        </div>
+        <BranchAdminFields control={form.control} />
         
         <Button 
           type="submit" 
