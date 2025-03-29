@@ -5,6 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Building, MapPin, User } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { EditBranchModal } from "./EditBranchModal";
 
 interface Branch {
   id: string;
@@ -80,6 +81,7 @@ export function BranchesTable() {
             <TableHead>Capacity</TableHead>
             <TableHead>Branch Admin</TableHead>
             <TableHead>Trainers</TableHead>
+            <TableHead>Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -131,11 +133,16 @@ export function BranchesTable() {
                     {branch.trainers_count} trainers
                   </Badge>
                 </TableCell>
+                <TableCell>
+                  <div className="flex items-center">
+                    <EditBranchModal branch={branch} />
+                  </div>
+                </TableCell>
               </TableRow>
             ))
           ) : (
             <TableRow>
-              <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
+              <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
                 No branches found. Add your first branch to get started.
               </TableCell>
             </TableRow>
