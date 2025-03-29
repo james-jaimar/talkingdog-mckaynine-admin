@@ -15,7 +15,6 @@ interface Branch {
   phone: string | null;
   email: string | null;
   capacity: number | null;
-  admin_id: string | null;
   admin_name?: string;
   admin_avatar?: string;
   trainers_count: number;
@@ -35,50 +34,29 @@ export function BranchesTable() {
       // Second query to get counts of trainers per branch
       const { data: trainerCounts, error: trainerCountError } = await supabase
         .from("trainers")
-        .select('branch_id, count(*)', { count: 'exact' })
-        .is('branch_id', 'not.null');
+        .select('branch_id');
       
       if (trainerCountError) throw trainerCountError;
       
-      // Get admin names from profiles table
-      const adminIds = branchesData
-        .filter(branch => branch.admin_id)
-        .map(branch => branch.admin_id);
-      
-      let adminProfiles = {};
-      if (adminIds.length > 0) {
-        const { data: profiles, error: profilesError } = await supabase
-          .from("profiles")
-          .select("id, full_name, avatar_url")
-          .in("id", adminIds);
-        
-        if (profilesError) throw profilesError;
-        
-        // Create a map of admin_id to profile data
-        adminProfiles = profiles.reduce((acc, profile) => {
-          acc[profile.id] = profile;
-          return acc;
-        }, {});
-      }
-      
-      // Create a map of branch_id to trainer count
-      const countMap = {};
+      // Count trainers per branch
+      const countMap: Record<string, number> = {};
       trainerCounts.forEach(item => {
         if (item.branch_id) {
-          countMap[item.branch_id] = parseInt(item.count);
+          countMap[item.branch_id] = (countMap[item.branch_id] || 0) + 1;
         }
       });
       
+      // Get admin profiles for each branch (since there's no admin_id in branches table,
+      // we'll use placeholder data for now)
+      
       // Combine the data
       return branchesData.map((branch) => {
-        const adminProfile = branch.admin_id ? adminProfiles[branch.admin_id] : null;
-        
         return {
           ...branch,
-          admin_name: adminProfile ? adminProfile.full_name : "Unassigned",
-          admin_avatar: adminProfile ? adminProfile.avatar_url : null,
+          admin_name: "Unassigned", // Placeholder until admin_id column is added to branches table
+          admin_avatar: null,
           trainers_count: countMap[branch.id] || 0
-        };
+        } as Branch;
       });
     }
   });
