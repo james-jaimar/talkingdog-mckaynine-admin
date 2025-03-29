@@ -1,6 +1,7 @@
 
 import { SidebarNav } from "./SidebarNav";
 import { Header } from "./Header";
+import { Dog } from "lucide-react";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
