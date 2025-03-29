@@ -53,12 +53,12 @@ export default function Handlers() {
     <DashboardLayout>
       <div className="space-y-6">
         <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold">Handlers</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Handlers</h1>
           <AddHandlerModal />
         </div>
         
         {/* Search and filter */}
-        <Card>
+        <Card className="border border-gray-200">
           <CardContent className="pt-6">
             <div className="relative">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
@@ -74,8 +74,8 @@ export default function Handlers() {
         </Card>
         
         {/* Handlers list */}
-        <Card>
-          <CardHeader>
+        <Card className="border border-gray-200">
+          <CardHeader className="bg-gray-50 border-b border-gray-200">
             <CardTitle>All Handlers</CardTitle>
           </CardHeader>
           <CardContent>

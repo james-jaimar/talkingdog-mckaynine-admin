@@ -26,7 +26,7 @@ const NavItem = ({ to, icon: Icon, label }: NavItemProps) => {
       )}
     >
       <Icon className="h-5 w-5" />
-      <span className="text-current">{label}</span>
+      <span className="text-current font-medium">{label}</span>
     </Link>
   );
 };
