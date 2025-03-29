@@ -9,6 +9,103 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      bookings: {
+        Row: {
+          class_schedule_id: string
+          client_id: string
+          created_at: string
+          dog_id: string
+          id: string
+          notes: string | null
+          payment_status: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          class_schedule_id: string
+          client_id: string
+          created_at?: string
+          dog_id: string
+          id?: string
+          notes?: string | null
+          payment_status?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          class_schedule_id?: string
+          client_id?: string
+          created_at?: string
+          dog_id?: string
+          id?: string
+          notes?: string | null
+          payment_status?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookings_class_schedule_id_fkey"
+            columns: ["class_schedule_id"]
+            isOneToOne: false
+            referencedRelation: "class_schedules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_dog_id_fkey"
+            columns: ["dog_id"]
+            isOneToOne: false
+            referencedRelation: "dogs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      branches: {
+        Row: {
+          address: string
+          capacity: number | null
+          city: string
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          phone: string | null
+          postal_code: string
+          updated_at: string
+        }
+        Insert: {
+          address: string
+          capacity?: number | null
+          city: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          phone?: string | null
+          postal_code: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string
+          capacity?: number | null
+          city?: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          phone?: string | null
+          postal_code?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       cars: {
         Row: {
           color: string
@@ -99,6 +196,199 @@ export type Database = {
         }
         Relationships: []
       }
+      class_schedules: {
+        Row: {
+          class_id: string
+          created_at: string
+          end_time: string
+          id: string
+          recurrence_pattern: string | null
+          recurring: boolean | null
+          start_time: string
+          trainer_id: string
+          updated_at: string
+        }
+        Insert: {
+          class_id: string
+          created_at?: string
+          end_time: string
+          id?: string
+          recurrence_pattern?: string | null
+          recurring?: boolean | null
+          start_time: string
+          trainer_id: string
+          updated_at?: string
+        }
+        Update: {
+          class_id?: string
+          created_at?: string
+          end_time?: string
+          id?: string
+          recurrence_pattern?: string | null
+          recurring?: boolean | null
+          start_time?: string
+          trainer_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_schedules_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "class_schedules_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "trainers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      classes: {
+        Row: {
+          branch_id: string
+          capacity: number
+          created_at: string
+          description: string
+          duration: number
+          id: string
+          level: string
+          name: string
+          price: number
+          updated_at: string
+        }
+        Insert: {
+          branch_id: string
+          capacity?: number
+          created_at?: string
+          description: string
+          duration: number
+          id?: string
+          level: string
+          name: string
+          price: number
+          updated_at?: string
+        }
+        Update: {
+          branch_id?: string
+          capacity?: number
+          created_at?: string
+          description?: string
+          duration?: number
+          id?: string
+          level?: string
+          name?: string
+          price?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "classes_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clients: {
+        Row: {
+          address: string | null
+          city: string | null
+          created_at: string
+          email: string
+          first_name: string
+          id: string
+          last_name: string
+          notes: string | null
+          phone: string | null
+          postal_code: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          city?: string | null
+          created_at?: string
+          email: string
+          first_name: string
+          id?: string
+          last_name: string
+          notes?: string | null
+          phone?: string | null
+          postal_code?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          city?: string | null
+          created_at?: string
+          email?: string
+          first_name?: string
+          id?: string
+          last_name?: string
+          notes?: string | null
+          phone?: string | null
+          postal_code?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      dogs: {
+        Row: {
+          age: number | null
+          avatar_url: string | null
+          behavior_notes: string | null
+          breed: string
+          client_id: string
+          created_at: string
+          id: string
+          medical_notes: string | null
+          name: string
+          notes: string | null
+          updated_at: string
+          weight: number | null
+        }
+        Insert: {
+          age?: number | null
+          avatar_url?: string | null
+          behavior_notes?: string | null
+          breed: string
+          client_id: string
+          created_at?: string
+          id?: string
+          medical_notes?: string | null
+          name: string
+          notes?: string | null
+          updated_at?: string
+          weight?: number | null
+        }
+        Update: {
+          age?: number | null
+          avatar_url?: string | null
+          behavior_notes?: string | null
+          breed?: string
+          client_id?: string
+          created_at?: string
+          id?: string
+          medical_notes?: string | null
+          name?: string
+          notes?: string | null
+          updated_at?: string
+          weight?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dogs_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       expenses: {
         Row: {
           amount: number
@@ -172,6 +462,56 @@ export type Database = {
           username?: string | null
         }
         Relationships: []
+      }
+      trainers: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          branch_id: string | null
+          created_at: string
+          email: string
+          first_name: string
+          id: string
+          last_name: string
+          phone: string | null
+          specialties: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio?: string | null
+          branch_id?: string | null
+          created_at?: string
+          email: string
+          first_name: string
+          id?: string
+          last_name: string
+          phone?: string | null
+          specialties?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string | null
+          branch_id?: string | null
+          created_at?: string
+          email?: string
+          first_name?: string
+          id?: string
+          last_name?: string
+          phone?: string | null
+          specialties?: string[] | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trainers_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
