@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Handlers from "./pages/Handlers";
 import Trainers from "./pages/Trainers";
+import Branches from "./pages/Branches";
 
 const queryClient = new QueryClient();
 
@@ -19,6 +20,7 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/handlers" element={<Handlers />} />
           <Route path="/trainers" element={<Trainers />} />
+          <Route path="/branches" element={<Branches />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
