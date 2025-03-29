@@ -25,18 +25,21 @@ export function TrainersTable() {
         
       if (branchesError) throw branchesError;
       
-      // Add branch_names for easier access in the table
+      // Map trainers data to match our Trainer interface
       return trainersData.map((trainer) => {
-        const branchNames = trainer.branch_ids 
-          ? trainer.branch_ids
-              .map(id => branchesData.find(branch => branch.id === id)?.name || "Unknown")
-          : [];
+        // Handle the migration from branch_id to branch_ids
+        const branchIds = trainer.branch_ids || (trainer.branch_id ? [trainer.branch_id] : []);
+        
+        // Get branch names from branch IDs
+        const branchNames = branchIds
+          .map(id => branchesData.find(branch => branch.id === id)?.name || "Unknown");
         
         return {
           ...trainer,
+          branch_ids: branchIds,
           branch_names: branchNames
-        };
-      }) as Trainer[];
+        } as Trainer;
+      });
     }
   });
   
