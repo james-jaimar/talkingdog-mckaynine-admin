@@ -10,7 +10,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { Trainer } from "./types/trainer";
 import { trainerFormSchema, TrainerFormValues } from "./schemas/trainerFormSchema";
-import { MultiSelect } from "@/components/ui/multi-select";
+import { MultiSelect, OptionType } from "@/components/ui/multi-select";
+import { Textarea } from "@/components/ui/textarea";
 
 interface EditTrainerFormProps {
   trainer: Trainer;
@@ -19,7 +20,16 @@ interface EditTrainerFormProps {
 
 export function EditTrainerForm({ trainer, onSuccess }: EditTrainerFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [branches, setBranches] = useState<{ value: string; label: string }[]>([]);
+  const [branches, setBranches] = useState<OptionType[]>([]);
+  const [specialtyOptions, setSpecialtyOptions] = useState<OptionType[]>([
+    { label: "Obedience Training", value: "Obedience Training" },
+    { label: "Behavioral Correction", value: "Behavioral Correction" },
+    { label: "Puppy Training", value: "Puppy Training" },
+    { label: "Agility Training", value: "Agility Training" },
+    { label: "Service Dog Training", value: "Service Dog Training" },
+    { label: "Therapy Dog Training", value: "Therapy Dog Training" },
+    { label: "Search & Rescue", value: "Search & Rescue" },
+  ]);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
@@ -96,6 +106,14 @@ export function EditTrainerForm({ trainer, onSuccess }: EditTrainerFormProps) {
     }
   };
   
+  // Convert array of strings to array of OptionType objects for MultiSelect
+  const specialtiesAsOptions = (specialties: string[]): OptionType[] => {
+    return specialties.map(specialty => ({
+      label: specialty,
+      value: specialty
+    }));
+  };
+  
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 mt-4">
@@ -168,6 +186,43 @@ export function EditTrainerForm({ trainer, onSuccess }: EditTrainerFormProps) {
                   value={field.value.map(id => branches.find(b => b.value === id) || { value: id, label: "Unknown" })}
                   onChange={(selected) => field.onChange(selected.map(item => item.value))}
                   placeholder="Select branches"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        
+        <FormField
+          control={form.control}
+          name="specialties"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Specialties</FormLabel>
+              <FormControl>
+                <MultiSelect
+                  options={specialtyOptions}
+                  value={specialtiesAsOptions(field.value)}
+                  onChange={(selected) => field.onChange(selected.map(item => item.value))}
+                  placeholder="Select specialties"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        
+        <FormField
+          control={form.control}
+          name="bio"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Bio</FormLabel>
+              <FormControl>
+                <Textarea 
+                  placeholder="Trainer biography and experience..."
+                  className="min-h-24"
+                  {...field} 
                 />
               </FormControl>
               <FormMessage />
