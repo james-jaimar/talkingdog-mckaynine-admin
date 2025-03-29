@@ -16,6 +16,7 @@ interface Branch {
   phone: string | null;
   email: string | null;
   capacity: number | null;
+  admin_id: string | null;
   admin_name?: string;
   admin_avatar?: string;
   trainers_count: number;
@@ -25,10 +26,17 @@ export function BranchesTable() {
   const { data: branches, isLoading, error } = useQuery({
     queryKey: ["branches-with-trainers"],
     queryFn: async () => {
-      // First query to get branches data
+      // First query to get branches data with admin profiles
       const { data: branchesData, error: branchesError } = await supabase
         .from("branches")
-        .select("*");
+        .select(`
+          *,
+          profiles:admin_id (
+            full_name,
+            username,
+            avatar_url
+          )
+        `);
       
       if (branchesError) throw branchesError;
       
@@ -47,15 +55,13 @@ export function BranchesTable() {
         }
       });
       
-      // Get admin profiles for each branch (since there's no admin_id in branches table,
-      // we'll use placeholder data for now)
-      
       // Combine the data
       return branchesData.map((branch) => {
+        const adminProfile = branch.profiles;
         return {
           ...branch,
-          admin_name: "Unassigned", // Placeholder until admin_id column is added to branches table
-          admin_avatar: null,
+          admin_name: adminProfile ? (adminProfile.full_name || adminProfile.username || "Unnamed Admin") : "Unassigned",
+          admin_avatar: adminProfile ? adminProfile.avatar_url : null,
           trainers_count: countMap[branch.id] || 0
         } as Branch;
       });

@@ -14,6 +14,7 @@ interface Branch {
   phone: string | null;
   email: string | null;
   capacity: number | null;
+  admin_id: string | null;
 }
 
 interface EditBranchModalProps {
