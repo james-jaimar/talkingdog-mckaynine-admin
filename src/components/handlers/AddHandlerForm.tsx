@@ -5,20 +5,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Form } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useQueryClient } from "@tanstack/react-query";
+import { HandlerPersonalInfoFields } from "./form/HandlerPersonalInfoFields";
+import { DogInfoFields } from "./form/DogInfoFields";
+import { ClassAndPreferencesFields } from "./form/ClassAndPreferencesFields";
 
 const formSchema = z.object({
   firstName: z.string().min(2, {
@@ -73,17 +65,6 @@ export function AddHandlerForm({ onSuccess }: AddHandlerFormProps) {
       classEnrollment: "",
     },
   });
-
-  const classOptions = [
-    { value: "puppy", label: "PUPPY" },
-    { value: "eo", label: "EO" },
-    { value: "bronze_cgc", label: "BRONZE CGC" },
-    { value: "silver_cgc", label: "SILVER CGC" },
-    { value: "beginner", label: "BEGINNER" },
-    { value: "novice", label: "NOVICE" },
-    { value: "wt_a_test", label: "WT/A-TEST" },
-    { value: "yoga", label: "YOGA" },
-  ];
 
   async function onSubmit(data: FormValues) {
     setIsSubmitting(true);
@@ -142,198 +123,11 @@ Photo Permission: ${data.photoPermission ? "Yes" : "No"}`,
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="firstName"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>First Name</FormLabel>
-                <FormControl>
-                  <Input placeholder="John" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="lastName"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Last Name</FormLabel>
-                <FormControl>
-                  <Input placeholder="Doe" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-
-        <FormField
-          control={form.control}
-          name="email"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Email</FormLabel>
-              <FormControl>
-                <Input type="email" placeholder="john.doe@example.com" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="phone"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Phone Number</FormLabel>
-              <FormControl>
-                <Input placeholder="+1 (123) 456-7890" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="dogName"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Dog's Name</FormLabel>
-                <FormControl>
-                  <Input placeholder="Buddy" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="breed"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Breed</FormLabel>
-                <FormControl>
-                  <Input placeholder="Golden Retriever" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-
-        <FormField
-          control={form.control}
-          name="dogDob"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Date of Birth</FormLabel>
-              <FormControl>
-                <Input type="date" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="assessment"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Assessment</FormLabel>
-              <FormControl>
-                <Textarea placeholder="General assessment notes" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="classEnrollment"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Class Enrollment</FormLabel>
-              <FormControl>
-                <RadioGroup
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                  className="grid grid-cols-2 gap-2"
-                >
-                  {classOptions.map((option) => (
-                    <FormItem key={option.value} className="flex items-center space-x-2 space-y-0">
-                      <FormControl>
-                        <RadioGroupItem value={option.value} />
-                      </FormControl>
-                      <FormLabel className="font-normal">{option.label}</FormLabel>
-                    </FormItem>
-                  ))}
-                </RadioGroup>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="comments"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Comments</FormLabel>
-              <FormControl>
-                <Textarea placeholder="Additional comments" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <div className="flex flex-col space-y-4">
-          <FormField
-            control={form.control}
-            name="whatsApp"
-            render={({ field }) => (
-              <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                <FormControl>
-                  <Checkbox
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                  />
-                </FormControl>
-                <div className="space-y-1 leading-none">
-                  <FormLabel>WhatsApp</FormLabel>
-                </div>
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="photoPermission"
-            render={({ field }) => (
-              <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                <FormControl>
-                  <Checkbox
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                  />
-                </FormControl>
-                <div className="space-y-1 leading-none">
-                  <FormLabel>Photo Permission</FormLabel>
-                </div>
-              </FormItem>
-            )}
-          />
-        </div>
+        <HandlerPersonalInfoFields control={form.control} />
+        
+        <DogInfoFields control={form.control} />
+        
+        <ClassAndPreferencesFields control={form.control} />
 
         <Button
           type="submit"
