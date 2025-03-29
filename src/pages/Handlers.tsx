@@ -3,12 +3,13 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { PlusCircle, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { AddHandlerModal } from "@/components/handlers/AddHandlerModal";
 
 export default function Handlers() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -53,10 +54,7 @@ export default function Handlers() {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold">Handlers</h1>
-          <Button className="bg-mckaynine-600 hover:bg-mckaynine-700">
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Add Handler
-          </Button>
+          <AddHandlerModal />
         </div>
         
         {/* Search and filter */}

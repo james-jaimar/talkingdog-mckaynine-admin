@@ -2,7 +2,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { 
-  Dog, Calendar, MapPin, Home, BarChart2, Settings, Users
+  Calendar, MapPin, Home, BarChart2, Settings, Users
 } from "lucide-react";
 
 interface NavItemProps {
