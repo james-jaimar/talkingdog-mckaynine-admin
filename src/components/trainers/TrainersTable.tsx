@@ -5,18 +5,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { User } from "lucide-react";
-
-interface Trainer {
-  id: string;
-  first_name: string;
-  last_name: string;
-  email: string;
-  phone: string | null;
-  branch_id: string | null;
-  branch_name?: string;
-  specialties: string[] | null;
-  avatar_url: string | null;
-}
+import { EditTrainerModal } from "./EditTrainerModal";
+import { Trainer } from "./types/trainer";
 
 export function TrainersTable() {
   const { data: trainers, isLoading, error } = useQuery({
@@ -35,7 +25,7 @@ export function TrainersTable() {
       return data.map((trainer) => ({
         ...trainer,
         branch_name: trainer.branches?.name || "Unassigned"
-      }));
+      })) as Trainer[];
     }
   });
   
@@ -57,6 +47,7 @@ export function TrainersTable() {
             <TableHead>Phone</TableHead>
             <TableHead>Branch</TableHead>
             <TableHead>Specialties</TableHead>
+            <TableHead>Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -96,11 +87,16 @@ export function TrainersTable() {
                     )}
                   </div>
                 </TableCell>
+                <TableCell>
+                  <div className="flex items-center">
+                    <EditTrainerModal trainer={trainer} />
+                  </div>
+                </TableCell>
               </TableRow>
             ))
           ) : (
             <TableRow>
-              <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
+              <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
                 No trainers found. Add your first trainer to get started.
               </TableCell>
             </TableRow>
