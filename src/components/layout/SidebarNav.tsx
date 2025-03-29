@@ -2,7 +2,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { 
-  Calendar, MapPin, Home, BarChart2, Settings, Users
+  Calendar, MapPin, Home, BarChart2, Settings, Users, UserRound
 } from "lucide-react";
 
 interface NavItemProps {
@@ -36,6 +36,7 @@ export function SidebarNav() {
     <div className="space-y-1">
       <NavItem to="/" icon={Home} label="Dashboard" />
       <NavItem to="/handlers" icon={Users} label="Handlers" />
+      <NavItem to="/trainers" icon={UserRound} label="Trainers" />
       <NavItem to="/classes" icon={Calendar} label="Classes" />
       <NavItem to="/branches" icon={MapPin} label="Branches" />
       <NavItem to="/reports" icon={BarChart2} label="Reports" />
