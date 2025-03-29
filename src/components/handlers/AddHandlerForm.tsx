@@ -69,6 +69,7 @@ export function AddHandlerForm({ onSuccess }: AddHandlerFormProps) {
 
   async function onSubmit(data: FormValues) {
     setIsSubmitting(true);
+    console.log("Form submitted with data:", data);
 
     try {
       // Insert client data
@@ -78,16 +79,21 @@ export function AddHandlerForm({ onSuccess }: AddHandlerFormProps) {
           first_name: data.firstName,
           last_name: data.lastName,
           email: data.email,
-          phone: data.phone,
+          phone: data.phone || null,
           notes: data.comments || null,
         })
         .select("id")
         .single();
 
-      if (clientError) throw clientError;
+      if (clientError) {
+        console.error("Client error:", clientError);
+        throw clientError;
+      }
+
+      console.log("Client created successfully:", clientData);
 
       // Insert dog data
-      const { error: dogError } = await supabase.from("dogs").insert({
+      const dogData = {
         name: data.dogName,
         breed: data.breed,
         client_id: clientData.id,
@@ -95,14 +101,28 @@ export function AddHandlerForm({ onSuccess }: AddHandlerFormProps) {
         notes: `${data.classEnrollment ? `Class: ${data.classEnrollment}` : ""}
 WhatsApp: ${data.whatsApp ? "Yes" : "No"}
 Photo Permission: ${data.photoPermission ? "Yes" : "No"}`,
-      });
+      };
+      
+      console.log("Inserting dog data:", dogData);
+      
+      const { error: dogError } = await supabase
+        .from("dogs")
+        .insert(dogData);
 
-      if (dogError) throw dogError;
+      if (dogError) {
+        console.error("Dog error:", dogError);
+        throw dogError;
+      }
+
+      console.log("Dog created successfully");
 
       toast({
         title: "Handler added successfully",
         description: "The new handler and dog have been added to the system.",
       });
+
+      // Reset form
+      form.reset();
 
       // Refresh the handlers list
       queryClient.invalidateQueries({ queryKey: ["handlers"] });

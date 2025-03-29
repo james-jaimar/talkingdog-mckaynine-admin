@@ -15,6 +15,11 @@ import { AddHandlerForm } from "./AddHandlerForm";
 export function AddHandlerModal() {
   const [open, setOpen] = useState(false);
 
+  const handleSuccess = () => {
+    console.log("Form submitted successfully, closing modal");
+    setOpen(false);
+  };
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -35,7 +40,7 @@ export function AddHandlerModal() {
             Enter the details of the new handler and their dog.
           </DialogDescription>
         </DialogHeader>
-        <AddHandlerForm onSuccess={() => setOpen(false)} />
+        <AddHandlerForm onSuccess={handleSuccess} />
       </DialogContent>
     </Dialog>
   );
