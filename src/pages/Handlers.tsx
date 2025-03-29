@@ -58,7 +58,7 @@ export default function Handlers() {
         </div>
         
         {/* Search and filter */}
-        <Card className="border border-gray-200">
+        <Card className="border border-gray-200 shadow-sm">
           <CardContent className="pt-6">
             <div className="relative">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
@@ -74,7 +74,7 @@ export default function Handlers() {
         </Card>
         
         {/* Handlers list */}
-        <Card className="border border-gray-200">
+        <Card className="border border-gray-200 shadow-sm">
           <CardHeader className="bg-gray-50 border-b border-gray-200">
             <CardTitle>All Handlers</CardTitle>
           </CardHeader>

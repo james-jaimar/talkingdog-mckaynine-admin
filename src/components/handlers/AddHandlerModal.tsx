@@ -19,11 +19,11 @@ export function AddHandlerModal() {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button 
-          className="bg-mckaynine-600 hover:bg-mckaynine-700 text-white font-medium"
-          size="default"
+          variant="default"
+          className="bg-mckaynine-600 hover:bg-mckaynine-700 text-white"
         >
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Add Handler
+          <PlusCircle className="h-5 w-5 mr-2" />
+          <span>Add Handler</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
