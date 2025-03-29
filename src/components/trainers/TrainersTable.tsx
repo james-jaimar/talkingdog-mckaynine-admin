@@ -12,20 +12,31 @@ export function TrainersTable() {
   const { data: trainers, isLoading, error } = useQuery({
     queryKey: ["trainers"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data: trainersData, error: trainersError } = await supabase
         .from("trainers")
-        .select(`
-          *,
-          branches:branch_id (name)
-        `);
+        .select("*");
       
-      if (error) throw error;
+      if (trainersError) throw trainersError;
       
-      // Add branch_name for easier access in the table
-      return data.map((trainer) => ({
-        ...trainer,
-        branch_name: trainer.branches?.name || "Unassigned"
-      })) as Trainer[];
+      // Fetch all branches for mapping
+      const { data: branchesData, error: branchesError } = await supabase
+        .from("branches")
+        .select("id, name");
+        
+      if (branchesError) throw branchesError;
+      
+      // Add branch_names for easier access in the table
+      return trainersData.map((trainer) => {
+        const branchNames = trainer.branch_ids 
+          ? trainer.branch_ids
+              .map(id => branchesData.find(branch => branch.id === id)?.name || "Unknown")
+          : [];
+        
+        return {
+          ...trainer,
+          branch_names: branchNames
+        };
+      }) as Trainer[];
     }
   });
   
@@ -45,7 +56,7 @@ export function TrainersTable() {
             <TableHead>Trainer</TableHead>
             <TableHead>Email</TableHead>
             <TableHead>Phone</TableHead>
-            <TableHead>Branch</TableHead>
+            <TableHead>Branches</TableHead>
             <TableHead>Specialties</TableHead>
             <TableHead>Actions</TableHead>
           </TableRow>
@@ -73,7 +84,19 @@ export function TrainersTable() {
                 </TableCell>
                 <TableCell>{trainer.email}</TableCell>
                 <TableCell>{trainer.phone || "—"}</TableCell>
-                <TableCell>{trainer.branch_name}</TableCell>
+                <TableCell>
+                  <div className="flex flex-wrap gap-1">
+                    {trainer.branch_names && trainer.branch_names.length > 0 ? (
+                      trainer.branch_names.map((branchName, index) => (
+                        <Badge key={index} variant="outline" className="bg-mckaynine-50 text-mckaynine-700 border-mckaynine-200">
+                          {branchName}
+                        </Badge>
+                      ))
+                    ) : (
+                      "Unassigned"
+                    )}
+                  </div>
+                </TableCell>
                 <TableCell>
                   <div className="flex flex-wrap gap-1">
                     {trainer.specialties && trainer.specialties.length > 0 ? (

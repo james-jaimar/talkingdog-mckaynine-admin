@@ -5,8 +5,8 @@ export interface Trainer {
   last_name: string;
   email: string;
   phone: string | null;
-  branch_id: string | null;
-  branch_name?: string;
+  branch_ids: string[] | null;
+  branch_names?: string[];
   specialties: string[] | null;
   avatar_url: string | null;
   bio: string | null;

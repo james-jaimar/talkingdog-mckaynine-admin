@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { Trainer } from "./types/trainer";
 import { trainerFormSchema, TrainerFormValues } from "./schemas/trainerFormSchema";
+import { MultiSelect } from "@/components/ui/multi-select";
 
 interface EditTrainerFormProps {
   trainer: Trainer;
@@ -18,8 +19,28 @@ interface EditTrainerFormProps {
 
 export function EditTrainerForm({ trainer, onSuccess }: EditTrainerFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [branches, setBranches] = useState<{ value: string; label: string }[]>([]);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  
+  // Fetch branches for dropdown
+  useEffect(() => {
+    const fetchBranches = async () => {
+      const { data, error } = await supabase
+        .from("branches")
+        .select("id, name")
+        .order("name");
+      
+      if (!error && data) {
+        setBranches(data.map(branch => ({
+          value: branch.id,
+          label: branch.name
+        })));
+      }
+    };
+    
+    fetchBranches();
+  }, []);
   
   // Pre-populate form with trainer data
   const defaultValues: TrainerFormValues = {
@@ -27,7 +48,7 @@ export function EditTrainerForm({ trainer, onSuccess }: EditTrainerFormProps) {
     lastName: trainer.last_name,
     email: trainer.email,
     phone: trainer.phone || "",
-    branchId: trainer.branch_id || "",
+    branchIds: trainer.branch_ids || [],
     specialties: trainer.specialties || [],
     bio: trainer.bio || "",
   };
@@ -48,7 +69,7 @@ export function EditTrainerForm({ trainer, onSuccess }: EditTrainerFormProps) {
           last_name: values.lastName,
           email: values.email,
           phone: values.phone || null,
-          branch_id: values.branchId || null,
+          branch_ids: values.branchIds.length > 0 ? values.branchIds : null,
           specialties: values.specialties.length > 0 ? values.specialties : null,
           bio: values.bio || null,
         })
@@ -129,6 +150,25 @@ export function EditTrainerForm({ trainer, onSuccess }: EditTrainerFormProps) {
               <FormLabel>Phone</FormLabel>
               <FormControl>
                 <Input placeholder="(123) 456-7890" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        
+        <FormField
+          control={form.control}
+          name="branchIds"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Branches</FormLabel>
+              <FormControl>
+                <MultiSelect
+                  options={branches}
+                  value={field.value.map(id => branches.find(b => b.value === id) || { value: id, label: "Unknown" })}
+                  onChange={(selected) => field.onChange(selected.map(item => item.value))}
+                  placeholder="Select branches"
+                />
               </FormControl>
               <FormMessage />
             </FormItem>

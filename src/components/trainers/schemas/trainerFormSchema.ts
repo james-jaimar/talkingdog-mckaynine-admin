@@ -6,7 +6,7 @@ export const trainerFormSchema = z.object({
   lastName: z.string().min(2, "Last name must be at least 2 characters."),
   email: z.string().email("Please enter a valid email address."),
   phone: z.string().optional().or(z.literal("")),
-  branchId: z.string().optional().or(z.literal("")),
+  branchIds: z.array(z.string()).default([]),
   specialties: z.array(z.string()).default([]),
   bio: z.string().optional().or(z.literal("")),
 });
