@@ -21,32 +21,37 @@ export function ClassAndPreferencesFields({ control }: ClassAndPreferencesFields
   ];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <FormRadioGroupField 
         control={control}
         name="classEnrollment"
         label="Class Enrollment"
         options={classOptions}
+        description="Select the primary class for enrollment"
       />
 
       <FormTextAreaField 
         control={control}
         name="comments"
         label="Comments"
-        placeholder="Additional comments"
+        placeholder="Additional comments or special requirements"
+        description="Any other information we should know"
       />
 
-      <div className="flex flex-col space-y-4">
+      <div className="space-y-4 pt-2">
+        <h4 className="text-sm font-medium text-muted-foreground">Communication Preferences</h4>
         <FormCheckboxField 
           control={control}
           name="whatsApp"
           label="WhatsApp"
+          description="Receive updates and communications via WhatsApp"
         />
 
         <FormCheckboxField 
           control={control}
           name="photoPermission"
           label="Photo Permission"
+          description="Allow us to take and share photos of your dog"
         />
       </div>
     </div>

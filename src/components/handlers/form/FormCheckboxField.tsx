@@ -7,12 +7,14 @@ interface FormCheckboxFieldProps {
   control: Control<any>;
   name: string;
   label: string;
+  description?: string;
 }
 
 export function FormCheckboxField({ 
   control, 
   name, 
-  label 
+  label,
+  description
 }: FormCheckboxFieldProps) {
   return (
     <FormField
@@ -27,7 +29,10 @@ export function FormCheckboxField({
             />
           </FormControl>
           <div className="space-y-1 leading-none">
-            <FormLabel>{label}</FormLabel>
+            <FormLabel className="text-sm font-medium">{label}</FormLabel>
+            {description && (
+              <p className="text-xs text-muted-foreground mt-1">{description}</p>
+            )}
           </div>
         </FormItem>
       )}

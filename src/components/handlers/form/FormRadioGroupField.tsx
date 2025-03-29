@@ -13,37 +13,42 @@ interface FormRadioGroupFieldProps {
   name: string;
   label: string;
   options: Option[];
+  description?: string;
 }
 
 export function FormRadioGroupField({ 
   control, 
   name, 
   label, 
-  options 
+  options,
+  description
 }: FormRadioGroupFieldProps) {
   return (
     <FormField
       control={control}
       name={name}
       render={({ field }) => (
-        <FormItem>
+        <FormItem className="space-y-3">
           <FormLabel>{label}</FormLabel>
           <FormControl>
             <RadioGroup
               onValueChange={field.onChange}
               defaultValue={field.value}
-              className="grid grid-cols-2 gap-2"
+              className="grid grid-cols-2 gap-3"
             >
               {options.map((option) => (
-                <FormItem key={option.value} className="flex items-center space-x-2 space-y-0">
+                <FormItem key={option.value} className="flex items-center space-x-2 space-y-0 rounded-md border p-3">
                   <FormControl>
                     <RadioGroupItem value={option.value} />
                   </FormControl>
-                  <FormLabel className="font-normal">{option.label}</FormLabel>
+                  <FormLabel className="font-normal text-sm cursor-pointer">{option.label}</FormLabel>
                 </FormItem>
               ))}
             </RadioGroup>
           </FormControl>
+          {description && (
+            <p className="text-xs text-muted-foreground">{description}</p>
+          )}
           <FormMessage />
         </FormItem>
       )}

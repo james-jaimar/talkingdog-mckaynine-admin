@@ -9,6 +9,7 @@ interface FormTextFieldProps {
   label: string;
   placeholder?: string;
   type?: string;
+  description?: string;
 }
 
 export function FormTextField({ 
@@ -16,18 +17,22 @@ export function FormTextField({
   name, 
   label, 
   placeholder = "", 
-  type = "text" 
+  type = "text",
+  description
 }: FormTextFieldProps) {
   return (
     <FormField
       control={control}
       name={name}
       render={({ field }) => (
-        <FormItem>
+        <FormItem className="space-y-2">
           <FormLabel>{label}</FormLabel>
           <FormControl>
             <Input type={type} placeholder={placeholder} {...field} />
           </FormControl>
+          {description && (
+            <p className="text-xs text-muted-foreground">{description}</p>
+          )}
           <FormMessage />
         </FormItem>
       )}

@@ -27,7 +27,7 @@ export function AddHandlerModal() {
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+        <DialogHeader className="pb-2">
           <DialogTitle>Add New Handler</DialogTitle>
           <DialogDescription>
             Enter the details of the new handler and their dog.

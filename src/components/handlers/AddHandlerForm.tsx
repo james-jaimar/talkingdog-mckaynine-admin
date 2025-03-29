@@ -11,6 +11,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { HandlerPersonalInfoFields } from "./form/HandlerPersonalInfoFields";
 import { DogInfoFields } from "./form/DogInfoFields";
 import { ClassAndPreferencesFields } from "./form/ClassAndPreferencesFields";
+import { Separator } from "@/components/ui/separator";
 
 const formSchema = z.object({
   firstName: z.string().min(2, {
@@ -122,20 +123,35 @@ Photo Permission: ${data.photoPermission ? "Yes" : "No"}`,
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <HandlerPersonalInfoFields control={form.control} />
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+        <div>
+          <h3 className="text-lg font-medium mb-4">Handler Information</h3>
+          <HandlerPersonalInfoFields control={form.control} />
+        </div>
         
-        <DogInfoFields control={form.control} />
+        <Separator className="my-6" />
         
-        <ClassAndPreferencesFields control={form.control} />
+        <div>
+          <h3 className="text-lg font-medium mb-4">Dog Information</h3>
+          <DogInfoFields control={form.control} />
+        </div>
+        
+        <Separator className="my-6" />
+        
+        <div>
+          <h3 className="text-lg font-medium mb-4">Class & Preferences</h3>
+          <ClassAndPreferencesFields control={form.control} />
+        </div>
 
-        <Button
-          type="submit"
-          className="w-full bg-mckaynine-600 hover:bg-mckaynine-700"
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? "Adding Handler..." : "Add Handler"}
-        </Button>
+        <div className="pt-4">
+          <Button
+            type="submit"
+            className="w-full bg-mckaynine-600 hover:bg-mckaynine-700"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? "Adding Handler..." : "Add Handler"}
+          </Button>
+        </div>
       </form>
     </Form>
   );
