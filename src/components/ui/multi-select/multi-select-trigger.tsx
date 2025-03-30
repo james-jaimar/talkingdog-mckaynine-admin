@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { MultiSelectBadge } from "./multi-select-badge";
 import { OptionType } from "./types";
+import { ChevronDown, ChevronUp } from "lucide-react";
 
 interface MultiSelectTriggerProps {
   value: OptionType[];
@@ -42,22 +43,21 @@ export function MultiSelectTrigger({
     }
   }, [value]);
 
-  const toggleOpen = React.useCallback(() => {
-    try {
-      onOpenChange(!isOpen);
-    } catch (error) {
-      console.error("Error in MultiSelectTrigger toggleOpen:", error);
-    }
+  const toggleOpen = React.useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onOpenChange(!isOpen);
   }, [isOpen, onOpenChange]);
 
   return (
     <div
       className={cn(
-        "flex min-h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-within:ring-1 focus-within:ring-ring",
+        "flex min-h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-within:ring-1 focus-within:ring-ring cursor-pointer",
         className
       )}
+      onClick={toggleOpen}
     >
-      <div className="flex flex-wrap gap-1">
+      <div className="flex flex-wrap gap-1 flex-1">
         {Array.isArray(safeValue) && safeValue.length > 0 ? (
           safeValue.map((item, idx) => (
             <MultiSelectBadge 
@@ -68,7 +68,7 @@ export function MultiSelectTrigger({
             />
           ))
         ) : (
-          <span className="text-sm text-muted-foreground">{placeholder}</span>
+          <span className="text-sm text-muted-foreground py-1">{placeholder}</span>
         )}
       </div>
       <Button
@@ -79,6 +79,11 @@ export function MultiSelectTrigger({
         onClick={toggleOpen}
         type="button"
       >
+        {isOpen ? (
+          <ChevronUp className="h-4 w-4 text-muted-foreground" />
+        ) : (
+          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+        )}
         <span className="sr-only">{isOpen ? "Close" : "Open"} select</span>
       </Button>
     </div>
