@@ -23,7 +23,11 @@ export function ReviewStep({ csvData, fieldMappings, branchName }: ReviewStepPro
   const mappedFields: Record<string, string[]> = {};
   
   Object.entries(fieldMappings).forEach(([csvHeader, dbFieldWithTable]) => {
-    const [table, _] = dbFieldWithTable.split('.');
+    if (!dbFieldWithTable) return; // Skip empty mappings
+    
+    const [table, field] = dbFieldWithTable.split('.');
+    if (!table || !field) return;
+    
     if (!mappedFields[table]) {
       mappedFields[table] = [];
     }

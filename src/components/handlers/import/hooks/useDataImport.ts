@@ -21,6 +21,7 @@ export function useDataImport() {
     branchId?: string | null
   ): Promise<ImportResult> => {
     setIsUploading(true);
+    console.log("Processing import...");
     const errors: string[] = [];
     const successful: number[] = [];
 
@@ -29,28 +30,38 @@ export function useDataImport() {
       const tableGroups: Record<string, Record<string, string>> = {};
       
       Object.entries(fieldMappings).forEach(([csvHeader, dbFieldWithTable]) => {
+        if (!dbFieldWithTable) return; // Skip empty mappings
+        
         const [table, dbField] = dbFieldWithTable.split('.');
+        if (!table || !dbField) return;
+        
         if (!tableGroups[table]) {
           tableGroups[table] = {};
         }
         tableGroups[table][dbField] = csvHeader;
       });
+      
+      console.log("Table groups:", tableGroups);
 
       // First pass: preload existing clients to check for duplicates
       let existingClients = new Map<string, string>();
       if (tableGroups.clients && tableGroups.clients.email) {
         const emailHeader = tableGroups.clients.email;
         existingClients = await loadExistingClients(csvData, emailHeader);
+        console.log("Loaded existing clients:", existingClients.size);
       }
       
       // Process each row
       for (let i = 0; i < csvData.length; i++) {
         const row = csvData[i];
         try {
+          console.log(`Processing row ${i+1}/${csvData.length}`);
+          
           // Prepare client data
           if (tableGroups.clients) {
             // Process client data
             const clientData = processClientData(row, tableGroups, branchId);
+            console.log("Processed client data:", clientData);
             
             // Make sure we have required fields
             if (!clientData.email) {
@@ -59,6 +70,7 @@ export function useDataImport() {
             
             // Create or update client
             const clientId = await createOrUpdateClient(clientData, existingClients);
+            console.log("Client created/updated with ID:", clientId);
             
             if (!clientId) {
               throw new Error('Failed to create or update client');
@@ -73,6 +85,7 @@ export function useDataImport() {
             if (clientId && tableGroups.dogs) {
               // Process dog data
               const dogData = processDogData(row, tableGroups, clientId);
+              console.log("Processed dog data:", dogData);
               
               // Make sure we have required fields
               if (!dogData.name) {
@@ -84,37 +97,26 @@ export function useDataImport() {
               
               // Create the dog and process related data
               await createDog(dogData, row, tableGroups);
+              console.log("Dog created successfully");
             }
             
             successful.push(i);
           }
         } catch (error: any) {
+          console.error(`Error processing row ${i+1}:`, error);
           errors.push(`Row ${i + 1}: ${error.message}`);
         }
       }
       
-      // Show success or error message
-      if (successful.length > 0) {
-        toast({
-          title: "Import completed",
-          description: `Successfully imported ${successful.length} handlers${errors.length > 0 ? ` (${errors.length} errors)` : ''}.`,
-          variant: errors.length > 0 ? "default" : "default"
-        });
-      } else {
-        toast({
-          title: "Import failed",
-          description: "No data was imported. Please check the error messages.",
-          variant: "destructive"
-        });
-      }
+      console.log("Import completed:", successful.length, "successful,", errors.length, "errors");
       
-      return { success: successful.length > 0, errors };
+      // Return the result - don't show toast here as it's handled in the modal
+      return { 
+        success: successful.length > 0, 
+        errors 
+      };
     } catch (error: any) {
-      toast({
-        title: "Import failed",
-        description: error.message,
-        variant: "destructive"
-      });
+      console.error("Fatal import error:", error);
       return { success: false, errors: [error.message] };
     } finally {
       setIsUploading(false);

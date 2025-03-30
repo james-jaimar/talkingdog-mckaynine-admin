@@ -64,7 +64,14 @@ export function ImportHandlersModal() {
     }
 
     try {
+      console.log("Starting import process...");
+      console.log("CSV Data:", csvData.length, "records");
+      console.log("Field Mappings:", fieldMappings);
+      console.log("Branch ID:", currentBranch?.id);
+      
       const result = await processImport(csvData, fieldMappings, currentBranch?.id);
+      console.log("Import result:", result);
+      
       if (result.success) {
         toast({
           title: "Import successful",
@@ -74,8 +81,15 @@ export function ImportHandlersModal() {
         setOpen(false);
         // Reset for next import
         handleReset();
+      } else {
+        toast({
+          title: "Import failed",
+          description: `Failed to import data: ${result.errors.join(", ")}`,
+          variant: "destructive"
+        });
       }
     } catch (error: any) {
+      console.error("Import error:", error);
       toast({
         title: "Import failed",
         description: error.message || "An unexpected error occurred",
@@ -168,6 +182,7 @@ export function ImportHandlersModal() {
                 disabled={isUploading}
                 type="button"
                 variant="mckaynine"
+                className="px-6 py-2"
               >
                 {isUploading ? "Importing..." : "Import Data"}
                 <Import className="h-4 w-4 ml-2" />
