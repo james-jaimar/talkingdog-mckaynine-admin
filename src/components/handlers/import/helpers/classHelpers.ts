@@ -50,8 +50,14 @@ export async function processClassEnrollments(
          value.toString().toLowerCase() === 'yes' || 
          value.toString().toLowerCase() === 'true');
          
-      // Assign the boolean value to the proper field
-      enrollmentData[dbField as keyof typeof enrollmentData] = !!boolValue;
+      // Safely assign the boolean value using a type-safe approach
+      if (dbField === 'puppy_class') enrollmentData.puppy_class = !!boolValue;
+      else if (dbField === 'eo_class') enrollmentData.eo_class = !!boolValue;
+      else if (dbField === 'bronze_cgc_class') enrollmentData.bronze_cgc_class = !!boolValue;
+      else if (dbField === 'silver_cgc_class') enrollmentData.silver_cgc_class = !!boolValue;
+      else if (dbField === 'beginner_novice_class') enrollmentData.beginner_novice_class = !!boolValue;
+      else if (dbField === 'wt_class') enrollmentData.wt_class = !!boolValue;
+      else if (dbField === 'yoga_class') enrollmentData.yoga_class = !!boolValue;
     }
   });
   
