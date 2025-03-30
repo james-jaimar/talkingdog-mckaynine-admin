@@ -33,10 +33,24 @@ export async function createDog(
   try {
     console.log("Creating dog with data:", dogData);
     
+    // Ensure required fields are present
+    const dogRecord = {
+      client_id: dogData.client_id,
+      name: dogData.name || 'Unnamed Dog',
+      breed: dogData.breed || 'Unknown Breed',
+      // Include other fields if they exist
+      age: dogData.age,
+      weight: dogData.weight,
+      notes: dogData.notes,
+      behavior_notes: dogData.behavior_notes,
+      medical_notes: dogData.medical_notes,
+      avatar_url: dogData.avatar_url
+    };
+    
     // Create the dog
     const { data, error } = await supabase
       .from('dogs')
-      .insert(dogData)
+      .insert(dogRecord)
       .select('id')
       .single();
       

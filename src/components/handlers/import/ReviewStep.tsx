@@ -93,6 +93,12 @@ export function ReviewStep({ csvData, fieldMappings, branchName }: ReviewStepPro
           </Table>
         </div>
       </div>
+      
+      <div className="mt-4 text-center">
+        <p className="text-sm font-medium text-green-600">
+          Ready to import {csvData.length} records? Click "Import Data" below.
+        </p>
+      </div>
     </div>
   );
 }

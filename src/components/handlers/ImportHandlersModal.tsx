@@ -175,6 +175,7 @@ export function ImportHandlersModal() {
                 disabled={isUploading}
                 variant="mckaynine"
                 className="px-6 py-2"
+                id="import-data-button"
               >
                 {isUploading ? "Importing..." : "Import Data"}
                 <Import className="h-4 w-4 ml-2" />
