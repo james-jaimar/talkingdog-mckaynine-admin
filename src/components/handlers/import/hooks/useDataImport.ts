@@ -62,73 +62,7 @@ export function useDataImport() {
         tableFields[table][csvHeader] = dbFieldWithTable;
       });
       
-      // Try to auto-map some common fields that might not be explicitly mapped
-      for (const row of data) {
-        for (const [header, value] of Object.entries(row)) {
-          const headerLower = header.toLowerCase();
-          
-          // Auto-map dog fields
-          if (headerLower.includes("dog") && headerLower.includes("name") && !tableFields['dogs']?.[header]) {
-            if (!tableFields['dogs']) tableFields['dogs'] = {};
-            tableFields['dogs'][header] = 'dogs.name';
-          }
-          
-          if (headerLower.includes("breed") && !tableFields['dogs']?.[header]) {
-            if (!tableFields['dogs']) tableFields['dogs'] = {};
-            tableFields['dogs'][header] = 'dogs.breed';
-          }
-          
-          if ((headerLower === "dob" || headerLower.includes("birth") || headerLower.includes("date")) && !tableFields['dogs']?.[header]) {
-            if (!tableFields['dogs']) tableFields['dogs'] = {};
-            tableFields['dogs'][header] = 'dogs.date_of_birth';
-          }
-          
-          // Auto-map client preference fields
-          if (headerLower.includes("whatsapp") && !tableFields['clients']?.[header]) {
-            if (!tableFields['clients']) tableFields['clients'] = {};
-            tableFields['clients'][header] = 'clients.whatsapp';
-          }
-          
-          if ((headerLower.includes("photo") && headerLower.includes("permission")) && !tableFields['clients']?.[header]) {
-            if (!tableFields['clients']) tableFields['clients'] = {};
-            tableFields['clients'][header] = 'clients.photo_permission';
-          }
-          
-          // Auto-map class fields
-          if (headerLower === "puppy" && !fieldMappings[header]?.startsWith('class_enrollments')) {
-            fieldMappings[header] = 'class_enrollments.puppy_class';
-          }
-          if (headerLower === "eo" && !fieldMappings[header]?.startsWith('class_enrollments')) {
-            fieldMappings[header] = 'class_enrollments.eo_class';
-          }
-          if ((headerLower.includes("bronze") || headerLower === "bronze cgc") && !fieldMappings[header]?.startsWith('class_enrollments')) {
-            fieldMappings[header] = 'class_enrollments.bronze_cgc_class';
-          }
-          if ((headerLower.includes("silver") || headerLower === "silver cgc") && !fieldMappings[header]?.startsWith('class_enrollments')) {
-            fieldMappings[header] = 'class_enrollments.silver_cgc_class';
-          }
-          if ((headerLower.includes("beginner") || headerLower.includes("novice")) && !fieldMappings[header]?.startsWith('class_enrollments')) {
-            fieldMappings[header] = 'class_enrollments.beginner_novice_class';
-          }
-          if (headerLower === "wt" && !fieldMappings[header]?.startsWith('class_enrollments')) {
-            fieldMappings[header] = 'class_enrollments.wt_class';
-          }
-          if (headerLower === "yoga" && !fieldMappings[header]?.startsWith('class_enrollments')) {
-            fieldMappings[header] = 'class_enrollments.yoga_class';
-          }
-          
-          // Auto-map notes fields
-          if (headerLower === "comments" && !tableFields['clients']?.[header]) {
-            if (!tableFields['clients']) tableFields['clients'] = {};
-            tableFields['clients'][header] = 'clients.notes';
-          }
-          
-          if (headerLower === "assess" && !tableFields['dogs']?.[header]) {
-            if (!tableFields['dogs']) tableFields['dogs'] = {};
-            tableFields['dogs'][header] = 'dogs.notes';
-          }
-        }
-      }
+      console.log("Table fields mapping:", tableFields);
       
       // Process data row by row
       for (let i = 0; i < data.length; i++) {
@@ -147,57 +81,74 @@ export function useDataImport() {
           // Always try to create a client, even if no specific client fields are mapped
           // Email is the minimum requirement
           clientId = await processClientData(row, tableFields['clients'] || { [emailHeader]: 'clients.email' }, branchId);
-            
-          // Process dog data if client was created
+          
           if (clientId) {
-            try {
-              // Try to find dog name from any column that might contain it
-              const dogName = findDogName(row, fieldMappings);
-              
-              if (dogName) {
-                // Make sure we have the dog name in the table fields
+            // Try to process dog data
+            let dogName = findDogName(row, fieldMappings);
+            let breed = findBreed(row, fieldMappings);
+            
+            // If we have at least a dog name, try to create the dog
+            if (dogName) {
+              try {
+                // Ensure we have dog fields mapped
                 if (!tableFields['dogs']) {
                   tableFields['dogs'] = {};
                 }
                 
-                // Find if there's already a dog name mapping
-                let dogNameMapped = false;
-                for (const [_, mapping] of Object.entries(tableFields['dogs'])) {
-                  if (mapping === 'dogs.name') {
-                    dogNameMapped = true;
-                    break;
-                  }
-                }
-                
-                // If not mapped, add it
-                if (!dogNameMapped) {
+                // Make sure dog name is mapped
+                if (!Object.values(tableFields['dogs']).includes('dogs.name')) {
+                  // Find the header that contains the dog name
                   for (const [header, value] of Object.entries(row)) {
-                    if ((header.toLowerCase().includes('dog') || 
-                         header.toLowerCase() === "dog's name") && 
-                        value && 
-                        typeof value === 'string') {
+                    if (header.toLowerCase().includes('dog') && String(value) === dogName) {
                       tableFields['dogs'][header] = 'dogs.name';
                       break;
                     }
                   }
                 }
                 
-                // Process dog data
+                // Make sure breed is mapped if we found it
+                if (breed && !Object.values(tableFields['dogs']).includes('dogs.breed')) {
+                  // Find the header that contains the breed
+                  for (const [header, value] of Object.entries(row)) {
+                    if (header.toLowerCase().includes('breed') && String(value) === breed) {
+                      tableFields['dogs'][header] = 'dogs.breed';
+                      break;
+                    }
+                  }
+                }
+                
+                console.log(`Processing dog for row ${i+1} with name: ${dogName}, breed: ${breed || 'Unknown'}`);
+                
+                // If we don't have a real breed but need to process a dog, use a placeholder
+                if (!breed && !Object.values(tableFields['dogs']).includes('dogs.breed')) {
+                  // Find the Breed header
+                  for (const header of Object.keys(row)) {
+                    if (header.toLowerCase() === 'breed') {
+                      tableFields['dogs'][header] = 'dogs.breed';
+                      // Set a placeholder breed if it's empty
+                      if (!row[header]) {
+                        row[header] = 'Unknown';
+                      }
+                      break;
+                    }
+                  }
+                }
+                
+                // Process dog data with what we have
                 const dogId = await processDogData(row, tableFields['dogs'], clientId);
                 
                 // Process class enrollments if dog was created
                 if (dogId) {
                   try {
+                    console.log(`Processing class enrollments for dog ${dogName} (${dogId})`);
                     await processClassEnrollments(row, fieldMappings, dogId);
                   } catch (classError: any) {
                     console.warn(`Class enrollment processing failed for row ${i+1} but continuing import:`, classError);
                   }
                 }
-              } else {
-                console.log(`No dog name found for row ${i+1}, skipping dog creation`);
+              } catch (dogError: any) {
+                console.error(`Dog processing failed for row ${i+1}:`, dogError);
               }
-            } catch (dogError: any) {
-              console.warn(`Dog processing failed for row ${i+1} but continuing import:`, dogError);
             }
             
             // Count as processed if at least the client was created
@@ -257,7 +208,34 @@ export function useDataImport() {
         value.trim() !== '-' && 
         value.trim() !== ''
       ) {
-        return value;
+        return value.trim();
+      }
+    }
+    
+    return undefined;
+  };
+  
+  // Helper function to find a breed in the row data
+  const findBreed = (row: any, fieldMappings: FieldMapping): string | undefined => {
+    // First check if we have a mapped breed field
+    const breedMapping = Object.entries(fieldMappings).find(
+      ([_, value]) => value === 'dogs.breed'
+    );
+    
+    if (breedMapping && row[breedMapping[0]]) {
+      return row[breedMapping[0]];
+    }
+    
+    // Try to find a column that might contain breed
+    for (const [header, value] of Object.entries(row)) {
+      if (
+        header.toLowerCase() === 'breed' && 
+        value && 
+        typeof value === 'string' && 
+        value.trim() !== '-' && 
+        value.trim() !== ''
+      ) {
+        return value.trim();
       }
     }
     

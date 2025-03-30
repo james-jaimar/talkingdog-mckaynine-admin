@@ -10,7 +10,7 @@ export async function processClassEnrollments(
   dogId: string
 ): Promise<void> {
   // Define a properly typed enrollment data object
-  const enrollmentData: {
+  interface EnrollmentData {
     dog_id: string;
     puppy_class: boolean;
     eo_class: boolean;
@@ -20,7 +20,9 @@ export async function processClassEnrollments(
     wt_class: boolean;
     yoga_class: boolean;
     [key: string]: string | boolean; // Add index signature to allow dynamic property assignment
-  } = {
+  }
+  
+  const enrollmentData: EnrollmentData = {
     dog_id: dogId,
     puppy_class: false,
     eo_class: false,
@@ -43,7 +45,6 @@ export async function processClassEnrollments(
              str === 'true' || 
              str === '1' || 
              str === 'y' ||
-             str === 'enrolled' ||
              str.includes('enrolled') ||
              str.includes('grad') ||
              str.includes('completed') ||
@@ -57,7 +58,17 @@ export async function processClassEnrollments(
     return false;
   };
   
-  // Check for column headers directly from the CSV
+  // First check the mapped fields
+  Object.entries(fieldMappings).forEach(([csvHeader, dbFieldPath]) => {
+    if (dbFieldPath.startsWith('class_enrollments.')) {
+      const dbField = dbFieldPath.replace('class_enrollments.', '') as keyof EnrollmentData;
+      if (row[csvHeader] !== undefined) {
+        enrollmentData[dbField] = toBool(row[csvHeader]);
+      }
+    }
+  });
+  
+  // Then check for column headers directly from the CSV (in case they weren't explicitly mapped)
   Object.keys(row).forEach(header => {
     // Check for class column headers
     const headerLower = header.toLowerCase().trim();
@@ -76,16 +87,6 @@ export async function processClassEnrollments(
       enrollmentData.wt_class = toBool(row[header]);
     } else if (headerLower === 'yoga' || headerLower.includes('yoga')) {
       enrollmentData.yoga_class = toBool(row[header]);
-    }
-  });
-  
-  // Check for mapped fields in fieldMappings
-  Object.entries(fieldMappings).forEach(([csvHeader, dbFieldPath]) => {
-    if (dbFieldPath.startsWith('class_enrollments.')) {
-      const dbField = dbFieldPath.replace('class_enrollments.', '');
-      if (row[csvHeader] !== undefined) {
-        enrollmentData[dbField] = toBool(row[csvHeader]);
-      }
     }
   });
   
@@ -113,7 +114,7 @@ export async function processClassEnrollments(
       if (lowerValue.includes('waiting') || lowerValue.includes('wt ')) {
         enrollmentData.wt_class = true;
       }
-      if (lowerValue.includes('yoga???') || lowerValue.includes('yoga') || lowerValue.includes('yoga???')) {
+      if (lowerValue.includes('yoga')) {
         enrollmentData.yoga_class = true;
       }
     }

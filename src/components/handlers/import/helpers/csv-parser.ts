@@ -1,4 +1,3 @@
-
 import Papa from "papaparse";
 import { toast } from "@/hooks/use-toast";
 
@@ -19,16 +18,43 @@ export const parseCSVFile = (
         const cleanedData = results.data.map(row => {
           const cleanedRow: Record<string, any> = {};
           Object.entries(row).forEach(([key, value]) => {
+            // Handle empty values or dashes
             if (value === '-' || value === '') {
               cleanedRow[key] = null;
             } else {
-              cleanedRow[key] = value;
+              // Convert 'yes/no' text to boolean for class enrollments and preferences
+              if (typeof value === 'string' && 
+                  (key === 'WhatsApp' || key === 'Photo Permission' || 
+                   key === 'PUPPY' || key === 'EO' || key === 'BRONZE CGC' || 
+                   key === 'SILVER CGC' || key === 'BEGINNER/Novice' || 
+                   key === 'WT' || key === 'YOGA')) {
+                
+                const lowerValue = value.toLowerCase();
+                if (lowerValue === 'yes' || lowerValue === '1' || lowerValue === 'true' || 
+                    lowerValue.includes('enrolled') || lowerValue.includes('grad') || 
+                    lowerValue.includes('completed') || lowerValue.includes('term')) {
+                  cleanedRow[key] = true;
+                } else if (lowerValue === 'no' || lowerValue === '0' || lowerValue === 'false') {
+                  cleanedRow[key] = false;
+                } else {
+                  // Keep the original value if it doesn't match known patterns
+                  cleanedRow[key] = value;
+                }
+              } else {
+                cleanedRow[key] = value;
+              }
             }
           });
           return cleanedRow;
         });
         
         onSuccess(headers, cleanedData);
+      } else {
+        toast({
+          title: "Empty CSV file",
+          description: "The CSV file doesn't contain any data",
+          variant: "destructive"
+        });
       }
     },
     error: (error) => {
@@ -46,125 +72,127 @@ export const generateInitialMappings = (headers: string[]) => {
   const initialMappings: Record<string, string> = {};
   
   // Map common fields automatically
-  const commonMappings: Record<string, string> = {
+  const commonMappings: Record<string, RegExp | string> = {
     // Client fields
-    "Name": "clients.name",
-    "E-mail": "clients.email",
-    "Tel": "clients.phone",
-    "COMMENTS": "clients.notes",
-    "WhatsApp": "clients.whatsapp",
-    "Photo Permission": "clients.photo_permission",
-    "Photo Pemission": "clients.photo_permission",
+    "name": /^name$/i,
+    "clients.name": /^name$/i,
+    "clients.email": /^e-mail$|^email$/i,
+    "clients.phone": /^tel$|^phone$/i,
+    "clients.notes": /^comments$/i,
+    "clients.whatsapp": /^whatsapp$/i,
+    "clients.photo_permission": /^photo\s*permission$/i,
     
     // Dog fields
-    "Dog's Name": "dogs.name",
-    "Breed": "dogs.breed",
-    "DOB": "dogs.date_of_birth",
-    "Assess": "dogs.notes",
+    "dogs.name": /^dog'?s?\s*name$/i,
+    "dogs.breed": /^breed$/i,
+    "dogs.date_of_birth": /^dob$|^date\s*of\s*birth$/i,
+    "dogs.notes": /^assess$/i,
     
     // Class enrollment fields
-    "PUPPY": "class_enrollments.puppy_class",
-    "EO": "class_enrollments.eo_class",
-    "BRONZE CGC": "class_enrollments.bronze_cgc_class",
-    "SILVER CGC": "class_enrollments.silver_cgc_class",
-    "BEGINNER/Novice": "class_enrollments.beginner_novice_class",
-    "WT": "class_enrollments.wt_class",
-    "YOGA": "class_enrollments.yoga_class"
+    "class_enrollments.puppy_class": /^puppy$/i,
+    "class_enrollments.eo_class": /^eo$/i,
+    "class_enrollments.bronze_cgc_class": /^bronze\s*cgc$/i,
+    "class_enrollments.silver_cgc_class": /^silver\s*cgc$/i,
+    "class_enrollments.beginner_novice_class": /^beginner\/novice$/i,
+    "class_enrollments.wt_class": /^wt$/i,
+    "class_enrollments.yoga_class": /^yoga$/i
   };
-  
-  // Try direct case-insensitive match first
+
+  // Process each header against the mapping patterns
   headers.forEach(header => {
     const normalizedHeader = header.trim();
     
-    // Try exact match
-    if (commonMappings[normalizedHeader]) {
-      initialMappings[normalizedHeader] = commonMappings[normalizedHeader];
-      return;
-    }
-    
-    // Try case-insensitive match
-    for (const [key, value] of Object.entries(commonMappings)) {
-      if (key.toLowerCase() === normalizedHeader.toLowerCase()) {
-        initialMappings[normalizedHeader] = value;
-        return;
+    // Check each mapping pattern against the header
+    for (const [dbField, pattern] of Object.entries(commonMappings)) {
+      if (typeof pattern === 'string') {
+        if (normalizedHeader.toLowerCase() === pattern.toLowerCase()) {
+          initialMappings[normalizedHeader] = dbField;
+          break;
+        }
+      } else if (pattern instanceof RegExp) {
+        if (pattern.test(normalizedHeader)) {
+          initialMappings[normalizedHeader] = dbField;
+          break;
+        }
       }
     }
+  });
+  
+  // Ensure critical fields are mapped even if patterns didn't match exactly
+  headers.forEach(header => {
+    const headerLower = header.toLowerCase().trim();
     
-    // Try to match by substring
-    for (const [key, value] of Object.entries(commonMappings)) {
-      if (normalizedHeader.toLowerCase().includes(key.toLowerCase()) ||
-          key.toLowerCase().includes(normalizedHeader.toLowerCase())) {
-        initialMappings[normalizedHeader] = value;
-        return;
-      }
+    // Name field
+    if (headerLower === 'name' && !initialMappings[header]) {
+      initialMappings[header] = 'clients.name';
     }
     
-    // Special case for fields that might be uniquely named
-    const headerLower = normalizedHeader.toLowerCase();
-    
-    if (headerLower.includes('email') || headerLower.includes('e-mail')) {
-      initialMappings[normalizedHeader] = 'clients.email';
+    // Email field
+    if ((headerLower.includes('email') || headerLower.includes('e-mail')) && !Object.values(initialMappings).includes('clients.email')) {
+      initialMappings[header] = 'clients.email';
     }
     
-    if (headerLower.includes('phone') || headerLower.includes('tel')) {
-      initialMappings[normalizedHeader] = 'clients.phone';
+    // Phone field
+    if ((headerLower.includes('phone') || headerLower === 'tel') && !Object.values(initialMappings).includes('clients.phone')) {
+      initialMappings[header] = 'clients.phone';
     }
     
-    if (headerLower.includes('dog') && headerLower.includes('name')) {
-      initialMappings[normalizedHeader] = 'dogs.name';
+    // Dog name field
+    if ((headerLower.includes('dog') && headerLower.includes('name')) && !Object.values(initialMappings).includes('dogs.name')) {
+      initialMappings[header] = 'dogs.name';
     }
     
-    if (headerLower === 'breed' || headerLower.includes('breed')) {
-      initialMappings[normalizedHeader] = 'dogs.breed';
+    // Breed field
+    if (headerLower === 'breed' && !Object.values(initialMappings).includes('dogs.breed')) {
+      initialMappings[header] = 'dogs.breed';
     }
     
-    if (headerLower === 'dob' || headerLower.includes('date of birth')) {
-      initialMappings[normalizedHeader] = 'dogs.date_of_birth';
+    // DOB field
+    if (headerLower === 'dob' && !Object.values(initialMappings).includes('dogs.date_of_birth')) {
+      initialMappings[header] = 'dogs.date_of_birth';
     }
     
-    if (headerLower === 'comments' || headerLower.includes('comment')) {
-      initialMappings[normalizedHeader] = 'clients.notes';
+    // Notes/Comments field
+    if (headerLower === 'comments' && !Object.values(initialMappings).includes('clients.notes')) {
+      initialMappings[header] = 'clients.notes';
     }
     
-    if (headerLower === 'assess' || headerLower.includes('assessment')) {
-      initialMappings[normalizedHeader] = 'dogs.notes';
+    // Assessment field for dog notes
+    if (headerLower === 'assess' && !Object.values(initialMappings).includes('dogs.notes')) {
+      initialMappings[header] = 'dogs.notes';
     }
     
-    if (headerLower.includes('whatsapp')) {
-      initialMappings[normalizedHeader] = 'clients.whatsapp';
+    // WhatsApp preference
+    if (headerLower.includes('whatsapp') && !Object.values(initialMappings).includes('clients.whatsapp')) {
+      initialMappings[header] = 'clients.whatsapp';
     }
     
-    if (headerLower.includes('photo') && headerLower.includes('permission')) {
-      initialMappings[normalizedHeader] = 'clients.photo_permission';
+    // Photo permission
+    if (headerLower.includes('photo') && headerLower.includes('permission') && !Object.values(initialMappings).includes('clients.photo_permission')) {
+      initialMappings[header] = 'clients.photo_permission';
     }
     
     // Class enrollment fields
-    if (headerLower === 'puppy') {
-      initialMappings[normalizedHeader] = 'class_enrollments.puppy_class';
-    }
+    const classFields = {
+      'puppy': 'class_enrollments.puppy_class',
+      'eo': 'class_enrollments.eo_class',
+      'bronze cgc': 'class_enrollments.bronze_cgc_class',
+      'bronze': 'class_enrollments.bronze_cgc_class',
+      'silver cgc': 'class_enrollments.silver_cgc_class',
+      'silver': 'class_enrollments.silver_cgc_class',
+      'beginner/novice': 'class_enrollments.beginner_novice_class',
+      'beginner': 'class_enrollments.beginner_novice_class',
+      'novice': 'class_enrollments.beginner_novice_class',
+      'wt': 'class_enrollments.wt_class',
+      'yoga': 'class_enrollments.yoga_class'
+    };
     
-    if (headerLower === 'eo') {
-      initialMappings[normalizedHeader] = 'class_enrollments.eo_class';
-    }
-    
-    if (headerLower.includes('bronze')) {
-      initialMappings[normalizedHeader] = 'class_enrollments.bronze_cgc_class';
-    }
-    
-    if (headerLower.includes('silver')) {
-      initialMappings[normalizedHeader] = 'class_enrollments.silver_cgc_class';
-    }
-    
-    if (headerLower.includes('beginner') || headerLower.includes('novice')) {
-      initialMappings[normalizedHeader] = 'class_enrollments.beginner_novice_class';
-    }
-    
-    if (headerLower === 'wt') {
-      initialMappings[normalizedHeader] = 'class_enrollments.wt_class';
-    }
-    
-    if (headerLower === 'yoga') {
-      initialMappings[normalizedHeader] = 'class_enrollments.yoga_class';
+    for (const [classKey, dbField] of Object.entries(classFields)) {
+      if (headerLower === classKey || headerLower.includes(classKey)) {
+        if (!Object.values(initialMappings).includes(dbField)) {
+          initialMappings[header] = dbField;
+        }
+      }
     }
   });
   

@@ -28,33 +28,46 @@ export async function processClientData(
   
   // Add to notes field
   const preferences = [];
+  
+  // Process WhatsApp preference
   if (whatsAppHeader && row[whatsAppHeader] && (
-      row[whatsAppHeader].toString().toLowerCase() === 'yes' || 
-      row[whatsAppHeader] === true || 
-      row[whatsAppHeader] === '1' ||
-      row[whatsAppHeader].toString().toLowerCase().includes('yes')
+      row[whatsAppHeader] === true ||
+      (typeof row[whatsAppHeader] === 'string' && (
+        row[whatsAppHeader].toString().toLowerCase() === 'yes' || 
+        row[whatsAppHeader] === '1' ||
+        row[whatsAppHeader].toString().toLowerCase().includes('yes')
+      ))
   )) {
     preferences.push("WhatsApp: yes");
   }
   
+  // Process Photo Permission
   if (photoPermissionHeader && row[photoPermissionHeader] && (
-      row[photoPermissionHeader].toString().toLowerCase() === 'yes' || 
-      row[photoPermissionHeader] === true || 
-      row[photoPermissionHeader] === '1' ||
-      row[photoPermissionHeader].toString().toLowerCase().includes('yes')
+      row[photoPermissionHeader] === true ||
+      (typeof row[photoPermissionHeader] === 'string' && (
+        row[photoPermissionHeader].toString().toLowerCase() === 'yes' || 
+        row[photoPermissionHeader] === '1' ||
+        row[photoPermissionHeader].toString().toLowerCase().includes('yes')
+      ))
   )) {
     preferences.push("Photo Permission: yes");
   }
   
   // Also check for direct WhatsApp and Photo Permission columns in the CSV
   Object.entries(row).forEach(([header, value]) => {
-    if (header === 'WhatsApp' && value && value.toString().toLowerCase().includes('yes')) {
+    if (header === 'WhatsApp' && value && (
+        value === true ||
+        (typeof value === 'string' && value.toString().toLowerCase().includes('yes'))
+    )) {
       if (!preferences.some(p => p.includes('WhatsApp'))) {
         preferences.push("WhatsApp: yes");
       }
     }
     
-    if (header === 'Photo Permission' && value && value.toString().toLowerCase().includes('yes')) {
+    if (header === 'Photo Permission' && value && (
+        value === true ||
+        (typeof value === 'string' && value.toString().toLowerCase().includes('yes'))
+    )) {
       if (!preferences.some(p => p.includes('Photo Permission'))) {
         preferences.push("Photo Permission: yes");
       }
