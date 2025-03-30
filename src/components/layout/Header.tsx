@@ -10,22 +10,22 @@ export function Header() {
   const currentPath = location.pathname;
   
   return (
-    <header className="border-b bg-white">
+    <header className="border-b bg-white w-full">
       <div className="p-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <Dog className="h-8 w-8 text-mckaynine-600" />
             <span className="font-bold text-xl text-mckaynine-700">McKaynine</span>
           </div>
-          <div className="ml-auto flex items-center gap-4">
+          <div className="flex items-center gap-4">
             <BranchSelector />
             <span className="text-sm text-gray-600">Welcome, Admin</span>
           </div>
         </div>
         
-        <div className="mt-4">
-          <Tabs defaultValue={currentPath === "/" ? "/" : currentPath}>
-            <TabsList className="w-full justify-start">
+        <div className="mt-4 overflow-x-auto">
+          <Tabs defaultValue={currentPath === "/" ? "/" : currentPath} className="w-full">
+            <TabsList className="w-max min-w-full justify-start">
               <TabsTrigger value="/" asChild>
                 <Link to="/" className={cn(currentPath === "/" ? "font-medium" : "")}>
                   Dashboard

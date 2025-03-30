@@ -8,6 +8,7 @@ import { HandlerInfo } from "@/components/handlers/detail/HandlerInfo";
 import { DogsList } from "@/components/handlers/detail/DogsList";
 import { HandlerNotFound } from "@/components/handlers/detail/HandlerNotFound";
 import { HandlerDetailSkeleton } from "@/components/handlers/detail/HandlerDetailSkeleton";
+import { Helmet } from "react-helmet";
 
 export default function HandlerDetail() {
   const { handlerId } = useParams();
@@ -54,7 +55,10 @@ export default function HandlerDetail() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <Helmet>
+        <title>{handler ? `${handler.first_name} ${handler.last_name}` : 'Handler Detail'} - McKaynine Training Centre</title>
+      </Helmet>
+      <div className="space-y-6 w-full py-6">
         <HandlerDetailHeader 
           isLoading={isLoading} 
           handler={handler} 

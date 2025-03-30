@@ -6,6 +6,7 @@ import { StatsCard } from "@/components/dashboard/StatsCard";
 import { RecentBookings } from "@/components/dashboard/RecentBookings";
 import { ClassesScheduled } from "@/components/dashboard/ClassesScheduled";
 import { Dog, Users, Calendar, MapPin } from "lucide-react";
+import { Helmet } from "react-helmet";
 
 export default function Dashboard() {
   const { data: stats, isLoading } = useQuery({
@@ -34,11 +35,14 @@ export default function Dashboard() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <Helmet>
+        <title>Dashboard - McKaynine Training Centre</title>
+      </Helmet>
+      <div className="space-y-6 w-full py-6">
         <h1 className="text-3xl font-bold">Dashboard</h1>
         
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
           <StatsCard
             title="Total Clients"
             value={isLoading ? "Loading..." : stats?.clientCount || 0}
@@ -66,7 +70,7 @@ export default function Dashboard() {
         </div>
         
         {/* Two-column layout for bookings and classes */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
           <RecentBookings />
           <ClassesScheduled />
         </div>

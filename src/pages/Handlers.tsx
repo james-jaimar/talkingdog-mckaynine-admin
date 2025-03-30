@@ -9,6 +9,7 @@ import { HandlerSearchBar } from "@/components/handlers/HandlerSearchBar";
 import { HandlerAlphabetPagination } from "@/components/handlers/HandlerAlphabetPagination";
 import { HandlerTable } from "@/components/handlers/HandlerTable";
 import { useHandlersData } from "@/components/handlers/hooks/useHandlersData";
+import { Helmet } from "react-helmet";
 
 export default function Handlers() {
   const { 
@@ -23,16 +24,19 @@ export default function Handlers() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
+      <Helmet>
+        <title>Handlers - McKaynine Training Centre</title>
+      </Helmet>
+      <div className="space-y-6 w-full py-6">
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <h1 className="text-3xl font-bold text-gray-900">Handlers</h1>
-          <div className="flex">
+          <div className="flex flex-wrap gap-2">
             <AddHandlerModal />
             <ImportHandlersModal />
           </div>
         </div>
         
-        <div className="grid gap-6 grid-cols-1">
+        <div className="grid gap-6 grid-cols-1 w-full">
           {/* Search and filter */}
           <HandlerSearchBar 
             searchQuery={searchQuery} 
@@ -40,16 +44,18 @@ export default function Handlers() {
           />
           
           {/* Alphabet pagination */}
-          <HandlerAlphabetPagination 
-            currentGroup={currentGroup} 
-            onGroupChange={(group) => {
-              setCurrentGroup(group);
-              setSearchQuery("");
-            }} 
-          />
+          <div className="overflow-x-auto">
+            <HandlerAlphabetPagination 
+              currentGroup={currentGroup} 
+              onGroupChange={(group) => {
+                setCurrentGroup(group);
+                setSearchQuery("");
+              }} 
+            />
+          </div>
           
           {/* Handlers list */}
-          <Card className="border border-gray-200 shadow-sm">
+          <Card className="border border-gray-200 shadow-sm w-full">
             <CardHeader className="bg-gray-50 border-b border-gray-200 flex flex-row items-center justify-between">
               <CardTitle>All Handlers {searchQuery ? `(Search: "${searchQuery}")` : `(${currentGroup})`}</CardTitle>
               <Button 

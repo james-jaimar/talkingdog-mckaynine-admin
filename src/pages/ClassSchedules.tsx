@@ -10,6 +10,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Class } from "@/components/classes/types/class";
 import { useToast } from "@/components/ui/use-toast";
+import { Helmet } from "react-helmet";
 
 export default function ClassSchedules() {
   const { classId } = useParams<{ classId: string }>();
@@ -44,7 +45,7 @@ export default function ClassSchedules() {
   if (isLoading) {
     return (
       <DashboardLayout>
-        <div className="container mx-auto py-6 flex justify-center">
+        <div className="w-full py-6 flex justify-center">
           <p>Loading class information...</p>
         </div>
       </DashboardLayout>
@@ -54,7 +55,7 @@ export default function ClassSchedules() {
   if (!classData && !isLoading) {
     return (
       <DashboardLayout>
-        <div className="container mx-auto py-6 flex justify-center">
+        <div className="w-full py-6 flex justify-center">
           <p>Class not found.</p>
         </div>
       </DashboardLayout>
@@ -63,8 +64,11 @@ export default function ClassSchedules() {
 
   return (
     <DashboardLayout>
-      <div className="container mx-auto py-6">
-        <div className="flex items-center justify-between mb-6">
+      <Helmet>
+        <title>{classData?.name} Schedules - McKaynine Training Centre</title>
+      </Helmet>
+      <div className="w-full py-6">
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
           <div>
             <h1 className="text-2xl font-bold">{classData?.name} Schedules</h1>
             <p className="text-muted-foreground">Manage schedules for this class</p>

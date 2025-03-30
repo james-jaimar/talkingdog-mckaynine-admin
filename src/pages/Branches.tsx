@@ -12,7 +12,7 @@ export default function Branches() {
         <title>Branches - McKaynine Training Centre</title>
       </Helmet>
       
-      <div className="flex flex-col space-y-6 w-full">
+      <div className="flex flex-col space-y-6 w-full py-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <h1 className="text-3xl font-bold tracking-tight">Branches</h1>
           <AddBranchModal />

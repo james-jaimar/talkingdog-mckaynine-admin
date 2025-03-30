@@ -12,13 +12,13 @@ export default function Trainers() {
         <title>Trainers - McKaynine Training Centre</title>
       </Helmet>
       
-      <div className="flex flex-col space-y-6">
-        <div className="flex items-center justify-between">
+      <div className="flex flex-col space-y-6 w-full py-6">
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <h1 className="text-3xl font-bold tracking-tight">Trainers</h1>
           <AddTrainerModal />
         </div>
         
-        <Card>
+        <Card className="w-full">
           <CardHeader className="pb-2">
             <CardTitle>All Trainers</CardTitle>
             <CardDescription>
