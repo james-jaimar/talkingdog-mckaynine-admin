@@ -35,27 +35,27 @@ export function MultiSelect({
     return value.filter(Boolean);
   }, [value]);
 
-  // Ultra-safe handler for unselecting an item
+  // Safe handler for unselecting an item
   const handleUnselect = React.useCallback((item: OptionType) => {
     if (!item) return;
     
-    const newValue = safeValue.filter(i => i.value !== item.value);
+    const newValue = safeValue.filter(i => i?.value !== item?.value);
     
     if (typeof onChange === 'function') {
       onChange(newValue);
     }
   }, [safeValue, onChange]);
 
-  // Ultra-safe handler for selecting an item
+  // Safe handler for selecting an item
   const handleSelect = React.useCallback((item: OptionType) => {
     if (!item) return;
     
     const currentValue = [...safeValue];
-    const isSelected = currentValue.some(i => i.value === item.value);
+    const isSelected = currentValue.some(i => i?.value === item?.value);
     
     let newValue: OptionType[];
     if (isSelected) {
-      newValue = currentValue.filter(i => i.value !== item.value);
+      newValue = currentValue.filter(i => i?.value !== item?.value);
     } else {
       newValue = [...currentValue, item];
     }
@@ -64,16 +64,6 @@ export function MultiSelect({
       onChange(newValue);
     }
   }, [safeValue, onChange]);
-
-  // Don't render anything if we don't have valid options
-  if (!Array.isArray(safeOptions) || safeOptions.length === 0) {
-    console.warn("MultiSelect - No valid options to display");
-    return (
-      <div className="flex min-h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background text-muted-foreground">
-        No options available
-      </div>
-    );
-  }
 
   return (
     <Popover open={open} onOpenChange={setOpen}>

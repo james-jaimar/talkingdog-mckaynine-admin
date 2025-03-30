@@ -41,6 +41,11 @@ export function TrainerSpecialtyFields({
   // Check if we have valid branch data
   const hasBranches = hasBranchData(branches);
 
+  console.log('Debug: branches', branches);
+  console.log('Debug: specialtyOptions', specialtyOptions);
+  console.log('Debug: selectedBranchOptions', selectedBranchOptions);
+  console.log('Debug: selectedSpecialtyOptions', selectedSpecialtyOptions);
+
   return (
     <>
       <FormField
@@ -88,8 +93,8 @@ export function TrainerSpecialtyFields({
             <FormLabel>Specialties</FormLabel>
             <FormControl>
               <MultiSelect
-                options={specialtyOptions || []}
-                value={selectedSpecialtyOptions || []}
+                options={specialtyOptions}
+                value={selectedSpecialtyOptions}
                 onChange={(selected) => {
                   const selectedSpecialties = selected.map(item => item.value);
                   form.setValue('specialties', selectedSpecialties, { 

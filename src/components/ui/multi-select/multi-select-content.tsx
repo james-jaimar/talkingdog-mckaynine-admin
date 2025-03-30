@@ -11,70 +11,27 @@ interface MultiSelectContentProps {
   onSelect: (option: OptionType) => void;
 }
 
-export function MultiSelectContent({ options, value, onSelect }: MultiSelectContentProps) {
-  // Safe options handling - ensure it's always a valid array
+export const MultiSelectContent = React.memo(function MultiSelectContent({ 
+  options, 
+  value, 
+  onSelect 
+}: MultiSelectContentProps) {
   const safeOptions = React.useMemo(() => {
-    try {
-      if (!options) return [];
-      if (!Array.isArray(options)) return [];
-      
-      return options.filter(option => 
-        option && 
-        typeof option === 'object' && 
-        'label' in option && 
-        typeof option.label === 'string' &&
-        'value' in option && 
-        typeof option.value === 'string'
-      );
-    } catch (error) {
-      console.error("Error in MultiSelectContent safeOptions:", error);
-      return [];
-    }
+    return Array.isArray(options) ? options.filter(Boolean) : [];
   }, [options]);
 
-  // Safe value handling - ensure it's always a valid array
   const safeValue = React.useMemo(() => {
-    try {
-      if (!value) return [];
-      if (!Array.isArray(value)) return [];
-      
-      return value.filter(item => 
-        item && 
-        typeof item === 'object' && 
-        'label' in item && 
-        typeof item.label === 'string' &&
-        'value' in item && 
-        typeof item.value === 'string'
-      );
-    } catch (error) {
-      console.error("Error in MultiSelectContent safeValue:", error);
-      return [];
-    }
+    return Array.isArray(value) ? value.filter(Boolean) : [];
   }, [value]);
 
-  // Determine if an option is selected
   const isOptionSelected = React.useCallback((option: OptionType) => {
-    try {
-      if (!Array.isArray(safeValue)) return false;
-      if (!option || typeof option !== 'object') return false;
-      if (!('value' in option) || typeof option.value !== 'string') return false;
-      
-      return safeValue.some(item => 
-        item && 
-        typeof item === 'object' && 
-        'value' in item && 
-        typeof item.value === 'string' && 
-        item.value === option.value
-      );
-    } catch (error) {
-      console.error("Error in isOptionSelected:", error);
-      return false;
-    }
+    if (!option || !Array.isArray(safeValue)) return false;
+    return safeValue.some(item => item?.value === option?.value);
   }, [safeValue]);
 
   return (
     <PopoverContent className="w-full p-0" align="start">
-      <Command className="w-full">
+      <Command>
         <CommandList>
           {safeOptions.length === 0 ? (
             <CommandEmpty>No options available</CommandEmpty>
@@ -82,7 +39,7 @@ export function MultiSelectContent({ options, value, onSelect }: MultiSelectCont
             <CommandGroup>
               {safeOptions.map((option, idx) => (
                 <MultiSelectItem
-                  key={`option-item-${option?.value || idx}-${option?.label || idx}`}
+                  key={`${option?.value || idx}`}
                   option={option}
                   index={idx}
                   isSelected={isOptionSelected(option)}
@@ -95,4 +52,4 @@ export function MultiSelectContent({ options, value, onSelect }: MultiSelectCont
       </Command>
     </PopoverContent>
   );
-}
+});

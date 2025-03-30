@@ -12,33 +12,26 @@ interface MultiSelectItemProps {
 }
 
 export function MultiSelectItem({ option, index, isSelected, onSelect }: MultiSelectItemProps) {
-  // Safety checks for the option
-  const safeOption = React.useMemo(() => {
-    if (!option || typeof option !== 'object') {
-      console.warn("MultiSelectItem: received invalid option:", option);
-      return { label: `Unknown ${index}`, value: `unknown-${index}` };
-    }
-    
-    const label = typeof option.label === 'string' ? option.label : `Unknown ${index}`;
-    const value = typeof option.value === 'string' ? option.value : `unknown-${index}`;
-    
-    return { label, value };
-  }, [option, index]);
+  // Safety check for the option
+  if (!option || typeof option !== 'object') {
+    return null;
+  }
+  
+  const label = option.label || `Option ${index}`;
+  const value = option.value || `option-${index}`;
+  
+  const safeOption = { label, value };
 
   const handleSelect = React.useCallback(() => {
-    try {
-      onSelect(safeOption);
-    } catch (error) {
-      console.error("Error in MultiSelectItem handleSelect:", error);
-    }
+    onSelect(safeOption);
   }, [safeOption, onSelect]);
 
   return (
     <CommandItem
-      key={`option-${safeOption.value}-${index}`}
+      key={`option-${value}-${index}`}
       onSelect={handleSelect}
       className="cursor-pointer"
-      value={safeOption.value}
+      value={value}
     >
       <div className="flex items-center gap-2 w-full">
         <div
@@ -53,7 +46,7 @@ export function MultiSelectItem({ option, index, isSelected, onSelect }: MultiSe
             <span className="flex h-full items-center justify-center text-xs">✓</span>
           )}
         </div>
-        <span>{safeOption.label}</span>
+        <span>{label}</span>
       </div>
     </CommandItem>
   );
