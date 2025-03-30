@@ -1,3 +1,4 @@
+
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -9,6 +10,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { AddHandlerModal } from "@/components/handlers/AddHandlerModal";
+import { ImportHandlersModal } from "@/components/handlers/ImportHandlersModal";
 
 export default function Handlers() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -53,7 +55,10 @@ export default function Handlers() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold text-gray-900">Handlers</h1>
-          <AddHandlerModal />
+          <div className="flex">
+            <AddHandlerModal />
+            <ImportHandlersModal />
+          </div>
         </div>
         
         <div className="grid gap-6 grid-cols-1">
