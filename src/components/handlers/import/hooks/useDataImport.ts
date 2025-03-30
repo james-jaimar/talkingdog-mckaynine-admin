@@ -3,7 +3,8 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { FieldMapping } from "../types";
-import { loadExistingClients } from "../helpers/clientHelpers";
+import { loadExistingClients, processClientData, createOrUpdateClient } from "../helpers/clientHelpers";
+import { processDogData, createDog } from "../helpers/dogHelpers";
 
 // Define a more specific return type for processImport
 interface ImportResult {
@@ -22,7 +23,6 @@ export function useDataImport() {
     setIsUploading(true);
     const errors: string[] = [];
     const successful: number[] = [];
-    const existingClients = new Map<string, string>(); // email -> id mapping
 
     try {
       // Group mappings by table
@@ -37,24 +37,10 @@ export function useDataImport() {
       });
 
       // First pass: preload existing clients to check for duplicates
+      let existingClients = new Map<string, string>();
       if (tableGroups.clients && tableGroups.clients.email) {
         const emailHeader = tableGroups.clients.email;
-        const clientEmails = csvData.map(row => row[emailHeader]).filter(Boolean);
-        
-        if (clientEmails.length > 0) {
-          const { data: existingClientsData } = await supabase
-            .from('clients')
-            .select('id, email')
-            .in('email', clientEmails);
-            
-          if (existingClientsData) {
-            existingClientsData.forEach(client => {
-              if (client.email) {
-                existingClients.set(client.email, client.id);
-              }
-            });
-          }
-        }
+        existingClients = await loadExistingClients(csvData, emailHeader);
       }
       
       // Process each row
@@ -63,57 +49,30 @@ export function useDataImport() {
         try {
           // Prepare client data
           if (tableGroups.clients) {
-            const clientData: Record<string, any> = { branch_id: branchId };
-            
-            // Map fields from CSV to client data
-            Object.entries(tableGroups.clients).forEach(([dbField, csvHeader]) => {
-              clientData[dbField] = row[csvHeader];
-            });
+            // Process client data
+            const clientData = processClientData(row, tableGroups, branchId);
             
             // Make sure we have required fields
             if (!clientData.email) {
               throw new Error('Email is required for client import');
             }
             
-            // Generate name field if first_name and last_name are available
-            if (clientData.first_name && clientData.last_name && !clientData.name) {
-              clientData.name = `${clientData.first_name} ${clientData.last_name}`;
-            }
-            
-            let clientId = existingClients.get(clientData.email);
-            
             // Create or update client
-            if (clientId) {
-              // Update existing client
-              const { error: updateError } = await supabase
-                .from('clients')
-                .update(clientData)
-                .eq('id', clientId);
-                
-              if (updateError) throw updateError;
-            } else {
-              // Create new client
-              const { data: newClient, error: insertError } = await supabase
-                .from('clients')
-                .insert(clientData)
-                .select('id')
-                .single();
-                
-              if (insertError) throw insertError;
-              if (newClient) {
-                clientId = newClient.id;
-                existingClients.set(clientData.email, clientId);
-              }
+            const clientId = await createOrUpdateClient(clientData, existingClients);
+            
+            if (!clientId) {
+              throw new Error('Failed to create or update client');
             }
             
-            // If we have a dog data and a valid client ID, create or update the dog
+            // Update existing clients map with the new client
+            if (clientData.email) {
+              existingClients.set(clientData.email, clientId);
+            }
+            
+            // If we have dog data and a valid client ID, create the dog
             if (clientId && tableGroups.dogs) {
-              const dogData: Record<string, any> = { client_id: clientId };
-              
-              // Map fields from CSV to dog data
-              Object.entries(tableGroups.dogs).forEach(([dbField, csvHeader]) => {
-                dogData[dbField] = row[csvHeader];
-              });
+              // Process dog data
+              const dogData = processDogData(row, tableGroups, clientId);
               
               // Make sure we have required fields
               if (!dogData.name) {
@@ -123,14 +82,8 @@ export function useDataImport() {
                 throw new Error('Dog breed is required');
               }
               
-              // Create the dog
-              const { data: newDog, error: dogError } = await supabase
-                .from('dogs')
-                .insert(dogData)
-                .select('id')
-                .single();
-                
-              if (dogError) throw dogError;
+              // Create the dog and process related data
+              await createDog(dogData, row, tableGroups);
             }
             
             successful.push(i);

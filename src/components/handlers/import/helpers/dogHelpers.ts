@@ -1,10 +1,15 @@
 
 import { supabase } from "@/integrations/supabase/client";
+import { processClassEnrollments } from "./classHelpers";
 
 /**
  * Process dog data from CSV row
  */
-export function processDogData(row: any, tableGroups: Record<string, Record<string, string>>, clientId: string): Record<string, any> {
+export function processDogData(
+  row: any, 
+  tableGroups: Record<string, Record<string, string>>, 
+  clientId: string
+): Record<string, any> {
   const dogData: Record<string, any> = { client_id: clientId };
   
   // Map fields from CSV to dog data
@@ -18,45 +23,35 @@ export function processDogData(row: any, tableGroups: Record<string, Record<stri
 }
 
 /**
- * Create or update a dog in Supabase
+ * Create a dog in Supabase and process related data
  */
-export async function createOrUpdateDog(
+export async function createDog(
   dogData: Record<string, any>,
-  clientId: string
+  row: any,
+  tableGroups: Record<string, Record<string, string>>
 ): Promise<string | undefined> {
   try {
-    // Check if dog already exists by name and client_id
-    const { data: existingDogs, error: queryError } = await supabase
+    // Create the dog
+    const { data, error } = await supabase
       .from('dogs')
+      .insert(dogData as any)
       .select('id')
-      .eq('name', dogData.name)
-      .eq('client_id', clientId);
+      .single();
       
-    if (queryError) throw queryError;
+    if (error) throw error;
     
-    if (existingDogs && existingDogs.length > 0) {
-      // Update existing dog
-      const dogId = existingDogs[0].id;
-      const { error } = await supabase
-        .from('dogs')
-        .update(dogData)
-        .eq('id', dogId);
-        
-      if (error) throw error;
-      return dogId;
-    } else {
-      // Create new dog
-      const { data, error } = await supabase
-        .from('dogs')
-        .insert(dogData)
-        .select('id')
-        .single();
-        
-      if (error) throw error;
-      return data?.id;
+    const dogId = data?.id;
+    
+    if (dogId) {
+      // Process class enrollments if they exist
+      if (tableGroups.class_enrollments) {
+        await processClassEnrollments(row, tableGroups, dogId);
+      }
     }
+    
+    return dogId;
   } catch (error) {
-    console.error('Error creating/updating dog:', error);
+    console.error('Error creating dog:', error);
     throw error;
   }
 }

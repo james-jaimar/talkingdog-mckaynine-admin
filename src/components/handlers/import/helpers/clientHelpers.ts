@@ -65,7 +65,7 @@ export async function createOrUpdateClient(
       // Update existing client
       const { error } = await supabase
         .from('clients')
-        .update(clientData)
+        .update(clientData as any)
         .eq('id', clientId);
         
       if (error) throw error;
@@ -74,7 +74,7 @@ export async function createOrUpdateClient(
       // Create new client
       const { data, error } = await supabase
         .from('clients')
-        .insert(clientData)
+        .insert(clientData as any)
         .select('id')
         .single();
         

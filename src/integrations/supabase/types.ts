@@ -199,6 +199,56 @@ export type Database = {
         }
         Relationships: []
       }
+      class_enrollments: {
+        Row: {
+          beginner_novice_class: boolean | null
+          bronze_cgc_class: boolean | null
+          created_at: string
+          dog_id: string
+          eo_class: boolean | null
+          id: string
+          puppy_class: boolean | null
+          silver_cgc_class: boolean | null
+          updated_at: string
+          wt_class: boolean | null
+          yoga_class: boolean | null
+        }
+        Insert: {
+          beginner_novice_class?: boolean | null
+          bronze_cgc_class?: boolean | null
+          created_at?: string
+          dog_id: string
+          eo_class?: boolean | null
+          id?: string
+          puppy_class?: boolean | null
+          silver_cgc_class?: boolean | null
+          updated_at?: string
+          wt_class?: boolean | null
+          yoga_class?: boolean | null
+        }
+        Update: {
+          beginner_novice_class?: boolean | null
+          bronze_cgc_class?: boolean | null
+          created_at?: string
+          dog_id?: string
+          eo_class?: boolean | null
+          id?: string
+          puppy_class?: boolean | null
+          silver_cgc_class?: boolean | null
+          updated_at?: string
+          wt_class?: boolean | null
+          yoga_class?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_enrollments_dog_id_fkey"
+            columns: ["dog_id"]
+            isOneToOne: false
+            referencedRelation: "dogs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       class_schedules: {
         Row: {
           class_id: string

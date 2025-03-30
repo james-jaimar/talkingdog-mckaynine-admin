@@ -40,7 +40,7 @@ export async function processClassEnrollments(
         const enrollmentId = existingEnrollments[0].id;
         const { error } = await supabase
           .from('class_enrollments')
-          .update(classEnrollments)
+          .update(classEnrollments as any)
           .eq('id', enrollmentId);
           
         if (error) throw error;
@@ -48,7 +48,7 @@ export async function processClassEnrollments(
         // Create new enrollments
         const { error } = await supabase
           .from('class_enrollments')
-          .insert(classEnrollments);
+          .insert(classEnrollments as any);
           
         if (error) throw error;
       }
