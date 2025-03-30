@@ -66,6 +66,9 @@ export function ImportHandlersModal() {
     }
 
     try {
+      // Set loading state
+      console.log("Starting import process...");
+      
       const result = await processImport(csvData, fieldMappings, currentBranch?.id);
       console.log("Import completed with result:", result);
       
@@ -144,6 +147,7 @@ export function ImportHandlersModal() {
               csvData={csvData}
               fieldMappings={fieldMappings}
               branchName={currentBranch?.name}
+              onImport={handleImport}
             />
           )}
           
@@ -170,16 +174,7 @@ export function ImportHandlersModal() {
                 <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
             ) : (
-              <Button 
-                onClick={handleImport} 
-                disabled={isUploading}
-                variant="mckaynine"
-                className="px-6 py-2"
-                id="import-data-button"
-              >
-                {isUploading ? "Importing..." : "Import Data"}
-                <Import className="h-4 w-4 ml-2" />
-              </Button>
+              <div></div> // Removed the button here to avoid duplicate import buttons
             )}
           </div>
         </div>

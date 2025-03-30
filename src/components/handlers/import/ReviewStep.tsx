@@ -2,15 +2,17 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { FieldMapping } from "./types";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Info } from "lucide-react";
+import { Info, ArrowRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface ReviewStepProps {
   csvData: any[];
   fieldMappings: FieldMapping;
   branchName?: string;
+  onImport?: () => void;
 }
 
-export function ReviewStep({ csvData, fieldMappings, branchName }: ReviewStepProps) {
+export function ReviewStep({ csvData, fieldMappings, branchName, onImport }: ReviewStepProps) {
   // Ensure we have data to display
   if (!csvData || csvData.length === 0) {
     return <div className="p-4 text-center">No data to review. Please go back and upload a CSV file.</div>;
@@ -94,10 +96,23 @@ export function ReviewStep({ csvData, fieldMappings, branchName }: ReviewStepPro
         </div>
       </div>
       
-      <div className="mt-4 text-center">
-        <p className="text-sm font-medium text-green-600">
-          Ready to import {csvData.length} records? Click "Import Data" below.
+      <div className="mt-6 text-center">
+        <p className="text-sm font-medium text-green-600 mb-4">
+          Ready to import {csvData.length} records? Click the button below.
         </p>
+        
+        {onImport && (
+          <Button 
+            onClick={onImport}
+            variant="mckaynine"
+            size="lg"
+            className="w-full sm:w-auto"
+            id="review-import-button"
+          >
+            Import {csvData.length} Records
+            <ArrowRight className="ml-2 h-4 w-4" />
+          </Button>
+        )}
       </div>
     </div>
   );
