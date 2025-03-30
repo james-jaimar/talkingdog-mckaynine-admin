@@ -96,7 +96,7 @@ export function ReviewStep({ csvData, fieldMappings, branchName, onImport }: Rev
         </div>
       </div>
       
-      <div className="mt-6 text-center">
+      <div className="mt-6 flex flex-col items-center justify-center">
         <p className="text-sm font-medium text-green-600 mb-4">
           Ready to import {csvData.length} records? Click the button below.
         </p>
@@ -108,6 +108,7 @@ export function ReviewStep({ csvData, fieldMappings, branchName, onImport }: Rev
             size="lg"
             className="w-full sm:w-auto"
             id="review-import-button"
+            type="button"
           >
             Import {csvData.length} Records
             <ArrowRight className="ml-2 h-4 w-4" />

@@ -157,6 +157,7 @@ export function ImportHandlersModal() {
                 variant="outline" 
                 onClick={handleBack}
                 disabled={isUploading}
+                type="button"
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back
@@ -169,12 +170,13 @@ export function ImportHandlersModal() {
               <Button 
                 onClick={handleNext} 
                 disabled={currentStep === 1 && !csvFile}
+                type="button"
               >
                 Next
                 <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
             ) : (
-              <div></div> // Removed the button here to avoid duplicate import buttons
+              <div></div> // We're using the button inside ReviewStep instead
             )}
           </div>
         </div>
