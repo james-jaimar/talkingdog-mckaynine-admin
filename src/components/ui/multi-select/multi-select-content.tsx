@@ -11,23 +11,14 @@ interface MultiSelectContentProps {
   onSelect: (option: OptionType) => void;
 }
 
-export const MultiSelectContent = React.memo(function MultiSelectContent({ 
-  options, 
-  value, 
-  onSelect 
-}: MultiSelectContentProps) {
-  const safeOptions = React.useMemo(() => {
-    return Array.isArray(options) ? options.filter(Boolean) : [];
-  }, [options]);
+export function MultiSelectContent({ options, value, onSelect }: MultiSelectContentProps) {
+  // Ensure we have arrays to work with
+  const safeOptions = Array.isArray(options) ? options : [];
+  const safeValue = Array.isArray(value) ? value : [];
 
-  const safeValue = React.useMemo(() => {
-    return Array.isArray(value) ? value.filter(Boolean) : [];
-  }, [value]);
-
-  const isOptionSelected = React.useCallback((option: OptionType) => {
-    if (!option || !Array.isArray(safeValue)) return false;
-    return safeValue.some(item => item?.value === option?.value);
-  }, [safeValue]);
+  const isOptionSelected = (option: OptionType) => {
+    return safeValue.some(item => item.value === option.value);
+  };
 
   return (
     <PopoverContent className="w-full p-0" align="start">
@@ -39,7 +30,7 @@ export const MultiSelectContent = React.memo(function MultiSelectContent({
             <CommandGroup>
               {safeOptions.map((option, idx) => (
                 <MultiSelectItem
-                  key={`${option?.value || idx}`}
+                  key={`${option.value || idx}`}
                   option={option}
                   index={idx}
                   isSelected={isOptionSelected(option)}
@@ -52,4 +43,4 @@ export const MultiSelectContent = React.memo(function MultiSelectContent({
       </Command>
     </PopoverContent>
   );
-});
+}

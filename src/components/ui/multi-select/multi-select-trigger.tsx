@@ -23,31 +23,13 @@ export function MultiSelectTrigger({
   onOpenChange,
   onUnselect
 }: MultiSelectTriggerProps) {
-  // Ensure value is always a valid array
-  const safeValue = React.useMemo(() => {
-    try {
-      if (!value) return [];
-      if (!Array.isArray(value)) return [];
-      
-      return value.filter(item => 
-        item && 
-        typeof item === 'object' && 
-        'label' in item && 
-        typeof item.label === 'string' &&
-        'value' in item && 
-        typeof item.value === 'string'
-      );
-    } catch (error) {
-      console.error("Error in MultiSelectTrigger safeValue:", error);
-      return [];
-    }
-  }, [value]);
+  const safeValue = Array.isArray(value) ? value : [];
 
-  const toggleOpen = React.useCallback((e) => {
+  const toggleOpen = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     onOpenChange(!isOpen);
-  }, [isOpen, onOpenChange]);
+  };
 
   return (
     <div
@@ -58,10 +40,10 @@ export function MultiSelectTrigger({
       onClick={toggleOpen}
     >
       <div className="flex flex-wrap gap-1 flex-1">
-        {Array.isArray(safeValue) && safeValue.length > 0 ? (
+        {safeValue.length > 0 ? (
           safeValue.map((item, idx) => (
             <MultiSelectBadge 
-              key={`badge-${item?.value || idx}-${item?.label || idx}`}
+              key={`badge-${item.value}-${idx}`}
               item={item} 
               index={idx}
               onUnselect={onUnselect}

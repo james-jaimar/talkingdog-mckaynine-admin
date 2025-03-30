@@ -19,51 +19,32 @@ export function MultiSelect({
   const [open, setOpen] = React.useState(false);
 
   // Ensure we have valid arrays
-  const safeOptions = React.useMemo(() => {
-    if (!options || !Array.isArray(options)) {
-      console.warn("MultiSelect received invalid options:", options);
-      return [];
-    }
-    return options.filter(Boolean);
-  }, [options]);
-    
-  const safeValue = React.useMemo(() => {
-    if (!value || !Array.isArray(value)) {
-      console.warn("MultiSelect received invalid value:", value);
-      return [];
-    }
-    return value.filter(Boolean);
-  }, [value]);
+  const safeOptions = Array.isArray(options) ? options : [];
+  const safeValue = Array.isArray(value) ? value : [];
 
-  // Safe handler for unselecting an item
-  const handleUnselect = React.useCallback((item: OptionType) => {
-    if (!item) return;
-    
-    const newValue = safeValue.filter(i => i?.value !== item?.value);
-    
+  // Handle unselecting an item
+  const handleUnselect = (item: OptionType) => {
+    const newValue = safeValue.filter(i => i.value !== item.value);
     if (typeof onChange === 'function') {
       onChange(newValue);
     }
-  }, [safeValue, onChange]);
+  };
 
-  // Safe handler for selecting an item
-  const handleSelect = React.useCallback((item: OptionType) => {
-    if (!item) return;
-    
-    const currentValue = [...safeValue];
-    const isSelected = currentValue.some(i => i?.value === item?.value);
+  // Handle selecting an item
+  const handleSelect = (item: OptionType) => {
+    const isSelected = safeValue.some(i => i.value === item.value);
     
     let newValue: OptionType[];
     if (isSelected) {
-      newValue = currentValue.filter(i => i?.value !== item?.value);
+      newValue = safeValue.filter(i => i.value !== item.value);
     } else {
-      newValue = [...currentValue, item];
+      newValue = [...safeValue, item];
     }
 
     if (typeof onChange === 'function') {
       onChange(newValue);
     }
-  }, [safeValue, onChange]);
+  };
 
   return (
     <Popover open={open} onOpenChange={setOpen}>

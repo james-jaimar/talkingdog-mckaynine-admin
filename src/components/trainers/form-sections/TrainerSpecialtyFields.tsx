@@ -1,10 +1,9 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { MultiSelect, OptionType } from "@/components/ui/multi-select";
 import { UseFormReturn } from "react-hook-form";
 import { TrainerFormValues } from "../schemas/trainerFormSchema";
-import { branchIdsToOptions, hasBranchData, specialtiesAsOptions } from "../utils/optionUtils";
 import { Loader } from "lucide-react";
 
 interface TrainerSpecialtyFieldsProps {
@@ -28,23 +27,24 @@ export function TrainerSpecialtyFields({
     { label: "Search & Rescue", value: "Search & Rescue" },
   ]);
 
-  // Get form values - ensure they are arrays
   const branchIds = form.watch('branchIds') || [];
   const specialties = form.watch('specialties') || [];
   
-  // Convert branch IDs to options for display - ensure this never returns undefined
-  const selectedBranchOptions = branchIdsToOptions(branchIds, branches);
+  // Convert branch IDs to options for display
+  const selectedBranchOptions = branchIds.map(id => {
+    const branch = branches.find(b => b.value === id);
+    return branch || { label: `Branch ${id.substring(0, 6)}...`, value: id };
+  });
   
-  // Convert specialties to options for display - ensure this never returns undefined
-  const selectedSpecialtyOptions = specialtiesAsOptions(specialties);
-
-  // Check if we have valid branch data
-  const hasBranches = hasBranchData(branches);
+  // Convert specialties to options for display
+  const selectedSpecialtyOptions = specialties.map(specialty => ({
+    label: specialty,
+    value: specialty
+  }));
 
   console.log('Debug: branches', branches);
-  console.log('Debug: specialtyOptions', specialtyOptions);
+  console.log('Debug: branchIds', branchIds);
   console.log('Debug: selectedBranchOptions', selectedBranchOptions);
-  console.log('Debug: selectedSpecialtyOptions', selectedSpecialtyOptions);
 
   return (
     <>
@@ -60,10 +60,10 @@ export function TrainerSpecialtyFields({
                   <Loader className="h-4 w-4 animate-spin" />
                   <span className="text-sm text-muted-foreground">Loading branches...</span>
                 </div>
-              ) : hasBranches ? (
+              ) : branches.length > 0 ? (
                 <MultiSelect
-                  options={branches || []}
-                  value={selectedBranchOptions || []}
+                  options={branches}
+                  value={selectedBranchOptions}
                   onChange={(selected) => {
                     const selectedIds = selected.map(item => item.value);
                     form.setValue('branchIds', selectedIds, { 
