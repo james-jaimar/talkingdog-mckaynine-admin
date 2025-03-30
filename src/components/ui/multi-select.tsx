@@ -42,9 +42,9 @@ export function MultiSelect({
   };
 
   // Ensure options is always an array
-  const safeOptions = options || [];
+  const safeOptions = Array.isArray(options) ? options : [];
   // Ensure value is always an array
-  const safeValue = value || [];
+  const safeValue = Array.isArray(value) ? value : [];
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -59,11 +59,11 @@ export function MultiSelect({
             {safeValue.length > 0 ? (
               safeValue.map((item) => (
                 <Badge
-                  key={item.value}
+                  key={item.value || `empty-${Math.random()}`}
                   variant="secondary"
                   className="mr-1 mb-1"
                 >
-                  {item.label}
+                  {item.label || "Unknown"}
                   <button
                     className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
                     onKeyDown={(e) => {
@@ -102,7 +102,7 @@ export function MultiSelect({
           <CommandGroup>
             {safeOptions.map((option) => (
               <CommandItem
-                key={option.value}
+                key={option.value || `option-${Math.random()}`}
                 onSelect={() => handleSelect(option)}
                 className="cursor-pointer"
               >
@@ -118,7 +118,7 @@ export function MultiSelect({
                     <span className="flex h-full items-center justify-center text-xs">✓</span>
                   )}
                 </span>
-                <span>{option.label}</span>
+                <span>{option.label || "Unknown"}</span>
               </CommandItem>
             ))}
           </CommandGroup>

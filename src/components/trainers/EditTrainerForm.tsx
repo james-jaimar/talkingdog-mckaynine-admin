@@ -21,7 +21,7 @@ interface EditTrainerFormProps {
 export function EditTrainerForm({ trainer, onSuccess }: EditTrainerFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [branches, setBranches] = useState<OptionType[]>([]);
-  const [specialtyOptions, setSpecialtyOptions] = useState<OptionType[]>([
+  const [specialtyOptions] = useState<OptionType[]>([
     { label: "Obedience Training", value: "Obedience Training" },
     { label: "Behavioral Correction", value: "Behavioral Correction" },
     { label: "Puppy Training", value: "Puppy Training" },
@@ -60,6 +60,16 @@ export function EditTrainerForm({ trainer, onSuccess }: EditTrainerFormProps) {
       value: specialty
     }));
   };
+
+  // Helper function to convert branch IDs to OptionType objects
+  const branchIdsToOptions = (branchIds: string[] | null): OptionType[] => {
+    if (!branchIds || !Array.isArray(branchIds) || branchIds.length === 0) return [];
+    
+    return branchIds.map(id => {
+      const branch = branches.find(b => b.value === id);
+      return branch || { value: id, label: `Branch ${id.substring(0, 8)}...` };
+    });
+  };
   
   // Pre-populate form with trainer data
   const defaultValues: TrainerFormValues = {
@@ -67,8 +77,8 @@ export function EditTrainerForm({ trainer, onSuccess }: EditTrainerFormProps) {
     lastName: trainer.last_name,
     email: trainer.email,
     phone: trainer.phone || "",
-    branchIds: trainer.branch_ids || [],
-    specialties: trainer.specialties || [],
+    branchIds: Array.isArray(trainer.branch_ids) ? trainer.branch_ids : [],
+    specialties: Array.isArray(trainer.specialties) ? trainer.specialties : [],
     bio: trainer.bio || "",
   };
   
@@ -184,7 +194,7 @@ export function EditTrainerForm({ trainer, onSuccess }: EditTrainerFormProps) {
               <FormControl>
                 <MultiSelect
                   options={branches}
-                  value={(field.value || []).map(id => branches.find(b => b.value === id) || { value: id, label: "Unknown" })}
+                  value={branchIdsToOptions(field.value)}
                   onChange={(selected) => field.onChange(selected.map(item => item.value))}
                   placeholder="Select branches"
                 />
