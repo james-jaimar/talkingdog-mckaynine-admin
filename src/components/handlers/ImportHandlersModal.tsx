@@ -27,7 +27,7 @@ export function ImportHandlersModal() {
 
   const handleNext = () => {
     if (currentStep === 2) {
-      if (validateMappings()) {
+      if (validateMappings(fieldMappings)) {
         setCurrentStep(3);
       }
     } else {
