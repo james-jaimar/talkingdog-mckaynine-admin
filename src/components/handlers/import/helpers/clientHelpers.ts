@@ -110,9 +110,22 @@ export async function processClientData(
       notes: clientData.notes
     };
     
+    // Type assertion to make TypeScript happy
+    const recordWithRequiredFields = clientRecord as {
+      email: string;
+      first_name: string;
+      last_name: string;
+      branch_id?: string | null;
+      phone?: string;
+      address?: string;
+      city?: string;
+      postal_code?: string;
+      notes?: string;
+    };
+    
     const { data, error } = await supabase
       .from('clients')
-      .insert(clientRecord)
+      .insert(recordWithRequiredFields)
       .select('id')
       .single();
       

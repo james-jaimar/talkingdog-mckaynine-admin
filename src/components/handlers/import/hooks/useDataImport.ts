@@ -20,6 +20,25 @@ export function useDataImport() {
     branchId?: string
   ) => {
     console.log("processImport called with:", { dataLength: data.length, mappingsCount: Object.keys(fieldMappings).length, branchId });
+    
+    // First, validate that email field is mapped - this is critical
+    const emailIsMapped = Object.entries(fieldMappings).some(
+      ([_, value]) => value === 'clients.email'
+    );
+    
+    if (!emailIsMapped) {
+      toast({
+        title: "Import failed",
+        description: "Email field is required for client import but was not mapped",
+        variant: "destructive"
+      });
+      
+      return {
+        success: false,
+        errors: ['Email field is required for client import but was not mapped']
+      };
+    }
+    
     setIsUploading(true);
     setProcessingResults({ total: data.length, processed: 0, errors: [] });
     
@@ -45,8 +64,8 @@ export function useDataImport() {
       
       console.log("Grouped field mappings by table:", tableFields);
       
-      // Make sure we have email field mapped for clients
-      if (!tableFields['clients'] || !Object.values(tableFields['clients']).includes('email')) {
+      // Double check we have email field mapped for clients
+      if (!tableFields['clients'] || !Object.keys(tableFields['clients']).includes('email')) {
         return {
           success: false,
           errors: ['Email field is required for client import but was not mapped']
@@ -62,6 +81,13 @@ export function useDataImport() {
           // Process client data first
           if (tableFields['clients'] && Object.keys(tableFields['clients']).length > 0) {
             console.log("Processing client data for row", i+1);
+            
+            // Check if the email field exists and is not empty in this row
+            const emailField = tableFields['clients']['email'];
+            if (!emailField || !row[emailField] || row[emailField].trim() === '') {
+              throw new Error('Email is required for client import');
+            }
+            
             const clientId = await processClientData(row, tableFields['clients'], branchId);
             
             // Process dog data

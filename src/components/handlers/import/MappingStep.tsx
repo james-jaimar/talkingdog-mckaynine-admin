@@ -1,7 +1,7 @@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircle, InfoCircle, Info } from "lucide-react";
 import { FieldMappingPanel } from "./FieldMappingPanel";
 import { availableFields } from "./fieldDefinitions";
 import { FieldMapping } from "./types";
@@ -19,11 +19,27 @@ export function MappingStep({
   onFieldMappingChange, 
   validationErrors 
 }: MappingStepProps) {
+  // Check if email is mapped
+  const emailIsMapped = Object.entries(fieldMappings).some(
+    ([_, value]) => value === 'clients.email'
+  );
+
   return (
     <div className="space-y-4">
       <p className="text-sm text-gray-500 mb-4">
         Map your CSV headers to database fields. Required fields are marked with *.
       </p>
+      
+      {!emailIsMapped && (
+        <Alert variant="warning" className="bg-amber-50 border-amber-200">
+          <Info className="h-4 w-4 text-amber-500" />
+          <AlertTitle className="text-amber-700">Important: Email Required</AlertTitle>
+          <AlertDescription className="text-amber-600">
+            The email field must be mapped for client import to work correctly.
+            Please map a CSV column to the clients.email field.
+          </AlertDescription>
+        </Alert>
+      )}
       
       <Tabs defaultValue="clients">
         <TabsList className="mb-4">
