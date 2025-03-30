@@ -29,6 +29,7 @@ export function ImportHandlersModal() {
   } = useImportData();
 
   const handleNext = () => {
+    console.log("Next button clicked, current step:", currentStep);
     if (currentStep === 2) {
       const isValid = validateMappings(fieldMappings);
       if (isValid) {
@@ -46,6 +47,7 @@ export function ImportHandlersModal() {
   };
 
   const handleBack = () => {
+    console.log("Back button clicked, current step:", currentStep);
     setCurrentStep(Math.max(1, currentStep - 1));
   };
 
@@ -110,7 +112,7 @@ export function ImportHandlersModal() {
           Import Handlers
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[700px]">
+      <DialogContent className="sm:max-w-[700px] overflow-y-auto max-h-[90vh]">
         <DialogHeader>
           <DialogTitle>Import Handlers from CSV</DialogTitle>
         </DialogHeader>

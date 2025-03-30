@@ -36,6 +36,13 @@ export function ReviewStep({ csvData, fieldMappings, branchName, onImport }: Rev
     mappedFields[table].push(csvHeader);
   });
 
+  const handleImportClick = () => {
+    console.log("Import button clicked in ReviewStep");
+    if (onImport) {
+      onImport();
+    }
+  };
+
   return (
     <div className="space-y-4">
       {branchName && (
@@ -101,19 +108,17 @@ export function ReviewStep({ csvData, fieldMappings, branchName, onImport }: Rev
           Ready to import {csvData.length} records? Click the button below.
         </p>
         
-        {onImport && (
-          <Button 
-            onClick={onImport}
-            variant="mckaynine"
-            size="lg"
-            className="w-full sm:w-auto"
-            id="review-import-button"
-            type="button"
-          >
-            Import {csvData.length} Records
-            <ArrowRight className="ml-2 h-4 w-4" />
-          </Button>
-        )}
+        <Button 
+          onClick={handleImportClick}
+          variant="mckaynine"
+          size="lg"
+          className="w-full sm:w-auto"
+          id="review-import-button"
+          type="button"
+        >
+          Import {csvData.length} Records
+          <ArrowRight className="ml-2 h-4 w-4" />
+        </Button>
       </div>
     </div>
   );
