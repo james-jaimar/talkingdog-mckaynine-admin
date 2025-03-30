@@ -29,44 +29,91 @@ export function MultiSelect({
 }: MultiSelectProps) {
   const [open, setOpen] = React.useState(false);
 
-  // Ensure options and value are always valid arrays
-  const safeOptions = Array.isArray(options) 
-    ? options.filter(option => option && typeof option === 'object' && 'label' in option && 'value' in option)
-    : [];
+  // Enhanced defensive programming to ensure we never have undefined values
+  const safeOptions = React.useMemo(() => {
+    // Ensure options is always a valid array with valid entries
+    if (!options || !Array.isArray(options)) {
+      console.log("MultiSelect received invalid options:", options);
+      return [];
+    }
     
-  const safeValue = Array.isArray(value) 
-    ? value.filter(item => item && typeof item === 'object' && 'label' in item && 'value' in item)
-    : [];
+    return options.filter(option => 
+      option && 
+      typeof option === 'object' && 
+      'label' in option && 
+      typeof option.label === 'string' &&
+      'value' in option && 
+      typeof option.value === 'string'
+    );
+  }, [options]);
+    
+  const safeValue = React.useMemo(() => {
+    // Ensure value is always a valid array with valid entries
+    if (!value || !Array.isArray(value)) {
+      console.log("MultiSelect received invalid value:", value);
+      return [];
+    }
+    
+    return value.filter(item => 
+      item && 
+      typeof item === 'object' && 
+      'label' in item && 
+      typeof item.label === 'string' &&
+      'value' in item && 
+      typeof item.value === 'string'
+    );
+  }, [value]);
+
+  // Log current state for debugging
+  React.useEffect(() => {
+    console.log("MultiSelect state:", {
+      originalOptions: options,
+      originalValue: value,
+      safeOptions,
+      safeValue,
+    });
+  }, [options, value, safeOptions, safeValue]);
 
   const handleUnselect = (item: OptionType) => {
-    if (!item || !item.value) return;
-    
     try {
+      if (!item || typeof item !== 'object' || !('value' in item)) {
+        console.error("Invalid item to unselect:", item);
+        return;
+      }
+      
       const newValue = safeValue.filter(i => i.value !== item.value);
+      console.log("Unselecting item:", item, "New value:", newValue);
       onChange(newValue);
     } catch (error) {
       console.error("Error in handleUnselect:", error);
-      onChange([]);
+      // Don't modify the value if there's an error
     }
   };
 
   const handleSelect = (item: OptionType) => {
-    if (!item || !item.value) return;
-    
     try {
+      if (!item || typeof item !== 'object' || !('value' in item)) {
+        console.error("Invalid item to select:", item);
+        return;
+      }
+      
       // Check if item is already selected
       const isSelected = safeValue.some(i => i.value === item.value);
       
+      let newValue: OptionType[];
       if (isSelected) {
         // Remove it
-        onChange(safeValue.filter(i => i.value !== item.value));
+        newValue = safeValue.filter(i => i.value !== item.value);
       } else {
         // Add it
-        onChange([...safeValue, item]);
+        newValue = [...safeValue, item];
       }
+
+      console.log("Selecting item:", item, "New value:", newValue);
+      onChange(newValue);
     } catch (error) {
       console.error("Error in handleSelect:", error);
-      onChange([]);
+      // Don't modify the value if there's an error
     }
   };
 
@@ -83,7 +130,7 @@ export function MultiSelect({
             {safeValue.length > 0 ? (
               safeValue.map((item) => (
                 <Badge
-                  key={`item-${item.value}`}
+                  key={`item-${item.value}-${item.label}`}
                   variant="secondary"
                   className="mr-1 mb-1"
                 >
@@ -129,7 +176,7 @@ export function MultiSelect({
             {safeOptions.length > 0 ? (
               safeOptions.map((option) => (
                 <CommandItem
-                  key={`option-${option.value}`}
+                  key={`option-${option.value}-${option.label}`}
                   onSelect={() => handleSelect(option)}
                   className="cursor-pointer"
                 >

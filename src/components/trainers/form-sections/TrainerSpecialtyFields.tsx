@@ -1,4 +1,3 @@
-
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { MultiSelect, OptionType } from "@/components/ui/multi-select";
 import { UseFormReturn } from "react-hook-form";
@@ -22,20 +21,80 @@ export function TrainerSpecialtyFields({ form, branches }: TrainerSpecialtyField
     { label: "Search & Rescue", value: "Search & Rescue" },
   ]);
 
-  // Create safe versions of the current form values
-  const branchIds = form.watch('branchIds') || [];
-  const specialties = form.watch('specialties') || [];
+  // Get form values with fallbacks
+  const watchedBranchIds = form.watch('branchIds');
+  const watchedSpecialties = form.watch('specialties');
+  
+  // Make super sure these are arrays
+  const branchIds = Array.isArray(watchedBranchIds) ? watchedBranchIds : [];
+  const specialties = Array.isArray(watchedSpecialties) ? watchedSpecialties : [];
   
   // Log values for debugging
   useEffect(() => {
-    console.log("Current branchIds:", branchIds);
-    console.log("Available branches:", branches);
-    console.log("Current specialties:", specialties);
-  }, [branchIds, branches, specialties]);
+    console.log("TrainerSpecialtyFields state:", { 
+      branchIds, 
+      specialties,
+      branches,
+      watchedBranchIds,
+      watchedSpecialties
+    });
+  }, [branchIds, branches, specialties, watchedBranchIds, watchedSpecialties]);
 
-  // Create a safeguard for branch IDs to prevent errors during rendering
-  const safeBranchOptions = branchIdsToOptions(branchIds, branches || []);
+  // Make sure branches is a valid array
+  const validBranches = Array.isArray(branches) ? branches : [];
+  
+  // Convert to options using our utility functions with fallbacks
+  const safeBranchOptions = branchIdsToOptions(branchIds, validBranches);
   const safeSpecialtyOptions = specialtiesAsOptions(specialties);
+
+  useEffect(() => {
+    console.log("TrainerSpecialtyFields converted options:", { 
+      safeBranchOptions, 
+      safeSpecialtyOptions 
+    });
+  }, [safeBranchOptions, safeSpecialtyOptions]);
+
+  const handleBranchChange = (selected: OptionType[]) => {
+    try {
+      console.log("Branch selection changed:", selected);
+      if (Array.isArray(selected)) {
+        const selectedValues = selected
+          .filter(item => item && typeof item === 'object' && 'value' in item)
+          .map(item => item?.value)
+          .filter(Boolean) as string[];
+        
+        console.log("Setting branchIds to:", selectedValues);
+        form.setValue('branchIds', selectedValues, { shouldValidate: true, shouldDirty: true });
+      } else {
+        console.error("Selected branches is not an array:", selected);
+        form.setValue('branchIds', [], { shouldValidate: true, shouldDirty: true });
+      }
+    } catch (error) {
+      console.error("Error in branch onChange handler:", error);
+      // Keep the current value if there's an error
+    }
+  };
+
+  const handleSpecialtyChange = (selected: OptionType[]) => {
+    try {
+      console.log("Specialty selection changed:", selected);
+      if (Array.isArray(selected)) {
+        const selectedValues = selected
+          .filter(item => item && typeof item === 'object' && 'value' in item)
+          .map(item => item?.value)
+          .filter(Boolean) as string[];
+        
+        console.log("Setting specialties to:", selectedValues);
+        form.setValue('specialties', selectedValues, { shouldValidate: true, shouldDirty: true });
+      } else {
+        console.error("Selected specialties is not an array:", selected);
+        form.setValue('specialties', [], { shouldValidate: true, shouldDirty: true });
+      }
+    } catch (error) {
+      console.error("Error in specialty onChange handler:", error);
+      // Keep the current value if there's an error
+    }
+  };
 
   return (
     <>
@@ -47,18 +106,9 @@ export function TrainerSpecialtyFields({ form, branches }: TrainerSpecialtyField
             <FormLabel>Branches</FormLabel>
             <FormControl>
               <MultiSelect
-                options={Array.isArray(branches) ? branches : []}
+                options={validBranches}
                 value={safeBranchOptions}
-                onChange={(selected) => {
-                  console.log("Selected branches:", selected);
-                  if (Array.isArray(selected)) {
-                    const selectedValues = selected.map(item => item?.value).filter(Boolean);
-                    field.onChange(selectedValues);
-                  } else {
-                    console.error("Selected branches is not an array:", selected);
-                    field.onChange([]);
-                  }
-                }}
+                onChange={handleBranchChange}
                 placeholder="Select branches"
               />
             </FormControl>
@@ -77,16 +127,7 @@ export function TrainerSpecialtyFields({ form, branches }: TrainerSpecialtyField
               <MultiSelect
                 options={specialtyOptions}
                 value={safeSpecialtyOptions}
-                onChange={(selected) => {
-                  console.log("Selected specialties:", selected);
-                  if (Array.isArray(selected)) {
-                    const selectedValues = selected.map(item => item?.value).filter(Boolean);
-                    field.onChange(selectedValues);
-                  } else {
-                    console.error("Selected specialties is not an array:", selected);
-                    field.onChange([]);
-                  }
-                }}
+                onChange={handleSpecialtyChange}
                 placeholder="Select specialties"
               />
             </FormControl>
