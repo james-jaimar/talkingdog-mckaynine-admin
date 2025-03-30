@@ -4,9 +4,15 @@ import { FieldMapping } from "../types";
 import { processClientData } from "../helpers/clientHelpers";
 import { processDogData } from "../helpers/dogHelpers";
 import { processClassEnrollments } from "../helpers/classHelpers";
+import { toast } from "@/hooks/use-toast";
 
 export function useDataImport() {
   const [isUploading, setIsUploading] = useState(false);
+  const [processingResults, setProcessingResults] = useState<{
+    total: number;
+    processed: number;
+    errors: { row: number; message: string }[];
+  }>({ total: 0, processed: 0, errors: [] });
 
   const processImport = async (
     data: any[],
@@ -15,9 +21,11 @@ export function useDataImport() {
   ) => {
     console.log("processImport called with:", { dataLength: data.length, mappingsCount: Object.keys(fieldMappings).length, branchId });
     setIsUploading(true);
+    setProcessingResults({ total: data.length, processed: 0, errors: [] });
     
     try {
-      const errors: string[] = [];
+      const errors: { row: number; message: string }[] = [];
+      let processed = 0;
       
       // Group fieldMappings by table
       const tableFields: Record<string, Record<string, string>> = {};
@@ -36,6 +44,14 @@ export function useDataImport() {
       });
       
       console.log("Grouped field mappings by table:", tableFields);
+      
+      // Make sure we have email field mapped for clients
+      if (!tableFields['clients'] || !Object.values(tableFields['clients']).includes('email')) {
+        return {
+          success: false,
+          errors: ['Email field is required for client import but was not mapped']
+        };
+      }
       
       // Process data in batches
       for (let i = 0; i < data.length; i++) {
@@ -60,17 +76,40 @@ export function useDataImport() {
               }
             }
           }
+          
+          processed++;
+          setProcessingResults(prev => ({
+            ...prev,
+            processed: processed
+          }));
         } catch (error: any) {
           console.error(`Error processing row ${i+1}:`, error);
-          errors.push(`Row ${i+1}: ${error.message || 'Unknown error'}`);
+          errors.push({ 
+            row: i+1, 
+            message: error.message || 'Unknown error' 
+          });
+          
+          setProcessingResults(prev => ({
+            ...prev,
+            errors: [...prev.errors, { row: i+1, message: error.message || 'Unknown error' }]
+          }));
+          
+          // Show toast for important errors
+          if (error.message.includes('Email is required')) {
+            toast({
+              title: `Error in Row ${i+1}`,
+              description: error.message,
+              variant: "destructive"
+            });
+          }
         }
       }
       
       console.log("Import process completed with", errors.length, "errors");
       
       return {
-        success: errors.length < data.length, // Consider success if at least one row was imported
-        errors
+        success: processed > 0, // Consider success if at least one row was imported
+        errors: errors.map(e => `Row ${e.row}: ${e.message}`)
       };
     } catch (error: any) {
       console.error("Error in processImport:", error);
@@ -85,6 +124,7 @@ export function useDataImport() {
 
   return {
     isUploading,
+    processingResults,
     processImport
   };
 }

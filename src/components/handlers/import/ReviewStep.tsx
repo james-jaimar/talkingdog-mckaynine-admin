@@ -2,8 +2,9 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { FieldMapping } from "./types";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Info, ArrowRight } from "lucide-react";
+import { Info, ArrowRight, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 
 interface ReviewStepProps {
   csvData: any[];
@@ -11,9 +12,21 @@ interface ReviewStepProps {
   branchName?: string;
   onImport: () => void;
   isUploading?: boolean;
+  processingResults?: {
+    total: number;
+    processed: number;
+    errors: { row: number; message: string }[];
+  };
 }
 
-export function ReviewStep({ csvData, fieldMappings, branchName, onImport, isUploading }: ReviewStepProps) {
+export function ReviewStep({ 
+  csvData, 
+  fieldMappings, 
+  branchName, 
+  onImport, 
+  isUploading,
+  processingResults 
+}: ReviewStepProps) {
   // Ensure we have data to display
   if (!csvData || csvData.length === 0) {
     return <div className="p-4 text-center">No data to review. Please go back and upload a CSV file.</div>;
@@ -21,6 +34,9 @@ export function ReviewStep({ csvData, fieldMappings, branchName, onImport, isUpl
 
   const headers = Object.keys(csvData[0] || {});
   const firstFewRows = csvData.slice(0, 5);
+
+  // Check if email is mapped
+  const emailIsMapped = Object.entries(fieldMappings).some(([_, mapping]) => mapping === 'clients.email');
 
   // Organize mapped fields by table
   const mappedFields: Record<string, string[]> = {};
@@ -42,6 +58,11 @@ export function ReviewStep({ csvData, fieldMappings, branchName, onImport, isUpl
     onImport();
   };
 
+  // Calculate progress
+  const progressPercentage = processingResults && processingResults.total > 0 
+    ? Math.round((processingResults.processed / processingResults.total) * 100) 
+    : 0;
+
   return (
     <div className="space-y-4">
       {branchName && (
@@ -50,6 +71,16 @@ export function ReviewStep({ csvData, fieldMappings, branchName, onImport, isUpl
           <AlertTitle>Branch Assignment</AlertTitle>
           <AlertDescription>
             All imported handlers will be assigned to the <strong>{branchName}</strong> branch.
+          </AlertDescription>
+        </Alert>
+      )}
+      
+      {!emailIsMapped && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Missing Required Field</AlertTitle>
+          <AlertDescription>
+            Email is a required field for client import. Please go back and map the email field.
           </AlertDescription>
         </Alert>
       )}
@@ -102,6 +133,41 @@ export function ReviewStep({ csvData, fieldMappings, branchName, onImport, isUpl
         </div>
       </div>
       
+      {isUploading && processingResults && (
+        <div className="mt-4 space-y-2">
+          <div className="flex justify-between text-sm text-gray-500">
+            <span>Processing: {processingResults.processed} of {processingResults.total} records</span>
+            <span>{progressPercentage}%</span>
+          </div>
+          <Progress value={progressPercentage} className="h-2" />
+          {processingResults.errors.length > 0 && (
+            <Alert variant="destructive" className="mt-2">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Import Errors</AlertTitle>
+              <AlertDescription>
+                {processingResults.errors.length > 10 ? (
+                  <div>
+                    <p>Multiple errors occurred. First 10 shown:</p>
+                    <ul className="list-disc pl-5 mt-1 text-xs">
+                      {processingResults.errors.slice(0, 10).map((error, i) => (
+                        <li key={i}>Row {error.row}: {error.message}</li>
+                      ))}
+                      <li>...and {processingResults.errors.length - 10} more errors</li>
+                    </ul>
+                  </div>
+                ) : (
+                  <ul className="list-disc pl-5 mt-1 text-xs">
+                    {processingResults.errors.map((error, i) => (
+                      <li key={i}>Row {error.row}: {error.message}</li>
+                    ))}
+                  </ul>
+                )}
+              </AlertDescription>
+            </Alert>
+          )}
+        </div>
+      )}
+      
       <div className="mt-6 flex flex-col items-center justify-center">
         <p className="text-sm font-medium text-green-600 mb-4">
           Ready to import {csvData.length} records? Click the button below.
@@ -114,7 +180,7 @@ export function ReviewStep({ csvData, fieldMappings, branchName, onImport, isUpl
           className="w-full sm:w-auto"
           id="review-import-button"
           type="button"
-          disabled={isUploading}
+          disabled={isUploading || !emailIsMapped}
         >
           {isUploading ? 'Importing...' : `Import ${csvData.length} Records`}
           <ArrowRight className="ml-2 h-4 w-4" />

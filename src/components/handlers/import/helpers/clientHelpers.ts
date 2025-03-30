@@ -60,63 +60,63 @@ export async function processClientData(
     }
   });
   
+  // Check if email exists and is valid before proceeding
+  if (!clientData.email || clientData.email.trim() === '') {
+    throw new Error('Email is required for client import');
+  }
+  
   // Handle special case for name if first_name and last_name are present
   if (clientData.first_name && clientData.last_name && !clientData.name) {
     clientData.name = `${clientData.first_name} ${clientData.last_name}`;
   }
   
   // Check if client exists by email
-  if (clientData.email) {
-    const { data: existingClients } = await supabase
+  const { data: existingClients } = await supabase
+    .from('clients')
+    .select('id')
+    .eq('email', clientData.email);
+    
+  if (existingClients && existingClients.length > 0) {
+    // Update existing client
+    const clientId = existingClients[0].id;
+    const { error } = await supabase
       .from('clients')
-      .select('id')
-      .eq('email', clientData.email);
+      .update(clientData)
+      .eq('id', clientId);
       
-    if (existingClients && existingClients.length > 0) {
-      // Update existing client
-      const clientId = existingClients[0].id;
-      const { error } = await supabase
-        .from('clients')
-        .update(clientData)
-        .eq('id', clientId);
-        
-      if (error) throw error;
-      return clientId;
-    } else {
-      // Ensure required fields exist
-      if (!clientData.first_name) {
-        clientData.first_name = clientData.name?.split(' ')[0] || 'Unknown';
-      }
-      
-      if (!clientData.last_name) {
-        const nameParts = clientData.name?.split(' ') || [];
-        clientData.last_name = nameParts.length > 1 ? nameParts.slice(1).join(' ') : 'Unknown';
-      }
-      
-      // Email is required for Supabase insertion, ensure it exists
-      const clientRecord = {
-        branch_id: clientData.branch_id,
-        email: clientData.email, // Already checked for existence above
-        first_name: clientData.first_name,
-        last_name: clientData.last_name,
-        phone: clientData.phone,
-        address: clientData.address,
-        city: clientData.city,
-        postal_code: clientData.postal_code,
-        notes: clientData.notes
-      };
-      
-      // Create new client with required fields
-      const { data, error } = await supabase
-        .from('clients')
-        .insert(clientRecord)
-        .select('id')
-        .single();
-        
-      if (error) throw error;
-      return data?.id;
-    }
+    if (error) throw error;
+    return clientId;
   } else {
-    throw new Error('Email is required for client import');
+    // Ensure required fields exist
+    if (!clientData.first_name) {
+      clientData.first_name = clientData.name?.split(' ')[0] || 'Unknown';
+    }
+    
+    if (!clientData.last_name) {
+      const nameParts = clientData.name?.split(' ') || [];
+      clientData.last_name = nameParts.length > 1 ? nameParts.slice(1).join(' ') : 'Unknown';
+    }
+    
+    // Create new client with required fields
+    const clientRecord = {
+      branch_id: clientData.branch_id,
+      email: clientData.email,
+      first_name: clientData.first_name,
+      last_name: clientData.last_name,
+      phone: clientData.phone,
+      address: clientData.address,
+      city: clientData.city,
+      postal_code: clientData.postal_code,
+      notes: clientData.notes
+    };
+    
+    const { data, error } = await supabase
+      .from('clients')
+      .insert(clientRecord)
+      .select('id')
+      .single();
+      
+    if (error) throw error;
+    return data?.id;
   }
 }

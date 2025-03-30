@@ -20,6 +20,7 @@ export function ImportHandlersModal() {
     csvHeaders,
     csvData,
     isUploading,
+    processingResults,
     fieldMappings,
     validationErrors,
     handleFileChange,
@@ -151,6 +152,7 @@ export function ImportHandlersModal() {
               branchName={currentBranch?.name}
               onImport={handleImport}
               isUploading={isUploading}
+              processingResults={processingResults}
             />
           )}
           
