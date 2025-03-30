@@ -43,7 +43,7 @@ export function EditBranchForm({ branch, onSuccess }: EditBranchFormProps) {
     email: branch.email || "",
     phone: branch.phone || "",
     capacity: branch.capacity || 10,
-    adminId: branch.admin_id || "",
+    adminId: branch.admin_id || "none",
   };
   
   const form = useForm<BranchFormValues>({
@@ -65,7 +65,7 @@ export function EditBranchForm({ branch, onSuccess }: EditBranchFormProps) {
           email: values.email || null,
           phone: values.phone || null,
           capacity: values.capacity || 10,
-          admin_id: values.adminId || null,
+          admin_id: values.adminId === "none" ? null : values.adminId,
         })
         .eq("id", branch.id);
       

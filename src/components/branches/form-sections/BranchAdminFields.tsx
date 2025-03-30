@@ -39,14 +39,14 @@ export function BranchAdminFields({ control }: BranchAdminFieldsProps) {
             <FormControl>
               <Select 
                 onValueChange={field.onChange} 
-                value={field.value || ""} 
+                value={field.value || "none"} 
                 disabled={isLoading}
               >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select an administrator" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None assigned</SelectItem>
+                  <SelectItem value="none">None assigned</SelectItem>
                   {admins?.map((admin) => (
                     <SelectItem key={admin.id} value={admin.id} className="flex items-center gap-2">
                       <div className="flex items-center gap-2">
