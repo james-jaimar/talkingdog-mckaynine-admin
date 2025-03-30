@@ -32,7 +32,7 @@ export function ImportHandlersModal() {
     if (currentStep === 2) {
       const isValid = validateMappings(fieldMappings);
       if (isValid) {
-        setCurrentStep(prev => prev + 1);
+        setCurrentStep(3);
       } else {
         toast({
           title: "Validation errors",
@@ -41,12 +41,12 @@ export function ImportHandlersModal() {
         });
       }
     } else {
-      setCurrentStep(prev => prev + 1);
+      setCurrentStep(currentStep + 1);
     }
   };
 
   const handleBack = () => {
-    setCurrentStep(prev => Math.max(1, prev - 1));
+    setCurrentStep(Math.max(1, currentStep - 1));
   };
 
   const handleReset = () => {
