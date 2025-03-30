@@ -7,6 +7,7 @@ export interface Trainer {
   phone: string | null;
   specialties: string[] | null;
   branch_ids: string[] | null;
+  branch_names?: string[] | null; // Added branch_names as an optional property
   bio: string | null;
   avatar_url: string | null;
   created_at: string;
