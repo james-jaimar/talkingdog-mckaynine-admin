@@ -18,6 +18,7 @@ interface EditHandlerModalProps {
     city?: string;
     postal_code?: string;
     notes?: string;
+    branch_id?: string | null;
   };
   onSuccess?: () => void;
 }

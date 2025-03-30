@@ -32,7 +32,7 @@ interface Handler {
   city?: string;
   postal_code?: string;
   notes?: string;
-  branch_id?: string;
+  branch_id?: string | null;
   created_at: string;
   dogs: Dog[];
 }
@@ -46,37 +46,42 @@ export default function HandlerDetail() {
     queryFn: async () => {
       if (!handlerId) throw new Error("Handler ID is required");
       
-      const { data, error } = await supabase
-        .from('clients')
-        .select(`
-          id,
-          first_name,
-          last_name,
-          email,
-          phone,
-          address,
-          city,
-          postal_code,
-          notes,
-          branch_id,
-          created_at,
-          dogs (
+      try {
+        const { data, error } = await supabase
+          .from('clients')
+          .select(`
             id,
-            name,
-            breed,
-            age,
-            weight,
+            first_name,
+            last_name,
+            email,
+            phone,
+            address,
+            city,
+            postal_code,
             notes,
-            behavior_notes,
-            medical_notes,
-            avatar_url
-          )
-        `)
-        .eq('id', handlerId)
-        .single();
-      
-      if (error) throw error;
-      return data as Handler;
+            branch_id,
+            created_at,
+            dogs (
+              id,
+              name,
+              breed,
+              age,
+              weight,
+              notes,
+              behavior_notes,
+              medical_notes,
+              avatar_url
+            )
+          `)
+          .eq('id', handlerId)
+          .single();
+        
+        if (error) throw error;
+        return data as Handler;
+      } catch (error) {
+        console.error("Error fetching handler:", error);
+        return null;
+      }
     }
   });
 

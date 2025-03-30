@@ -16,13 +16,13 @@ interface Dog {
   medical_notes?: string;
 }
 
-interface Handler {
+export interface Handler {
   id: string;
   first_name: string;
   last_name: string;
   email: string;
   phone?: string;
-  branch_id?: string;
+  branch_id?: string | null;
   created_at: string;
   notes?: string;
   dogs: Dog[];
@@ -37,39 +37,44 @@ export function useHandlersData() {
   const { data: handlers = [], isLoading } = useQuery({
     queryKey: ['handlers', currentBranch?.id],
     queryFn: async () => {
-      let query = supabase
-        .from('clients')
-        .select(`
-          id,
-          first_name,
-          last_name,
-          email,
-          phone,
-          branch_id,
-          created_at,
-          notes,
-          dogs (
+      try {
+        let query = supabase
+          .from('clients')
+          .select(`
             id,
-            name,
-            breed,
-            age,
-            behavior_notes,
+            first_name,
+            last_name,
+            email,
+            phone,
+            branch_id,
+            created_at,
             notes,
-            medical_notes
-          )
-        `);
-      
-      // Filter by branch if one is selected
-      if (currentBranch) {
-        query = query.eq('branch_id', currentBranch.id);
+            dogs (
+              id,
+              name,
+              breed,
+              age,
+              behavior_notes,
+              notes,
+              medical_notes
+            )
+          `);
+        
+        // Filter by branch if one is selected
+        if (currentBranch) {
+          query = query.eq('branch_id', currentBranch.id);
+        }
+        
+        query = query.order('first_name', { ascending: true });
+        
+        const { data, error } = await query;
+        
+        if (error) throw error;
+        return (data || []) as Handler[];
+      } catch (error) {
+        console.error("Error fetching handlers:", error);
+        return [] as Handler[];
       }
-      
-      query = query.order('first_name', { ascending: true });
-      
-      const { data, error } = await query;
-      
-      if (error) throw error;
-      return (data || []) as Handler[];
     },
     enabled: !!currentBranch // Only run query when a branch is selected
   });

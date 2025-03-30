@@ -12,7 +12,7 @@ interface HandlerInfoProps {
     last_name: string;
     email: string;
     phone?: string;
-    branch_id?: string;
+    branch_id?: string | null;
     address?: string;
     city?: string;
     postal_code?: string;
