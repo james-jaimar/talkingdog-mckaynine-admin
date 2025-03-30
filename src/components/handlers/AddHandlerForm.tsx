@@ -12,6 +12,7 @@ import { HandlerPersonalInfoFields } from "./form/HandlerPersonalInfoFields";
 import { DogInfoFields } from "./form/DogInfoFields";
 import { ClassAndPreferencesFields } from "./form/ClassAndPreferencesFields";
 import { Separator } from "@/components/ui/separator";
+import { useBranch } from "@/context/BranchContext";
 
 const formSchema = z.object({
   firstName: z.string().min(2, {
@@ -48,6 +49,7 @@ export function AddHandlerForm({ onSuccess }: AddHandlerFormProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const queryClient = useQueryClient();
+  const { currentBranch } = useBranch();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -72,7 +74,7 @@ export function AddHandlerForm({ onSuccess }: AddHandlerFormProps) {
     console.log("Form submitted with data:", data);
 
     try {
-      // Insert client data
+      // Insert client data with branch_id
       const { data: clientData, error: clientError } = await supabase
         .from("clients")
         .insert({
@@ -81,6 +83,7 @@ export function AddHandlerForm({ onSuccess }: AddHandlerFormProps) {
           email: data.email,
           phone: data.phone || null,
           notes: data.comments || null,
+          branch_id: currentBranch?.id || null
         })
         .select("id")
         .single();

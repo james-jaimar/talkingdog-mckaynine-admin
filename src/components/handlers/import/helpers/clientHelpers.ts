@@ -6,7 +6,8 @@ import { clientPreferences } from "../fieldDefinitions";
 // Process client data from CSV row
 export const processClientData = (
   row: any,
-  tableGroups: Record<string, Record<string, string>>
+  tableGroups: Record<string, Record<string, string>>,
+  branchId?: string | null
 ) => {
   // Initialize client data with the correct type structure
   const clientData: {
@@ -17,11 +18,13 @@ export const processClientData = (
     notes?: string;
     whatsapp?: boolean;
     photo_permission?: boolean;
+    branch_id?: string | null;
     [key: string]: any;
   } = {
     first_name: '',
     last_name: '',
-    email: ''
+    email: '',
+    branch_id: branchId || null
   };
   
   // Handle the name field - split into first/last name
@@ -103,7 +106,8 @@ export const createOrUpdateClient = async (
         phone: clientData.phone || null,
         notes: clientData.notes || null,
         whatsapp: clientData.whatsapp,
-        photo_permission: clientData.photo_permission
+        photo_permission: clientData.photo_permission,
+        branch_id: clientData.branch_id
       })
       .eq('id', clientId);
       

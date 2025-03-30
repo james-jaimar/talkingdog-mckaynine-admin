@@ -9,6 +9,8 @@ import { useState } from "react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useBranch } from "@/context/BranchContext";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 // Form validation schema
 const formSchema = z.object({
@@ -20,6 +22,7 @@ const formSchema = z.object({
   city: z.string().optional(),
   postal_code: z.string().optional(),
   notes: z.string().optional(),
+  branch_id: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -35,6 +38,7 @@ interface EditHandlerFormProps {
     city?: string;
     postal_code?: string;
     notes?: string;
+    branch_id?: string;
   };
   onSuccess?: () => void;
 }
@@ -42,6 +46,7 @@ interface EditHandlerFormProps {
 export function EditHandlerForm({ handler, onSuccess }: EditHandlerFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+  const { branches } = useBranch();
 
   // Initialize form with handler data
   const form = useForm<FormValues>({
@@ -55,6 +60,7 @@ export function EditHandlerForm({ handler, onSuccess }: EditHandlerFormProps) {
       city: handler.city || "",
       postal_code: handler.postal_code || "",
       notes: handler.notes || "",
+      branch_id: handler.branch_id || "",
     },
   });
 
@@ -72,6 +78,7 @@ export function EditHandlerForm({ handler, onSuccess }: EditHandlerFormProps) {
           city: values.city,
           postal_code: values.postal_code,
           notes: values.notes,
+          branch_id: values.branch_id || null,
         })
         .eq("id", handler.id);
 
@@ -150,6 +157,35 @@ export function EditHandlerForm({ handler, onSuccess }: EditHandlerFormProps) {
               <FormControl>
                 <Input {...field} />
               </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="branch_id"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Branch</FormLabel>
+              <Select 
+                value={field.value || ""} 
+                onValueChange={field.onChange}
+              >
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a branch" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="">No Branch</SelectItem>
+                  {branches?.map((branch) => (
+                    <SelectItem key={branch.id} value={branch.id}>
+                      {branch.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <FormMessage />
             </FormItem>
           )}

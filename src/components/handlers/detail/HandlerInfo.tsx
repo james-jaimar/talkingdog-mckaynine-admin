@@ -1,59 +1,106 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
+import { GitBranch, Mail, MapPin, Phone } from "lucide-react";
+import { formatPhoneNumber } from "../utils/handlerUtils";
+import { useBranch } from "@/context/BranchContext";
+import { useEffect, useState } from "react";
 
 interface HandlerInfoProps {
   handler: {
+    id: string;
+    first_name: string;
+    last_name: string;
     email: string;
     phone?: string;
+    branch_id?: string;
     address?: string;
     city?: string;
     postal_code?: string;
-    created_at: string;
     notes?: string;
+    created_at: string;
   };
 }
 
 export function HandlerInfo({ handler }: HandlerInfoProps) {
+  const { branches } = useBranch();
+  const [branchName, setBranchName] = useState<string>("");
+
+  useEffect(() => {
+    if (handler.branch_id && branches) {
+      const branch = branches.find(b => b.id === handler.branch_id);
+      if (branch) {
+        setBranchName(branch.name);
+      }
+    }
+  }, [handler.branch_id, branches]);
+
   return (
-    <Card className="lg:col-span-1 border border-gray-200 shadow-sm">
-      <CardHeader className="bg-gray-50 border-b border-gray-200">
+    <Card className="col-span-1">
+      <CardHeader>
         <CardTitle>Handler Information</CardTitle>
       </CardHeader>
-      <CardContent className="p-6">
-        <div className="space-y-4">
-          <div>
-            <p className="text-sm font-medium text-gray-500">Email</p>
-            <p className="text-gray-900">{handler.email}</p>
-          </div>
-          <div>
-            <p className="text-sm font-medium text-gray-500">Phone</p>
-            <p className="text-gray-900">{handler.phone || "Not provided"}</p>
-          </div>
-          <Separator />
-          <div>
-            <p className="text-sm font-medium text-gray-500">Address</p>
-            <p className="text-gray-900">{handler.address || "Not provided"}</p>
-            {(handler.city || handler.postal_code) && (
-              <p className="text-gray-900">
-                {handler.city}{handler.city && handler.postal_code && ", "}{handler.postal_code}
-              </p>
+      <CardContent className="space-y-4">
+        <div className="space-y-1">
+          <h3 className="font-semibold text-gray-500 text-sm">Contact</h3>
+          <div className="grid gap-2">
+            {handler.email && (
+              <div className="flex items-center gap-2">
+                <Mail className="h-4 w-4 text-gray-500" />
+                <a href={`mailto:${handler.email}`} className="text-sm hover:underline">
+                  {handler.email}
+                </a>
+              </div>
+            )}
+            
+            {handler.phone && (
+              <div className="flex items-center gap-2">
+                <Phone className="h-4 w-4 text-gray-500" />
+                <a href={`tel:${handler.phone}`} className="text-sm hover:underline">
+                  {formatPhoneNumber(handler.phone)}
+                </a>
+              </div>
+            )}
+
+            {branchName && (
+              <div className="flex items-center gap-2">
+                <GitBranch className="h-4 w-4 text-gray-500" />
+                <span className="text-sm">{branchName}</span>
+              </div>
             )}
           </div>
-          <Separator />
-          <div>
-            <p className="text-sm font-medium text-gray-500">Member Since</p>
-            <p className="text-gray-900">{new Date(handler.created_at).toLocaleDateString()}</p>
-          </div>
-          {handler.notes && (
-            <>
-              <Separator />
-              <div>
-                <p className="text-sm font-medium text-gray-500">Notes</p>
-                <p className="text-gray-900 whitespace-pre-line">{handler.notes}</p>
+        </div>
+        
+        {(handler.address || handler.city || handler.postal_code) && (
+          <div className="space-y-1">
+            <h3 className="font-semibold text-gray-500 text-sm">Address</h3>
+            <div className="flex items-start gap-2">
+              <MapPin className="h-4 w-4 text-gray-500 mt-0.5" />
+              <div className="text-sm">
+                {handler.address && <div>{handler.address}</div>}
+                {(handler.city || handler.postal_code) && (
+                  <div>
+                    {handler.city && <span>{handler.city}</span>}
+                    {handler.city && handler.postal_code && <span>, </span>}
+                    {handler.postal_code && <span>{handler.postal_code}</span>}
+                  </div>
+                )}
               </div>
-            </>
-          )}
+            </div>
+          </div>
+        )}
+        
+        {handler.notes && (
+          <div className="space-y-1">
+            <h3 className="font-semibold text-gray-500 text-sm">Notes</h3>
+            <p className="text-sm whitespace-pre-wrap">{handler.notes}</p>
+          </div>
+        )}
+        
+        <div className="space-y-1 pt-2">
+          <h3 className="font-semibold text-gray-500 text-sm">Registration</h3>
+          <p className="text-sm">
+            Client since {new Date(handler.created_at).toLocaleDateString()}
+          </p>
         </div>
       </CardContent>
     </Card>

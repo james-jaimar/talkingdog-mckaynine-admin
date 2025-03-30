@@ -33,6 +33,6 @@ export function useImportData() {
     handleFileChange,
     handleMapField,
     validateMappings,
-    processImport: () => processImport(csvData, fieldMappings)
+    processImport
   };
 }

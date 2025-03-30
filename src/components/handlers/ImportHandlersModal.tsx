@@ -7,10 +7,12 @@ import { useImportData } from "./import/useImportData";
 import { UploadStep } from "./import/UploadStep";
 import { MappingStep } from "./import/MappingStep";
 import { ReviewStep } from "./import/ReviewStep";
+import { useBranch } from "@/context/BranchContext";
 
 export function ImportHandlersModal() {
   const [open, setOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
+  const { currentBranch } = useBranch();
   
   const {
     csvFile,
@@ -40,7 +42,7 @@ export function ImportHandlersModal() {
   };
 
   const handleImport = async () => {
-    const result = await processImport();
+    const result = await processImport(csvData, fieldMappings, currentBranch?.id);
     if (result.success) {
       setOpen(false);
     }
@@ -90,6 +92,7 @@ export function ImportHandlersModal() {
             <ReviewStep 
               csvData={csvData}
               fieldMappings={fieldMappings}
+              branchName={currentBranch?.name}
             />
           )}
           

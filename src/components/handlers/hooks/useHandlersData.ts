@@ -22,6 +22,7 @@ interface Handler {
   last_name: string;
   email: string;
   phone?: string;
+  branch_id?: string;
   created_at: string;
   notes?: string;
   dogs: Dog[];
@@ -44,6 +45,7 @@ export function useHandlersData() {
           last_name,
           email,
           phone,
+          branch_id,
           created_at,
           notes,
           dogs (
@@ -58,8 +60,9 @@ export function useHandlersData() {
         `);
       
       // Filter by branch if one is selected
-      // Note: Since the clients table doesn't have a branch_id column,
-      // we're not filtering by branch at the database level for now
+      if (currentBranch) {
+        query = query.eq('branch_id', currentBranch.id);
+      }
       
       query = query.order('first_name', { ascending: true });
       

@@ -1,93 +1,87 @@
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Check } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { FieldMapping } from "./types";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Info } from "lucide-react";
 
 interface ReviewStepProps {
   csvData: any[];
   fieldMappings: FieldMapping;
+  branchName?: string;
 }
 
-export function ReviewStep({ csvData, fieldMappings }: ReviewStepProps) {
+export function ReviewStep({ csvData, fieldMappings, branchName }: ReviewStepProps) {
+  const headers = Object.keys(csvData[0] || {});
+  const firstFewRows = csvData.slice(0, 5);
+
+  // Organize mapped fields by table
+  const mappedFields: Record<string, string[]> = {};
+  
+  Object.entries(fieldMappings).forEach(([csvHeader, dbField]) => {
+    const [table, _] = dbField.split('.');
+    if (!mappedFields[table]) {
+      mappedFields[table] = [];
+    }
+    mappedFields[table].push(csvHeader);
+  });
+
   return (
     <div className="space-y-4">
-      <div className="rounded-md bg-green-50 p-4">
-        <div className="flex">
-          <div className="flex-shrink-0">
-            <Check className="h-5 w-5 text-green-400" aria-hidden="true" />
-          </div>
-          <div className="ml-3">
-            <h3 className="text-sm font-medium text-green-800">Ready to import</h3>
-            <div className="mt-2 text-sm text-green-700">
-              <p>You're about to import {csvData.length} records from your CSV file.</p>
-              <p className="mt-1">This will create new handler and dog records in the database.</p>
-              <p className="mt-1 font-medium">If a handler with the same email already exists, their record will be updated and new dogs will be added.</p>
+      {branchName && (
+        <Alert>
+          <Info className="h-4 w-4" />
+          <AlertTitle>Branch Assignment</AlertTitle>
+          <AlertDescription>
+            All imported handlers will be assigned to the <strong>{branchName}</strong> branch.
+          </AlertDescription>
+        </Alert>
+      )}
+      
+      <div className="space-y-2">
+        <h3 className="text-lg font-medium">Mapped Fields</h3>
+        {Object.entries(mappedFields).map(([table, fields]) => (
+          <div key={table} className="pl-4 border-l-2 border-gray-300">
+            <h4 className="font-medium text-sm text-gray-700 capitalize">{table}</h4>
+            <div className="flex flex-wrap gap-2 mt-1">
+              {fields.map(field => (
+                <span key={field} className="px-2 py-1 bg-gray-100 rounded text-xs">{field}</span>
+              ))}
             </div>
           </div>
-        </div>
+        ))}
       </div>
       
-      <div className="border rounded-md p-4">
-        <h4 className="font-medium mb-2">Special Handling</h4>
-        <div className="text-sm space-y-2">
-          <p>• "Name" column will be split into first and last name automatically</p>
-          <p>• DOB will be stored as the actual date in the database</p>
-          <p>• Class information (PUPPY, EO, etc.) will be mapped to class enrollment data</p>
-          <p>• WhatsApp and Photo Permission preferences will be stored in respective columns</p>
-          <p>• <strong>Duplicate handlers (by email) will be detected</strong> and their dogs will be added or updated</p>
-          <p>• <strong>Duplicate dogs (by name for same handler) will be updated</strong> rather than creating duplicates</p>
-        </div>
-      </div>
-      
-      <div className="border rounded-md p-4">
-        <h4 className="font-medium mb-2">Field Mappings Summary</h4>
-        <div className="text-sm">
-          <Tabs defaultValue="clients">
-            <TabsList className="mb-4">
-              <TabsTrigger value="clients">Handler Fields</TabsTrigger>
-              <TabsTrigger value="dogs">Dog Fields</TabsTrigger>
-              <TabsTrigger value="classes">Class Fields</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="clients">
-              <div className="grid grid-cols-2 gap-2">
-                {Object.entries(fieldMappings)
-                  .filter(([_, value]) => value.startsWith('clients.'))
-                  .map(([csvHeader, dbField]) => (
-                    <div key={csvHeader} className="flex justify-between">
-                      <span className="font-medium">{csvHeader}</span>
-                      <span className="text-gray-500">{dbField.split('.')[1]}</span>
-                    </div>
+      <div className="space-y-2">
+        <h3 className="text-lg font-medium">Preview Data</h3>
+        <p className="text-sm text-gray-500">Showing first 5 rows of {csvData.length} total rows.</p>
+        <div className="border rounded overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                {headers.map(header => (
+                  <TableHead key={header} className="whitespace-nowrap">
+                    {header}
+                    {fieldMappings[header] && (
+                      <span className="ml-1 text-xs font-normal text-gray-500">
+                        ({fieldMappings[header]})
+                      </span>
+                    )}
+                  </TableHead>
+                ))}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {firstFewRows.map((row, rowIndex) => (
+                <TableRow key={`row-${rowIndex}`}>
+                  {headers.map(header => (
+                    <TableCell key={`${rowIndex}-${header}`} className="whitespace-nowrap truncate max-w-[200px]">
+                      {row[header] || "-"}
+                    </TableCell>
                   ))}
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="dogs">
-              <div className="grid grid-cols-2 gap-2">
-                {Object.entries(fieldMappings)
-                  .filter(([_, value]) => value.startsWith('dogs.'))
-                  .map(([csvHeader, dbField]) => (
-                    <div key={csvHeader} className="flex justify-between">
-                      <span className="font-medium">{csvHeader}</span>
-                      <span className="text-gray-500">{dbField.split('.')[1]}</span>
-                    </div>
-                  ))}
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="classes">
-              <div className="grid grid-cols-2 gap-2">
-                {Object.entries(fieldMappings)
-                  .filter(([_, value]) => value.startsWith('class_enrollments.'))
-                  .map(([csvHeader, dbField]) => (
-                    <div key={csvHeader} className="flex justify-between">
-                      <span className="font-medium">{csvHeader}</span>
-                      <span className="text-gray-500">{dbField.split('.')[1].replace('_class', '').toUpperCase().replace('_', ' ')}</span>
-                    </div>
-                  ))}
-              </div>
-            </TabsContent>
-          </Tabs>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
       </div>
     </div>

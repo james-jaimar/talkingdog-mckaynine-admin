@@ -12,7 +12,8 @@ export function useDataImport() {
 
   const processImport = async (
     csvData: any[],
-    fieldMappings: FieldMapping
+    fieldMappings: FieldMapping,
+    branchId?: string | null
   ) => {
     setIsUploading(true);
     const errors: string[] = [];
@@ -48,7 +49,7 @@ export function useDataImport() {
           // First create or find client
           if (tableGroups.clients) {
             // Process client data
-            const clientData = processClientData(row, tableGroups);
+            const clientData = processClientData(row, tableGroups, branchId);
             const clientId = await createOrUpdateClient(clientData, existingClients);
             
             // Store the new client in our map if it's new

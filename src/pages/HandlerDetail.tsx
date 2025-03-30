@@ -31,6 +31,7 @@ export default function HandlerDetail() {
           city,
           postal_code,
           notes,
+          branch_id,
           created_at,
           dogs (
             id,
