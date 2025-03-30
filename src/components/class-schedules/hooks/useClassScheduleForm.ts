@@ -53,7 +53,7 @@ export function useClassScheduleForm(
       isRecurring: schedule.recurring || false,
       recurrencePattern: schedule.recurrence_pattern || "",
       referenceTitle: schedule.recurrence_pattern || "Class " + format(startDate, "MMMM/yyyy"),
-      selectedDates: selectedDates,
+      selectedDates: selectedDates.length > 0 ? selectedDates : [startDate],
     };
   } else {
     const now = new Date();
@@ -75,7 +75,7 @@ export function useClassScheduleForm(
       isRecurring: false,
       recurrencePattern: "",
       referenceTitle: "Class " + format(nextHour, "MMMM/yyyy"),
-      selectedDates: [],
+      selectedDates: [nextHour],
     };
   }
   
@@ -83,17 +83,6 @@ export function useClassScheduleForm(
     resolver: zodResolver(classScheduleFormSchema),
     defaultValues,
   });
-  
-  // Watch for changes to the startDate to update endDate if they're the same
-  const startDate = form.watch("startDate");
-  const endDate = form.watch("endDate");
-  
-  useEffect(() => {
-    if (startDate && endDate && !schedule) {
-      // Only sync dates automatically for new schedules
-      form.setValue("endDate", startDate);
-    }
-  }, [startDate, form, schedule, endDate]);
   
   // Fetch trainers for dropdown
   useEffect(() => {
@@ -139,17 +128,28 @@ export function useClassScheduleForm(
     setIsSubmitting(true);
     
     try {
-      // Combine date and time into ISO strings
-      const startDateTime = combineDateTime(values.startDate, values.startTime);
-      const endDateTime = combineDateTime(values.endDate, values.endTime);
+      // Ensure dates are selected
+      if (!values.selectedDates || values.selectedDates.length === 0) {
+        throw new Error("Please select at least one class date");
+      }
       
-      // Validate end time is after start time
-      if (endDateTime <= startDateTime) {
+      // Use the first and last selected dates for start and end
+      const sortedDates = [...values.selectedDates].sort((a, b) => a.getTime() - b.getTime());
+      const firstDate = sortedDates[0];
+      const lastDate = sortedDates[sortedDates.length - 1];
+      
+      // Combine date and time into ISO strings
+      const startDateTime = combineDateTime(firstDate, values.startTime);
+      const endDateTime = combineDateTime(lastDate, values.endTime);
+      
+      // Validate end time is after start time for same-day events
+      if (firstDate.toDateString() === lastDate.toDateString() && 
+          combineDateTime(firstDate, values.endTime) <= combineDateTime(firstDate, values.startTime)) {
         throw new Error("End time must be after start time");
       }
       
-      // Convert selected dates to ISO strings if they exist
-      const selectedDatesISO = values.selectedDates?.map(date => date.toISOString()) || [];
+      // Convert selected dates to ISO strings
+      const selectedDatesISO = values.selectedDates.map(date => date.toISOString());
       
       const scheduleData = {
         class_id: classId,

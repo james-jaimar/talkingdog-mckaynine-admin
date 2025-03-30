@@ -18,14 +18,8 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { format } from "date-fns";
-import { CalendarIcon, CalendarDays } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { CalendarDays } from "lucide-react";
 import { useClassScheduleForm } from "./hooks/useClassScheduleForm";
 import { ClassSchedule } from "./types/classSchedule";
 import { useEffect } from "react";
@@ -47,9 +41,10 @@ export function EditClassScheduleForm({
     onSuccess
   );
 
-  // Extract recurring state to conditionally show recurrence pattern field
+  // Extract recurring state and selected dates for conditional logic
   const isRecurring = form.watch("isRecurring");
   const startTime = form.watch("startTime");
+  const selectedDates = form.watch("selectedDates") || [];
   
   // Update reference title when schedule.class.name or start time changes
   useEffect(() => {
@@ -59,6 +54,20 @@ export function EditClassScheduleForm({
       form.setValue("referenceTitle", referenceTitle);
     }
   }, [schedule.class?.name, startTime, form]);
+  
+  // Auto-update start and end dates based on selected dates
+  useEffect(() => {
+    if (selectedDates.length > 0) {
+      // Sort dates to find first and last
+      const sortedDates = [...selectedDates].sort((a, b) => a.getTime() - b.getTime());
+      const firstDate = sortedDates[0];
+      const lastDate = sortedDates[sortedDates.length - 1];
+      
+      // Update start and end dates
+      form.setValue("startDate", firstDate);
+      form.setValue("endDate", lastDate);
+    }
+  }, [selectedDates, form]);
 
   return (
     <Form {...form}>
@@ -95,46 +104,6 @@ export function EditClassScheduleForm({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             control={form.control}
-            name="startDate"
-            render={({ field }) => (
-              <FormItem className="flex flex-col">
-                <FormLabel>Start Date</FormLabel>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <FormControl>
-                      <Button
-                        variant={"outline"}
-                        className={cn(
-                          "w-full pl-3 text-left font-normal",
-                          !field.value && "text-muted-foreground"
-                        )}
-                      >
-                        {field.value ? (
-                          format(field.value, "PPP")
-                        ) : (
-                          <span>Pick a date</span>
-                        )}
-                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                      </Button>
-                    </FormControl>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={field.value}
-                      onSelect={field.onChange}
-                      initialFocus
-                      className={cn("p-3 pointer-events-auto")}
-                    />
-                  </PopoverContent>
-                </Popover>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
             name="startTime"
             render={({ field }) => (
               <FormItem>
@@ -142,48 +111,6 @@ export function EditClassScheduleForm({
                 <FormControl>
                   <Input type="time" {...field} />
                 </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="endDate"
-            render={({ field }) => (
-              <FormItem className="flex flex-col">
-                <FormLabel>End Date</FormLabel>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <FormControl>
-                      <Button
-                        variant={"outline"}
-                        className={cn(
-                          "w-full pl-3 text-left font-normal",
-                          !field.value && "text-muted-foreground"
-                        )}
-                      >
-                        {field.value ? (
-                          format(field.value, "PPP")
-                        ) : (
-                          <span>Pick a date</span>
-                        )}
-                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                      </Button>
-                    </FormControl>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={field.value}
-                      onSelect={field.onChange}
-                      initialFocus
-                      className={cn("p-3 pointer-events-auto")}
-                    />
-                  </PopoverContent>
-                </Popover>
                 <FormMessage />
               </FormItem>
             )}
@@ -218,7 +145,7 @@ export function EditClassScheduleForm({
                   mode="multiple"
                   selected={field.value}
                   onSelect={field.onChange}
-                  numberOfMonths={3}
+                  numberOfMonths={4}
                   className="w-full pointer-events-auto"
                 />
               </div>

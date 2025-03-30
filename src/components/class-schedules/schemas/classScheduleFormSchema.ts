@@ -14,7 +14,7 @@ export const classScheduleFormSchema = z.object({
   isRecurring: z.boolean().default(false),
   recurrencePattern: z.string().optional(),
   referenceTitle: z.string().min(1, "Reference title is required"),
-  selectedDates: z.array(z.date()).optional(),
+  selectedDates: z.array(z.date()).min(1, "At least one class date is required"),
 });
 
 export type ClassScheduleFormValues = z.infer<typeof classScheduleFormSchema>;
