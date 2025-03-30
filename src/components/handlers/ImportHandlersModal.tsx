@@ -13,6 +13,7 @@ type MappingField = {
   dbField: string;
   table: string;
   required: boolean;
+  description?: string;
 };
 
 export function ImportHandlersModal() {
@@ -25,26 +26,21 @@ export function ImportHandlersModal() {
   const [fieldMappings, setFieldMappings] = useState<Record<string, string>>({});
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
-  // Database fields that can be mapped to
+  // Database fields that can be mapped to, based on the provided CSV format
   const availableFields: MappingField[] = [
     // Client fields
-    { csvHeader: "", dbField: "first_name", table: "clients", required: true },
-    { csvHeader: "", dbField: "last_name", table: "clients", required: true },
-    { csvHeader: "", dbField: "email", table: "clients", required: true },
-    { csvHeader: "", dbField: "phone", table: "clients", required: false },
-    { csvHeader: "", dbField: "address", table: "clients", required: false },
-    { csvHeader: "", dbField: "city", table: "clients", required: false },
-    { csvHeader: "", dbField: "postal_code", table: "clients", required: false },
-    { csvHeader: "", dbField: "notes", table: "clients", required: false },
+    { csvHeader: "Name", dbField: "first_name", table: "clients", required: true, description: "First part of full name" },
+    { csvHeader: "Name", dbField: "last_name", table: "clients", required: true, description: "Last part of full name" },
+    { csvHeader: "E-mail", dbField: "email", table: "clients", required: true },
+    { csvHeader: "Tel", dbField: "phone", table: "clients", required: false },
+    { csvHeader: "COMMENTS", dbField: "notes", table: "clients", required: false },
     
     // Dog fields
-    { csvHeader: "", dbField: "name", table: "dogs", required: true },
-    { csvHeader: "", dbField: "breed", table: "dogs", required: true },
-    { csvHeader: "", dbField: "age", table: "dogs", required: false },
-    { csvHeader: "", dbField: "weight", table: "dogs", required: false },
-    { csvHeader: "", dbField: "notes", table: "dogs", required: false },
-    { csvHeader: "", dbField: "behavior_notes", table: "dogs", required: false },
-    { csvHeader: "", dbField: "medical_notes", table: "dogs", required: false },
+    { csvHeader: "Dog's Name", dbField: "name", table: "dogs", required: true },
+    { csvHeader: "Breed", dbField: "breed", table: "dogs", required: true },
+    { csvHeader: "DOB", dbField: "age", table: "dogs", required: false, description: "Will be calculated from DOB" },
+    { csvHeader: "Assess", dbField: "notes", table: "dogs", required: false },
+    { csvHeader: "PUPPY", dbField: "behavior_notes", table: "dogs", required: false, description: "Will be combined with other class notes" },
   ];
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -63,20 +59,39 @@ export function ImportHandlersModal() {
           setCsvHeaders(headers);
           setCsvData(results.data);
           
-          // Initialize field mappings with best guesses
+          // Initialize field mappings with best guesses based on your specific columns
           const initialMappings: Record<string, string> = {};
+          
+          // Map common fields automatically
+          const commonMappings: Record<string, string> = {
+            "Name": "clients.first_name", // Special handling for name later
+            "E-mail": "clients.email",
+            "Tel": "clients.phone",
+            "Dog's Name": "dogs.name",
+            "Breed": "dogs.breed",
+            "DOB": "dogs.age",
+            "Assess": "dogs.notes",
+            "COMMENTS": "clients.notes",
+            // Class fields and other special handling will be done during processing
+          };
+          
           headers.forEach(header => {
-            // Try to match headers to database fields
-            const normalizedHeader = header.toLowerCase().replace(/[^a-z0-9]/g, '');
-            
-            // Find potential matches
-            const match = availableFields.find(field => {
-              const normalizedField = field.dbField.toLowerCase().replace(/[^a-z0-9]/g, '');
-              return normalizedHeader.includes(normalizedField) || normalizedField.includes(normalizedHeader);
-            });
-            
-            if (match) {
-              initialMappings[header] = `${match.table}.${match.dbField}`;
+            // Try to match headers to common mappings
+            if (commonMappings[header]) {
+              initialMappings[header] = commonMappings[header];
+            } else {
+              // Otherwise try fuzzy matching
+              const normalizedHeader = header.toLowerCase().replace(/[^a-z0-9]/g, '');
+              
+              // Find potential matches
+              const match = availableFields.find(field => {
+                const normalizedField = field.dbField.toLowerCase().replace(/[^a-z0-9]/g, '');
+                return normalizedHeader.includes(normalizedField) || normalizedField.includes(normalizedHeader);
+              });
+              
+              if (match) {
+                initialMappings[header] = `${match.table}.${match.dbField}`;
+              }
             }
           });
           
@@ -156,11 +171,13 @@ export function ImportHandlersModal() {
         try {
           // First create client
           if (tableGroups.clients) {
-            // Initialize with required fields to avoid TypeScript errors
+            // Initialize client data
             const clientData: {
               first_name: string;
               last_name: string;
               email: string;
+              phone?: string;
+              notes?: string;
               [key: string]: any;
             } = {
               first_name: '',
@@ -168,14 +185,68 @@ export function ImportHandlersModal() {
               email: ''
             };
             
-            // Fill in values from CSV based on mapping
+            // Special handling for name field - split into first/last name
+            const nameHeader = tableGroups.clients.first_name;
+            if (nameHeader && row[nameHeader]) {
+              const nameParts = row[nameHeader].split(' ');
+              
+              if (nameParts.length > 1) {
+                clientData.first_name = nameParts[0];
+                clientData.last_name = nameParts.slice(1).join(' ');
+              } else {
+                clientData.first_name = nameParts[0];
+                clientData.last_name = ''; // Default empty last name
+              }
+            }
+            
+            // Handle other client fields
             Object.entries(tableGroups.clients).forEach(([dbField, csvHeader]) => {
-              clientData[dbField] = row[csvHeader];
+              if (dbField !== 'first_name' && dbField !== 'last_name') {
+                clientData[dbField] = row[csvHeader];
+              }
             });
             
+            // Add comments/notes from the class fields if not already mapped
+            const classNotes = [];
+            
+            // Collect class information
+            ['PUPPY', 'EO', 'BRONZE CGC', 'SILVER CGC', 'BEGINNER/Novice', 'WT', 'YOGA'].forEach(classType => {
+              if (row[classType] && row[classType].trim()) {
+                classNotes.push(`${classType}: ${row[classType].trim()}`);
+              }
+            });
+            
+            // Add class notes to client notes if available and not already mapped
+            if (classNotes.length > 0 && !tableGroups.clients.notes) {
+              clientData.notes = classNotes.join('\n');
+            }
+            
+            // Check for WhatsApp preference
+            if (row['WhatsApp'] && (row['WhatsApp'].toLowerCase() === 'yes' || row['WhatsApp'] === '1' || row['WhatsApp'] === 'true')) {
+              if (clientData.notes) {
+                clientData.notes += '\nPrefers WhatsApp for communication';
+              } else {
+                clientData.notes = 'Prefers WhatsApp for communication';
+              }
+            }
+            
+            // Check for Photo Permission
+            if (row['Photo Permission'] && (row['Photo Permission'].toLowerCase() === 'yes' || row['Photo Permission'] === '1' || row['Photo Permission'] === 'true')) {
+              if (clientData.notes) {
+                clientData.notes += '\nPhoto permission granted';
+              } else {
+                clientData.notes = 'Photo permission granted';
+              }
+            }
+            
             // Validate required fields
-            if (!clientData.first_name || !clientData.last_name || !clientData.email) {
-              throw new Error('Missing required client fields');
+            if (!clientData.first_name || !clientData.email) {
+              throw new Error('Missing required client fields: name or email');
+            }
+            
+            // Use a default last name if none provided
+            if (!clientData.last_name) {
+              clientData.last_name = '(no last name)';
             }
             
             const { data: clientResult, error: clientError } = await supabase
@@ -187,11 +258,14 @@ export function ImportHandlersModal() {
             
             // If client was created successfully and we have dog data, create the dog
             if (clientResult && clientResult.length > 0 && tableGroups.dogs) {
-              // Initialize with required fields to avoid TypeScript errors
+              // Initialize with required fields
               const dogData: {
                 name: string;
                 breed: string;
                 client_id: string;
+                age?: number;
+                notes?: string;
+                behavior_notes?: string;
                 [key: string]: any;
               } = {
                 name: '',
@@ -201,18 +275,47 @@ export function ImportHandlersModal() {
               
               // Fill in values from CSV based on mapping
               Object.entries(tableGroups.dogs).forEach(([dbField, csvHeader]) => {
-                // Handle numeric fields appropriately
-                if (dbField === 'age' || dbField === 'weight') {
-                  const value = row[csvHeader];
-                  dogData[dbField] = value ? Number(value) : null;
+                if (dbField === 'age' && row[csvHeader]) {
+                  // Handle DOB to age conversion
+                  try {
+                    const dobDate = new Date(row[csvHeader]);
+                    if (!isNaN(dobDate.getTime())) {
+                      const today = new Date();
+                      const ageInYears = Math.floor((today.getTime() - dobDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+                      dogData.age = ageInYears;
+                    }
+                  } catch {
+                    // If date parsing fails, try to see if it's already a number
+                    const value = parseFloat(row[csvHeader]);
+                    if (!isNaN(value)) {
+                      dogData.age = value;
+                    }
+                  }
+                } else if (dbField === 'weight' && row[csvHeader]) {
+                  // Handle weight conversion
+                  const value = parseFloat(row[csvHeader]);
+                  dogData.weight = isNaN(value) ? undefined : value;
                 } else {
                   dogData[dbField] = row[csvHeader];
                 }
               });
               
+              // Special handling for classes - combine into behavior_notes
+              const behaviorNotes = [];
+              
+              ['PUPPY', 'EO', 'BRONZE CGC', 'SILVER CGC', 'BEGINNER/Novice', 'WT', 'YOGA'].forEach(classType => {
+                if (row[classType] && row[classType].trim()) {
+                  behaviorNotes.push(`${classType}: ${row[classType].trim()}`);
+                }
+              });
+              
+              if (behaviorNotes.length > 0) {
+                dogData.behavior_notes = behaviorNotes.join('\n');
+              }
+              
               // Validate required fields
               if (!dogData.name || !dogData.breed) {
-                throw new Error('Missing required dog fields');
+                throw new Error('Missing required dog fields: name or breed');
               }
               
               const { error: dogError } = await supabase
@@ -301,10 +404,11 @@ export function ImportHandlersModal() {
               </div>
               
               <div className="text-sm text-gray-500">
-                <p>Your CSV file should contain handler and dog information. Required fields include:</p>
+                <p>Your CSV file should contain handler and dog information including:</p>
                 <ul className="list-disc pl-5 mt-2 space-y-1">
-                  <li>Handler first name, last name, and email</li>
-                  <li>Dog name and breed</li>
+                  <li>Handler name and email</li>
+                  <li>Dog's name and breed</li>
+                  <li>Optional: DOB, assessment notes, class info</li>
                 </ul>
               </div>
             </div>
@@ -330,6 +434,7 @@ export function ImportHandlersModal() {
                         <div key={`clients-${field.dbField}`} className="border rounded-md p-3">
                           <label className="block text-sm font-medium mb-1">
                             {field.dbField} {field.required && <span className="text-red-500">*</span>}
+                            {field.description && <span className="text-xs text-gray-500 ml-1">({field.description})</span>}
                           </label>
                           <select 
                             className="w-full border-gray-300 rounded-md"
@@ -369,6 +474,7 @@ export function ImportHandlersModal() {
                         <div key={`dogs-${field.dbField}`} className="border rounded-md p-3">
                           <label className="block text-sm font-medium mb-1">
                             {field.dbField} {field.required && <span className="text-red-500">*</span>}
+                            {field.description && <span className="text-xs text-gray-500 ml-1">({field.description})</span>}
                           </label>
                           <select 
                             className="w-full border-gray-300 rounded-md"
@@ -430,6 +536,16 @@ export function ImportHandlersModal() {
                       <p className="mt-1">This will create new handler and dog records in the database.</p>
                     </div>
                   </div>
+                </div>
+              </div>
+              
+              <div className="border rounded-md p-4">
+                <h4 className="font-medium mb-2">Special Handling</h4>
+                <div className="text-sm space-y-2">
+                  <p>• The "Name" column will be split into first and last name</p>
+                  <p>• DOB will be converted to age in years</p>
+                  <p>• Class information (PUPPY, EO, etc.) will be stored in the dog's behavior notes</p>
+                  <p>• WhatsApp and Photo Permission preferences will be saved in the client's notes</p>
                 </div>
               </div>
               
