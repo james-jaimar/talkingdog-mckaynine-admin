@@ -32,7 +32,7 @@ export function ImportHandlersModal() {
     if (currentStep === 2) {
       const isValid = validateMappings(fieldMappings);
       if (isValid) {
-        setCurrentStep(3);
+        setCurrentStep(prev => prev + 1);
       } else {
         toast({
           title: "Validation errors",
@@ -66,6 +66,11 @@ export function ImportHandlersModal() {
     try {
       const result = await processImport(csvData, fieldMappings, currentBranch?.id);
       if (result.success) {
+        toast({
+          title: "Import successful",
+          description: `Imported ${csvData.length} handlers successfully${result.errors.length > 0 ? ` with ${result.errors.length} errors` : ''}.`,
+          variant: "default"
+        });
         setOpen(false);
         // Reset for next import
         handleReset();
@@ -137,7 +142,7 @@ export function ImportHandlersModal() {
             {currentStep > 1 ? (
               <Button 
                 variant="outline" 
-                onClick={handleBack} 
+                onClick={handleBack}
                 disabled={isUploading}
                 type="button"
               >
@@ -160,6 +165,7 @@ export function ImportHandlersModal() {
                 onClick={handleImport} 
                 disabled={isUploading}
                 type="button"
+                variant="mckaynine"
               >
                 {isUploading ? "Importing..." : "Import Data"}
               </Button>
