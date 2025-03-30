@@ -20,6 +20,7 @@ export function useImportData() {
   
   const {
     isUploading,
+    processingResults,
     processImport
   } = useDataImport();
 
@@ -28,6 +29,7 @@ export function useImportData() {
     csvHeaders,
     csvData,
     isUploading,
+    processingResults,
     fieldMappings,
     validationErrors,
     handleFileChange,
