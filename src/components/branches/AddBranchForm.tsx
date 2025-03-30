@@ -30,6 +30,11 @@ export function AddBranchForm({ onSuccess }: AddBranchFormProps) {
     setIsSubmitting(true);
     
     try {
+      // Ensure capacity is a number before sending to API
+      const capacity = typeof values.capacity === 'string' 
+        ? parseInt(values.capacity as string, 10) || 10 
+        : values.capacity || 10;
+      
       const { error } = await supabase.from("branches").insert({
         name: values.name,
         address: values.address,
@@ -37,7 +42,7 @@ export function AddBranchForm({ onSuccess }: AddBranchFormProps) {
         postal_code: values.postalCode,
         email: values.email || null,
         phone: values.phone || null,
-        capacity: values.capacity || 10,
+        capacity: capacity,
         admin_id: values.adminId || null,
       });
       

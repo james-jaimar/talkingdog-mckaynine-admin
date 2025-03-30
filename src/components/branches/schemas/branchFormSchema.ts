@@ -8,7 +8,15 @@ export const branchFormSchema = z.object({
   postalCode: z.string().min(1, "Postal code is required"),
   email: z.string().email("Invalid email format").optional().or(z.literal("")),
   phone: z.string().optional().or(z.literal("")),
-  capacity: z.number().min(1, "Capacity must be at least 1").default(10),
+  capacity: z
+    .union([
+      z.number().min(1, "Capacity must be at least 1"),
+      z.string().transform((val) => {
+        const parsed = parseInt(val, 10);
+        return isNaN(parsed) ? 10 : parsed;
+      })
+    ])
+    .default(10),
   adminId: z.string().optional().or(z.literal("")),
 });
 

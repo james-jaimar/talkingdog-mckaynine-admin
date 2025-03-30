@@ -77,7 +77,15 @@ export function BranchLocationFields({ control }: BranchLocationFieldsProps) {
             <FormItem>
               <FormLabel>Capacity</FormLabel>
               <FormControl>
-                <Input type="number" placeholder="10" {...field} />
+                <Input 
+                  type="number"
+                  placeholder="10" 
+                  {...field}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    field.onChange(value === "" ? "" : Number(value));
+                  }}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
