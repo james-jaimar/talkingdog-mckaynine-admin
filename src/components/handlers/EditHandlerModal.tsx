@@ -5,7 +5,7 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/u
 import { Edit } from "lucide-react";
 import { useState } from "react";
 import { EditHandlerForm } from "./EditHandlerForm";
-import { useMobile } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface EditHandlerModalProps {
   handler: {
@@ -24,7 +24,7 @@ interface EditHandlerModalProps {
 
 export function EditHandlerModal({ handler, onSuccess }: EditHandlerModalProps) {
   const [open, setOpen] = useState(false);
-  const isMobile = useMobile();
+  const isMobile = useIsMobile();
 
   if (isMobile) {
     return (
