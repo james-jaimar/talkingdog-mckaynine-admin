@@ -207,6 +207,7 @@ export type Database = {
           id: string
           recurrence_pattern: string | null
           recurring: boolean | null
+          selected_dates: string[] | null
           start_time: string
           trainer_id: string
           updated_at: string
@@ -218,6 +219,7 @@ export type Database = {
           id?: string
           recurrence_pattern?: string | null
           recurring?: boolean | null
+          selected_dates?: string[] | null
           start_time: string
           trainer_id: string
           updated_at?: string
@@ -229,6 +231,7 @@ export type Database = {
           id?: string
           recurrence_pattern?: string | null
           recurring?: boolean | null
+          selected_dates?: string[] | null
           start_time?: string
           trainer_id?: string
           updated_at?: string

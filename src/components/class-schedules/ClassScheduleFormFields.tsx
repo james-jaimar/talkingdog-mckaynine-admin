@@ -20,6 +20,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Switch } from "@/components/ui/switch";
 import { ClassScheduleFormValues } from "./schemas/classScheduleFormSchema";
 import { Separator } from "@/components/ui/separator";
+import { useState } from "react";
 
 interface ClassScheduleFormFieldsProps {
   control: Control<ClassScheduleFormValues>;
@@ -32,6 +33,8 @@ export function ClassScheduleFormFields({
   trainers, 
   isLoadingTrainers 
 }: ClassScheduleFormFieldsProps) {
+  const [selectedDates, setSelectedDates] = useState<Date[]>([]);
+
   return (
     <div className="space-y-6">
       {/* Trainer Selection */}
@@ -110,9 +113,10 @@ export function ClassScheduleFormFields({
                 selected={field.value}
                 onSelect={(dates) => {
                   // Ensure we always have an array of dates
-                  const selectedDates = dates || [];
-                  console.log("Selected dates in calendar:", selectedDates);
-                  field.onChange(selectedDates);
+                  const selectedDatesArray = dates || [];
+                  setSelectedDates(selectedDatesArray);
+                  field.onChange(selectedDatesArray);
+                  console.log("Selected dates in calendar:", selectedDatesArray);
                 }}
                 numberOfMonths={4}
                 disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
@@ -120,6 +124,11 @@ export function ClassScheduleFormFields({
               />
             </FormControl>
             <FormMessage />
+            {selectedDates.length > 0 && (
+              <p className="text-sm text-muted-foreground mt-2">
+                {selectedDates.length} date{selectedDates.length !== 1 ? 's' : ''} selected
+              </p>
+            )}
           </FormItem>
         )}
       />
