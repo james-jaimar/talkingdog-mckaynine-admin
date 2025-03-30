@@ -24,10 +24,11 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { format } from "date-fns";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, CalendarDays } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useClassScheduleForm } from "./hooks/useClassScheduleForm";
 import { ClassSchedule } from "./types/classSchedule";
+import { useEffect } from "react";
 
 interface EditClassScheduleFormProps {
   classId: string;
@@ -48,6 +49,16 @@ export function EditClassScheduleForm({
 
   // Extract recurring state to conditionally show recurrence pattern field
   const isRecurring = form.watch("isRecurring");
+  const startTime = form.watch("startTime");
+  
+  // Update reference title when schedule.class.name or start time changes
+  useEffect(() => {
+    if (schedule.class?.name && startTime) {
+      const formattedTime = startTime.split(":")[0].padStart(2, "0") + "h" + startTime.split(":")[1].padStart(2, "0");
+      const referenceTitle = `${schedule.class.name} ${formattedTime} ${format(new Date(), 'MMMM/yyyy')}`;
+      form.setValue("referenceTitle", referenceTitle);
+    }
+  }, [schedule.class?.name, startTime, form]);
 
   return (
     <Form {...form}>
@@ -192,6 +203,29 @@ export function EditClassScheduleForm({
             )}
           />
         </div>
+
+        <FormField
+          control={form.control}
+          name="selectedDates"
+          render={({ field }) => (
+            <FormItem className="flex flex-col">
+              <FormLabel className="flex items-center">
+                <CalendarDays className="h-4 w-4 mr-2" />
+                Select Class Dates
+              </FormLabel>
+              <div className="border rounded-md p-4">
+                <Calendar
+                  mode="multiple"
+                  selected={field.value}
+                  onSelect={field.onChange}
+                  numberOfMonths={3}
+                  className="w-full pointer-events-auto"
+                />
+              </div>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <FormField
           control={form.control}

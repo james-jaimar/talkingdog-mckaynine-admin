@@ -1,3 +1,4 @@
+
 import * as React from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { DayPicker } from "react-day-picker";
@@ -11,14 +12,16 @@ function Calendar({
   className,
   classNames,
   showOutsideDays = true,
+  numberOfMonths = 1,
   ...props
 }: CalendarProps) {
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
+      numberOfMonths={numberOfMonths}
       className={cn("p-3", className)}
       classNames={{
-        months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
+        months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0 flex-wrap",
         month: "space-y-4",
         caption: "flex justify-center pt-1 relative items-center",
         caption_label: "text-sm font-medium",

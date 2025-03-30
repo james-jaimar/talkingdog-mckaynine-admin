@@ -24,16 +24,19 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { format } from "date-fns";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, CalendarDays } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useClassScheduleForm } from "./hooks/useClassScheduleForm";
+import { Class } from "@/components/classes/types/class";
+import { useEffect } from "react";
 
 interface AddClassScheduleFormProps {
   classId: string;
+  classData: Class;
   onSuccess: () => void;
 }
 
-export function AddClassScheduleForm({ classId, onSuccess }: AddClassScheduleFormProps) {
+export function AddClassScheduleForm({ classId, classData, onSuccess }: AddClassScheduleFormProps) {
   const { form, isSubmitting, trainers, isLoadingTrainers, onSubmit } = useClassScheduleForm(
     classId, 
     null, 
@@ -42,6 +45,16 @@ export function AddClassScheduleForm({ classId, onSuccess }: AddClassScheduleFor
 
   // Extract recurring state to conditionally show recurrence pattern field
   const isRecurring = form.watch("isRecurring");
+  const startTime = form.watch("startTime");
+  
+  // Update reference title when class data or start time changes
+  useEffect(() => {
+    if (classData && startTime) {
+      const formattedTime = startTime.split(":")[0].padStart(2, "0") + "h" + startTime.split(":")[1].padStart(2, "0");
+      const referenceTitle = `${classData.name} ${formattedTime} ${format(new Date(), 'MMMM/yyyy')}`;
+      form.setValue("referenceTitle", referenceTitle);
+    }
+  }, [classData, startTime, form]);
 
   return (
     <Form {...form}>
@@ -186,6 +199,29 @@ export function AddClassScheduleForm({ classId, onSuccess }: AddClassScheduleFor
             )}
           />
         </div>
+
+        <FormField
+          control={form.control}
+          name="selectedDates"
+          render={({ field }) => (
+            <FormItem className="flex flex-col">
+              <FormLabel className="flex items-center">
+                <CalendarDays className="h-4 w-4 mr-2" />
+                Select Class Dates
+              </FormLabel>
+              <div className="border rounded-md p-4">
+                <Calendar
+                  mode="multiple"
+                  selected={field.value}
+                  onSelect={field.onChange}
+                  numberOfMonths={3}
+                  className="w-full pointer-events-auto"
+                />
+              </div>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <FormField
           control={form.control}

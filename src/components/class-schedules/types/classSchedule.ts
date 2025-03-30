@@ -7,6 +7,7 @@ export interface ClassSchedule {
   end_time: string;
   recurring: boolean;
   recurrence_pattern: string | null;
+  selected_dates?: string[]; // Add this field for multiple date selection
   created_at: string;
   updated_at: string;
   trainer?: {

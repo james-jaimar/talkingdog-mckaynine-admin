@@ -23,12 +23,13 @@ export function AddClassScheduleModal({
 }: AddClassScheduleModalProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Schedule for {classData.name}</DialogTitle>
         </DialogHeader>
         <AddClassScheduleForm 
           classId={classId} 
+          classData={classData}
           onSuccess={() => onOpenChange(false)} 
         />
       </DialogContent>

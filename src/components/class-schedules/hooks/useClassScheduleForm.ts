@@ -39,6 +39,11 @@ export function useClassScheduleForm(
     const startDate = new Date(schedule.start_time);
     const endDate = new Date(schedule.end_time);
     
+    // Convert stored string dates to Date objects if they exist
+    const selectedDates = schedule.selected_dates 
+      ? schedule.selected_dates.map(dateStr => new Date(dateStr))
+      : [];
+    
     defaultValues = {
       trainerId: schedule.trainer_id,
       startDate: startDate,
@@ -48,6 +53,7 @@ export function useClassScheduleForm(
       isRecurring: schedule.recurring || false,
       recurrencePattern: schedule.recurrence_pattern || "",
       referenceTitle: schedule.recurrence_pattern || "Class " + format(startDate, "MMMM/yyyy"),
+      selectedDates: selectedDates,
     };
   } else {
     const now = new Date();
@@ -69,6 +75,7 @@ export function useClassScheduleForm(
       isRecurring: false,
       recurrencePattern: "",
       referenceTitle: "Class " + format(nextHour, "MMMM/yyyy"),
+      selectedDates: [],
     };
   }
   
@@ -141,13 +148,17 @@ export function useClassScheduleForm(
         throw new Error("End time must be after start time");
       }
       
+      // Convert selected dates to ISO strings if they exist
+      const selectedDatesISO = values.selectedDates?.map(date => date.toISOString()) || [];
+      
       const scheduleData = {
         class_id: classId,
         trainer_id: values.trainerId,
         start_time: startDateTime.toISOString(),
         end_time: endDateTime.toISOString(),
         recurring: values.isRecurring,
-        recurrence_pattern: values.isRecurring ? values.referenceTitle : null,
+        recurrence_pattern: values.referenceTitle,
+        selected_dates: selectedDatesISO,
       };
       
       if (schedule) {
