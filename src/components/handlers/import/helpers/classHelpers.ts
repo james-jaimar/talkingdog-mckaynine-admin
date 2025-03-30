@@ -10,7 +10,17 @@ export async function processClassEnrollments(
   dogId: string
 ): Promise<void> {
   // Define a properly typed enrollment data object
-  const enrollmentData = {
+  const enrollmentData: {
+    dog_id: string;
+    puppy_class: boolean;
+    eo_class: boolean;
+    bronze_cgc_class: boolean;
+    silver_cgc_class: boolean;
+    beginner_novice_class: boolean;
+    wt_class: boolean;
+    yoga_class: boolean;
+    [key: string]: string | boolean; // Add index signature to allow dynamic property assignment
+  } = {
     dog_id: dogId,
     puppy_class: false,
     eo_class: false,
@@ -60,7 +70,7 @@ export async function processClassEnrollments(
     if (dbFieldPath.startsWith('class_enrollments.')) {
       const dbField = dbFieldPath.replace('class_enrollments.', '');
       if (row[csvHeader]) {
-        (enrollmentData as any)[dbField] = toBool(row[csvHeader]);
+        enrollmentData[dbField] = toBool(row[csvHeader]);
       }
     }
   });
