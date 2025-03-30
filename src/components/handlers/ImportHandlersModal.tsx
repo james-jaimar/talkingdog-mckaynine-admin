@@ -170,6 +170,7 @@ export function ImportHandlersModal() {
                 variant="mckaynine"
               >
                 {isUploading ? "Importing..." : "Import Data"}
+                <Import className="h-4 w-4 ml-2" />
               </Button>
             )}
           </div>
