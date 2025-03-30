@@ -27,8 +27,11 @@ export async function processClassEnrollments(
     Object.entries(fieldMappings).forEach(([dbField, csvHeader]) => {
       const value = row[csvHeader];
       if (value && value.toString().trim().toLowerCase() !== 'no' && value.toString().trim() !== '0') {
-        classEnrollments[dbField as keyof typeof classEnrollments] = true;
-        hasEnrollments = true;
+        // Use type assertion to avoid TypeScript error
+        if (dbField in classEnrollments) {
+          (classEnrollments as any)[dbField] = true;
+          hasEnrollments = true;
+        }
       }
     });
     

@@ -26,7 +26,9 @@ export async function processDogData(
   
   // Map fields from CSV to dog data
   Object.entries(fieldMappings).forEach(([dbField, csvHeader]) => {
-    dogData[dbField as keyof typeof dogData] = row[csvHeader];
+    if (dbField in dogData) {
+      (dogData as any)[dbField] = row[csvHeader];
+    }
   });
   
   // Ensure required fields are present

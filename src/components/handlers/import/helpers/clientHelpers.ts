@@ -55,7 +55,9 @@ export async function processClientData(
   
   // Map fields from CSV to client data
   Object.entries(fieldMappings).forEach(([dbField, csvHeader]) => {
-    clientData[dbField as keyof typeof clientData] = row[csvHeader];
+    if (dbField in clientData) {
+      (clientData as any)[dbField] = row[csvHeader];
+    }
   });
   
   // Handle special case for name if first_name and last_name are present
@@ -91,10 +93,23 @@ export async function processClientData(
         clientData.last_name = nameParts.length > 1 ? nameParts.slice(1).join(' ') : 'Unknown';
       }
       
+      // Email is required for Supabase insertion, ensure it exists
+      const clientRecord = {
+        branch_id: clientData.branch_id,
+        email: clientData.email, // Already checked for existence above
+        first_name: clientData.first_name,
+        last_name: clientData.last_name,
+        phone: clientData.phone,
+        address: clientData.address,
+        city: clientData.city,
+        postal_code: clientData.postal_code,
+        notes: clientData.notes
+      };
+      
       // Create new client with required fields
       const { data, error } = await supabase
         .from('clients')
-        .insert(clientData)
+        .insert(clientRecord)
         .select('id')
         .single();
         
