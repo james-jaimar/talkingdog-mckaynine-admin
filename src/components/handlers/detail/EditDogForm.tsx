@@ -1,41 +1,20 @@
 
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
+import { Form } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useState } from "react";
-import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
-// Form validation schema
-const formSchema = z.object({
-  name: z.string().min(1, { message: "Dog's name is required" }),
-  breed: z.string().min(1, { message: "Breed is required" }),
-  age: z.coerce.number().optional(),
-  weight: z.coerce.number().optional(),
-  notes: z.string().optional(),
-  behavior_notes: z.string().optional(),
-  medical_notes: z.string().optional(),
-});
-
-type FormValues = z.infer<typeof formSchema>;
+import { BasicInfoTab } from "./dog-form/BasicInfoTab";
+import { BehaviorTab } from "./dog-form/BehaviorTab";
+import { MedicalTab } from "./dog-form/MedicalTab";
+import { FormActions } from "./dog-form/FormActions";
+import { formSchema, type FormValues, type DogData } from "./dog-form/dogFormSchema";
 
 interface EditDogFormProps {
-  dog?: {
-    id: string;
-    name: string;
-    breed: string;
-    age?: number;
-    weight?: number;
-    notes?: string;
-    behavior_notes?: string;
-    medical_notes?: string;
-    avatar_url?: string;
-  };
+  dog?: DogData;
   clientId: string;
   onSuccess?: () => void;
   isNew?: boolean;
@@ -81,7 +60,7 @@ export function EditDogForm({ dog, clientId, onSuccess, isNew = false }: EditDog
           title: "Dog added",
           description: "The new dog has been added successfully",
         });
-      } else if (dog) {
+      } else if (dog?.id) {
         // Update existing dog
         const { error } = await supabase
           .from("dogs")
@@ -117,6 +96,10 @@ export function EditDogForm({ dog, clientId, onSuccess, isNew = false }: EditDog
     }
   };
 
+  const handleCancel = () => {
+    if (onSuccess) onSuccess();
+  };
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-4">
@@ -127,133 +110,24 @@ export function EditDogForm({ dog, clientId, onSuccess, isNew = false }: EditDog
             <TabsTrigger value="medical">Medical</TabsTrigger>
           </TabsList>
           
-          <TabsContent value="basic" className="space-y-4">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Dog's Name</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="breed"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Breed</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="age"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Age (years)</FormLabel>
-                    <FormControl>
-                      <Input {...field} type="number" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="weight"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Weight (lbs)</FormLabel>
-                    <FormControl>
-                      <Input {...field} type="number" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <FormField
-              control={form.control}
-              name="notes"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>General Notes</FormLabel>
-                  <FormControl>
-                    <Textarea 
-                      {...field} 
-                      rows={4}
-                      placeholder="General notes about the dog" 
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+          <TabsContent value="basic">
+            <BasicInfoTab control={form.control} />
           </TabsContent>
           
-          <TabsContent value="behavior" className="space-y-4">
-            <FormField
-              control={form.control}
-              name="behavior_notes"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Behavior Notes</FormLabel>
-                  <FormControl>
-                    <Textarea 
-                      {...field} 
-                      rows={8}
-                      placeholder="Notes about the dog's behavior, training history, etc." 
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+          <TabsContent value="behavior">
+            <BehaviorTab control={form.control} />
           </TabsContent>
           
-          <TabsContent value="medical" className="space-y-4">
-            <FormField
-              control={form.control}
-              name="medical_notes"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Medical Notes</FormLabel>
-                  <FormControl>
-                    <Textarea 
-                      {...field} 
-                      rows={8}
-                      placeholder="Medical history, allergies, medications, etc." 
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+          <TabsContent value="medical">
+            <MedicalTab control={form.control} />
           </TabsContent>
         </Tabs>
 
-        <div className="flex justify-end gap-2 pt-2">
-          <Button type="button" variant="outline" onClick={onSuccess}>
-            Cancel
-          </Button>
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? "Saving..." : isNew ? "Add Dog" : "Save Changes"}
-          </Button>
-        </div>
+        <FormActions 
+          isSubmitting={isSubmitting} 
+          onCancel={handleCancel}
+          isNew={isNew}
+        />
       </form>
     </Form>
   );
