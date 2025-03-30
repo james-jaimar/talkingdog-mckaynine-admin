@@ -12,13 +12,13 @@ export default function Branches() {
         <title>Branches - McKaynine Training Centre</title>
       </Helmet>
       
-      <div className="flex flex-col space-y-6">
-        <div className="flex items-center justify-between">
+      <div className="flex flex-col space-y-6 w-full">
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <h1 className="text-3xl font-bold tracking-tight">Branches</h1>
           <AddBranchModal />
         </div>
         
-        <Card>
+        <Card className="w-full">
           <CardHeader className="pb-2">
             <CardTitle>All Branches</CardTitle>
             <CardDescription>

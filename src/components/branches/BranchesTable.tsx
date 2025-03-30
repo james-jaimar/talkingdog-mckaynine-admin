@@ -94,7 +94,7 @@ export function BranchesTable() {
   }
 
   return (
-    <div className="overflow-x-auto">
+    <div className="w-full overflow-auto">
       <Table>
         <TableHeader>
           <TableRow>
