@@ -1,3 +1,4 @@
+
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,7 +12,7 @@ import { HandlerDetailSkeleton } from "@/components/handlers/detail/HandlerDetai
 export default function HandlerDetail() {
   const { handlerId } = useParams();
   
-  const { data: handler, isLoading } = useQuery({
+  const { data: handler, isLoading, refetch } = useQuery({
     queryKey: ['handler', handlerId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -47,10 +48,18 @@ export default function HandlerDetail() {
     }
   });
 
+  const handleHandlerUpdated = () => {
+    refetch();
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <HandlerDetailHeader isLoading={isLoading} handler={handler} />
+        <HandlerDetailHeader 
+          isLoading={isLoading} 
+          handler={handler} 
+          onHandlerUpdated={handleHandlerUpdated} 
+        />
 
         {isLoading ? (
           <HandlerDetailSkeleton />
