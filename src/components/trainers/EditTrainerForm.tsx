@@ -13,13 +13,17 @@ interface EditTrainerFormProps {
 }
 
 export function EditTrainerForm({ trainer, onSuccess }: EditTrainerFormProps) {
-  const { form, isSubmitting, branches, onSubmit } = useTrainerForm(trainer, onSuccess);
+  const { form, isSubmitting, branches, isLoadingBranches, onSubmit } = useTrainerForm(trainer, onSuccess);
   
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 mt-4">
         <TrainerPersonalInfoFields form={form} />
-        <TrainerSpecialtyFields form={form} branches={branches} />
+        <TrainerSpecialtyFields 
+          form={form} 
+          branches={branches} 
+          isLoadingBranches={isLoadingBranches} 
+        />
         <TrainerBioField form={form} />
         
         <Button 

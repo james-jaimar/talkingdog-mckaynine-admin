@@ -12,6 +12,7 @@ import { OptionType } from "@/components/ui/multi-select";
 export function useTrainerForm(trainer: Trainer, onSuccess: () => void) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [branches, setBranches] = useState<OptionType[]>([]);
+  const [isLoadingBranches, setIsLoadingBranches] = useState(true);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
@@ -34,6 +35,7 @@ export function useTrainerForm(trainer: Trainer, onSuccess: () => void) {
   // Fetch branches for dropdown
   useEffect(() => {
     const fetchBranches = async () => {
+      setIsLoadingBranches(true);
       try {
         console.log("Fetching branches for trainer form...");
         
@@ -50,6 +52,7 @@ export function useTrainerForm(trainer: Trainer, onSuccess: () => void) {
         if (data && data.length > 0) {
           console.log("Branches data received:", data);
           
+          // Map branch data to OptionType format
           const branchOptions = data.map(branch => ({
             value: branch.id,
             label: branch.name
@@ -69,6 +72,8 @@ export function useTrainerForm(trainer: Trainer, onSuccess: () => void) {
           variant: "destructive",
         });
         setBranches([]);
+      } finally {
+        setIsLoadingBranches(false);
       }
     };
     
@@ -119,6 +124,7 @@ export function useTrainerForm(trainer: Trainer, onSuccess: () => void) {
     form,
     isSubmitting,
     branches,
+    isLoadingBranches,
     onSubmit
   };
 }

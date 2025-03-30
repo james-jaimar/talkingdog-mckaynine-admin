@@ -5,13 +5,19 @@ import { UseFormReturn } from "react-hook-form";
 import { TrainerFormValues } from "../schemas/trainerFormSchema";
 import { branchIdsToOptions, specialtiesAsOptions } from "../utils/optionUtils";
 import { useState, useEffect } from "react";
+import { Loader } from "lucide-react";
 
 interface TrainerSpecialtyFieldsProps {
   form: UseFormReturn<TrainerFormValues>;
   branches: OptionType[];
+  isLoadingBranches?: boolean;
 }
 
-export function TrainerSpecialtyFields({ form, branches }: TrainerSpecialtyFieldsProps) {
+export function TrainerSpecialtyFields({ 
+  form, 
+  branches,
+  isLoadingBranches = false
+}: TrainerSpecialtyFieldsProps) {
   const [specialtyOptions] = useState<OptionType[]>([
     { label: "Obedience Training", value: "Obedience Training" },
     { label: "Behavioral Correction", value: "Behavioral Correction" },
@@ -45,19 +51,26 @@ export function TrainerSpecialtyFields({ form, branches }: TrainerSpecialtyField
           <FormItem>
             <FormLabel>Branches</FormLabel>
             <FormControl>
-              <MultiSelect
-                options={branches || []}
-                value={branchIdsToOptions(branchIds, branches || [])}
-                onChange={(selected) => {
-                  const selectedIds = selected.map(item => item.value);
-                  console.log("Branch selection changed to:", selectedIds);
-                  form.setValue('branchIds', selectedIds, { 
-                    shouldValidate: true, 
-                    shouldDirty: true 
-                  });
-                }}
-                placeholder="Select branches"
-              />
+              {isLoadingBranches ? (
+                <div className="flex items-center space-x-2 h-10 px-3 py-2 border rounded-md">
+                  <Loader className="h-4 w-4 animate-spin" />
+                  <span className="text-sm text-muted-foreground">Loading branches...</span>
+                </div>
+              ) : (
+                <MultiSelect
+                  options={branches || []}
+                  value={branchIdsToOptions(branchIds, branches || [])}
+                  onChange={(selected) => {
+                    const selectedIds = selected.map(item => item.value);
+                    console.log("Branch selection changed to:", selectedIds);
+                    form.setValue('branchIds', selectedIds, { 
+                      shouldValidate: true, 
+                      shouldDirty: true 
+                    });
+                  }}
+                  placeholder="Select branches"
+                />
+              )}
             </FormControl>
             <FormMessage />
           </FormItem>
