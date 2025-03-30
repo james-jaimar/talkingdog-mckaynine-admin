@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Import } from "lucide-react";
+import { Import, ArrowRight, ArrowLeft } from "lucide-react";
 import { useImportData } from "./import/useImportData";
 import { UploadStep } from "./import/UploadStep";
 import { MappingStep } from "./import/MappingStep";
@@ -146,6 +146,7 @@ export function ImportHandlersModal() {
                 disabled={isUploading}
                 type="button"
               >
+                <ArrowLeft className="h-4 w-4 mr-2" />
                 Back
               </Button>
             ) : (
@@ -159,6 +160,7 @@ export function ImportHandlersModal() {
                 type="button"
               >
                 Next
+                <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
             ) : (
               <Button 
