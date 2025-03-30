@@ -1,5 +1,4 @@
 
-import { SidebarNav } from "./SidebarNav";
 import { Header } from "./Header";
 import { Dog } from "lucide-react";
 
@@ -9,18 +8,7 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
-    <div className="flex min-h-screen bg-gray-100">
-      {/* Sidebar */}
-      <div className="hidden md:flex w-64 flex-col bg-white border-r">
-        <div className="flex items-center h-16 px-6 border-b">
-          <Dog className="h-8 w-8 text-mckaynine-600" />
-          <span className="font-bold text-xl ml-2 text-mckaynine-700">McKaynine</span>
-        </div>
-        <div className="flex-1 py-4 px-3">
-          <SidebarNav />
-        </div>
-      </div>
-      
+    <div className="flex flex-col min-h-screen bg-gray-100">
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
         <Header />
