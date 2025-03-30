@@ -84,7 +84,7 @@ export function ReviewStep({ csvData, fieldMappings, branchName }: ReviewStepPro
                 <TableRow key={`row-${rowIndex}`}>
                   {headers.map(header => (
                     <TableCell key={`${rowIndex}-${header}`} className="whitespace-nowrap truncate max-w-[200px]">
-                      {row[header] !== undefined ? String(row[header]) : "-"}
+                      {row[header] !== undefined && row[header] !== null ? String(row[header]) : "-"}
                     </TableCell>
                   ))}
                 </TableRow>

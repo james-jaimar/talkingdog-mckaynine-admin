@@ -54,6 +54,7 @@ export function ImportHandlersModal() {
   };
 
   const handleImport = async () => {
+    console.log("Import button clicked");
     if (!csvData || csvData.length === 0) {
       toast({
         title: "No data to import",
@@ -75,7 +76,7 @@ export function ImportHandlersModal() {
       if (result.success) {
         toast({
           title: "Import successful",
-          description: `Imported ${csvData.length} handlers successfully${result.errors.length > 0 ? ` with ${result.errors.length} errors` : ''}.`,
+          description: `Imported ${csvData.length - result.errors.length} handlers successfully${result.errors.length > 0 ? ` with ${result.errors.length} errors` : ''}.`,
           variant: "default"
         });
         setOpen(false);
@@ -158,7 +159,6 @@ export function ImportHandlersModal() {
                 variant="outline" 
                 onClick={handleBack}
                 disabled={isUploading}
-                type="button"
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back
@@ -171,7 +171,6 @@ export function ImportHandlersModal() {
               <Button 
                 onClick={handleNext} 
                 disabled={currentStep === 1 && !csvFile}
-                type="button"
               >
                 Next
                 <ArrowRight className="h-4 w-4 ml-2" />
@@ -180,7 +179,6 @@ export function ImportHandlersModal() {
               <Button 
                 onClick={handleImport} 
                 disabled={isUploading}
-                type="button"
                 variant="mckaynine"
                 className="px-6 py-2"
               >

@@ -21,7 +21,7 @@ export function useDataImport() {
     branchId?: string | null
   ): Promise<ImportResult> => {
     setIsUploading(true);
-    console.log("Processing import...");
+    console.log("Processing import with", csvData.length, "records");
     const errors: string[] = [];
     const successful: number[] = [];
 
@@ -110,7 +110,7 @@ export function useDataImport() {
       
       console.log("Import completed:", successful.length, "successful,", errors.length, "errors");
       
-      // Return the result - don't show toast here as it's handled in the modal
+      // Return the result
       return { 
         success: successful.length > 0, 
         errors 
