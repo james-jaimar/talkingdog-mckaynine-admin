@@ -62,44 +62,46 @@ export function useDataImport() {
         tableFields[table][csvHeader] = dbFieldWithTable;
       });
       
-      console.log("Grouped field mappings by table:", tableFields);
-      
       // Process data row by row
       for (let i = 0; i < data.length; i++) {
         const row = data[i];
         
         try {
-          // Check if email exists in current row
+          // Skip rows without email
           if (!row[emailHeader] || row[emailHeader].trim() === '') {
             throw new Error('Email is required for client import');
           }
-          
-          console.log(`Processing row ${i+1}:`, row);
           
           // Process client data first
           let clientId: string | undefined;
           if (tableFields['clients']) {
             clientId = await processClientData(row, tableFields['clients'], branchId);
-            console.log(`Client created/updated with ID: ${clientId}`);
             
             // Process dog data if client was created
             if (clientId && tableFields['dogs']) {
-              const dogId = await processDogData(row, tableFields['dogs'], clientId);
-              console.log(`Dog created with ID: ${dogId}`);
-              
-              // Process class enrollments if dog was created
-              if (dogId && tableFields['class_enrollments']) {
-                await processClassEnrollments(row, tableFields['class_enrollments'], dogId);
-                console.log(`Class enrollments processed for dog ID: ${dogId}`);
+              try {
+                const dogId = await processDogData(row, tableFields['dogs'], clientId);
+                
+                // Process class enrollments if dog was created (but don't fail the import if this fails)
+                if (dogId && tableFields['class_enrollments']) {
+                  try {
+                    await processClassEnrollments(row, tableFields['class_enrollments'], dogId);
+                  } catch (classError: any) {
+                    console.warn(`Class enrollment processing failed for row ${i+1} but continuing import:`, classError);
+                  }
+                }
+              } catch (dogError: any) {
+                console.warn(`Dog processing failed for row ${i+1} but continuing import:`, dogError);
               }
             }
+            
+            // Count as processed if at least the client was created
+            processed++;
+            setProcessingResults(prev => ({
+              ...prev,
+              processed: processed
+            }));
           }
-          
-          processed++;
-          setProcessingResults(prev => ({
-            ...prev,
-            processed: processed
-          }));
         } catch (error: any) {
           console.error(`Error processing row ${i+1}:`, error);
           errors.push({ 

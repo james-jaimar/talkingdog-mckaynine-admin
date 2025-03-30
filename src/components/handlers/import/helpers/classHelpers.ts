@@ -9,8 +9,6 @@ export async function processClassEnrollments(
   fieldMappings: Record<string, string>,
   dogId: string
 ): Promise<void> {
-  console.log("Processing class enrollments with mappings:", fieldMappings);
-  
   // Define a properly typed enrollment data object
   const enrollmentData = {
     dog_id: dogId,
@@ -23,32 +21,40 @@ export async function processClassEnrollments(
     yoga_class: false
   };
   
-  // Check which class fields are mapped
-  const classFields = [
-    { csvField: 'class_enrollments.puppy_class', dbField: 'puppy_class' },
-    { csvField: 'class_enrollments.eo_class', dbField: 'eo_class' },
-    { csvField: 'class_enrollments.bronze_cgc_class', dbField: 'bronze_cgc_class' },
-    { csvField: 'class_enrollments.silver_cgc_class', dbField: 'silver_cgc_class' },
-    { csvField: 'class_enrollments.beginner_novice_class', dbField: 'beginner_novice_class' },
-    { csvField: 'class_enrollments.wt_class', dbField: 'wt_class' },
-    { csvField: 'class_enrollments.yoga_class', dbField: 'yoga_class' }
-  ];
+  // Map of CSV field paths to database fields
+  const classFieldsMap = {
+    'class_enrollments.puppy_class': 'puppy_class',
+    'class_enrollments.eo_class': 'eo_class',
+    'class_enrollments.bronze_cgc_class': 'bronze_cgc_class',
+    'class_enrollments.silver_cgc_class': 'silver_cgc_class',
+    'class_enrollments.beginner_novice_class': 'beginner_novice_class',
+    'class_enrollments.wt_class': 'wt_class',
+    'class_enrollments.yoga_class': 'yoga_class'
+  };
   
-  // Check which classes are enabled
-  classFields.forEach(({ csvField, dbField }) => {
-    const csvHeader = Object.entries(fieldMappings).find(([_, value]) => value === csvField)?.[0];
-    
-    if (csvHeader) {
+  // Check which class fields are mapped and update enrollment data
+  Object.entries(fieldMappings).forEach(([csvHeader, dbFieldPath]) => {
+    if (Object.keys(classFieldsMap).includes(dbFieldPath)) {
+      const dbField = classFieldsMap[dbFieldPath as keyof typeof classFieldsMap];
       const value = row[csvHeader];
+      
       // Convert various formats to boolean
-      const boolValue = value && 
-        (value === true || 
-         value === 1 || 
-         value === '1' || 
-         value.toString().toLowerCase() === 'yes' || 
-         value.toString().toLowerCase() === 'true');
-         
-      // Safely assign the boolean value using a type-safe approach
+      let boolValue = false;
+      if (value !== undefined && value !== null) {
+        if (typeof value === 'boolean') {
+          boolValue = value;
+        } else if (typeof value === 'number') {
+          boolValue = value === 1;
+        } else if (typeof value === 'string') {
+          const lowercaseValue = value.toLowerCase();
+          boolValue = lowercaseValue === 'yes' || 
+                    lowercaseValue === 'true' || 
+                    lowercaseValue === '1' ||
+                    lowercaseValue === 'y';
+        }
+      }
+      
+      // Update the enrollment data with the boolean value
       if (dbField === 'puppy_class') enrollmentData.puppy_class = boolValue;
       else if (dbField === 'eo_class') enrollmentData.eo_class = boolValue;
       else if (dbField === 'bronze_cgc_class') enrollmentData.bronze_cgc_class = boolValue;
@@ -71,15 +77,21 @@ export async function processClassEnrollments(
   
   console.log("Creating class enrollment with data:", enrollmentData);
   
-  // Insert enrollment data
-  const { error } = await supabase
-    .from('class_enrollments')
-    .insert(enrollmentData);
+  try {
+    // Insert enrollment data
+    const { error } = await supabase
+      .from('class_enrollments')
+      .insert(enrollmentData);
+      
+    if (error) {
+      console.error("Error creating class enrollment:", error);
+      throw error;
+    }
     
-  if (error) {
-    console.error("Error creating class enrollment:", error);
-    throw error;
+    console.log("Class enrollments created successfully");
+  } catch (error) {
+    console.error("Error in processClassEnrollments:", error);
+    // Don't throw the error here, just log it
+    // This prevents the entire import from failing if class enrollments fail
   }
-  
-  console.log("Class enrollments created successfully");
 }
