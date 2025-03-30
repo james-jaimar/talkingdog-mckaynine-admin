@@ -9,20 +9,12 @@ interface HandlerPersonalInfoFieldsProps {
 export function HandlerPersonalInfoFields({ control }: HandlerPersonalInfoFieldsProps) {
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <FormTextField 
-          control={control}
-          name="firstName"
-          label="First Name"
-          placeholder="John"
-        />
-        <FormTextField 
-          control={control}
-          name="lastName"
-          label="Last Name"
-          placeholder="Doe"
-        />
-      </div>
+      <FormTextField 
+        control={control}
+        name="name"
+        label="Name"
+        placeholder="John Doe"
+      />
 
       <FormTextField 
         control={control}

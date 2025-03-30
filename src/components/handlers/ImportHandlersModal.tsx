@@ -1,3 +1,4 @@
+
 import { useState, ChangeEvent } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -29,18 +30,27 @@ export function ImportHandlersModal() {
   // Database fields that can be mapped to, based on the provided CSV format
   const availableFields: MappingField[] = [
     // Client fields
-    { csvHeader: "Name", dbField: "first_name", table: "clients", required: true, description: "First part of full name" },
-    { csvHeader: "Name", dbField: "last_name", table: "clients", required: true, description: "Last part of full name" },
+    { csvHeader: "Name", dbField: "name", table: "clients", required: true },
     { csvHeader: "E-mail", dbField: "email", table: "clients", required: true },
     { csvHeader: "Tel", dbField: "phone", table: "clients", required: false },
     { csvHeader: "COMMENTS", dbField: "notes", table: "clients", required: false },
+    { csvHeader: "WhatsApp", dbField: "whatsapp", table: "clients", required: false, description: "Preference for WhatsApp" },
+    { csvHeader: "Photo Permission", dbField: "photo_permission", table: "clients", required: false, description: "Permission to use photos" },
     
     // Dog fields
     { csvHeader: "Dog's Name", dbField: "name", table: "dogs", required: true },
     { csvHeader: "Breed", dbField: "breed", table: "dogs", required: true },
     { csvHeader: "DOB", dbField: "age", table: "dogs", required: false, description: "Will be calculated from DOB" },
     { csvHeader: "Assess", dbField: "notes", table: "dogs", required: false },
-    { csvHeader: "PUPPY", dbField: "behavior_notes", table: "dogs", required: false, description: "Will be combined with other class notes" },
+    
+    // Class enrollment fields
+    { csvHeader: "PUPPY", dbField: "puppy_class", table: "classes", required: false },
+    { csvHeader: "EO", dbField: "eo_class", table: "classes", required: false },
+    { csvHeader: "BRONZE CGC", dbField: "bronze_cgc_class", table: "classes", required: false },
+    { csvHeader: "SILVER CGC", dbField: "silver_cgc_class", table: "classes", required: false },
+    { csvHeader: "BEGINNER/Novice", dbField: "beginner_novice_class", table: "classes", required: false },
+    { csvHeader: "WT", dbField: "wt_class", table: "classes", required: false },
+    { csvHeader: "YOGA", dbField: "yoga_class", table: "classes", required: false },
   ];
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -64,7 +74,7 @@ export function ImportHandlersModal() {
           
           // Map common fields automatically
           const commonMappings: Record<string, string> = {
-            "Name": "clients.first_name", // Special handling for name later
+            "Name": "clients.name",
             "E-mail": "clients.email",
             "Tel": "clients.phone",
             "Dog's Name": "dogs.name",
@@ -72,7 +82,15 @@ export function ImportHandlersModal() {
             "DOB": "dogs.age",
             "Assess": "dogs.notes",
             "COMMENTS": "clients.notes",
-            // Class fields and other special handling will be done during processing
+            "WhatsApp": "clients.whatsapp",
+            "Photo Permission": "clients.photo_permission",
+            "PUPPY": "classes.puppy_class",
+            "EO": "classes.eo_class",
+            "BRONZE CGC": "classes.bronze_cgc_class",
+            "SILVER CGC": "classes.silver_cgc_class",
+            "BEGINNER/Novice": "classes.beginner_novice_class",
+            "WT": "classes.wt_class",
+            "YOGA": "classes.yoga_class"
           };
           
           headers.forEach(header => {
@@ -171,7 +189,7 @@ export function ImportHandlersModal() {
         try {
           // First create client
           if (tableGroups.clients) {
-            // Initialize client data
+            // Initialize client data with the correct type structure
             const clientData: {
               first_name: string;
               last_name: string;
@@ -185,8 +203,8 @@ export function ImportHandlersModal() {
               email: ''
             };
             
-            // Special handling for name field - split into first/last name
-            const nameHeader = tableGroups.clients.first_name;
+            // Handle the name field - split into first/last name
+            const nameHeader = tableGroups.clients.name;
             if (nameHeader && row[nameHeader]) {
               const nameParts = row[nameHeader].split(' ');
               
@@ -199,43 +217,68 @@ export function ImportHandlersModal() {
               }
             }
             
-            // Handle other client fields
-            Object.entries(tableGroups.clients).forEach(([dbField, csvHeader]) => {
-              if (dbField !== 'first_name' && dbField !== 'last_name') {
-                clientData[dbField] = row[csvHeader];
-              }
-            });
-            
-            // Add comments/notes from the class fields if not already mapped
-            const classNotes = [];
-            
-            // Collect class information
-            ['PUPPY', 'EO', 'BRONZE CGC', 'SILVER CGC', 'BEGINNER/Novice', 'WT', 'YOGA'].forEach(classType => {
-              if (row[classType] && row[classType].trim()) {
-                classNotes.push(`${classType}: ${row[classType].trim()}`);
-              }
-            });
-            
-            // Add class notes to client notes if available and not already mapped
-            if (classNotes.length > 0 && !tableGroups.clients.notes) {
-              clientData.notes = classNotes.join('\n');
+            // Handle email field
+            if (tableGroups.clients.email && row[tableGroups.clients.email]) {
+              clientData.email = row[tableGroups.clients.email];
             }
             
+            // Handle phone field
+            if (tableGroups.clients.phone && row[tableGroups.clients.phone]) {
+              clientData.phone = row[tableGroups.clients.phone];
+            }
+            
+            // Handle notes field
+            if (tableGroups.clients.notes && row[tableGroups.clients.notes]) {
+              clientData.notes = row[tableGroups.clients.notes];
+            }
+            
+            // Add preferences to notes
+            const preferences = [];
+            
             // Check for WhatsApp preference
-            if (row['WhatsApp'] && (row['WhatsApp'].toLowerCase() === 'yes' || row['WhatsApp'] === '1' || row['WhatsApp'] === 'true')) {
-              if (clientData.notes) {
-                clientData.notes += '\nPrefers WhatsApp for communication';
-              } else {
-                clientData.notes = 'Prefers WhatsApp for communication';
-              }
+            if (tableGroups.clients.whatsapp && 
+                (row[tableGroups.clients.whatsapp]?.toLowerCase() === 'yes' || 
+                 row[tableGroups.clients.whatsapp] === '1' || 
+                 row[tableGroups.clients.whatsapp]?.toLowerCase() === 'true')) {
+              preferences.push('Prefers WhatsApp for communication');
             }
             
             // Check for Photo Permission
-            if (row['Photo Permission'] && (row['Photo Permission'].toLowerCase() === 'yes' || row['Photo Permission'] === '1' || row['Photo Permission'] === 'true')) {
+            if (tableGroups.clients.photo_permission && 
+                (row[tableGroups.clients.photo_permission]?.toLowerCase() === 'yes' || 
+                 row[tableGroups.clients.photo_permission] === '1' || 
+                 row[tableGroups.clients.photo_permission]?.toLowerCase() === 'true')) {
+              preferences.push('Photo permission granted');
+            }
+            
+            // Add preferences to notes
+            if (preferences.length > 0) {
               if (clientData.notes) {
-                clientData.notes += '\nPhoto permission granted';
+                clientData.notes += '\n' + preferences.join('\n');
               } else {
-                clientData.notes = 'Photo permission granted';
+                clientData.notes = preferences.join('\n');
+              }
+            }
+            
+            // Collect class information
+            const classNotes: string[] = [];
+            
+            // Process class fields if present in mappings
+            if (tableGroups.classes) {
+              Object.entries(tableGroups.classes).forEach(([classField, csvHeader]) => {
+                if (row[csvHeader] && row[csvHeader].trim()) {
+                  const className = classField.replace('_class', '').toUpperCase().replace('_', ' ');
+                  classNotes.push(`${className}: ${row[csvHeader].trim()}`);
+                }
+              });
+            }
+            
+            // Add class notes to client notes
+            if (classNotes.length > 0) {
+              if (clientData.notes) {
+                clientData.notes += '\n\nClass Information:\n' + classNotes.join('\n');
+              } else {
+                clientData.notes = 'Class Information:\n' + classNotes.join('\n');
               }
             }
             
@@ -273,44 +316,45 @@ export function ImportHandlersModal() {
                 client_id: clientResult[0].id
               };
               
-              // Fill in values from CSV based on mapping
-              Object.entries(tableGroups.dogs).forEach(([dbField, csvHeader]) => {
-                if (dbField === 'age' && row[csvHeader]) {
-                  // Handle DOB to age conversion
-                  try {
-                    const dobDate = new Date(row[csvHeader]);
-                    if (!isNaN(dobDate.getTime())) {
-                      const today = new Date();
-                      const ageInYears = Math.floor((today.getTime() - dobDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
-                      dogData.age = ageInYears;
-                    }
-                  } catch {
-                    // If date parsing fails, try to see if it's already a number
-                    const value = parseFloat(row[csvHeader]);
-                    if (!isNaN(value)) {
-                      dogData.age = value;
-                    }
+              // Process dog name
+              if (tableGroups.dogs.name && row[tableGroups.dogs.name]) {
+                dogData.name = row[tableGroups.dogs.name];
+              }
+              
+              // Process dog breed
+              if (tableGroups.dogs.breed && row[tableGroups.dogs.breed]) {
+                dogData.breed = row[tableGroups.dogs.breed];
+              }
+              
+              // Process dog age from DOB
+              if (tableGroups.dogs.age && row[tableGroups.dogs.age]) {
+                try {
+                  const dobDate = new Date(row[tableGroups.dogs.age]);
+                  if (!isNaN(dobDate.getTime())) {
+                    const today = new Date();
+                    const ageInYears = Math.floor((today.getTime() - dobDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+                    dogData.age = ageInYears;
                   }
-                } else if (dbField === 'weight' && row[csvHeader]) {
-                  // Handle weight conversion
-                  const value = parseFloat(row[csvHeader]);
-                  dogData.weight = isNaN(value) ? undefined : value;
-                } else {
-                  dogData[dbField] = row[csvHeader];
+                } catch {
+                  // If date parsing fails, try to see if it's already a number
+                  const value = parseFloat(row[tableGroups.dogs.age]);
+                  if (!isNaN(value)) {
+                    dogData.age = value;
+                  }
                 }
-              });
+              }
               
-              // Special handling for classes - combine into behavior_notes
-              const behaviorNotes = [];
+              // Process dog notes
+              if (tableGroups.dogs.notes && row[tableGroups.dogs.notes]) {
+                dogData.notes = row[tableGroups.dogs.notes];
+              }
               
-              ['PUPPY', 'EO', 'BRONZE CGC', 'SILVER CGC', 'BEGINNER/Novice', 'WT', 'YOGA'].forEach(classType => {
-                if (row[classType] && row[classType].trim()) {
-                  behaviorNotes.push(`${classType}: ${row[classType].trim()}`);
-                }
-              });
+              // Process behavior notes (class notes)
+              const behaviorNotes: string[] = [];
               
-              if (behaviorNotes.length > 0) {
-                dogData.behavior_notes = behaviorNotes.join('\n');
+              // Add class info to behavior notes if not already added to client notes
+              if (classNotes.length > 0) {
+                dogData.behavior_notes = classNotes.join('\n');
               }
               
               // Validate required fields
@@ -424,6 +468,7 @@ export function ImportHandlersModal() {
                 <TabsList className="mb-4">
                   <TabsTrigger value="clients">Handler Data</TabsTrigger>
                   <TabsTrigger value="dogs">Dog Data</TabsTrigger>
+                  <TabsTrigger value="classes">Class Data</TabsTrigger>
                 </TabsList>
                 
                 <TabsContent value="clients" className="space-y-4">
@@ -505,6 +550,46 @@ export function ImportHandlersModal() {
                       ))}
                   </div>
                 </TabsContent>
+                
+                <TabsContent value="classes" className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    {availableFields
+                      .filter(f => f.table === "classes")
+                      .map(field => (
+                        <div key={`classes-${field.dbField}`} className="border rounded-md p-3">
+                          <label className="block text-sm font-medium mb-1">
+                            {field.dbField.replace('_class', '').toUpperCase().replace('_', ' ')}
+                            {field.description && <span className="text-xs text-gray-500 ml-1">({field.description})</span>}
+                          </label>
+                          <select 
+                            className="w-full border-gray-300 rounded-md"
+                            value={Object.entries(fieldMappings).find(([_, value]) => value === `classes.${field.dbField}`)?.[0] || ""}
+                            onChange={(e) => {
+                              // Remove any existing mapping for this database field
+                              const newMappings = { ...fieldMappings };
+                              Object.entries(newMappings).forEach(([header, value]) => {
+                                if (value === `classes.${field.dbField}`) {
+                                  delete newMappings[header];
+                                }
+                              });
+                              
+                              // Add new mapping if a header is selected
+                              if (e.target.value) {
+                                newMappings[e.target.value] = `classes.${field.dbField}`;
+                              }
+                              
+                              setFieldMappings(newMappings);
+                            }}
+                          >
+                            <option value="">-- Select CSV header --</option>
+                            {csvHeaders.map(header => (
+                              <option key={header} value={header}>{header}</option>
+                            ))}
+                          </select>
+                        </div>
+                      ))}
+                  </div>
+                </TabsContent>
               </Tabs>
               
               {validationErrors.length > 0 && (
@@ -542,10 +627,10 @@ export function ImportHandlersModal() {
               <div className="border rounded-md p-4">
                 <h4 className="font-medium mb-2">Special Handling</h4>
                 <div className="text-sm space-y-2">
-                  <p>• The "Name" column will be split into first and last name</p>
+                  <p>• "Name" column will be split into first and last name automatically</p>
                   <p>• DOB will be converted to age in years</p>
-                  <p>• Class information (PUPPY, EO, etc.) will be stored in the dog's behavior notes</p>
-                  <p>• WhatsApp and Photo Permission preferences will be saved in the client's notes</p>
+                  <p>• Class information (PUPPY, EO, etc.) will be combined into notes</p>
+                  <p>• WhatsApp and Photo Permission preferences will be saved in notes</p>
                 </div>
               </div>
               
@@ -556,6 +641,7 @@ export function ImportHandlersModal() {
                     <TabsList className="mb-4">
                       <TabsTrigger value="clients">Handler Fields</TabsTrigger>
                       <TabsTrigger value="dogs">Dog Fields</TabsTrigger>
+                      <TabsTrigger value="classes">Class Fields</TabsTrigger>
                     </TabsList>
                     
                     <TabsContent value="clients">
@@ -579,6 +665,19 @@ export function ImportHandlersModal() {
                             <div key={csvHeader} className="flex justify-between">
                               <span className="font-medium">{csvHeader}</span>
                               <span className="text-gray-500">{dbField.split('.')[1]}</span>
+                            </div>
+                          ))}
+                      </div>
+                    </TabsContent>
+                    
+                    <TabsContent value="classes">
+                      <div className="grid grid-cols-2 gap-2">
+                        {Object.entries(fieldMappings)
+                          .filter(([_, value]) => value.startsWith('classes.'))
+                          .map(([csvHeader, dbField]) => (
+                            <div key={csvHeader} className="flex justify-between">
+                              <span className="font-medium">{csvHeader}</span>
+                              <span className="text-gray-500">{dbField.split('.')[1].replace('_class', '').toUpperCase().replace('_', ' ')}</span>
                             </div>
                           ))}
                       </div>
