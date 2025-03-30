@@ -37,6 +37,7 @@ export function ReviewStep({
 
   // Check if email is mapped
   const emailIsMapped = Object.entries(fieldMappings).some(([_, mapping]) => mapping === 'clients.email');
+  const emailHeader = Object.entries(fieldMappings).find(([_, value]) => value === 'clients.email')?.[0];
 
   // Organize mapped fields by table
   const mappedFields: Record<string, string[]> = {};
@@ -53,15 +54,11 @@ export function ReviewStep({
     mappedFields[table].push(csvHeader);
   });
 
-  const handleImportClick = () => {
-    console.log("Import button clicked in ReviewStep");
-    onImport();
-  };
-
-  // Calculate progress
-  const progressPercentage = processingResults && processingResults.total > 0 
-    ? Math.round((processingResults.processed / processingResults.total) * 100) 
-    : 0;
+  // Count rows with missing emails if email header is mapped
+  let rowsWithMissingEmail = 0;
+  if (emailHeader) {
+    rowsWithMissingEmail = csvData.filter(row => !row[emailHeader] || row[emailHeader].trim() === '').length;
+  }
 
   return (
     <div className="space-y-4">
@@ -81,6 +78,16 @@ export function ReviewStep({
           <AlertTitle>Missing Required Field</AlertTitle>
           <AlertDescription>
             Email is a required field for client import. Please go back and map the email field.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {emailIsMapped && rowsWithMissingEmail > 0 && (
+        <Alert variant="default" className="bg-amber-50 border-amber-200">
+          <Info className="h-4 w-4 text-amber-500" />
+          <AlertTitle className="text-amber-700">Warning: Missing Emails</AlertTitle>
+          <AlertDescription className="text-amber-600">
+            {rowsWithMissingEmail} rows have missing email values. These rows will be skipped during import.
           </AlertDescription>
         </Alert>
       )}
@@ -137,30 +144,24 @@ export function ReviewStep({
         <div className="mt-4 space-y-2">
           <div className="flex justify-between text-sm text-gray-500">
             <span>Processing: {processingResults.processed} of {processingResults.total} records</span>
-            <span>{progressPercentage}%</span>
+            <span>{Math.round((processingResults.processed / processingResults.total) * 100)}%</span>
           </div>
-          <Progress value={progressPercentage} className="h-2" />
+          <Progress value={Math.round((processingResults.processed / processingResults.total) * 100)} className="h-2" />
+          
           {processingResults.errors.length > 0 && (
             <Alert variant="destructive" className="mt-2">
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Import Errors</AlertTitle>
               <AlertDescription>
+                <p>{processingResults.errors.length} rows couldn't be imported due to missing email or other errors.</p>
                 {processingResults.errors.length > 10 ? (
-                  <div>
-                    <p>Multiple errors occurred. First 10 shown:</p>
-                    <ul className="list-disc pl-5 mt-1 text-xs">
-                      {processingResults.errors.slice(0, 10).map((error, i) => (
-                        <li key={i}>Row {error.row}: {error.message}</li>
-                      ))}
-                      <li>...and {processingResults.errors.length - 10} more errors</li>
-                    </ul>
-                  </div>
+                  <p className="text-sm mt-1">First few errors: Missing emails in rows {
+                    processingResults.errors.slice(0, 5).map(e => e.row).join(', ')
+                  }, and {processingResults.errors.length - 5} more...</p>
                 ) : (
-                  <ul className="list-disc pl-5 mt-1 text-xs">
-                    {processingResults.errors.map((error, i) => (
-                      <li key={i}>Row {error.row}: {error.message}</li>
-                    ))}
-                  </ul>
+                  <p className="text-sm mt-1">Errors in rows: {
+                    processingResults.errors.map(e => e.row).join(', ')
+                  }</p>
                 )}
               </AlertDescription>
             </Alert>
@@ -169,12 +170,8 @@ export function ReviewStep({
       )}
       
       <div className="mt-6 flex flex-col items-center justify-center">
-        <p className="text-sm font-medium text-green-600 mb-4">
-          Ready to import {csvData.length} records? Click the button below.
-        </p>
-        
         <Button 
-          onClick={handleImportClick}
+          onClick={onImport}
           variant="mckaynine"
           size="lg"
           className="w-full sm:w-auto"

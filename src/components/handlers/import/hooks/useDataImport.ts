@@ -19,25 +19,25 @@ export function useDataImport() {
     fieldMappings: FieldMapping,
     branchId?: string
   ) => {
-    console.log("processImport called with:", { dataLength: data.length, mappingsCount: Object.keys(fieldMappings).length, branchId });
-    
-    // First, validate that email field is mapped - this is critical
-    const emailIsMapped = Object.entries(fieldMappings).some(
+    // First, validate email mapping - this is critical
+    const emailMapping = Object.entries(fieldMappings).find(
       ([_, value]) => value === 'clients.email'
     );
     
-    if (!emailIsMapped) {
+    if (!emailMapping) {
       toast({
         title: "Import failed",
-        description: "Email field is required for client import but was not mapped",
+        description: "Email field must be mapped for client import",
         variant: "destructive"
       });
       
       return {
         success: false,
-        errors: ['Email field is required for client import but was not mapped']
+        errors: ['Email field must be mapped for client import']
       };
     }
+    
+    const [emailHeader] = emailMapping;
     
     setIsUploading(true);
     setProcessingResults({ total: data.length, processed: 0, errors: [] });
@@ -62,42 +62,26 @@ export function useDataImport() {
         tableFields[table][field] = csvHeader;
       });
       
-      console.log("Grouped field mappings by table:", tableFields);
-      
-      // Double check we have email field mapped for clients
-      if (!tableFields['clients'] || !Object.keys(tableFields['clients']).includes('email')) {
-        return {
-          success: false,
-          errors: ['Email field is required for client import but was not mapped']
-        };
-      }
-      
-      // Process data in batches
+      // Process data row by row
       for (let i = 0; i < data.length; i++) {
         const row = data[i];
-        console.log(`Processing row ${i+1}/${data.length}`);
         
         try {
+          // Check if email exists in current row
+          if (!row[emailHeader] || row[emailHeader].trim() === '') {
+            throw new Error('Email is required for client import');
+          }
+          
           // Process client data first
-          if (tableFields['clients'] && Object.keys(tableFields['clients']).length > 0) {
-            console.log("Processing client data for row", i+1);
-            
-            // Check if the email field exists and is not empty in this row
-            const emailField = tableFields['clients']['email'];
-            if (!emailField || !row[emailField] || row[emailField].trim() === '') {
-              throw new Error('Email is required for client import');
-            }
-            
+          if (tableFields['clients']) {
             const clientId = await processClientData(row, tableFields['clients'], branchId);
             
-            // Process dog data
-            if (tableFields['dogs'] && Object.keys(tableFields['dogs']).length > 0 && clientId) {
-              console.log("Processing dog data for row", i+1);
+            // Process dog data if client was created
+            if (clientId && tableFields['dogs']) {
               const dogId = await processDogData(row, tableFields['dogs'], clientId);
               
-              // Process class enrollments
-              if (tableFields['class_enrollments'] && Object.keys(tableFields['class_enrollments']).length > 0 && dogId) {
-                console.log("Processing class enrollments for row", i+1);
+              // Process class enrollments if dog was created
+              if (dogId && tableFields['class_enrollments']) {
                 await processClassEnrollments(row, tableFields['class_enrollments'], dogId);
               }
             }
@@ -109,7 +93,6 @@ export function useDataImport() {
             processed: processed
           }));
         } catch (error: any) {
-          console.error(`Error processing row ${i+1}:`, error);
           errors.push({ 
             row: i+1, 
             message: error.message || 'Unknown error' 
@@ -119,26 +102,14 @@ export function useDataImport() {
             ...prev,
             errors: [...prev.errors, { row: i+1, message: error.message || 'Unknown error' }]
           }));
-          
-          // Show toast for important errors
-          if (error.message.includes('Email is required')) {
-            toast({
-              title: `Error in Row ${i+1}`,
-              description: error.message,
-              variant: "destructive"
-            });
-          }
         }
       }
       
-      console.log("Import process completed with", errors.length, "errors");
-      
       return {
-        success: processed > 0, // Consider success if at least one row was imported
+        success: processed > 0,
         errors: errors.map(e => `Row ${e.row}: ${e.message}`)
       };
     } catch (error: any) {
-      console.error("Error in processImport:", error);
       return {
         success: false,
         errors: [error.message || 'An unexpected error occurred']
