@@ -9,11 +9,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar, DollarSign, MapPin } from "lucide-react";
+import { useState } from "react";
 
 export function ClassesTable() {
   const { currentBranch } = useBranch();
+  const [editingClass, setEditingClass] = useState<Class | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
-  const { data: classes, isLoading } = useQuery({
+  const { data: classes, isLoading, refetch } = useQuery({
     queryKey: ['classes', currentBranch?.id],
     queryFn: async () => {
       let query = supabase
@@ -38,6 +41,11 @@ export function ClassesTable() {
     enabled: !!currentBranch // Only run query when a branch is selected
   });
   
+  const handleEditSuccess = () => {
+    setIsEditModalOpen(false);
+    refetch();
+  };
+
   if (isLoading) {
     return (
       <div className="text-center p-8">
@@ -55,57 +63,77 @@ export function ClassesTable() {
   }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Class Name</TableHead>
-          <TableHead>Level</TableHead>
-          <TableHead>Duration</TableHead>
-          <TableHead>Price</TableHead>
-          <TableHead>Capacity</TableHead>
-          <TableHead>Branch</TableHead>
-          <TableHead>Actions</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {classes.map((classItem) => (
-          <TableRow key={classItem.id}>
-            <TableCell className="font-medium">{classItem.name}</TableCell>
-            <TableCell>
-              <Badge variant="outline">{classItem.level}</Badge>
-            </TableCell>
-            <TableCell>
-              <div className="flex items-center gap-1">
-                <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                <span>{classItem.duration} min</span>
-              </div>
-            </TableCell>
-            <TableCell>
-              <div className="flex items-center gap-1">
-                <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
-                <span>{classItem.price}</span>
-              </div>
-            </TableCell>
-            <TableCell>{classItem.capacity} dogs</TableCell>
-            <TableCell>
-              <div className="flex items-center gap-1">
-                <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
-                <span>{classItem.branches?.name || 'Unknown'}</span>
-              </div>
-            </TableCell>
-            <TableCell>
-              <div className="flex space-x-2">
-                <Link to={`/classes/${classItem.id}/schedules`}>
-                  <Button variant="outline" size="sm">
-                    Schedules
-                  </Button>
-                </Link>
-                <EditClassModal classData={classItem} />
-              </div>
-            </TableCell>
+    <>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Class Name</TableHead>
+            <TableHead>Level</TableHead>
+            <TableHead>Duration</TableHead>
+            <TableHead>Price</TableHead>
+            <TableHead>Capacity</TableHead>
+            <TableHead>Branch</TableHead>
+            <TableHead>Actions</TableHead>
           </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {classes.map((classItem) => (
+            <TableRow key={classItem.id}>
+              <TableCell className="font-medium">{classItem.name}</TableCell>
+              <TableCell>
+                <Badge variant="outline">{classItem.level}</Badge>
+              </TableCell>
+              <TableCell>
+                <div className="flex items-center gap-1">
+                  <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span>{classItem.duration} min</span>
+                </div>
+              </TableCell>
+              <TableCell>
+                <div className="flex items-center gap-1">
+                  <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span>{classItem.price}</span>
+                </div>
+              </TableCell>
+              <TableCell>{classItem.capacity} dogs</TableCell>
+              <TableCell>
+                <div className="flex items-center gap-1">
+                  <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span>{classItem.branches?.name || 'Unknown'}</span>
+                </div>
+              </TableCell>
+              <TableCell>
+                <div className="flex space-x-2">
+                  <Link to={`/classes/${classItem.id}/schedules`}>
+                    <Button variant="outline" size="sm">
+                      Schedules
+                    </Button>
+                  </Link>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      setEditingClass(classItem);
+                      setIsEditModalOpen(true);
+                    }}
+                  >
+                    Edit
+                  </Button>
+                </div>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+
+      {editingClass && (
+        <EditClassModal 
+          open={isEditModalOpen} 
+          onOpenChange={setIsEditModalOpen} 
+          classData={editingClass} 
+          onSuccess={handleEditSuccess} 
+        />
+      )}
+    </>
   );
 }

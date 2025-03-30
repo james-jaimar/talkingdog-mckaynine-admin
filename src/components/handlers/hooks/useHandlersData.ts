@@ -11,7 +11,7 @@ export function useHandlersData() {
   const itemsPerPage = 50;
   const { currentBranch } = useBranch();
 
-  const { data: handlers, isLoading } = useQuery({
+  const { data: handlers = [], isLoading } = useQuery({
     queryKey: ['handlers', currentBranch?.id],
     queryFn: async () => {
       let query = supabase
@@ -47,13 +47,13 @@ export function useHandlersData() {
       const { data, error } = await query;
       
       if (error) throw error;
-      return data;
+      return data || [];
     },
     enabled: !!currentBranch // Only run query when a branch is selected
   });
 
   // Filter handlers by search query
-  const filteredHandlers = handlers?.filter(handler => 
+  const filteredHandlers = handlers.filter(handler => 
     (handler.first_name + " " + handler.last_name).toLowerCase().includes(searchQuery.toLowerCase()) ||
     handler.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
     handler.phone?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -66,7 +66,7 @@ export function useHandlersData() {
   // Filter by current alphabet group
   const currentGroupHandlers = searchQuery 
     ? filteredHandlers 
-    : filteredHandlers?.filter(handler => {
+    : filteredHandlers.filter(handler => {
         const firstLetter = handler.first_name.charAt(0).toUpperCase();
         const group = alphabetGroups.find(group => 
           group.range.some(letter => firstLetter === letter)
