@@ -62,6 +62,74 @@ export function useDataImport() {
         tableFields[table][csvHeader] = dbFieldWithTable;
       });
       
+      // Try to auto-map some common fields that might not be explicitly mapped
+      for (const row of data) {
+        for (const [header, value] of Object.entries(row)) {
+          const headerLower = header.toLowerCase();
+          
+          // Auto-map dog fields
+          if (headerLower.includes("dog") && headerLower.includes("name") && !tableFields['dogs']?.[header]) {
+            if (!tableFields['dogs']) tableFields['dogs'] = {};
+            tableFields['dogs'][header] = 'dogs.name';
+          }
+          
+          if (headerLower.includes("breed") && !tableFields['dogs']?.[header]) {
+            if (!tableFields['dogs']) tableFields['dogs'] = {};
+            tableFields['dogs'][header] = 'dogs.breed';
+          }
+          
+          if ((headerLower === "dob" || headerLower.includes("birth") || headerLower.includes("date")) && !tableFields['dogs']?.[header]) {
+            if (!tableFields['dogs']) tableFields['dogs'] = {};
+            tableFields['dogs'][header] = 'dogs.date_of_birth';
+          }
+          
+          // Auto-map client preference fields
+          if (headerLower.includes("whatsapp") && !tableFields['clients']?.[header]) {
+            if (!tableFields['clients']) tableFields['clients'] = {};
+            tableFields['clients'][header] = 'clients.whatsapp';
+          }
+          
+          if ((headerLower.includes("photo") && headerLower.includes("permission")) && !tableFields['clients']?.[header]) {
+            if (!tableFields['clients']) tableFields['clients'] = {};
+            tableFields['clients'][header] = 'clients.photo_permission';
+          }
+          
+          // Auto-map class fields
+          if (headerLower === "puppy" && !fieldMappings[header]?.startsWith('class_enrollments')) {
+            fieldMappings[header] = 'class_enrollments.puppy_class';
+          }
+          if (headerLower === "eo" && !fieldMappings[header]?.startsWith('class_enrollments')) {
+            fieldMappings[header] = 'class_enrollments.eo_class';
+          }
+          if ((headerLower.includes("bronze") || headerLower === "bronze cgc") && !fieldMappings[header]?.startsWith('class_enrollments')) {
+            fieldMappings[header] = 'class_enrollments.bronze_cgc_class';
+          }
+          if ((headerLower.includes("silver") || headerLower === "silver cgc") && !fieldMappings[header]?.startsWith('class_enrollments')) {
+            fieldMappings[header] = 'class_enrollments.silver_cgc_class';
+          }
+          if ((headerLower.includes("beginner") || headerLower.includes("novice")) && !fieldMappings[header]?.startsWith('class_enrollments')) {
+            fieldMappings[header] = 'class_enrollments.beginner_novice_class';
+          }
+          if (headerLower === "wt" && !fieldMappings[header]?.startsWith('class_enrollments')) {
+            fieldMappings[header] = 'class_enrollments.wt_class';
+          }
+          if (headerLower === "yoga" && !fieldMappings[header]?.startsWith('class_enrollments')) {
+            fieldMappings[header] = 'class_enrollments.yoga_class';
+          }
+          
+          // Auto-map notes fields
+          if (headerLower === "comments" && !tableFields['clients']?.[header]) {
+            if (!tableFields['clients']) tableFields['clients'] = {};
+            tableFields['clients'][header] = 'clients.notes';
+          }
+          
+          if (headerLower === "assess" && !tableFields['dogs']?.[header]) {
+            if (!tableFields['dogs']) tableFields['dogs'] = {};
+            tableFields['dogs'][header] = 'dogs.notes';
+          }
+        }
+      }
+      
       // Process data row by row
       for (let i = 0; i < data.length; i++) {
         const row = data[i];
@@ -83,14 +151,16 @@ export function useDataImport() {
           // Process dog data if client was created
           if (clientId) {
             try {
-              // Only process dog data if there's a dog name
+              // Try to find dog name from any column that might contain it
               const dogName = findDogName(row, fieldMappings);
+              
               if (dogName) {
-                // Add the dog name to table fields if it's not already mapped
+                // Make sure we have the dog name in the table fields
                 if (!tableFields['dogs']) {
                   tableFields['dogs'] = {};
                 }
                 
+                // Find if there's already a dog name mapping
                 let dogNameMapped = false;
                 for (const [_, mapping] of Object.entries(tableFields['dogs'])) {
                   if (mapping === 'dogs.name') {
@@ -99,19 +169,23 @@ export function useDataImport() {
                   }
                 }
                 
+                // If not mapped, add it
                 if (!dogNameMapped) {
-                  // Find the column that looks like a dog name
                   for (const [header, value] of Object.entries(row)) {
-                    if (header.toLowerCase().includes('dog') && value) {
+                    if ((header.toLowerCase().includes('dog') || 
+                         header.toLowerCase() === "dog's name") && 
+                        value && 
+                        typeof value === 'string') {
                       tableFields['dogs'][header] = 'dogs.name';
                       break;
                     }
                   }
                 }
                 
+                // Process dog data
                 const dogId = await processDogData(row, tableFields['dogs'], clientId);
                 
-                // Process class enrollments if dog was created (but don't fail the import if this fails)
+                // Process class enrollments if dog was created
                 if (dogId) {
                   try {
                     await processClassEnrollments(row, fieldMappings, dogId);
@@ -177,7 +251,7 @@ export function useDataImport() {
     for (const [header, value] of Object.entries(row)) {
       if (
         (header.toLowerCase().includes('dog') || 
-         header.toLowerCase().includes("dog's name")) && 
+         header.toLowerCase() === "dog's name") && 
         value && 
         typeof value === 'string' && 
         value.trim() !== '-' && 

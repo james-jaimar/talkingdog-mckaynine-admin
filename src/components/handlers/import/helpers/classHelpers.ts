@@ -43,56 +43,79 @@ export async function processClassEnrollments(
              str === 'true' || 
              str === '1' || 
              str === 'y' ||
+             str === 'enrolled' ||
              str.includes('enrolled') ||
              str.includes('grad') ||
              str.includes('completed') ||
              str.includes('waiting') ||
              str.includes('term') ||
+             // Also mark as true if there's any text content that's not 'no' or empty
+             (str !== 'no' && str !== 'false' && str !== '0' && str !== 'n' && str !== '' && str !== '-') ||
              // Look for percentage indicators
              /\d+(\.\d+)?%/.test(str);
     }
     return false;
   };
   
-  // Check the content of CSV columns that might indicate class enrollment
-  const directClassMap: Record<string, keyof typeof enrollmentData> = {
-    'PUPPY': 'puppy_class',
-    'EO': 'eo_class', 
-    'BRONZE CGC': 'bronze_cgc_class',
-    'SILVER CGC': 'silver_cgc_class',
-    'BEGINNER/Novice': 'beginner_novice_class',
-    'WT': 'wt_class',
-    'YOGA': 'yoga_class'
-  };
+  // Check for column headers directly from the CSV
+  Object.keys(row).forEach(header => {
+    // Check for class column headers
+    const headerLower = header.toLowerCase().trim();
+    
+    if (headerLower === 'puppy' || headerLower.includes('puppy')) {
+      enrollmentData.puppy_class = toBool(row[header]);
+    } else if (headerLower === 'eo' || headerLower.includes('eo ')) {
+      enrollmentData.eo_class = toBool(row[header]);
+    } else if (headerLower.includes('bronze') || headerLower.includes('bronze cgc')) {
+      enrollmentData.bronze_cgc_class = toBool(row[header]);
+    } else if (headerLower.includes('silver') || headerLower.includes('silver cgc')) {
+      enrollmentData.silver_cgc_class = toBool(row[header]);
+    } else if (headerLower.includes('beginner') || headerLower.includes('novice')) {
+      enrollmentData.beginner_novice_class = toBool(row[header]);
+    } else if (headerLower === 'wt' || headerLower.includes('wt ')) {
+      enrollmentData.wt_class = toBool(row[header]);
+    } else if (headerLower === 'yoga' || headerLower.includes('yoga')) {
+      enrollmentData.yoga_class = toBool(row[header]);
+    }
+  });
   
-  // First check for direct class columns from field mappings
+  // Check for mapped fields in fieldMappings
   Object.entries(fieldMappings).forEach(([csvHeader, dbFieldPath]) => {
     if (dbFieldPath.startsWith('class_enrollments.')) {
       const dbField = dbFieldPath.replace('class_enrollments.', '');
-      if (row[csvHeader]) {
+      if (row[csvHeader] !== undefined) {
         enrollmentData[dbField] = toBool(row[csvHeader]);
       }
     }
   });
   
-  // Also look for content in unmapped columns that might indicate class enrollments
+  // Also check for class info in the COMMENTS or other text fields
   Object.entries(row).forEach(([header, value]) => {
-    // Check if this header is one of our direct class names
-    if (directClassMap[header] && value) {
-      enrollmentData[directClassMap[header]] = toBool(value);
-    }
-    
-    // Also check for class info in the COMMENTS or other text fields
-    if (typeof value === 'string') {
+    if (typeof value === 'string' && value) {
       const lowerValue = value.toString().toLowerCase();
       
-      if (lowerValue.includes('puppy')) enrollmentData.puppy_class = true;
-      if (lowerValue.includes('eo ') || lowerValue.includes('eo jan') || lowerValue.includes('eo april')) enrollmentData.eo_class = true;
-      if (lowerValue.includes('bronze')) enrollmentData.bronze_cgc_class = true;
-      if (lowerValue.includes('silver')) enrollmentData.silver_cgc_class = true;
-      if (lowerValue.includes('beginner') || lowerValue.includes('novice')) enrollmentData.beginner_novice_class = true;
-      if (lowerValue.includes('wt ') || lowerValue.includes('waiting')) enrollmentData.wt_class = true;
-      if (lowerValue.includes('yoga')) enrollmentData.yoga_class = true;
+      // Special checks for common class indicators in comments
+      if (lowerValue.includes('puppy grad') || lowerValue.includes('puppy class')) {
+        enrollmentData.puppy_class = true;
+      }
+      if (lowerValue.includes('eo2') || lowerValue.includes('eo feb') || lowerValue.includes('eo april') || lowerValue.includes('eo jan')) {
+        enrollmentData.eo_class = true;
+      }
+      if (lowerValue.includes('bronze')) {
+        enrollmentData.bronze_cgc_class = true;
+      }
+      if (lowerValue.includes('silver cgc') || (lowerValue.includes('silver') && lowerValue.includes('april'))) {
+        enrollmentData.silver_cgc_class = true;
+      }
+      if (lowerValue.includes('beginner') || lowerValue.includes('novice')) {
+        enrollmentData.beginner_novice_class = true;
+      }
+      if (lowerValue.includes('waiting') || lowerValue.includes('wt ')) {
+        enrollmentData.wt_class = true;
+      }
+      if (lowerValue.includes('yoga???') || lowerValue.includes('yoga') || lowerValue.includes('yoga???')) {
+        enrollmentData.yoga_class = true;
+      }
     }
   });
   
