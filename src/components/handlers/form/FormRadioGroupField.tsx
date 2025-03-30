@@ -17,7 +17,6 @@ export function FormRadioGroupField({
   description,
   options, 
 }: FormRadioGroupFieldProps) {
-  // Display a text area for each class option
   return (
     <div className="space-y-5">
       <h3 className="text-base font-medium">{label}</h3>
@@ -28,51 +27,58 @@ export function FormRadioGroupField({
       <div className="space-y-4">
         <FormTextAreaField
           control={control}
-          name={`${name}_puppy`}
+          name="PUPPY"
           label="PUPPY"
           placeholder="Enter details here"
         />
         
         <FormTextAreaField
           control={control}
-          name={`${name}_eo`}
+          name="EO"
           label="EO"
           placeholder="Enter details here"
         />
         
         <FormTextAreaField
           control={control}
-          name={`${name}_cgc_bronze`}
-          label="CGC BRONZE"
+          name="BRONZE_CGC"
+          label="BRONZE CGC"
           placeholder="Enter details here"
         />
         
         <FormTextAreaField
           control={control}
-          name={`${name}_cgc_silver`}
-          label="CGC SILVER"
+          name="SILVER_CGC"
+          label="SILVER CGC"
           placeholder="Enter details here"
         />
         
         <FormTextAreaField
           control={control}
-          name={`${name}_beginner_novice`}
+          name="BEGINNER_NOVICE"
           label="BEGINNER/NOVICE"
           placeholder="Enter details here"
         />
         
         <FormTextAreaField
           control={control}
-          name={`${name}_wt`}
+          name="WT"
           label="WT"
           placeholder="Enter details here"
         />
         
         <FormTextAreaField
           control={control}
-          name={`${name}_yoga`}
+          name="YOGA"
           label="YOGA"
           placeholder="Enter details here"
+        />
+
+        <FormTextAreaField
+          control={control}
+          name="COMMENTS"
+          label="COMMENTS"
+          placeholder="Additional comments"
         />
       </div>
     </div>
