@@ -10,6 +10,33 @@ import { HandlerNotFound } from "@/components/handlers/detail/HandlerNotFound";
 import { HandlerDetailSkeleton } from "@/components/handlers/detail/HandlerDetailSkeleton";
 import { Helmet } from "react-helmet";
 
+interface Dog {
+  id: string;
+  name: string;
+  breed: string;
+  age?: number;
+  weight?: number;
+  notes?: string;
+  behavior_notes?: string;
+  medical_notes?: string;
+  avatar_url?: string;
+}
+
+interface Handler {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  postal_code?: string;
+  notes?: string;
+  branch_id?: string;
+  created_at: string;
+  dogs: Dog[];
+}
+
 export default function HandlerDetail() {
   // Fix the param name to match the router's ":id" parameter
   const { id: handlerId } = useParams();
@@ -49,7 +76,7 @@ export default function HandlerDetail() {
         .single();
       
       if (error) throw error;
-      return data;
+      return data as Handler;
     }
   });
 
