@@ -29,40 +29,46 @@ export function MultiSelect({
 }: MultiSelectProps) {
   const [open, setOpen] = React.useState(false);
 
+  // Ensure options and value are always valid arrays
+  const safeOptions = Array.isArray(options) 
+    ? options.filter(option => option && typeof option === 'object' && 'label' in option && 'value' in option)
+    : [];
+    
+  const safeValue = Array.isArray(value) 
+    ? value.filter(item => item && typeof item === 'object' && 'label' in item && 'value' in item)
+    : [];
+
   const handleUnselect = (item: OptionType) => {
     if (!item || !item.value) return;
     
-    const newValue = Array.isArray(value) 
-      ? value.filter((i) => i && i.value && i.value !== item.value) 
-      : [];
-    onChange(newValue);
+    try {
+      const newValue = safeValue.filter(i => i.value !== item.value);
+      onChange(newValue);
+    } catch (error) {
+      console.error("Error in handleUnselect:", error);
+      onChange([]);
+    }
   };
 
   const handleSelect = (item: OptionType) => {
     if (!item || !item.value) return;
     
-    // Check if item is already selected
-    const isSelected = Array.isArray(value) && 
-      value.some((i) => i && i.value && i.value === item.value);
-    
-    if (isSelected) {
-      // Remove it
-      onChange(value.filter((i) => i && i.value && i.value !== item.value));
-    } else {
-      // Add it
-      onChange([...(Array.isArray(value) ? value : []), item]);
+    try {
+      // Check if item is already selected
+      const isSelected = safeValue.some(i => i.value === item.value);
+      
+      if (isSelected) {
+        // Remove it
+        onChange(safeValue.filter(i => i.value !== item.value));
+      } else {
+        // Add it
+        onChange([...safeValue, item]);
+      }
+    } catch (error) {
+      console.error("Error in handleSelect:", error);
+      onChange([]);
     }
   };
-
-  // Ensure options is always an array of valid objects
-  const safeOptions = Array.isArray(options) 
-    ? options.filter(option => option && typeof option === 'object')
-    : [];
-    
-  // Ensure value is always an array of valid objects
-  const safeValue = Array.isArray(value) 
-    ? value.filter(item => item && typeof item === 'object')
-    : [];
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -77,11 +83,11 @@ export function MultiSelect({
             {safeValue.length > 0 ? (
               safeValue.map((item) => (
                 <Badge
-                  key={item?.value || `empty-${Math.random()}`}
+                  key={`item-${item.value}`}
                   variant="secondary"
                   className="mr-1 mb-1"
                 >
-                  {item?.label || "Unknown"}
+                  {item.label}
                   <button
                     className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
                     onKeyDown={(e) => {
@@ -97,7 +103,7 @@ export function MultiSelect({
                     type="button"
                   >
                     <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-                    <span className="sr-only">Remove {item?.label || "item"}</span>
+                    <span className="sr-only">Remove {item.label}</span>
                   </button>
                 </Badge>
               ))
@@ -123,23 +129,23 @@ export function MultiSelect({
             {safeOptions.length > 0 ? (
               safeOptions.map((option) => (
                 <CommandItem
-                  key={option?.value || `option-${Math.random()}`}
+                  key={`option-${option.value}`}
                   onSelect={() => handleSelect(option)}
                   className="cursor-pointer"
                 >
                   <span
                     className={cn(
                       "mr-2 h-4 w-4 rounded-sm border border-primary",
-                      safeValue.some((item) => item?.value === option?.value)
+                      safeValue.some((item) => item.value === option.value)
                         ? "bg-primary text-primary-foreground"
                         : "opacity-50 [&_svg]:invisible"
                     )}
                   >
-                    {safeValue.some((item) => item?.value === option?.value) && (
+                    {safeValue.some((item) => item.value === option.value) && (
                       <span className="flex h-full items-center justify-center text-xs">✓</span>
                     )}
                   </span>
-                  <span>{option?.label || "Unknown"}</span>
+                  <span>{option.label}</span>
                 </CommandItem>
               ))
             ) : (

@@ -9,6 +9,12 @@ interface TrainerBioFieldProps {
 }
 
 export function TrainerBioField({ form }: TrainerBioFieldProps) {
+  // Ensure form control exists before rendering
+  if (!form || !form.control) {
+    console.error("Form or form.control is undefined in TrainerBioField");
+    return null;
+  }
+
   return (
     <FormField
       control={form.control}
@@ -21,6 +27,7 @@ export function TrainerBioField({ form }: TrainerBioFieldProps) {
               placeholder="Trainer biography and experience..."
               className="min-h-24"
               {...field} 
+              value={field.value || ""} // Ensure value is never undefined
             />
           </FormControl>
           <FormMessage />
