@@ -25,6 +25,16 @@ export function MultiSelectItem({ option, index, isSelected, onSelect }: MultiSe
     return { label, value };
   }, [option, index]);
 
+  // Log props for debugging
+  React.useEffect(() => {
+    console.log("MultiSelectItem render:", {
+      option,
+      safeOption,
+      index,
+      isSelected
+    });
+  }, [option, safeOption, index, isSelected]);
+
   const handleSelect = React.useCallback(() => {
     try {
       console.log("MultiSelectItem: handling select for", safeOption);

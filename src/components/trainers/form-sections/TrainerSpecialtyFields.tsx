@@ -1,10 +1,10 @@
 
+import { useState, useEffect } from "react";
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { MultiSelect, OptionType } from "@/components/ui/multi-select";
 import { UseFormReturn } from "react-hook-form";
 import { TrainerFormValues } from "../schemas/trainerFormSchema";
 import { branchIdsToOptions, hasBranchData, specialtiesAsOptions } from "../utils/optionUtils";
-import { useState, useEffect } from "react";
 import { Loader } from "lucide-react";
 
 interface TrainerSpecialtyFieldsProps {
@@ -28,14 +28,19 @@ export function TrainerSpecialtyFields({
     { label: "Search & Rescue", value: "Search & Rescue" },
   ]);
 
-  // Get form values
+  // Get form values - ensure they are arrays
   const branchIds = form.watch('branchIds') || [];
   const specialties = form.watch('specialties') || [];
   
+  // Debug info
   useEffect(() => {
-    console.log("TrainerSpecialtyFields render with branchIds:", branchIds);
-    console.log("Available branches:", branches);
-    console.log("Branches loading:", isLoadingBranches);
+    console.log("TrainerSpecialtyFields render:", {
+      branchIds,
+      branchIdsType: typeof branchIds,
+      branches,
+      branchesLength: branches?.length || 0,
+      isLoadingBranches
+    });
   }, [branchIds, branches, isLoadingBranches]);
 
   // Convert branch IDs to options for display - ensure this never returns undefined
@@ -43,6 +48,9 @@ export function TrainerSpecialtyFields({
   
   // Convert specialties to options for display - ensure this never returns undefined
   const selectedSpecialtyOptions = specialtiesAsOptions(specialties);
+
+  // Check if we have valid branch data
+  const hasBranches = hasBranchData(branches);
 
   return (
     <>
@@ -58,10 +66,10 @@ export function TrainerSpecialtyFields({
                   <Loader className="h-4 w-4 animate-spin" />
                   <span className="text-sm text-muted-foreground">Loading branches...</span>
                 </div>
-              ) : hasBranchData(branches) ? (
+              ) : hasBranches ? (
                 <MultiSelect
-                  options={branches || []}
-                  value={selectedBranchOptions || []}
+                  options={branches}
+                  value={selectedBranchOptions}
                   onChange={(selected) => {
                     const selectedIds = selected.map(item => item.value);
                     console.log("Branch selection changed to:", selectedIds);
@@ -93,7 +101,7 @@ export function TrainerSpecialtyFields({
             <FormControl>
               <MultiSelect
                 options={specialtyOptions}
-                value={selectedSpecialtyOptions || []}
+                value={selectedSpecialtyOptions}
                 onChange={(selected) => {
                   const selectedSpecialties = selected.map(item => item.value);
                   console.log("Specialty selection changed to:", selectedSpecialties);

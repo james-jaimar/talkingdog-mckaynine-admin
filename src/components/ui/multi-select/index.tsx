@@ -89,8 +89,8 @@ export function MultiSelect({
     console.log("MultiSelect render:", {
       optionsIsArray: Array.isArray(options),
       valueIsArray: Array.isArray(value),
-      safeOptionsLength: safeOptions.length,
-      safeValueLength: safeValue.length,
+      safeOptionsLength: safeOptions?.length || 0,
+      safeValueLength: safeValue?.length || 0,
       open
     });
   }, [options, value, safeOptions, safeValue, open]);
@@ -165,15 +165,27 @@ export function MultiSelect({
     }
   }, [safeValue, onChange]);
 
-  if (safeOptions.length === 0) {
-    console.warn("MultiSelect: No valid options provided");
-  }
+  // Debug info
+  React.useEffect(() => {
+    if (!safeOptions || safeOptions.length === 0) {
+      console.warn("MultiSelect: No valid options provided");
+    }
+  }, [safeOptions]);
+
+  // Memoize the content to prevent unnecessary re-renders and ensure stability
+  const content = React.useMemo(() => (
+    <MultiSelectContent
+      options={safeOptions || []}
+      value={safeValue || []}
+      onSelect={handleSelect}
+    />
+  ), [safeOptions, safeValue, handleSelect]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <MultiSelectTrigger
-          value={safeValue}
+          value={safeValue || []}
           placeholder={placeholder}
           className={className}
           isOpen={open}
@@ -181,11 +193,7 @@ export function MultiSelect({
           onUnselect={handleUnselect}
         />
       </PopoverTrigger>
-      <MultiSelectContent
-        options={safeOptions}
-        value={safeValue}
-        onSelect={handleSelect}
-      />
+      {content}
     </Popover>
   );
 }

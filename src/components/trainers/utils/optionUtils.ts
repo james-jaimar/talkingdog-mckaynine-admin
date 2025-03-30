@@ -63,7 +63,21 @@ export const branchIdsToOptions = (
  * Helper function to check if branch data is valid and has content
  */
 export const hasBranchData = (branches: OptionType[] | null | undefined): boolean => {
-  const isValid = Boolean(branches && Array.isArray(branches) && branches.length > 0);
-  console.log("hasBranchData check:", { branches, isValid });
+  if (!branches) return false;
+  if (!Array.isArray(branches)) return false;
+  if (branches.length === 0) return false;
+  
+  // Check if branches have valid structure
+  const validBranches = branches.filter(branch => 
+    branch && 
+    typeof branch === 'object' && 
+    'label' in branch && 
+    typeof branch.label === 'string' &&
+    'value' in branch && 
+    typeof branch.value === 'string'
+  );
+  
+  const isValid = validBranches.length > 0;
+  console.log("hasBranchData check:", { branches, validBranches, isValid });
   return isValid;
 };

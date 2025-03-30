@@ -1,6 +1,6 @@
 
 import * as React from "react";
-import { Command, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
+import { Command, CommandEmpty, CommandGroup } from "@/components/ui/command";
 import { PopoverContent } from "@/components/ui/popover";
 import { MultiSelectItem } from "./multi-select-item";
 import { OptionType } from "./types";
@@ -72,10 +72,18 @@ export function MultiSelectContent({ options, value, onSelect }: MultiSelectCont
     }
   }, [safeValue]);
 
+  // Just for debugging the issue
+  React.useEffect(() => {
+    console.log("MultiSelectContent rendered with:", {
+      optionsLength: safeOptions?.length || 0,
+      valueLength: safeValue?.length || 0
+    });
+  }, [safeOptions, safeValue]);
+
   return (
     <PopoverContent className="w-full p-0" align="start">
       <Command className="w-full">
-        {safeOptions.length === 0 ? (
+        {(!safeOptions || safeOptions.length === 0) ? (
           <CommandEmpty>No options available</CommandEmpty>
         ) : (
           <CommandGroup>
