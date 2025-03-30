@@ -93,7 +93,7 @@ export function ClassesTable() {
                   <td className="p-2">{classItem.name}</td>
                   <td className="p-2">{classItem.level}</td>
                   <td className="p-2">{classItem.branches?.name}</td>
-                  <td className="p-2">${classItem.price.toFixed(2)}</td>
+                  <td className="p-2">R{classItem.price.toFixed(2)}</td>
                   <td className="p-2">{classItem.duration}</td>
                   <td className="p-2">{classItem.capacity}</td>
                   <td className="p-2">
