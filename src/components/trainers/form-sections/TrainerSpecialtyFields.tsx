@@ -32,17 +32,6 @@ export function TrainerSpecialtyFields({
   const branchIds = form.watch('branchIds') || [];
   const specialties = form.watch('specialties') || [];
   
-  // Debug info
-  useEffect(() => {
-    console.log("TrainerSpecialtyFields render:", {
-      branchIds,
-      branchIdsType: typeof branchIds,
-      branches,
-      branchesLength: branches?.length || 0,
-      isLoadingBranches
-    });
-  }, [branchIds, branches, isLoadingBranches]);
-
   // Convert branch IDs to options for display - ensure this never returns undefined
   const selectedBranchOptions = branchIdsToOptions(branchIds, branches);
   
@@ -68,11 +57,10 @@ export function TrainerSpecialtyFields({
                 </div>
               ) : hasBranches ? (
                 <MultiSelect
-                  options={branches}
-                  value={selectedBranchOptions}
+                  options={branches || []}
+                  value={selectedBranchOptions || []}
                   onChange={(selected) => {
                     const selectedIds = selected.map(item => item.value);
-                    console.log("Branch selection changed to:", selectedIds);
                     form.setValue('branchIds', selectedIds, { 
                       shouldValidate: true, 
                       shouldDirty: true 
@@ -100,11 +88,10 @@ export function TrainerSpecialtyFields({
             <FormLabel>Specialties</FormLabel>
             <FormControl>
               <MultiSelect
-                options={specialtyOptions}
-                value={selectedSpecialtyOptions}
+                options={specialtyOptions || []}
+                value={selectedSpecialtyOptions || []}
                 onChange={(selected) => {
                   const selectedSpecialties = selected.map(item => item.value);
-                  console.log("Specialty selection changed to:", selectedSpecialties);
                   form.setValue('specialties', selectedSpecialties, { 
                     shouldValidate: true, 
                     shouldDirty: true 

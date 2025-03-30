@@ -1,6 +1,6 @@
 
 import * as React from "react";
-import { Command, CommandEmpty, CommandGroup } from "@/components/ui/command";
+import { Command, CommandEmpty, CommandGroup, CommandList } from "@/components/ui/command";
 import { PopoverContent } from "@/components/ui/popover";
 import { MultiSelectItem } from "./multi-select-item";
 import { OptionType } from "./types";
@@ -72,32 +72,26 @@ export function MultiSelectContent({ options, value, onSelect }: MultiSelectCont
     }
   }, [safeValue]);
 
-  // Just for debugging the issue
-  React.useEffect(() => {
-    console.log("MultiSelectContent rendered with:", {
-      optionsLength: safeOptions?.length || 0,
-      valueLength: safeValue?.length || 0
-    });
-  }, [safeOptions, safeValue]);
-
   return (
     <PopoverContent className="w-full p-0" align="start">
       <Command className="w-full">
-        {(!safeOptions || safeOptions.length === 0) ? (
-          <CommandEmpty>No options available</CommandEmpty>
-        ) : (
-          <CommandGroup>
-            {safeOptions.map((option, idx) => (
-              <MultiSelectItem
-                key={`option-item-${option?.value || idx}-${option?.label || idx}`}
-                option={option}
-                index={idx}
-                isSelected={isOptionSelected(option)}
-                onSelect={onSelect}
-              />
-            ))}
-          </CommandGroup>
-        )}
+        <CommandList>
+          {(!safeOptions || safeOptions.length === 0) ? (
+            <CommandEmpty>No options available</CommandEmpty>
+          ) : (
+            <CommandGroup>
+              {safeOptions.map((option, idx) => (
+                <MultiSelectItem
+                  key={`option-item-${option?.value || idx}-${option?.label || idx}`}
+                  option={option}
+                  index={idx}
+                  isSelected={isOptionSelected(option)}
+                  onSelect={onSelect}
+                />
+              ))}
+            </CommandGroup>
+          )}
+        </CommandList>
       </Command>
     </PopoverContent>
   );

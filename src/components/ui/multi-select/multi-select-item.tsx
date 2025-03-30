@@ -25,19 +25,8 @@ export function MultiSelectItem({ option, index, isSelected, onSelect }: MultiSe
     return { label, value };
   }, [option, index]);
 
-  // Log props for debugging
-  React.useEffect(() => {
-    console.log("MultiSelectItem render:", {
-      option,
-      safeOption,
-      index,
-      isSelected
-    });
-  }, [option, safeOption, index, isSelected]);
-
   const handleSelect = React.useCallback(() => {
     try {
-      console.log("MultiSelectItem: handling select for", safeOption);
       onSelect(safeOption);
     } catch (error) {
       console.error("Error in MultiSelectItem handleSelect:", error);
@@ -46,9 +35,10 @@ export function MultiSelectItem({ option, index, isSelected, onSelect }: MultiSe
 
   return (
     <CommandItem
-      key={`option-${safeOption.value}-${safeOption.label}`}
+      key={`option-${safeOption.value}-${index}`}
       onSelect={handleSelect}
       className="cursor-pointer"
+      value={safeOption.value}
     >
       <div className="flex items-center gap-2 w-full">
         <div
