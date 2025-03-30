@@ -7,11 +7,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { Trainer } from "../types/trainer";
 import { trainerFormSchema, TrainerFormValues } from "../schemas/trainerFormSchema";
-import { OptionType } from "@/components/ui/multi-select";
+
+// Simple branch option type
+type BranchOption = {
+  label: string;
+  value: string;
+};
 
 export function useTrainerForm(trainer: Trainer, onSuccess: () => void) {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [branches, setBranches] = useState<OptionType[]>([]);
+  const [branches, setBranches] = useState<BranchOption[]>([]);
   const [isLoadingBranches, setIsLoadingBranches] = useState(true);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -49,26 +54,14 @@ export function useTrainerForm(trainer: Trainer, onSuccess: () => void) {
           throw error;
         }
         
-        console.log("Raw branches data:", data);
-        
-        if (data && Array.isArray(data) && data.length > 0) {
-          // Map branch data to OptionType format and ensure valid structure
-          const branchOptions = data.map(branch => {
-            // Ensure each branch has an id and name
-            if (!branch || !branch.id || !branch.name) {
-              console.warn("Invalid branch data:", branch);
-              return null;
-            }
-            return {
-              value: branch.id,
-              label: branch.name
-            };
-          }).filter(Boolean) as OptionType[]; // Remove null entries
+        if (data && Array.isArray(data)) {
+          const branchOptions = data.map(branch => ({
+            value: branch.id,
+            label: branch.name
+          }));
           
-          console.log("Converted branch options:", branchOptions);
           setBranches(branchOptions);
         } else {
-          console.warn("No branches data received or empty array:", data);
           setBranches([]);
         }
       } catch (error) {
@@ -86,11 +79,6 @@ export function useTrainerForm(trainer: Trainer, onSuccess: () => void) {
     
     fetchBranches();
   }, [toast]);
-  
-  // Log state changes for debugging
-  useEffect(() => {
-    console.log("Current branches state:", branches);
-  }, [branches]);
   
   const onSubmit = async (values: TrainerFormValues) => {
     setIsSubmitting(true);

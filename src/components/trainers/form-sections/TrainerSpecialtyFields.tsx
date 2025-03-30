@@ -1,14 +1,15 @@
 
 import { useState } from "react";
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
-import { MultiSelect, OptionType } from "@/components/ui/multi-select";
 import { UseFormReturn } from "react-hook-form";
 import { TrainerFormValues } from "../schemas/trainerFormSchema";
 import { Loader } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface TrainerSpecialtyFieldsProps {
   form: UseFormReturn<TrainerFormValues>;
-  branches: OptionType[];
+  branches: { label: string; value: string }[];
   isLoadingBranches?: boolean;
 }
 
@@ -17,7 +18,7 @@ export function TrainerSpecialtyFields({
   branches = [],
   isLoadingBranches = false
 }: TrainerSpecialtyFieldsProps) {
-  const [specialtyOptions] = useState<OptionType[]>([
+  const [specialtyOptions] = useState([
     { label: "Obedience Training", value: "Obedience Training" },
     { label: "Behavioral Correction", value: "Behavioral Correction" },
     { label: "Puppy Training", value: "Puppy Training" },
@@ -27,25 +28,7 @@ export function TrainerSpecialtyFields({
     { label: "Search & Rescue", value: "Search & Rescue" },
   ]);
 
-  const branchIds = form.watch('branchIds') || [];
-  const specialties = form.watch('specialties') || [];
-  
-  // Convert branch IDs to options for display
-  const selectedBranchOptions = branchIds.map(id => {
-    const branch = branches.find(b => b.value === id);
-    return branch || { label: `Branch ${id.substring(0, 6)}...`, value: id };
-  });
-  
-  // Convert specialties to options for display
-  const selectedSpecialtyOptions = specialties.map(specialty => ({
-    label: specialty,
-    value: specialty
-  }));
-
-  console.log('Debug: branches', branches);
-  console.log('Debug: branchIds', branchIds);
-  console.log('Debug: selectedBranchOptions', selectedBranchOptions);
-
+  // For branch selection
   return (
     <>
       <FormField
@@ -53,7 +36,7 @@ export function TrainerSpecialtyFields({
         name="branchIds"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Branches</FormLabel>
+            <FormLabel>Branch</FormLabel>
             <FormControl>
               {isLoadingBranches ? (
                 <div className="flex items-center space-x-2 h-10 px-3 py-2 border rounded-md">
@@ -61,19 +44,26 @@ export function TrainerSpecialtyFields({
                   <span className="text-sm text-muted-foreground">Loading branches...</span>
                 </div>
               ) : branches.length > 0 ? (
-                <MultiSelect
-                  options={branches}
-                  value={selectedBranchOptions}
-                  onChange={(selected) => {
-                    const selectedIds = selected.map(item => item.value);
-                    form.setValue('branchIds', selectedIds, { 
+                <Select 
+                  onValueChange={(value) => {
+                    form.setValue('branchIds', [value], { 
                       shouldValidate: true, 
                       shouldDirty: true 
                     });
                   }}
-                  placeholder="Select branches"
-                  className="border border-input"
-                />
+                  value={field.value && field.value.length > 0 ? field.value[0] : undefined}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a branch" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {branches.map((branch) => (
+                      <SelectItem key={branch.value} value={branch.value}>
+                        {branch.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               ) : (
                 <div className="text-sm text-muted-foreground border border-input p-2 rounded">
                   No branches available. Please add branches first.
@@ -85,31 +75,39 @@ export function TrainerSpecialtyFields({
         )}
       />
       
-      <FormField
-        control={form.control}
-        name="specialties"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Specialties</FormLabel>
-            <FormControl>
-              <MultiSelect
-                options={specialtyOptions}
-                value={selectedSpecialtyOptions}
-                onChange={(selected) => {
-                  const selectedSpecialties = selected.map(item => item.value);
-                  form.setValue('specialties', selectedSpecialties, { 
-                    shouldValidate: true, 
-                    shouldDirty: true 
-                  });
-                }}
-                placeholder="Select specialties"
-                className="border border-input"
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+      <div className="space-y-3">
+        <FormLabel>Specialties</FormLabel>
+        <div className="grid grid-cols-2 gap-2">
+          {specialtyOptions.map((specialty) => (
+            <FormField
+              key={specialty.value}
+              control={form.control}
+              name="specialties"
+              render={({ field }) => (
+                <FormItem className="flex items-center space-x-2">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value?.includes(specialty.value)}
+                      onCheckedChange={(checked) => {
+                        const currentValues = field.value || [];
+                        const updatedValues = checked
+                          ? [...currentValues, specialty.value]
+                          : currentValues.filter(value => value !== specialty.value);
+                        
+                        form.setValue('specialties', updatedValues, {
+                          shouldValidate: true,
+                          shouldDirty: true
+                        });
+                      }}
+                    />
+                  </FormControl>
+                  <span className="text-sm">{specialty.label}</span>
+                </FormItem>
+              )}
+            />
+          ))}
+        </div>
+      </div>
     </>
   );
 }

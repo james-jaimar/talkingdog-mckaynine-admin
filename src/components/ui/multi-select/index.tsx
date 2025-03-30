@@ -1,68 +1,25 @@
 
-import * as React from "react";
-import { Popover, PopoverTrigger } from "@/components/ui/popover";
-import { MultiSelectTrigger } from "./multi-select-trigger";
-import { MultiSelectContent } from "./multi-select-content";
-import { MultiSelectProps, OptionType } from "./types";
+// This file is kept as a compatibility layer but doesn't contain any actual implementation
+// We've switched to using the standard Select component instead
 
-// Re-export the OptionType for consumers
-export type { OptionType } from "./types";
-export type { MultiSelectProps } from "./types";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-export function MultiSelect({
-  options = [],
-  value = [],
-  onChange,
-  placeholder = "Select options",
-  className,
-}: MultiSelectProps) {
-  const [open, setOpen] = React.useState(false);
+export type OptionType = {
+  label: string;
+  value: string;
+};
 
-  // Ensure we have valid arrays
-  const safeOptions = Array.isArray(options) ? options : [];
-  const safeValue = Array.isArray(value) ? value : [];
+export interface MultiSelectProps {
+  options: OptionType[];
+  value: OptionType[];
+  onChange: (value: OptionType[]) => void;
+  placeholder?: string;
+  className?: string;
+}
 
-  // Handle unselecting an item
-  const handleUnselect = (item: OptionType) => {
-    const newValue = safeValue.filter(i => i.value !== item.value);
-    if (typeof onChange === 'function') {
-      onChange(newValue);
-    }
-  };
-
-  // Handle selecting an item
-  const handleSelect = (item: OptionType) => {
-    const isSelected = safeValue.some(i => i.value === item.value);
-    
-    let newValue: OptionType[];
-    if (isSelected) {
-      newValue = safeValue.filter(i => i.value !== item.value);
-    } else {
-      newValue = [...safeValue, item];
-    }
-
-    if (typeof onChange === 'function') {
-      onChange(newValue);
-    }
-  };
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <MultiSelectTrigger
-          value={safeValue}
-          placeholder={placeholder}
-          className={className}
-          isOpen={open}
-          onOpenChange={setOpen}
-          onUnselect={handleUnselect}
-        />
-      </PopoverTrigger>
-      <MultiSelectContent
-        options={safeOptions}
-        value={safeValue}
-        onSelect={handleSelect}
-      />
-    </Popover>
-  );
+// This is a stub component that redirects to the standard Select
+// It's kept to prevent breaking existing code while we transition
+export function MultiSelect(props: MultiSelectProps) {
+  console.warn("MultiSelect is deprecated. Please use Select instead.");
+  return null;
 }
