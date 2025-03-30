@@ -6,8 +6,9 @@ export interface Trainer {
   email: string;
   phone: string | null;
   specialties: string[] | null;
-  branch_ids: string[] | null;
-  branch_names?: string[] | null; // Added branch_names as an optional property
+  branch_id?: string | null;  // Match the database column name
+  branch_ids?: string[] | null; // Keep for backward compatibility
+  branch_names?: string[] | null;
   bio: string | null;
   avatar_url: string | null;
   created_at: string;

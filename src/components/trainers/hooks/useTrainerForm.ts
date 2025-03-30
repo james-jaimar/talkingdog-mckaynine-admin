@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -21,12 +20,11 @@ export function useTrainerForm(trainer: Trainer, onSuccess: () => void) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
-  // Get the value to use for branchId from trainer
-  // We need to handle both branch_id (single value) and branch_ids (array)
-  const branchIdValue = trainer.branch_id || 
-                        (Array.isArray(trainer.branch_ids) && trainer.branch_ids.length > 0 
-                          ? trainer.branch_ids[0] 
-                          : undefined);
+  // Get the branch ID value, accounting for the type mismatch
+  // The database uses branch_id but our type uses branch_ids
+  const branchIdValue = Array.isArray(trainer.branch_ids) && trainer.branch_ids.length > 0 
+                         ? trainer.branch_ids[0] 
+                         : undefined;
   
   // Pre-populate form with trainer data
   const defaultValues: TrainerFormValues = {
