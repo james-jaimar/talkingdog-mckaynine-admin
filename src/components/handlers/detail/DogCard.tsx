@@ -2,6 +2,7 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Dog } from "lucide-react";
+import { EditDogModal } from "./EditDogModal";
 
 interface DogProps {
   dog: {
@@ -15,9 +16,11 @@ interface DogProps {
     medical_notes?: string;
     avatar_url?: string;
   };
+  clientId: string;
+  onDogUpdated?: () => void;
 }
 
-export function DogCard({ dog }: DogProps) {
+export function DogCard({ dog, clientId, onDogUpdated }: DogProps) {
   return (
     <div className="border rounded-lg overflow-hidden">
       <div className="bg-gray-50 p-4 border-b flex justify-between items-center">
@@ -38,7 +41,7 @@ export function DogCard({ dog }: DogProps) {
             <p className="text-sm text-gray-500">{dog.breed}</p>
           </div>
         </div>
-        <Button size="sm" variant="outline">View Details</Button>
+        <EditDogModal dog={dog} clientId={clientId} onSuccess={onDogUpdated} />
       </div>
       <div className="p-4">
         <Tabs defaultValue="basic">

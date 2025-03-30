@@ -66,7 +66,11 @@ export default function HandlerDetail() {
         ) : handler ? (
           <div className="grid gap-6 grid-cols-1 lg:grid-cols-3">
             <HandlerInfo handler={handler} />
-            <DogsList dogs={handler.dogs} />
+            <DogsList 
+              dogs={handler.dogs} 
+              clientId={handler.id}
+              onDogsUpdated={handleHandlerUpdated}
+            />
             {/* Future components like upcoming classes/bookings can be added here */}
           </div>
         ) : (

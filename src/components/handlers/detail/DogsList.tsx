@@ -1,8 +1,8 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Dog } from "lucide-react";
 import { DogCard } from "./DogCard";
+import { EditDogModal } from "./EditDogModal";
 
 interface DogsListProps {
   dogs: Array<{
@@ -16,19 +16,22 @@ interface DogsListProps {
     medical_notes?: string;
     avatar_url?: string;
   }>;
+  clientId: string;
+  onDogsUpdated?: () => void;
 }
 
-export function DogsList({ dogs }: DogsListProps) {
+export function DogsList({ dogs, clientId, onDogsUpdated }: DogsListProps) {
   return (
     <Card className="lg:col-span-2 border border-gray-200 shadow-sm">
-      <CardHeader className="bg-gray-50 border-b border-gray-200">
+      <CardHeader className="bg-gray-50 border-b border-gray-200 flex flex-row items-center justify-between">
         <CardTitle>Dogs</CardTitle>
+        <EditDogModal clientId={clientId} onSuccess={onDogsUpdated} isNew={true} />
       </CardHeader>
       <CardContent className="p-6">
         {dogs && dogs.length > 0 ? (
           <div className="space-y-6">
             {dogs.map((dog) => (
-              <DogCard key={dog.id} dog={dog} />
+              <DogCard key={dog.id} dog={dog} clientId={clientId} onDogUpdated={onDogsUpdated} />
             ))}
           </div>
         ) : (
@@ -38,9 +41,6 @@ export function DogsList({ dogs }: DogsListProps) {
             <p className="mt-1 text-sm text-gray-500">
               This handler doesn't have any dogs registered yet.
             </p>
-            <Button className="mt-4" variant="outline">
-              Add Dog
-            </Button>
           </div>
         )}
       </CardContent>
