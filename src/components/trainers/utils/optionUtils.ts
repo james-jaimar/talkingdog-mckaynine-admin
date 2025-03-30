@@ -71,13 +71,15 @@ export const branchIdsToOptions = (
       return [];
     }
     
+    console.log("branchIdsToOptions starting with:", {
+      branchIds,
+      branches,
+      branchIdsLength: branchIds.length,
+      branchesLength: branches.length
+    });
+    
     // Filter to ensure valid IDs
     const validBranchIds = branchIds.filter(id => typeof id === 'string' && id.trim() !== '');
-    
-    if (validBranchIds.length === 0) {
-      console.log("branchIdsToOptions: no valid branch IDs");
-      return [];
-    }
     
     // Create valid branch objects
     const validBranches = branches.filter(b => 
@@ -93,6 +95,16 @@ export const branchIdsToOptions = (
       validBranches,
       branchesIsArray: Array.isArray(branches)
     });
+    
+    if (validBranchIds.length === 0) {
+      console.log("branchIdsToOptions: no valid branch IDs");
+      return [];
+    }
+    
+    if (validBranches.length === 0) {
+      console.log("branchIdsToOptions: no valid branches");
+      return [];
+    }
     
     // Map IDs to options with fallback
     const result = validBranchIds.map(id => {

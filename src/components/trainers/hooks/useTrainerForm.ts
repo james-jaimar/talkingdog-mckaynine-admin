@@ -35,27 +35,40 @@ export function useTrainerForm(trainer: Trainer, onSuccess: () => void) {
   useEffect(() => {
     const fetchBranches = async () => {
       try {
+        console.log("Fetching branches...");
+        
         const { data, error } = await supabase
           .from("branches")
           .select("id, name")
           .order("name");
         
-        if (error) throw error;
+        if (error) {
+          console.error("Error fetching branches:", error);
+          throw error;
+        }
         
         if (data) {
+          console.log("Branches data received:", data);
+          
           const branchOptions = data.map(branch => ({
             value: branch.id,
             label: branch.name
           }));
+          
+          console.log("Converted to branch options:", branchOptions);
           setBranches(branchOptions);
+        } else {
+          console.warn("No branches data received");
+          setBranches([]);
         }
       } catch (error) {
-        console.error("Error fetching branches:", error);
+        console.error("Exception in fetchBranches:", error);
         toast({
           title: "Failed to load branches",
           description: "Please try again or contact support.",
           variant: "destructive",
         });
+        setBranches([]);
       }
     };
     
@@ -66,6 +79,8 @@ export function useTrainerForm(trainer: Trainer, onSuccess: () => void) {
     setIsSubmitting(true);
     
     try {
+      console.log("Submitting trainer form with values:", values);
+      
       const { error } = await supabase
         .from("trainers")
         .update({

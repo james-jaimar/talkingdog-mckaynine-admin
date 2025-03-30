@@ -32,7 +32,7 @@ export function TrainerSpecialtyFields({ form, branches }: TrainerSpecialtyField
   // Ensure branches is a valid array
   const validBranches = Array.isArray(branches) ? branches : [];
   
-  // Log form state for debugging
+  // Log form state and branches for debugging
   useEffect(() => {
     console.log("TrainerSpecialtyFields state:", { 
       watchedBranchIds,
@@ -41,6 +41,7 @@ export function TrainerSpecialtyFields({ form, branches }: TrainerSpecialtyField
       specialties,
       branches: validBranches,
       branchesIsArray: Array.isArray(branches),
+      branchesLength: validBranches.length
     });
   }, [watchedBranchIds, watchedSpecialties, branchIds, specialties, validBranches, branches]);
 
@@ -49,15 +50,6 @@ export function TrainerSpecialtyFields({ form, branches }: TrainerSpecialtyField
   
   // Create specialty options  
   const safeSpecialtyOptions = specialtiesAsOptions(specialties);
-
-  // Log converted options for debugging
-  useEffect(() => {
-    console.log("TrainerSpecialtyFields converted options:", { 
-      safeBranchOptions, 
-      safeSpecialtyOptions,
-      specialtyOptions
-    });
-  }, [safeBranchOptions, safeSpecialtyOptions, specialtyOptions]);
 
   // Safe branch change handler with enhanced error checking
   const handleBranchChange = useCallback((selected: OptionType[]) => {
@@ -131,7 +123,7 @@ export function TrainerSpecialtyFields({ form, branches }: TrainerSpecialtyField
             <FormControl>
               <MultiSelect
                 options={validBranches}
-                value={safeBranchOptions || []}
+                value={safeBranchOptions}
                 onChange={handleBranchChange}
                 placeholder="Select branches"
               />
@@ -150,7 +142,7 @@ export function TrainerSpecialtyFields({ form, branches }: TrainerSpecialtyField
             <FormControl>
               <MultiSelect
                 options={specialtyOptions}
-                value={safeSpecialtyOptions || []}
+                value={safeSpecialtyOptions}
                 onChange={handleSpecialtyChange}
                 placeholder="Select specialties"
               />
