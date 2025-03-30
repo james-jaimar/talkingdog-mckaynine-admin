@@ -1,9 +1,10 @@
+
 import { useState } from "react";
 import Papa from "papaparse";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { FieldMapping } from "./types";
-import { availableFields } from "./fieldDefinitions";
+import { availableFields, clientPreferences, classEnrollments } from "./fieldDefinitions";
 
 export function useImportData() {
   const [csvFile, setCsvFile] = useState<File | null>(null);
@@ -39,18 +40,18 @@ export function useImportData() {
             "Tel": "clients.phone",
             "Dog's Name": "dogs.name",
             "Breed": "dogs.breed",
-            "DOB": "dogs.age",
+            "DOB": "dogs.date_of_birth",
             "Assess": "dogs.notes",
             "COMMENTS": "clients.notes",
             "WhatsApp": "clients.whatsapp",
             "Photo Permission": "clients.photo_permission",
-            "PUPPY": "classes.puppy_class",
-            "EO": "classes.eo_class",
-            "BRONZE CGC": "classes.bronze_cgc_class",
-            "SILVER CGC": "classes.silver_cgc_class",
-            "BEGINNER/Novice": "classes.beginner_novice_class",
-            "WT": "classes.wt_class",
-            "YOGA": "classes.yoga_class"
+            "PUPPY": "class_enrollments.puppy_class",
+            "EO": "class_enrollments.eo_class",
+            "BRONZE CGC": "class_enrollments.bronze_cgc_class",
+            "SILVER CGC": "class_enrollments.silver_cgc_class",
+            "BEGINNER/Novice": "class_enrollments.beginner_novice_class",
+            "WT": "class_enrollments.wt_class",
+            "YOGA": "class_enrollments.yoga_class"
           };
           
           headers.forEach(header => {
@@ -126,7 +127,7 @@ export function useImportData() {
     setIsUploading(true);
     const errors: string[] = [];
     const successful: number[] = [];
-    const existingClients = new Map<string, string>(); // name -> id mapping
+    const existingClients = new Map<string, string>(); // email -> id mapping
 
     try {
       // Group mappings by table
@@ -141,18 +142,13 @@ export function useImportData() {
       });
 
       // First pass: preload existing clients to check for duplicates
-      if (tableGroups.clients && tableGroups.clients.name) {
-        const nameHeader = tableGroups.clients.name;
+      if (tableGroups.clients && tableGroups.clients.email) {
         const emailHeader = tableGroups.clients.email;
         
-        // Create a list of unique clients from the CSV
-        const uniqueClientNames = new Set<string>();
+        // Create a list of unique emails from the CSV
         const uniqueEmails = new Set<string>();
         
         csvData.forEach(row => {
-          if (row[nameHeader]) {
-            uniqueClientNames.add(row[nameHeader]);
-          }
           if (emailHeader && row[emailHeader]) {
             uniqueEmails.add(row[emailHeader]);
           }
@@ -162,14 +158,13 @@ export function useImportData() {
         if (uniqueEmails.size > 0) {
           const { data: existingClientsData } = await supabase
             .from('clients')
-            .select('id, first_name, last_name, email')
+            .select('id, email')
             .in('email', Array.from(uniqueEmails));
           
           if (existingClientsData) {
             existingClientsData.forEach(client => {
-              const fullName = `${client.first_name} ${client.last_name}`.trim();
               existingClients.set(client.email, client.id);
-              console.log(`Found existing client: ${fullName} (${client.email}) with ID: ${client.id}`);
+              console.log(`Found existing client with email: ${client.email} with ID: ${client.id}`);
             });
           }
         }
@@ -188,6 +183,8 @@ export function useImportData() {
               email: string;
               phone?: string;
               notes?: string;
+              whatsapp?: boolean;
+              photo_permission?: boolean;
               [key: string]: any;
             } = {
               first_name: '',
@@ -230,53 +227,15 @@ export function useImportData() {
               clientData.notes = row[tableGroups.clients.notes];
             }
             
-            // Add preferences to notes
-            const preferences = [];
-            
-            // Check for WhatsApp preference
-            if (tableGroups.clients.whatsapp && 
-                (row[tableGroups.clients.whatsapp]?.toLowerCase() === 'yes' || 
-                 row[tableGroups.clients.whatsapp] === '1' || 
-                 row[tableGroups.clients.whatsapp]?.toLowerCase() === 'true')) {
-              preferences.push('Prefers WhatsApp for communication');
-            }
-            
-            // Check for Photo Permission
-            if (tableGroups.clients.photo_permission && 
-                (row[tableGroups.clients.photo_permission]?.toLowerCase() === 'yes' || 
-                 row[tableGroups.clients.photo_permission] === '1' || 
-                 row[tableGroups.clients.photo_permission]?.toLowerCase() === 'true')) {
-              preferences.push('Photo permission granted');
-            }
-            
-            // Add preferences to notes
-            if (preferences.length > 0) {
-              if (clientData.notes) {
-                clientData.notes += '\n' + preferences.join('\n');
-              } else {
-                clientData.notes = preferences.join('\n');
-              }
-            }
-            
-            // Collect class information
-            const classNotes: string[] = [];
-            
-            // Process class fields if present in mappings
-            if (tableGroups.classes) {
-              Object.entries(tableGroups.classes).forEach(([classField, csvHeader]) => {
-                if (row[csvHeader] && row[csvHeader].trim()) {
-                  const className = classField.replace('_class', '').toUpperCase().replace('_', ' ');
-                  classNotes.push(`${className}: ${row[csvHeader].trim()}`);
-                }
-              });
-            }
-            
-            // Add class notes to client notes
-            if (classNotes.length > 0) {
-              if (clientData.notes) {
-                clientData.notes += '\n\nClass Information:\n' + classNotes.join('\n');
-              } else {
-                clientData.notes = 'Class Information:\n' + classNotes.join('\n');
+            // Handle preferences as dedicated fields, not notes
+            for (const pref of clientPreferences) {
+              if (tableGroups.clients[pref.column] && row[tableGroups.clients[pref.column]]) {
+                const value = row[tableGroups.clients[pref.column]];
+                // Convert to boolean based on value
+                clientData[pref.column] = 
+                  value?.toLowerCase() === 'yes' || 
+                  value === '1' || 
+                  value?.toLowerCase() === 'true';
               }
             }
             
@@ -302,7 +261,9 @@ export function useImportData() {
                 .from('clients')
                 .update({
                   phone: clientData.phone || null,
-                  notes: clientData.notes || null
+                  notes: clientData.notes || null,
+                  whatsapp: clientData.whatsapp,
+                  photo_permission: clientData.photo_permission
                 })
                 .eq('id', clientId);
                 
@@ -334,6 +295,7 @@ export function useImportData() {
                 name: string;
                 breed: string;
                 client_id: string;
+                date_of_birth?: string;
                 age?: number;
                 notes?: string;
                 behavior_notes?: string;
@@ -354,35 +316,33 @@ export function useImportData() {
                 dogData.breed = row[tableGroups.dogs.breed];
               }
               
-              // Process dog age from DOB
-              if (tableGroups.dogs.age && row[tableGroups.dogs.age]) {
+              // Process dog DOB - store as actual date
+              if (tableGroups.dogs.date_of_birth && row[tableGroups.dogs.date_of_birth]) {
                 try {
-                  const dobDate = new Date(row[tableGroups.dogs.age]);
+                  const dobValue = row[tableGroups.dogs.date_of_birth];
+                  const dobDate = new Date(dobValue);
+                  
                   if (!isNaN(dobDate.getTime())) {
+                    // Store the date in ISO format
+                    dogData.date_of_birth = dobDate.toISOString().split('T')[0];
+                    
+                    // Also calculate and store age for convenience
                     const today = new Date();
                     const ageInYears = Math.floor((today.getTime() - dobDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
                     dogData.age = ageInYears;
+                  } else {
+                    // If it's not a valid date, use as-is
+                    dogData.date_of_birth = dobValue;
                   }
-                } catch {
-                  // If date parsing fails, try to see if it's already a number
-                  const value = parseFloat(row[tableGroups.dogs.age]);
-                  if (!isNaN(value)) {
-                    dogData.age = value;
-                  }
+                } catch (e) {
+                  console.warn(`Warning: Could not parse date: ${row[tableGroups.dogs.date_of_birth]}`);
+                  dogData.date_of_birth = row[tableGroups.dogs.date_of_birth];
                 }
               }
               
               // Process dog notes
               if (tableGroups.dogs.notes && row[tableGroups.dogs.notes]) {
                 dogData.notes = row[tableGroups.dogs.notes];
-              }
-              
-              // Process behavior notes (class notes)
-              const behaviorNotes: string[] = [];
-              
-              // Add class info to behavior notes if not already added to client notes
-              if (classNotes.length > 0) {
-                dogData.behavior_notes = classNotes.join('\n');
               }
               
               // Validate required fields
@@ -397,30 +357,76 @@ export function useImportData() {
                 .eq('client_id', clientId)
                 .eq('name', dogData.name);
               
+              let dogId: string;
+              
               if (existingDogs && existingDogs.length > 0) {
                 // Update existing dog
+                dogId = existingDogs[0].id;
                 const { error: dogError } = await supabase
                   .from('dogs')
                   .update({
                     breed: dogData.breed,
+                    date_of_birth: dogData.date_of_birth,
                     age: dogData.age,
-                    notes: dogData.notes,
-                    behavior_notes: dogData.behavior_notes
+                    notes: dogData.notes
                   })
-                  .eq('id', existingDogs[0].id);
+                  .eq('id', dogId);
                   
                 if (dogError) throw dogError;
                 
                 console.log(`Updated existing dog "${dogData.name}" for client ID: ${clientId}`);
               } else {
                 // Create new dog
-                const { error: dogError } = await supabase
+                const { data: newDog, error: dogError } = await supabase
                   .from('dogs')
-                  .insert(dogData);
+                  .insert(dogData)
+                  .select('id');
                   
                 if (dogError) throw dogError;
+                if (!newDog || newDog.length === 0) {
+                  throw new Error('Failed to create dog record');
+                }
                 
-                console.log(`Created new dog "${dogData.name}" for client ID: ${clientId}`);
+                dogId = newDog[0].id;
+                console.log(`Created new dog "${dogData.name}" with ID: ${dogId} for client ID: ${clientId}`);
+              }
+              
+              // If we have class enrollment data and a valid dog ID, create enrollments
+              if (dogId && tableGroups.class_enrollments) {
+                for (const enrollment of classEnrollments) {
+                  const field = enrollment.column;
+                  if (tableGroups.class_enrollments[field] && row[tableGroups.class_enrollments[field]]) {
+                    const enrollmentValue = row[tableGroups.class_enrollments[field]];
+                    if (enrollmentValue && enrollmentValue.trim()) {
+                      // Here you would store the class enrollment data
+                      // Since there's no class_enrollments table in the schema yet,
+                      // we'll store this information in the dog's behavior_notes for now
+                      const classNote = `${enrollment.description}: ${enrollmentValue.trim()}`;
+                      
+                      // Append to existing behavior notes
+                      const { data: dogData } = await supabase
+                        .from('dogs')
+                        .select('behavior_notes')
+                        .eq('id', dogId)
+                        .single();
+                      
+                      const existingNotes = dogData?.behavior_notes || '';
+                      const updatedNotes = existingNotes 
+                        ? `${existingNotes}\n${classNote}` 
+                        : classNote;
+                      
+                      // Update the dog with the new behavior notes
+                      const { error: updateError } = await supabase
+                        .from('dogs')
+                        .update({ behavior_notes: updatedNotes })
+                        .eq('id', dogId);
+                      
+                      if (updateError) {
+                        console.warn(`Warning: Could not update dog behavior notes: ${updateError.message}`);
+                      }
+                    }
+                  }
+                }
               }
             }
             

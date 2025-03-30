@@ -31,9 +31,9 @@ export function ReviewStep({ csvData, fieldMappings }: ReviewStepProps) {
         <h4 className="font-medium mb-2">Special Handling</h4>
         <div className="text-sm space-y-2">
           <p>• "Name" column will be split into first and last name automatically</p>
-          <p>• DOB will be converted to age in years</p>
-          <p>• Class information (PUPPY, EO, etc.) will be combined into notes</p>
-          <p>• WhatsApp and Photo Permission preferences will be saved in notes</p>
+          <p>• DOB will be stored as the actual date in the database</p>
+          <p>• Class information (PUPPY, EO, etc.) will be mapped to class enrollment data</p>
+          <p>• WhatsApp and Photo Permission preferences will be stored in respective columns</p>
           <p>• <strong>Duplicate handlers (by email) will be detected</strong> and their dogs will be added or updated</p>
           <p>• <strong>Duplicate dogs (by name for same handler) will be updated</strong> rather than creating duplicates</p>
         </div>
@@ -78,7 +78,7 @@ export function ReviewStep({ csvData, fieldMappings }: ReviewStepProps) {
             <TabsContent value="classes">
               <div className="grid grid-cols-2 gap-2">
                 {Object.entries(fieldMappings)
-                  .filter(([_, value]) => value.startsWith('classes.'))
+                  .filter(([_, value]) => value.startsWith('class_enrollments.'))
                   .map(([csvHeader, dbField]) => (
                     <div key={csvHeader} className="flex justify-between">
                       <span className="font-medium">{csvHeader}</span>
