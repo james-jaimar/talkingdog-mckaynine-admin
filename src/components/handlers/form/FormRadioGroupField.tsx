@@ -1,6 +1,8 @@
 
 import { Control } from "react-hook-form";
-import { FormTextAreaField } from "./FormTextAreaField";
+import { FormField, FormItem, FormLabel } from "@/components/ui/form";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 
 interface FormRadioGroupFieldProps {
   control: Control<any>;
@@ -24,63 +26,27 @@ export function FormRadioGroupField({
         <p className="text-sm text-muted-foreground mb-4">{description}</p>
       )}
       
-      <div className="space-y-4">
-        <FormTextAreaField
-          control={control}
-          name="PUPPY"
-          label="PUPPY"
-          placeholder="Enter details here"
-        />
-        
-        <FormTextAreaField
-          control={control}
-          name="EO"
-          label="EO"
-          placeholder="Enter details here"
-        />
-        
-        <FormTextAreaField
-          control={control}
-          name="BRONZE_CGC"
-          label="BRONZE CGC"
-          placeholder="Enter details here"
-        />
-        
-        <FormTextAreaField
-          control={control}
-          name="SILVER_CGC"
-          label="SILVER CGC"
-          placeholder="Enter details here"
-        />
-        
-        <FormTextAreaField
-          control={control}
-          name="BEGINNER_NOVICE"
-          label="BEGINNER/NOVICE"
-          placeholder="Enter details here"
-        />
-        
-        <FormTextAreaField
-          control={control}
-          name="WT"
-          label="WT"
-          placeholder="Enter details here"
-        />
-        
-        <FormTextAreaField
-          control={control}
-          name="YOGA"
-          label="YOGA"
-          placeholder="Enter details here"
-        />
-
-        <FormTextAreaField
-          control={control}
-          name="COMMENTS"
-          label="COMMENTS"
-          placeholder="Additional comments"
-        />
-      </div>
+      <FormField
+        control={control}
+        name={name}
+        render={({ field }) => (
+          <FormItem className="space-y-3">
+            <FormLabel>{label}</FormLabel>
+            <RadioGroup
+              onValueChange={field.onChange}
+              defaultValue={field.value}
+              className="flex flex-col space-y-1"
+            >
+              {options.map((option) => (
+                <div key={option.value} className="flex items-center space-x-2">
+                  <RadioGroupItem value={option.value} id={`${name}-${option.value}`} />
+                  <Label htmlFor={`${name}-${option.value}`}>{option.label}</Label>
+                </div>
+              ))}
+            </RadioGroup>
+          </FormItem>
+        )}
+      />
     </div>
   );
 }
