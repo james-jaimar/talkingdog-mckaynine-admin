@@ -29,93 +29,143 @@ export function MultiSelect({
 }: MultiSelectProps) {
   const [open, setOpen] = React.useState(false);
 
-  // Enhanced defensive programming to ensure we never have undefined values
+  // Super defensive programming - ensure we have valid arrays with valid entries
   const safeOptions = React.useMemo(() => {
-    // Ensure options is always a valid array with valid entries
-    if (!options || !Array.isArray(options)) {
-      console.log("MultiSelect received invalid options:", options);
+    try {
+      // First check if options exists and is an array
+      if (!options) {
+        console.warn("MultiSelect: options is undefined or null");
+        return [];
+      }
+      
+      if (!Array.isArray(options)) {
+        console.warn("MultiSelect: options is not an array:", options);
+        return [];
+      }
+      
+      // Then filter out any invalid entries
+      return options.filter(option => 
+        option && 
+        typeof option === 'object' && 
+        'label' in option && 
+        typeof option.label === 'string' &&
+        'value' in option && 
+        typeof option.value === 'string'
+      );
+    } catch (error) {
+      console.error("Error in MultiSelect safeOptions:", error);
       return [];
     }
-    
-    return options.filter(option => 
-      option && 
-      typeof option === 'object' && 
-      'label' in option && 
-      typeof option.label === 'string' &&
-      'value' in option && 
-      typeof option.value === 'string'
-    );
   }, [options]);
     
+  // Ensure value is always a valid array with valid entries
   const safeValue = React.useMemo(() => {
-    // Ensure value is always a valid array with valid entries
-    if (!value || !Array.isArray(value)) {
-      console.log("MultiSelect received invalid value:", value);
+    try {
+      if (!value) {
+        console.warn("MultiSelect: value is undefined or null");
+        return [];
+      }
+      
+      if (!Array.isArray(value)) {
+        console.warn("MultiSelect: value is not an array:", value);
+        return [];
+      }
+      
+      return value.filter(item => 
+        item && 
+        typeof item === 'object' && 
+        'label' in item && 
+        typeof item.label === 'string' &&
+        'value' in item && 
+        typeof item.value === 'string'
+      );
+    } catch (error) {
+      console.error("Error in MultiSelect safeValue:", error);
       return [];
     }
-    
-    return value.filter(item => 
-      item && 
-      typeof item === 'object' && 
-      'label' in item && 
-      typeof item.label === 'string' &&
-      'value' in item && 
-      typeof item.value === 'string'
-    );
   }, [value]);
 
-  // Log current state for debugging
+  // Log debug information
   React.useEffect(() => {
-    console.log("MultiSelect state:", {
+    console.log("MultiSelect render:", {
       originalOptions: options,
       originalValue: value,
-      safeOptions,
-      safeValue,
+      safeOptions: safeOptions,
+      safeValue: safeValue,
+      optionsIsArray: Array.isArray(options),
+      valueIsArray: Array.isArray(value),
     });
   }, [options, value, safeOptions, safeValue]);
 
-  const handleUnselect = (item: OptionType) => {
+  // Ultra-safe handler for unselecting an item
+  const handleUnselect = React.useCallback((item: OptionType) => {
     try {
-      if (!item || typeof item !== 'object' || !('value' in item)) {
+      // Validate the item to unselect
+      if (!item || typeof item !== 'object' || !('value' in item) || typeof item.value !== 'string') {
         console.error("Invalid item to unselect:", item);
         return;
       }
       
-      const newValue = safeValue.filter(i => i.value !== item.value);
+      // Create a defensive copy and filter the value safely
+      const newValue = Array.isArray(safeValue) 
+        ? safeValue.filter(i => i && typeof i === 'object' && 'value' in i && i.value !== item.value)
+        : [];
+        
       console.log("Unselecting item:", item, "New value:", newValue);
-      onChange(newValue);
+      
+      // Call the onChange handler only if we have a valid function
+      if (typeof onChange === 'function') {
+        onChange(newValue);
+      } else {
+        console.error("MultiSelect: onChange is not a function");
+      }
     } catch (error) {
       console.error("Error in handleUnselect:", error);
       // Don't modify the value if there's an error
     }
-  };
+  }, [safeValue, onChange]);
 
-  const handleSelect = (item: OptionType) => {
+  // Ultra-safe handler for selecting an item
+  const handleSelect = React.useCallback((item: OptionType) => {
     try {
-      if (!item || typeof item !== 'object' || !('value' in item)) {
+      // Validate the item to select
+      if (!item || typeof item !== 'object' || !('value' in item) || typeof item.value !== 'string') {
         console.error("Invalid item to select:", item);
         return;
       }
       
+      // Create a defensive copy of the current value
+      const currentValue = Array.isArray(safeValue) ? [...safeValue] : [];
+      
       // Check if item is already selected
-      const isSelected = safeValue.some(i => i.value === item.value);
+      const isSelected = currentValue.some(i => 
+        i && typeof i === 'object' && 'value' in i && i.value === item.value
+      );
       
       let newValue: OptionType[];
       if (isSelected) {
-        // Remove it
-        newValue = safeValue.filter(i => i.value !== item.value);
+        // Remove it if selected
+        newValue = currentValue.filter(i => 
+          i && typeof i === 'object' && 'value' in i && i.value !== item.value
+        );
       } else {
-        // Add it
-        newValue = [...safeValue, item];
+        // Add it if not selected
+        newValue = [...currentValue, item];
       }
 
-      console.log("Selecting item:", item, "New value:", newValue);
-      onChange(newValue);
+      console.log("Selecting/deselecting item:", item, "New value:", newValue);
+      
+      // Call the onChange handler only if we have a valid function
+      if (typeof onChange === 'function') {
+        onChange(newValue);
+      } else {
+        console.error("MultiSelect: onChange is not a function");
+      }
     } catch (error) {
       console.error("Error in handleSelect:", error);
       // Don't modify the value if there's an error
     }
-  };
+  }, [safeValue, onChange]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -127,14 +177,14 @@ export function MultiSelect({
           )}
         >
           <div className="flex flex-wrap gap-1">
-            {safeValue.length > 0 ? (
-              safeValue.map((item) => (
+            {Array.isArray(safeValue) && safeValue.length > 0 ? (
+              safeValue.map((item, idx) => (
                 <Badge
-                  key={`item-${item.value}-${item.label}`}
+                  key={`item-${item?.value || idx}-${item?.label || idx}`}
                   variant="secondary"
                   className="mr-1 mb-1"
                 >
-                  {item.label}
+                  {item?.label || "Unknown"}
                   <button
                     className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
                     onKeyDown={(e) => {
@@ -150,7 +200,7 @@ export function MultiSelect({
                     type="button"
                   >
                     <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-                    <span className="sr-only">Remove {item.label}</span>
+                    <span className="sr-only">Remove {item?.label || "item"}</span>
                   </button>
                 </Badge>
               ))
@@ -173,26 +223,30 @@ export function MultiSelect({
       <PopoverContent className="w-full p-0">
         <Command className="w-full">
           <CommandGroup>
-            {safeOptions.length > 0 ? (
-              safeOptions.map((option) => (
+            {Array.isArray(safeOptions) && safeOptions.length > 0 ? (
+              safeOptions.map((option, idx) => (
                 <CommandItem
-                  key={`option-${option.value}-${option.label}`}
+                  key={`option-${option?.value || idx}-${option?.label || idx}`}
                   onSelect={() => handleSelect(option)}
                   className="cursor-pointer"
                 >
                   <span
                     className={cn(
                       "mr-2 h-4 w-4 rounded-sm border border-primary",
-                      safeValue.some((item) => item.value === option.value)
+                      Array.isArray(safeValue) && safeValue.some((item) => 
+                        item && item.value === option.value
+                      )
                         ? "bg-primary text-primary-foreground"
                         : "opacity-50 [&_svg]:invisible"
                     )}
                   >
-                    {safeValue.some((item) => item.value === option.value) && (
+                    {Array.isArray(safeValue) && safeValue.some((item) => 
+                      item && item.value === option.value
+                    ) && (
                       <span className="flex h-full items-center justify-center text-xs">✓</span>
                     )}
                   </span>
-                  <span>{option.label}</span>
+                  <span>{option?.label || "Unknown"}</span>
                 </CommandItem>
               ))
             ) : (

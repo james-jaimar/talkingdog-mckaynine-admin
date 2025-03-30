@@ -10,15 +10,21 @@ interface TrainerBioFieldProps {
 }
 
 export function TrainerBioField({ form }: TrainerBioFieldProps) {
-  // Ensure form control exists before rendering
-  if (!form || !form.control) {
-    console.error("Form or form.control is undefined in TrainerBioField");
+  // Super defensive null checking
+  if (!form) {
+    console.error("TrainerBioField: form is undefined");
     return null;
   }
   
-  // Check bio value for debugging
-  const bioValue = form.watch('bio');
+  if (!form.control) {
+    console.error("TrainerBioField: form.control is undefined");
+    return null;
+  }
   
+  // Get bio value with fallback
+  const bioValue = form.watch ? form.watch('bio') : "";
+  
+  // Log for debugging
   useEffect(() => {
     console.log("TrainerBioField - current bio value:", bioValue);
   }, [bioValue]);
@@ -30,10 +36,11 @@ export function TrainerBioField({ form }: TrainerBioFieldProps) {
       render={({ field }) => {
         // Additional safety check inside render
         if (!field) {
-          console.error("Field is undefined in TrainerBioField render");
+          console.error("TrainerBioField: field is undefined in render");
           return null;
         }
         
+        // Ensure value is never undefined or null
         const safeValue = field.value || "";
         
         return (
@@ -44,10 +51,14 @@ export function TrainerBioField({ form }: TrainerBioFieldProps) {
                 placeholder="Trainer biography and experience..."
                 className="min-h-24"
                 {...field} 
-                value={safeValue} // Ensure value is never undefined
+                value={safeValue}
                 onChange={(e) => {
                   try {
-                    field.onChange(e);
+                    if (field.onChange && typeof field.onChange === 'function') {
+                      field.onChange(e);
+                    } else {
+                      console.error("TrainerBioField: field.onChange is not a function");
+                    }
                   } catch (error) {
                     console.error("Error in bio onChange handler:", error);
                   }

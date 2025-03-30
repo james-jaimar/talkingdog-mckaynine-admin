@@ -8,22 +8,31 @@ import { OptionType } from "@/components/ui/multi-select";
 export const specialtiesAsOptions = (specialties: string[] | null | undefined): OptionType[] => {
   try {
     // Super defensive check to ensure we have a valid array
-    if (!specialties) return [];
+    if (!specialties) {
+      console.log("specialtiesAsOptions: received null or undefined input");
+      return [];
+    }
+    
     if (!Array.isArray(specialties)) {
-      console.error("specialtiesAsOptions received non-array:", specialties);
+      console.error("specialtiesAsOptions: received non-array:", specialties);
       return [];
     }
     
     // Filter out any non-string values and map to OptionType
-    const options = specialties
-      .filter(specialty => typeof specialty === 'string' && specialty.trim() !== '')
-      .map(specialty => ({
-        label: specialty,
-        value: specialty
-      }));
+    const validSpecialties = specialties.filter(specialty => typeof specialty === 'string' && specialty.trim() !== '');
     
-    // Log what we're returning for debugging
-    console.log("specialtiesAsOptions converted:", { input: specialties, output: options });
+    const options = validSpecialties.map(specialty => ({
+      label: specialty,
+      value: specialty
+    }));
+    
+    // Log for debugging
+    console.log("specialtiesAsOptions result:", { 
+      input: specialties, 
+      validSpecialties,
+      output: options 
+    });
+    
     return options;
   } catch (error) {
     console.error("Error in specialtiesAsOptions:", error);
@@ -40,38 +49,52 @@ export const branchIdsToOptions = (
   branches: OptionType[] | null | undefined
 ): OptionType[] => {
   try {
-    // Defensive checks for null/undefined/non-arrays
-    if (!branchIds) return [];
+    // Defensive checks for null/undefined
+    if (!branchIds) {
+      console.log("branchIdsToOptions: branchIds is null or undefined");
+      return [];
+    }
+    
+    if (!branches) {
+      console.log("branchIdsToOptions: branches is null or undefined");
+      return [];
+    }
+    
+    // Type checking
     if (!Array.isArray(branchIds)) {
-      console.error("branchIdsToOptions received non-array branchIds:", branchIds);
+      console.error("branchIdsToOptions: branchIds is not an array:", branchIds);
       return [];
     }
     
-    if (!branches) return [];
     if (!Array.isArray(branches)) {
-      console.error("branchIdsToOptions received non-array branches:", branches);
+      console.error("branchIdsToOptions: branches is not an array:", branches);
       return [];
     }
     
-    // Enhanced filtering to ensure valid data
+    // Filter to ensure valid IDs
     const validBranchIds = branchIds.filter(id => typeof id === 'string' && id.trim() !== '');
     
-    if (validBranchIds.length === 0) return [];
+    if (validBranchIds.length === 0) {
+      console.log("branchIdsToOptions: no valid branch IDs");
+      return [];
+    }
     
-    // Log for debugging
-    console.log("branchIdsToOptions processing:", { 
-      validBranchIds, 
-      branches,
-      branchesIsArray: Array.isArray(branches)
-    });
-    
-    // Create safe branch mapping
+    // Create valid branch objects
     const validBranches = branches.filter(b => 
       b && typeof b === 'object' && 'value' in b && 'label' in b &&
       typeof b.value === 'string' && typeof b.label === 'string'
     );
     
-    // Safely map branch IDs to OptionType objects with enhanced type checking
+    // Log for debugging
+    console.log("branchIdsToOptions processing:", { 
+      branchIds,
+      validBranchIds, 
+      branches,
+      validBranches,
+      branchesIsArray: Array.isArray(branches)
+    });
+    
+    // Map IDs to options with fallback
     const result = validBranchIds.map(id => {
       const branch = validBranches.find(b => b.value === id);
       return branch || { 
@@ -80,7 +103,6 @@ export const branchIdsToOptions = (
       };
     });
     
-    // Log the result for debugging
     console.log("branchIdsToOptions result:", result);
     
     return result;
