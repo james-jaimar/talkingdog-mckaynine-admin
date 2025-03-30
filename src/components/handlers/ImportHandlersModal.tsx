@@ -56,7 +56,7 @@ export function ImportHandlersModal() {
   };
 
   const handleImport = async () => {
-    console.log("Import button clicked with data:", csvData?.length || 0, "records");
+    console.log("Import button clicked in ImportHandlersModal");
     
     if (!csvData || csvData.length === 0) {
       toast({
@@ -146,10 +146,11 @@ export function ImportHandlersModal() {
           
           {currentStep === 3 && (
             <ReviewStep 
-              csvData={csvData}
+              csvData={csvData || []}
               fieldMappings={fieldMappings}
               branchName={currentBranch?.name}
               onImport={handleImport}
+              isUploading={isUploading}
             />
           )}
           

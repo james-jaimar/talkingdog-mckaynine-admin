@@ -9,10 +9,11 @@ interface ReviewStepProps {
   csvData: any[];
   fieldMappings: FieldMapping;
   branchName?: string;
-  onImport?: () => void;
+  onImport: () => void;
+  isUploading?: boolean;
 }
 
-export function ReviewStep({ csvData, fieldMappings, branchName, onImport }: ReviewStepProps) {
+export function ReviewStep({ csvData, fieldMappings, branchName, onImport, isUploading }: ReviewStepProps) {
   // Ensure we have data to display
   if (!csvData || csvData.length === 0) {
     return <div className="p-4 text-center">No data to review. Please go back and upload a CSV file.</div>;
@@ -38,9 +39,7 @@ export function ReviewStep({ csvData, fieldMappings, branchName, onImport }: Rev
 
   const handleImportClick = () => {
     console.log("Import button clicked in ReviewStep");
-    if (onImport) {
-      onImport();
-    }
+    onImport();
   };
 
   return (
@@ -115,8 +114,9 @@ export function ReviewStep({ csvData, fieldMappings, branchName, onImport }: Rev
           className="w-full sm:w-auto"
           id="review-import-button"
           type="button"
+          disabled={isUploading}
         >
-          Import {csvData.length} Records
+          {isUploading ? 'Importing...' : `Import ${csvData.length} Records`}
           <ArrowRight className="ml-2 h-4 w-4" />
         </Button>
       </div>

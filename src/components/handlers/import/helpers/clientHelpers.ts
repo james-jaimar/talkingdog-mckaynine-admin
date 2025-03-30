@@ -32,40 +32,36 @@ export async function loadExistingClients(csvData: any[], emailHeader: string): 
 /**
  * Process client data from CSV row
  */
-export function processClientData(row: any, tableGroups: Record<string, Record<string, string>>, branchId?: string | null): Record<string, any> {
+export async function processClientData(
+  row: any, 
+  fieldMappings: Record<string, string>, 
+  branchId?: string | null
+): Promise<string | undefined> {
   const clientData: Record<string, any> = { branch_id: branchId };
   
   // Map fields from CSV to client data
-  if (tableGroups.clients) {
-    Object.entries(tableGroups.clients).forEach(([dbField, csvHeader]) => {
-      clientData[dbField] = row[csvHeader];
-    });
-  }
+  Object.entries(fieldMappings).forEach(([dbField, csvHeader]) => {
+    clientData[dbField] = row[csvHeader];
+  });
   
   // Handle special case for name if first_name and last_name are present
   if (clientData.first_name && clientData.last_name && !clientData.name) {
     clientData.name = `${clientData.first_name} ${clientData.last_name}`;
   }
   
-  return clientData;
-}
-
-/**
- * Create or update a client in Supabase
- */
-export async function createOrUpdateClient(
-  clientData: Record<string, any>,
-  existingClients: Map<string, string>
-): Promise<string | undefined> {
-  try {
-    // Check if client already exists by email
-    const clientId = existingClients.get(clientData.email);
-    
-    if (clientId) {
+  // Check if client exists by email
+  if (clientData.email) {
+    const { data: existingClients } = await supabase
+      .from('clients')
+      .select('id')
+      .eq('email', clientData.email);
+      
+    if (existingClients && existingClients.length > 0) {
       // Update existing client
+      const clientId = existingClients[0].id;
       const { error } = await supabase
         .from('clients')
-        .update(clientData as any)
+        .update(clientData)
         .eq('id', clientId);
         
       if (error) throw error;
@@ -74,15 +70,14 @@ export async function createOrUpdateClient(
       // Create new client
       const { data, error } = await supabase
         .from('clients')
-        .insert(clientData as any)
+        .insert(clientData)
         .select('id')
         .single();
         
       if (error) throw error;
       return data?.id;
     }
-  } catch (error) {
-    console.error('Error creating/updating client:', error);
-    throw error;
+  } else {
+    throw new Error('Email is required for client import');
   }
 }

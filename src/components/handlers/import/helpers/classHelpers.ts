@@ -6,17 +6,15 @@ import { supabase } from "@/integrations/supabase/client";
  */
 export async function processClassEnrollments(
   row: any, 
-  tableGroups: Record<string, Record<string, string>>, 
+  fieldMappings: Record<string, string>, 
   dogId: string
 ): Promise<void> {
-  if (!tableGroups.class_enrollments) return;
-  
   try {
     // Map class enrollment fields from CSV
     const classEnrollments: Record<string, any> = { dog_id: dogId };
     let hasEnrollments = false;
     
-    Object.entries(tableGroups.class_enrollments).forEach(([dbField, csvHeader]) => {
+    Object.entries(fieldMappings).forEach(([dbField, csvHeader]) => {
       const value = row[csvHeader];
       if (value && value.toString().trim().toLowerCase() !== 'no' && value.toString().trim() !== '0') {
         classEnrollments[dbField] = true;
@@ -40,7 +38,7 @@ export async function processClassEnrollments(
         const enrollmentId = existingEnrollments[0].id;
         const { error } = await supabase
           .from('class_enrollments')
-          .update(classEnrollments as any)
+          .update(classEnrollments)
           .eq('id', enrollmentId);
           
         if (error) throw error;
@@ -48,7 +46,7 @@ export async function processClassEnrollments(
         // Create new enrollments
         const { error } = await supabase
           .from('class_enrollments')
-          .insert(classEnrollments as any);
+          .insert(classEnrollments);
           
         if (error) throw error;
       }

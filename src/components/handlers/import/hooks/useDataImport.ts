@@ -13,7 +13,7 @@ export function useDataImport() {
     fieldMappings: FieldMapping,
     branchId?: string
   ) => {
-    console.log("processImport called with:", { dataLength: data.length, fieldMappings, branchId });
+    console.log("processImport called with:", { dataLength: data.length, mappingsCount: Object.keys(fieldMappings).length, branchId });
     setIsUploading(true);
     
     try {
@@ -44,22 +44,19 @@ export function useDataImport() {
         
         try {
           // Process client data first
-          const clientFields = tableFields['clients'] || {};
-          if (Object.keys(clientFields).length > 0) {
+          if (tableFields['clients'] && Object.keys(tableFields['clients']).length > 0) {
             console.log("Processing client data for row", i+1);
-            const clientId = await processClientData(row, clientFields, branchId);
+            const clientId = await processClientData(row, tableFields['clients'], branchId);
             
             // Process dog data
-            const dogFields = tableFields['dogs'] || {};
-            if (Object.keys(dogFields).length > 0 && clientId) {
+            if (tableFields['dogs'] && Object.keys(tableFields['dogs']).length > 0 && clientId) {
               console.log("Processing dog data for row", i+1);
-              const dogId = await processDogData(row, dogFields, clientId);
+              const dogId = await processDogData(row, tableFields['dogs'], clientId);
               
               // Process class enrollments
-              const classFields = tableFields['class_enrollments'] || {};
-              if (Object.keys(classFields).length > 0 && dogId) {
+              if (tableFields['class_enrollments'] && Object.keys(tableFields['class_enrollments']).length > 0 && dogId) {
                 console.log("Processing class enrollments for row", i+1);
-                await processClassEnrollments(row, classFields, dogId);
+                await processClassEnrollments(row, tableFields['class_enrollments'], dogId);
               }
             }
           }
