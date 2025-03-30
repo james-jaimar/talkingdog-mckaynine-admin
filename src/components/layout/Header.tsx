@@ -3,6 +3,7 @@ import { Dog } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { BranchSelector } from "@/components/branches/BranchSelector";
 
 export function Header() {
   const location = useLocation();
@@ -17,6 +18,7 @@ export function Header() {
             <span className="font-bold text-xl text-mckaynine-700">McKaynine</span>
           </div>
           <div className="ml-auto flex items-center gap-4">
+            <BranchSelector />
             <span className="text-sm text-gray-600">Welcome, Admin</span>
           </div>
         </div>

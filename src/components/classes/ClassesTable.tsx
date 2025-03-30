@@ -1,154 +1,111 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
-import { MoreHorizontal, Calendar, Edit, Trash } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { useBranch } from "@/context/BranchContext";
 import { Class } from "./types/class";
+import { Link } from "react-router-dom";
 import { EditClassModal } from "./EditClassModal";
-import { useState } from "react";
-import { useToast } from "@/components/ui/use-toast";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Calendar, DollarSign, MapPin } from "lucide-react";
 
 export function ClassesTable() {
-  const [classToEdit, setClassToEdit] = useState<Class | null>(null);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const { toast } = useToast();
+  const { currentBranch } = useBranch();
 
-  const { data: classes, isLoading, refetch } = useQuery({
-    queryKey: ["classes"],
+  const { data: classes, isLoading } = useQuery({
+    queryKey: ['classes', currentBranch?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("classes")
+      let query = supabase
+        .from('classes')
         .select(`
           *,
-          branches:branch_id (name)
-        `)
-        .order("name");
+          branches:branch_id (
+            name
+          )
+        `);
+      
+      // Filter by branch if one is selected
+      if (currentBranch) {
+        query = query.eq('branch_id', currentBranch.id);
+      }
+      
+      const { data, error } = await query;
       
       if (error) throw error;
-      return data as Class[];
+      return data as (Class & { branches: { name: string } })[];
     },
+    enabled: !!currentBranch // Only run query when a branch is selected
   });
-
-  const handleDeleteClass = async (id: string) => {
-    try {
-      const { error } = await supabase
-        .from("classes")
-        .delete()
-        .eq("id", id);
-        
-      if (error) throw error;
-      
-      toast({
-        title: "Class deleted",
-        description: "The class has been successfully deleted.",
-      });
-      
-      refetch();
-    } catch (error) {
-      console.error("Error deleting class:", error);
-      toast({
-        title: "Error",
-        description: "Failed to delete the class. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleEditClass = (classItem: Class) => {
-    setClassToEdit(classItem);
-    setIsEditModalOpen(true);
-  };
-
+  
   if (isLoading) {
-    return <div className="py-10 text-center">Loading classes...</div>;
+    return (
+      <div className="text-center p-8">
+        <p>Loading classes...</p>
+      </div>
+    );
+  }
+  
+  if (!classes || classes.length === 0) {
+    return (
+      <div className="text-center p-8 border rounded-md bg-gray-50">
+        <p className="text-muted-foreground">No classes found. Create your first class to get started.</p>
+      </div>
+    );
   }
 
   return (
-    <div>
-      <div className="rounded-md border">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b bg-muted/50">
-              <th className="p-2 text-left font-medium">Name</th>
-              <th className="p-2 text-left font-medium">Level</th>
-              <th className="p-2 text-left font-medium">Branch</th>
-              <th className="p-2 text-left font-medium">Price</th>
-              <th className="p-2 text-left font-medium">Duration (mins)</th>
-              <th className="p-2 text-left font-medium">Capacity</th>
-              <th className="p-2 text-left font-medium">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {classes && classes.length > 0 ? (
-              classes.map((classItem) => (
-                <tr key={classItem.id} className="border-b">
-                  <td className="p-2">{classItem.name}</td>
-                  <td className="p-2">{classItem.level}</td>
-                  <td className="p-2">{classItem.branches?.name}</td>
-                  <td className="p-2">R{classItem.price.toFixed(2)}</td>
-                  <td className="p-2">{classItem.duration}</td>
-                  <td className="p-2">{classItem.capacity}</td>
-                  <td className="p-2">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <span className="sr-only">Open menu</span>
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => handleEditClass(classItem)}>
-                          <Edit className="mr-2 h-4 w-4" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => window.location.href = `/class-schedules/${classItem.id}`}>
-                          <Calendar className="mr-2 h-4 w-4" />
-                          Schedule
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          className="text-destructive"
-                          onClick={() => handleDeleteClass(classItem.id)}
-                        >
-                          <Trash className="mr-2 h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={7} className="p-4 text-center text-muted-foreground">
-                  No classes found. Click "Add Class" to create one.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {classToEdit && (
-        <EditClassModal 
-          open={isEditModalOpen} 
-          onOpenChange={setIsEditModalOpen} 
-          classData={classToEdit}
-          onSuccess={() => {
-            refetch();
-            setClassToEdit(null);
-          }}
-        />
-      )}
-    </div>
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Class Name</TableHead>
+          <TableHead>Level</TableHead>
+          <TableHead>Duration</TableHead>
+          <TableHead>Price</TableHead>
+          <TableHead>Capacity</TableHead>
+          <TableHead>Branch</TableHead>
+          <TableHead>Actions</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {classes.map((classItem) => (
+          <TableRow key={classItem.id}>
+            <TableCell className="font-medium">{classItem.name}</TableCell>
+            <TableCell>
+              <Badge variant="outline">{classItem.level}</Badge>
+            </TableCell>
+            <TableCell>
+              <div className="flex items-center gap-1">
+                <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                <span>{classItem.duration} min</span>
+              </div>
+            </TableCell>
+            <TableCell>
+              <div className="flex items-center gap-1">
+                <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
+                <span>{classItem.price}</span>
+              </div>
+            </TableCell>
+            <TableCell>{classItem.capacity} dogs</TableCell>
+            <TableCell>
+              <div className="flex items-center gap-1">
+                <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                <span>{classItem.branches?.name || 'Unknown'}</span>
+              </div>
+            </TableCell>
+            <TableCell>
+              <div className="flex space-x-2">
+                <Link to={`/classes/${classItem.id}/schedules`}>
+                  <Button variant="outline" size="sm">
+                    Schedules
+                  </Button>
+                </Link>
+                <EditClassModal classData={classItem} />
+              </div>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
   );
 }

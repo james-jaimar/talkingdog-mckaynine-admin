@@ -3,16 +3,18 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
 import { alphabetGroups } from "../HandlerAlphabetPagination";
+import { useBranch } from "@/context/BranchContext";
 
 export function useHandlersData() {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentGroup, setCurrentGroup] = useState("A");
   const itemsPerPage = 50;
+  const { currentBranch } = useBranch();
 
   const { data: handlers, isLoading } = useQuery({
-    queryKey: ['handlers'],
+    queryKey: ['handlers', currentBranch?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('clients')
         .select(`
           id,
@@ -31,12 +33,23 @@ export function useHandlersData() {
             notes,
             medical_notes
           )
-        `)
-        .order('first_name', { ascending: true });
+        `);
+      
+      // Filter by branch if one is selected
+      if (currentBranch) {
+        // Here we assume clients are associated with a branch
+        // You may need to adjust this query based on your data model
+        query = query.eq('branch_id', currentBranch.id);
+      }
+      
+      query = query.order('first_name', { ascending: true });
+      
+      const { data, error } = await query;
       
       if (error) throw error;
       return data;
-    }
+    },
+    enabled: !!currentBranch // Only run query when a branch is selected
   });
 
   // Filter handlers by search query
@@ -68,6 +81,7 @@ export function useHandlersData() {
     setSearchQuery,
     currentGroup,
     setCurrentGroup,
-    itemsPerPage
+    itemsPerPage,
+    currentBranch
   };
 }
