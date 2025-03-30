@@ -4,9 +4,10 @@ import { FileUp } from "lucide-react";
 
 interface UploadStepProps {
   onFileChange: (e: ChangeEvent<HTMLInputElement>) => void;
+  currentFile?: File | null;
 }
 
-export function UploadStep({ onFileChange }: UploadStepProps) {
+export function UploadStep({ onFileChange, currentFile }: UploadStepProps) {
   return (
     <div className="space-y-4">
       <div className="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center">
@@ -28,7 +29,12 @@ export function UploadStep({ onFileChange }: UploadStepProps) {
           </label>
           <p className="pl-1">or drag and drop</p>
         </div>
-        <p className="text-xs leading-5 text-gray-600">CSV files only</p>
+        
+        {currentFile ? (
+          <p className="text-sm text-green-600 mt-2">Selected: {currentFile.name}</p>
+        ) : (
+          <p className="text-xs leading-5 text-gray-600">CSV files only</p>
+        )}
       </div>
       
       <div className="text-sm text-gray-500">

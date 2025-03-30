@@ -8,6 +8,7 @@ import { UploadStep } from "./import/UploadStep";
 import { MappingStep } from "./import/MappingStep";
 import { ReviewStep } from "./import/ReviewStep";
 import { useBranch } from "@/context/BranchContext";
+import { toast } from "@/hooks/use-toast";
 
 export function ImportHandlersModal() {
   const [open, setOpen] = useState(false);
@@ -29,8 +30,15 @@ export function ImportHandlersModal() {
 
   const handleNext = () => {
     if (currentStep === 2) {
-      if (validateMappings(fieldMappings)) {
+      const isValid = validateMappings(fieldMappings);
+      if (isValid) {
         setCurrentStep(3);
+      } else {
+        toast({
+          title: "Validation errors",
+          description: "Please fix the validation errors before proceeding",
+          variant: "destructive"
+        });
       }
     } else {
       setCurrentStep(prev => prev + 1);
@@ -41,15 +49,44 @@ export function ImportHandlersModal() {
     setCurrentStep(prev => Math.max(1, prev - 1));
   };
 
+  const handleReset = () => {
+    setCurrentStep(1);
+  };
+
   const handleImport = async () => {
-    const result = await processImport(csvData, fieldMappings, currentBranch?.id);
-    if (result.success) {
-      setOpen(false);
+    if (!csvData || csvData.length === 0) {
+      toast({
+        title: "No data to import",
+        description: "Please upload a CSV file with data",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const result = await processImport(csvData, fieldMappings, currentBranch?.id);
+      if (result.success) {
+        setOpen(false);
+        // Reset for next import
+        handleReset();
+      }
+    } catch (error: any) {
+      toast({
+        title: "Import failed",
+        description: error.message || "An unexpected error occurred",
+        variant: "destructive"
+      });
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(newOpen) => {
+      if (!newOpen) {
+        // Reset when dialog is closed
+        handleReset();
+      }
+      setOpen(newOpen);
+    }}>
       <DialogTrigger asChild>
         <Button variant="outline" className="ml-2">
           <Import className="h-4 w-4 mr-2" />
@@ -76,7 +113,7 @@ export function ImportHandlersModal() {
           </div>
           
           {currentStep === 1 && (
-            <UploadStep onFileChange={handleFileChange} />
+            <UploadStep onFileChange={handleFileChange} currentFile={csvFile} />
           )}
           
           {currentStep === 2 && (
@@ -98,7 +135,12 @@ export function ImportHandlersModal() {
           
           <div className="mt-6 flex justify-between">
             {currentStep > 1 ? (
-              <Button variant="outline" onClick={handleBack} disabled={isUploading}>
+              <Button 
+                variant="outline" 
+                onClick={handleBack} 
+                disabled={isUploading}
+                type="button"
+              >
                 Back
               </Button>
             ) : (
@@ -109,6 +151,7 @@ export function ImportHandlersModal() {
               <Button 
                 onClick={handleNext} 
                 disabled={currentStep === 1 && !csvFile}
+                type="button"
               >
                 Next
               </Button>
@@ -116,6 +159,7 @@ export function ImportHandlersModal() {
               <Button 
                 onClick={handleImport} 
                 disabled={isUploading}
+                type="button"
               >
                 {isUploading ? "Importing..." : "Import Data"}
               </Button>

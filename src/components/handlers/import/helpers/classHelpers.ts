@@ -1,47 +1,60 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { classEnrollments } from "../fieldDefinitions";
 
-// Process and store class enrollment data
-export const processClassEnrollments = async (
-  row: any,
-  tableGroups: Record<string, Record<string, string>>,
+/**
+ * Process class enrollments from CSV row
+ */
+export async function processClassEnrollments(
+  row: any, 
+  tableGroups: Record<string, Record<string, string>>, 
   dogId: string
-) => {
+): Promise<void> {
   if (!tableGroups.class_enrollments) return;
   
-  for (const enrollment of classEnrollments) {
-    const field = enrollment.column;
-    if (tableGroups.class_enrollments[field] && row[tableGroups.class_enrollments[field]]) {
-      const enrollmentValue = row[tableGroups.class_enrollments[field]];
-      if (enrollmentValue && enrollmentValue.trim()) {
-        // Here you would store the class enrollment data
-        // Since there's no class_enrollments table in the schema yet,
-        // we'll store this information in the dog's behavior_notes for now
-        const classNote = `${enrollment.description}: ${enrollmentValue.trim()}`;
+  try {
+    // Map class enrollment fields from CSV
+    const classEnrollments: Record<string, any> = { dog_id: dogId };
+    let hasEnrollments = false;
+    
+    Object.entries(tableGroups.class_enrollments).forEach(([dbField, csvHeader]) => {
+      const value = row[csvHeader];
+      if (value && value.toString().trim().toLowerCase() !== 'no' && value.toString().trim() !== '0') {
+        classEnrollments[dbField] = true;
+        hasEnrollments = true;
+      } else {
+        classEnrollments[dbField] = false;
+      }
+    });
+    
+    if (hasEnrollments) {
+      // Check if enrollments already exist for this dog
+      const { data: existingEnrollments, error: queryError } = await supabase
+        .from('class_enrollments')
+        .select('id')
+        .eq('dog_id', dogId);
         
-        // Append to existing behavior notes
-        const { data: dogData } = await supabase
-          .from('dogs')
-          .select('behavior_notes')
-          .eq('id', dogId)
-          .single();
-        
-        const existingNotes = dogData?.behavior_notes || '';
-        const updatedNotes = existingNotes 
-          ? `${existingNotes}\n${classNote}` 
-          : classNote;
-        
-        // Update the dog with the new behavior notes
-        const { error: updateError } = await supabase
-          .from('dogs')
-          .update({ behavior_notes: updatedNotes })
-          .eq('id', dogId);
-        
-        if (updateError) {
-          console.warn(`Warning: Could not update dog behavior notes: ${updateError.message}`);
-        }
+      if (queryError) throw queryError;
+      
+      if (existingEnrollments && existingEnrollments.length > 0) {
+        // Update existing enrollments
+        const enrollmentId = existingEnrollments[0].id;
+        const { error } = await supabase
+          .from('class_enrollments')
+          .update(classEnrollments)
+          .eq('id', enrollmentId);
+          
+        if (error) throw error;
+      } else {
+        // Create new enrollments
+        const { error } = await supabase
+          .from('class_enrollments')
+          .insert(classEnrollments);
+          
+        if (error) throw error;
       }
     }
+  } catch (error) {
+    console.error('Error processing class enrollments:', error);
+    throw error;
   }
-};
+}

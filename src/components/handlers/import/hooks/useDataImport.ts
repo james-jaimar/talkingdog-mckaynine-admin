@@ -3,9 +3,13 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { FieldMapping } from "../types";
-import { loadExistingClients, processClientData, createOrUpdateClient } from "../helpers/clientHelpers";
-import { processDogData, createOrUpdateDog } from "../helpers/dogHelpers";
-import { processClassEnrollments } from "../helpers/classHelpers";
+import { loadExistingClients } from "../helpers/clientHelpers";
+
+// Define a more specific return type for processImport
+interface ImportResult {
+  success: boolean;
+  errors: string[];
+}
 
 export function useDataImport() {
   const [isUploading, setIsUploading] = useState(false);
@@ -14,7 +18,7 @@ export function useDataImport() {
     csvData: any[],
     fieldMappings: FieldMapping,
     branchId?: string | null
-  ) => {
+  ): Promise<ImportResult> => {
     setIsUploading(true);
     const errors: string[] = [];
     const successful: number[] = [];
@@ -35,38 +39,98 @@ export function useDataImport() {
       // First pass: preload existing clients to check for duplicates
       if (tableGroups.clients && tableGroups.clients.email) {
         const emailHeader = tableGroups.clients.email;
-        const clientMap = await loadExistingClients(csvData, emailHeader);
-        // Merge into our existing map
-        clientMap.forEach((id, email) => {
-          existingClients.set(email, id);
-        });
+        const clientEmails = csvData.map(row => row[emailHeader]).filter(Boolean);
+        
+        if (clientEmails.length > 0) {
+          const { data: existingClientsData } = await supabase
+            .from('clients')
+            .select('id, email')
+            .in('email', clientEmails);
+            
+          if (existingClientsData) {
+            existingClientsData.forEach(client => {
+              if (client.email) {
+                existingClients.set(client.email, client.id);
+              }
+            });
+          }
+        }
       }
       
       // Process each row
       for (let i = 0; i < csvData.length; i++) {
         const row = csvData[i];
         try {
-          // First create or find client
+          // Prepare client data
           if (tableGroups.clients) {
-            // Process client data
-            const clientData = processClientData(row, tableGroups, branchId);
-            const clientId = await createOrUpdateClient(clientData, existingClients);
+            const clientData: Record<string, any> = { branch_id: branchId };
             
-            // Store the new client in our map if it's new
-            if (!existingClients.has(clientData.email)) {
-              existingClients.set(clientData.email, clientId);
+            // Map fields from CSV to client data
+            Object.entries(tableGroups.clients).forEach(([dbField, csvHeader]) => {
+              clientData[dbField] = row[csvHeader];
+            });
+            
+            // Make sure we have required fields
+            if (!clientData.email) {
+              throw new Error('Email is required for client import');
             }
             
-            // If we have a valid client ID and dog data, create or update the dog
-            if (clientId && tableGroups.dogs) {
-              // Process dog data
-              const dogData = processDogData(row, tableGroups, clientId);
-              const dogId = await createOrUpdateDog(dogData, clientId);
-              
-              // If we have class enrollment data and a valid dog ID, create enrollments
-              if (dogId && tableGroups.class_enrollments) {
-                await processClassEnrollments(row, tableGroups, dogId);
+            // Generate name field if first_name and last_name are available
+            if (clientData.first_name && clientData.last_name && !clientData.name) {
+              clientData.name = `${clientData.first_name} ${clientData.last_name}`;
+            }
+            
+            let clientId = existingClients.get(clientData.email);
+            
+            // Create or update client
+            if (clientId) {
+              // Update existing client
+              const { error: updateError } = await supabase
+                .from('clients')
+                .update(clientData)
+                .eq('id', clientId);
+                
+              if (updateError) throw updateError;
+            } else {
+              // Create new client
+              const { data: newClient, error: insertError } = await supabase
+                .from('clients')
+                .insert(clientData)
+                .select('id')
+                .single();
+                
+              if (insertError) throw insertError;
+              if (newClient) {
+                clientId = newClient.id;
+                existingClients.set(clientData.email, clientId);
               }
+            }
+            
+            // If we have a dog data and a valid client ID, create or update the dog
+            if (clientId && tableGroups.dogs) {
+              const dogData: Record<string, any> = { client_id: clientId };
+              
+              // Map fields from CSV to dog data
+              Object.entries(tableGroups.dogs).forEach(([dbField, csvHeader]) => {
+                dogData[dbField] = row[csvHeader];
+              });
+              
+              // Make sure we have required fields
+              if (!dogData.name) {
+                throw new Error('Dog name is required');
+              }
+              if (!dogData.breed) {
+                throw new Error('Dog breed is required');
+              }
+              
+              // Create the dog
+              const { data: newDog, error: dogError } = await supabase
+                .from('dogs')
+                .insert(dogData)
+                .select('id')
+                .single();
+                
+              if (dogError) throw dogError;
             }
             
             successful.push(i);
@@ -76,11 +140,20 @@ export function useDataImport() {
         }
       }
       
-      toast({
-        title: "Import completed",
-        description: `Successfully imported ${successful.length} entries with their dogs. ${errors.length > 0 ? `${errors.length} errors occurred.` : ''}`,
-        variant: errors.length > 0 ? "destructive" : "default"
-      });
+      // Show success or error message
+      if (successful.length > 0) {
+        toast({
+          title: "Import completed",
+          description: `Successfully imported ${successful.length} handlers${errors.length > 0 ? ` (${errors.length} errors)` : ''}.`,
+          variant: errors.length > 0 ? "default" : "default"
+        });
+      } else {
+        toast({
+          title: "Import failed",
+          description: "No data was imported. Please check the error messages.",
+          variant: "destructive"
+        });
+      }
       
       return { success: successful.length > 0, errors };
     } catch (error: any) {
