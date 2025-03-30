@@ -76,7 +76,7 @@ export function MultiSelectContent({ options, value, onSelect }: MultiSelectCont
     <PopoverContent className="w-full p-0" align="start">
       <Command className="w-full">
         <CommandList>
-          {(!safeOptions || safeOptions.length === 0) ? (
+          {safeOptions.length === 0 ? (
             <CommandEmpty>No options available</CommandEmpty>
           ) : (
             <CommandGroup>

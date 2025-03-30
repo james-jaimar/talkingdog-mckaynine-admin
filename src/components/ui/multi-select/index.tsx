@@ -20,12 +20,18 @@ export function MultiSelect({
 
   // Ensure we have valid arrays
   const safeOptions = React.useMemo(() => {
-    if (!options || !Array.isArray(options)) return [];
+    if (!options || !Array.isArray(options)) {
+      console.warn("MultiSelect received invalid options:", options);
+      return [];
+    }
     return options.filter(Boolean);
   }, [options]);
     
   const safeValue = React.useMemo(() => {
-    if (!value || !Array.isArray(value)) return [];
+    if (!value || !Array.isArray(value)) {
+      console.warn("MultiSelect received invalid value:", value);
+      return [];
+    }
     return value.filter(Boolean);
   }, [value]);
 
@@ -58,6 +64,16 @@ export function MultiSelect({
       onChange(newValue);
     }
   }, [safeValue, onChange]);
+
+  // Don't render anything if we don't have valid options
+  if (!Array.isArray(safeOptions) || safeOptions.length === 0) {
+    console.warn("MultiSelect - No valid options to display");
+    return (
+      <div className="flex min-h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background text-muted-foreground">
+        No options available
+      </div>
+    );
+  }
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
