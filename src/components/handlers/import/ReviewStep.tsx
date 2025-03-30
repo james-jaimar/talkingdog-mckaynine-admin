@@ -11,14 +11,19 @@ interface ReviewStepProps {
 }
 
 export function ReviewStep({ csvData, fieldMappings, branchName }: ReviewStepProps) {
+  // Ensure we have data to display
+  if (!csvData || csvData.length === 0) {
+    return <div className="p-4 text-center">No data to review. Please go back and upload a CSV file.</div>;
+  }
+
   const headers = Object.keys(csvData[0] || {});
   const firstFewRows = csvData.slice(0, 5);
 
   // Organize mapped fields by table
   const mappedFields: Record<string, string[]> = {};
   
-  Object.entries(fieldMappings).forEach(([csvHeader, dbField]) => {
-    const [table, _] = dbField.split('.');
+  Object.entries(fieldMappings).forEach(([csvHeader, dbFieldWithTable]) => {
+    const [table, _] = dbFieldWithTable.split('.');
     if (!mappedFields[table]) {
       mappedFields[table] = [];
     }
@@ -53,7 +58,7 @@ export function ReviewStep({ csvData, fieldMappings, branchName }: ReviewStepPro
       
       <div className="space-y-2">
         <h3 className="text-lg font-medium">Preview Data</h3>
-        <p className="text-sm text-gray-500">Showing first 5 rows of {csvData.length} total rows.</p>
+        <p className="text-sm text-gray-500">Showing first {Math.min(5, csvData.length)} rows of {csvData.length} total rows.</p>
         <div className="border rounded overflow-x-auto">
           <Table>
             <TableHeader>
