@@ -1,7 +1,7 @@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, InfoCircle, Info } from "lucide-react";
+import { AlertCircle, Info } from "lucide-react";
 import { FieldMappingPanel } from "./FieldMappingPanel";
 import { availableFields } from "./fieldDefinitions";
 import { FieldMapping } from "./types";
@@ -31,7 +31,7 @@ export function MappingStep({
       </p>
       
       {!emailIsMapped && (
-        <Alert variant="warning" className="bg-amber-50 border-amber-200">
+        <Alert variant="default" className="bg-amber-50 border-amber-200">
           <Info className="h-4 w-4 text-amber-500" />
           <AlertTitle className="text-amber-700">Important: Email Required</AlertTitle>
           <AlertDescription className="text-amber-600">
