@@ -5,6 +5,29 @@ import { useState } from "react";
 import { alphabetGroups } from "../HandlerAlphabetPagination";
 import { useBranch } from "@/context/BranchContext";
 
+// Define explicit types for handlers and dogs
+interface Dog {
+  id: string;
+  name: string;
+  breed: string;
+  age?: number;
+  behavior_notes?: string;
+  notes?: string;
+  medical_notes?: string;
+}
+
+interface Handler {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone?: string;
+  created_at: string;
+  notes?: string;
+  dogs: Dog[];
+  branch_id?: string;
+}
+
 export function useHandlersData() {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentGroup, setCurrentGroup] = useState("A");
@@ -24,6 +47,7 @@ export function useHandlersData() {
           phone,
           created_at,
           notes,
+          branch_id,
           dogs (
             id,
             name,
@@ -37,8 +61,7 @@ export function useHandlersData() {
       
       // Filter by branch if one is selected
       if (currentBranch) {
-        // Here we assume clients are associated with a branch
-        // You may need to adjust this query based on your data model
+        // Adjust the query to filter by branch_id
         query = query.eq('branch_id', currentBranch.id);
       }
       
@@ -47,7 +70,7 @@ export function useHandlersData() {
       const { data, error } = await query;
       
       if (error) throw error;
-      return data || [];
+      return (data || []) as Handler[];
     },
     enabled: !!currentBranch // Only run query when a branch is selected
   });
