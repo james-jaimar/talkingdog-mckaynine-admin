@@ -41,6 +41,11 @@ export function MultiSelect({
     }
   };
 
+  // Ensure options is always an array
+  const safeOptions = options || [];
+  // Ensure value is always an array
+  const safeValue = value || [];
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -51,8 +56,8 @@ export function MultiSelect({
           )}
         >
           <div className="flex flex-wrap gap-1">
-            {value.length > 0 ? (
-              value.map((item) => (
+            {safeValue.length > 0 ? (
+              safeValue.map((item) => (
                 <Badge
                   key={item.value}
                   variant="secondary"
@@ -95,7 +100,7 @@ export function MultiSelect({
       <PopoverContent className="w-full p-0">
         <Command className="w-full">
           <CommandGroup>
-            {options.map((option) => (
+            {safeOptions.map((option) => (
               <CommandItem
                 key={option.value}
                 onSelect={() => handleSelect(option)}
@@ -104,12 +109,12 @@ export function MultiSelect({
                 <span
                   className={cn(
                     "mr-2 h-4 w-4 rounded-sm border border-primary",
-                    value.some((item) => item.value === option.value)
+                    safeValue.some((item) => item.value === option.value)
                       ? "bg-primary text-primary-foreground"
                       : "opacity-50 [&_svg]:invisible"
                   )}
                 >
-                  {value.some((item) => item.value === option.value) && (
+                  {safeValue.some((item) => item.value === option.value) && (
                     <span className="flex h-full items-center justify-center text-xs">✓</span>
                   )}
                 </span>

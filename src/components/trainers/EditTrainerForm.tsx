@@ -52,6 +52,15 @@ export function EditTrainerForm({ trainer, onSuccess }: EditTrainerFormProps) {
     fetchBranches();
   }, []);
   
+  // Helper function to convert array of strings to array of OptionType objects
+  const specialtiesAsOptions = (specialties: string[] | null): OptionType[] => {
+    if (!specialties) return [];
+    return specialties.map(specialty => ({
+      label: specialty,
+      value: specialty
+    }));
+  };
+  
   // Pre-populate form with trainer data
   const defaultValues: TrainerFormValues = {
     firstName: trainer.first_name,
@@ -104,14 +113,6 @@ export function EditTrainerForm({ trainer, onSuccess }: EditTrainerFormProps) {
     } finally {
       setIsSubmitting(false);
     }
-  };
-  
-  // Convert array of strings to array of OptionType objects for MultiSelect
-  const specialtiesAsOptions = (specialties: string[]): OptionType[] => {
-    return specialties.map(specialty => ({
-      label: specialty,
-      value: specialty
-    }));
   };
   
   return (
@@ -183,7 +184,7 @@ export function EditTrainerForm({ trainer, onSuccess }: EditTrainerFormProps) {
               <FormControl>
                 <MultiSelect
                   options={branches}
-                  value={field.value.map(id => branches.find(b => b.value === id) || { value: id, label: "Unknown" })}
+                  value={(field.value || []).map(id => branches.find(b => b.value === id) || { value: id, label: "Unknown" })}
                   onChange={(selected) => field.onChange(selected.map(item => item.value))}
                   placeholder="Select branches"
                 />

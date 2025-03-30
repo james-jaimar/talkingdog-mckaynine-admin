@@ -47,8 +47,8 @@ export function BranchAdminFields({ control }: BranchAdminFieldsProps) {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">None assigned</SelectItem>
-                  {admins?.map((admin) => (
-                    <SelectItem key={admin.id} value={admin.id} className="flex items-center gap-2">
+                  {admins && admins.map((admin) => (
+                    <SelectItem key={admin.id} value={admin.id}>
                       <div className="flex items-center gap-2">
                         <Avatar className="h-6 w-6">
                           <AvatarImage src={admin.avatar_url || ""} alt={admin.full_name || admin.username} />
