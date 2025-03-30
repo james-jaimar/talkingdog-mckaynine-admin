@@ -1,8 +1,8 @@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
-import { Dog } from "lucide-react";
-import { EditDogModal } from "./EditDogModal";
+import { DogCardHeader } from "./dog-card/DogCardHeader";
+import { BasicInfoTab } from "./dog-card/BasicInfoTab";
+import { NotesTab } from "./dog-card/NotesTab";
 
 interface DogProps {
   dog: {
@@ -23,26 +23,7 @@ interface DogProps {
 export function DogCard({ dog, clientId, onDogUpdated }: DogProps) {
   return (
     <div className="border rounded-lg overflow-hidden">
-      <div className="bg-gray-50 p-4 border-b flex justify-between items-center">
-        <div className="flex items-center space-x-3">
-          {dog.avatar_url ? (
-            <img 
-              src={dog.avatar_url} 
-              alt={dog.name} 
-              className="h-10 w-10 rounded-full object-cover"
-            />
-          ) : (
-            <div className="h-10 w-10 bg-mckaynine-100 text-mckaynine-600 rounded-full flex items-center justify-center">
-              <Dog className="h-6 w-6" />
-            </div>
-          )}
-          <div>
-            <h3 className="font-semibold">{dog.name}</h3>
-            <p className="text-sm text-gray-500">{dog.breed}</p>
-          </div>
-        </div>
-        <EditDogModal dog={dog} clientId={clientId} onSuccess={onDogUpdated} />
-      </div>
+      <DogCardHeader dog={dog} clientId={clientId} onDogUpdated={onDogUpdated} />
       <div className="p-4">
         <Tabs defaultValue="basic">
           <TabsList className="mb-4">
@@ -51,44 +32,19 @@ export function DogCard({ dog, clientId, onDogUpdated }: DogProps) {
             <TabsTrigger value="medical">Medical</TabsTrigger>
           </TabsList>
           <TabsContent value="basic" className="p-2">
-            <div className="grid grid-cols-2 gap-4">
-              {dog.age && (
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Age</p>
-                  <p>{dog.age} years</p>
-                </div>
-              )}
-              {dog.weight && (
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Weight</p>
-                  <p>{dog.weight} lbs</p>
-                </div>
-              )}
-              {dog.notes && (
-                <div className="col-span-2">
-                  <p className="text-sm font-medium text-gray-500">Notes</p>
-                  <p className="whitespace-pre-line">{dog.notes}</p>
-                </div>
-              )}
-            </div>
+            <BasicInfoTab age={dog.age} weight={dog.weight} notes={dog.notes} />
           </TabsContent>
           <TabsContent value="behavior" className="p-2">
-            {dog.behavior_notes ? (
-              <div>
-                <p className="whitespace-pre-line">{dog.behavior_notes}</p>
-              </div>
-            ) : (
-              <p className="text-gray-500 italic">No behavior notes recorded</p>
-            )}
+            <NotesTab 
+              notes={dog.behavior_notes} 
+              emptyMessage="No behavior notes recorded" 
+            />
           </TabsContent>
           <TabsContent value="medical" className="p-2">
-            {dog.medical_notes ? (
-              <div>
-                <p className="whitespace-pre-line">{dog.medical_notes}</p>
-              </div>
-            ) : (
-              <p className="text-gray-500 italic">No medical notes recorded</p>
-            )}
+            <NotesTab 
+              notes={dog.medical_notes} 
+              emptyMessage="No medical notes recorded" 
+            />
           </TabsContent>
         </Tabs>
       </div>
