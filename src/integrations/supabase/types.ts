@@ -303,6 +303,7 @@ export type Database = {
       clients: {
         Row: {
           address: string | null
+          branch_id: string | null
           city: string | null
           created_at: string
           email: string
@@ -316,6 +317,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          branch_id?: string | null
           city?: string | null
           created_at?: string
           email: string
@@ -329,6 +331,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          branch_id?: string | null
           city?: string | null
           created_at?: string
           email?: string
@@ -340,7 +343,15 @@ export type Database = {
           postal_code?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "clients_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       dogs: {
         Row: {
