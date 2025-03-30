@@ -31,16 +31,22 @@ export async function createDog(
   tableGroups: Record<string, Record<string, string>>
 ): Promise<string | undefined> {
   try {
+    console.log("Creating dog with data:", dogData);
+    
     // Create the dog
     const { data, error } = await supabase
       .from('dogs')
-      .insert(dogData as any)
+      .insert(dogData)
       .select('id')
       .single();
       
-    if (error) throw error;
+    if (error) {
+      console.error("Error in dog creation:", error);
+      throw error;
+    }
     
     const dogId = data?.id;
+    console.log("Dog created with ID:", dogId);
     
     if (dogId) {
       // Process class enrollments if they exist

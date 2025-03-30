@@ -21,7 +21,7 @@ export function useDataImport() {
     branchId?: string | null
   ): Promise<ImportResult> => {
     setIsUploading(true);
-    console.log("Processing import with", csvData.length, "records");
+    console.log("Starting import process with", csvData.length, "records");
     const errors: string[] = [];
     const successful: number[] = [];
 
@@ -41,7 +41,7 @@ export function useDataImport() {
         tableGroups[table][dbField] = csvHeader;
       });
       
-      console.log("Table groups:", tableGroups);
+      console.log("Table groups for import:", tableGroups);
 
       // First pass: preload existing clients to check for duplicates
       let existingClients = new Map<string, string>();
@@ -91,9 +91,6 @@ export function useDataImport() {
               if (!dogData.name) {
                 throw new Error('Dog name is required');
               }
-              if (!dogData.breed) {
-                throw new Error('Dog breed is required');
-              }
               
               // Create the dog and process related data
               await createDog(dogData, row, tableGroups);
@@ -110,7 +107,6 @@ export function useDataImport() {
       
       console.log("Import completed:", successful.length, "successful,", errors.length, "errors");
       
-      // Return the result
       return { 
         success: successful.length > 0, 
         errors 

@@ -54,7 +54,8 @@ export function ImportHandlersModal() {
   };
 
   const handleImport = async () => {
-    console.log("Import button clicked");
+    console.log("Import button clicked with data:", csvData?.length || 0, "records");
+    
     if (!csvData || csvData.length === 0) {
       toast({
         title: "No data to import",
@@ -65,13 +66,8 @@ export function ImportHandlersModal() {
     }
 
     try {
-      console.log("Starting import process...");
-      console.log("CSV Data:", csvData.length, "records");
-      console.log("Field Mappings:", fieldMappings);
-      console.log("Branch ID:", currentBranch?.id);
-      
       const result = await processImport(csvData, fieldMappings, currentBranch?.id);
-      console.log("Import result:", result);
+      console.log("Import completed with result:", result);
       
       if (result.success) {
         toast({
@@ -80,7 +76,6 @@ export function ImportHandlersModal() {
           variant: "default"
         });
         setOpen(false);
-        // Reset for next import
         handleReset();
       } else {
         toast({
@@ -102,7 +97,6 @@ export function ImportHandlersModal() {
   return (
     <Dialog open={open} onOpenChange={(newOpen) => {
       if (!newOpen) {
-        // Reset when dialog is closed
         handleReset();
       }
       setOpen(newOpen);
