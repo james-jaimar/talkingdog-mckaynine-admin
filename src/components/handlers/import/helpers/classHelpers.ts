@@ -11,8 +11,17 @@ export async function processClassEnrollments(
 ): Promise<void> {
   console.log("Processing class enrollments with mappings:", fieldMappings);
   
-  // Build enrollment data
-  const enrollmentData: Record<string, boolean> = {
+  // Build enrollment data with explicit dog_id field
+  const enrollmentData: {
+    dog_id: string;
+    puppy_class?: boolean;
+    eo_class?: boolean;
+    bronze_cgc_class?: boolean;
+    silver_cgc_class?: boolean;
+    beginner_novice_class?: boolean;
+    wt_class?: boolean;
+    yoga_class?: boolean;
+  } = {
     dog_id: dogId
   };
   
@@ -34,17 +43,26 @@ export async function processClassEnrollments(
     if (csvHeader) {
       const value = row[csvHeader];
       // Convert various formats to boolean
-      enrollmentData[dbField] = value && 
+      const boolValue = value && 
         (value === true || 
          value === 1 || 
          value === '1' || 
          value.toString().toLowerCase() === 'yes' || 
          value.toString().toLowerCase() === 'true');
+         
+      // Assign the boolean value to the proper field
+      (enrollmentData as any)[dbField] = !!boolValue;
     }
   });
   
   // Only proceed if we have at least one class enrollment
-  const hasClassData = Object.keys(enrollmentData).length > 1; // More than just dog_id
+  let hasClassData = false;
+  for (const key in enrollmentData) {
+    if (key !== 'dog_id' && enrollmentData[key as keyof typeof enrollmentData] === true) {
+      hasClassData = true;
+      break;
+    }
+  }
   
   if (!hasClassData) {
     console.log("No class enrollment data provided, skipping enrollment creation");
