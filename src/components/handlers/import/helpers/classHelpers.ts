@@ -51,7 +51,7 @@ export async function processClassEnrollments(
          value.toString().toLowerCase() === 'true');
          
       // Assign the boolean value to the proper field
-      (enrollmentData as any)[dbField] = !!boolValue;
+      enrollmentData[dbField as keyof typeof enrollmentData] = !!boolValue;
     }
   });
   
