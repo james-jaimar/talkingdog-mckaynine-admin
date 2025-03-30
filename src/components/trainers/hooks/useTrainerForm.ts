@@ -35,7 +35,7 @@ export function useTrainerForm(trainer: Trainer, onSuccess: () => void) {
   useEffect(() => {
     const fetchBranches = async () => {
       try {
-        console.log("Fetching branches...");
+        console.log("Fetching branches for trainer form...");
         
         const { data, error } = await supabase
           .from("branches")
@@ -47,7 +47,7 @@ export function useTrainerForm(trainer: Trainer, onSuccess: () => void) {
           throw error;
         }
         
-        if (data) {
+        if (data && data.length > 0) {
           console.log("Branches data received:", data);
           
           const branchOptions = data.map(branch => ({
@@ -58,7 +58,7 @@ export function useTrainerForm(trainer: Trainer, onSuccess: () => void) {
           console.log("Converted to branch options:", branchOptions);
           setBranches(branchOptions);
         } else {
-          console.warn("No branches data received");
+          console.warn("No branches data received or empty array");
           setBranches([]);
         }
       } catch (error) {
