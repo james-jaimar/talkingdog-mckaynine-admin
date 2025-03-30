@@ -21,6 +21,8 @@ export function MultiSelect({
   // Super defensive programming - ensure we have valid arrays with valid entries
   const safeOptions = React.useMemo(() => {
     try {
+      console.log("MultiSelect input options:", options);
+      
       // First check if options exists and is an array
       if (!options) {
         console.warn("MultiSelect: options is undefined or null");
@@ -33,7 +35,7 @@ export function MultiSelect({
       }
       
       // Then filter out any invalid entries
-      return options.filter(option => 
+      const validOptions = options.filter(option => 
         option && 
         typeof option === 'object' && 
         'label' in option && 
@@ -41,6 +43,9 @@ export function MultiSelect({
         'value' in option && 
         typeof option.value === 'string'
       );
+      
+      console.log("MultiSelect safeOptions:", validOptions);
+      return validOptions;
     } catch (error) {
       console.error("Error in MultiSelect safeOptions:", error);
       return [];
@@ -50,6 +55,8 @@ export function MultiSelect({
   // Ensure value is always a valid array with valid entries
   const safeValue = React.useMemo(() => {
     try {
+      console.log("MultiSelect input value:", value);
+      
       if (!value) {
         console.warn("MultiSelect: value is undefined or null");
         return [];
@@ -60,7 +67,7 @@ export function MultiSelect({
         return [];
       }
       
-      return value.filter(item => 
+      const validValue = value.filter(item => 
         item && 
         typeof item === 'object' && 
         'label' in item && 
@@ -68,6 +75,9 @@ export function MultiSelect({
         'value' in item && 
         typeof item.value === 'string'
       );
+      
+      console.log("MultiSelect safeValue:", validValue);
+      return validValue;
     } catch (error) {
       console.error("Error in MultiSelect safeValue:", error);
       return [];
@@ -77,12 +87,10 @@ export function MultiSelect({
   // Log debug information
   React.useEffect(() => {
     console.log("MultiSelect render:", {
-      originalOptions: options,
-      originalValue: value,
-      safeOptions: safeOptions,
-      safeValue: safeValue,
       optionsIsArray: Array.isArray(options),
       valueIsArray: Array.isArray(value),
+      safeOptionsLength: safeOptions.length,
+      safeValueLength: safeValue.length,
     });
   }, [options, value, safeOptions, safeValue]);
 
@@ -155,6 +163,10 @@ export function MultiSelect({
       // Don't modify the value if there's an error
     }
   }, [safeValue, onChange]);
+
+  if (safeOptions.length === 0) {
+    console.warn("MultiSelect: No valid options provided");
+  }
 
   return (
     <Popover open={open} onOpenChange={setOpen}>

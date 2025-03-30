@@ -6,6 +6,7 @@ import { TrainerFormValues } from "../schemas/trainerFormSchema";
 import { branchIdsToOptions, specialtiesAsOptions } from "../utils/optionUtils";
 import { useState, useEffect } from "react";
 import { Loader } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface TrainerSpecialtyFieldsProps {
   form: UseFormReturn<TrainerFormValues>;
@@ -38,9 +39,10 @@ export function TrainerSpecialtyFields({
       branchIds,
       specialties,
       branches,
-      branchesCount: branches?.length || 0
+      branchesCount: branches?.length || 0,
+      isLoadingBranches
     });
-  }, [branchIds, specialties, branches]);
+  }, [branchIds, specialties, branches, isLoadingBranches]);
 
   return (
     <>
@@ -56,10 +58,10 @@ export function TrainerSpecialtyFields({
                   <Loader className="h-4 w-4 animate-spin" />
                   <span className="text-sm text-muted-foreground">Loading branches...</span>
                 </div>
-              ) : (
+              ) : branches && branches.length > 0 ? (
                 <MultiSelect
-                  options={branches || []}
-                  value={branchIdsToOptions(branchIds, branches || [])}
+                  options={branches}
+                  value={branchIdsToOptions(branchIds, branches)}
                   onChange={(selected) => {
                     const selectedIds = selected.map(item => item.value);
                     console.log("Branch selection changed to:", selectedIds);
@@ -70,6 +72,10 @@ export function TrainerSpecialtyFields({
                   }}
                   placeholder="Select branches"
                 />
+              ) : (
+                <div className="text-sm text-muted-foreground bg-muted p-2 rounded">
+                  No branches available. Please add branches first.
+                </div>
               )}
             </FormControl>
             <FormMessage />

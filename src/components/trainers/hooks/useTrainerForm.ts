@@ -49,19 +49,26 @@ export function useTrainerForm(trainer: Trainer, onSuccess: () => void) {
           throw error;
         }
         
-        if (data && data.length > 0) {
-          console.log("Branches data received:", data);
+        console.log("Raw branches data:", data);
+        
+        if (data && Array.isArray(data) && data.length > 0) {
+          // Map branch data to OptionType format and ensure valid structure
+          const branchOptions = data.map(branch => {
+            // Ensure each branch has an id and name
+            if (!branch || !branch.id || !branch.name) {
+              console.warn("Invalid branch data:", branch);
+              return null;
+            }
+            return {
+              value: branch.id,
+              label: branch.name
+            };
+          }).filter(Boolean) as OptionType[]; // Remove null entries
           
-          // Map branch data to OptionType format
-          const branchOptions = data.map(branch => ({
-            value: branch.id,
-            label: branch.name
-          }));
-          
-          console.log("Converted to branch options:", branchOptions);
+          console.log("Converted branch options:", branchOptions);
           setBranches(branchOptions);
         } else {
-          console.warn("No branches data received or empty array");
+          console.warn("No branches data received or empty array:", data);
           setBranches([]);
         }
       } catch (error) {
@@ -79,6 +86,11 @@ export function useTrainerForm(trainer: Trainer, onSuccess: () => void) {
     
     fetchBranches();
   }, [toast]);
+  
+  // Log state changes for debugging
+  useEffect(() => {
+    console.log("Current branches state:", branches);
+  }, [branches]);
   
   const onSubmit = async (values: TrainerFormValues) => {
     setIsSubmitting(true);

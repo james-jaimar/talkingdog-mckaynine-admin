@@ -28,6 +28,7 @@ export const branchIdsToOptions = (
 ): OptionType[] => {
   // Ensure we have valid inputs
   if (!branchIds || !Array.isArray(branchIds) || branchIds.length === 0) {
+    console.log("branchIdsToOptions: No valid branchIds provided:", branchIds);
     return [];
   }
   
@@ -43,19 +44,25 @@ export const branchIdsToOptions = (
     branchesCount: branches.length
   });
   
-  // Find matching branches or create placeholder options
-  const result = branchIds.map(id => {
-    // Find matching branch
-    const matchingBranch = branches.find(branch => branch.value === id);
+  try {
+    // Find matching branches or create placeholder options
+    const result = branchIds
+      .filter(id => id && typeof id === 'string')
+      .map(id => {
+        // Find matching branch
+        const matchingBranch = branches.find(branch => branch && branch.value === id);
+        
+        // Return matching branch or fallback
+        return matchingBranch || { 
+          value: id, 
+          label: `Branch ${id.substring(0, 6)}...` 
+        };
+      });
     
-    // Return matching branch or fallback
-    return matchingBranch || { 
-      value: id, 
-      label: `Branch ${id.substring(0, 6)}...` 
-    };
-  });
-  
-  console.log("branchIdsToOptions result:", result);
-  
-  return result;
+    console.log("branchIdsToOptions result:", result);
+    return result;
+  } catch (error) {
+    console.error("Error in branchIdsToOptions:", error);
+    return [];
+  }
 };
