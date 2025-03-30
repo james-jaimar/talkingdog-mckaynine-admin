@@ -9,11 +9,24 @@ export async function processDogData(
   fieldMappings: Record<string, string>, 
   clientId: string
 ): Promise<string | undefined> {
-  const dogData: Record<string, any> = { client_id: clientId };
+  // Initialize dog data with required structure
+  const dogData: {
+    client_id: string;
+    name?: string;
+    breed?: string;
+    age?: number;
+    weight?: number;
+    notes?: string;
+    behavior_notes?: string;
+    medical_notes?: string;
+    avatar_url?: string;
+  } = { 
+    client_id: clientId 
+  };
   
   // Map fields from CSV to dog data
   Object.entries(fieldMappings).forEach(([dbField, csvHeader]) => {
-    dogData[dbField] = row[csvHeader];
+    dogData[dbField as keyof typeof dogData] = row[csvHeader];
   });
   
   // Ensure required fields are present

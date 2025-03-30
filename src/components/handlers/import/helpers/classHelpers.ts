@@ -11,16 +11,24 @@ export async function processClassEnrollments(
 ): Promise<void> {
   try {
     // Map class enrollment fields from CSV
-    const classEnrollments: Record<string, any> = { dog_id: dogId };
+    const classEnrollments = {
+      dog_id: dogId,
+      puppy_class: false,
+      eo_class: false,
+      bronze_cgc_class: false,
+      silver_cgc_class: false,
+      beginner_novice_class: false,
+      wt_class: false,
+      yoga_class: false
+    };
+    
     let hasEnrollments = false;
     
     Object.entries(fieldMappings).forEach(([dbField, csvHeader]) => {
       const value = row[csvHeader];
       if (value && value.toString().trim().toLowerCase() !== 'no' && value.toString().trim() !== '0') {
-        classEnrollments[dbField] = true;
+        classEnrollments[dbField as keyof typeof classEnrollments] = true;
         hasEnrollments = true;
-      } else {
-        classEnrollments[dbField] = false;
       }
     });
     
