@@ -10,8 +10,8 @@ export type { OptionType } from "./types";
 export type { MultiSelectProps } from "./types";
 
 export function MultiSelect({
-  options,
-  value,
+  options = [],
+  value = [],
   onChange,
   placeholder = "Select options",
   className,
@@ -25,12 +25,12 @@ export function MultiSelect({
       
       // First check if options exists and is an array
       if (!options) {
-        console.warn("MultiSelect: options is undefined or null");
+        console.warn("MultiSelect: options is undefined or null, using empty array");
         return [];
       }
       
       if (!Array.isArray(options)) {
-        console.warn("MultiSelect: options is not an array:", options);
+        console.warn("MultiSelect: options is not an array, using empty array:", options);
         return [];
       }
       
@@ -58,12 +58,12 @@ export function MultiSelect({
       console.log("MultiSelect input value:", value);
       
       if (!value) {
-        console.warn("MultiSelect: value is undefined or null");
+        console.warn("MultiSelect: value is undefined or null, using empty array");
         return [];
       }
       
       if (!Array.isArray(value)) {
-        console.warn("MultiSelect: value is not an array:", value);
+        console.warn("MultiSelect: value is not an array, using empty array:", value);
         return [];
       }
       
@@ -91,8 +91,9 @@ export function MultiSelect({
       valueIsArray: Array.isArray(value),
       safeOptionsLength: safeOptions.length,
       safeValueLength: safeValue.length,
+      open
     });
-  }, [options, value, safeOptions, safeValue]);
+  }, [options, value, safeOptions, safeValue, open]);
 
   // Ultra-safe handler for unselecting an item
   const handleUnselect = React.useCallback((item: OptionType) => {

@@ -1,6 +1,6 @@
 
 import * as React from "react";
-import { Command, CommandGroup } from "@/components/ui/command";
+import { Command, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
 import { PopoverContent } from "@/components/ui/popover";
 import { MultiSelectItem } from "./multi-select-item";
 import { OptionType } from "./types";
@@ -12,7 +12,7 @@ interface MultiSelectContentProps {
 }
 
 export function MultiSelectContent({ options, value, onSelect }: MultiSelectContentProps) {
-  // Safe options handling
+  // Safe options handling - ensure it's always a valid array
   const safeOptions = React.useMemo(() => {
     try {
       if (!options) return [];
@@ -32,7 +32,7 @@ export function MultiSelectContent({ options, value, onSelect }: MultiSelectCont
     }
   }, [options]);
 
-  // Safe value handling
+  // Safe value handling - ensure it's always a valid array
   const safeValue = React.useMemo(() => {
     try {
       if (!value) return [];
@@ -73,11 +73,13 @@ export function MultiSelectContent({ options, value, onSelect }: MultiSelectCont
   }, [safeValue]);
 
   return (
-    <PopoverContent className="w-full p-0">
+    <PopoverContent className="w-full p-0" align="start">
       <Command className="w-full">
-        <CommandGroup>
-          {Array.isArray(safeOptions) && safeOptions.length > 0 ? (
-            safeOptions.map((option, idx) => (
+        {safeOptions.length === 0 ? (
+          <CommandEmpty>No options available</CommandEmpty>
+        ) : (
+          <CommandGroup>
+            {safeOptions.map((option, idx) => (
               <MultiSelectItem
                 key={`option-item-${option?.value || idx}-${option?.label || idx}`}
                 option={option}
@@ -85,11 +87,9 @@ export function MultiSelectContent({ options, value, onSelect }: MultiSelectCont
                 isSelected={isOptionSelected(option)}
                 onSelect={onSelect}
               />
-            ))
-          ) : (
-            <div className="px-2 py-3 text-sm text-muted-foreground">No options available</div>
-          )}
-        </CommandGroup>
+            ))}
+          </CommandGroup>
+        )}
       </Command>
     </PopoverContent>
   );

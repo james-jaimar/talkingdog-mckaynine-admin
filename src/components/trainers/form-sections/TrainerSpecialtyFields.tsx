@@ -15,7 +15,7 @@ interface TrainerSpecialtyFieldsProps {
 
 export function TrainerSpecialtyFields({ 
   form, 
-  branches,
+  branches = [],
   isLoadingBranches = false
 }: TrainerSpecialtyFieldsProps) {
   const [specialtyOptions] = useState<OptionType[]>([
@@ -38,10 +38,10 @@ export function TrainerSpecialtyFields({
     console.log("Branches loading:", isLoadingBranches);
   }, [branchIds, branches, isLoadingBranches]);
 
-  // Convert branch IDs to options for display
+  // Convert branch IDs to options for display - ensure this never returns undefined
   const selectedBranchOptions = branchIdsToOptions(branchIds, branches);
   
-  // Convert specialties to options for display
+  // Convert specialties to options for display - ensure this never returns undefined
   const selectedSpecialtyOptions = specialtiesAsOptions(specialties);
 
   return (
@@ -60,8 +60,8 @@ export function TrainerSpecialtyFields({
                 </div>
               ) : hasBranchData(branches) ? (
                 <MultiSelect
-                  options={branches}
-                  value={selectedBranchOptions}
+                  options={branches || []}
+                  value={selectedBranchOptions || []}
                   onChange={(selected) => {
                     const selectedIds = selected.map(item => item.value);
                     console.log("Branch selection changed to:", selectedIds);
@@ -93,7 +93,7 @@ export function TrainerSpecialtyFields({
             <FormControl>
               <MultiSelect
                 options={specialtyOptions}
-                value={selectedSpecialtyOptions}
+                value={selectedSpecialtyOptions || []}
                 onChange={(selected) => {
                   const selectedSpecialties = selected.map(item => item.value);
                   console.log("Specialty selection changed to:", selectedSpecialties);
