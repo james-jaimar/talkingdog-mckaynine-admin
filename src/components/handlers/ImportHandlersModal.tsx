@@ -170,6 +170,7 @@ export function ImportHandlersModal() {
     setIsUploading(true);
     const errors: string[] = [];
     const successful: number[] = [];
+    const existingClients = new Map<string, string>(); // name -> id mapping
 
     try {
       // Group mappings by table
@@ -182,12 +183,47 @@ export function ImportHandlersModal() {
         }
         tableGroups[table][dbField] = csvHeader;
       });
+
+      // First pass: preload existing clients to check for duplicates
+      if (tableGroups.clients && tableGroups.clients.name) {
+        const nameHeader = tableGroups.clients.name;
+        const emailHeader = tableGroups.clients.email;
+        
+        // Create a list of unique clients from the CSV
+        const uniqueClientNames = new Set<string>();
+        const uniqueEmails = new Set<string>();
+        
+        csvData.forEach(row => {
+          if (row[nameHeader]) {
+            uniqueClientNames.add(row[nameHeader]);
+          }
+          if (emailHeader && row[emailHeader]) {
+            uniqueEmails.add(row[emailHeader]);
+          }
+        });
+        
+        // Check which clients already exist in the database
+        if (uniqueClientNames.size > 0) {
+          const { data: existingClientsData } = await supabase
+            .from('clients')
+            .select('id, first_name, last_name, email')
+            .in('email', Array.from(uniqueEmails));
+          
+          if (existingClientsData) {
+            existingClientsData.forEach(client => {
+              const fullName = `${client.first_name} ${client.last_name}`.trim();
+              existingClients.set(client.email, client.id);
+              console.log(`Found existing client: ${fullName} (${client.email}) with ID: ${client.id}`);
+            });
+          }
+        }
+      }
       
       // Process each row
       for (let i = 0; i < csvData.length; i++) {
         const row = csvData[i];
         try {
-          // First create client
+          // First create or find client
           if (tableGroups.clients) {
             // Initialize client data with the correct type structure
             const clientData: {
@@ -218,8 +254,14 @@ export function ImportHandlersModal() {
             }
             
             // Handle email field
-            if (tableGroups.clients.email && row[tableGroups.clients.email]) {
-              clientData.email = row[tableGroups.clients.email];
+            const clientEmail = tableGroups.clients.email && row[tableGroups.clients.email] 
+              ? row[tableGroups.clients.email] 
+              : '';
+            
+            if (clientEmail) {
+              clientData.email = clientEmail;
+            } else {
+              throw new Error('Missing required email field');
             }
             
             // Handle phone field
@@ -292,15 +334,45 @@ export function ImportHandlersModal() {
               clientData.last_name = '(no last name)';
             }
             
-            const { data: clientResult, error: clientError } = await supabase
-              .from('clients')
-              .insert(clientData)
-              .select('id');
-              
-            if (clientError) throw clientError;
+            let clientId: string;
             
-            // If client was created successfully and we have dog data, create the dog
-            if (clientResult && clientResult.length > 0 && tableGroups.dogs) {
+            // Check if client already exists by email
+            if (existingClients.has(clientData.email)) {
+              clientId = existingClients.get(clientData.email) || '';
+              console.log(`Using existing client with ID: ${clientId} for email: ${clientData.email}`);
+              
+              // Update the existing client with any new information
+              const { error: updateError } = await supabase
+                .from('clients')
+                .update({
+                  phone: clientData.phone || null,
+                  notes: clientData.notes || null
+                })
+                .eq('id', clientId);
+                
+              if (updateError) {
+                console.warn(`Warning: Could not update existing client: ${updateError.message}`);
+              }
+            } else {
+              // Create a new client
+              const { data: clientResult, error: clientError } = await supabase
+                .from('clients')
+                .insert(clientData)
+                .select('id');
+                
+              if (clientError) throw clientError;
+              
+              if (!clientResult || clientResult.length === 0) {
+                throw new Error('Failed to create client record');
+              }
+              
+              clientId = clientResult[0].id;
+              // Store the new client in our map
+              existingClients.set(clientData.email, clientId);
+            }
+            
+            // If we have a valid client ID and dog data, create or update the dog
+            if (clientId && tableGroups.dogs) {
               // Initialize with required fields
               const dogData: {
                 name: string;
@@ -313,7 +385,7 @@ export function ImportHandlersModal() {
               } = {
                 name: '',
                 breed: '',
-                client_id: clientResult[0].id
+                client_id: clientId
               };
               
               // Process dog name
@@ -362,11 +434,38 @@ export function ImportHandlersModal() {
                 throw new Error('Missing required dog fields: name or breed');
               }
               
-              const { error: dogError } = await supabase
+              // Check if this dog already exists for this client
+              const { data: existingDogs } = await supabase
                 .from('dogs')
-                .insert(dogData);
+                .select('id, name')
+                .eq('client_id', clientId)
+                .eq('name', dogData.name);
+              
+              if (existingDogs && existingDogs.length > 0) {
+                // Update existing dog
+                const { error: dogError } = await supabase
+                  .from('dogs')
+                  .update({
+                    breed: dogData.breed,
+                    age: dogData.age,
+                    notes: dogData.notes,
+                    behavior_notes: dogData.behavior_notes
+                  })
+                  .eq('id', existingDogs[0].id);
+                  
+                if (dogError) throw dogError;
                 
-              if (dogError) throw dogError;
+                console.log(`Updated existing dog "${dogData.name}" for client ID: ${clientId}`);
+              } else {
+                // Create new dog
+                const { error: dogError } = await supabase
+                  .from('dogs')
+                  .insert(dogData);
+                  
+                if (dogError) throw dogError;
+                
+                console.log(`Created new dog "${dogData.name}" for client ID: ${clientId}`);
+              }
             }
             
             successful.push(i);
@@ -378,7 +477,7 @@ export function ImportHandlersModal() {
       
       toast({
         title: "Import completed",
-        description: `Successfully imported ${successful.length} handlers with their dogs. ${errors.length > 0 ? `${errors.length} errors occurred.` : ''}`,
+        description: `Successfully imported ${successful.length} entries with their dogs. ${errors.length > 0 ? `${errors.length} errors occurred.` : ''}`,
         variant: errors.length > 0 ? "destructive" : "default"
       });
       
@@ -619,6 +718,7 @@ export function ImportHandlersModal() {
                     <div className="mt-2 text-sm text-green-700">
                       <p>You're about to import {csvData.length} records from your CSV file.</p>
                       <p className="mt-1">This will create new handler and dog records in the database.</p>
+                      <p className="mt-1 font-medium">If a handler with the same email already exists, their record will be updated and new dogs will be added.</p>
                     </div>
                   </div>
                 </div>
@@ -631,6 +731,7 @@ export function ImportHandlersModal() {
                   <p>• DOB will be converted to age in years</p>
                   <p>• Class information (PUPPY, EO, etc.) will be combined into notes</p>
                   <p>• WhatsApp and Photo Permission preferences will be saved in notes</p>
+                  <p>• <strong>Duplicate handlers (by email) will be detected</strong> and their dogs will be added or updated</p>
                 </div>
               </div>
               
