@@ -148,7 +148,7 @@ export function useClassScheduleForm(
         throw new Error("End time must be after start time");
       }
       
-      // Convert selected dates to ISO strings
+      // Convert selected dates to ISO strings for storage
       const selectedDatesISO = values.selectedDates.map(date => date.toISOString());
       
       const scheduleData = {
@@ -160,6 +160,8 @@ export function useClassScheduleForm(
         recurrence_pattern: values.referenceTitle,
         selected_dates: selectedDatesISO,
       };
+      
+      console.log("Submitting schedule data:", scheduleData);
       
       if (schedule) {
         // Update existing schedule
