@@ -82,66 +82,78 @@ export function HandlerTable({
         </TableRow>
       </TableHeader>
       <TableBody>
-        {handlers.slice(0, itemsPerPage).map((handler) => (
-          <TableRow key={handler.id}>
-            <TableCell className="font-medium">
-              {handler.first_name} {handler.last_name}
-            </TableCell>
-            <TableCell>{handler.email}</TableCell>
-            <TableCell>
-              {handler.dogs.length > 0 
-                ? handler.dogs.map(dog => dog.name).join(", ")
-                : "-"}
-            </TableCell>
-            <TableCell>
-              {handler.dogs.length > 0 
-                ? handler.dogs.map(dog => dog.breed).join(", ")
-                : "-"}
-            </TableCell>
-            <TableCell>
-              {handler.dogs.length > 0 
-                ? extractDOB(handler.dogs[0])
-                : "-"}
-            </TableCell>
-            <TableCell>
-              {handler.dogs.length > 0 && handler.dogs[0].behavior_notes
-                ? handler.dogs[0].behavior_notes.substring(0, 20) + (handler.dogs[0].behavior_notes.length > 20 ? "..." : "")
-                : "-"}
-            </TableCell>
-            <TableCell>{formatPhoneNumber(handler.phone)}</TableCell>
-            <TableCell>{extractClassNotes(handler.notes, "PUPPY")}</TableCell>
-            <TableCell>{extractClassNotes(handler.notes, "EO")}</TableCell>
-            <TableCell>{extractClassNotes(handler.notes, "BRONZE CGC")}</TableCell>
-            <TableCell>{extractClassNotes(handler.notes, "SILVER CGC")}</TableCell>
-            <TableCell>{extractClassNotes(handler.notes, "BEGINNER/NOVICE")}</TableCell>
-            <TableCell>{extractClassNotes(handler.notes, "WT")}</TableCell>
-            <TableCell>{extractClassNotes(handler.notes, "YOGA")}</TableCell>
-            <TableCell>
-              {handler.notes 
-                ? (handler.notes.includes("COMMENTS:") 
-                  ? extractClassNotes(handler.notes, "COMMENTS") 
-                  : handler.notes.substring(0, 20) + (handler.notes.length > 20 ? "..." : ""))
-                : "-"}
-            </TableCell>
-            <TableCell className="text-center">
-              <Checkbox
-                checked={extractPreference(handler.notes, "WhatsApp")}
-                disabled
-              />
-            </TableCell>
-            <TableCell className="text-center">
-              <Checkbox
-                checked={extractPreference(handler.notes, "Photo Permission")}
-                disabled
-              />
-            </TableCell>
-            <TableCell className="text-right">
-              <Link to={`/handlers/${handler.id}`}>
-                <Button variant="outline" size="sm">View</Button>
-              </Link>
-            </TableCell>
-          </TableRow>
-        ))}
+        {handlers.slice(0, itemsPerPage).map((handler) => {
+          // Check for WhatsApp and Photo Permission in notes
+          const whatsApp = handler.notes && handler.notes.includes("WhatsApp: yes");
+          const photoPermission = handler.notes && handler.notes.includes("Photo Permission: yes");
+          
+          // Extract comments from notes (any text that isn't about WhatsApp or Photo Permission)
+          const notesWithoutPreferences = handler.notes
+            ? handler.notes
+                .split('\n')
+                .filter((line: string) => !line.includes("WhatsApp:") && !line.includes("Photo Permission:"))
+                .join('\n')
+            : '';
+            
+          return (
+            <TableRow key={handler.id}>
+              <TableCell className="font-medium">
+                {handler.first_name} {handler.last_name}
+              </TableCell>
+              <TableCell>{handler.email}</TableCell>
+              <TableCell>
+                {handler.dogs && handler.dogs.length > 0 
+                  ? handler.dogs.map((dog: any) => dog.name).join(", ")
+                  : "-"}
+              </TableCell>
+              <TableCell>
+                {handler.dogs && handler.dogs.length > 0 
+                  ? handler.dogs.map((dog: any) => dog.breed).join(", ")
+                  : "-"}
+              </TableCell>
+              <TableCell>
+                {handler.dogs && handler.dogs.length > 0 
+                  ? handler.dogs[0].date_of_birth || extractDOB(handler.dogs[0])
+                  : "-"}
+              </TableCell>
+              <TableCell>
+                {handler.dogs && handler.dogs.length > 0 && handler.dogs[0].behavior_notes
+                  ? handler.dogs[0].behavior_notes.substring(0, 20) + (handler.dogs[0].behavior_notes.length > 20 ? "..." : "")
+                  : "-"}
+              </TableCell>
+              <TableCell>{formatPhoneNumber(handler.phone)}</TableCell>
+              <TableCell>{extractClassNotes(handler.notes, "PUPPY")}</TableCell>
+              <TableCell>{extractClassNotes(handler.notes, "EO")}</TableCell>
+              <TableCell>{extractClassNotes(handler.notes, "BRONZE CGC")}</TableCell>
+              <TableCell>{extractClassNotes(handler.notes, "SILVER CGC")}</TableCell>
+              <TableCell>{extractClassNotes(handler.notes, "BEGINNER/NOVICE")}</TableCell>
+              <TableCell>{extractClassNotes(handler.notes, "WT")}</TableCell>
+              <TableCell>{extractClassNotes(handler.notes, "YOGA")}</TableCell>
+              <TableCell>
+                {notesWithoutPreferences 
+                  ? (notesWithoutPreferences.substring(0, 20) + (notesWithoutPreferences.length > 20 ? "..." : ""))
+                  : "-"}
+              </TableCell>
+              <TableCell className="text-center">
+                <Checkbox
+                  checked={whatsApp || extractPreference(handler.notes, "WhatsApp")}
+                  disabled
+                />
+              </TableCell>
+              <TableCell className="text-center">
+                <Checkbox
+                  checked={photoPermission || extractPreference(handler.notes, "Photo Permission")}
+                  disabled
+                />
+              </TableCell>
+              <TableCell className="text-right">
+                <Link to={`/handlers/${handler.id}`}>
+                  <Button variant="outline" size="sm">View</Button>
+                </Link>
+              </TableCell>
+            </TableRow>
+          );
+        })}
       </TableBody>
     </Table>
   );

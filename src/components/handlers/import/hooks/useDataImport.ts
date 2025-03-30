@@ -59,8 +59,10 @@ export function useDataImport() {
           tableFields[table] = {};
         }
         
-        tableFields[table][field] = csvHeader;
+        tableFields[table][csvHeader] = dbFieldWithTable;
       });
+      
+      console.log("Grouped field mappings by table:", tableFields);
       
       // Process data row by row
       for (let i = 0; i < data.length; i++) {
@@ -72,17 +74,23 @@ export function useDataImport() {
             throw new Error('Email is required for client import');
           }
           
+          console.log(`Processing row ${i+1}:`, row);
+          
           // Process client data first
+          let clientId: string | undefined;
           if (tableFields['clients']) {
-            const clientId = await processClientData(row, tableFields['clients'], branchId);
+            clientId = await processClientData(row, tableFields['clients'], branchId);
+            console.log(`Client created/updated with ID: ${clientId}`);
             
             // Process dog data if client was created
             if (clientId && tableFields['dogs']) {
               const dogId = await processDogData(row, tableFields['dogs'], clientId);
+              console.log(`Dog created with ID: ${dogId}`);
               
               // Process class enrollments if dog was created
               if (dogId && tableFields['class_enrollments']) {
                 await processClassEnrollments(row, tableFields['class_enrollments'], dogId);
+                console.log(`Class enrollments processed for dog ID: ${dogId}`);
               }
             }
           }
@@ -93,6 +101,7 @@ export function useDataImport() {
             processed: processed
           }));
         } catch (error: any) {
+          console.error(`Error processing row ${i+1}:`, error);
           errors.push({ 
             row: i+1, 
             message: error.message || 'Unknown error' 
@@ -110,6 +119,7 @@ export function useDataImport() {
         errors: errors.map(e => `Row ${e.row}: ${e.message}`)
       };
     } catch (error: any) {
+      console.error("General import error:", error);
       return {
         success: false,
         errors: [error.message || 'An unexpected error occurred']

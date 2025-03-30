@@ -2,68 +2,66 @@
 import { supabase } from "@/integrations/supabase/client";
 
 /**
- * Process class enrollments from CSV row
+ * Process class enrollment data from CSV row
  */
 export async function processClassEnrollments(
-  row: any, 
-  fieldMappings: Record<string, string>, 
+  row: any,
+  fieldMappings: Record<string, string>,
   dogId: string
 ): Promise<void> {
-  try {
-    // Map class enrollment fields from CSV
-    const classEnrollments = {
-      dog_id: dogId,
-      puppy_class: false,
-      eo_class: false,
-      bronze_cgc_class: false,
-      silver_cgc_class: false,
-      beginner_novice_class: false,
-      wt_class: false,
-      yoga_class: false
-    };
+  console.log("Processing class enrollments with mappings:", fieldMappings);
+  
+  // Build enrollment data
+  const enrollmentData: Record<string, boolean> = {
+    dog_id: dogId
+  };
+  
+  // Check which class fields are mapped
+  const classFields = [
+    { csvField: 'class_enrollments.puppy_class', dbField: 'puppy_class' },
+    { csvField: 'class_enrollments.eo_class', dbField: 'eo_class' },
+    { csvField: 'class_enrollments.bronze_cgc_class', dbField: 'bronze_cgc_class' },
+    { csvField: 'class_enrollments.silver_cgc_class', dbField: 'silver_cgc_class' },
+    { csvField: 'class_enrollments.beginner_novice_class', dbField: 'beginner_novice_class' },
+    { csvField: 'class_enrollments.wt_class', dbField: 'wt_class' },
+    { csvField: 'class_enrollments.yoga_class', dbField: 'yoga_class' }
+  ];
+  
+  // Check which classes are enabled
+  classFields.forEach(({ csvField, dbField }) => {
+    const csvHeader = Object.entries(fieldMappings).find(([_, value]) => value === csvField)?.[0];
     
-    let hasEnrollments = false;
-    
-    Object.entries(fieldMappings).forEach(([dbField, csvHeader]) => {
+    if (csvHeader) {
       const value = row[csvHeader];
-      if (value && value.toString().trim().toLowerCase() !== 'no' && value.toString().trim() !== '0') {
-        // Use type assertion to avoid TypeScript error
-        if (dbField in classEnrollments) {
-          (classEnrollments as any)[dbField] = true;
-          hasEnrollments = true;
-        }
-      }
-    });
-    
-    if (hasEnrollments) {
-      // Check if enrollments already exist for this dog
-      const { data: existingEnrollments, error: queryError } = await supabase
-        .from('class_enrollments')
-        .select('id')
-        .eq('dog_id', dogId);
-        
-      if (queryError) throw queryError;
-      
-      if (existingEnrollments && existingEnrollments.length > 0) {
-        // Update existing enrollments
-        const enrollmentId = existingEnrollments[0].id;
-        const { error } = await supabase
-          .from('class_enrollments')
-          .update(classEnrollments)
-          .eq('id', enrollmentId);
-          
-        if (error) throw error;
-      } else {
-        // Create new enrollments
-        const { error } = await supabase
-          .from('class_enrollments')
-          .insert(classEnrollments);
-          
-        if (error) throw error;
-      }
+      // Convert various formats to boolean
+      enrollmentData[dbField] = value && 
+        (value === true || 
+         value === 1 || 
+         value === '1' || 
+         value.toString().toLowerCase() === 'yes' || 
+         value.toString().toLowerCase() === 'true');
     }
-  } catch (error) {
-    console.error('Error processing class enrollments:', error);
+  });
+  
+  // Only proceed if we have at least one class enrollment
+  const hasClassData = Object.keys(enrollmentData).length > 1; // More than just dog_id
+  
+  if (!hasClassData) {
+    console.log("No class enrollment data provided, skipping enrollment creation");
+    return;
+  }
+  
+  console.log("Creating class enrollment with data:", enrollmentData);
+  
+  // Insert enrollment data
+  const { error } = await supabase
+    .from('class_enrollments')
+    .insert(enrollmentData);
+    
+  if (error) {
+    console.error("Error creating class enrollment:", error);
     throw error;
   }
+  
+  console.log("Class enrollments created successfully");
 }
