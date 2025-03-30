@@ -11,18 +11,16 @@ export async function processClassEnrollments(
 ): Promise<void> {
   console.log("Processing class enrollments with mappings:", fieldMappings);
   
-  // Build enrollment data with explicit dog_id field
-  const enrollmentData: {
-    dog_id: string;
-    puppy_class?: boolean;
-    eo_class?: boolean;
-    bronze_cgc_class?: boolean;
-    silver_cgc_class?: boolean;
-    beginner_novice_class?: boolean;
-    wt_class?: boolean;
-    yoga_class?: boolean;
-  } = {
-    dog_id: dogId
+  // Define a properly typed enrollment data object
+  const enrollmentData = {
+    dog_id: dogId,
+    puppy_class: false,
+    eo_class: false,
+    bronze_cgc_class: false,
+    silver_cgc_class: false,
+    beginner_novice_class: false,
+    wt_class: false,
+    yoga_class: false
   };
   
   // Check which class fields are mapped
@@ -51,24 +49,20 @@ export async function processClassEnrollments(
          value.toString().toLowerCase() === 'true');
          
       // Safely assign the boolean value using a type-safe approach
-      if (dbField === 'puppy_class') enrollmentData.puppy_class = !!boolValue;
-      else if (dbField === 'eo_class') enrollmentData.eo_class = !!boolValue;
-      else if (dbField === 'bronze_cgc_class') enrollmentData.bronze_cgc_class = !!boolValue;
-      else if (dbField === 'silver_cgc_class') enrollmentData.silver_cgc_class = !!boolValue;
-      else if (dbField === 'beginner_novice_class') enrollmentData.beginner_novice_class = !!boolValue;
-      else if (dbField === 'wt_class') enrollmentData.wt_class = !!boolValue;
-      else if (dbField === 'yoga_class') enrollmentData.yoga_class = !!boolValue;
+      if (dbField === 'puppy_class') enrollmentData.puppy_class = boolValue;
+      else if (dbField === 'eo_class') enrollmentData.eo_class = boolValue;
+      else if (dbField === 'bronze_cgc_class') enrollmentData.bronze_cgc_class = boolValue;
+      else if (dbField === 'silver_cgc_class') enrollmentData.silver_cgc_class = boolValue;
+      else if (dbField === 'beginner_novice_class') enrollmentData.beginner_novice_class = boolValue;
+      else if (dbField === 'wt_class') enrollmentData.wt_class = boolValue;
+      else if (dbField === 'yoga_class') enrollmentData.yoga_class = boolValue;
     }
   });
   
   // Only proceed if we have at least one class enrollment
-  let hasClassData = false;
-  for (const key in enrollmentData) {
-    if (key !== 'dog_id' && enrollmentData[key as keyof typeof enrollmentData] === true) {
-      hasClassData = true;
-      break;
-    }
-  }
+  const hasClassData = Object.entries(enrollmentData).some(
+    ([key, value]) => key !== 'dog_id' && value === true
+  );
   
   if (!hasClassData) {
     console.log("No class enrollment data provided, skipping enrollment creation");
