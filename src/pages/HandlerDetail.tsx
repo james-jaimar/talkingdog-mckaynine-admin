@@ -11,11 +11,14 @@ import { HandlerDetailSkeleton } from "@/components/handlers/detail/HandlerDetai
 import { Helmet } from "react-helmet";
 
 export default function HandlerDetail() {
-  const { handlerId } = useParams();
+  // Fix the param name to match the router's ":id" parameter
+  const { id: handlerId } = useParams();
   
   const { data: handler, isLoading, refetch } = useQuery({
     queryKey: ['handler', handlerId],
     queryFn: async () => {
+      if (!handlerId) throw new Error("Handler ID is required");
+      
       const { data, error } = await supabase
         .from('clients')
         .select(`
