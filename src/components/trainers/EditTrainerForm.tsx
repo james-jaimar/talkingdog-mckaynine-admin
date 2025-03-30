@@ -36,25 +36,37 @@ export function EditTrainerForm({ trainer, onSuccess }: EditTrainerFormProps) {
   // Fetch branches for dropdown
   useEffect(() => {
     const fetchBranches = async () => {
-      const { data, error } = await supabase
-        .from("branches")
-        .select("id, name")
-        .order("name");
-      
-      if (!error && data) {
-        setBranches(data.map(branch => ({
-          value: branch.id,
-          label: branch.name
-        })));
+      try {
+        const { data, error } = await supabase
+          .from("branches")
+          .select("id, name")
+          .order("name");
+        
+        if (error) throw error;
+        
+        if (data) {
+          const branchOptions = data.map(branch => ({
+            value: branch.id,
+            label: branch.name
+          }));
+          setBranches(branchOptions);
+        }
+      } catch (error) {
+        console.error("Error fetching branches:", error);
+        toast({
+          title: "Failed to load branches",
+          description: "Please try again or contact support.",
+          variant: "destructive",
+        });
       }
     };
     
     fetchBranches();
-  }, []);
+  }, [toast]);
   
   // Helper function to convert array of strings to array of OptionType objects
   const specialtiesAsOptions = (specialties: string[] | null): OptionType[] => {
-    if (!specialties) return [];
+    if (!specialties || !Array.isArray(specialties)) return [];
     return specialties.map(specialty => ({
       label: specialty,
       value: specialty
@@ -64,11 +76,12 @@ export function EditTrainerForm({ trainer, onSuccess }: EditTrainerFormProps) {
   // Helper function to convert branch IDs to OptionType objects
   const branchIdsToOptions = (branchIds: string[] | null): OptionType[] => {
     if (!branchIds || !Array.isArray(branchIds) || branchIds.length === 0) return [];
+    if (!branches || branches.length === 0) return [];
     
     return branchIds.map(id => {
       const branch = branches.find(b => b.value === id);
       return branch || { value: id, label: `Branch ${id.substring(0, 8)}...` };
-    });
+    }).filter(Boolean);
   };
   
   // Pre-populate form with trainer data
@@ -124,6 +137,10 @@ export function EditTrainerForm({ trainer, onSuccess }: EditTrainerFormProps) {
       setIsSubmitting(false);
     }
   };
+  
+  // Create a safeguard for branch IDs to prevent errors during rendering
+  const safeBranchOptions = branchIdsToOptions(form.watch('branchIds'));
+  const safeSpecialtyOptions = specialtiesAsOptions(form.watch('specialties'));
   
   return (
     <Form {...form}>
@@ -194,8 +211,11 @@ export function EditTrainerForm({ trainer, onSuccess }: EditTrainerFormProps) {
               <FormControl>
                 <MultiSelect
                   options={branches}
-                  value={branchIdsToOptions(field.value)}
-                  onChange={(selected) => field.onChange(selected.map(item => item.value))}
+                  value={safeBranchOptions}
+                  onChange={(selected) => {
+                    console.log("Selected branches:", selected);
+                    field.onChange(selected.map(item => item.value));
+                  }}
                   placeholder="Select branches"
                 />
               </FormControl>
@@ -213,8 +233,11 @@ export function EditTrainerForm({ trainer, onSuccess }: EditTrainerFormProps) {
               <FormControl>
                 <MultiSelect
                   options={specialtyOptions}
-                  value={specialtiesAsOptions(field.value)}
-                  onChange={(selected) => field.onChange(selected.map(item => item.value))}
+                  value={safeSpecialtyOptions}
+                  onChange={(selected) => {
+                    console.log("Selected specialties:", selected);
+                    field.onChange(selected.map(item => item.value));
+                  }}
                   placeholder="Select specialties"
                 />
               </FormControl>
