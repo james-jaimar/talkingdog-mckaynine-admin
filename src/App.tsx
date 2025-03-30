@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Handlers from "./pages/Handlers";
+import HandlerDetail from "./pages/HandlerDetail";
 import Trainers from "./pages/Trainers";
 import Branches from "./pages/Branches";
 import Classes from "./pages/Classes";
@@ -21,6 +22,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/handlers" element={<Handlers />} />
+          <Route path="/handlers/:handlerId" element={<HandlerDetail />} />
           <Route path="/trainers" element={<Trainers />} />
           <Route path="/branches" element={<Branches />} />
           <Route path="/classes" element={<Classes />} />
