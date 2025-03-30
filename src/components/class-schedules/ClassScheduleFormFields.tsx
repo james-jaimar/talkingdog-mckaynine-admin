@@ -108,7 +108,12 @@ export function ClassScheduleFormFields({
               <Calendar
                 mode="multiple"
                 selected={field.value}
-                onSelect={field.onChange}
+                onSelect={(dates) => {
+                  // Ensure we always have an array of dates
+                  const selectedDates = dates || [];
+                  console.log("Selected dates in calendar:", selectedDates);
+                  field.onChange(selectedDates);
+                }}
                 numberOfMonths={4}
                 disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
                 className="rounded-md border"

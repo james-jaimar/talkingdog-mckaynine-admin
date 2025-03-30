@@ -29,7 +29,7 @@ export function useClassScheduleForm(
   // Helper to combine date and time
   const combineDateTime = (date: Date, timeString: string): Date => {
     const [hours, minutes] = timeString.split(':').map(Number);
-    return setMinutes(setHours(date, hours), minutes);
+    return setMinutes(setHours(new Date(date), hours), minutes);
   };
   
   // Parse existing schedule data if editing
@@ -126,6 +126,7 @@ export function useClassScheduleForm(
   
   const onSubmit = async (values: ClassScheduleFormValues) => {
     setIsSubmitting(true);
+    console.log("Form values submitted:", values);
     
     try {
       // Ensure dates are selected
@@ -140,16 +141,28 @@ export function useClassScheduleForm(
       
       // Combine date and time into ISO strings
       const startDateTime = combineDateTime(firstDate, values.startTime);
-      const endDateTime = combineDateTime(lastDate, values.endTime);
+      const endDateTime = combineDateTime(
+        values.selectedDates.length > 1 ? lastDate : firstDate, 
+        values.endTime
+      );
       
       // Validate end time is after start time for same-day events
       if (firstDate.toDateString() === lastDate.toDateString() && 
-          combineDateTime(firstDate, values.endTime) <= combineDateTime(firstDate, values.startTime)) {
+          endDateTime <= startDateTime) {
         throw new Error("End time must be after start time");
       }
       
       // Convert selected dates to ISO strings for storage
-      const selectedDatesISO = values.selectedDates.map(date => date.toISOString());
+      // Ensure proper date formatting for Supabase
+      const selectedDatesISO = values.selectedDates.map(date => {
+        // Create a new date to avoid timezone issues
+        const d = new Date(date);
+        return d.toISOString();
+      });
+      
+      console.log("Selected dates (ISO):", selectedDatesISO);
+      console.log("Start datetime:", startDateTime.toISOString());
+      console.log("End datetime:", endDateTime.toISOString());
       
       const scheduleData = {
         class_id: classId,
@@ -163,14 +176,16 @@ export function useClassScheduleForm(
       
       console.log("Submitting schedule data:", scheduleData);
       
+      let response;
+      
       if (schedule) {
         // Update existing schedule
-        const { error } = await supabase
+        response = await supabase
           .from("class_schedules")
           .update(scheduleData)
           .eq("id", schedule.id);
         
-        if (error) throw error;
+        if (response.error) throw response.error;
         
         toast({
           title: "Schedule updated successfully",
@@ -178,11 +193,11 @@ export function useClassScheduleForm(
         });
       } else {
         // Create new schedule
-        const { error } = await supabase
+        response = await supabase
           .from("class_schedules")
           .insert(scheduleData);
         
-        if (error) throw error;
+        if (response.error) throw response.error;
         
         toast({
           title: "Schedule created successfully",
@@ -194,9 +209,25 @@ export function useClassScheduleForm(
       onSuccess();
     } catch (error) {
       console.error("Error saving schedule:", error);
+      
+      // Improved error handling with better messages
+      let errorMessage = "An unexpected error occurred";
+      
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'object' && error !== null) {
+        // Handle Supabase error objects
+        errorMessage = JSON.stringify(error);
+        
+        // Extract message from Supabase error object if possible
+        if ('message' in error) {
+          errorMessage = String(error.message);
+        }
+      }
+      
       toast({
         title: "Failed to save schedule",
-        description: String(error) || "An unexpected error occurred.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
