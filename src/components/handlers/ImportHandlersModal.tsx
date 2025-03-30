@@ -1,4 +1,3 @@
-
 import { useState, ChangeEvent } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -156,12 +155,29 @@ export function ImportHandlersModal() {
         const row = csvData[i];
         try {
           // First create client
-          const clientData: Record<string, any> = {};
-          Object.entries(tableGroups.clients || {}).forEach(([dbField, csvHeader]) => {
-            clientData[dbField] = row[csvHeader];
-          });
-          
-          if (Object.keys(clientData).length > 0) {
+          if (tableGroups.clients) {
+            // Initialize with required fields to avoid TypeScript errors
+            const clientData: {
+              first_name: string;
+              last_name: string;
+              email: string;
+              [key: string]: any;
+            } = {
+              first_name: '',
+              last_name: '',
+              email: ''
+            };
+            
+            // Fill in values from CSV based on mapping
+            Object.entries(tableGroups.clients).forEach(([dbField, csvHeader]) => {
+              clientData[dbField] = row[csvHeader];
+            });
+            
+            // Validate required fields
+            if (!clientData.first_name || !clientData.last_name || !clientData.email) {
+              throw new Error('Missing required client fields');
+            }
+            
             const { data: clientResult, error: clientError } = await supabase
               .from('clients')
               .insert(clientData)
@@ -171,12 +187,33 @@ export function ImportHandlersModal() {
             
             // If client was created successfully and we have dog data, create the dog
             if (clientResult && clientResult.length > 0 && tableGroups.dogs) {
-              const dogData: Record<string, any> = {};
-              Object.entries(tableGroups.dogs || {}).forEach(([dbField, csvHeader]) => {
-                dogData[dbField] = row[csvHeader];
+              // Initialize with required fields to avoid TypeScript errors
+              const dogData: {
+                name: string;
+                breed: string;
+                client_id: string;
+                [key: string]: any;
+              } = {
+                name: '',
+                breed: '',
+                client_id: clientResult[0].id
+              };
+              
+              // Fill in values from CSV based on mapping
+              Object.entries(tableGroups.dogs).forEach(([dbField, csvHeader]) => {
+                // Handle numeric fields appropriately
+                if (dbField === 'age' || dbField === 'weight') {
+                  const value = row[csvHeader];
+                  dogData[dbField] = value ? Number(value) : null;
+                } else {
+                  dogData[dbField] = row[csvHeader];
+                }
               });
               
-              dogData.client_id = clientResult[0].id;
+              // Validate required fields
+              if (!dogData.name || !dogData.breed) {
+                throw new Error('Missing required dog fields');
+              }
               
               const { error: dogError } = await supabase
                 .from('dogs')
