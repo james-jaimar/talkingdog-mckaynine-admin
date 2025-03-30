@@ -21,13 +21,20 @@ export function useTrainerForm(trainer: Trainer, onSuccess: () => void) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
+  // Get the value to use for branchId from trainer
+  // We need to handle both branch_id (single value) and branch_ids (array)
+  const branchIdValue = trainer.branch_id || 
+                        (Array.isArray(trainer.branch_ids) && trainer.branch_ids.length > 0 
+                          ? trainer.branch_ids[0] 
+                          : undefined);
+  
   // Pre-populate form with trainer data
   const defaultValues: TrainerFormValues = {
     firstName: trainer.first_name,
     lastName: trainer.last_name,
     email: trainer.email,
     phone: trainer.phone || "",
-    branchIds: Array.isArray(trainer.branch_ids) ? trainer.branch_ids : [],
+    branchIds: branchIdValue ? [branchIdValue] : [],
     specialties: Array.isArray(trainer.specialties) ? trainer.specialties : [],
     bio: trainer.bio || "",
   };
@@ -86,6 +93,7 @@ export function useTrainerForm(trainer: Trainer, onSuccess: () => void) {
     try {
       console.log("Submitting trainer form with values:", values);
       
+      // Update using the correct field name (branch_id not branch_ids)
       const { error } = await supabase
         .from("trainers")
         .update({
@@ -93,7 +101,7 @@ export function useTrainerForm(trainer: Trainer, onSuccess: () => void) {
           last_name: values.lastName,
           email: values.email,
           phone: values.phone || null,
-          branch_ids: values.branchIds.length > 0 ? values.branchIds : null,
+          branch_id: values.branchIds.length > 0 ? values.branchIds[0] : null,
           specialties: values.specialties.length > 0 ? values.specialties : null,
           bio: values.bio || null,
         })
