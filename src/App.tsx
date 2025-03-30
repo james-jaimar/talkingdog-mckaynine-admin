@@ -9,6 +9,8 @@ import NotFound from "./pages/NotFound";
 import Handlers from "./pages/Handlers";
 import Trainers from "./pages/Trainers";
 import Branches from "./pages/Branches";
+import Classes from "./pages/Classes";
+import ClassSchedules from "./pages/ClassSchedules";
 
 const queryClient = new QueryClient();
 
@@ -21,6 +23,8 @@ const App = () => (
           <Route path="/handlers" element={<Handlers />} />
           <Route path="/trainers" element={<Trainers />} />
           <Route path="/branches" element={<Branches />} />
+          <Route path="/classes" element={<Classes />} />
+          <Route path="/class-schedules/:classId" element={<ClassSchedules />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
