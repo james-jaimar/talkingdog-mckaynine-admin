@@ -21,47 +21,68 @@ export async function processClassEnrollments(
     yoga_class: false
   };
   
-  // Map of CSV field paths to database fields
-  const classFieldsMap = {
-    'class_enrollments.puppy_class': 'puppy_class',
-    'class_enrollments.eo_class': 'eo_class',
-    'class_enrollments.bronze_cgc_class': 'bronze_cgc_class',
-    'class_enrollments.silver_cgc_class': 'silver_cgc_class',
-    'class_enrollments.beginner_novice_class': 'beginner_novice_class',
-    'class_enrollments.wt_class': 'wt_class',
-    'class_enrollments.yoga_class': 'yoga_class'
+  // Simple function to convert various input formats to boolean
+  const toBool = (value: any): boolean => {
+    if (value === undefined || value === null || value === '') return false;
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'number') return value === 1;
+    if (typeof value === 'string') {
+      const str = value.toLowerCase().trim();
+      // Check for various "truthy" string values
+      return str === 'yes' || 
+             str === 'true' || 
+             str === '1' || 
+             str === 'y' ||
+             str.includes('enrolled') ||
+             str.includes('grad') ||
+             str.includes('completed') ||
+             str.includes('waiting') ||
+             str.includes('term') ||
+             // Look for percentage indicators
+             /\d+(\.\d+)?%/.test(str);
+    }
+    return false;
   };
   
-  // Check which class fields are mapped and update enrollment data
+  // Check the content of CSV columns that might indicate class enrollment
+  const directClassMap: Record<string, keyof typeof enrollmentData> = {
+    'PUPPY': 'puppy_class',
+    'EO': 'eo_class', 
+    'BRONZE CGC': 'bronze_cgc_class',
+    'SILVER CGC': 'silver_cgc_class',
+    'BEGINNER/Novice': 'beginner_novice_class',
+    'WT': 'wt_class',
+    'YOGA': 'yoga_class'
+  };
+  
+  // First check for direct class columns from field mappings
   Object.entries(fieldMappings).forEach(([csvHeader, dbFieldPath]) => {
-    if (Object.keys(classFieldsMap).includes(dbFieldPath)) {
-      const dbField = classFieldsMap[dbFieldPath as keyof typeof classFieldsMap];
-      const value = row[csvHeader];
-      
-      // Convert various formats to boolean
-      let boolValue = false;
-      if (value !== undefined && value !== null) {
-        if (typeof value === 'boolean') {
-          boolValue = value;
-        } else if (typeof value === 'number') {
-          boolValue = value === 1;
-        } else if (typeof value === 'string') {
-          const lowercaseValue = value.toLowerCase();
-          boolValue = lowercaseValue === 'yes' || 
-                    lowercaseValue === 'true' || 
-                    lowercaseValue === '1' ||
-                    lowercaseValue === 'y';
-        }
+    if (dbFieldPath.startsWith('class_enrollments.')) {
+      const dbField = dbFieldPath.replace('class_enrollments.', '');
+      if (row[csvHeader]) {
+        (enrollmentData as any)[dbField] = toBool(row[csvHeader]);
       }
+    }
+  });
+  
+  // Also look for content in unmapped columns that might indicate class enrollments
+  Object.entries(row).forEach(([header, value]) => {
+    // Check if this header is one of our direct class names
+    if (directClassMap[header] && value) {
+      enrollmentData[directClassMap[header]] = toBool(value);
+    }
+    
+    // Also check for class info in the COMMENTS or other text fields
+    if (typeof value === 'string') {
+      const lowerValue = value.toString().toLowerCase();
       
-      // Update the enrollment data with the boolean value
-      if (dbField === 'puppy_class') enrollmentData.puppy_class = boolValue;
-      else if (dbField === 'eo_class') enrollmentData.eo_class = boolValue;
-      else if (dbField === 'bronze_cgc_class') enrollmentData.bronze_cgc_class = boolValue;
-      else if (dbField === 'silver_cgc_class') enrollmentData.silver_cgc_class = boolValue;
-      else if (dbField === 'beginner_novice_class') enrollmentData.beginner_novice_class = boolValue;
-      else if (dbField === 'wt_class') enrollmentData.wt_class = boolValue;
-      else if (dbField === 'yoga_class') enrollmentData.yoga_class = boolValue;
+      if (lowerValue.includes('puppy')) enrollmentData.puppy_class = true;
+      if (lowerValue.includes('eo ') || lowerValue.includes('eo jan') || lowerValue.includes('eo april')) enrollmentData.eo_class = true;
+      if (lowerValue.includes('bronze')) enrollmentData.bronze_cgc_class = true;
+      if (lowerValue.includes('silver')) enrollmentData.silver_cgc_class = true;
+      if (lowerValue.includes('beginner') || lowerValue.includes('novice')) enrollmentData.beginner_novice_class = true;
+      if (lowerValue.includes('wt ') || lowerValue.includes('waiting')) enrollmentData.wt_class = true;
+      if (lowerValue.includes('yoga')) enrollmentData.yoga_class = true;
     }
   });
   
@@ -71,7 +92,7 @@ export async function processClassEnrollments(
   );
   
   if (!hasClassData) {
-    console.log("No class enrollment data provided, skipping enrollment creation");
+    console.log("No class enrollment data detected for this dog");
     return;
   }
   

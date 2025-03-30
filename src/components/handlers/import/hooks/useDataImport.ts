@@ -68,31 +68,62 @@ export function useDataImport() {
         
         try {
           // Skip rows without email
-          if (!row[emailHeader] || row[emailHeader].trim() === '') {
+          const email = row[emailHeader]?.trim();
+          if (!email) {
             throw new Error('Email is required for client import');
           }
           
           // Process client data first
           let clientId: string | undefined;
-          if (tableFields['clients']) {
-            clientId = await processClientData(row, tableFields['clients'], branchId);
+          
+          // Always try to create a client, even if no specific client fields are mapped
+          // Email is the minimum requirement
+          clientId = await processClientData(row, tableFields['clients'] || { [emailHeader]: 'clients.email' }, branchId);
             
-            // Process dog data if client was created
-            if (clientId && tableFields['dogs']) {
-              try {
+          // Process dog data if client was created
+          if (clientId) {
+            try {
+              // Only process dog data if there's a dog name
+              const dogName = findDogName(row, fieldMappings);
+              if (dogName) {
+                // Add the dog name to table fields if it's not already mapped
+                if (!tableFields['dogs']) {
+                  tableFields['dogs'] = {};
+                }
+                
+                let dogNameMapped = false;
+                for (const [_, mapping] of Object.entries(tableFields['dogs'])) {
+                  if (mapping === 'dogs.name') {
+                    dogNameMapped = true;
+                    break;
+                  }
+                }
+                
+                if (!dogNameMapped) {
+                  // Find the column that looks like a dog name
+                  for (const [header, value] of Object.entries(row)) {
+                    if (header.toLowerCase().includes('dog') && value) {
+                      tableFields['dogs'][header] = 'dogs.name';
+                      break;
+                    }
+                  }
+                }
+                
                 const dogId = await processDogData(row, tableFields['dogs'], clientId);
                 
                 // Process class enrollments if dog was created (but don't fail the import if this fails)
-                if (dogId && tableFields['class_enrollments']) {
+                if (dogId) {
                   try {
-                    await processClassEnrollments(row, tableFields['class_enrollments'], dogId);
+                    await processClassEnrollments(row, fieldMappings, dogId);
                   } catch (classError: any) {
                     console.warn(`Class enrollment processing failed for row ${i+1} but continuing import:`, classError);
                   }
                 }
-              } catch (dogError: any) {
-                console.warn(`Dog processing failed for row ${i+1} but continuing import:`, dogError);
+              } else {
+                console.log(`No dog name found for row ${i+1}, skipping dog creation`);
               }
+            } catch (dogError: any) {
+              console.warn(`Dog processing failed for row ${i+1} but continuing import:`, dogError);
             }
             
             // Count as processed if at least the client was created
@@ -129,6 +160,34 @@ export function useDataImport() {
     } finally {
       setIsUploading(false);
     }
+  };
+  
+  // Helper function to find a dog name in the row data
+  const findDogName = (row: any, fieldMappings: FieldMapping): string | undefined => {
+    // First check if we have a mapped dog name field
+    const dogNameMapping = Object.entries(fieldMappings).find(
+      ([_, value]) => value === 'dogs.name'
+    );
+    
+    if (dogNameMapping && row[dogNameMapping[0]]) {
+      return row[dogNameMapping[0]];
+    }
+    
+    // Try to find a column that might contain dog names
+    for (const [header, value] of Object.entries(row)) {
+      if (
+        (header.toLowerCase().includes('dog') || 
+         header.toLowerCase().includes("dog's name")) && 
+        value && 
+        typeof value === 'string' && 
+        value.trim() !== '-' && 
+        value.trim() !== ''
+      ) {
+        return value;
+      }
+    }
+    
+    return undefined;
   };
 
   return {

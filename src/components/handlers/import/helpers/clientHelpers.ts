@@ -28,13 +28,38 @@ export async function processClientData(
   
   // Add to notes field
   const preferences = [];
-  if (whatsAppHeader && row[whatsAppHeader] && (row[whatsAppHeader].toLowerCase() === 'yes' || row[whatsAppHeader] === true || row[whatsAppHeader] === '1')) {
+  if (whatsAppHeader && row[whatsAppHeader] && (
+      row[whatsAppHeader].toString().toLowerCase() === 'yes' || 
+      row[whatsAppHeader] === true || 
+      row[whatsAppHeader] === '1' ||
+      row[whatsAppHeader].toString().toLowerCase().includes('yes')
+  )) {
     preferences.push("WhatsApp: yes");
   }
   
-  if (photoPermissionHeader && row[photoPermissionHeader] && (row[photoPermissionHeader].toLowerCase() === 'yes' || row[photoPermissionHeader] === true || row[photoPermissionHeader] === '1')) {
+  if (photoPermissionHeader && row[photoPermissionHeader] && (
+      row[photoPermissionHeader].toString().toLowerCase() === 'yes' || 
+      row[photoPermissionHeader] === true || 
+      row[photoPermissionHeader] === '1' ||
+      row[photoPermissionHeader].toString().toLowerCase().includes('yes')
+  )) {
     preferences.push("Photo Permission: yes");
   }
+  
+  // Also check for direct WhatsApp and Photo Permission columns in the CSV
+  Object.entries(row).forEach(([header, value]) => {
+    if (header === 'WhatsApp' && value && value.toString().toLowerCase().includes('yes')) {
+      if (!preferences.some(p => p.includes('WhatsApp'))) {
+        preferences.push("WhatsApp: yes");
+      }
+    }
+    
+    if (header === 'Photo Permission' && value && value.toString().toLowerCase().includes('yes')) {
+      if (!preferences.some(p => p.includes('Photo Permission'))) {
+        preferences.push("Photo Permission: yes");
+      }
+    }
+  });
   
   // Append preferences to existing notes
   if (preferences.length > 0) {
@@ -45,9 +70,44 @@ export async function processClientData(
     }
   }
   
+  // Also append any COMMENTS field directly if not already mapped
+  const commentsHeader = Object.keys(row).find(header => 
+    header.toLowerCase() === 'comments' && 
+    !Object.entries(fieldMappings).some(([key, value]) => key === header && value.includes('notes'))
+  );
+  
+  if (commentsHeader && row[commentsHeader]) {
+    if (clientData.notes) {
+      clientData.notes = `${clientData.notes}\n${row[commentsHeader]}`;
+    } else {
+      clientData.notes = row[commentsHeader];
+    }
+  }
+  
   // Validate email is present and valid
   if (!clientData.email || clientData.email.trim() === '') {
     throw new Error('Email is required for client import');
+  }
+  
+  // Extract first and last name from name if they're not explicitly mapped
+  if (!clientData.first_name && !clientData.last_name && clientData.name) {
+    const nameParts = clientData.name.split(' ');
+    clientData.first_name = nameParts[0] || 'Unknown';
+    clientData.last_name = nameParts.length > 1 ? nameParts.slice(1).join(' ') : 'Unknown';
+  }
+  
+  // If we don't have first_name or last_name, also look for a Name column that wasn't mapped
+  if ((!clientData.first_name || !clientData.last_name) && !clientData.name) {
+    const nameHeader = Object.keys(row).find(header => 
+      header.toLowerCase() === 'name' && 
+      !Object.entries(fieldMappings).some(([key, value]) => key === header)
+    );
+    
+    if (nameHeader && row[nameHeader]) {
+      const nameParts = row[nameHeader].split(' ');
+      clientData.first_name = nameParts[0] || 'Unknown';
+      clientData.last_name = nameParts.length > 1 ? nameParts.slice(1).join(' ') : 'Unknown';
+    }
   }
   
   console.log("Client data to be inserted/updated:", clientData);
@@ -70,13 +130,12 @@ export async function processClientData(
     return clientId;
   } else {
     // Ensure required fields exist for new client
-    if (!clientData.first_name && clientData.name) {
-      clientData.first_name = clientData.name.split(' ')[0] || 'Unknown';
+    if (!clientData.first_name) {
+      clientData.first_name = 'Unknown';
     }
     
-    if (!clientData.last_name && clientData.name) {
-      const nameParts = clientData.name.split(' ');
-      clientData.last_name = nameParts.length > 1 ? nameParts.slice(1).join(' ') : 'Unknown';
+    if (!clientData.last_name) {
+      clientData.last_name = 'Unknown';
     }
     
     // Create new client
@@ -84,8 +143,8 @@ export async function processClientData(
       .from('clients')
       .insert({
         email: clientData.email,
-        first_name: clientData.first_name || 'Unknown',
-        last_name: clientData.last_name || 'Unknown',
+        first_name: clientData.first_name,
+        last_name: clientData.last_name,
         branch_id: clientData.branch_id,
         phone: clientData.phone,
         address: clientData.address,

@@ -14,7 +14,21 @@ export const parseCSVFile = (
       if (results.data.length > 0) {
         // Extract headers from the first row
         const headers = Object.keys(results.data[0]);
-        onSuccess(headers, results.data);
+        
+        // Preprocess data to clean up empty values and dashes
+        const cleanedData = results.data.map(row => {
+          const cleanedRow: Record<string, any> = {};
+          Object.entries(row).forEach(([key, value]) => {
+            if (value === '-' || value === '') {
+              cleanedRow[key] = null;
+            } else {
+              cleanedRow[key] = value;
+            }
+          });
+          return cleanedRow;
+        });
+        
+        onSuccess(headers, cleanedData);
       }
     },
     error: (error) => {
@@ -52,10 +66,31 @@ export const generateInitialMappings = (headers: string[]) => {
     "YOGA": "class_enrollments.yoga_class"
   };
   
+  // Try direct case-insensitive match first
   headers.forEach(header => {
-    // Try to match headers to common mappings
-    if (commonMappings[header]) {
-      initialMappings[header] = commonMappings[header];
+    const normalizedHeader = header.trim();
+    
+    // Try exact match
+    if (commonMappings[normalizedHeader]) {
+      initialMappings[normalizedHeader] = commonMappings[normalizedHeader];
+      return;
+    }
+    
+    // Try case-insensitive match
+    for (const [key, value] of Object.entries(commonMappings)) {
+      if (key.toLowerCase() === normalizedHeader.toLowerCase()) {
+        initialMappings[normalizedHeader] = value;
+        return;
+      }
+    }
+    
+    // Try to match by substring
+    for (const [key, value] of Object.entries(commonMappings)) {
+      if (normalizedHeader.toLowerCase().includes(key.toLowerCase()) ||
+          key.toLowerCase().includes(normalizedHeader.toLowerCase())) {
+        initialMappings[normalizedHeader] = value;
+        return;
+      }
     }
   });
   
