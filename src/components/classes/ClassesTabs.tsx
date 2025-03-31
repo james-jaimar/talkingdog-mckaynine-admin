@@ -22,6 +22,7 @@ export function ClassesTabs() {
     return null;
   }
   
+  // Query to fetch classes
   const { data: classes = [], isLoading } = useQuery({
     queryKey: ['active-classes', currentBranch?.id],
     queryFn: async () => {
@@ -66,8 +67,7 @@ export function ClassesTabs() {
     class_schedules: { id: string }[] 
   })[]>([]);
 
-  // Load ordered classes from localStorage when the component mounts
-  // and when activeClasses or currentBranch changes
+  // Load ordered classes from localStorage whenever activeClasses or branch changes
   useEffect(() => {
     if (activeClasses.length === 0) return;
 
@@ -85,7 +85,7 @@ export function ClassesTabs() {
         // Map IDs to actual class objects and include any new classes at the end
         const existingClassIds = new Set(savedOrderIds);
         const orderedClassList = [
-          // First, add classes in the saved order
+          // First, add classes in the saved order that still exist in activeClasses
           ...savedOrderIds
             .map(id => activeClasses.find(c => c.id === id))
             .filter(Boolean),
@@ -107,7 +107,18 @@ export function ClassesTabs() {
     }
   }, [activeClasses, currentBranch?.id]);
 
-  // Handle drag end event and save the new order to localStorage
+  // Save the order whenever it changes
+  useEffect(() => {
+    // Don't save if we haven't initialized yet or if there are no classes
+    if (!initializedRef.current || orderedClasses.length === 0) return;
+    
+    // Save the current order to localStorage
+    const storageKey = `ordered-classes-${currentBranch?.id || 'all'}`;
+    const orderIds = orderedClasses.map(item => item.id);
+    localStorage.setItem(storageKey, JSON.stringify(orderIds));
+  }, [orderedClasses, currentBranch?.id]);
+
+  // Handle drag end event
   const handleDragEnd = useCallback((result: any) => {
     if (!result.destination) return;
     
@@ -115,11 +126,6 @@ export function ClassesTabs() {
       const items = Array.from(prevState);
       const [reorderedItem] = items.splice(result.source.index, 1);
       items.splice(result.destination.index, 0, reorderedItem);
-      
-      // Save the new order to localStorage
-      const storageKey = `ordered-classes-${currentBranch?.id || 'all'}`;
-      const orderIds = items.map(item => item.id);
-      localStorage.setItem(storageKey, JSON.stringify(orderIds));
       
       // Show toast after successful reordering
       toast({
@@ -129,7 +135,7 @@ export function ClassesTabs() {
       
       return items;
     });
-  }, [toast, currentBranch?.id]);
+  }, [toast]);
   
   if (isLoading) {
     return null;
