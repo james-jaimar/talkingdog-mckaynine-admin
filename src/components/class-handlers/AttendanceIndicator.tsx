@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Check, X, Clock, HelpCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/hooks/use-toast";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,7 +25,6 @@ export function AttendanceIndicator({
   status 
 }: AttendanceIndicatorProps) {
   const [isUpdating, setIsUpdating] = useState(false);
-  const { toast } = useToast();
   const queryClient = useQueryClient();
   
   const getStatusIcon = () => {
@@ -91,12 +90,14 @@ export function AttendanceIndicator({
         queryKey: ['class-attendance']
       });
       
+      // Fix: Using direct toast function instead of the object destructuring
       toast({
         title: "Attendance updated",
         description: `Attendance marked as ${newStatus}`,
       });
     } catch (error) {
       console.error('Error updating attendance:', error);
+      // Fix: Same fix as above for the error toast
       toast({
         title: "Error",
         description: "Failed to update attendance",
