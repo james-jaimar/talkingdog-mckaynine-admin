@@ -138,12 +138,26 @@ function dispatch(action: Action) {
   })
 }
 
-// Type definition for toast function parameters
+// Define toast function types that support both object and individual params
 type ToastOptions = Omit<ToasterToast, "id">
 
-// Consolidated toast function that only accepts the object format
-function toast(options: ToastOptions) {
+function toast(
+  options: ToastOptions | string,
+  userOptions?: Omit<ToastOptions, "description">
+) {
   const id = genId()
+
+  // Handle both calling patterns
+  let toastOptions: ToastOptions;
+  
+  if (typeof options === "string") {
+    toastOptions = {
+      description: options,
+      ...userOptions
+    };
+  } else {
+    toastOptions = options;
+  }
 
   const update = (props: ToasterToast) =>
     dispatch({
@@ -156,7 +170,7 @@ function toast(options: ToastOptions) {
   dispatch({
     type: "ADD_TOAST",
     toast: {
-      ...options,
+      ...toastOptions,
       id,
       open: true,
       onOpenChange: (open) => {
