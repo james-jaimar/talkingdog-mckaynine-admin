@@ -141,9 +141,16 @@ function dispatch(action: Action) {
 // Define toast function types that support both object and individual params
 type ToastOptions = Omit<ToasterToast, "id">
 
+// Define return type for toast function to avoid circular reference
+interface ToastReturn {
+  id: string
+  dismiss: () => void
+  update: (props: ToasterToast) => void
+}
+
 // Define the overloaded function signatures
-function toast(options: ToastOptions): ReturnType<typeof toast>;
-function toast(message: string, options?: Omit<ToastOptions, "description">): ReturnType<typeof toast>;
+function toast(options: ToastOptions): ToastReturn;
+function toast(message: string, options?: Omit<ToastOptions, "description">): ToastReturn;
 function toast(
   optionsOrMessage: ToastOptions | string,
   options?: Omit<ToastOptions, "description">
