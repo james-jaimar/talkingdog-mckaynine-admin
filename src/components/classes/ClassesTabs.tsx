@@ -28,12 +28,24 @@ export function ClassesTabs() {
   const { toast } = useToast();
   const initializedRef = useRef(false);
   const isDraggingRef = useRef(false);
-  const [activeTab, setActiveTab] = useState<string>("all");
+  const preventNextNavigationRef = useRef(false);
   
   // Only display the class tabs on the classes page or class-related pages
   if (!location.pathname.includes('/classes')) {
     return null;
   }
+  
+  // Determine active tab from URL path
+  const getActiveTabFromPath = () => {
+    const classIdMatch = location.pathname.match(/\/classes\/([^/]+)/);
+    if (classIdMatch) {
+      return classIdMatch[1];
+    }
+    return "all";
+  };
+  
+  // Initialize active tab state from URL
+  const [activeTab, setActiveTab] = useState<string>(getActiveTabFromPath());
   
   // Query to fetch classes
   const { data: classes = [], isLoading } = useQuery({
@@ -149,26 +161,25 @@ export function ClassesTabs() {
     initializedRef.current = true;
   }, [activeClasses, savedOrder]);
 
-  // Set the active tab based on the URL when component mounts or URL changes
+  // Update active tab when URL changes (only if not dragging)
   useEffect(() => {
-    // Skip URL sync during dragging to prevent jumps
-    if (isDraggingRef.current) return;
-    
-    const classIdMatch = location.pathname.match(/\/classes\/([^/]+)/);
-    if (classIdMatch) {
-      setActiveTab(classIdMatch[1]);
-    } else if (location.pathname === "/classes") {
-      setActiveTab("all");
+    if (isDraggingRef.current || preventNextNavigationRef.current) {
+      return;
     }
+    
+    const newActiveTab = getActiveTabFromPath();
+    setActiveTab(newActiveTab);
   }, [location.pathname]);
 
   // Handle tab click
   const handleTabClick = useCallback((tabValue: string, path: string) => {
-    // Skip navigation while dragging
+    // Skip navigation if we're dragging
     if (isDraggingRef.current) return;
     
+    // Update the state
     setActiveTab(tabValue);
-    // Use replace instead of push to prevent history stack buildup
+    
+    // Navigate to the path (replace rather than push to avoid history buildup)
     navigate(path, { replace: true });
   }, [navigate]);
 
@@ -218,14 +229,20 @@ export function ClassesTabs() {
   }, []);
 
   const handleDragEnd = useCallback((result: any) => {
-    // Set dragging state to false at the end
-    isDraggingRef.current = false;
+    // If there's no destination, don't do anything
+    if (!result.destination) {
+      isDraggingRef.current = false;
+      return;
+    }
     
-    if (!result.destination) return;
+    // Get the old and new indexes from the drag event
+    const oldIndex = result.source.index;
+    const newIndex = result.destination.index;
     
+    // Reorder the array of classes
     const items = Array.from(orderedClasses);
-    const [reorderedItem] = items.splice(result.source.index, 1);
-    items.splice(result.destination.index, 0, reorderedItem);
+    const [reorderedItem] = items.splice(oldIndex, 1);
+    items.splice(newIndex, 0, reorderedItem);
     
     // Update state with the reordered items
     setOrderedClasses(items);
@@ -233,12 +250,25 @@ export function ClassesTabs() {
     // Save the new order to the database
     saveOrderToDatabase(items);
     
+    // Set a flag to prevent the next navigation
+    if (reorderedItem.id === activeTab) {
+      preventNextNavigationRef.current = true;
+      
+      // Clear the flag after a short delay
+      setTimeout(() => {
+        preventNextNavigationRef.current = false;
+      }, 100);
+    }
+    
+    // Reset the dragging state
+    isDraggingRef.current = false;
+    
     // Show toast after successful reordering
     toast({
       title: "Class order updated",
       description: "The order of class tabs has been updated and saved."
     });
-  }, [orderedClasses, toast, saveOrderToDatabase]);
+  }, [orderedClasses, activeTab, toast, saveOrderToDatabase]);
 
   if (isLoading) {
     return null;
