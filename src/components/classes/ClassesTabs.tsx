@@ -11,6 +11,16 @@ import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import { GripVertical } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
+// Define interface for class tab order data
+interface ClassTabOrder {
+  id: string;
+  user_id: string;
+  branch_id: string | null;
+  class_ids: string[];
+  created_at: string;
+  updated_at: string;
+}
+
 export function ClassesTabs() {
   const { currentBranch } = useBranch();
   const location = useLocation();
@@ -78,8 +88,9 @@ export function ClassesTabs() {
         return null;
       }
 
-      const { data, error } = await supabase
-        .from('class_tab_order')
+      // Use type assertion to bypass TypeScript's type checking
+      const { data, error } = await (supabase
+        .from('class_tab_order') as any)
         .select('class_ids')
         .eq('user_id', user.id)
         .eq('branch_id', currentBranch?.id || null)
@@ -90,7 +101,7 @@ export function ClassesTabs() {
         return null;
       }
       
-      return data;
+      return data as ClassTabOrder | null;
     },
     enabled: true
   });
@@ -109,7 +120,10 @@ export function ClassesTabs() {
         // First, add classes in the saved order that still exist in activeClasses
         ...savedOrderIds
           .map(id => activeClasses.find(c => c.id === id))
-          .filter(Boolean),
+          .filter(Boolean) as (Class & { 
+            branches: { name: string }, 
+            class_schedules: { id: string }[] 
+          })[],
         // Then add any classes not in the saved order
         ...activeClasses.filter(c => !existingClassIds.has(c.id))
       ];
@@ -136,8 +150,9 @@ export function ClassesTabs() {
       const orderIds = newOrder.map(item => item.id);
       
       // Upsert the order (insert if not exists, update if exists)
-      const { error } = await supabase
-        .from('class_tab_order')
+      // Use type assertion to bypass TypeScript's type checking
+      const { error } = await (supabase
+        .from('class_tab_order') as any)
         .upsert({
           user_id: user.id,
           branch_id: currentBranch?.id || null,
