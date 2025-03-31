@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Check, X, Clock, HelpCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -85,8 +86,10 @@ export function AttendanceIndicator({
       
       if (result.error) throw result.error;
       
-      // Update this line to use the correct syntax for TanStack Query v5
-      queryClient.invalidateQueries({ queryKey: ['class-attendance'] });
+      // Fix for TanStack Query v5 - passing both queryKey and options
+      queryClient.invalidateQueries({
+        queryKey: ['class-attendance']
+      });
       
       toast({
         title: "Attendance updated",
