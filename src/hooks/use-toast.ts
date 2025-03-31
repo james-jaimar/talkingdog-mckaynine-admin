@@ -141,22 +141,25 @@ function dispatch(action: Action) {
 // Define toast function types that support both object and individual params
 type ToastOptions = Omit<ToasterToast, "id">
 
+// Define the overloaded function signatures
+function toast(options: ToastOptions): ReturnType<typeof toast>;
+function toast(message: string, options?: Omit<ToastOptions, "description">): ReturnType<typeof toast>;
 function toast(
-  options: ToastOptions | string,
-  userOptions?: Omit<ToastOptions, "description">
+  optionsOrMessage: ToastOptions | string,
+  options?: Omit<ToastOptions, "description">
 ) {
   const id = genId()
 
   // Handle both calling patterns
   let toastOptions: ToastOptions;
   
-  if (typeof options === "string") {
+  if (typeof optionsOrMessage === "string") {
     toastOptions = {
-      description: options,
-      ...userOptions
+      description: optionsOrMessage,
+      ...(options || {})
     };
   } else {
-    toastOptions = options;
+    toastOptions = optionsOrMessage;
   }
 
   const update = (props: ToasterToast) =>

@@ -90,14 +90,12 @@ export function AttendanceIndicator({
         queryKey: ['class-attendance']
       });
       
-      // Update this to use the object format
       toast({
         title: "Attendance updated",
         description: `Attendance marked as ${newStatus}`
       });
     } catch (error) {
       console.error('Error updating attendance:', error);
-      // Update this to use the object format
       toast({
         title: "Error",
         description: "Failed to update attendance",
