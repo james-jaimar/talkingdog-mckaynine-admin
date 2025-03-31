@@ -6,10 +6,15 @@ import { Class } from "./types/class";
 import { Link, useLocation } from "react-router-dom";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { useState, useEffect } from "react";
+import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
+import { GripVertical } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 export function ClassesTabs() {
   const { currentBranch } = useBranch();
   const location = useLocation();
+  const { toast } = useToast();
   
   const { data: classes, isLoading } = useQuery({
     queryKey: ['active-classes', currentBranch?.id],
@@ -44,6 +49,35 @@ export function ClassesTabs() {
   // Filter to only include classes with schedules
   const activeClasses = classes?.filter(c => c.class_schedules.length > 0) || [];
   
+  // State for storing the ordered list of classes
+  const [orderedClasses, setOrderedClasses] = useState<(Class & { 
+    branches: { name: string }, 
+    class_schedules: { id: string }[] 
+  })[]>([]);
+
+  // Update orderedClasses when activeClasses changes
+  useEffect(() => {
+    if (activeClasses.length > 0) {
+      setOrderedClasses([...activeClasses]);
+    }
+  }, [activeClasses]);
+
+  // Handle drag end event
+  const handleDragEnd = (result: any) => {
+    if (!result.destination) return;
+    
+    const items = Array.from(orderedClasses);
+    const [reorderedItem] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, reorderedItem);
+    
+    setOrderedClasses(items);
+    
+    toast({
+      title: "Class order updated",
+      description: "The order of class tabs has been updated."
+    });
+  };
+  
   if (isLoading || activeClasses.length === 0) {
     return null;
   }
@@ -56,28 +90,59 @@ export function ClassesTabs() {
   return (
     <div className="mx-4 mt-2 overflow-x-auto">
       <Tabs defaultValue="all" className="w-full">
-        <TabsList className="w-max min-w-full justify-start">
-          <TabsTrigger value="all" asChild>
-            <Link to="/classes" className={cn(
-              location.pathname === "/classes" ? "font-medium" : ""
-            )}>
-              All Classes
-            </Link>
-          </TabsTrigger>
-          
-          {activeClasses.map((classItem) => (
-            <TabsTrigger key={classItem.id} value={classItem.id} asChild>
-              <Link 
-                to={`/classes/${classItem.id}/handlers`}
-                className={cn(
-                  location.pathname === `/classes/${classItem.id}/handlers` ? "font-medium" : ""
-                )}
+        <DragDropContext onDragEnd={handleDragEnd}>
+          <Droppable droppableId="class-tabs" direction="horizontal">
+            {(provided) => (
+              <TabsList 
+                className="w-max min-w-full justify-start"
+                ref={provided.innerRef}
+                {...provided.droppableProps}
               >
-                {classItem.name}
-              </Link>
-            </TabsTrigger>
-          ))}
-        </TabsList>
+                <TabsTrigger value="all" asChild>
+                  <Link to="/classes" className={cn(
+                    location.pathname === "/classes" ? "font-medium" : ""
+                  )}>
+                    All Classes
+                  </Link>
+                </TabsTrigger>
+                
+                {orderedClasses.map((classItem, index) => (
+                  <Draggable 
+                    key={classItem.id} 
+                    draggableId={classItem.id} 
+                    index={index}
+                  >
+                    {(provided) => (
+                      <TabsTrigger 
+                        value={classItem.id} 
+                        asChild
+                        ref={provided.innerRef}
+                        {...provided.draggableProps}
+                      >
+                        <Link 
+                          to={`/classes/${classItem.id}/handlers`}
+                          className={cn(
+                            "flex items-center gap-1",
+                            location.pathname === `/classes/${classItem.id}/handlers` ? "font-medium" : ""
+                          )}
+                        >
+                          <div 
+                            {...provided.dragHandleProps}
+                            className="cursor-grab px-1"
+                          >
+                            <GripVertical className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                          {classItem.name}
+                        </Link>
+                      </TabsTrigger>
+                    )}
+                  </Draggable>
+                ))}
+                {provided.placeholder}
+              </TabsList>
+            )}
+          </Droppable>
+        </DragDropContext>
       </Tabs>
     </div>
   );
