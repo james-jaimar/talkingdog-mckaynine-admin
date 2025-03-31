@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Check, X, Clock, HelpCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -91,11 +90,11 @@ export function AttendanceIndicator({
         queryKey: ['class-attendance']
       });
       
-      // Fixing the toast call to pass two separate arguments
+      // Call toast with two arguments: title and description
       toast("Attendance updated", `Attendance marked as ${newStatus}`);
     } catch (error) {
       console.error('Error updating attendance:', error);
-      // Fixing the toast call to pass two separate arguments
+      // Call toast with two arguments: title and description
       toast("Error", "Failed to update attendance");
     } finally {
       setIsUpdating(false);
