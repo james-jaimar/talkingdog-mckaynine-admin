@@ -27,6 +27,7 @@ export function ClassesTabs() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const initializedRef = useRef(false);
+  const isDraggingRef = useRef(false);
   const [activeTab, setActiveTab] = useState<string>("all");
   
   // Only display the class tabs on the classes page or class-related pages
@@ -80,7 +81,7 @@ export function ClassesTabs() {
   })[]>([]);
 
   // Query to fetch saved class order from database
-  const { data: savedOrder, refetch: refetchSavedOrder } = useQuery({
+  const { data: savedOrder } = useQuery({
     queryKey: ['class-tab-order', currentBranch?.id],
     queryFn: async () => {
       try {
@@ -150,6 +151,9 @@ export function ClassesTabs() {
 
   // Set the active tab based on the URL when component mounts or URL changes
   useEffect(() => {
+    // Skip URL sync during dragging to prevent jumps
+    if (isDraggingRef.current) return;
+    
     const classIdMatch = location.pathname.match(/\/classes\/([^/]+)/);
     if (classIdMatch) {
       setActiveTab(classIdMatch[1]);
@@ -158,11 +162,13 @@ export function ClassesTabs() {
     }
   }, [location.pathname]);
 
-  // Handle tab click - prevent default navigation behavior
+  // Handle tab click
   const handleTabClick = useCallback((tabValue: string, path: string) => {
-    setActiveTab(tabValue);
+    // Skip navigation while dragging
+    if (isDraggingRef.current) return;
     
-    // Use replace instead of push to avoid adding to history stack
+    setActiveTab(tabValue);
+    // Use replace instead of push to prevent history stack buildup
     navigate(path, { replace: true });
   }, [navigate]);
 
@@ -206,8 +212,15 @@ export function ClassesTabs() {
     }
   }, [currentBranch?.id, toast]);
 
-  // Handle drag end event with enhanced stability
+  // Handle drag events
+  const handleDragStart = useCallback(() => {
+    isDraggingRef.current = true;
+  }, []);
+
   const handleDragEnd = useCallback((result: any) => {
+    // Set dragging state to false at the end
+    isDraggingRef.current = false;
+    
     if (!result.destination) return;
     
     const items = Array.from(orderedClasses);
@@ -239,7 +252,10 @@ export function ClassesTabs() {
   return (
     <div className="mx-4 mt-2 overflow-x-auto">
       <Tabs value={activeTab} className="w-full">
-        <DragDropContext onDragEnd={handleDragEnd}>
+        <DragDropContext 
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+        >
           <Droppable droppableId="class-tabs" direction="horizontal">
             {(provided) => (
               <TabsList 
