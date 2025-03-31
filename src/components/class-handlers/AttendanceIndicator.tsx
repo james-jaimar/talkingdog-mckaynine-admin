@@ -86,11 +86,9 @@ export function AttendanceIndicator({
       
       if (result.error) throw result.error;
       
-      // The issue is here - in Tanstack Query v5, invalidateQueries expects two arguments
-      // First arg: the query key as a string or array
-      // Second arg: options object
-      queryClient.invalidateQueries(['class-attendance'], {
-        exact: false
+      // Fixed: In Tanstack Query v5, we use object syntax for invalidateQueries
+      queryClient.invalidateQueries({
+        queryKey: ['class-attendance']
       });
       
       toast({
