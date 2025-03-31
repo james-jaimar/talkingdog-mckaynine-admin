@@ -170,13 +170,12 @@ export function ClassesTabs() {
           variant: "destructive"
         });
       } else {
-        // Refetch the saved order to ensure our state is in sync
-        refetchSavedOrder();
+        console.log("Successfully saved order to database");
       }
     } catch (error) {
       console.error("Error in saveOrderToDatabase:", error);
     }
-  }, [currentBranch?.id, toast, refetchSavedOrder]);
+  }, [currentBranch?.id, toast]);
 
   // Handle drag end event
   const handleDragEnd = useCallback((result: any) => {
