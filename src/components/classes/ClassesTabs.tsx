@@ -6,7 +6,7 @@ import { Class } from "./types/class";
 import { Link, useLocation } from "react-router-dom";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import { GripVertical } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -15,6 +15,7 @@ export function ClassesTabs() {
   const { currentBranch } = useBranch();
   const location = useLocation();
   const { toast } = useToast();
+  const initializedRef = useRef(false);
   
   const { data: classes, isLoading } = useQuery({
     queryKey: ['active-classes', currentBranch?.id],
@@ -55,36 +56,44 @@ export function ClassesTabs() {
     class_schedules: { id: string }[] 
   })[]>([]);
 
-  // Initialize orderedClasses from activeClasses only once when activeClasses is populated
+  // Initialize orderedClasses from activeClasses only once
   useEffect(() => {
-    if (activeClasses.length > 0 && orderedClasses.length === 0) {
+    if (activeClasses.length > 0 && !initializedRef.current) {
       setOrderedClasses([...activeClasses]);
+      initializedRef.current = true;
     }
-  }, [activeClasses, orderedClasses.length]);
+  }, [activeClasses]);
 
-  // The key fix: handle drag end event with useCallback and proper state update
+  // Handle drag end event with proper state update
   const handleDragEnd = useCallback((result: any) => {
     if (!result.destination) return;
     
-    const items = Array.from(orderedClasses);
-    const [reorderedItem] = items.splice(result.source.index, 1);
-    items.splice(result.destination.index, 0, reorderedItem);
-    
-    // Important: Use a functional update to ensure we're working with the latest state
-    setOrderedClasses(items);
-    
-    toast({
-      title: "Class order updated",
-      description: "The order of class tabs has been updated."
+    setOrderedClasses(prevState => {
+      const items = Array.from(prevState);
+      const [reorderedItem] = items.splice(result.source.index, 1);
+      items.splice(result.destination.index, 0, reorderedItem);
+      
+      // Show toast after successful reordering
+      toast({
+        title: "Class order updated",
+        description: "The order of class tabs has been updated."
+      });
+      
+      return items;
     });
-  }, [orderedClasses, toast]);
+  }, [toast]);
   
-  if (isLoading || activeClasses.length === 0) {
+  if (isLoading) {
     return null;
   }
 
   // Only display the class tabs on the classes page or class-related pages
   if (!location.pathname.includes('/classes')) {
+    return null;
+  }
+  
+  // If we have no active classes or haven't initialized the ordered classes yet, don't render
+  if (activeClasses.length === 0 || orderedClasses.length === 0) {
     return null;
   }
 
