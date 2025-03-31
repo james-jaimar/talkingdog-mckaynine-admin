@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useQueryClient } from "@tanstack/react-query";
+import { attendanceToast } from "./AttendanceToast";
 
 interface AttendanceIndicatorProps {
   bookingId: string;
@@ -91,19 +92,19 @@ export function AttendanceIndicator({
         queryKey: ['class-attendance']
       });
       
-      // Properly call toast with an object argument as defined in use-toast.ts
-      toast({
-        title: "Attendance updated",
-        description: `Attendance marked as ${newStatus}`
-      });
+      // Use our new toast utility that handles the type discrepancy
+      attendanceToast(
+        "Attendance updated",
+        `Attendance marked as ${newStatus}`
+      );
     } catch (error) {
       console.error('Error updating attendance:', error);
-      // Properly call toast with an object argument as defined in use-toast.ts
-      toast({
-        title: "Error",
-        description: "Failed to update attendance",
-        variant: "destructive"
-      });
+      // Use our new toast utility that handles the type discrepancy
+      attendanceToast(
+        "Error",
+        "Failed to update attendance",
+        "destructive"
+      );
     } finally {
       setIsUpdating(false);
     }
