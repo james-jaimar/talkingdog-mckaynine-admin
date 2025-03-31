@@ -91,18 +91,18 @@ export function AttendanceIndicator({
         queryKey: ['class-attendance']
       });
       
-      // Fix: The toast function expects a single object with title and description
+      // Fixed: Providing toast with an object containing title and description
       toast({
         title: "Attendance updated",
-        description: `Attendance marked as ${newStatus}`,
+        description: `Attendance marked as ${newStatus}`
       });
     } catch (error) {
       console.error('Error updating attendance:', error);
-      // Fix: Same here, the toast function expects a single object
+      // Fixed: Same format here - single object with title, description and variant
       toast({
         title: "Error",
         description: "Failed to update attendance",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setIsUpdating(false);
