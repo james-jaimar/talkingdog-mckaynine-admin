@@ -22,6 +22,9 @@ export default function ClassSchedules() {
     queryFn: async () => {
       if (!classId) return null;
       
+      // Log the classId being used for debugging
+      console.log("Fetching class with ID:", classId);
+      
       const { data, error } = await supabase
         .from("classes")
         .select("*")
@@ -29,6 +32,7 @@ export default function ClassSchedules() {
         .single();
       
       if (error) {
+        console.error("Error fetching class:", error);
         toast({
           title: "Error",
           description: "Failed to load class details.",
@@ -37,6 +41,7 @@ export default function ClassSchedules() {
         throw error;
       }
       
+      console.log("Class data received:", data);
       return data as Class;
     },
     enabled: !!classId,
@@ -56,7 +61,7 @@ export default function ClassSchedules() {
     return (
       <DashboardLayout>
         <div className="w-full py-6 flex justify-center">
-          <p>Class not found.</p>
+          <p>Class not found. The class ID may be invalid or the class no longer exists.</p>
         </div>
       </DashboardLayout>
     );
