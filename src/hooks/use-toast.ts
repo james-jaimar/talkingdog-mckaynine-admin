@@ -138,17 +138,24 @@ function dispatch(action: Action) {
   })
 }
 
-type ToastOptions = Omit<ToasterToast, "id">
-
-// Define toast function to accept a single object parameter, which is the standard shadcn approach
-function toast(options: ToastOptions) {
+// Support both variants: single object or separate title/message parameters
+function toast(
+  titleOrOptions: string | ToasterToast,
+  description?: React.ReactNode,
+) {
   const id = genId()
+
+  // Convert to object format if called with separate parameters
+  const options: ToasterToast = typeof titleOrOptions === "string"
+    ? { title: titleOrOptions, description, id }
+    : { ...titleOrOptions, id }
 
   const update = (props: ToasterToast) =>
     dispatch({
       type: "UPDATE_TOAST",
       toast: { ...props, id },
     })
+  
   const dismiss = () => dispatch({ type: "DISMISS_TOAST", toastId: id })
 
   dispatch({
