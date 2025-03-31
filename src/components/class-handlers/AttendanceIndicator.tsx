@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Check, X, Clock, HelpCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -89,7 +90,7 @@ export function AttendanceIndicator({
         queryKey: ['class-attendance']
       });
       
-      // The issue was here - toast is imported directly and expects only one argument
+      // Fix: toast is imported directly from hooks/use-toast and expects a single object parameter
       toast({
         title: "Attendance updated",
         description: `Attendance marked as ${newStatus}`,
