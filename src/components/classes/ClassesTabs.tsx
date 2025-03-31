@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useBranch } from "@/context/BranchContext";
 import { Class } from "./types/class";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -24,6 +24,7 @@ interface ClassTabOrder {
 export function ClassesTabs() {
   const { currentBranch } = useBranch();
   const location = useLocation();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const initializedRef = useRef(false);
   
@@ -206,6 +207,23 @@ export function ClassesTabs() {
       description: "The order of class tabs has been updated and saved."
     });
   }, [orderedClasses, toast, saveOrderToDatabase]);
+
+  // Handle tab click to prevent jumping back
+  const handleTabClick = useCallback((classId: string) => {
+    // This will be handled by the Link component's built-in navigation
+    // No additional state updates needed here as that was causing the jumping
+  }, []);
+  
+  // Figure out the current tab value based on the URL
+  const getCurrentTabValue = useCallback(() => {
+    const classIdMatch = location.pathname.match(/\/classes\/([^/]+)/);
+    if (classIdMatch) {
+      return classIdMatch[1];
+    }
+    return "all";
+  }, [location.pathname]);
+  
+  const currentTabValue = getCurrentTabValue();
   
   if (isLoading) {
     return null;
@@ -218,7 +236,7 @@ export function ClassesTabs() {
 
   return (
     <div className="mx-4 mt-2 overflow-x-auto">
-      <Tabs defaultValue="all" className="w-full">
+      <Tabs value={currentTabValue} defaultValue="all" className="w-full">
         <DragDropContext onDragEnd={handleDragEnd}>
           <Droppable droppableId="class-tabs" direction="horizontal">
             {(provided) => (
@@ -228,9 +246,12 @@ export function ClassesTabs() {
                 {...provided.droppableProps}
               >
                 <TabsTrigger value="all" asChild>
-                  <Link to="/classes" className={cn(
-                    location.pathname === "/classes" ? "font-medium" : ""
-                  )}>
+                  <Link 
+                    to="/classes" 
+                    className={cn(
+                      location.pathname === "/classes" ? "font-medium" : ""
+                    )}
+                  >
                     All Classes
                   </Link>
                 </TabsTrigger>
@@ -252,8 +273,9 @@ export function ClassesTabs() {
                           to={`/classes/${classItem.id}/handlers`}
                           className={cn(
                             "flex items-center gap-1",
-                            location.pathname === `/classes/${classItem.id}/handlers` ? "font-medium" : ""
+                            location.pathname.includes(`/classes/${classItem.id}`) ? "font-medium" : ""
                           )}
+                          onClick={() => handleTabClick(classItem.id)}
                         >
                           <div 
                             {...provided.dragHandleProps}
