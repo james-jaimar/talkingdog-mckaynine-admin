@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useBranch } from "@/context/BranchContext";
 import { Class } from "./types/class";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -158,10 +158,12 @@ export function ClassesTabs() {
     }
   }, [location.pathname]);
 
-  // Handle tab click to prevent jumping
+  // Handle tab click - prevent default navigation behavior
   const handleTabClick = useCallback((tabValue: string, path: string) => {
     setActiveTab(tabValue);
-    navigate(path);
+    
+    // Use replace instead of push to avoid adding to history stack
+    navigate(path, { replace: true });
   }, [navigate]);
 
   // Save the order to database whenever it changes
@@ -204,7 +206,7 @@ export function ClassesTabs() {
     }
   }, [currentBranch?.id, toast]);
 
-  // Handle drag end event
+  // Handle drag end event with enhanced stability
   const handleDragEnd = useCallback((result: any) => {
     if (!result.destination) return;
     
@@ -212,7 +214,7 @@ export function ClassesTabs() {
     const [reorderedItem] = items.splice(result.source.index, 1);
     items.splice(result.destination.index, 0, reorderedItem);
     
-    // Update state
+    // Update state with the reordered items
     setOrderedClasses(items);
     
     // Save the new order to the database
@@ -236,7 +238,7 @@ export function ClassesTabs() {
 
   return (
     <div className="mx-4 mt-2 overflow-x-auto">
-      <Tabs value={activeTab} defaultValue="all" className="w-full">
+      <Tabs value={activeTab} className="w-full">
         <DragDropContext onDragEnd={handleDragEnd}>
           <Droppable droppableId="class-tabs" direction="horizontal">
             {(provided) => (

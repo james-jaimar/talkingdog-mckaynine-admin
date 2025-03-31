@@ -1,5 +1,5 @@
 
-import { createBrowserRouter, Navigate } from "react-router-dom";
+import { createBrowserRouter } from "react-router-dom";
 
 import Dashboard from "./pages/Dashboard";
 import Classes from "./pages/Classes";
