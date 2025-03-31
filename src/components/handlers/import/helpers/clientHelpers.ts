@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 /**
@@ -22,8 +23,8 @@ export async function processClientData(
   });
   
   // Store WhatsApp and Photo Permission preferences in notes if they exist
-  const whatsAppHeader = Object.entries(fieldMappings).find(([_, value]) => value === 'clients.whatsapp')?.[0];
-  const photoPermissionHeader = Object.entries(fieldMappings).find(([_, value]) => value === 'clients.photo_permission')?.[0];
+  const whatsAppHeader = Object.entries(fieldMappings).find(([_, value]) => value === 'preferences.whatsapp')?.[0];
+  const photoPermissionHeader = Object.entries(fieldMappings).find(([_, value]) => value === 'preferences.photo_permission')?.[0];
   
   // Add to notes field
   const preferences = [];

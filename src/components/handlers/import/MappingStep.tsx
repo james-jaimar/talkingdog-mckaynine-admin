@@ -46,6 +46,7 @@ export function MappingStep({
           <TabsTrigger value="clients">Handler Data</TabsTrigger>
           <TabsTrigger value="dogs">Dog Data</TabsTrigger>
           <TabsTrigger value="class_enrollments">Class Data</TabsTrigger>
+          <TabsTrigger value="preferences">Preferences</TabsTrigger>
         </TabsList>
         
         <TabsContent value="clients" className="space-y-4">
@@ -69,6 +70,15 @@ export function MappingStep({
         <TabsContent value="class_enrollments" className="space-y-4">
           <FieldMappingPanel
             fields={availableFields.filter(f => f.table === "class_enrollments")}
+            csvHeaders={csvHeaders}
+            fieldMappings={fieldMappings}
+            onMappingChange={onFieldMappingChange}
+          />
+        </TabsContent>
+        
+        <TabsContent value="preferences" className="space-y-4">
+          <FieldMappingPanel
+            fields={availableFields.filter(f => f.table === "preferences")}
             csvHeaders={csvHeaders}
             fieldMappings={fieldMappings}
             onMappingChange={onFieldMappingChange}

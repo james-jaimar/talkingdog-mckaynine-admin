@@ -23,7 +23,7 @@ export const availableFields: MappingField[] = [
   { csvHeader: "WT", dbField: "wt_class", table: "class_enrollments", required: false, description: "WT class enrollment" },
   { csvHeader: "YOGA", dbField: "yoga_class", table: "class_enrollments", required: false, description: "Yoga class enrollment" },
   
-  // Preferences (handled differently in code)
+  // Preference fields (now in their own table category)
   { csvHeader: "WhatsApp", dbField: "whatsapp", table: "preferences", required: false, description: "WhatsApp preference" },
   { csvHeader: "Photo Permission", dbField: "photo_permission", table: "preferences", required: false, description: "Photo permission" },
 ];
