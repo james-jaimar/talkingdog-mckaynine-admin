@@ -101,7 +101,7 @@ export function useHandlersData() {
 
   // Filter handlers by search query
   const filteredHandlers = handlers.filter(handler => 
-    (handler.first_name + " " + handler.last_name).toLowerCase().includes(searchQuery.toLowerCase()) ||
+    handler.first_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     handler.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
     handler.phone?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     handler.dogs.some(dog => 

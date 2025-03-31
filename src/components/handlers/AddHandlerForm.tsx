@@ -15,11 +15,8 @@ import { Separator } from "@/components/ui/separator";
 import { useBranch } from "@/context/BranchContext";
 
 const formSchema = z.object({
-  firstName: z.string().min(2, {
-    message: "First name must be at least 2 characters.",
-  }),
-  lastName: z.string().min(2, {
-    message: "Last name must be at least 2 characters.",
+  name: z.string().min(2, {
+    message: "Name must be at least 2 characters.",
   }),
   email: z.string().email({
     message: "Please enter a valid email address.",
@@ -54,8 +51,7 @@ export function AddHandlerForm({ onSuccess }: AddHandlerFormProps) {
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      firstName: "",
-      lastName: "",
+      name: "",
       email: "",
       phone: "",
       dogName: "",
@@ -78,8 +74,8 @@ export function AddHandlerForm({ onSuccess }: AddHandlerFormProps) {
       const { data: clientData, error: clientError } = await supabase
         .from("clients")
         .insert({
-          first_name: data.firstName,
-          last_name: data.lastName,
+          first_name: data.name,
+          last_name: "", // Empty last name field
           email: data.email,
           phone: data.phone || null,
           notes: data.comments || null,

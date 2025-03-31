@@ -17,8 +17,8 @@ interface ImportRow {
   "YOGA"?: string;
   "COMMENTS"?: string;
   "WhatsApp"?: string;
-  "Photo Pemission"?: string;
-  "Name"?: string; // Added Name column
+  "Photo Permission"?: string;
+  "Name"?: string; // Name column
   [key: string]: any;
 }
 
@@ -56,18 +56,18 @@ export async function processImportData(
           continue;
         }
 
-        // Get client name from Name column or use email as fallback
-        const clientName = parsedRow["Name"] ? parsedRow["Name"].trim() : email.split('@')[0];
+        // Get handler name from the "Name" column or use email as fallback
+        const handlerName = parsedRow["Name"] ? parsedRow["Name"].trim() : email.split('@')[0];
         
         // Generate notes with WhatsApp and Photo Permission preferences
         const notes = generateNotes(parsedRow);
         
-        // Insert new client with branch_id if available
+        // Insert new client with name in first_name field and empty last_name
         const { data: newClient, error } = await supabase
           .from("clients")
           .insert({
             email: email,
-            first_name: clientName,
+            first_name: handlerName,
             last_name: "", // Empty last name as requested
             phone: parsedRow["Tel"] || null,
             notes: notes,
@@ -78,7 +78,7 @@ export async function processImportData(
 
         if (error) throw error;
         clientId = newClient.id;
-        console.log(`Created new client: ${clientName} (${email}) with ID: ${clientId}`);
+        console.log(`Created new client: ${handlerName} (${email}) with ID: ${clientId}`);
       } else {
         clientId = existingClients[0].id;
         console.log(`Using existing client with ID: ${clientId} for email: ${email}`);
@@ -196,7 +196,7 @@ function generateNotes(row: ImportRow): string {
   }
   
   // Add Photo Permission preference
-  if (hasValue(row["Photo Pemission"])) {
+  if (hasValue(row["Photo Permission"])) {
     notes.push("Photo Permission: yes");
   }
   
