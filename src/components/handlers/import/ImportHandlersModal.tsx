@@ -19,10 +19,7 @@ export function ImportHandlersModal() {
   const queryClient = useQueryClient();
 
   const handleImportSuccess = (count: number) => {
-    toast({
-      title: "Import successful",
-      description: `${count} handlers imported successfully.`,
-    });
+    toast("Import successful", `${count} handlers imported successfully.`);
     
     // Force invalidate to refresh data immediately after import
     queryClient.invalidateQueries({ queryKey: ['handlers'] });

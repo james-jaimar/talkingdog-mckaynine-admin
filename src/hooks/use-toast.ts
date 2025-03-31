@@ -138,17 +138,36 @@ function dispatch(action: Action) {
   })
 }
 
-// Support both variants: single object or separate title/message parameters
-function toast(
-  titleOrOptions: string | ToasterToast,
-  description?: React.ReactNode,
-) {
+/**
+ * This type represents the allowed parameters for the toast function.
+ * It allows either a string title and an optional description,
+ * or a complete toast options object.
+ */
+type ToastParameters = 
+  | [title: string, description?: React.ReactNode]
+  | [options: Omit<ToasterToast, "id">]
+
+/**
+ * Toast function that accepts either:
+ * 1. A single object containing all toast properties (without id)
+ * 2. A title string and an optional description
+ */
+function toast(...params: ToastParameters) {
   const id = genId()
 
-  // Convert to object format if called with separate parameters
-  const options: ToasterToast = typeof titleOrOptions === "string"
-    ? { title: titleOrOptions, description, id }
-    : { ...titleOrOptions, id }
+  // Determine if function was called with a single object or with separate title/description
+  let options: ToasterToast;
+  if (typeof params[0] === "string") {
+    // Called with title and optional description
+    options = {
+      id,
+      title: params[0],
+      description: params[1],
+    }
+  } else {
+    // Called with a single options object
+    options = { ...params[0], id }
+  }
 
   const update = (props: ToasterToast) =>
     dispatch({
