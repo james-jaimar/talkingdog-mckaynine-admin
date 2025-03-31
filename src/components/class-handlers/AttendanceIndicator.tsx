@@ -91,14 +91,14 @@ export function AttendanceIndicator({
         queryKey: ['class-attendance']
       });
       
-      // Using the single-argument object pattern for toast
+      // Call toast with the correct single object parameter
       toast({
         title: "Attendance updated",
         description: `Attendance marked as ${newStatus}`
       });
     } catch (error) {
       console.error('Error updating attendance:', error);
-      // Using the single-argument object pattern for toast
+      // Call toast with the correct single object parameter
       toast({
         title: "Error",
         description: "Failed to update attendance",

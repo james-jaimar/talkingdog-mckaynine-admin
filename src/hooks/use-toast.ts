@@ -138,7 +138,7 @@ function dispatch(action: Action) {
   })
 }
 
-// Fix: Updated type definition for toast function to accept a single object parameter
+// Explicitly define the type for the toast function
 type ToastOptions = Omit<ToasterToast, "id">
 
 function toast(options: ToastOptions) {
