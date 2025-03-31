@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Check, X, Clock, HelpCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/hooks/use-toast";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,7 +10,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useQueryClient } from "@tanstack/react-query";
-import { attendanceToast } from "./AttendanceToast";
 
 interface AttendanceIndicatorProps {
   bookingId: string;
@@ -27,7 +26,6 @@ export function AttendanceIndicator({
 }: AttendanceIndicatorProps) {
   const [isUpdating, setIsUpdating] = useState(false);
   const queryClient = useQueryClient();
-  const { toast } = useToast();
   
   const getStatusIcon = () => {
     switch (status) {
@@ -92,19 +90,19 @@ export function AttendanceIndicator({
         queryKey: ['class-attendance']
       });
       
-      // Use our new toast utility that handles the type discrepancy
-      attendanceToast(
-        "Attendance updated",
-        `Attendance marked as ${newStatus}`
-      );
+      // Use the object format for toast
+      toast({
+        title: "Attendance updated",
+        description: `Attendance marked as ${newStatus}`
+      });
     } catch (error) {
       console.error('Error updating attendance:', error);
-      // Use our new toast utility that handles the type discrepancy
-      attendanceToast(
-        "Error",
-        "Failed to update attendance",
-        "destructive"
-      );
+      // Use the object format for toast
+      toast({
+        title: "Error",
+        description: "Failed to update attendance",
+        variant: "destructive"
+      });
     } finally {
       setIsUpdating(false);
     }

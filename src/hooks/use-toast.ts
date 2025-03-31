@@ -1,4 +1,3 @@
-
 import * as React from "react"
 
 import type {
@@ -138,36 +137,11 @@ function dispatch(action: Action) {
   })
 }
 
-/**
- * This type represents the allowed parameters for the toast function.
- * It allows either a string title and an optional description,
- * or a complete toast options object.
- */
-type ToastParameters = 
-  | [title: string, description?: React.ReactNode]
-  | [options: Omit<ToasterToast, "id">]
+// Simplified interface for toast - only accepts object format for consistency
+type ToastOptions = Omit<ToasterToast, "id">
 
-/**
- * Toast function that accepts either:
- * 1. A single object containing all toast properties (without id)
- * 2. A title string and an optional description
- */
-function toast(...params: ToastParameters) {
+function toast(options: ToastOptions) {
   const id = genId()
-
-  // Determine if function was called with a single object or with separate title/description
-  let options: ToasterToast;
-  if (typeof params[0] === "string") {
-    // Called with title and optional description
-    options = {
-      id,
-      title: params[0],
-      description: params[1],
-    }
-  } else {
-    // Called with a single options object
-    options = { ...params[0], id }
-  }
 
   const update = (props: ToasterToast) =>
     dispatch({
