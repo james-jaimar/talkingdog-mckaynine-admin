@@ -10,12 +10,6 @@ export type MappingField = {
 
 export type FieldMapping = Record<string, string>;
 
-export type PreferenceField = {
-  name: string;
-  column: string;
-  description: string;
-};
-
 export interface ImportResult {
   success: boolean;
   processed: number;

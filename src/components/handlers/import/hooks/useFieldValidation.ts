@@ -19,15 +19,15 @@ export function useFieldValidation() {
     }
     
     // Check that other required fields are mapped
-    const requiredFields = availableFields.filter(f => f.required && f.dbField !== 'email');
+    const requiredFields = availableFields.filter(f => f.required);
     
     for (const field of requiredFields) {
       const isMapped = Object.entries(fieldMappings).some(mapping => 
         mapping[1] === `${field.table}.${field.dbField}`
       );
       
-      if (!isMapped) {
-        errors.push(`Required field "${field.table}.${field.dbField}" is not mapped`);
+      if (!isMapped && field.table !== 'clients' && field.dbField !== 'email') {
+        errors.push(`Required field "${field.dbField}" is not mapped`);
       }
     }
     

@@ -30,25 +30,31 @@ export function ImportHandlersModal() {
   } = useImportData();
 
   const handleNext = () => {
-    console.log("Next button clicked, current step:", currentStep);
+    if (currentStep === 1 && !csvFile) {
+      toast({
+        title: "No file selected",
+        description: "Please upload a CSV file before proceeding",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     if (currentStep === 2) {
       const isValid = validateMappings(fieldMappings);
-      if (isValid) {
-        setCurrentStep(3);
-      } else {
+      if (!isValid) {
         toast({
           title: "Validation errors",
           description: "Please fix the validation errors before proceeding",
           variant: "destructive"
         });
+        return;
       }
-    } else {
-      setCurrentStep(currentStep + 1);
     }
+    
+    setCurrentStep(currentStep + 1);
   };
 
   const handleBack = () => {
-    console.log("Back button clicked, current step:", currentStep);
     setCurrentStep(Math.max(1, currentStep - 1));
   };
 
@@ -57,8 +63,6 @@ export function ImportHandlersModal() {
   };
 
   const handleImport = async () => {
-    console.log("Import button clicked in ImportHandlersModal");
-    
     if (!csvData || csvData.length === 0) {
       toast({
         title: "No data to import",
@@ -69,16 +73,12 @@ export function ImportHandlersModal() {
     }
 
     try {
-      // Set loading state
-      console.log("Starting import process...");
-      
       const result = await processImport(csvData, fieldMappings, currentBranch?.id);
-      console.log("Import completed with result:", result);
       
       if (result.success) {
         toast({
           title: "Import successful",
-          description: `Imported ${csvData.length - result.errors.length} handlers successfully${result.errors.length > 0 ? ` with ${result.errors.length} errors` : ''}.`,
+          description: `Imported ${result.processed} handlers successfully${result.errors.length > 0 ? ` with ${result.errors.length} errors` : ''}.`,
           variant: "default"
         });
         setOpen(false);
@@ -86,7 +86,9 @@ export function ImportHandlersModal() {
       } else {
         toast({
           title: "Import failed",
-          description: `Failed to import data: ${result.errors.join(", ")}`,
+          description: result.errors.length > 0 
+            ? `Failed to import data: ${result.errors[0].message}` 
+            : "No records could be imported. Check your data and mapping.",
           variant: "destructive"
         });
       }
@@ -181,7 +183,7 @@ export function ImportHandlersModal() {
                 <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
             ) : (
-              <div></div> // We're using the button inside ReviewStep instead
+              <div></div> // We use the button inside ReviewStep for step 3
             )}
           </div>
         </div>

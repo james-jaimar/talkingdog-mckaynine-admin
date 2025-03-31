@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { FieldMapping, ImportResult, ProcessingStatus } from "../types";
 import { supabase } from "@/integrations/supabase/client";

@@ -1,6 +1,9 @@
+
 import { useState } from "react";
-import { parseCSVFile, generateInitialMappings } from "../helpers/csv-parser";
+import Papa from "papaparse";
+import { toast } from "@/hooks/use-toast";
 import { FieldMapping } from "../types";
+import { availableFields } from "../fieldDefinitions";
 
 export function useCSVFileUpload() {
   const [csvFile, setCsvFile] = useState<File | null>(null);
@@ -14,54 +17,60 @@ export function useCSVFileUpload() {
     
     setCsvFile(file);
     
-    parseCSVFile(file, (headers, data) => {
-      // Process and clean data
-      const cleanedData = data.map(row => {
-        const cleanRow: Record<string, any> = {};
+    // Parse the file
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => {
+        if (results.data.length === 0) {
+          toast({
+            title: "Empty CSV file",
+            description: "The CSV file doesn't contain any data",
+            variant: "destructive"
+          });
+          return;
+        }
+
+        // Extract headers and clean data
+        const headers = Object.keys(results.data[0]);
+        setCsvHeaders(headers);
+        setCsvData(results.data);
         
-        // Process each field in the row
-        Object.entries(row).forEach(([header, value]) => {
-          // Handle boolean fields (preferences, class enrollments)
-          if (typeof value === 'string' && 
-              (header === 'WhatsApp' || 
-               header === 'Photo Permission' ||
-               header === 'PUPPY' ||
-               header === 'EO' ||
-               header === 'BRONZE CGC' ||
-               header === 'SILVER CGC' ||
-               header === 'BEGINNER/Novice' ||
-               header === 'WT' ||
-               header === 'YOGA')) {
-            
-            const lowerValue = value.toString().toLowerCase().trim();
-            
-            // Convert string values to true/false
-            if (['yes', 'y', 'true', '1', 'enrolled', 'completed', 'grad'].some(v => lowerValue.includes(v))) {
-              cleanRow[header] = true;
-            } else if (['no', 'n', 'false', '0', '-', ''].includes(lowerValue)) {
-              cleanRow[header] = false;
-            } else {
-              // Keep as is for other values
-              cleanRow[header] = value;
+        // Generate initial mappings by matching headers to defined fields
+        const initialMappings: FieldMapping = {};
+        
+        // Try to match headers with defined fields
+        for (const header of headers) {
+          for (const field of availableFields) {
+            // Case-insensitive comparison
+            if (field.csvHeader.toLowerCase() === header.toLowerCase()) {
+              initialMappings[header] = `${field.table}.${field.dbField}`;
+              break;
             }
-          } else if (value === '-' || value === '') {
-            // Convert dashes and empty strings to null for better handling
-            cleanRow[header] = null;
-          } else {
-            // Keep as is for other values
-            cleanRow[header] = value;
           }
-        });
+        }
         
-        return cleanRow;
-      });
-      
-      setCsvHeaders(headers);
-      setCsvData(cleanedData);
-      
-      // Generate initial mappings
-      const initialMappings = generateInitialMappings(headers);
-      setFieldMappings(initialMappings);
+        // Additionally, try to match fields by their name if not matched by csvHeader
+        for (const header of headers) {
+          if (initialMappings[header]) continue; // Skip already mapped fields
+          
+          for (const field of availableFields) {
+            if (field.dbField.toLowerCase() === header.toLowerCase()) {
+              initialMappings[header] = `${field.table}.${field.dbField}`;
+              break;
+            }
+          }
+        }
+        
+        setFieldMappings(initialMappings);
+      },
+      error: (error) => {
+        toast({
+          title: "Error parsing CSV",
+          description: error.message,
+          variant: "destructive"
+        });
+      }
     });
   };
 
@@ -74,10 +83,19 @@ export function useCSVFileUpload() {
         return newMappings;
       }
       
-      return {
-        ...prev,
-        [csvHeader]: dbField
-      };
+      // Check if this field is already mapped to another header
+      const existingHeaderForField = Object.entries(prev)
+        .find(([_, value]) => value === dbField)?.[0];
+        
+      if (existingHeaderForField && existingHeaderForField !== csvHeader) {
+        // Create a new mapping object without the old mapping
+        const newMappings = { ...prev };
+        delete newMappings[existingHeaderForField];
+        return { ...newMappings, [csvHeader]: dbField };
+      }
+      
+      // Add or update the mapping
+      return { ...prev, [csvHeader]: dbField };
     });
   };
 

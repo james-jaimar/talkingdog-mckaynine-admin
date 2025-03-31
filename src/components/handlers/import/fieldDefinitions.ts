@@ -15,15 +15,15 @@ export const availableFields: MappingField[] = [
   { csvHeader: "Assess", dbField: "notes", table: "dogs", required: false },
   
   // Class enrollment fields
-  { csvHeader: "PUPPY", dbField: "puppy_class", table: "class_enrollments", required: false, description: "Puppy class enrollment" },
-  { csvHeader: "EO", dbField: "eo_class", table: "class_enrollments", required: false, description: "EO class enrollment" },
-  { csvHeader: "BRONZE CGC", dbField: "bronze_cgc_class", table: "class_enrollments", required: false, description: "Bronze CGC class enrollment" },
-  { csvHeader: "SILVER CGC", dbField: "silver_cgc_class", table: "class_enrollments", required: false, description: "Silver CGC class enrollment" },
-  { csvHeader: "BEGINNER/Novice", dbField: "beginner_novice_class", table: "class_enrollments", required: false, description: "Beginner/Novice class enrollment" },
-  { csvHeader: "WT", dbField: "wt_class", table: "class_enrollments", required: false, description: "WT class enrollment" },
-  { csvHeader: "YOGA", dbField: "yoga_class", table: "class_enrollments", required: false, description: "Yoga class enrollment" },
+  { csvHeader: "PUPPY", dbField: "puppy_class", table: "classes", required: false, description: "Puppy class enrollment" },
+  { csvHeader: "EO", dbField: "eo_class", table: "classes", required: false, description: "EO class enrollment" },
+  { csvHeader: "BRONZE CGC", dbField: "bronze_cgc_class", table: "classes", required: false, description: "Bronze CGC class enrollment" },
+  { csvHeader: "SILVER CGC", dbField: "silver_cgc_class", table: "classes", required: false, description: "Silver CGC class enrollment" },
+  { csvHeader: "BEGINNER/Novice", dbField: "beginner_novice_class", table: "classes", required: false, description: "Beginner/Novice class enrollment" },
+  { csvHeader: "WT", dbField: "wt_class", table: "classes", required: false, description: "WT class enrollment" },
+  { csvHeader: "YOGA", dbField: "yoga_class", table: "classes", required: false, description: "Yoga class enrollment" },
   
-  // Preference fields (now in their own table category)
+  // Preferences fields
   { csvHeader: "WhatsApp", dbField: "whatsapp", table: "preferences", required: false, description: "WhatsApp preference" },
   { csvHeader: "Photo Permission", dbField: "photo_permission", table: "preferences", required: false, description: "Photo permission" },
 ];

@@ -51,7 +51,7 @@ export function ReviewStep({
     if (!mappedFields[table]) {
       mappedFields[table] = [];
     }
-    mappedFields[table].push(csvHeader);
+    mappedFields[table].push(`${csvHeader} → ${field}`);
   });
 
   // Count rows with missing emails if email header is mapped

@@ -15,7 +15,7 @@ export function FieldMappingPanel({
   onMappingChange 
 }: FieldMappingPanelProps) {
   return (
-    <div className="grid grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       {fields.map(field => (
         <div key={`${field.table}-${field.dbField}`} className="border rounded-md p-3">
           <label className="block text-sm font-medium mb-1">
@@ -26,24 +26,37 @@ export function FieldMappingPanel({
             className="w-full border-gray-300 rounded-md"
             value={Object.entries(fieldMappings).find(([_, value]) => value === `${field.table}.${field.dbField}`)?.[0] || ""}
             onChange={(e) => {
-              // Remove any existing mapping for this database field
-              const existingHeaderForField = Object.entries(fieldMappings)
-                .find(([_, value]) => value === `${field.table}.${field.dbField}`)?.[0];
+              const dbFieldPath = `${field.table}.${field.dbField}`;
               
-              if (existingHeaderForField) {
-                onMappingChange(existingHeaderForField, "");
+              // If value is empty, user is removing a mapping
+              if (!e.target.value) {
+                // Find if this field is already mapped
+                const existingHeader = Object.entries(fieldMappings)
+                  .find(([_, value]) => value === dbFieldPath)?.[0];
+                
+                // If found, remove it
+                if (existingHeader) {
+                  onMappingChange(existingHeader, "");
+                }
+                return;
               }
               
-              // Add new mapping if a header is selected
-              if (e.target.value) {
-                onMappingChange(e.target.value, `${field.table}.${field.dbField}`);
-              }
+              // Set the new mapping
+              onMappingChange(e.target.value, dbFieldPath);
             }}
           >
             <option value="">-- Select CSV header --</option>
-            {csvHeaders.map(header => (
-              <option key={header} value={header}>{header}</option>
-            ))}
+            {csvHeaders.map(header => {
+              // Find if this header is already mapped to a different field
+              const isMappedToOther = fieldMappings[header] && 
+                                      fieldMappings[header] !== `${field.table}.${field.dbField}`;
+              
+              return (
+                <option key={header} value={header} disabled={isMappedToOther}>
+                  {header}{isMappedToOther ? ' (already mapped)' : ''}
+                </option>
+              );
+            })}
           </select>
         </div>
       ))}
