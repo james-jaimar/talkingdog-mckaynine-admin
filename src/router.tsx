@@ -1,3 +1,4 @@
+
 import { createBrowserRouter } from "react-router-dom";
 
 import Dashboard from "./pages/Dashboard";
@@ -32,6 +33,11 @@ const router = createBrowserRouter([
   },
   {
     path: "/class-handlers/:id",
+    element: <ClassHandlers />,
+  },
+  // Add the new route pattern that matches your URL
+  {
+    path: "/classes/:classId/handlers",
     element: <ClassHandlers />,
   },
   {

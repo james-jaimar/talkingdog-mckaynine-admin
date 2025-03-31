@@ -11,7 +11,9 @@ import { AddHandlerToClassModal } from "@/components/classes/handlers/AddHandler
 import { Helmet } from "react-helmet";
 
 export default function ClassHandlers() {
-  const { classId } = useParams<{ classId: string }>();
+  // Check for both URL parameter patterns
+  const params = useParams<{ id?: string; classId?: string }>();
+  const classId = params.classId || params.id;
   const [isAddHandlerModalOpen, setIsAddHandlerModalOpen] = useState(false);
   const queryClient = useQueryClient();
   
