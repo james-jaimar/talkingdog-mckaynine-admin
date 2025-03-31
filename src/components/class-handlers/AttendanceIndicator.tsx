@@ -86,7 +86,7 @@ export function AttendanceIndicator({
       
       if (result.error) throw result.error;
       
-      // Fixed: Using the correct syntax for invalidateQueries with object parameter
+      // Fix: Use object parameter syntax for invalidateQueries
       queryClient.invalidateQueries({ queryKey: ['class-attendance'] });
       
       toast({
