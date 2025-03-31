@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AddHandlerModal } from "@/components/handlers/AddHandlerModal";
+import { ImportHandlersModal } from "@/components/handlers/import/ImportHandlersModal";
 import { HandlerSearchBar } from "@/components/handlers/HandlerSearchBar";
 import { HandlerAlphabetPagination } from "@/components/handlers/HandlerAlphabetPagination";
 import { HandlerTable } from "@/components/handlers/HandlerTable";
@@ -31,6 +32,7 @@ export default function Handlers() {
           <h1 className="text-3xl font-bold text-gray-900">Handlers</h1>
           <div className="flex flex-wrap gap-2">
             <AddHandlerModal />
+            <ImportHandlersModal />
           </div>
         </div>
         
