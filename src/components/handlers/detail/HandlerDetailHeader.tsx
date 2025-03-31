@@ -9,7 +9,7 @@ interface HandlerDetailHeaderProps {
   handler?: {
     id: string;
     first_name: string;
-    last_name: string;
+    last_name?: string;
     email: string;
     phone?: string;
     address?: string;
@@ -30,7 +30,7 @@ export function HandlerDetailHeader({ isLoading, handler, onHandlerUpdated }: Ha
           </Link>
         </Button>
         <h1 className="text-3xl font-bold text-gray-900">
-          {isLoading ? 'Loading...' : `${handler?.first_name} ${handler?.last_name}`}
+          {isLoading ? 'Loading...' : handler?.first_name}
         </h1>
       </div>
       {!isLoading && handler && (

@@ -1,4 +1,3 @@
-
 import { Form } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -16,7 +15,7 @@ import { NotesField } from "./form/NotesField";
 interface HandlerData {
   id: string;
   first_name: string;
-  last_name: string;
+  last_name?: string;
   email: string;
   phone?: string;
   address?: string;
@@ -41,7 +40,7 @@ export function EditHandlerForm({ handler, onSuccess }: EditHandlerFormProps) {
     resolver: zodResolver(handlerFormSchema),
     defaultValues: {
       first_name: handler.first_name,
-      last_name: handler.last_name,
+      last_name: handler.last_name || "",
       email: handler.email,
       phone: handler.phone || "",
       address: handler.address || "",
@@ -59,7 +58,8 @@ export function EditHandlerForm({ handler, onSuccess }: EditHandlerFormProps) {
         .from("clients")
         .update({
           first_name: values.first_name,
-          last_name: values.last_name,
+          // Keep last_name in the database update but don't show it in the UI
+          last_name: values.last_name || "",
           email: values.email,
           phone: values.phone,
           address: values.address,

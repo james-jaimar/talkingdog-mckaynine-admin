@@ -4,7 +4,7 @@ import { z } from "zod";
 // Form validation schema
 export const handlerFormSchema = z.object({
   first_name: z.string().min(1, { message: "First name is required" }),
-  last_name: z.string().min(1, { message: "Last name is required" }),
+  last_name: z.string().optional(),
   email: z.string().email({ message: "Invalid email address" }),
   phone: z.string().optional(),
   address: z.string().optional(),
