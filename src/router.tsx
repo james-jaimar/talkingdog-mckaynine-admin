@@ -1,13 +1,14 @@
-
 import { createBrowserRouter } from "react-router-dom";
+
 import Dashboard from "./pages/Dashboard";
-import Handlers from "./pages/Handlers";
-import HandlerDetail from "./pages/HandlerDetail";
-import Trainers from "./pages/Trainers";
 import Classes from "./pages/Classes";
 import ClassSchedules from "./pages/ClassSchedules";
 import ClassHandlers from "./pages/ClassHandlers";
+import Trainers from "./pages/Trainers";
+import Handlers from "./pages/Handlers";
+import HandlerDetail from "./pages/HandlerDetail";
 import Branches from "./pages/Branches";
+import UnpaidHandlers from "./pages/UnpaidHandlers";
 import NotFound from "./pages/NotFound";
 import Index from "./pages/Index";
 
@@ -15,42 +16,43 @@ const router = createBrowserRouter([
   {
     path: "/",
     element: <Index />,
+    errorElement: <NotFound />,
   },
   {
     path: "/dashboard",
     element: <Dashboard />,
   },
   {
-    path: "/handlers",
-    element: <Handlers />,
+    path: "/classes",
+    element: <Classes />,
   },
   {
-    path: "/handlers/:id",
-    element: <HandlerDetail />,
+    path: "/class-schedules",
+    element: <ClassSchedules />,
+  },
+  {
+    path: "/class-handlers/:id",
+    element: <ClassHandlers />,
   },
   {
     path: "/trainers",
     element: <Trainers />,
   },
   {
-    path: "/classes",
-    element: <Classes />,
+    path: "/handlers",
+    element: <Handlers />,
   },
   {
-    path: "/classes/:classId/schedules",
-    element: <ClassSchedules />,
-  },
-  {
-    path: "/classes/:classId/handlers",
-    element: <ClassHandlers />,
+    path: "/handler/:id",
+    element: <HandlerDetail />,
   },
   {
     path: "/branches",
     element: <Branches />,
   },
   {
-    path: "*",
-    element: <NotFound />,
+    path: "/unpaid-handlers",
+    element: <UnpaidHandlers />,
   },
 ]);
 
