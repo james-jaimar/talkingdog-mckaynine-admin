@@ -91,12 +91,19 @@ export function AttendanceIndicator({
         queryKey: ['class-attendance']
       });
       
-      // Fixed: Call toast with two arguments (title and description)
-      toast("Attendance updated", `Attendance marked as ${newStatus}`);
+      // Properly call toast with an object argument as defined in use-toast.ts
+      toast({
+        title: "Attendance updated",
+        description: `Attendance marked as ${newStatus}`
+      });
     } catch (error) {
       console.error('Error updating attendance:', error);
-      // Fixed: Call toast with two arguments (title and description)
-      toast("Error", "Failed to update attendance");
+      // Properly call toast with an object argument as defined in use-toast.ts
+      toast({
+        title: "Error",
+        description: "Failed to update attendance",
+        variant: "destructive"
+      });
     } finally {
       setIsUpdating(false);
     }
