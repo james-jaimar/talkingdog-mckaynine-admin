@@ -5,10 +5,12 @@ interface BasicInfoTabProps {
   age?: number;
   weight?: number;
   notes?: string;
-  date_of_birth?: string;
+  date_of_birth?: string | null;
 }
 
 export function BasicInfoTab({ age, weight, notes, date_of_birth }: BasicInfoTabProps) {
+  console.log("BasicInfoTab received date_of_birth:", date_of_birth);
+  
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4">

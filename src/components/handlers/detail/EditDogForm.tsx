@@ -11,6 +11,7 @@ import { BehaviorTab } from "./dog-form/BehaviorTab";
 import { MedicalTab } from "./dog-form/MedicalTab";
 import { FormActions } from "./dog-form/FormActions";
 import { formSchema, type FormValues, type DogData } from "./dog-form/dogFormSchema";
+import { formatDateForInput } from "@/lib/utils";
 
 interface EditDogFormProps {
   dog?: DogData;
@@ -24,6 +25,7 @@ export function EditDogForm({ dog, clientId, onSuccess, isNew = false }: EditDog
   const { toast } = useToast();
 
   console.log("Initial dog data:", dog);
+  console.log("Dog date_of_birth:", dog?.date_of_birth);
 
   // Initialize form with dog data if editing, or empty if creating new
   const form = useForm<FormValues>({
@@ -33,7 +35,7 @@ export function EditDogForm({ dog, clientId, onSuccess, isNew = false }: EditDog
       breed: dog?.breed || "",
       age: dog?.age || undefined,
       weight: dog?.weight || undefined,
-      date_of_birth: dog?.date_of_birth || "",
+      date_of_birth: dog?.date_of_birth ? formatDateForInput(dog.date_of_birth) : "",
       notes: dog?.notes || "",
       behavior_notes: dog?.behavior_notes || "",
       medical_notes: dog?.medical_notes || "",
@@ -49,7 +51,7 @@ export function EditDogForm({ dog, clientId, onSuccess, isNew = false }: EditDog
         breed: values.breed,
         age: values.age,
         weight: values.weight,
-        date_of_birth: values.date_of_birth,
+        date_of_birth: values.date_of_birth || null,
         notes: values.notes,
         behavior_notes: values.behavior_notes,
         medical_notes: values.medical_notes,

@@ -411,6 +411,7 @@ export type Database = {
           breed: string
           client_id: string
           created_at: string
+          date_of_birth: string | null
           id: string
           medical_notes: string | null
           name: string
@@ -425,6 +426,7 @@ export type Database = {
           breed: string
           client_id: string
           created_at?: string
+          date_of_birth?: string | null
           id?: string
           medical_notes?: string | null
           name: string
@@ -439,6 +441,7 @@ export type Database = {
           breed?: string
           client_id?: string
           created_at?: string
+          date_of_birth?: string | null
           id?: string
           medical_notes?: string | null
           name?: string

@@ -21,7 +21,7 @@ export interface DogData {
   breed: string;
   age?: number;
   weight?: number;
-  date_of_birth?: string;
+  date_of_birth?: string | null;
   notes?: string;
   behavior_notes?: string;
   medical_notes?: string;
