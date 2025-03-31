@@ -158,6 +158,12 @@ export function ClassesTabs() {
     }
   }, [location.pathname]);
 
+  // Handle tab click to prevent jumping
+  const handleTabClick = useCallback((tabValue: string, path: string) => {
+    setActiveTab(tabValue);
+    navigate(path);
+  }, [navigate]);
+
   // Save the order to database whenever it changes
   const saveOrderToDatabase = useCallback(async (newOrder: typeof orderedClasses) => {
     try {
@@ -239,15 +245,14 @@ export function ClassesTabs() {
                 ref={provided.innerRef}
                 {...provided.droppableProps}
               >
-                <TabsTrigger value="all" asChild>
-                  <Link 
-                    to="/classes" 
-                    className={cn(
-                      location.pathname === "/classes" ? "font-medium" : ""
-                    )}
-                  >
-                    All Classes
-                  </Link>
+                <TabsTrigger 
+                  value="all" 
+                  onClick={() => handleTabClick("all", "/classes")}
+                  className={cn(
+                    location.pathname === "/classes" ? "font-medium" : ""
+                  )}
+                >
+                  All Classes
                 </TabsTrigger>
                 
                 {orderedClasses.map((classItem, index) => (
@@ -259,25 +264,21 @@ export function ClassesTabs() {
                     {(provided) => (
                       <TabsTrigger 
                         value={classItem.id} 
-                        asChild
                         ref={provided.innerRef}
                         {...provided.draggableProps}
+                        onClick={() => handleTabClick(classItem.id, `/classes/${classItem.id}/handlers`)}
+                        className={cn(
+                          "flex items-center gap-1",
+                          location.pathname.includes(`/classes/${classItem.id}`) ? "font-medium" : ""
+                        )}
                       >
-                        <Link 
-                          to={`/classes/${classItem.id}/handlers`}
-                          className={cn(
-                            "flex items-center gap-1",
-                            location.pathname.includes(`/classes/${classItem.id}`) ? "font-medium" : ""
-                          )}
+                        <div 
+                          {...provided.dragHandleProps}
+                          className="cursor-grab px-1"
                         >
-                          <div 
-                            {...provided.dragHandleProps}
-                            className="cursor-grab px-1"
-                          >
-                            <GripVertical className="h-4 w-4 text-muted-foreground" />
-                          </div>
-                          {classItem.name}
-                        </Link>
+                          <GripVertical className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                        {classItem.name}
                       </TabsTrigger>
                     )}
                   </Draggable>
