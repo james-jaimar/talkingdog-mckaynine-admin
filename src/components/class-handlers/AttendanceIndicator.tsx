@@ -86,8 +86,8 @@ export function AttendanceIndicator({
       
       if (result.error) throw result.error;
       
-      // Fix: Using the correct syntax for TanStack Query invalidateQueries
-      queryClient.invalidateQueries('class-attendance');
+      // Fix: Using the correct syntax for TanStack Query v5 invalidateQueries
+      queryClient.invalidateQueries({ queryKey: ['class-attendance'] });
       
       toast({
         title: "Attendance updated",
