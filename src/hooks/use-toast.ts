@@ -1,4 +1,3 @@
-
 import * as React from "react"
 
 import type {
@@ -138,36 +137,12 @@ function dispatch(action: Action) {
   })
 }
 
-// Define toast function types that support both object and individual params
-type ToastOptions = Omit<ToasterToast, "id">
+// Simple toast interface for consistent usage
+type ToastOptions = Partial<Omit<ToasterToast, "id">>
 
-// Define return type for toast function to avoid circular reference
-interface ToastReturn {
-  id: string
-  dismiss: () => void
-  update: (props: ToasterToast) => void
-}
-
-// Define the overloaded function signatures
-function toast(options: ToastOptions): ToastReturn;
-function toast(message: string, options?: Omit<ToastOptions, "description">): ToastReturn;
-function toast(
-  optionsOrMessage: ToastOptions | string,
-  options?: Omit<ToastOptions, "description">
-) {
+// Single toast function implementation
+function toast(opts: ToastOptions) {
   const id = genId()
-
-  // Handle both calling patterns
-  let toastOptions: ToastOptions;
-  
-  if (typeof optionsOrMessage === "string") {
-    toastOptions = {
-      description: optionsOrMessage,
-      ...(options || {})
-    };
-  } else {
-    toastOptions = optionsOrMessage;
-  }
 
   const update = (props: ToasterToast) =>
     dispatch({
@@ -180,7 +155,7 @@ function toast(
   dispatch({
     type: "ADD_TOAST",
     toast: {
-      ...toastOptions,
+      ...opts,
       id,
       open: true,
       onOpenChange: (open) => {
@@ -190,7 +165,7 @@ function toast(
   })
 
   return {
-    id: id,
+    id,
     dismiss,
     update,
   }
