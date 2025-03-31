@@ -108,7 +108,7 @@ export function ClassesTabs() {
 
   // Initialize ordered classes from database or default order
   useEffect(() => {
-    if (activeClasses.length === 0) return;
+    if (activeClasses.length === 0 || initializedRef.current) return;
     
     if (savedOrder && savedOrder.class_ids && savedOrder.class_ids.length > 0) {
       // We have a saved order from the database
@@ -182,30 +182,29 @@ export function ClassesTabs() {
   const handleDragEnd = useCallback((result: any) => {
     if (!result.destination) return;
     
-    setOrderedClasses(prevState => {
-      const items = Array.from(prevState);
-      const [reorderedItem] = items.splice(result.source.index, 1);
-      items.splice(result.destination.index, 0, reorderedItem);
-      
-      // Save the new order to the database
-      saveOrderToDatabase(items);
-      
-      // Show toast after successful reordering
-      toast({
-        title: "Class order updated",
-        description: "The order of class tabs has been updated and saved."
-      });
-      
-      return items;
+    const items = Array.from(orderedClasses);
+    const [reorderedItem] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, reorderedItem);
+    
+    // Update state
+    setOrderedClasses(items);
+    
+    // Save the new order to the database
+    saveOrderToDatabase(items);
+    
+    // Show toast after successful reordering
+    toast({
+      title: "Class order updated",
+      description: "The order of class tabs has been updated and saved."
     });
-  }, [toast, saveOrderToDatabase]);
+  }, [orderedClasses, toast, saveOrderToDatabase]);
   
   if (isLoading) {
     return null;
   }
   
   // If we have no active classes or haven't initialized the ordered classes yet, don't render
-  if (activeClasses.length === 0 || orderedClasses.length === 0) {
+  if (activeClasses.length === 0 || !initializedRef.current) {
     return null;
   }
 
