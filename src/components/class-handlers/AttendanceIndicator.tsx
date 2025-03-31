@@ -91,7 +91,7 @@ export function AttendanceIndicator({
         queryKey: ['class-attendance']
       });
       
-      // Using the toast function from the useToast hook
+      // Using the toast function from the useToast hook - with the correct format
       toast({
         title: "Attendance updated",
         description: `Attendance marked as ${newStatus}`,
