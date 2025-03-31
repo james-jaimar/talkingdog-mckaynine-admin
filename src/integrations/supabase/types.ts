@@ -201,43 +201,43 @@ export type Database = {
       }
       class_enrollments: {
         Row: {
-          beginner_novice_class: boolean | null
-          bronze_cgc_class: boolean | null
+          beginner_novice_class: string | null
+          bronze_cgc_class: string | null
           created_at: string
           dog_id: string
-          eo_class: boolean | null
+          eo_class: string | null
           id: string
-          puppy_class: boolean | null
-          silver_cgc_class: boolean | null
+          puppy_class: string | null
+          silver_cgc_class: string | null
           updated_at: string
-          wt_class: boolean | null
-          yoga_class: boolean | null
+          wt_class: string | null
+          yoga_class: string | null
         }
         Insert: {
-          beginner_novice_class?: boolean | null
-          bronze_cgc_class?: boolean | null
+          beginner_novice_class?: string | null
+          bronze_cgc_class?: string | null
           created_at?: string
           dog_id: string
-          eo_class?: boolean | null
+          eo_class?: string | null
           id?: string
-          puppy_class?: boolean | null
-          silver_cgc_class?: boolean | null
+          puppy_class?: string | null
+          silver_cgc_class?: string | null
           updated_at?: string
-          wt_class?: boolean | null
-          yoga_class?: boolean | null
+          wt_class?: string | null
+          yoga_class?: string | null
         }
         Update: {
-          beginner_novice_class?: boolean | null
-          bronze_cgc_class?: boolean | null
+          beginner_novice_class?: string | null
+          bronze_cgc_class?: string | null
           created_at?: string
           dog_id?: string
-          eo_class?: boolean | null
+          eo_class?: string | null
           id?: string
-          puppy_class?: boolean | null
-          silver_cgc_class?: boolean | null
+          puppy_class?: string | null
+          silver_cgc_class?: string | null
           updated_at?: string
-          wt_class?: boolean | null
-          yoga_class?: boolean | null
+          wt_class?: string | null
+          yoga_class?: string | null
         }
         Relationships: [
           {
