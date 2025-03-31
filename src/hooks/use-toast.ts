@@ -141,7 +141,7 @@ function dispatch(action: Action) {
 // Simple toast interface for consistent usage
 type ToastOptions = Partial<Omit<ToasterToast, "id">>
 
-function toast(opts: ToastOptions) {
+function toast(options: ToastOptions) {
   const id = genId()
 
   const update = (props: ToasterToast) =>
@@ -155,7 +155,7 @@ function toast(opts: ToastOptions) {
   dispatch({
     type: "ADD_TOAST",
     toast: {
-      ...opts,
+      ...options,
       id,
       open: true,
       onOpenChange: (open) => {
