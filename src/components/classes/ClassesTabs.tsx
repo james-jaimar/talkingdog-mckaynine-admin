@@ -6,7 +6,7 @@ import { Class } from "./types/class";
 import { Link, useLocation } from "react-router-dom";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import { GripVertical } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -55,15 +55,20 @@ export function ClassesTabs() {
     class_schedules: { id: string }[] 
   })[]>([]);
 
-  // Update orderedClasses when activeClasses changes
+  // Update orderedClasses when activeClasses changes - fixed with a stable comparison
   useEffect(() => {
-    if (activeClasses.length > 0) {
+    // Only update if activeClasses has changed from empty to non-empty
+    // or if orderedClasses is empty but activeClasses has items
+    if (
+      (activeClasses.length > 0 && orderedClasses.length === 0) || 
+      (activeClasses.length > 0 && JSON.stringify(activeClasses.map(c => c.id)) !== JSON.stringify(orderedClasses.map(c => c.id)))
+    ) {
       setOrderedClasses([...activeClasses]);
     }
-  }, [activeClasses]);
+  }, [activeClasses, orderedClasses]);
 
-  // Handle drag end event
-  const handleDragEnd = (result: any) => {
+  // Handle drag end event with useCallback to prevent recreating the function on every render
+  const handleDragEnd = useCallback((result: any) => {
     if (!result.destination) return;
     
     const items = Array.from(orderedClasses);
@@ -76,7 +81,7 @@ export function ClassesTabs() {
       title: "Class order updated",
       description: "The order of class tabs has been updated."
     });
-  };
+  }, [orderedClasses, toast]);
   
   if (isLoading || activeClasses.length === 0) {
     return null;
