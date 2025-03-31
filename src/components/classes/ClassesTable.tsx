@@ -8,7 +8,7 @@ import { EditClassModal } from "./EditClassModal";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, DollarSign, MapPin } from "lucide-react";
+import { Calendar, DollarSign, MapPin, Users } from "lucide-react";
 import { useState } from "react";
 
 export function ClassesTable() {
@@ -107,6 +107,12 @@ export function ClassesTable() {
                   <Link to={`/classes/${classItem.id}/schedules`}>
                     <Button variant="outline" size="sm">
                       Schedules
+                    </Button>
+                  </Link>
+                  <Link to={`/classes/${classItem.id}/handlers`}>
+                    <Button variant="outline" size="sm">
+                      <Users className="h-3.5 w-3.5 mr-1" />
+                      Handlers
                     </Button>
                   </Link>
                   <Button 

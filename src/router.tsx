@@ -6,6 +6,7 @@ import HandlerDetail from "./pages/HandlerDetail";
 import Trainers from "./pages/Trainers";
 import Classes from "./pages/Classes";
 import ClassSchedules from "./pages/ClassSchedules";
+import ClassHandlers from "./pages/ClassHandlers";
 import Branches from "./pages/Branches";
 import NotFound from "./pages/NotFound";
 import Index from "./pages/Index";
@@ -38,6 +39,10 @@ const router = createBrowserRouter([
   {
     path: "/classes/:classId/schedules",
     element: <ClassSchedules />,
+  },
+  {
+    path: "/classes/:classId/handlers",
+    element: <ClassHandlers />,
   },
   {
     path: "/branches",

@@ -4,6 +4,7 @@ import { Link, useLocation } from "react-router-dom";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { BranchSelector } from "@/components/branches/BranchSelector";
+import { ClassesTabs } from "@/components/classes/ClassesTabs";
 
 export function Header() {
   const location = useLocation();
@@ -64,6 +65,9 @@ export function Header() {
             </TabsList>
           </Tabs>
         </div>
+        
+        {/* Add the class tabs */}
+        <ClassesTabs />
       </div>
     </header>
   );
