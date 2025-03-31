@@ -66,15 +66,48 @@ export function ClassesTabs() {
     class_schedules: { id: string }[] 
   })[]>([]);
 
-  // Initialize orderedClasses from activeClasses only once
+  // Load ordered classes from localStorage when the component mounts
+  // and when activeClasses or currentBranch changes
   useEffect(() => {
-    if (activeClasses.length > 0 && !initializedRef.current) {
+    if (activeClasses.length === 0) return;
+
+    // Create a storage key that includes the branch ID if available
+    const storageKey = `ordered-classes-${currentBranch?.id || 'all'}`;
+    
+    // Try to get saved order from localStorage
+    const savedOrderJSON = localStorage.getItem(storageKey);
+    
+    if (savedOrderJSON) {
+      try {
+        // Parse the saved order IDs
+        const savedOrderIds = JSON.parse(savedOrderJSON);
+        
+        // Map IDs to actual class objects and include any new classes at the end
+        const existingClassIds = new Set(savedOrderIds);
+        const orderedClassList = [
+          // First, add classes in the saved order
+          ...savedOrderIds
+            .map(id => activeClasses.find(c => c.id === id))
+            .filter(Boolean),
+          // Then add any classes not in the saved order
+          ...activeClasses.filter(c => !existingClassIds.has(c.id))
+        ];
+        
+        setOrderedClasses(orderedClassList);
+        initializedRef.current = true;
+      } catch (error) {
+        console.error("Error parsing saved class order:", error);
+        setOrderedClasses([...activeClasses]);
+        initializedRef.current = true;
+      }
+    } else {
+      // If no saved order, use the default order
       setOrderedClasses([...activeClasses]);
       initializedRef.current = true;
     }
-  }, [activeClasses]);
+  }, [activeClasses, currentBranch?.id]);
 
-  // Handle drag end event with proper state update
+  // Handle drag end event and save the new order to localStorage
   const handleDragEnd = useCallback((result: any) => {
     if (!result.destination) return;
     
@@ -83,15 +116,20 @@ export function ClassesTabs() {
       const [reorderedItem] = items.splice(result.source.index, 1);
       items.splice(result.destination.index, 0, reorderedItem);
       
+      // Save the new order to localStorage
+      const storageKey = `ordered-classes-${currentBranch?.id || 'all'}`;
+      const orderIds = items.map(item => item.id);
+      localStorage.setItem(storageKey, JSON.stringify(orderIds));
+      
       // Show toast after successful reordering
       toast({
         title: "Class order updated",
-        description: "The order of class tabs has been updated."
+        description: "The order of class tabs has been updated and saved."
       });
       
       return items;
     });
-  }, [toast]);
+  }, [toast, currentBranch?.id]);
   
   if (isLoading) {
     return null;
