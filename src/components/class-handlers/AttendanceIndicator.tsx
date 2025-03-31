@@ -86,7 +86,7 @@ export function AttendanceIndicator({
       
       if (result.error) throw result.error;
       
-      // Fix the invalidateQueries call according to the @tanstack/react-query v5+ API
+      // Use the object syntax for invalidateQueries in @tanstack/react-query v5+
       queryClient.invalidateQueries({ queryKey: ['class-attendance'] });
       
       toast({
