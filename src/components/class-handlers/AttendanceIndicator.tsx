@@ -91,13 +91,14 @@ export function AttendanceIndicator({
         queryKey: ['class-attendance']
       });
       
-      // Using the toast function from the useToast hook - with the correct format
+      // Fix: The toast function expects a single object with title and description
       toast({
         title: "Attendance updated",
         description: `Attendance marked as ${newStatus}`,
       });
     } catch (error) {
       console.error('Error updating attendance:', error);
+      // Fix: Same here, the toast function expects a single object
       toast({
         title: "Error",
         description: "Failed to update attendance",
