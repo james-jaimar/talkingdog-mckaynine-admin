@@ -26,7 +26,6 @@ export function ClassesTabs() {
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const initializedRef = useRef(false);
   const isDraggingRef = useRef(false);
   const preventNextNavigationRef = useRef(false);
   
@@ -93,7 +92,7 @@ export function ClassesTabs() {
   })[]>([]);
 
   // Query to fetch saved class order from database
-  const { data: savedOrder } = useQuery({
+  const { data: savedOrder, isLoading: isLoadingOrder } = useQuery({
     queryKey: ['class-tab-order', currentBranch?.id],
     queryFn: async () => {
       try {
@@ -128,11 +127,9 @@ export function ClassesTabs() {
 
   // Initialize ordered classes from database or default order
   useEffect(() => {
-    if (!activeClasses || activeClasses.length === 0) return;
+    if (!activeClasses || activeClasses.length === 0 || isLoadingOrder) return;
     
-    if (initializedRef.current) return;
-    
-    console.log("Initializing ordered classes", { savedOrder, activeClasses });
+    console.log("Setting up ordered classes", { savedOrder, activeClasses });
     
     if (savedOrder && savedOrder.class_ids && savedOrder.class_ids.length > 0) {
       // We have a saved order from the database
@@ -157,9 +154,7 @@ export function ClassesTabs() {
       // If no saved order, use the default order
       setOrderedClasses([...activeClasses]);
     }
-    
-    initializedRef.current = true;
-  }, [activeClasses, savedOrder]);
+  }, [activeClasses, savedOrder, isLoadingOrder, currentBranch?.id]);
 
   // Update active tab when URL changes (only if not dragging)
   useEffect(() => {
@@ -274,8 +269,8 @@ export function ClassesTabs() {
     return null;
   }
   
-  // If we have no active classes or haven't initialized the ordered classes yet, don't render
-  if (activeClasses.length === 0 || !initializedRef.current) {
+  // If we have no active classes, don't render
+  if (activeClasses.length === 0) {
     return null;
   }
 
