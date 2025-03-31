@@ -41,17 +41,24 @@ export function EditDogForm({ dog, clientId, onSuccess, isNew = false }: EditDog
   const onSubmit = async (values: FormValues) => {
     setIsSubmitting(true);
     try {
+      // Create the dog data object, ensuring date is properly formatted
+      const dogData = {
+        name: values.name,
+        breed: values.breed,
+        age: values.age,
+        weight: values.weight,
+        date_of_birth: values.date_of_birth,
+        notes: values.notes,
+        behavior_notes: values.behavior_notes,
+        medical_notes: values.medical_notes,
+      };
+
+      console.log("Submitting dog data:", dogData);
+
       if (isNew) {
         // Create new dog
         const { error } = await supabase.from("dogs").insert({
-          name: values.name,
-          breed: values.breed,
-          age: values.age,
-          weight: values.weight,
-          date_of_birth: values.date_of_birth,
-          notes: values.notes,
-          behavior_notes: values.behavior_notes,
-          medical_notes: values.medical_notes,
+          ...dogData,
           client_id: clientId,
         });
 
@@ -65,19 +72,13 @@ export function EditDogForm({ dog, clientId, onSuccess, isNew = false }: EditDog
         // Update existing dog
         const { error } = await supabase
           .from("dogs")
-          .update({
-            name: values.name,
-            breed: values.breed,
-            age: values.age,
-            weight: values.weight,
-            date_of_birth: values.date_of_birth,
-            notes: values.notes,
-            behavior_notes: values.behavior_notes,
-            medical_notes: values.medical_notes,
-          })
+          .update(dogData)
           .eq("id", dog.id);
 
-        if (error) throw error;
+        if (error) {
+          console.error("Supabase update error:", error);
+          throw error;
+        }
 
         toast({
           title: "Dog updated",
