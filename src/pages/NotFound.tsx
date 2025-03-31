@@ -1,7 +1,8 @@
 
 import { Button } from "@/components/ui/button";
 import { Dog } from "lucide-react";
-import { Link, useNavigate, useEffect } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useEffect } from "react";
 
 export default function NotFound() {
   const navigate = useNavigate();
