@@ -104,16 +104,11 @@ export function ClassesTable() {
               </TableCell>
               <TableCell>
                 <div className="flex space-x-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => {
-                      console.log("Navigating to schedules for class ID:", classItem.id);
-                      window.location.href = `/classes/${classItem.id}/schedules`;
-                    }}
-                  >
-                    Schedules
-                  </Button>
+                  <Link to={`/classes/${classItem.id}/schedules`}>
+                    <Button variant="outline" size="sm">
+                      Schedules
+                    </Button>
+                  </Link>
                   <Button 
                     variant="outline" 
                     size="sm"
