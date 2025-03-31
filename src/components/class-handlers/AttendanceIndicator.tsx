@@ -54,13 +54,15 @@ export function AttendanceIndicator({
       classDate.setHours(12, 0, 0, 0);
       
       // Check if record already exists
-      const { data: existingRecords } = await supabase
+      const { data: existingRecords, error: queryError } = await supabase
         .from('class_attendance')
         .select('id')
         .eq('booking_id', bookingId)
         .eq('class_schedule_id', scheduleId)
         .gte('class_date', new Date(date).toISOString().split('T')[0])
         .lt(new Date(new Date(date).setDate(new Date(date).getDate() + 1)).toISOString().split('T')[0]);
+      
+      if (queryError) throw queryError;
       
       let result;
       

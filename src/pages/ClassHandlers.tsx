@@ -2,7 +2,7 @@
 import { useParams } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { ClassHandlersTable } from "@/components/class-handlers/ClassHandlersTable";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
@@ -13,6 +13,7 @@ import { Helmet } from "react-helmet";
 export default function ClassHandlers() {
   const { classId } = useParams<{ classId: string }>();
   const [isAddHandlerModalOpen, setIsAddHandlerModalOpen] = useState(false);
+  const queryClient = useQueryClient();
   
   const { data: classInfo, isLoading } = useQuery({
     queryKey: ['class-details', classId],
@@ -35,6 +36,13 @@ export default function ClassHandlers() {
     },
     enabled: !!classId
   });
+
+  const handleAddHandlerSuccess = () => {
+    // Refresh the handlers data after adding a new handler
+    queryClient.invalidateQueries({ queryKey: ['class-handlers', classId] });
+    // Close the modal
+    setIsAddHandlerModalOpen(false);
+  };
 
   if (isLoading) {
     return (
@@ -80,6 +88,8 @@ export default function ClassHandlers() {
             open={isAddHandlerModalOpen}
             onOpenChange={setIsAddHandlerModalOpen}
             classId={classId}
+            classData={classInfo}
+            onSuccess={handleAddHandlerSuccess}
           />
         )}
       </div>
