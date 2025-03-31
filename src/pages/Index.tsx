@@ -7,13 +7,8 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 const Index = () => {
   const navigate = useNavigate();
   
-  useEffect(() => {
-    // Redirect to dashboard if on the exact index route
-    if (window.location.pathname === "/") {
-      navigate("/dashboard", { replace: true });
-    }
-  }, [navigate]);
-
+  // No need to redirect since the home path now renders Dashboard directly
+  
   return (
     <DashboardLayout>
       <Dashboard />

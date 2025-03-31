@@ -13,10 +13,15 @@ import UnpaidHandlers from "./pages/UnpaidHandlers";
 import NotFound from "./pages/NotFound";
 import Index from "./pages/Index";
 
+// Use basename to handle subdirectory routing in preview environments
+const basename = import.meta.env.MODE === 'production' 
+  ? '/' 
+  : '/';
+
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <Navigate to="/dashboard" replace />,
+    element: <Dashboard />,
   },
   {
     path: "/dashboard",
@@ -66,8 +71,10 @@ const router = createBrowserRouter([
   {
     // Catch all route for any undefined paths
     path: "*",
-    element: <NotFound />,
+    element: <Dashboard />, // Changed from NotFound to Dashboard to handle odd routes
   },
-]);
+], {
+  basename,
+});
 
 export default router;

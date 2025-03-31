@@ -81,34 +81,43 @@ export function ClassesTabs() {
   const { data: savedOrder, refetch: refetchSavedOrder } = useQuery({
     queryKey: ['class-tab-order', currentBranch?.id],
     queryFn: async () => {
-      // Check if we have a logged in user
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        console.log("No user logged in, cannot fetch saved order");
-        return null;
-      }
+      try {
+        // Check if we have a logged in user
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          console.log("No user logged in, cannot fetch saved order");
+          return null;
+        }
 
-      // Use type assertion to bypass TypeScript's type checking
-      const { data, error } = await (supabase
-        .from('class_tab_order') as any)
-        .select('class_ids')
-        .eq('user_id', user.id)
-        .eq('branch_id', currentBranch?.id || null)
-        .single();
-      
-      if (error && error.code !== 'PGRST116') { // PGRST116 is the "no rows returned" error
-        console.error("Error fetching class order:", error);
+        // Use type assertion to bypass TypeScript's type checking
+        const { data, error } = await (supabase
+          .from('class_tab_order') as any)
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('branch_id', currentBranch?.id || null)
+          .maybeSingle();
+        
+        if (error && error.code !== 'PGRST116') { // PGRST116 is the "no rows returned" error
+          console.error("Error fetching class order:", error);
+          return null;
+        }
+        
+        return data as ClassTabOrder | null;
+      } catch (error) {
+        console.error("Error in fetchSavedOrder:", error);
         return null;
       }
-      
-      return data as ClassTabOrder | null;
     },
-    enabled: true
+    enabled: !!currentBranch
   });
 
   // Initialize ordered classes from database or default order
   useEffect(() => {
-    if (activeClasses.length === 0 || initializedRef.current) return;
+    if (!activeClasses || activeClasses.length === 0) return;
+    
+    if (initializedRef.current) return;
+    
+    console.log("Initializing ordered classes", { savedOrder, activeClasses });
     
     if (savedOrder && savedOrder.class_ids && savedOrder.class_ids.length > 0) {
       // We have a saved order from the database
