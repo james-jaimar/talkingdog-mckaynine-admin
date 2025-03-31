@@ -372,6 +372,41 @@ export type Database = {
           },
         ]
       }
+      class_tab_order: {
+        Row: {
+          branch_id: string | null
+          class_ids: string[]
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          branch_id?: string | null
+          class_ids?: string[]
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          branch_id?: string | null
+          class_ids?: string[]
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_tab_order_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       classes: {
         Row: {
           branch_id: string

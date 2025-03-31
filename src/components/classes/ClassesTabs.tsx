@@ -67,56 +67,101 @@ export function ClassesTabs() {
     class_schedules: { id: string }[] 
   })[]>([]);
 
-  // Load ordered classes from localStorage whenever activeClasses or branch changes
+  // Query to fetch saved class order from database
+  const { data: savedOrder, refetch: refetchSavedOrder } = useQuery({
+    queryKey: ['class-tab-order', currentBranch?.id],
+    queryFn: async () => {
+      // Check if we have a logged in user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.log("No user logged in, cannot fetch saved order");
+        return null;
+      }
+
+      const { data, error } = await supabase
+        .from('class_tab_order')
+        .select('class_ids')
+        .eq('user_id', user.id)
+        .eq('branch_id', currentBranch?.id || null)
+        .single();
+      
+      if (error && error.code !== 'PGRST116') { // PGRST116 is the "no rows returned" error
+        console.error("Error fetching class order:", error);
+        return null;
+      }
+      
+      return data;
+    },
+    enabled: true
+  });
+
+  // Initialize ordered classes from database or default order
   useEffect(() => {
     if (activeClasses.length === 0) return;
-
-    // Create a storage key that includes the branch ID if available
-    const storageKey = `ordered-classes-${currentBranch?.id || 'all'}`;
     
-    // Try to get saved order from localStorage
-    const savedOrderJSON = localStorage.getItem(storageKey);
-    
-    if (savedOrderJSON) {
-      try {
-        // Parse the saved order IDs
-        const savedOrderIds = JSON.parse(savedOrderJSON);
-        
-        // Map IDs to actual class objects and include any new classes at the end
-        const existingClassIds = new Set(savedOrderIds);
-        const orderedClassList = [
-          // First, add classes in the saved order that still exist in activeClasses
-          ...savedOrderIds
-            .map(id => activeClasses.find(c => c.id === id))
-            .filter(Boolean),
-          // Then add any classes not in the saved order
-          ...activeClasses.filter(c => !existingClassIds.has(c.id))
-        ];
-        
-        setOrderedClasses(orderedClassList);
-        initializedRef.current = true;
-      } catch (error) {
-        console.error("Error parsing saved class order:", error);
-        setOrderedClasses([...activeClasses]);
-        initializedRef.current = true;
-      }
+    if (savedOrder && savedOrder.class_ids && savedOrder.class_ids.length > 0) {
+      // We have a saved order from the database
+      const savedOrderIds = savedOrder.class_ids;
+      
+      // Map IDs to actual class objects and include any new classes at the end
+      const existingClassIds = new Set(savedOrderIds);
+      const orderedClassList = [
+        // First, add classes in the saved order that still exist in activeClasses
+        ...savedOrderIds
+          .map(id => activeClasses.find(c => c.id === id))
+          .filter(Boolean),
+        // Then add any classes not in the saved order
+        ...activeClasses.filter(c => !existingClassIds.has(c.id))
+      ];
+      
+      setOrderedClasses(orderedClassList);
     } else {
       // If no saved order, use the default order
       setOrderedClasses([...activeClasses]);
-      initializedRef.current = true;
     }
-  }, [activeClasses, currentBranch?.id]);
-
-  // Save the order whenever it changes
-  useEffect(() => {
-    // Don't save if we haven't initialized yet or if there are no classes
-    if (!initializedRef.current || orderedClasses.length === 0) return;
     
-    // Save the current order to localStorage
-    const storageKey = `ordered-classes-${currentBranch?.id || 'all'}`;
-    const orderIds = orderedClasses.map(item => item.id);
-    localStorage.setItem(storageKey, JSON.stringify(orderIds));
-  }, [orderedClasses, currentBranch?.id]);
+    initializedRef.current = true;
+  }, [activeClasses, savedOrder]);
+
+  // Save the order to database whenever it changes
+  const saveOrderToDatabase = useCallback(async (newOrder: typeof orderedClasses) => {
+    try {
+      // Check if we have a logged in user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.log("No user logged in, cannot save order");
+        return;
+      }
+
+      const orderIds = newOrder.map(item => item.id);
+      
+      // Upsert the order (insert if not exists, update if exists)
+      const { error } = await supabase
+        .from('class_tab_order')
+        .upsert({
+          user_id: user.id,
+          branch_id: currentBranch?.id || null,
+          class_ids: orderIds
+        }, {
+          onConflict: 'user_id, branch_id',
+          ignoreDuplicates: false
+        });
+      
+      if (error) {
+        console.error("Error saving class order:", error);
+        toast({
+          title: "Error saving order",
+          description: "There was a problem saving your class order.",
+          variant: "destructive"
+        });
+      } else {
+        // Refetch the saved order to ensure our state is in sync
+        refetchSavedOrder();
+      }
+    } catch (error) {
+      console.error("Error in saveOrderToDatabase:", error);
+    }
+  }, [currentBranch?.id, toast, refetchSavedOrder]);
 
   // Handle drag end event
   const handleDragEnd = useCallback((result: any) => {
@@ -127,6 +172,9 @@ export function ClassesTabs() {
       const [reorderedItem] = items.splice(result.source.index, 1);
       items.splice(result.destination.index, 0, reorderedItem);
       
+      // Save the new order to the database
+      saveOrderToDatabase(items);
+      
       // Show toast after successful reordering
       toast({
         title: "Class order updated",
@@ -135,7 +183,7 @@ export function ClassesTabs() {
       
       return items;
     });
-  }, [toast]);
+  }, [toast, saveOrderToDatabase]);
   
   if (isLoading) {
     return null;
