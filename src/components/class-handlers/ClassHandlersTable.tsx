@@ -6,8 +6,7 @@ import { format } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { useToast } from "@/components/ui/use-toast";
-import { AttendanceIndicator } from "./AttendanceIndicator";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Calendar, Check, Save } from "lucide-react";
 
@@ -85,40 +84,7 @@ export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
     }
   });
 
-  // Fetch attendance records for this class
-  const { data: attendanceData, isLoading: isLoadingAttendance } = useQuery({
-    queryKey: ['class-attendance', classId],
-    queryFn: async () => {
-      const { data: scheduleIds } = await supabase
-        .from('class_schedules')
-        .select('id')
-        .eq('class_id', classId);
-      
-      if (!scheduleIds?.length) return {};
-      
-      const scheduleIdList = scheduleIds.map(s => s.id);
-      
-      const { data, error } = await supabase
-        .from('class_attendance')
-        .select('*')
-        .in('class_schedule_id', scheduleIdList);
-      
-      if (error) throw error;
-      
-      // Organize attendance by booking_id and date
-      const attendanceMap: Record<string, Record<string, string>> = {};
-      
-      data?.forEach(record => {
-        if (!attendanceMap[record.booking_id]) {
-          attendanceMap[record.booking_id] = {};
-        }
-        const dateStr = format(new Date(record.class_date), 'yyyy-MM-dd');
-        attendanceMap[record.booking_id][dateStr] = record.attendance_status;
-      });
-      
-      return attendanceMap;
-    }
-  });
+  // Removing the attendance fetching query that's no longer needed
 
   const handleInputChange = (bookingId: string, field: string, value: any) => {
     setFormData(prev => ({
@@ -158,7 +124,7 @@ export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
       
       toast({
         title: "Success",
-        description: "Handler information updated",
+        description: "Handler information updated"
       });
       
       setEditingBookingId(null);
@@ -168,12 +134,12 @@ export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
       toast({
         title: "Error",
         description: "Failed to update handler information",
-        variant: "destructive",
+        variant: "destructive"
       });
     }
   };
 
-  if (isLoadingHandlers || isLoadingDates || isLoadingAttendance) {
+  if (isLoadingHandlers || isLoadingDates) {
     return <div className="text-center p-6">Loading class handlers...</div>;
   }
 
@@ -200,14 +166,7 @@ export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
             <TableHead className="text-center">WA</TableHead>
             <TableHead className="text-center">Social</TableHead>
             <TableHead>Info PG</TableHead>
-            {scheduleDates?.map(date => (
-              <TableHead key={date} className="text-center whitespace-nowrap">
-                <div className="flex items-center gap-1 justify-center">
-                  <Calendar className="h-3.5 w-3.5" />
-                  {format(new Date(date), 'dd MMM yyyy')}
-                </div>
-              </TableHead>
-            ))}
+            {/* Removed the date headers that would show attendance indicators */}
             <TableHead className="w-[100px]">Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -329,16 +288,7 @@ export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
                   )}
                 </TableCell>
                 
-                {scheduleDates?.map(date => (
-                  <TableCell key={date} className="text-center">
-                    <AttendanceIndicator
-                      bookingId={booking.id}
-                      scheduleId={booking.class_schedule_id}
-                      date={date}
-                      status={attendanceData?.[booking.id]?.[date] || 'not_marked'}
-                    />
-                  </TableCell>
-                ))}
+                {/* Removed the date cells with attendance indicators */}
                 
                 <TableCell>
                   {isEditing ? (
