@@ -17,32 +17,37 @@ export function ClassesTabs() {
   const { toast } = useToast();
   const initializedRef = useRef(false);
   
-  const { data: classes, isLoading } = useQuery({
+  const { data: classes = [], isLoading } = useQuery({
     queryKey: ['active-classes', currentBranch?.id],
     queryFn: async () => {
-      let query = supabase
-        .from('classes')
-        .select(`
-          *,
-          branches:branch_id (
-            name
-          ),
-          class_schedules!inner(id)
-        `)
-        .order('name');
-      
-      // Filter by branch if one is selected
-      if (currentBranch) {
-        query = query.eq('branch_id', currentBranch.id);
+      try {
+        let query = supabase
+          .from('classes')
+          .select(`
+            *,
+            branches:branch_id (
+              name
+            ),
+            class_schedules!inner(id)
+          `)
+          .order('name');
+        
+        // Filter by branch if one is selected
+        if (currentBranch) {
+          query = query.eq('branch_id', currentBranch.id);
+        }
+        
+        const { data, error } = await query;
+        
+        if (error) throw error;
+        return data as (Class & { 
+          branches: { name: string }, 
+          class_schedules: { id: string }[] 
+        })[];
+      } catch (error) {
+        console.error("Error fetching classes:", error);
+        return [];
       }
-      
-      const { data, error } = await query;
-      
-      if (error) throw error;
-      return data as (Class & { 
-        branches: { name: string }, 
-        class_schedules: { id: string }[] 
-      })[];
     },
     enabled: true
   });
@@ -83,17 +88,17 @@ export function ClassesTabs() {
     });
   }, [toast]);
   
-  if (isLoading) {
-    return null;
-  }
-
   // Only display the class tabs on the classes page or class-related pages
   if (!location.pathname.includes('/classes')) {
     return null;
   }
   
   // If we have no active classes or haven't initialized the ordered classes yet, don't render
-  if (activeClasses.length === 0 || orderedClasses.length === 0) {
+  if (activeClasses.length === 0) {
+    return null;
+  }
+  
+  if (isLoading) {
     return null;
   }
 
