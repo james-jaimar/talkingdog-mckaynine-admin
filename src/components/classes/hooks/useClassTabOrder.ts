@@ -1,0 +1,138 @@
+
+import { useState, useEffect, useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { Class } from "../types/class";
+
+// Define interface for class tab order data
+interface ClassTabOrder {
+  id: string;
+  user_id: string;
+  branch_id: string | null;
+  class_ids: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+type ClassWithExtras = Class & { 
+  branches: { name: string }, 
+  class_schedules: { id: string }[] 
+};
+
+export function useClassTabOrder(
+  activeClasses: ClassWithExtras[],
+  branchId: string | undefined
+) {
+  const { toast } = useToast();
+  const [orderedClasses, setOrderedClasses] = useState<ClassWithExtras[]>([]);
+
+  // Query to fetch saved class order from database
+  const { data: savedOrder, isLoading: isLoadingOrder } = useQuery({
+    queryKey: ['class-tab-order', branchId],
+    queryFn: async () => {
+      try {
+        // Check if we have a logged in user
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          console.log("No user logged in, cannot fetch saved order");
+          return null;
+        }
+
+        // Use type assertion to bypass TypeScript's type checking
+        const { data, error } = await (supabase
+          .from('class_tab_order') as any)
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('branch_id', branchId || null)
+          .maybeSingle();
+        
+        if (error && error.code !== 'PGRST116') { // PGRST116 is the "no rows returned" error
+          console.error("Error fetching class order:", error);
+          return null;
+        }
+        
+        return data as ClassTabOrder | null;
+      } catch (error) {
+        console.error("Error in fetchSavedOrder:", error);
+        return null;
+      }
+    },
+    enabled: !!branchId
+  });
+
+  // Initialize ordered classes from database or default order
+  useEffect(() => {
+    if (!activeClasses || activeClasses.length === 0 || isLoadingOrder) return;
+    
+    console.log("Setting up ordered classes", { savedOrder, activeClasses });
+    
+    if (savedOrder && savedOrder.class_ids && savedOrder.class_ids.length > 0) {
+      // We have a saved order from the database
+      const savedOrderIds = savedOrder.class_ids;
+      
+      // Map IDs to actual class objects and include any new classes at the end
+      const existingClassIds = new Set(savedOrderIds);
+      const orderedClassList = [
+        // First, add classes in the saved order that still exist in activeClasses
+        ...savedOrderIds
+          .map(id => activeClasses.find(c => c.id === id))
+          .filter(Boolean) as ClassWithExtras[],
+        // Then add any classes not in the saved order
+        ...activeClasses.filter(c => !existingClassIds.has(c.id))
+      ];
+      
+      setOrderedClasses(orderedClassList);
+    } else {
+      // If no saved order, use the default order
+      setOrderedClasses([...activeClasses]);
+    }
+  }, [activeClasses, savedOrder, isLoadingOrder, branchId]);
+
+  // Save the order to database whenever it changes
+  const saveOrderToDatabase = useCallback(async (newOrder: ClassWithExtras[]) => {
+    try {
+      // Check if we have a logged in user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.log("No user logged in, cannot save order");
+        return;
+      }
+
+      const orderIds = newOrder.map(item => item.id);
+      
+      // Upsert the order (insert if not exists, update if exists)
+      // Use type assertion to bypass TypeScript's type checking
+      const { error } = await (supabase
+        .from('class_tab_order') as any)
+        .upsert({
+          user_id: user.id,
+          branch_id: branchId || null,
+          class_ids: orderIds
+        }, {
+          onConflict: 'user_id, branch_id',
+          ignoreDuplicates: false
+        });
+      
+      if (error) {
+        console.error("Error saving class order:", error);
+        toast({
+          title: "Error saving order",
+          description: "There was a problem saving your class order.",
+          variant: "destructive"
+        });
+      } else {
+        console.log("Successfully saved order to database");
+      }
+    } catch (error) {
+      console.error("Error in saveOrderToDatabase:", error);
+    }
+  }, [branchId, toast]);
+
+  return {
+    orderedClasses,
+    setOrderedClasses,
+    isLoadingOrder,
+    saveOrderToDatabase
+  };
+}

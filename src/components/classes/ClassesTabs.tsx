@@ -3,48 +3,31 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useBranch } from "@/context/BranchContext";
 import { Class } from "./types/class";
-import { useLocation, useNavigate } from "react-router-dom";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-import { useState, useEffect, useCallback, useRef } from "react";
-import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
-import { GripVertical } from "lucide-react";
+import { DragDropContext, Droppable } from "react-beautiful-dnd";
 import { useToast } from "@/hooks/use-toast";
-
-// Define interface for class tab order data
-interface ClassTabOrder {
-  id: string;
-  user_id: string;
-  branch_id: string | null;
-  class_ids: string[];
-  created_at: string;
-  updated_at: string;
-}
+import { useClassTabOrder } from "./hooks/useClassTabOrder";
+import { useClassTabNavigation } from "./hooks/useClassTabNavigation";
+import { ClassTab } from "./ClassTab";
 
 export function ClassesTabs() {
   const { currentBranch } = useBranch();
-  const location = useLocation();
-  const navigate = useNavigate();
   const { toast } = useToast();
-  const isDraggingRef = useRef(false);
-  const preventNextNavigationRef = useRef(false);
+  
+  const {
+    activeTab,
+    isDraggingRef,
+    preventNextNavigationRef,
+    handleTabClick,
+    handleDragStart,
+    isClassesPath
+  } = useClassTabNavigation();
   
   // Only display the class tabs on the classes page or class-related pages
-  if (!location.pathname.includes('/classes')) {
+  if (!isClassesPath) {
     return null;
   }
-  
-  // Determine active tab from URL path
-  const getActiveTabFromPath = () => {
-    const classIdMatch = location.pathname.match(/\/classes\/([^/]+)/);
-    if (classIdMatch) {
-      return classIdMatch[1];
-    }
-    return "all";
-  };
-  
-  // Initialize active tab state from URL
-  const [activeTab, setActiveTab] = useState<string>(getActiveTabFromPath());
   
   // Query to fetch classes
   const { data: classes = [], isLoading } = useQuery({
@@ -85,145 +68,13 @@ export function ClassesTabs() {
   // Filter to only include classes with schedules
   const activeClasses = classes?.filter(c => c.class_schedules.length > 0) || [];
   
-  // State for storing the ordered list of classes
-  const [orderedClasses, setOrderedClasses] = useState<(Class & { 
-    branches: { name: string }, 
-    class_schedules: { id: string }[] 
-  })[]>([]);
+  const {
+    orderedClasses,
+    setOrderedClasses,
+    saveOrderToDatabase
+  } = useClassTabOrder(activeClasses, currentBranch?.id);
 
-  // Query to fetch saved class order from database
-  const { data: savedOrder, isLoading: isLoadingOrder } = useQuery({
-    queryKey: ['class-tab-order', currentBranch?.id],
-    queryFn: async () => {
-      try {
-        // Check if we have a logged in user
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          console.log("No user logged in, cannot fetch saved order");
-          return null;
-        }
-
-        // Use type assertion to bypass TypeScript's type checking
-        const { data, error } = await (supabase
-          .from('class_tab_order') as any)
-          .select('*')
-          .eq('user_id', user.id)
-          .eq('branch_id', currentBranch?.id || null)
-          .maybeSingle();
-        
-        if (error && error.code !== 'PGRST116') { // PGRST116 is the "no rows returned" error
-          console.error("Error fetching class order:", error);
-          return null;
-        }
-        
-        return data as ClassTabOrder | null;
-      } catch (error) {
-        console.error("Error in fetchSavedOrder:", error);
-        return null;
-      }
-    },
-    enabled: !!currentBranch
-  });
-
-  // Initialize ordered classes from database or default order
-  useEffect(() => {
-    if (!activeClasses || activeClasses.length === 0 || isLoadingOrder) return;
-    
-    console.log("Setting up ordered classes", { savedOrder, activeClasses });
-    
-    if (savedOrder && savedOrder.class_ids && savedOrder.class_ids.length > 0) {
-      // We have a saved order from the database
-      const savedOrderIds = savedOrder.class_ids;
-      
-      // Map IDs to actual class objects and include any new classes at the end
-      const existingClassIds = new Set(savedOrderIds);
-      const orderedClassList = [
-        // First, add classes in the saved order that still exist in activeClasses
-        ...savedOrderIds
-          .map(id => activeClasses.find(c => c.id === id))
-          .filter(Boolean) as (Class & { 
-            branches: { name: string }, 
-            class_schedules: { id: string }[] 
-          })[],
-        // Then add any classes not in the saved order
-        ...activeClasses.filter(c => !existingClassIds.has(c.id))
-      ];
-      
-      setOrderedClasses(orderedClassList);
-    } else {
-      // If no saved order, use the default order
-      setOrderedClasses([...activeClasses]);
-    }
-  }, [activeClasses, savedOrder, isLoadingOrder, currentBranch?.id]);
-
-  // Update active tab when URL changes (only if not dragging)
-  useEffect(() => {
-    if (isDraggingRef.current || preventNextNavigationRef.current) {
-      return;
-    }
-    
-    const newActiveTab = getActiveTabFromPath();
-    setActiveTab(newActiveTab);
-  }, [location.pathname]);
-
-  // Handle tab click
-  const handleTabClick = useCallback((tabValue: string, path: string) => {
-    // Skip navigation if we're dragging
-    if (isDraggingRef.current) return;
-    
-    // Update the state
-    setActiveTab(tabValue);
-    
-    // Navigate to the path (replace rather than push to avoid history buildup)
-    navigate(path, { replace: true });
-  }, [navigate]);
-
-  // Save the order to database whenever it changes
-  const saveOrderToDatabase = useCallback(async (newOrder: typeof orderedClasses) => {
-    try {
-      // Check if we have a logged in user
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        console.log("No user logged in, cannot save order");
-        return;
-      }
-
-      const orderIds = newOrder.map(item => item.id);
-      
-      // Upsert the order (insert if not exists, update if exists)
-      // Use type assertion to bypass TypeScript's type checking
-      const { error } = await (supabase
-        .from('class_tab_order') as any)
-        .upsert({
-          user_id: user.id,
-          branch_id: currentBranch?.id || null,
-          class_ids: orderIds
-        }, {
-          onConflict: 'user_id, branch_id',
-          ignoreDuplicates: false
-        });
-      
-      if (error) {
-        console.error("Error saving class order:", error);
-        toast({
-          title: "Error saving order",
-          description: "There was a problem saving your class order.",
-          variant: "destructive"
-        });
-      } else {
-        console.log("Successfully saved order to database");
-      }
-    } catch (error) {
-      console.error("Error in saveOrderToDatabase:", error);
-    }
-  }, [currentBranch?.id, toast]);
-
-  // Handle drag events
-  const handleDragStart = useCallback(() => {
-    isDraggingRef.current = true;
-  }, []);
-
-  const handleDragEnd = useCallback((result: any) => {
+  const handleDragEnd = (result: any) => {
     // If there's no destination, don't do anything
     if (!result.destination) {
       isDraggingRef.current = false;
@@ -263,7 +114,7 @@ export function ClassesTabs() {
       title: "Class order updated",
       description: "The order of class tabs has been updated and saved."
     });
-  }, [orderedClasses, activeTab, toast, saveOrderToDatabase]);
+  };
 
   if (isLoading) {
     return null;
@@ -299,32 +150,13 @@ export function ClassesTabs() {
                 </TabsTrigger>
                 
                 {orderedClasses.map((classItem, index) => (
-                  <Draggable 
-                    key={classItem.id} 
-                    draggableId={classItem.id} 
+                  <ClassTab
+                    key={classItem.id}
+                    classItem={classItem}
                     index={index}
-                  >
-                    {(provided) => (
-                      <TabsTrigger 
-                        value={classItem.id} 
-                        ref={provided.innerRef}
-                        {...provided.draggableProps}
-                        onClick={() => handleTabClick(classItem.id, `/classes/${classItem.id}/handlers`)}
-                        className={cn(
-                          "flex items-center gap-1",
-                          location.pathname.includes(`/classes/${classItem.id}`) ? "font-medium" : ""
-                        )}
-                      >
-                        <div 
-                          {...provided.dragHandleProps}
-                          className="cursor-grab px-1"
-                        >
-                          <GripVertical className="h-4 w-4 text-muted-foreground" />
-                        </div>
-                        {classItem.name}
-                      </TabsTrigger>
-                    )}
-                  </Draggable>
+                    isActive={location.pathname.includes(`/classes/${classItem.id}`)}
+                    onTabClick={handleTabClick}
+                  />
                 ))}
                 {provided.placeholder}
               </TabsList>
