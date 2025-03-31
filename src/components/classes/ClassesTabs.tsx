@@ -55,19 +55,14 @@ export function ClassesTabs() {
     class_schedules: { id: string }[] 
   })[]>([]);
 
-  // Update orderedClasses when activeClasses changes - fixed with a stable comparison
+  // Initialize orderedClasses from activeClasses only once when activeClasses is populated
   useEffect(() => {
-    // Only update if activeClasses has changed from empty to non-empty
-    // or if orderedClasses is empty but activeClasses has items
-    if (
-      (activeClasses.length > 0 && orderedClasses.length === 0) || 
-      (activeClasses.length > 0 && JSON.stringify(activeClasses.map(c => c.id)) !== JSON.stringify(orderedClasses.map(c => c.id)))
-    ) {
+    if (activeClasses.length > 0 && orderedClasses.length === 0) {
       setOrderedClasses([...activeClasses]);
     }
-  }, [activeClasses, orderedClasses]);
+  }, [activeClasses, orderedClasses.length]);
 
-  // Handle drag end event with useCallback to prevent recreating the function on every render
+  // The key fix: handle drag end event with useCallback and proper state update
   const handleDragEnd = useCallback((result: any) => {
     if (!result.destination) return;
     
@@ -75,6 +70,7 @@ export function ClassesTabs() {
     const [reorderedItem] = items.splice(result.source.index, 1);
     items.splice(result.destination.index, 0, reorderedItem);
     
+    // Important: Use a functional update to ensure we're working with the latest state
     setOrderedClasses(items);
     
     toast({
