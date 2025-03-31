@@ -107,8 +107,10 @@ export function ClassesTable() {
                   <Button 
                     variant="outline" 
                     size="sm"
-                    as={Link}
-                    to={`/classes/${classItem.id}/schedules`}
+                    onClick={() => {
+                      console.log("Navigating to schedules for class ID:", classItem.id);
+                      window.location.href = `/classes/${classItem.id}/schedules`;
+                    }}
                   >
                     Schedules
                   </Button>
