@@ -24,9 +24,11 @@ interface ImportRow {
 export async function processImportData(
   data: any[],
   createMissingHandlers: boolean,
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  branchId?: string
 ): Promise<number> {
   let importedCount = 0;
+  console.log(`Processing ${data.length} rows for import with branchId: ${branchId || 'none'}`);
 
   for (const row of data) {
     const parsedRow = parseRow(row);
@@ -41,7 +43,7 @@ export async function processImportData(
       const email = parsedRow["E-mail"].trim();
       let { data: existingClients } = await supabase
         .from("clients")
-        .select("id, first_name, last_name")
+        .select("id, first_name, last_name, branch_id")
         .eq("email", email);
 
       let clientId;
@@ -56,43 +58,80 @@ export async function processImportData(
         // Extract first and last name from email or use placeholders
         const nameParts = extractNameFromEmail(email);
         
+        // Generate notes with WhatsApp and Photo Permission preferences
+        const notes = generateNotes(parsedRow);
+        
+        // Insert new client with branch_id if available
         const { data: newClient, error } = await supabase
           .from("clients")
           .insert({
             email: email,
             first_name: nameParts.firstName,
             last_name: nameParts.lastName,
-            phone: parsedRow["Tel"] || parsedRow["WhatsApp"] || null,
-            notes: parsedRow["COMMENTS"] || null
+            phone: parsedRow["Tel"] || null,
+            notes: notes,
+            branch_id: branchId || null
           })
           .select("id")
           .single();
 
         if (error) throw error;
         clientId = newClient.id;
+        console.log(`Created new client: ${nameParts.firstName} ${nameParts.lastName} (${email}) with ID: ${clientId}`);
       } else {
         clientId = existingClients[0].id;
+        console.log(`Using existing client with ID: ${clientId} for email: ${email}`);
+        
+        // Update branch_id if the client doesn't have one and we have one to set
+        if (branchId && (!existingClients[0].branch_id || existingClients[0].branch_id === null)) {
+          await supabase
+            .from("clients")
+            .update({ branch_id: branchId })
+            .eq("id", clientId);
+          console.log(`Updated branch_id to ${branchId} for client: ${clientId}`);
+        }
       }
 
       // 3. Add the dog
       const dogName = parsedRow["Dog's Name"].trim();
-      const { data: newDog, error: dogError } = await supabase
+      
+      // Check if dog already exists for this client
+      const { data: existingDogs } = await supabase
         .from("dogs")
-        .insert({
-          client_id: clientId,
-          name: dogName,
-          breed: parsedRow["Breed"].trim(),
-          notes: parsedRow["COMMENTS"] || null,
-          age: calculateAgeFromDOB(parsedRow["DOB"])
-        })
         .select("id")
-        .single();
+        .eq("client_id", clientId)
+        .eq("name", dogName);
+        
+      let dogId;
+      
+      if (existingDogs && existingDogs.length > 0) {
+        // Use existing dog
+        dogId = existingDogs[0].id;
+        console.log(`Using existing dog with ID: ${dogId} for client: ${clientId}`);
+      } else {
+        // Create new dog
+        const { data: newDog, error: dogError } = await supabase
+          .from("dogs")
+          .insert({
+            client_id: clientId,
+            name: dogName,
+            breed: parsedRow["Breed"].trim(),
+            behavior_notes: parsedRow["Assess"] || null,
+            age: calculateAgeFromDOB(parsedRow["DOB"]),
+            // Store original DOB in notes if available
+            notes: parsedRow["DOB"] ? `DOB: ${parsedRow["DOB"]}` : (parsedRow["COMMENTS"] || null)
+          })
+          .select("id")
+          .single();
 
-      if (dogError) throw dogError;
+        if (dogError) throw dogError;
+        dogId = newDog.id;
+        console.log(`Created new dog: ${dogName} with ID: ${dogId} for client: ${clientId}`);
+      }
 
       // 4. Add class enrollments if any
       const enrollmentData = {
-        dog_id: newDog.id,
+        dog_id: dogId,
         puppy_class: hasValue(parsedRow["PUPPY"]),
         eo_class: hasValue(parsedRow["EO"]),
         bronze_cgc_class: hasValue(parsedRow["BRONZE CGC"]),
@@ -107,7 +146,12 @@ export async function processImportData(
       );
 
       if (hasAnyEnrollment) {
-        await supabase.from("class_enrollments").insert(enrollmentData);
+        const { error: enrollmentError } = await supabase.from("class_enrollments").insert(enrollmentData);
+        if (enrollmentError) {
+          console.error("Error creating enrollment:", enrollmentError);
+        } else {
+          console.log(`Created class enrollment for dog: ${dogId}`);
+        }
       }
 
       importedCount++;
@@ -117,6 +161,7 @@ export async function processImportData(
     }
   }
 
+  console.log(`Successfully imported ${importedCount} handlers`);
   return importedCount;
 }
 
@@ -134,6 +179,27 @@ function parseRow(row: any): ImportRow {
   });
 
   return normalizedRow;
+}
+
+function generateNotes(row: ImportRow): string {
+  const notes: string[] = [];
+  
+  // Add WhatsApp preference
+  if (hasValue(row["WhatsApp"])) {
+    notes.push("WhatsApp: yes");
+  }
+  
+  // Add Photo Permission preference
+  if (hasValue(row["Photo Pemission"])) {
+    notes.push("Photo Permission: yes");
+  }
+  
+  // Add comments if available
+  if (row["COMMENTS"]) {
+    notes.push(row["COMMENTS"]);
+  }
+  
+  return notes.join("\n");
 }
 
 function extractNameFromEmail(email: string): { firstName: string; lastName: string } {

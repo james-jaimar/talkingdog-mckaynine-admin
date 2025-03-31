@@ -10,6 +10,7 @@ import { HandlerAlphabetPagination } from "@/components/handlers/HandlerAlphabet
 import { HandlerTable } from "@/components/handlers/HandlerTable";
 import { useHandlersData } from "@/components/handlers/hooks/useHandlersData";
 import { Helmet } from "react-helmet";
+import { useEffect } from "react";
 
 export default function Handlers() {
   const { 
@@ -19,8 +20,14 @@ export default function Handlers() {
     setSearchQuery, 
     currentGroup, 
     setCurrentGroup, 
-    itemsPerPage 
+    itemsPerPage,
+    refetch
   } = useHandlersData();
+
+  // Refetch data when component mounts to ensure we have the latest data after imports
+  useEffect(() => {
+    refetch();
+  }, [refetch]);
 
   return (
     <DashboardLayout>
@@ -57,7 +64,10 @@ export default function Handlers() {
           {/* Handlers list */}
           <Card className="border border-gray-200 shadow-sm w-full">
             <CardHeader className="bg-gray-50 border-b border-gray-200 flex flex-row items-center justify-between">
-              <CardTitle>All Handlers {searchQuery ? `(Search: "${searchQuery}")` : `(${currentGroup})`}</CardTitle>
+              <CardTitle>
+                All Handlers {searchQuery ? `(Search: "${searchQuery}")` : `(${currentGroup})`}
+                {handlers.length > 0 && ` - ${handlers.length} found`}
+              </CardTitle>
               <Button 
                 variant="outline" 
                 size="sm"

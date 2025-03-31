@@ -34,10 +34,12 @@ export function useHandlersData() {
   const itemsPerPage = 50;
   const { currentBranch } = useBranch();
 
-  const { data: handlers = [], isLoading } = useQuery({
+  // Add refetch interval to periodically check for new data
+  const { data: handlers = [], isLoading, refetch } = useQuery({
     queryKey: ['handlers', currentBranch?.id],
     queryFn: async () => {
       try {
+        console.log(`Fetching handlers for branch: ${currentBranch?.id || 'all'}`);
         let query = supabase
           .from('clients')
           .select(`
@@ -69,14 +71,21 @@ export function useHandlersData() {
         
         const { data, error } = await query;
         
-        if (error) throw error;
+        if (error) {
+          console.error("Error fetching handlers:", error);
+          throw error;
+        }
+        
+        console.log(`Fetched ${data?.length || 0} handlers`);
         return (data || []) as Handler[];
       } catch (error) {
-        console.error("Error fetching handlers:", error);
+        console.error("Error in handlers query:", error);
         return [] as Handler[];
       }
     },
-    enabled: !!currentBranch // Only run query when a branch is selected
+    enabled: !!currentBranch, // Only run query when a branch is selected
+    refetchInterval: 10000, // Refetch every 10 seconds to see new imports
+    refetchOnWindowFocus: true
   });
 
   // Filter handlers by search query
@@ -109,6 +118,7 @@ export function useHandlersData() {
     currentGroup,
     setCurrentGroup,
     itemsPerPage,
-    currentBranch
+    currentBranch,
+    refetch
   };
 }

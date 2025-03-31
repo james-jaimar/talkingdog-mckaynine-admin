@@ -9,6 +9,7 @@ import { processImportData } from "./importUtils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Upload } from "lucide-react"; // Added missing import for the Upload icon
+import { useBranch } from "@/context/BranchContext";
 
 interface CSVImporterProps {
   onImportSuccess: (count: number) => void;
@@ -20,6 +21,7 @@ export function CSVImporter({ onImportSuccess }: CSVImporterProps) {
   const [createMissingHandlers, setCreateMissingHandlers] = useState(true);
   const [previewData, setPreviewData] = useState<any[]>([]);
   const [hasPreviewedData, setHasPreviewedData] = useState(false);
+  const { currentBranch } = useBranch();
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     accept: {
@@ -40,6 +42,7 @@ export function CSVImporter({ onImportSuccess }: CSVImporterProps) {
       header: true,
       skipEmptyLines: true,
       complete: (results) => {
+        console.log("CSV Preview Data:", results.data.slice(0, 5));
         const previewRows = results.data.slice(0, 5);
         setPreviewData(previewRows);
         setHasPreviewedData(true);
@@ -64,15 +67,25 @@ export function CSVImporter({ onImportSuccess }: CSVImporterProps) {
         skipEmptyLines: true,
         complete: async (results) => {
           try {
+            console.log("CSV Import - Total rows:", results.data.length);
+            console.log("Current branch:", currentBranch);
+            
             // Process and import the data
             const importedCount = await processImportData(
               results.data,
               createMissingHandlers,
-              supabase
+              supabase,
+              currentBranch?.id  // Pass the current branch ID to associate handlers with this branch
             );
+            
+            toast({
+              title: "Import successful",
+              description: `${importedCount} handlers imported successfully.`,
+            });
             
             onImportSuccess(importedCount);
           } catch (error: any) {
+            console.error("Import error:", error);
             toast({
               title: "Import failed",
               description: error.message || "An error occurred during import",
@@ -83,6 +96,7 @@ export function CSVImporter({ onImportSuccess }: CSVImporterProps) {
           }
         },
         error: (error) => {
+          console.error("CSV parsing error:", error);
           toast({
             title: "Error parsing CSV",
             description: error.message,
@@ -92,6 +106,7 @@ export function CSVImporter({ onImportSuccess }: CSVImporterProps) {
         }
       });
     } catch (error: any) {
+      console.error("Import process error:", error);
       toast({
         title: "Import failed",
         description: error.message || "An error occurred during import",
@@ -134,6 +149,11 @@ export function CSVImporter({ onImportSuccess }: CSVImporterProps) {
       {file && (
         <div className="bg-gray-50 p-3 rounded-md">
           <p className="text-sm font-medium">Selected file: {file.name}</p>
+          {currentBranch && (
+            <p className="text-xs text-gray-500 mt-1">
+              Handlers will be imported to branch: {currentBranch.name}
+            </p>
+          )}
         </div>
       )}
 

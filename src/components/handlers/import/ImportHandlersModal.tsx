@@ -12,15 +12,21 @@ import { Upload } from "lucide-react";
 import { useState } from "react";
 import { CSVImporter } from "./CSVImporter";
 import { toast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
 
 export function ImportHandlersModal() {
   const [open, setOpen] = useState(false);
+  const queryClient = useQueryClient();
 
   const handleImportSuccess = (count: number) => {
     toast({
       title: "Import successful",
       description: `${count} handlers imported successfully.`,
     });
+    
+    // Invalidate queries to force a refresh
+    queryClient.invalidateQueries({ queryKey: ['handlers'] });
+    
     setOpen(false);
   };
 
