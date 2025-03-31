@@ -1,8 +1,6 @@
-
 import { useState } from "react";
 import { parseCSVFile, generateInitialMappings } from "../helpers/csv-parser";
 import { FieldMapping } from "../types";
-import { availableFields } from "../fieldDefinitions";
 
 export function useCSVFileUpload() {
   const [csvFile, setCsvFile] = useState<File | null>(null);
@@ -17,29 +15,52 @@ export function useCSVFileUpload() {
     setCsvFile(file);
     
     parseCSVFile(file, (headers, data) => {
-      setCsvHeaders(headers);
-      setCsvData(data);
-      
-      // Initialize field mappings with best guesses
-      const initialMappings = generateInitialMappings(headers);
-      
-      // Try fuzzy matching for any headers not directly matched
-      headers.forEach(header => {
-        if (!initialMappings[header]) {
-          const normalizedHeader = header.toLowerCase().replace(/[^a-z0-9]/g, '');
-          
-          // Find potential matches
-          const match = availableFields.find(field => {
-            const normalizedField = field.dbField.toLowerCase().replace(/[^a-z0-9]/g, '');
-            return normalizedHeader.includes(normalizedField) || normalizedField.includes(normalizedHeader);
-          });
-          
-          if (match) {
-            initialMappings[header] = `${match.table}.${match.dbField}`;
+      // Process and clean data
+      const cleanedData = data.map(row => {
+        const cleanRow: Record<string, any> = {};
+        
+        // Process each field in the row
+        Object.entries(row).forEach(([header, value]) => {
+          // Handle boolean fields (preferences, class enrollments)
+          if (typeof value === 'string' && 
+              (header === 'WhatsApp' || 
+               header === 'Photo Permission' ||
+               header === 'PUPPY' ||
+               header === 'EO' ||
+               header === 'BRONZE CGC' ||
+               header === 'SILVER CGC' ||
+               header === 'BEGINNER/Novice' ||
+               header === 'WT' ||
+               header === 'YOGA')) {
+            
+            const lowerValue = value.toString().toLowerCase().trim();
+            
+            // Convert string values to true/false
+            if (['yes', 'y', 'true', '1', 'enrolled', 'completed', 'grad'].some(v => lowerValue.includes(v))) {
+              cleanRow[header] = true;
+            } else if (['no', 'n', 'false', '0', '-', ''].includes(lowerValue)) {
+              cleanRow[header] = false;
+            } else {
+              // Keep as is for other values
+              cleanRow[header] = value;
+            }
+          } else if (value === '-' || value === '') {
+            // Convert dashes and empty strings to null for better handling
+            cleanRow[header] = null;
+          } else {
+            // Keep as is for other values
+            cleanRow[header] = value;
           }
-        }
+        });
+        
+        return cleanRow;
       });
       
+      setCsvHeaders(headers);
+      setCsvData(cleanedData);
+      
+      // Generate initial mappings
+      const initialMappings = generateInitialMappings(headers);
       setFieldMappings(initialMappings);
     });
   };
@@ -66,7 +87,6 @@ export function useCSVFileUpload() {
     csvData,
     fieldMappings,
     handleFileChange,
-    handleMapField,
-    setFieldMappings
+    handleMapField
   };
 }

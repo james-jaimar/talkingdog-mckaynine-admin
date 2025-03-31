@@ -1,30 +1,24 @@
 
 import { useState } from "react";
-import { FieldMapping } from "../types";
-import { processClientData } from "../helpers/clientHelpers";
-import { processDogData } from "../helpers/dogHelpers";
-import { processClassEnrollments } from "../helpers/classHelpers";
+import { FieldMapping, ImportResult, ProcessingStatus } from "../types";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
 export function useDataImport() {
   const [isUploading, setIsUploading] = useState(false);
-  const [processingResults, setProcessingResults] = useState<{
-    total: number;
-    processed: number;
-    errors: { row: number; message: string }[];
-  }>({ total: 0, processed: 0, errors: [] });
+  const [processingResults, setProcessingResults] = useState<ProcessingStatus | null>(null);
 
   const processImport = async (
     data: any[],
     fieldMappings: FieldMapping,
     branchId?: string
-  ) => {
-    // First, validate email mapping - this is critical
-    const emailMapping = Object.entries(fieldMappings).find(
+  ): Promise<ImportResult> => {
+    // Validate that email is mapped
+    const emailHeader = Object.entries(fieldMappings).find(
       ([_, value]) => value === 'clients.email'
     );
     
-    if (!emailMapping) {
+    if (!emailHeader) {
       toast({
         title: "Import failed",
         description: "Email field must be mapped for client import",
@@ -33,213 +27,427 @@ export function useDataImport() {
       
       return {
         success: false,
-        errors: ['Email field must be mapped for client import']
+        processed: 0,
+        total: data.length,
+        errors: [{ row: 0, message: 'Email field must be mapped for client import' }]
       };
     }
-    
-    const [emailHeader] = emailMapping;
     
     setIsUploading(true);
-    setProcessingResults({ total: data.length, processed: 0, errors: [] });
+    setProcessingResults({ 
+      total: data.length, 
+      processed: 0, 
+      errors: [] 
+    });
     
-    try {
-      const errors: { row: number; message: string }[] = [];
-      let processed = 0;
+    const result: ImportResult = {
+      success: false,
+      processed: 0,
+      total: data.length,
+      errors: []
+    };
+    
+    for (let rowIndex = 0; rowIndex < data.length; rowIndex++) {
+      const row = data[rowIndex];
       
-      // Group fieldMappings by table
-      const tableFields: Record<string, Record<string, string>> = {};
-      
-      Object.entries(fieldMappings).forEach(([csvHeader, dbFieldWithTable]) => {
-        if (!dbFieldWithTable) return; // Skip unmapped fields
+      try {
+        // 1. Extract client data
+        const clientData = extractClientData(row, fieldMappings, branchId);
         
-        const [table, field] = dbFieldWithTable.split('.');
-        if (!table || !field) return;
-        
-        if (!tableFields[table]) {
-          tableFields[table] = {};
+        // Skip if no email
+        if (!clientData.email || clientData.email.trim() === '') {
+          throw new Error('Email is required');
         }
         
-        tableFields[table][csvHeader] = dbFieldWithTable;
-      });
-      
-      console.log("Table fields mapping:", tableFields);
-      
-      // Process data row by row
-      for (let i = 0; i < data.length; i++) {
-        const row = data[i];
+        // 2. Create or update client
+        const clientId = await saveClient(clientData);
         
-        try {
-          // Skip rows without email
-          const email = row[emailHeader]?.trim();
-          if (!email) {
-            throw new Error('Email is required for client import');
-          }
+        if (clientId) {
+          // 3. Extract and save dog data if present
+          const dogData = extractDogData(row, fieldMappings);
           
-          // Process client data first
-          let clientId: string | undefined;
-          
-          // Always try to create a client, even if no specific client fields are mapped
-          // Email is the minimum requirement
-          clientId = await processClientData(row, tableFields['clients'] || { [emailHeader]: 'clients.email' }, branchId);
-          
-          if (clientId) {
-            // Try to process dog data
-            let dogName = findDogName(row, fieldMappings);
-            let breed = findBreed(row, fieldMappings);
+          // Only create dog if we have at least a name
+          if (dogData.name) {
+            dogData.client_id = clientId;
+            const dogId = await saveDog(dogData);
             
-            // If we have at least a dog name, try to create the dog
-            if (dogName) {
-              try {
-                // Ensure we have dog fields mapped
-                if (!tableFields['dogs']) {
-                  tableFields['dogs'] = {};
-                }
-                
-                // Make sure dog name is mapped
-                if (!Object.values(tableFields['dogs']).includes('dogs.name')) {
-                  // Find the header that contains the dog name
-                  for (const [header, value] of Object.entries(row)) {
-                    if (header.toLowerCase().includes('dog') && String(value) === dogName) {
-                      tableFields['dogs'][header] = 'dogs.name';
-                      break;
-                    }
-                  }
-                }
-                
-                // Make sure breed is mapped if we found it
-                if (breed && !Object.values(tableFields['dogs']).includes('dogs.breed')) {
-                  // Find the header that contains the breed
-                  for (const [header, value] of Object.entries(row)) {
-                    if (header.toLowerCase().includes('breed') && String(value) === breed) {
-                      tableFields['dogs'][header] = 'dogs.breed';
-                      break;
-                    }
-                  }
-                }
-                
-                console.log(`Processing dog for row ${i+1} with name: ${dogName}, breed: ${breed || 'Unknown'}`);
-                
-                // If we don't have a real breed but need to process a dog, use a placeholder
-                if (!breed && !Object.values(tableFields['dogs']).includes('dogs.breed')) {
-                  // Find the Breed header
-                  for (const header of Object.keys(row)) {
-                    if (header.toLowerCase() === 'breed') {
-                      tableFields['dogs'][header] = 'dogs.breed';
-                      // Set a placeholder breed if it's empty
-                      if (!row[header]) {
-                        row[header] = 'Unknown';
-                      }
-                      break;
-                    }
-                  }
-                }
-                
-                // Process dog data with what we have
-                const dogId = await processDogData(row, tableFields['dogs'], clientId);
-                
-                // Process class enrollments if dog was created
-                if (dogId) {
-                  try {
-                    console.log(`Processing class enrollments for dog ${dogName} (${dogId})`);
-                    await processClassEnrollments(row, fieldMappings, dogId);
-                  } catch (classError: any) {
-                    console.warn(`Class enrollment processing failed for row ${i+1} but continuing import:`, classError);
-                  }
-                }
-              } catch (dogError: any) {
-                console.error(`Dog processing failed for row ${i+1}:`, dogError);
+            // 4. Save class enrollments if dog was created
+            if (dogId) {
+              const enrollments = extractClassEnrollments(row, fieldMappings);
+              if (Object.values(enrollments).some(val => val === true)) {
+                await saveClassEnrollments(dogId, enrollments);
               }
             }
-            
-            // Count as processed if at least the client was created
-            processed++;
-            setProcessingResults(prev => ({
-              ...prev,
-              processed: processed
-            }));
           }
-        } catch (error: any) {
-          console.error(`Error processing row ${i+1}:`, error);
-          errors.push({ 
-            row: i+1, 
-            message: error.message || 'Unknown error' 
-          });
           
-          setProcessingResults(prev => ({
-            ...prev,
-            errors: [...prev.errors, { row: i+1, message: error.message || 'Unknown error' }]
-          }));
+          // Count as successfully processed
+          result.processed++;
+          setProcessingResults(prev => 
+            prev ? { ...prev, processed: prev.processed + 1 } : null
+          );
+        }
+      } catch (error: any) {
+        console.error(`Error processing row ${rowIndex + 1}:`, error);
+        const errorInfo = { row: rowIndex + 1, message: error.message || 'Unknown error' };
+        result.errors.push(errorInfo);
+        
+        setProcessingResults(prev => 
+          prev ? { ...prev, errors: [...prev.errors, errorInfo] } : null
+        );
+      }
+    }
+    
+    // Mark as successful if at least one record was processed
+    result.success = result.processed > 0;
+    
+    setIsUploading(false);
+    return result;
+  };
+  
+  // Extract all client-related fields from a row
+  const extractClientData = (
+    row: any, 
+    fieldMappings: FieldMapping, 
+    branchId?: string
+  ): Record<string, any> => {
+    const clientData: Record<string, any> = { branch_id: branchId };
+    
+    // Extract mapped client fields
+    for (const [csvHeader, dbField] of Object.entries(fieldMappings)) {
+      if (dbField.startsWith('clients.')) {
+        const field = dbField.replace('clients.', '');
+        clientData[field] = row[csvHeader];
+      }
+    }
+    
+    // Extract preferences and add to notes
+    const preferences = [];
+    
+    // Check for WhatsApp preference
+    if (row['WhatsApp'] === true || 
+        (typeof row['WhatsApp'] === 'string' && 
+         ['yes', 'true', '1', 'y'].includes(row['WhatsApp'].toLowerCase()))) {
+      preferences.push("WhatsApp: yes");
+    }
+    
+    // Check for Photo Permission
+    if (row['Photo Permission'] === true || 
+        (typeof row['Photo Permission'] === 'string' && 
+         ['yes', 'true', '1', 'y'].includes(row['Photo Permission'].toLowerCase()))) {
+      preferences.push("Photo Permission: yes");
+    }
+    
+    // Add comments/notes from the CSV if present
+    if (row['COMMENTS'] && typeof row['COMMENTS'] === 'string') {
+      if (clientData.notes) {
+        clientData.notes = `${clientData.notes}\n${row['COMMENTS']}`;
+      } else {
+        clientData.notes = row['COMMENTS'];
+      }
+    }
+    
+    // Add preferences to notes if any were found
+    if (preferences.length > 0) {
+      if (clientData.notes) {
+        clientData.notes = `${clientData.notes}\n${preferences.join("\n")}`;
+      } else {
+        clientData.notes = preferences.join("\n");
+      }
+    }
+    
+    // Parse name for first_name and last_name if not provided directly
+    if (clientData.name && (!clientData.first_name || !clientData.last_name)) {
+      const nameParts = clientData.name.split(' ');
+      clientData.first_name = nameParts[0] || 'Unknown';
+      clientData.last_name = nameParts.length > 1 ? nameParts.slice(1).join(' ') : 'Unknown';
+    }
+    
+    // Ensure required fields exist
+    if (!clientData.first_name) clientData.first_name = 'Unknown';
+    if (!clientData.last_name) clientData.last_name = 'Unknown';
+    
+    return clientData;
+  };
+  
+  // Extract all dog-related fields from a row
+  const extractDogData = (
+    row: any, 
+    fieldMappings: FieldMapping
+  ): Record<string, any> => {
+    const dogData: Record<string, any> = {};
+    
+    // Extract mapped dog fields
+    for (const [csvHeader, dbField] of Object.entries(fieldMappings)) {
+      if (dbField.startsWith('dogs.')) {
+        const field = dbField.replace('dogs.', '');
+        if (row[csvHeader] && row[csvHeader] !== '-') {
+          dogData[field] = row[csvHeader];
         }
       }
+    }
+    
+    // Look for dog name in unmapped fields
+    if (!dogData.name) {
+      for (const [header, value] of Object.entries(row)) {
+        if (header.toLowerCase().includes('dog') && 
+            value && 
+            value !== '-' &&
+            typeof value === 'string') {
+          dogData.name = value;
+          break;
+        }
+      }
+    }
+    
+    // Look for breed in unmapped fields
+    if (!dogData.breed) {
+      for (const [header, value] of Object.entries(row)) {
+        if (header.toLowerCase() === 'breed' && 
+            value && 
+            value !== '-' &&
+            typeof value === 'string') {
+          dogData.breed = value;
+          break;
+        }
+      }
+    }
+    
+    // Check for assessment notes
+    if (row['Assess'] && row['Assess'] !== '-') {
+      if (dogData.notes) {
+        dogData.notes = `${dogData.notes}\nAssessment: ${row['Assess']}`;
+      } else {
+        dogData.notes = `Assessment: ${row['Assess']}`;
+      }
+    }
+    
+    // Format date of birth if present
+    if (dogData.date_of_birth) {
+      dogData.date_of_birth = formatDate(dogData.date_of_birth);
+    }
+    
+    // Ensure breed is set if dog exists
+    if (dogData.name && !dogData.breed) {
+      dogData.breed = 'Unknown Breed';
+    }
+    
+    return dogData;
+  };
+  
+  // Extract all class enrollments from a row
+  const extractClassEnrollments = (
+    row: any,
+    fieldMappings: FieldMapping
+  ): Record<string, boolean> => {
+    const enrollments: Record<string, boolean> = {
+      puppy_class: false,
+      eo_class: false,
+      bronze_cgc_class: false,
+      silver_cgc_class: false,
+      beginner_novice_class: false,
+      wt_class: false,
+      yoga_class: false
+    };
+    
+    // Helper to convert various formats to boolean
+    const toBool = (value: any): boolean => {
+      if (value === undefined || value === null || value === '') return false;
+      if (typeof value === 'boolean') return value;
+      if (typeof value === 'number') return value === 1;
+      if (typeof value === 'string') {
+        const str = value.toLowerCase().trim();
+        // Check for various "truthy" string values
+        return str === 'yes' || 
+               str === 'true' || 
+               str === '1' || 
+               str === 'y' ||
+               str.includes('enrolled') ||
+               str.includes('grad') ||
+               str.includes('completed') ||
+               str.includes('waiting') ||
+               str.includes('term') ||
+               str.includes('?') || // Include entries with question marks
+               (str !== 'no' && str !== 'false' && str !== '0' && str !== 'n' && str !== '' && str !== '-') ||
+               /\d+(\.\d+)?%/.test(str);
+      }
+      return false;
+    };
+    
+    // Process mapped class enrollment fields
+    for (const [csvHeader, dbField] of Object.entries(fieldMappings)) {
+      if (dbField.startsWith('class_enrollments.')) {
+        const field = dbField.replace('class_enrollments.', '') as keyof typeof enrollments;
+        enrollments[field] = toBool(row[csvHeader]);
+      }
+    }
+    
+    // Also check common class columns that might not be mapped
+    const classColumns = {
+      'PUPPY': 'puppy_class',
+      'EO': 'eo_class',
+      'BRONZE CGC': 'bronze_cgc_class',
+      'SILVER CGC': 'silver_cgc_class',
+      'BEGINNER/Novice': 'beginner_novice_class',
+      'WT': 'wt_class',
+      'YOGA': 'yoga_class'
+    };
+    
+    for (const [column, field] of Object.entries(classColumns)) {
+      if (row[column] !== undefined) {
+        enrollments[field] = toBool(row[column]);
+      }
+    }
+    
+    // Check comments for class information
+    if (row['COMMENTS'] && typeof row['COMMENTS'] === 'string') {
+      const comments = row['COMMENTS'].toLowerCase();
       
-      return {
-        success: processed > 0,
-        errors: errors.map(e => `Row ${e.row}: ${e.message}`)
-      };
-    } catch (error: any) {
-      console.error("General import error:", error);
-      return {
-        success: false,
-        errors: [error.message || 'An unexpected error occurred']
-      };
-    } finally {
-      setIsUploading(false);
+      if (comments.includes('puppy')) enrollments.puppy_class = true;
+      if (comments.includes('eo ') || comments.includes(' eo')) enrollments.eo_class = true;
+      if (comments.includes('bronze')) enrollments.bronze_cgc_class = true;
+      if (comments.includes('silver')) enrollments.silver_cgc_class = true;
+      if (comments.includes('beginner') || comments.includes('novice')) enrollments.beginner_novice_class = true;
+      if (comments.includes('wt ') || comments.includes(' wt')) enrollments.wt_class = true;
+      if (comments.includes('yoga')) enrollments.yoga_class = true;
+    }
+    
+    return enrollments;
+  };
+  
+  // Save client data to database
+  const saveClient = async (clientData: Record<string, any>): Promise<string | undefined> => {
+    // Check if client exists first
+    const { data: existingClients } = await supabase
+      .from('clients')
+      .select('id')
+      .eq('email', clientData.email);
+      
+    if (existingClients && existingClients.length > 0) {
+      // Update existing client
+      const { error } = await supabase
+        .from('clients')
+        .update({
+          first_name: clientData.first_name,
+          last_name: clientData.last_name,
+          phone: clientData.phone,
+          address: clientData.address,
+          city: clientData.city,
+          postal_code: clientData.postal_code,
+          notes: clientData.notes,
+          branch_id: clientData.branch_id
+        })
+        .eq('id', existingClients[0].id);
+        
+      if (error) throw error;
+      return existingClients[0].id;
+    } else {
+      // Create new client
+      const { data, error } = await supabase
+        .from('clients')
+        .insert({
+          email: clientData.email,
+          first_name: clientData.first_name,
+          last_name: clientData.last_name,
+          phone: clientData.phone,
+          address: clientData.address,
+          city: clientData.city,
+          postal_code: clientData.postal_code,
+          notes: clientData.notes,
+          branch_id: clientData.branch_id
+        })
+        .select('id')
+        .single();
+        
+      if (error) throw error;
+      return data?.id;
     }
   };
   
-  // Helper function to find a dog name in the row data
-  const findDogName = (row: any, fieldMappings: FieldMapping): string | undefined => {
-    // First check if we have a mapped dog name field
-    const dogNameMapping = Object.entries(fieldMappings).find(
-      ([_, value]) => value === 'dogs.name'
-    );
-    
-    if (dogNameMapping && row[dogNameMapping[0]]) {
-      return row[dogNameMapping[0]];
-    }
-    
-    // Try to find a column that might contain dog names
-    for (const [header, value] of Object.entries(row)) {
-      if (
-        (header.toLowerCase().includes('dog') || 
-         header.toLowerCase() === "dog's name") && 
-        value && 
-        typeof value === 'string' && 
-        value.trim() !== '-' && 
-        value.trim() !== ''
-      ) {
-        return value.trim();
-      }
-    }
-    
-    return undefined;
+  // Save dog data to database
+  const saveDog = async (dogData: Record<string, any>): Promise<string | undefined> => {
+    // Create the dog record
+    const { data, error } = await supabase
+      .from('dogs')
+      .insert({
+        client_id: dogData.client_id,
+        name: dogData.name,
+        breed: dogData.breed || 'Unknown Breed',
+        age: dogData.age,
+        weight: dogData.weight,
+        notes: dogData.notes,
+        behavior_notes: dogData.behavior_notes,
+        medical_notes: dogData.medical_notes,
+        date_of_birth: dogData.date_of_birth,
+        avatar_url: dogData.avatar_url
+      })
+      .select('id')
+      .single();
+      
+    if (error) throw error;
+    return data?.id;
   };
   
-  // Helper function to find a breed in the row data
-  const findBreed = (row: any, fieldMappings: FieldMapping): string | undefined => {
-    // First check if we have a mapped breed field
-    const breedMapping = Object.entries(fieldMappings).find(
-      ([_, value]) => value === 'dogs.breed'
-    );
+  // Save class enrollments to database
+  const saveClassEnrollments = async (
+    dogId: string, 
+    enrollments: Record<string, boolean>
+  ): Promise<void> => {
+    const { error } = await supabase
+      .from('class_enrollments')
+      .insert({
+        dog_id: dogId,
+        puppy_class: enrollments.puppy_class || false,
+        eo_class: enrollments.eo_class || false,
+        bronze_cgc_class: enrollments.bronze_cgc_class || false,
+        silver_cgc_class: enrollments.silver_cgc_class || false,
+        beginner_novice_class: enrollments.beginner_novice_class || false,
+        wt_class: enrollments.wt_class || false,
+        yoga_class: enrollments.yoga_class || false
+      });
+      
+    if (error) throw error;
+  };
+  
+  // Format date string to ISO format
+  const formatDate = (dateString: string): string => {
+    if (!dateString) return '';
     
-    if (breedMapping && row[breedMapping[0]]) {
-      return row[breedMapping[0]];
-    }
-    
-    // Try to find a column that might contain breed
-    for (const [header, value] of Object.entries(row)) {
-      if (
-        header.toLowerCase() === 'breed' && 
-        value && 
-        typeof value === 'string' && 
-        value.trim() !== '-' && 
-        value.trim() !== ''
-      ) {
-        return value.trim();
+    try {
+      // Check if it's already a valid date
+      const date = new Date(dateString);
+      if (!isNaN(date.getTime())) {
+        return date.toISOString().split('T')[0];
       }
+      
+      // Handle common formats: dd/mm/yy, dd-mm-yy, etc.
+      let parts: string[] = [];
+      
+      if (dateString.includes('/')) {
+        parts = dateString.split('/');
+      } else if (dateString.includes('-')) {
+        parts = dateString.split('-');
+      }
+      
+      if (parts.length === 3) {
+        // Assume day/month/year format
+        let day = parts[0].padStart(2, '0');
+        let month = parts[1].padStart(2, '0');
+        let year = parts[2];
+        
+        // Handle 2-digit years
+        if (year.length === 2) {
+          year = '20' + year; // Assuming 2000s
+        }
+        
+        return `${year}-${month}-${day}`;
+      }
+      
+      // If we couldn't parse it, return as is
+      return dateString;
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return dateString;
     }
-    
-    return undefined;
   };
 
   return {

@@ -15,3 +15,21 @@ export type PreferenceField = {
   column: string;
   description: string;
 };
+
+export interface ImportResult {
+  success: boolean;
+  processed: number;
+  total: number;
+  errors: ImportError[];
+}
+
+export interface ImportError {
+  row: number;
+  message: string;
+}
+
+export interface ProcessingStatus {
+  total: number;
+  processed: number;
+  errors: ImportError[];
+}
