@@ -90,23 +90,17 @@ export function AttendanceIndicator({
         queryKey: ['class-attendance']
       });
       
-      toast(
-        {
-          title: "Attendance updated",
-          description: `Attendance marked as ${newStatus}`
-        },
-        {}
-      );
+      toast({
+        title: "Attendance updated",
+        description: `Attendance marked as ${newStatus}`
+      });
     } catch (error) {
       console.error('Error updating attendance:', error);
-      toast(
-        {
-          title: "Error",
-          description: "Failed to update attendance",
-          variant: "destructive"
-        },
-        {}
-      );
+      toast({
+        title: "Error",
+        description: "Failed to update attendance",
+        variant: "destructive"
+      });
     } finally {
       setIsUpdating(false);
     }

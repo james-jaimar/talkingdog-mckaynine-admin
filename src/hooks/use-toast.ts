@@ -1,3 +1,4 @@
+
 import * as React from "react"
 
 import type {
@@ -137,10 +138,15 @@ function dispatch(action: Action) {
   })
 }
 
-// Simple toast interface for consistent usage
+// Define the toast function type to accept both forms
 type ToastOptions = Partial<Omit<ToasterToast, "id">>
 
-function toast(props: ToastOptions | string, options?: Partial<Omit<ToasterToast, "id">>) {
+// This function overload allows for either:
+// 1. toast(options) - single object parameter
+// 2. toast(message, options) - string message and optional options
+function toast(props: ToastOptions): ReturnType<typeof toast>
+function toast(props: string, options?: ToastOptions): ReturnType<typeof toast>
+function toast(props: ToastOptions | string, options?: ToastOptions) {
   const id = genId()
 
   const update = (props: ToasterToast) =>
