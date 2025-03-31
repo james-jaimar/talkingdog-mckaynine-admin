@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Check, X, Clock, HelpCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,6 +26,7 @@ export function AttendanceIndicator({
 }: AttendanceIndicatorProps) {
   const [isUpdating, setIsUpdating] = useState(false);
   const queryClient = useQueryClient();
+  const { toast } = useToast(); // Using the hook to get the toast function
   
   const getStatusIcon = () => {
     switch (status) {
@@ -90,7 +91,7 @@ export function AttendanceIndicator({
         queryKey: ['class-attendance']
       });
       
-      // Fix: toast is imported directly from hooks/use-toast and expects a single object parameter
+      // Using the toast function from the useToast hook
       toast({
         title: "Attendance updated",
         description: `Attendance marked as ${newStatus}`,
