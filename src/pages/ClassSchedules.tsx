@@ -34,7 +34,10 @@ export default function ClassSchedules() {
       
       if (error) {
         console.error("Error fetching class:", error);
-        toast("Error", "Failed to load class details.");
+        toast({
+          title: "Error", 
+          description: "Failed to load class details."
+        });
         throw error;
       }
       

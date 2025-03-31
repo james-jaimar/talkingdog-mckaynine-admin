@@ -8,7 +8,7 @@ import Papa from "papaparse";
 import { processImportData } from "./importUtils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Upload } from "lucide-react"; // Added missing import for the Upload icon
+import { Upload } from "lucide-react"; 
 import { useBranch } from "@/context/BranchContext";
 
 interface CSVImporterProps {
