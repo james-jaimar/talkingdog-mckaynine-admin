@@ -138,9 +138,9 @@ function dispatch(action: Action) {
   })
 }
 
-// Explicitly define the type for the toast function
 type ToastOptions = Omit<ToasterToast, "id">
 
+// Define toast function to accept a single object parameter, which is the standard shadcn approach
 function toast(options: ToastOptions) {
   const id = genId()
 

@@ -26,7 +26,7 @@ export function AttendanceIndicator({
 }: AttendanceIndicatorProps) {
   const [isUpdating, setIsUpdating] = useState(false);
   const queryClient = useQueryClient();
-  const { toast } = useToast(); // Using the hook to get the toast function
+  const { toast } = useToast();
   
   const getStatusIcon = () => {
     switch (status) {
@@ -91,14 +91,14 @@ export function AttendanceIndicator({
         queryKey: ['class-attendance']
       });
       
-      // Call toast with the correct single object parameter
+      // Call toast with a single object parameter
       toast({
         title: "Attendance updated",
         description: `Attendance marked as ${newStatus}`
       });
     } catch (error) {
       console.error('Error updating attendance:', error);
-      // Call toast with the correct single object parameter
+      // Call toast with a single object parameter
       toast({
         title: "Error",
         description: "Failed to update attendance",
