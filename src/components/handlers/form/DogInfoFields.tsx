@@ -25,13 +25,23 @@ export function DogInfoFields({ control }: DogInfoFieldsProps) {
         />
       </div>
 
-      <FormTextField 
-        control={control}
-        name="dogDob"
-        label="Date of Birth"
-        type="date"
-        description="Optional - helps us tailor training to the dog's age"
-      />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <FormTextField 
+          control={control}
+          name="dogDob"
+          label="Date of Birth"
+          type="date"
+          description="Helps us tailor training to the dog's age"
+        />
+        
+        <FormTextField 
+          control={control}
+          name="dogAge"
+          label="Age (years)"
+          type="number"
+          description="Optional if DOB is provided"
+        />
+      </div>
 
       <FormTextAreaField 
         control={control}

@@ -16,6 +16,7 @@ interface HandlerDetailHeaderProps {
     city?: string;
     postal_code?: string;
     notes?: string;
+    branch_id?: string;
   };
   onHandlerUpdated?: () => void;
 }

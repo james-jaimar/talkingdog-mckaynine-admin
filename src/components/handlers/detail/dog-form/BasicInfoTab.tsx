@@ -46,6 +46,20 @@ export function BasicInfoTab({ control }: BasicInfoTabProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <FormField
           control={control}
+          name="date_of_birth"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Date of Birth</FormLabel>
+              <FormControl>
+                <Input {...field} type="date" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        
+        <FormField
+          control={control}
           name="age"
           render={({ field }) => (
             <FormItem>
@@ -57,21 +71,21 @@ export function BasicInfoTab({ control }: BasicInfoTabProps) {
             </FormItem>
           )}
         />
-        
-        <FormField
-          control={control}
-          name="weight"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Weight (lbs)</FormLabel>
-              <FormControl>
-                <Input {...field} type="number" />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
       </div>
+
+      <FormField
+        control={control}
+        name="weight"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Weight (lbs)</FormLabel>
+            <FormControl>
+              <Input {...field} type="number" />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
 
       <FormField
         control={control}

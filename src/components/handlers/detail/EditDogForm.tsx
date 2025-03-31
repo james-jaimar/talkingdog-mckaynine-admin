@@ -1,6 +1,5 @@
 
 import { Form } from "@/components/ui/form";
-import { Button } from "@/components/ui/button";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useState } from "react";
@@ -32,6 +31,7 @@ export function EditDogForm({ dog, clientId, onSuccess, isNew = false }: EditDog
       breed: dog?.breed || "",
       age: dog?.age || undefined,
       weight: dog?.weight || undefined,
+      date_of_birth: dog?.date_of_birth || "",
       notes: dog?.notes || "",
       behavior_notes: dog?.behavior_notes || "",
       medical_notes: dog?.medical_notes || "",
@@ -48,6 +48,7 @@ export function EditDogForm({ dog, clientId, onSuccess, isNew = false }: EditDog
           breed: values.breed,
           age: values.age,
           weight: values.weight,
+          date_of_birth: values.date_of_birth,
           notes: values.notes,
           behavior_notes: values.behavior_notes,
           medical_notes: values.medical_notes,
@@ -69,6 +70,7 @@ export function EditDogForm({ dog, clientId, onSuccess, isNew = false }: EditDog
             breed: values.breed,
             age: values.age,
             weight: values.weight,
+            date_of_birth: values.date_of_birth,
             notes: values.notes,
             behavior_notes: values.behavior_notes,
             medical_notes: values.medical_notes,
