@@ -1,3 +1,4 @@
+
 import * as React from "react"
 
 import type {
@@ -137,9 +138,10 @@ function dispatch(action: Action) {
   })
 }
 
-// Simplified interface for toast - only accepts object format for consistency
+// Type definition for toast function parameters
 type ToastOptions = Omit<ToasterToast, "id">
 
+// Consolidated toast function that only accepts the object format
 function toast(options: ToastOptions) {
   const id = genId()
 
