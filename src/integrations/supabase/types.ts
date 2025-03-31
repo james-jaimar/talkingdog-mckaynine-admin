@@ -11,37 +11,61 @@ export type Database = {
     Tables: {
       bookings: {
         Row: {
+          additional_notes: string | null
           class_schedule_id: string
           client_id: string
           created_at: string
           dog_id: string
           id: string
+          info_eo: string | null
+          info_pg: string | null
+          is_enrolled: boolean | null
           notes: string | null
           payment_status: string
+          proof_of_payment: string | null
+          social_media_consent: boolean | null
           status: string
           updated_at: string
+          uses_whatsapp: boolean | null
+          vaccination_verified: boolean | null
         }
         Insert: {
+          additional_notes?: string | null
           class_schedule_id: string
           client_id: string
           created_at?: string
           dog_id: string
           id?: string
+          info_eo?: string | null
+          info_pg?: string | null
+          is_enrolled?: boolean | null
           notes?: string | null
           payment_status?: string
+          proof_of_payment?: string | null
+          social_media_consent?: boolean | null
           status?: string
           updated_at?: string
+          uses_whatsapp?: boolean | null
+          vaccination_verified?: boolean | null
         }
         Update: {
+          additional_notes?: string | null
           class_schedule_id?: string
           client_id?: string
           created_at?: string
           dog_id?: string
           id?: string
+          info_eo?: string | null
+          info_pg?: string | null
+          is_enrolled?: boolean | null
           notes?: string | null
           payment_status?: string
+          proof_of_payment?: string | null
+          social_media_consent?: boolean | null
           status?: string
           updated_at?: string
+          uses_whatsapp?: boolean | null
+          vaccination_verified?: boolean | null
         }
         Relationships: [
           {
@@ -198,6 +222,51 @@ export type Database = {
           year?: number
         }
         Relationships: []
+      }
+      class_attendance: {
+        Row: {
+          attendance_status: string
+          booking_id: string
+          class_date: string
+          class_schedule_id: string
+          created_at: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          attendance_status?: string
+          booking_id: string
+          class_date: string
+          class_schedule_id: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          attendance_status?: string
+          booking_id?: string
+          class_date?: string
+          class_schedule_id?: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_attendance_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "class_attendance_class_schedule_id_fkey"
+            columns: ["class_schedule_id"]
+            isOneToOne: false
+            referencedRelation: "class_schedules"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       class_enrollments: {
         Row: {
