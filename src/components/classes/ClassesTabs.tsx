@@ -21,7 +21,7 @@ export function ClassesTabs() {
           branches:branch_id (
             name
           ),
-          class_schedules(count)
+          class_schedules!inner(id)
         `)
         .order('name');
       
@@ -33,13 +33,16 @@ export function ClassesTabs() {
       const { data, error } = await query;
       
       if (error) throw error;
-      return data as (Class & { branches: { name: string }, class_schedules: { count: number } })[];
+      return data as (Class & { 
+        branches: { name: string }, 
+        class_schedules: { id: string }[] 
+      })[];
     },
     enabled: true
   });
   
-  // Filter classes that have schedules
-  const activeClasses = classes?.filter(c => c.class_schedules?.count > 0) || [];
+  // Filter to only include classes with schedules
+  const activeClasses = classes?.filter(c => c.class_schedules.length > 0) || [];
   
   if (isLoading || activeClasses.length === 0) {
     return null;
