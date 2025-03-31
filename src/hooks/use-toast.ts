@@ -141,7 +141,7 @@ function dispatch(action: Action) {
 // Simple toast interface for consistent usage
 type ToastOptions = Partial<Omit<ToasterToast, "id">>
 
-function toast(options: ToastOptions) {
+function toast(props: ToastOptions | string, options?: Partial<Omit<ToasterToast, "id">>) {
   const id = genId()
 
   const update = (props: ToasterToast) =>
@@ -152,10 +152,18 @@ function toast(options: ToastOptions) {
   
   const dismiss = () => dispatch({ type: "DISMISS_TOAST", toastId: id })
 
+  // Handle both string and object arguments
+  let toastOptions: ToastOptions
+  if (typeof props === 'string') {
+    toastOptions = { ...options, title: props }
+  } else {
+    toastOptions = { ...props }
+  }
+
   dispatch({
     type: "ADD_TOAST",
     toast: {
-      ...options,
+      ...toastOptions,
       id,
       open: true,
       onOpenChange: (open) => {
