@@ -34,6 +34,13 @@ const formSchema = z.object({
   whatsApp: z.boolean().default(false),
   photoPermission: z.boolean().default(false),
   classEnrollment: z.string().optional(),
+  puppyClass: z.string().optional(),
+  eoClass: z.string().optional(),
+  bronzeCgcClass: z.string().optional(),
+  silverCgcClass: z.string().optional(),
+  beginnerNoviceClass: z.string().optional(),
+  wtClass: z.string().optional(),
+  yogaClass: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -62,6 +69,13 @@ export function AddHandlerForm({ onSuccess }: AddHandlerFormProps) {
       whatsApp: false,
       photoPermission: false,
       classEnrollment: "",
+      puppyClass: "",
+      eoClass: "",
+      bronzeCgcClass: "",
+      silverCgcClass: "",
+      beginnerNoviceClass: "",
+      wtClass: "",
+      yogaClass: "",
     },
   });
 
@@ -97,23 +111,76 @@ export function AddHandlerForm({ onSuccess }: AddHandlerFormProps) {
         breed: data.breed,
         client_id: clientData.id,
         behavior_notes: data.assessment || null,
-        notes: `${data.classEnrollment ? `Class: ${data.classEnrollment}` : ""}
-WhatsApp: ${data.whatsApp ? "Yes" : "No"}
-Photo Permission: ${data.photoPermission ? "Yes" : "No"}`,
+        notes: data.dogDob ? `DOB: ${data.dogDob}` : null,
       };
       
       console.log("Inserting dog data:", dogData);
       
-      const { error: dogError } = await supabase
+      const { data: dogData2, error: dogError } = await supabase
         .from("dogs")
-        .insert(dogData);
+        .insert(dogData)
+        .select("id")
+        .single();
 
       if (dogError) {
         console.error("Dog error:", dogError);
         throw dogError;
       }
 
-      console.log("Dog created successfully");
+      console.log("Dog created successfully:", dogData2);
+
+      // Insert class enrollment data
+      const enrollmentData = {
+        dog_id: dogData2.id,
+        puppy_class: data.puppyClass || null,
+        eo_class: data.eoClass || null,
+        bronze_cgc_class: data.bronzeCgcClass || null,
+        silver_cgc_class: data.silverCgcClass || null,
+        beginner_novice_class: data.beginnerNoviceClass || null,
+        wt_class: data.wtClass || null,
+        yoga_class: data.yogaClass || null
+      };
+
+      // Only insert if at least one class has data
+      const hasClasses = Object.entries(enrollmentData).some(
+        ([key, value]) => key !== 'dog_id' && value !== null && value !== ''
+      );
+
+      if (hasClasses) {
+        console.log("Inserting class enrollment data:", enrollmentData);
+        
+        const { error: enrollmentError } = await supabase
+          .from("class_enrollments")
+          .insert(enrollmentData);
+
+        if (enrollmentError) {
+          console.error("Enrollment error:", enrollmentError);
+          throw enrollmentError;
+        }
+
+        console.log("Class enrollment created successfully");
+      }
+
+      // Create notes for WhatsApp and photo permission
+      let notes = data.comments || "";
+      if (data.whatsApp) {
+        notes += (notes ? "\n" : "") + "WhatsApp: yes";
+      }
+      if (data.photoPermission) {
+        notes += (notes ? "\n" : "") + "Photo Permission: yes";
+      }
+
+      if (notes && notes !== data.comments) {
+        // Update client with the notes
+        const { error: updateError } = await supabase
+          .from("clients")
+          .update({ notes })
+          .eq("id", clientData.id);
+
+        if (updateError) {
+          console.error("Error updating notes:", updateError);
+        }
+      }
 
       toast({
         title: "Handler added successfully",

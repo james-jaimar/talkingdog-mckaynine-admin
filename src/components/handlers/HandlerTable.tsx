@@ -2,7 +2,6 @@
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { Plus } from "lucide-react";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -12,7 +11,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { 
-  extractClassNotes, 
   extractDOB, 
   extractPreference, 
   formatPhoneNumber 
@@ -89,8 +87,8 @@ export function HandlerTable({
           const enrollment = enrollments && enrollments.length > 0 ? enrollments[0] : null;
 
           // Check for WhatsApp and Photo Permission in notes
-          const whatsApp = handler.notes && handler.notes.includes("WhatsApp: yes");
-          const photoPermission = handler.notes && handler.notes.includes("Photo Permission: yes");
+          const whatsApp = extractPreference(handler.notes, "WhatsApp");
+          const photoPermission = extractPreference(handler.notes, "Photo Permission");
           
           // Extract comments from notes (any text that isn't about WhatsApp or Photo Permission)
           const notesWithoutPreferences = handler.notes
@@ -127,26 +125,26 @@ export function HandlerTable({
                   : "-"}
               </TableCell>
               <TableCell>{formatPhoneNumber(handler.phone)}</TableCell>
-              <TableCell>
-                <Checkbox checked={enrollment?.puppy_class || false} disabled />
+              <TableCell className="text-xs">
+                {enrollment?.puppy_class || "-"}
               </TableCell>
-              <TableCell>
-                <Checkbox checked={enrollment?.eo_class || false} disabled />
+              <TableCell className="text-xs">
+                {enrollment?.eo_class || "-"}
               </TableCell>
-              <TableCell>
-                <Checkbox checked={enrollment?.bronze_cgc_class || false} disabled />
+              <TableCell className="text-xs">
+                {enrollment?.bronze_cgc_class || "-"}
               </TableCell>
-              <TableCell>
-                <Checkbox checked={enrollment?.silver_cgc_class || false} disabled />
+              <TableCell className="text-xs">
+                {enrollment?.silver_cgc_class || "-"}
               </TableCell>
-              <TableCell>
-                <Checkbox checked={enrollment?.beginner_novice_class || false} disabled />
+              <TableCell className="text-xs">
+                {enrollment?.beginner_novice_class || "-"}
               </TableCell>
-              <TableCell>
-                <Checkbox checked={enrollment?.wt_class || false} disabled />
+              <TableCell className="text-xs">
+                {enrollment?.wt_class || "-"}
               </TableCell>
-              <TableCell>
-                <Checkbox checked={enrollment?.yoga_class || false} disabled />
+              <TableCell className="text-xs">
+                {enrollment?.yoga_class || "-"}
               </TableCell>
               <TableCell>
                 {notesWithoutPreferences 
@@ -154,16 +152,10 @@ export function HandlerTable({
                   : "-"}
               </TableCell>
               <TableCell className="text-center">
-                <Checkbox
-                  checked={whatsApp || extractPreference(handler.notes, "WhatsApp")}
-                  disabled
-                />
+                {whatsApp ? "Yes" : "No"}
               </TableCell>
               <TableCell className="text-center">
-                <Checkbox
-                  checked={photoPermission || extractPreference(handler.notes, "Photo Permission")}
-                  disabled
-                />
+                {photoPermission ? "Yes" : "No"}
               </TableCell>
               <TableCell className="text-right">
                 <Link to={`/handlers/${handler.id}`}>

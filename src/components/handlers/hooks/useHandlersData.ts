@@ -14,7 +14,18 @@ interface Dog {
   behavior_notes?: string;
   notes?: string;
   medical_notes?: string;
-  class_enrollments?: any[];
+  class_enrollments?: ClassEnrollment[];
+}
+
+interface ClassEnrollment {
+  id: string;
+  puppy_class?: string | null;
+  eo_class?: string | null;
+  bronze_cgc_class?: string | null;
+  silver_cgc_class?: string | null;
+  beginner_novice_class?: string | null;
+  wt_class?: string | null;
+  yoga_class?: string | null;
 }
 
 export interface Handler {

@@ -130,23 +130,23 @@ export async function processImportData(
         console.log(`Created new dog: ${dogName} with ID: ${dogId} for client: ${clientId}`);
       }
 
-      // 4. Add class enrollments if any
+      // 4. Add class enrollments if any - now storing the actual text values
       const enrollmentData = {
         dog_id: dogId,
-        puppy_class: hasValue(parsedRow["PUPPY"]),
-        eo_class: hasValue(parsedRow["EO"]),
-        bronze_cgc_class: hasValue(parsedRow["BRONZE CGC"]),
-        silver_cgc_class: hasValue(parsedRow["SILVER CGC"]),
-        beginner_novice_class: hasValue(parsedRow["BEGINNER/Novice"]),
-        wt_class: hasValue(parsedRow["WT"]),
-        yoga_class: hasValue(parsedRow["YOGA"])
+        puppy_class: parsedRow["PUPPY"] || null,
+        eo_class: parsedRow["EO"] || null,
+        bronze_cgc_class: parsedRow["BRONZE CGC"] || null,
+        silver_cgc_class: parsedRow["SILVER CGC"] || null,
+        beginner_novice_class: parsedRow["BEGINNER/Novice"] || null,
+        wt_class: parsedRow["WT"] || null,
+        yoga_class: parsedRow["YOGA"] || null
       };
 
       // Log the enrollment data to check what's being saved
       console.log("Enrollment data:", enrollmentData);
 
       const hasAnyEnrollment = Object.entries(enrollmentData).some(
-        ([key, val]) => key !== 'dog_id' && val === true
+        ([key, val]) => key !== 'dog_id' && val !== null && val !== ""
       );
 
       if (hasAnyEnrollment) {
@@ -205,19 +205,6 @@ function generateNotes(row: ImportRow): string {
     notes.push(row["COMMENTS"]);
   }
   
-  // Check for class-related comments embedded in the CSV
-  if (hasValue(row["EO"]) && typeof row["EO"] === 'string' && row["EO"].includes("April")) {
-    notes.push(`EO: ${row["EO"]}`);
-  }
-  
-  if (hasValue(row["BRONZE CGC"]) && typeof row["BRONZE CGC"] === 'string' && row["BRONZE CGC"].includes("info")) {
-    notes.push(`Bronze CGC: ${row["BRONZE CGC"]}`);
-  }
-  
-  if (hasValue(row["SILVER CGC"]) && typeof row["SILVER CGC"] === 'string' && row["SILVER CGC"].includes("April")) {
-    notes.push(`Silver CGC: ${row["SILVER CGC"]}`);
-  }
-  
   return notes.join("\n");
 }
 
@@ -265,21 +252,8 @@ function calculateAgeFromDOB(dobString?: string): number | null {
 function hasValue(value?: string): boolean {
   if (!value) return false;
   
-  value = value.trim().toLowerCase();
+  value = value.trim();
   
-  // Check various positive indicators
-  if (value === "yes" || value === "y" || value === "true" || value === "1") return true;
-  
-  // Check if there's any text that might indicate enrollment
-  if (value.includes("enrolled") || value.includes("grad") || 
-      value.includes("declan") || value.includes("april") ||
-      value.includes("jan") || value.includes("info")) return true;
-  
-  // Check for dates or numeric patterns (e.g., "15h00")
-  if (value.match(/\d{1,2}h\d{2}/) || value.match(/\d{2}:\d{2}/)) return true;
-  
-  // If there's any substantial text (not just spaces or dashes)
-  if (value.length > 0 && value !== "-" && value !== "no" && value !== "n") return true;
-  
-  return false;
+  // If there's any text at all, consider it a value
+  return value.length > 0 && value !== "-" && value !== "no" && value !== "n";
 }

@@ -1,59 +1,95 @@
 
 import { Control } from "react-hook-form";
-import { FormTextAreaField } from "./FormTextAreaField";
+import { FormField } from "@/components/ui/form";
+import { FormTextField } from "./FormTextField";
 import { FormCheckboxField } from "./FormCheckboxField";
-import { FormRadioGroupField } from "./FormRadioGroupField";
+import { FormTextAreaField } from "./FormTextAreaField";
 
 interface ClassAndPreferencesFieldsProps {
   control: Control<any>;
 }
 
 export function ClassAndPreferencesFields({ control }: ClassAndPreferencesFieldsProps) {
-  const classOptions = [
-    { value: "puppy", label: "PUPPY" },
-    { value: "eo", label: "EO" },
-    { value: "bronze_cgc", label: "BRONZE CGC" },
-    { value: "silver_cgc", label: "SILVER CGC" },
-    { value: "beginner", label: "BEGINNER" },
-    { value: "novice", label: "NOVICE" },
-    { value: "wt_a_test", label: "WT/A-TEST" },
-    { value: "yoga", label: "YOGA" },
-  ];
-
   return (
-    <div className="space-y-5">
-      <FormRadioGroupField 
-        control={control}
-        name="classEnrollment"
-        label="Class Enrollment"
-        options={classOptions}
-        description="Select the primary class for enrollment"
-      />
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <FormTextField
+          control={control}
+          name="classEnrollment"
+          label="Class Enrollment"
+          placeholder="Class name or enrollment details"
+        />
+        
+        <FormTextField
+          control={control}
+          name="puppyClass"
+          label="Puppy Class"
+          placeholder="Puppy class details"
+        />
+        
+        <FormTextField
+          control={control}
+          name="eoClass"
+          label="EO Class"
+          placeholder="EO class details"
+        />
+        
+        <FormTextField
+          control={control}
+          name="bronzeCgcClass"
+          label="Bronze CGC Class"
+          placeholder="Bronze CGC class details"
+        />
+        
+        <FormTextField
+          control={control}
+          name="silverCgcClass"
+          label="Silver CGC Class"
+          placeholder="Silver CGC class details"
+        />
+        
+        <FormTextField
+          control={control}
+          name="beginnerNoviceClass"
+          label="Beginner/Novice Class"
+          placeholder="Beginner/Novice class details"
+        />
+        
+        <FormTextField
+          control={control}
+          name="wtClass"
+          label="WT Class"
+          placeholder="WT class details"
+        />
+        
+        <FormTextField
+          control={control}
+          name="yogaClass"
+          label="Yoga Class"
+          placeholder="Yoga class details"
+        />
+      </div>
 
-      <FormTextAreaField 
-        control={control}
-        name="comments"
-        label="Comments"
-        placeholder="Additional comments or special requirements"
-        description="Any other information we should know"
-      />
-
-      <div className="space-y-4 pt-2">
-        <h4 className="text-sm font-medium text-muted-foreground">Communication Preferences</h4>
-        <FormCheckboxField 
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <FormCheckboxField
           control={control}
           name="whatsApp"
-          label="WhatsApp"
-          description="Receive updates and communications via WhatsApp"
+          label="WhatsApp Communication"
         />
-
-        <FormCheckboxField 
+        
+        <FormCheckboxField
           control={control}
           name="photoPermission"
           label="Photo Permission"
-          description="Allow us to take and share photos of your dog"
         />
       </div>
+      
+      <FormTextAreaField
+        control={control}
+        name="comments"
+        label="Additional Comments"
+        placeholder="Any additional notes or comments..."
+      />
     </div>
   );
 }
