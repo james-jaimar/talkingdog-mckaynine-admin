@@ -1,3 +1,4 @@
+
 import * as React from "react"
 
 import type {
@@ -140,7 +141,6 @@ function dispatch(action: Action) {
 // Simple toast interface for consistent usage
 type ToastOptions = Partial<Omit<ToasterToast, "id">>
 
-// Single toast function implementation
 function toast(opts: ToastOptions) {
   const id = genId()
 
