@@ -104,11 +104,14 @@ export function ClassesTable() {
               </TableCell>
               <TableCell>
                 <div className="flex space-x-2">
-                  <Link to={`/classes/${classItem.id}/schedules`}>
-                    <Button variant="outline" size="sm">
-                      Schedules
-                    </Button>
-                  </Link>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    as={Link}
+                    to={`/classes/${classItem.id}/schedules`}
+                  >
+                    Schedules
+                  </Button>
                   <Button 
                     variant="outline" 
                     size="sm"

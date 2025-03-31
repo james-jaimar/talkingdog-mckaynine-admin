@@ -17,12 +17,13 @@ export default function ClassSchedules() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const { toast } = useToast();
 
+  console.log("ClassSchedules component rendering with classId:", classId);
+
   const { data: classData, isLoading } = useQuery({
     queryKey: ["class", classId],
     queryFn: async () => {
       if (!classId) return null;
       
-      // Log the classId being used for debugging
       console.log("Fetching class with ID:", classId);
       
       const { data, error } = await supabase
