@@ -53,7 +53,7 @@ export function ContactInfoFields({ control, branches }: ContactInfoFieldsProps)
           <FormItem>
             <FormLabel>Branch</FormLabel>
             <Select 
-              value={field.value || ""} 
+              value={field.value || undefined} 
               onValueChange={field.onChange}
             >
               <FormControl>
@@ -62,7 +62,7 @@ export function ContactInfoFields({ control, branches }: ContactInfoFieldsProps)
                 </SelectTrigger>
               </FormControl>
               <SelectContent>
-                <SelectItem value="">No Branch</SelectItem>
+                <SelectItem value="none">No Branch</SelectItem>
                 {branches?.map((branch) => (
                   <SelectItem key={branch.id} value={branch.id}>
                     {branch.name}
