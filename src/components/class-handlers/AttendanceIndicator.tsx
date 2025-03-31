@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Check, X, Clock, HelpCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -86,7 +85,7 @@ export function AttendanceIndicator({
       
       if (result.error) throw result.error;
       
-      // Fix: Correctly call invalidateQueries with the proper object parameter format
+      // Fix: The issue is here - invalidateQueries in newer versions of React Query requires an object
       queryClient.invalidateQueries({ queryKey: ['class-attendance'] });
       
       toast({
