@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Check, X, Clock, HelpCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -90,14 +89,13 @@ export function AttendanceIndicator({
         queryKey: ['class-attendance']
       });
       
-      // Fix: Using direct toast function instead of the object destructuring
+      // The issue was here - toast is imported directly and expects only one argument
       toast({
         title: "Attendance updated",
         description: `Attendance marked as ${newStatus}`,
       });
     } catch (error) {
       console.error('Error updating attendance:', error);
-      // Fix: Same fix as above for the error toast
       toast({
         title: "Error",
         description: "Failed to update attendance",
