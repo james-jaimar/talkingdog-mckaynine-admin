@@ -17,6 +17,11 @@ export function ClassesTabs() {
   const { toast } = useToast();
   const initializedRef = useRef(false);
   
+  // Only display the class tabs on the classes page or class-related pages
+  if (!location.pathname.includes('/classes')) {
+    return null;
+  }
+  
   const { data: classes = [], isLoading } = useQuery({
     queryKey: ['active-classes', currentBranch?.id],
     queryFn: async () => {
@@ -88,17 +93,12 @@ export function ClassesTabs() {
     });
   }, [toast]);
   
-  // Only display the class tabs on the classes page or class-related pages
-  if (!location.pathname.includes('/classes')) {
+  if (isLoading) {
     return null;
   }
   
   // If we have no active classes or haven't initialized the ordered classes yet, don't render
-  if (activeClasses.length === 0) {
-    return null;
-  }
-  
-  if (isLoading) {
+  if (activeClasses.length === 0 || orderedClasses.length === 0) {
     return null;
   }
 

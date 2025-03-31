@@ -1,5 +1,5 @@
 
-import { createBrowserRouter } from "react-router-dom";
+import { createBrowserRouter, Navigate } from "react-router-dom";
 
 import Dashboard from "./pages/Dashboard";
 import Classes from "./pages/Classes";
@@ -16,8 +16,7 @@ import Index from "./pages/Index";
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <Index />,
-    errorElement: <NotFound />,
+    element: <Navigate to="/dashboard" replace />,
   },
   {
     path: "/dashboard",
@@ -35,7 +34,6 @@ const router = createBrowserRouter([
     path: "/class-handlers/:id",
     element: <ClassHandlers />,
   },
-  // Add the new route pattern that matches your URL
   {
     path: "/classes/:classId/handlers",
     element: <ClassHandlers />,
@@ -59,6 +57,16 @@ const router = createBrowserRouter([
   {
     path: "/unpaid-handlers",
     element: <UnpaidHandlers />,
+  },
+  {
+    // Explicit 404 route
+    path: "/404",
+    element: <NotFound />,
+  },
+  {
+    // Catch all route for any undefined paths
+    path: "*",
+    element: <NotFound />,
   },
 ]);
 

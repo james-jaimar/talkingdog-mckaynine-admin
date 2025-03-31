@@ -10,7 +10,7 @@ const Index = () => {
   useEffect(() => {
     // Redirect to dashboard if on the exact index route
     if (window.location.pathname === "/") {
-      navigate("/dashboard");
+      navigate("/dashboard", { replace: true });
     }
   }, [navigate]);
 
