@@ -138,15 +138,18 @@ function dispatch(action: Action) {
   })
 }
 
-// Define the toast function type to accept both forms
+// Define the toast function type
 type ToastOptions = Partial<Omit<ToasterToast, "id">>
 
-// This function overload allows for either:
-// 1. toast(options) - single object parameter
-// 2. toast(message, options) - string message and optional options
-function toast(props: ToastOptions): ReturnType<typeof toast>
-function toast(props: string, options?: ToastOptions): ReturnType<typeof toast>
-function toast(props: ToastOptions | string, options?: ToastOptions) {
+interface ToastFunction {
+  (props: ToastOptions): { id: string; dismiss: () => void; update: (props: ToasterToast) => void };
+  (message: string, options?: ToastOptions): { id: string; dismiss: () => void; update: (props: ToasterToast) => void };
+}
+
+const toast: ToastFunction = function toast(
+  props: ToastOptions | string, 
+  options?: ToastOptions
+) {
   const id = genId()
 
   const update = (props: ToasterToast) =>
