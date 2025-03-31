@@ -16,6 +16,7 @@ interface Dog {
   breed: string;
   age?: number;
   weight?: number;
+  date_of_birth?: string;
   notes?: string;
   behavior_notes?: string;
   medical_notes?: string;
@@ -67,6 +68,7 @@ export default function HandlerDetail() {
               breed,
               age,
               weight,
+              date_of_birth,
               notes,
               behavior_notes,
               medical_notes,

@@ -13,6 +13,7 @@ interface EditDogModalProps {
     breed: string;
     age?: number;
     weight?: number;
+    date_of_birth?: string;
     notes?: string;
     behavior_notes?: string;
     medical_notes?: string;
@@ -26,6 +27,8 @@ interface EditDogModalProps {
 export function EditDogModal({ dog, clientId, onSuccess, isNew = false }: EditDogModalProps) {
   const [open, setOpen] = useState(false);
   const isMobile = useIsMobile();
+
+  console.log("EditDogModal received dog:", dog);
 
   const title = isNew ? "Add Dog" : "Edit Dog";
   const buttonText = isNew ? "Add Dog" : "Edit";

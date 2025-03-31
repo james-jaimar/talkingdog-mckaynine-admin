@@ -11,6 +11,7 @@ interface DogProps {
     breed: string;
     age?: number;
     weight?: number;
+    date_of_birth?: string;
     notes?: string;
     behavior_notes?: string;
     medical_notes?: string;
@@ -32,7 +33,12 @@ export function DogCard({ dog, clientId, onDogUpdated }: DogProps) {
             <TabsTrigger value="medical">Medical</TabsTrigger>
           </TabsList>
           <TabsContent value="basic" className="p-2">
-            <BasicInfoTab age={dog.age} weight={dog.weight} notes={dog.notes} />
+            <BasicInfoTab 
+              age={dog.age} 
+              weight={dog.weight} 
+              notes={dog.notes}
+              date_of_birth={dog.date_of_birth} 
+            />
           </TabsContent>
           <TabsContent value="behavior" className="p-2">
             <NotesTab 

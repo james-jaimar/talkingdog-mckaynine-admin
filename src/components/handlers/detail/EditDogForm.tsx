@@ -23,6 +23,8 @@ export function EditDogForm({ dog, clientId, onSuccess, isNew = false }: EditDog
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
+  console.log("Initial dog data:", dog);
+
   // Initialize form with dog data if editing, or empty if creating new
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -54,6 +56,8 @@ export function EditDogForm({ dog, clientId, onSuccess, isNew = false }: EditDog
       };
 
       console.log("Submitting dog data:", dogData);
+      console.log("Is new dog:", isNew);
+      console.log("Dog ID:", dog?.id);
 
       if (isNew) {
         // Create new dog
@@ -62,7 +66,10 @@ export function EditDogForm({ dog, clientId, onSuccess, isNew = false }: EditDog
           client_id: clientId,
         });
 
-        if (error) throw error;
+        if (error) {
+          console.error("Supabase insert error:", error);
+          throw error;
+        }
 
         toast({
           title: "Dog added",
@@ -70,6 +77,7 @@ export function EditDogForm({ dog, clientId, onSuccess, isNew = false }: EditDog
         });
       } else if (dog?.id) {
         // Update existing dog
+        console.log("Updating dog with ID:", dog.id);
         const { error } = await supabase
           .from("dogs")
           .update(dogData)
@@ -84,6 +92,8 @@ export function EditDogForm({ dog, clientId, onSuccess, isNew = false }: EditDog
           title: "Dog updated",
           description: "The dog information has been updated successfully",
         });
+      } else {
+        throw new Error("Missing dog ID for update operation");
       }
 
       if (onSuccess) onSuccess();
