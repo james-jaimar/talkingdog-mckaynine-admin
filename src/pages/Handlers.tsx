@@ -24,9 +24,18 @@ export default function Handlers() {
     refetch
   } = useHandlersData();
 
-  // Refetch data when component mounts to ensure we have the latest data after imports
+  // Force refetch data when component mounts to ensure we have the latest data after imports
   useEffect(() => {
+    // Immediate refetch on mount
     refetch();
+    
+    // Setup a refetch interval while the component is mounted
+    const interval = setInterval(() => {
+      refetch();
+    }, 5000);
+    
+    // Clean up interval on unmount
+    return () => clearInterval(interval);
   }, [refetch]);
 
   return (

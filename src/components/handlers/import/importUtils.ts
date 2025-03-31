@@ -18,6 +18,7 @@ interface ImportRow {
   "COMMENTS"?: string;
   "WhatsApp"?: string;
   "Photo Pemission"?: string;
+  "Name"?: string; // Added Name column
   [key: string]: any;
 }
 
@@ -43,7 +44,7 @@ export async function processImportData(
       const email = parsedRow["E-mail"].trim();
       let { data: existingClients } = await supabase
         .from("clients")
-        .select("id, first_name, last_name, branch_id")
+        .select("id, first_name, branch_id")
         .eq("email", email);
 
       let clientId;
@@ -55,8 +56,8 @@ export async function processImportData(
           continue;
         }
 
-        // Extract first and last name from email or use placeholders
-        const nameParts = extractNameFromEmail(email);
+        // Get client name from Name column or use email as fallback
+        const clientName = parsedRow["Name"] ? parsedRow["Name"].trim() : email.split('@')[0];
         
         // Generate notes with WhatsApp and Photo Permission preferences
         const notes = generateNotes(parsedRow);
@@ -66,8 +67,8 @@ export async function processImportData(
           .from("clients")
           .insert({
             email: email,
-            first_name: nameParts.firstName,
-            last_name: nameParts.lastName,
+            first_name: clientName,
+            last_name: "", // Empty last name as requested
             phone: parsedRow["Tel"] || null,
             notes: notes,
             branch_id: branchId || null
@@ -77,7 +78,7 @@ export async function processImportData(
 
         if (error) throw error;
         clientId = newClient.id;
-        console.log(`Created new client: ${nameParts.firstName} ${nameParts.lastName} (${email}) with ID: ${clientId}`);
+        console.log(`Created new client: ${clientName} (${email}) with ID: ${clientId}`);
       } else {
         clientId = existingClients[0].id;
         console.log(`Using existing client with ID: ${clientId} for email: ${email}`);
@@ -141,8 +142,11 @@ export async function processImportData(
         yoga_class: hasValue(parsedRow["YOGA"])
       };
 
-      const hasAnyEnrollment = Object.values(enrollmentData).some(
-        (val, index) => index > 0 && val === true
+      // Log the enrollment data to check what's being saved
+      console.log("Enrollment data:", enrollmentData);
+
+      const hasAnyEnrollment = Object.entries(enrollmentData).some(
+        ([key, val]) => key !== 'dog_id' && val === true
       );
 
       if (hasAnyEnrollment) {
@@ -152,6 +156,8 @@ export async function processImportData(
         } else {
           console.log(`Created class enrollment for dog: ${dogId}`);
         }
+      } else {
+        console.log("No class enrollments found for this row");
       }
 
       importedCount++;
@@ -199,30 +205,20 @@ function generateNotes(row: ImportRow): string {
     notes.push(row["COMMENTS"]);
   }
   
-  return notes.join("\n");
-}
-
-function extractNameFromEmail(email: string): { firstName: string; lastName: string } {
-  // Basic logic to extract name from email
-  const parts = email.split('@')[0].split(/[\.\_]/);
-  
-  if (parts.length >= 2) {
-    // Try to capitalize first letter of each name part
-    return {
-      firstName: capitalizeFirstLetter(parts[0]),
-      lastName: capitalizeFirstLetter(parts[1])
-    };
+  // Check for class-related comments embedded in the CSV
+  if (hasValue(row["EO"]) && typeof row["EO"] === 'string' && row["EO"].includes("April")) {
+    notes.push(`EO: ${row["EO"]}`);
   }
   
-  return {
-    firstName: capitalizeFirstLetter(parts[0]),
-    lastName: "Unknown"
-  };
-}
-
-function capitalizeFirstLetter(string: string): string {
-  if (!string) return "";
-  return string.charAt(0).toUpperCase() + string.slice(1);
+  if (hasValue(row["BRONZE CGC"]) && typeof row["BRONZE CGC"] === 'string' && row["BRONZE CGC"].includes("info")) {
+    notes.push(`Bronze CGC: ${row["BRONZE CGC"]}`);
+  }
+  
+  if (hasValue(row["SILVER CGC"]) && typeof row["SILVER CGC"] === 'string' && row["SILVER CGC"].includes("April")) {
+    notes.push(`Silver CGC: ${row["SILVER CGC"]}`);
+  }
+  
+  return notes.join("\n");
 }
 
 function calculateAgeFromDOB(dobString?: string): number | null {
@@ -277,7 +273,10 @@ function hasValue(value?: string): boolean {
   // Check if there's any text that might indicate enrollment
   if (value.includes("enrolled") || value.includes("grad") || 
       value.includes("declan") || value.includes("april") ||
-      value.includes("jan")) return true;
+      value.includes("jan") || value.includes("info")) return true;
+  
+  // Check for dates or numeric patterns (e.g., "15h00")
+  if (value.match(/\d{1,2}h\d{2}/) || value.match(/\d{2}:\d{2}/)) return true;
   
   // If there's any substantial text (not just spaces or dashes)
   if (value.length > 0 && value !== "-" && value !== "no" && value !== "n") return true;

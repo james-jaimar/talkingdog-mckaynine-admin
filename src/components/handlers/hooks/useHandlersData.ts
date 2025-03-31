@@ -14,6 +14,7 @@ interface Dog {
   behavior_notes?: string;
   notes?: string;
   medical_notes?: string;
+  class_enrollments?: any[];
 }
 
 export interface Handler {
@@ -58,7 +59,17 @@ export function useHandlersData() {
               age,
               behavior_notes,
               notes,
-              medical_notes
+              medical_notes,
+              class_enrollments (
+                id,
+                puppy_class,
+                eo_class,
+                bronze_cgc_class,
+                silver_cgc_class,
+                beginner_novice_class,
+                wt_class,
+                yoga_class
+              )
             )
           `);
         

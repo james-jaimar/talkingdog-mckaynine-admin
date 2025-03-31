@@ -83,6 +83,11 @@ export function HandlerTable({
       </TableHeader>
       <TableBody>
         {handlers.slice(0, itemsPerPage).map((handler) => {
+          // Find class enrollments for the first dog
+          const firstDog = handler.dogs && handler.dogs.length > 0 ? handler.dogs[0] : null;
+          const enrollments = firstDog ? firstDog.class_enrollments : [];
+          const enrollment = enrollments && enrollments.length > 0 ? enrollments[0] : null;
+
           // Check for WhatsApp and Photo Permission in notes
           const whatsApp = handler.notes && handler.notes.includes("WhatsApp: yes");
           const photoPermission = handler.notes && handler.notes.includes("Photo Permission: yes");
@@ -98,7 +103,7 @@ export function HandlerTable({
           return (
             <TableRow key={handler.id}>
               <TableCell className="font-medium">
-                {handler.first_name} {handler.last_name}
+                {handler.first_name}
               </TableCell>
               <TableCell>{handler.email}</TableCell>
               <TableCell>
@@ -122,13 +127,27 @@ export function HandlerTable({
                   : "-"}
               </TableCell>
               <TableCell>{formatPhoneNumber(handler.phone)}</TableCell>
-              <TableCell>{extractClassNotes(handler.notes, "PUPPY")}</TableCell>
-              <TableCell>{extractClassNotes(handler.notes, "EO")}</TableCell>
-              <TableCell>{extractClassNotes(handler.notes, "BRONZE CGC")}</TableCell>
-              <TableCell>{extractClassNotes(handler.notes, "SILVER CGC")}</TableCell>
-              <TableCell>{extractClassNotes(handler.notes, "BEGINNER/NOVICE")}</TableCell>
-              <TableCell>{extractClassNotes(handler.notes, "WT")}</TableCell>
-              <TableCell>{extractClassNotes(handler.notes, "YOGA")}</TableCell>
+              <TableCell>
+                <Checkbox checked={enrollment?.puppy_class || false} disabled />
+              </TableCell>
+              <TableCell>
+                <Checkbox checked={enrollment?.eo_class || false} disabled />
+              </TableCell>
+              <TableCell>
+                <Checkbox checked={enrollment?.bronze_cgc_class || false} disabled />
+              </TableCell>
+              <TableCell>
+                <Checkbox checked={enrollment?.silver_cgc_class || false} disabled />
+              </TableCell>
+              <TableCell>
+                <Checkbox checked={enrollment?.beginner_novice_class || false} disabled />
+              </TableCell>
+              <TableCell>
+                <Checkbox checked={enrollment?.wt_class || false} disabled />
+              </TableCell>
+              <TableCell>
+                <Checkbox checked={enrollment?.yoga_class || false} disabled />
+              </TableCell>
               <TableCell>
                 {notesWithoutPreferences 
                   ? (notesWithoutPreferences.substring(0, 20) + (notesWithoutPreferences.length > 20 ? "..." : ""))

@@ -24,9 +24,10 @@ export function ImportHandlersModal() {
       description: `${count} handlers imported successfully.`,
     });
     
-    // Invalidate queries to force a refresh
+    // Force invalidate to refresh data immediately after import
     queryClient.invalidateQueries({ queryKey: ['handlers'] });
     
+    // Close the modal
     setOpen(false);
   };
 
@@ -43,6 +44,7 @@ export function ImportHandlersModal() {
           <DialogTitle>Import Handlers</DialogTitle>
           <DialogDescription>
             Upload a CSV file to import handlers and their dogs.
+            Expected columns: E-mail, Dog's Name, Breed, DOB, Assess, Tel, PUPPY, EO, BRONZE CGC, SILVER CGC, BEGINNER/Novice, WT, YOGA, COMMENTS, WhatsApp, Photo Permission
           </DialogDescription>
         </DialogHeader>
         <CSVImporter onImportSuccess={handleImportSuccess} />
