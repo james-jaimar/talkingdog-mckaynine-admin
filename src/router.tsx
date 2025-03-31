@@ -11,7 +11,6 @@ import HandlerDetail from "./pages/HandlerDetail";
 import Branches from "./pages/Branches";
 import UnpaidHandlers from "./pages/UnpaidHandlers";
 import NotFound from "./pages/NotFound";
-import Index from "./pages/Index";
 
 // Use basename to handle subdirectory routing in preview environments
 const basename = import.meta.env.MODE === 'production' 
@@ -44,6 +43,10 @@ const router = createBrowserRouter([
     element: <ClassHandlers />,
   },
   {
+    path: "/classes/:classId/schedules",
+    element: <ClassSchedules />,
+  },
+  {
     path: "/trainers",
     element: <Trainers />,
   },
@@ -71,7 +74,7 @@ const router = createBrowserRouter([
   {
     // Catch all route for any undefined paths
     path: "*",
-    element: <Dashboard />, // Changed from NotFound to Dashboard to handle odd routes
+    element: <Dashboard />, 
   },
 ], {
   basename,

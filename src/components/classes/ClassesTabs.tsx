@@ -27,6 +27,7 @@ export function ClassesTabs() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const initializedRef = useRef(false);
+  const [activeTab, setActiveTab] = useState<string>("all");
   
   // Only display the class tabs on the classes page or class-related pages
   if (!location.pathname.includes('/classes')) {
@@ -147,6 +148,16 @@ export function ClassesTabs() {
     initializedRef.current = true;
   }, [activeClasses, savedOrder]);
 
+  // Set the active tab based on the URL when component mounts or URL changes
+  useEffect(() => {
+    const classIdMatch = location.pathname.match(/\/classes\/([^/]+)/);
+    if (classIdMatch) {
+      setActiveTab(classIdMatch[1]);
+    } else if (location.pathname === "/classes") {
+      setActiveTab("all");
+    }
+  }, [location.pathname]);
+
   // Save the order to database whenever it changes
   const saveOrderToDatabase = useCallback(async (newOrder: typeof orderedClasses) => {
     try {
@@ -208,23 +219,6 @@ export function ClassesTabs() {
     });
   }, [orderedClasses, toast, saveOrderToDatabase]);
 
-  // Handle tab click to prevent jumping back
-  const handleTabClick = useCallback((classId: string) => {
-    // This will be handled by the Link component's built-in navigation
-    // No additional state updates needed here as that was causing the jumping
-  }, []);
-  
-  // Figure out the current tab value based on the URL
-  const getCurrentTabValue = useCallback(() => {
-    const classIdMatch = location.pathname.match(/\/classes\/([^/]+)/);
-    if (classIdMatch) {
-      return classIdMatch[1];
-    }
-    return "all";
-  }, [location.pathname]);
-  
-  const currentTabValue = getCurrentTabValue();
-  
   if (isLoading) {
     return null;
   }
@@ -236,7 +230,7 @@ export function ClassesTabs() {
 
   return (
     <div className="mx-4 mt-2 overflow-x-auto">
-      <Tabs value={currentTabValue} defaultValue="all" className="w-full">
+      <Tabs value={activeTab} defaultValue="all" className="w-full">
         <DragDropContext onDragEnd={handleDragEnd}>
           <Droppable droppableId="class-tabs" direction="horizontal">
             {(provided) => (
@@ -275,7 +269,6 @@ export function ClassesTabs() {
                             "flex items-center gap-1",
                             location.pathname.includes(`/classes/${classItem.id}`) ? "font-medium" : ""
                           )}
-                          onClick={() => handleTabClick(classItem.id)}
                         >
                           <div 
                             {...provided.dragHandleProps}
