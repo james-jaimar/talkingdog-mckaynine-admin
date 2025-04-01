@@ -8,7 +8,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { Loader2, UserPlus } from "lucide-react";
 
-export function AddUserDialog() {
+interface AddUserDialogProps {
+  onUserAdded: () => void;
+}
+
+export function AddUserDialog({ onUserAdded }: AddUserDialogProps) {
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -61,8 +65,8 @@ export function AddUserDialog() {
         description: `User ${email} has been created successfully.`,
       });
       
-      // Dispatch a custom event that listeners can use to refresh data
-      window.dispatchEvent(new CustomEvent('user-created'));
+      // Refresh the user list
+      onUserAdded();
       
     } catch (error: any) {
       console.error("Error creating user:", error);
@@ -154,7 +158,7 @@ export function AddUserDialog() {
                   Creating...
                 </>
               ) : (
-                <>Create User</>
+                "Create User"
               )}
             </Button>
           </div>
