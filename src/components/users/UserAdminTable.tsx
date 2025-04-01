@@ -22,16 +22,7 @@ import { Search, RefreshCw, Key, UserCog } from "lucide-react";
 import { UserManageDialog } from "./UserManageDialog";
 import { UserPasswordResetDialog } from "./UserPasswordResetDialog";
 import { AddUserDialog } from "./AddUserDialog";
-
-// Simple type definition
-type User = {
-  id: string;
-  email: string;
-  full_name: string;
-  role: string;
-  created_at: string;
-  isCurrentUser: boolean;
-};
+import { User } from "./hooks/useUsers";
 
 interface UserAdminTableProps {
   users: User[];

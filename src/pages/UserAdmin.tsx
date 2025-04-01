@@ -8,20 +8,11 @@ import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import UserAdminTable from "@/components/users/UserAdminTable";
 import { Loader2 } from "lucide-react";
-
-// Simple type definition for users
-type User = {
-  id: string;
-  email: string;
-  full_name?: string;
-  role: string;
-  created_at: string;
-  isCurrentUser: boolean;
-};
+import type { User as AdminUser } from "@/components/users/hooks/useUsers";
 
 export default function UserAdmin() {
   const { isAdmin, isLoading: authLoading, user: currentUser } = useAuth();
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const navigate = useNavigate();
@@ -42,7 +33,7 @@ export default function UserAdmin() {
       console.log(`Found ${data?.length || 0} profiles:`, data);
       
       // Map to a simpler user structure and mark current user
-      const mappedUsers = (data || []).map(profile => ({
+      const mappedUsers: AdminUser[] = (data || []).map(profile => ({
         id: profile.id,
         email: profile.username || '',
         full_name: profile.full_name || '',

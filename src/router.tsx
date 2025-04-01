@@ -11,7 +11,9 @@ import UserManagement from "./pages/UserManagement";
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <App />,
+    element: <App>
+      <div>Welcome to McKaynine Training Centre</div>
+    </App>,
     errorElement: <NotFound />,
   },
   {
