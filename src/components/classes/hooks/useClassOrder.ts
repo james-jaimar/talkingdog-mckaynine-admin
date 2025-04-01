@@ -61,9 +61,11 @@ export function useClassOrder() {
     }
   });
 
-  // Move class up in the order
-  const moveClassUp = (orderedClasses: any[], index: number) => {
-    if (index <= 0) return; // Already at the top
+  // Move class up in the order - accepts only index
+  const moveClassUp = (index: number) => {
+    const orderedClasses = queryClient.getQueryData(['classes', currentBranch?.id]) as any[] || [];
+    
+    if (index <= 0 || !orderedClasses.length) return; // Already at the top
     
     const newOrder = [...orderedClasses];
     [newOrder[index - 1], newOrder[index]] = [newOrder[index], newOrder[index - 1]];
@@ -85,9 +87,11 @@ export function useClassOrder() {
     });
   };
 
-  // Move class down in the order
-  const moveClassDown = (orderedClasses: any[], index: number) => {
-    if (index >= orderedClasses.length - 1) return; // Already at the bottom
+  // Move class down in the order - accepts only index
+  const moveClassDown = (index: number) => {
+    const orderedClasses = queryClient.getQueryData(['classes', currentBranch?.id]) as any[] || [];
+    
+    if (index >= orderedClasses.length - 1 || !orderedClasses.length) return; // Already at the bottom
     
     const newOrder = [...orderedClasses];
     [newOrder[index], newOrder[index + 1]] = [newOrder[index + 1], newOrder[index]];

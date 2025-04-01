@@ -67,8 +67,8 @@ export function ClassesTable({ filter }: ClassesTableProps = {}) {
               classItem={classItem}
               index={index}
               totalClasses={orderedClasses.length}
-              onMoveUp={moveClassUp}
-              onMoveDown={moveClassDown}
+              onMoveUp={() => moveClassUp(index)}
+              onMoveDown={() => moveClassDown(index)}
               onEdit={handleEdit}
             />
           ))}
