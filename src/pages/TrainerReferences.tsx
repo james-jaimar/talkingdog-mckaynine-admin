@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Helmet } from "react-helmet";
 import { useToast } from "@/components/ui/use-toast";
-import { Loader2, AlertTriangle } from "lucide-react";
+import { Loader2, AlertTriangle, Info } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Trainer } from "@/components/trainers/types/trainer";
 
@@ -56,7 +56,7 @@ export default function TrainerReferences() {
 
   // Reassign trainer mutation
   const { mutate: reassignTrainer, isPending: isReassigning } = useMutation({
-    mutationFn: async ({ scheduleId, trainerId }: { scheduleId: string, trainerId: string | null }) => {
+    mutationFn: async ({ scheduleId, trainerId }: { scheduleId: string, trainerId: string }) => {
       const { error } = await supabase
         .from('class_schedules')
         .update({ trainer_id: trainerId })
@@ -98,18 +98,16 @@ export default function TrainerReferences() {
 
   // Handle reassignment
   const handleReassign = (scheduleId: string) => {
-    const newTrainerIdOrNone = selectedReplacement[scheduleId];
-    if (!newTrainerIdOrNone) {
+    const newTrainerId = selectedReplacement[scheduleId];
+    if (!newTrainerId) {
       toast({
         title: "No trainer selected",
-        description: "Please select a replacement trainer or 'None'.",
+        description: "Please select a replacement trainer.",
         variant: "destructive",
       });
       return;
     }
 
-    // If "none" is selected, set trainer_id to null
-    const newTrainerId = newTrainerIdOrNone === "none" ? null : newTrainerIdOrNone;
     reassignTrainer({ scheduleId, trainerId: newTrainerId });
   };
 
@@ -130,6 +128,14 @@ export default function TrainerReferences() {
           <AlertDescription>
             Before deleting trainers, you need to reassign any classes they are scheduled to teach.
             Use this page to identify and reassign classes from trainers you want to remove.
+          </AlertDescription>
+        </Alert>
+
+        <Alert>
+          <Info className="h-4 w-4" />
+          <AlertTitle>Database constraint</AlertTitle>
+          <AlertDescription>
+            Note: Each class schedule must have a trainer assigned. You cannot remove a trainer without assigning a replacement.
           </AlertDescription>
         </Alert>
 
@@ -228,11 +234,6 @@ export default function TrainerReferences() {
                             <SelectValue placeholder="Select a trainer" />
                           </SelectTrigger>
                           <SelectContent>
-                            {/* Add a "None" option at the beginning */}
-                            <SelectItem value="none" className="text-gray-500">
-                              None (Remove trainer)
-                            </SelectItem>
-                            
                             {trainers?.filter(t => t.id !== reference.trainer_id).map(trainer => (
                               <SelectItem key={trainer.id} value={trainer.id}>
                                 {trainer.first_name} {trainer.last_name}
