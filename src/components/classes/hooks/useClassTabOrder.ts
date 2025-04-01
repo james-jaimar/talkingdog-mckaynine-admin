@@ -35,7 +35,6 @@ export function useClassTabOrder(
         // Check if we have a logged in user
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
-          console.log("No user logged in, cannot fetch saved order");
           return null;
         }
 
@@ -93,7 +92,6 @@ export function useClassTabOrder(
       // Check if we have a logged in user
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        console.log("No user logged in, cannot save order");
         return;
       }
 
