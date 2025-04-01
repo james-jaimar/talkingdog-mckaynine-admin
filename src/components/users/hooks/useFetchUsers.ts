@@ -1,6 +1,7 @@
+
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { UserProfile } from "../types/userTypes";
+import { UserProfile, SupabaseUser, SupabaseUsersResponse } from "../types/userTypes";
 
 export function useFetchUsers() {
   return useQuery({
@@ -30,9 +31,10 @@ export function useFetchUsers() {
         }
         
         // Create a map of user metadata
-        const userMetadataMap = new Map();
+        const userMetadataMap = new Map<string, { app_id?: string; raw_metadata: any }>();
         if (usersData && usersData.users) {
-          usersData.users.forEach((user) => {
+          const supabaseUsers = usersData.users as SupabaseUser[];
+          supabaseUsers.forEach((user) => {
             userMetadataMap.set(user.id, {
               app_id: user.user_metadata?.app_id,
               raw_metadata: user.user_metadata
