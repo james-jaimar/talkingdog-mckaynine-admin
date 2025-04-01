@@ -15,6 +15,7 @@ export function useFetchUsers() {
         console.log("Current authenticated user ID:", currentUser?.id);
         
         // First get all profiles from the profiles table - no filtering
+        // IMPORTANT: Modified from to use * instead of ids so we get all columns
         const { data: profiles, error: profilesError } = await supabase
           .from('profiles')
           .select('*')
@@ -32,23 +33,12 @@ export function useFetchUsers() {
           console.log("No profiles found in the database. This is likely because no users have registered yet.");
         }
         
-        // Get table information to verify structure
-        console.log("Checking auth status and database structure...");
-        
-        // Check if the profiles table has appropriate data with a count query
-        const { count, error: countError } = await supabase
-          .from('profiles')
-          .select('*', { count: 'exact', head: true });
-        
-        console.log("Total profiles in database (count):", count);
-        
-        if (countError) {
-          console.error("Error counting profiles:", countError);
+        // DEBUG - show a clear log of all the profiles we found
+        if (profiles) {
+          profiles.forEach((profile, index) => {
+            console.log(`Profile ${index + 1}:`, profile.id, profile.username, profile.role);
+          });
         }
-        
-        // Since we can't access admin APIs with the anon key,
-        // we'll rely on the profiles table data, which is the primary
-        // source of user information in our application
         
         // Then get trainer information for users linked to trainers
         const userIds = profiles?.map(profile => profile.id) || [];

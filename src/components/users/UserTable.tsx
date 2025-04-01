@@ -59,12 +59,23 @@ export function UserTable() {
   const [userToResetPassword, setUserToResetPassword] = useState<UserProfile | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  // Debug: Log all users on component mount and render
+  useEffect(() => {
+    console.log("UserTable - Current users array:", users);
+    console.log(`UserTable - Total users loaded: ${users.length}`);
+  }, [users]);
+
   // Filter users by name or email
   const filteredUsers = users.filter(
     (user) =>
       user.full_name?.toLowerCase().includes(filter.toLowerCase()) ||
       user.username?.toLowerCase().includes(filter.toLowerCase())
   );
+
+  // Debug: Log filtered users
+  useEffect(() => {
+    console.log(`UserTable - Filtered users: ${filteredUsers.length}`);
+  }, [filteredUsers]);
 
   const handleRoleChange = (role: string) => {
     if (editingUser) {
@@ -86,6 +97,7 @@ export function UserTable() {
 
   // Auto-refresh when the component mounts
   useEffect(() => {
+    console.log("UserTable mounted - triggering initial data fetch");
     refetchUsers();
   }, [refetchUsers]);
 
@@ -120,7 +132,7 @@ export function UserTable() {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
-          <CardTitle>Users</CardTitle>
+          <CardTitle>Users ({users.length})</CardTitle>
           <CardDescription>
             Manage user accounts and access roles.
           </CardDescription>
