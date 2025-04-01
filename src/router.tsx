@@ -1,4 +1,3 @@
-
 import { createBrowserRouter } from "react-router-dom";
 
 import Dashboard from "./pages/Dashboard";
@@ -44,6 +43,7 @@ const router = createBrowserRouter([
     path: "/class-handlers/:id",
     element: <ProtectedRoute><ClassHandlers /></ProtectedRoute>,
   },
+  // Keep this route for backward compatibility, but main navigation will use /classes/:classId
   {
     path: "/classes/:classId/handlers",
     element: <ProtectedRoute><ClassHandlers /></ProtectedRoute>,
