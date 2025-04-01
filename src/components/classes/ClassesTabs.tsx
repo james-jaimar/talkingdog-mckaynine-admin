@@ -69,7 +69,8 @@ export function ClassesTabs() {
     orderedClasses,
     setOrderedClasses,
     saveOrderToDatabase,
-    isLoadingOrder
+    isLoadingOrder,
+    isAuthenticated
   } = useClassTabOrder(activeClasses, currentBranch?.id);
 
   const handleDragEnd = (result: DropResult) => {
@@ -95,14 +96,16 @@ export function ClassesTabs() {
     // Update state with the reordered items
     setOrderedClasses(items);
     
-    // Save the new order to the database immediately
-    saveOrderToDatabase(items);
-    
-    // Show toast after successful reordering
-    toast({
-      title: "Class order updated",
-      description: "The order of class tabs has been updated and saved."
-    });
+    // Save the new order to the database if user is authenticated
+    if (isAuthenticated) {
+      saveOrderToDatabase(items);
+      
+      // Show toast after successful reordering
+      toast({
+        title: "Class order updated",
+        description: "The order of class tabs has been updated and saved."
+      });
+    }
   };
 
   if (isLoading || isLoadingOrder) {

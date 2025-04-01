@@ -26,6 +26,17 @@ export function useClassTabOrder(
 ) {
   const { toast } = useToast();
   const [orderedClasses, setOrderedClasses] = useState<ClassWithExtras[]>([]);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+
+  // Check authentication status
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setIsAuthenticated(!!user);
+    };
+    
+    checkAuth();
+  }, []);
 
   // Query to fetch saved class order from database
   const { data: savedOrder, isLoading: isLoadingOrder } = useQuery({
@@ -57,14 +68,17 @@ export function useClassTabOrder(
         return null;
       }
     },
-    enabled: !!branchId
+    enabled: !!branchId && isAuthenticated === true
   });
 
   // Initialize ordered classes from database or default order
   useEffect(() => {
-    if (!activeClasses || activeClasses.length === 0 || isLoadingOrder) return;
+    if (!activeClasses || activeClasses.length === 0) return;
     
-    if (savedOrder && savedOrder.class_ids && savedOrder.class_ids.length > 0) {
+    // If still loading or checking authentication, don't update yet
+    if (isLoadingOrder || isAuthenticated === null) return;
+    
+    if (isAuthenticated && savedOrder && savedOrder.class_ids && savedOrder.class_ids.length > 0) {
       // We have a saved order from the database
       const savedOrderIds = savedOrder.class_ids;
       
@@ -81,13 +95,18 @@ export function useClassTabOrder(
       
       setOrderedClasses(orderedClassList);
     } else {
-      // If no saved order, use the default order
+      // If no saved order or not authenticated, use the default order
       setOrderedClasses([...activeClasses]);
     }
-  }, [activeClasses, savedOrder, isLoadingOrder, branchId]);
+  }, [activeClasses, savedOrder, isLoadingOrder, branchId, isAuthenticated]);
 
   // Save the order to database
   const saveOrderToDatabase = async (newOrder: ClassWithExtras[]) => {
+    // If not authenticated, just update the local state and don't try to save
+    if (isAuthenticated !== true) {
+      return;
+    }
+    
     try {
       // Check if we have a logged in user
       const { data: { user } } = await supabase.auth.getUser();
@@ -126,7 +145,8 @@ export function useClassTabOrder(
   return {
     orderedClasses,
     setOrderedClasses,
-    isLoadingOrder,
-    saveOrderToDatabase
+    isLoadingOrder: isLoadingOrder || isAuthenticated === null,
+    saveOrderToDatabase,
+    isAuthenticated
   };
 }
