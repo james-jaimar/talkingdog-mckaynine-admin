@@ -14,6 +14,10 @@ export default function UserAdmin() {
   const { toast } = useToast();
   const [pageLoading, setPageLoading] = useState(true);
 
+  // Debug admin status
+  console.log("UserAdmin page - User is admin:", isAdmin);
+  console.log("UserAdmin page - Auth loading:", isLoading);
+
   // Check if user is admin, if not redirect
   useEffect(() => {
     if (!isLoading) {

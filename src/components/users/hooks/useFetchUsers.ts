@@ -14,20 +14,21 @@ export function useFetchUsers() {
         const { data: { user: currentUser } } = await supabase.auth.getUser();
         console.log("Current user ID:", currentUser?.id);
         
-        // Fetch ALL profiles from the profiles table without filtering for current user
+        // Fetch ALL profiles directly from the profiles table (not filtered to current user)
         const { data: profiles, error: profilesError } = await supabase
           .from('profiles')
-          .select('*')
-          .order('created_at', { ascending: false });
+          .select('*');
         
         if (profilesError) {
           console.error("Error fetching profiles:", profilesError);
           throw profilesError;
         }
         
-        console.log(`Found ${profiles?.length || 0} total profiles in database`);
+        // Debug log the raw profiles count
+        console.log(`Found ${profiles?.length || 0} total profiles in database:`, profiles);
         
         if (!profiles || profiles.length === 0) {
+          console.warn("No profiles found in the database");
           return [];
         }
         
@@ -61,7 +62,7 @@ export function useFetchUsers() {
         });
         
         // Debug log all found users
-        console.log("All users found:");
+        console.log("All users found after mapping:");
         userProfiles.forEach((user, index) => {
           console.log(`User ${index + 1}: ID=${user.id}, Name=${user.full_name || user.username}, Role=${user.role}, IsCurrentUser=${user.isCurrentUser}`);
         });
@@ -72,6 +73,6 @@ export function useFetchUsers() {
         throw error;
       }
     },
-    staleTime: 10 * 1000, // 10 seconds
+    staleTime: 5 * 1000, // 5 seconds
   });
 }

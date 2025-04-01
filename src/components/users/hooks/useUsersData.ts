@@ -50,11 +50,21 @@ export function useUsersData() {
     try {
       console.log("Manually refetching ALL users data...");
       await refetch();
-      console.log("Users data refetched successfully");
+      console.log("Users data refetched successfully, found", users.length, "users");
     } catch (error) {
       console.error("Error refetching users data:", error);
     }
   };
+
+  // Debug the users array
+  console.log(`useUsersData hook - current users count: ${users.length}`);
+  if (users.length > 0) {
+    console.log("Current users in useUsersData:", users.map(u => ({
+      id: u.id, 
+      name: u.full_name || u.username,
+      isCurrentUser: u.isCurrentUser
+    })));
+  }
 
   return {
     users,
