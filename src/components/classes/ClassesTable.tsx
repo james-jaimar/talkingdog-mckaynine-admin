@@ -8,7 +8,7 @@ import { EditClassModal } from "./EditClassModal";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, DollarSign, MapPin, Users, ChevronUp, ChevronDown } from "lucide-react";
+import { Calendar, MapPin, Users, ChevronUp, ChevronDown } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/context/AuthContext";
@@ -236,6 +236,24 @@ export function ClassesTable({ filter }: ClassesTableProps = {}) {
     return Math.max(0, classItem.capacity - totalBookings);
   };
 
+  // Get badge color based on available slots
+  const getAvailableSlotsBadgeVariant = (availableSlots: number, capacity: number) => {
+    if (availableSlots === 0) return "destructive";
+    if (availableSlots <= Math.ceil(capacity * 0.2)) return "warning"; // 20% or less slots remaining
+    if (availableSlots <= Math.ceil(capacity * 0.5)) return "info"; // 50% or less slots remaining
+    return "success";
+  };
+
+  // Get background color class for custom badge variants
+  const getCustomBadgeClass = (variant: string) => {
+    switch (variant) {
+      case "warning": return "bg-amber-500 text-white hover:bg-amber-600";
+      case "info": return "bg-mckaynine-500 text-white hover:bg-mckaynine-600";
+      case "success": return "bg-green-500 text-white hover:bg-green-600";
+      default: return "";
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="text-center p-8">
@@ -271,6 +289,9 @@ export function ClassesTable({ filter }: ClassesTableProps = {}) {
         <TableBody>
           {orderedClasses.map((classItem, index) => {
             const availableSlots = calculateAvailableSlots(classItem);
+            const slotVariant = getAvailableSlotsBadgeVariant(availableSlots, classItem.capacity);
+            const customBadgeClass = getCustomBadgeClass(slotVariant);
+            
             return (
               <TableRow key={classItem.id}>
                 <TableCell>
@@ -307,7 +328,6 @@ export function ClassesTable({ filter }: ClassesTableProps = {}) {
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-1">
-                    <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
                     <span>R {classItem.price}</span>
                   </div>
                 </TableCell>
@@ -318,12 +338,18 @@ export function ClassesTable({ filter }: ClassesTableProps = {}) {
                   </div>
                 </TableCell>
                 <TableCell>
-                  <Badge 
-                    variant={availableSlots === 0 ? "destructive" : availableSlots < 3 ? "outline" : "secondary"}
-                    className={availableSlots < 3 ? "bg-amber-100" : ""}
-                  >
-                    {availableSlots} slot{availableSlots !== 1 ? 's' : ''} left
-                  </Badge>
+                  {slotVariant === "destructive" ? (
+                    <Badge variant="destructive">
+                      No slots left
+                    </Badge>
+                  ) : (
+                    <Badge 
+                      variant={slotVariant === "destructive" ? "destructive" : "outline"}
+                      className={customBadgeClass}
+                    >
+                      {availableSlots} slot{availableSlots !== 1 ? 's' : ''} left
+                    </Badge>
+                  )}
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-1">
