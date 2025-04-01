@@ -5,11 +5,13 @@ import { ClassesTable } from "@/components/classes/ClassesTable";
 import { ClassesTabs } from "@/components/classes/ClassesTabs";
 import { AddClassModal } from "@/components/classes/AddClassModal";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, ListFilter } from "lucide-react";
 import { Helmet } from "react-helmet";
+import { useParams } from "react-router-dom";
 
 export default function Classes() {
   const [isAddClassModalOpen, setIsAddClassModalOpen] = useState(false);
+  const { classId } = useParams<{ classId: string }>();
 
   return (
     <DashboardLayout>
@@ -25,11 +27,13 @@ export default function Classes() {
           </Button>
         </div>
 
-        {/* Display class tabs navigation */}
-        <ClassesTabs />
+        {/* Secondary navigation bar */}
+        <div className="mb-6">
+          <ClassesTabs />
+        </div>
 
-        <div className="mt-6">
-          <ClassesTable />
+        <div className="mt-4">
+          <ClassesTable filter={classId} />
         </div>
 
         <AddClassModal 
