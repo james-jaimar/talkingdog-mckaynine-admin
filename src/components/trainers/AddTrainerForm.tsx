@@ -66,13 +66,16 @@ export function AddTrainerForm({ onSuccess }: AddTrainerFormProps) {
         ? values.specialties.split(",").map(s => s.trim()).filter(Boolean)
         : null;
       
+      // Set branch_id to null if "no_branch" is selected
+      const branchId = values.branchId === "no_branch" ? null : values.branchId || null;
+      
       const { error } = await supabase.from("trainers").insert({
         first_name: values.firstName,
         last_name: values.lastName,
         email: values.email,
         phone: values.phone || null,
         bio: values.bio || null,
-        branch_id: values.branchId || null,
+        branch_id: branchId,
         specialties: specialtiesArray,
       });
       
