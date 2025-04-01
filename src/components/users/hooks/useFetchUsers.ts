@@ -24,7 +24,7 @@ export function useFetchUsers() {
           console.error("Error counting profiles:", countError);
         }
         
-        // Use a fresh connection and query all profiles without any filtering or limitations
+        // Use a fresh connection and query all profiles
         const { data: profiles, error: profilesError } = await supabase
           .from('profiles')
           .select('*');
@@ -34,7 +34,7 @@ export function useFetchUsers() {
           throw profilesError;
         }
         
-        // Extensive debugging for the raw response
+        // Log the raw response to help debug
         console.log(`Found ${profiles?.length || 0} total profiles in database (RAW):`, profiles);
         console.log("Raw profile data (JSON):", JSON.stringify(profiles));
         
@@ -54,12 +54,11 @@ export function useFetchUsers() {
         
         const trainersList = trainers || [];
         
-        // Map ALL profiles to user profile objects
+        // Map profiles to user profile objects
         const userProfiles: UserProfile[] = profiles.map(profile => {
           const linkedTrainer = trainersList.find(t => t.user_id === profile.id);
           const isCurrentUser = currentUser?.id === profile.id;
           
-          // Debug each profile as we process it
           console.log(`Processing profile: ${profile.id}, username: ${profile.username}, role: ${profile.role}`);
           
           return {
@@ -75,19 +74,19 @@ export function useFetchUsers() {
           };
         });
         
-        // Debug log all found users with full details
         console.log("ALL user profiles after mapping:");
         console.log(JSON.stringify(userProfiles, null, 2));
         
-        // Return the complete, unfiltered list of profiles
+        // Important: Return the profiles array directly
         return userProfiles;
       } catch (error) {
         console.error("Error in useFetchUsers:", error);
         throw error;
       }
     },
-    staleTime: 0, // No stale time, always fetch fresh data
-    gcTime: 0, // Don't keep old data in cache
-    refetchOnWindowFocus: true, // Refetch when window gets focus
+    // Don't cache data at all - always fetch fresh from the server
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnWindowFocus: true,
   });
 }

@@ -54,11 +54,12 @@ export function useUsersData() {
       // Invalidate the cache first to ensure fresh data
       queryClient.invalidateQueries({ queryKey: ['users-admin'] });
       await refetch();
-      console.log("Users data refetched successfully, found", users.length, "users");
+      // Note: Don't use users.length here as it might be stale
+      console.log("Users data refetched successfully, found", (await refetch()).data?.length || 0, "users");
     } catch (error) {
       console.error("Error refetching users data:", error);
     }
-  }, [queryClient, refetch, users.length]);
+  }, [queryClient, refetch]);
 
   // Initial fetch on mount and set up a periodic refresh
   useEffect(() => {
