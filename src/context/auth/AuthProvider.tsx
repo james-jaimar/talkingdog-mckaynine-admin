@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,16 +5,19 @@ import { useToast } from "@/components/ui/use-toast";
 import { AuthContext } from "./AuthContext";
 import { fetchUserProfile, ensureAdminRole } from "./utils";
 
+// Define a more specific trainer profile type to avoid deep type issues
+type TrainerProfileType = {
+  id: string;
+  first_name: string;
+  last_name: string;
+};
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [userRole, setUserRole] = useState<string | null>(null);
-  const [trainerProfile, setTrainerProfile] = useState<{ 
-    id: string; 
-    first_name: string; 
-    last_name: string 
-  } | null>(null);
+  const [trainerProfile, setTrainerProfile] = useState<TrainerProfileType | null>(null);
   const { toast } = useToast();
 
   // Function to fetch trainer profile for a user

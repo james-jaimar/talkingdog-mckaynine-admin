@@ -40,7 +40,13 @@ export function TrainersTable() {
       const { data, error } = await query;
       
       if (error) throw error;
-      return data as (Trainer & { 
+      
+      // Add null checks and type safety for profiles
+      return (data || []).map(trainer => ({
+        ...trainer,
+        branches: trainer.branches || null,
+        profiles: trainer.profiles || null
+      })) as (Trainer & { 
         branches: { name: string } | null;
         profiles: { username: string; role: string } | null;
       })[];
@@ -53,7 +59,7 @@ export function TrainersTable() {
       toast({
         title: "User account already exists",
         description: `${trainer.first_name} ${trainer.last_name} already has a user account.`,
-        variant: "warning",
+        variant: "destructive", // Changed from "warning" to "destructive"
       });
       return;
     }
@@ -155,7 +161,7 @@ export function TrainersTable() {
       toast({
         title: "No user account",
         description: `${trainer.first_name} ${trainer.last_name} doesn't have a user account.`,
-        variant: "warning",
+        variant: "destructive", // Changed from "warning" to "destructive"
       });
       return;
     }

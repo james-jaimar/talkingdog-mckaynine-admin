@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { TrainersTable } from "@/components/trainers/TrainersTable";
 import { AddTrainerModal } from "@/components/trainers/AddTrainerModal";
 import { Helmet } from "react-helmet";
-import { InfoCircle } from "lucide-react";
+import { Info } from "lucide-react"; // Changed from InfoCircle to Info
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export default function Trainers() {
@@ -21,7 +21,7 @@ export default function Trainers() {
         </div>
         
         <Alert>
-          <InfoCircle className="h-4 w-4" />
+          <Info className="h-4 w-4" /> {/* Changed from InfoCircle to Info */}
           <AlertTitle>Trainer User Accounts</AlertTitle>
           <AlertDescription>
             Trainers can now have user accounts to log in to the system. Use the "Create account" button to set up login credentials for trainers.
