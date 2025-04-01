@@ -31,15 +31,19 @@ export function AddUserDialog() {
     setIsSubmitting(true);
     
     try {
-      // Create user with Supabase
-      const { error } = await supabase.auth.admin.createUser({
+      // Create user through a manual insert into profiles 
+      // and rely on email/password signup instead of admin creation
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
-        email_confirm: true,
-        user_metadata: { full_name: fullName },
+        options: {
+          data: {
+            full_name: fullName,
+          },
+        },
       });
       
-      if (error) throw error;
+      if (signUpError) throw signUpError;
       
       toast({
         title: "User created",
