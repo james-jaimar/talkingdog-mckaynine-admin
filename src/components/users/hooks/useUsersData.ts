@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { UserProfile } from "../types/userTypes";
 import { useFetchUsers } from "./useFetchUsers";
@@ -7,8 +6,8 @@ import { useTrainerLinking } from "./useTrainerLinking";
 import { useUserRoleManagement } from "./useUserRoleManagement";
 import { useAdminSetup } from "./useAdminSetup";
 
-// Change the re-export to use 'export type' to fix the error
-export type { UserProfile } from "../types/userTypes";
+// Re-export the type for external use
+export type { UserProfile };
 
 export function useUsersData() {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
