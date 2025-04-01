@@ -11,6 +11,7 @@ export type UserProfile = {
   email?: string;
   trainer?: Trainer | null;
   app_id?: string;
+  isCurrentUser?: boolean; // Added this property
 };
 
 // Types for Supabase user data
