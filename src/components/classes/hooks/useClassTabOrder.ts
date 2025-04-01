@@ -15,16 +15,19 @@ interface ClassTabOrder {
   updated_at: string;
 }
 
-type ClassWithExtras = Class & { 
-  branches: { name: string }, 
-  class_schedules: { id: string }[] 
-};
+// Define a narrower type specifically for the active classes query
+interface ClassWithSchedules {
+  id: string;
+  name: string;
+  branches: { name: string };
+  class_schedules: { id: string }[];
+}
 
 export function useClassTabOrder(
-  activeClasses: ClassWithExtras[],
+  activeClasses: ClassWithSchedules[],
   branchId: string | undefined
 ) {
-  const [orderedClasses, setOrderedClasses] = useState<ClassWithExtras[]>([]);
+  const [orderedClasses, setOrderedClasses] = useState<ClassWithSchedules[]>([]);
   const { user } = useAuth();
 
   // Query to fetch saved class order from database
@@ -72,7 +75,7 @@ export function useClassTabOrder(
         // First, add classes in the saved order that still exist in activeClasses
         ...savedOrderIds
           .map(id => activeClasses.find(c => c.id === id))
-          .filter(Boolean) as ClassWithExtras[],
+          .filter(Boolean) as ClassWithSchedules[],
         // Then add any classes not in the saved order
         ...activeClasses.filter(c => !existingClassIds.has(c.id))
       ];

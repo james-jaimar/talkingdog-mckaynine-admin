@@ -8,6 +8,14 @@ import { useBranch } from "@/context/BranchContext";
 import { useClassTabOrder } from "./hooks/useClassTabOrder";
 import { useAuth } from "@/context/AuthContext";
 
+// Define the type for activeClasses to match what we get from the query
+interface ActiveClass {
+  id: string;
+  name: string;
+  branches: { name: string };
+  class_schedules: { id: string }[];
+}
+
 export function ClassesTabs() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -38,7 +46,7 @@ export function ClassesTabs() {
         throw error;
       }
       
-      return data;
+      return data as ActiveClass[];
     },
     enabled: !!currentBranch,
   });
