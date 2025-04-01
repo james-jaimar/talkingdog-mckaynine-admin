@@ -5,7 +5,7 @@ import { useBranch } from "@/context/BranchContext";
 import { Class } from "./types/class";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-import { DragDropContext, Droppable } from "react-beautiful-dnd";
+import { DragDropContext, Droppable, DropResult } from "react-beautiful-dnd";
 import { useToast } from "@/hooks/use-toast";
 import { useClassTabOrder } from "./hooks/useClassTabOrder";
 import { useClassTabNavigation } from "./hooks/useClassTabNavigation";
@@ -20,6 +20,7 @@ export function ClassesTabs() {
     isDraggingRef,
     handleTabClick,
     handleDragStart,
+    handleDragEnd,
     isClassesPath
   } = useClassTabNavigation();
   
@@ -74,9 +75,9 @@ export function ClassesTabs() {
     isLoadingOrder
   } = useClassTabOrder(activeClasses, currentBranch?.id);
 
-  const handleDragEnd = (result: any) => {
-    // Reset the dragging state immediately
-    isDraggingRef.current = false;
+  const handleDragEndInternal = (result: DropResult) => {
+    // Reset the dragging state
+    handleDragEnd();
     
     // If there's no destination, do nothing
     if (!result.destination) {
@@ -92,7 +93,7 @@ export function ClassesTabs() {
       return;
     }
     
-    // Reorder the array of classes
+    // Create a new array to avoid state mutations
     const items = Array.from(orderedClasses);
     const [reorderedItem] = items.splice(oldIndex, 1);
     items.splice(newIndex, 0, reorderedItem);
@@ -100,7 +101,7 @@ export function ClassesTabs() {
     // Update state with the reordered items
     setOrderedClasses(items);
     
-    // Save the new order to the database
+    // Save the new order to the database immediately
     saveOrderToDatabase(items);
     
     // Show toast after successful reordering
@@ -124,7 +125,7 @@ export function ClassesTabs() {
       <Tabs value={activeTab} className="w-full">
         <DragDropContext 
           onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
+          onDragEnd={handleDragEndInternal}
         >
           <Droppable droppableId="class-tabs" direction="horizontal">
             {(provided) => (

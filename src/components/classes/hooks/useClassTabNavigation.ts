@@ -36,12 +36,21 @@ export function useClassTabNavigation() {
     isDraggingRef.current = true;
   }, []);
 
+  // Handle drag end
+  const handleDragEnd = useCallback(() => {
+    // Add a small delay to prevent immediate navigation after drag
+    setTimeout(() => {
+      isDraggingRef.current = false;
+    }, 100);
+  }, []);
+
   return {
     activeTab,
     setActiveTab,
     isDraggingRef,
     handleTabClick,
     handleDragStart,
+    handleDragEnd,
     isClassesPath: location.pathname.includes('/classes')
   };
 }
