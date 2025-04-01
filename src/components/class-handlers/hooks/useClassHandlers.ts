@@ -1,0 +1,43 @@
+
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Booking } from "../types/booking";
+
+export function useClassHandlers(classId: string) {
+  return useQuery({
+    queryKey: ['class-handlers', classId],
+    queryFn: async () => {
+      const { data: scheduleIds, error: scheduleError } = await supabase
+        .from('class_schedules')
+        .select('id')
+        .eq('class_id', classId);
+      
+      if (scheduleError) throw scheduleError;
+      
+      if (!scheduleIds.length) return [];
+      
+      const scheduleIdList = scheduleIds.map(s => s.id);
+      
+      const { data, error } = await supabase
+        .from('bookings')
+        .select(`
+          id, 
+          is_enrolled, 
+          vaccination_verified, 
+          proof_of_payment, 
+          additional_notes,
+          info_eo,
+          uses_whatsapp,
+          social_media_consent,
+          info_pg,
+          class_schedule_id,
+          dogs:dog_id(id, name, breed),
+          clients:client_id(id, first_name, last_name, email, phone)
+        `)
+        .in('class_schedule_id', scheduleIdList);
+      
+      if (error) throw error;
+      return data as Booking[];
+    }
+  });
+}
