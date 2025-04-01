@@ -3,14 +3,25 @@ import { Badge } from "./badge";
 import { cn } from "@/lib/utils";
 import { BadgeProps } from "./badge";
 
-interface ExtendedBadgeProps extends BadgeProps {
-  variant?: "default" | "secondary" | "destructive" | "outline" | "warning" | "info" | "success";
+// Create a type that extends the original variants with our new ones
+export type ExtendedBadgeVariant = 
+  | "default" 
+  | "secondary" 
+  | "destructive" 
+  | "outline" 
+  | "warning" 
+  | "info" 
+  | "success";
+
+// Modify interface to use our extended variant type
+export interface ExtendedBadgeProps extends Omit<BadgeProps, 'variant'> {
+  variant?: ExtendedBadgeVariant;
 }
 
 export function ExtendedBadge({ className, variant = "default", ...props }: ExtendedBadgeProps) {
   const variantClasses = {
     warning: "border-transparent bg-amber-500 text-white hover:bg-amber-600",
-    info: "border-transparent bg-mckaynine-500 text-white hover:bg-mckaynine-600",
+    info: "border-transparent bg-blue-500 text-white hover:bg-blue-600",
     success: "border-transparent bg-green-500 text-white hover:bg-green-600",
   };
 

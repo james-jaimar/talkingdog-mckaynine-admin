@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useBranch } from "@/context/BranchContext";
@@ -248,7 +247,7 @@ export function ClassesTable({ filter }: ClassesTableProps = {}) {
   const getCustomBadgeClass = (variant: string) => {
     switch (variant) {
       case "warning": return "bg-amber-500 text-white hover:bg-amber-600";
-      case "info": return "bg-mckaynine-500 text-white hover:bg-mckaynine-600";
+      case "info": return "bg-blue-500 text-white hover:bg-blue-600"; // Changed from mckaynine to blue for better contrast
       case "success": return "bg-green-500 text-white hover:bg-green-600";
       default: return "";
     }
@@ -338,13 +337,13 @@ export function ClassesTable({ filter }: ClassesTableProps = {}) {
                   </div>
                 </TableCell>
                 <TableCell>
-                  {slotVariant === "destructive" ? (
+                  {availableSlots === 0 ? (
                     <Badge variant="destructive">
                       No slots left
                     </Badge>
                   ) : (
                     <Badge 
-                      variant={slotVariant === "destructive" ? "destructive" : "outline"}
+                      variant={slotVariant === "success" || slotVariant === "info" || slotVariant === "warning" ? "outline" : "destructive"}
                       className={customBadgeClass}
                     >
                       {availableSlots} slot{availableSlots !== 1 ? 's' : ''} left
