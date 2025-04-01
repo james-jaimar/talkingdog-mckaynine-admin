@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { useAuth } from "@/context/auth";
@@ -17,19 +18,27 @@ export default function UserAdmin() {
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  // Fetch users directly in the component
+  // Fetch users directly in the component with better error handling
   const fetchUsers = async () => {
     try {
       console.log("Fetching users in UserAdmin page");
       setLoading(true);
       
+      // Use a more direct approach to fetch profiles
       const { data, error } = await supabase
         .from('profiles')
         .select('*');
       
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching users:", error);
+        throw error;
+      }
       
       console.log(`Found ${data?.length || 0} profiles:`, data);
+      
+      if (!data || data.length === 0) {
+        console.warn("No profiles found in database");
+      }
       
       // Map to a simpler user structure and mark current user
       const mappedUsers: User[] = (data || []).map(profile => ({
@@ -64,7 +73,7 @@ export default function UserAdmin() {
         description: "You don't have permission to access this page.",
         variant: "destructive",
       });
-      navigate("/");
+      navigate("/dashboard");
     }
   }, [authLoading, isAdmin, navigate, toast]);
 
@@ -72,9 +81,23 @@ export default function UserAdmin() {
   useEffect(() => {
     if (isAdmin) {
       fetchUsers();
-      // Set up periodic refresh
-      const interval = setInterval(fetchUsers, 10000);
-      return () => clearInterval(interval);
+      
+      // Set up real-time subscription to profiles table
+      const subscription = supabase
+        .channel('profiles-changes')
+        .on('postgres_changes', { 
+          event: '*', 
+          schema: 'public', 
+          table: 'profiles' 
+        }, () => {
+          console.log('Profiles changed, refreshing...');
+          fetchUsers();
+        })
+        .subscribe();
+      
+      return () => {
+        subscription.unsubscribe();
+      };
     }
   }, [isAdmin]);
 
@@ -94,9 +117,8 @@ export default function UserAdmin() {
         <div className="container mx-auto py-6">
           <h1 className="text-2xl font-bold mb-6">User Administration</h1>
           <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <p className="text-lg text-gray-600 mt-2">Checking permissions...</p>
-            </div>
+            <Loader2 className="h-8 w-8 animate-spin text-mckaynine-600" />
+            <p className="text-lg text-gray-600 mt-2">Checking permissions...</p>
           </div>
         </div>
       </DashboardLayout>

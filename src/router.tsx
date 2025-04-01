@@ -1,5 +1,5 @@
 
-import { createBrowserRouter } from "react-router-dom";
+import { createBrowserRouter, Navigate } from "react-router-dom";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
@@ -17,16 +17,28 @@ import TrainerDashboard from "./pages/TrainerDashboard";
 import HandlerDetail from "./pages/HandlerDetail";
 import ClassDetail from "./pages/ClassDetail";
 import ClassHandlers from "./pages/ClassHandlers";
+import { useAuth } from "./context/auth";
+
+// Home component with redirect logic
+const Home = () => {
+  const { user } = useAuth();
+  
+  if (user) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  
+  return (
+    <div className="container mx-auto py-8">
+      <h1 className="text-3xl font-bold mb-4">Welcome to McKaynine Training Centre</h1>
+      <p className="text-lg">Please sign in to access your dashboard.</p>
+    </div>
+  );
+};
 
 const router = createBrowserRouter([
   {
     path: "/",
-    element: (
-      <div className="container mx-auto py-8">
-        <h1 className="text-3xl font-bold mb-4">Welcome to McKaynine Training Centre</h1>
-        <p className="text-lg">Please sign in to access your dashboard.</p>
-      </div>
-    ),
+    element: <Home />,
     errorElement: <NotFound />,
   },
   {
