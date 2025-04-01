@@ -2,6 +2,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useBranch } from "@/context/BranchContext";
+import { useAuth } from "@/context/AuthContext";
 
 // Define the type for activeClasses to match what we get from the query
 interface ActiveClass {
@@ -13,10 +14,11 @@ interface ActiveClass {
 
 export function useClassesData() {
   const { currentBranch } = useBranch();
+  const { user } = useAuth();
   
   // Fetch active classes (those that have schedules)
   const { data: activeClasses = [], isLoading } = useQuery({
-    queryKey: ['active-classes', currentBranch?.id],
+    queryKey: ['active-classes', currentBranch?.id, user?.id],
     queryFn: async () => {
       if (!currentBranch) return [];
       
@@ -38,14 +40,16 @@ export function useClassesData() {
         throw error;
       }
       
+      console.log("Active classes data:", data);
       return data as ActiveClass[];
     },
-    enabled: !!currentBranch,
+    enabled: !!currentBranch && !!user,
   });
 
   return {
     activeClasses,
     isLoading,
-    hasBranch: !!currentBranch
+    hasBranch: !!currentBranch,
+    isAuthenticated: !!user
   };
 }

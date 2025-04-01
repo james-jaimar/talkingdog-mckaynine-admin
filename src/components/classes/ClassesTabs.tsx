@@ -6,11 +6,13 @@ import { useBranch } from "@/context/BranchContext";
 import { useClassTabOrder } from "./hooks/useClassTabOrder";
 import { useClassesData } from "./hooks/useClassesData";
 import { useClassTabNavigation } from "./hooks/useClassTabNavigation";
+import { useAuth } from "@/context/AuthContext";
 
 export function ClassesTabs() {
   const location = useLocation();
   const { currentBranch } = useBranch();
-  const { activeClasses, isLoading, hasBranch } = useClassesData();
+  const { user } = useAuth();
+  const { activeClasses, isLoading, hasBranch, isAuthenticated } = useClassesData();
   
   // Get the ordered classes using our hook
   const { orderedClasses, isLoadingOrder } = useClassTabOrder(activeClasses, currentBranch?.id);
@@ -23,8 +25,8 @@ export function ClassesTabs() {
     return <div className="mt-4 bg-gray-100 rounded-md p-3">Loading class tabs...</div>;
   }
   
-  // Don't render anything if there are no active classes
-  if (!hasBranch || orderedClasses.length === 0) {
+  // Don't render anything if there are no active classes or user isn't authenticated
+  if (!hasBranch || !isAuthenticated || orderedClasses.length === 0) {
     return null;
   }
   

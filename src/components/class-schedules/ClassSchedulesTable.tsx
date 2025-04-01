@@ -16,6 +16,7 @@ import { ClassSchedule } from "./types/classSchedule";
 import { useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { EditClassScheduleModal } from "./EditClassScheduleModal";
+import { useAuth } from "@/context/AuthContext";
 
 interface ClassSchedulesTableProps {
   classId: string;
@@ -25,10 +26,13 @@ export function ClassSchedulesTable({ classId }: ClassSchedulesTableProps) {
   const [scheduleToEdit, setScheduleToEdit] = useState<ClassSchedule | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const { data: schedules, isLoading, refetch } = useQuery({
-    queryKey: ["class-schedules", classId],
+    queryKey: ["class-schedules", classId, user?.id],
     queryFn: async () => {
+      console.log("Fetching class schedules for classId:", classId);
+      
       const { data, error } = await supabase
         .from("class_schedules")
         .select(`
@@ -38,9 +42,15 @@ export function ClassSchedulesTable({ classId }: ClassSchedulesTableProps) {
         .eq("class_id", classId)
         .order("start_time");
       
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching class schedules:", error);
+        throw error;
+      }
+      
+      console.log("Class schedules data:", data);
       return data as ClassSchedule[];
     },
+    enabled: !!classId && !!user,
   });
 
   const handleDeleteSchedule = async (id: string) => {

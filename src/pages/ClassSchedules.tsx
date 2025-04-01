@@ -11,16 +11,19 @@ import { supabase } from "@/integrations/supabase/client";
 import { Class } from "@/components/classes/types/class";
 import { useToast } from "@/hooks/use-toast";
 import { Helmet } from "react-helmet";
+import { useAuth } from "@/context/AuthContext";
 
 export default function ClassSchedules() {
   const { classId } = useParams<{ classId: string }>();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   console.log("ClassSchedules component rendering with classId:", classId);
+  console.log("Current user:", user);
 
-  const { data: classData, isLoading } = useQuery({
-    queryKey: ["class", classId],
+  const { data: classData, isLoading, error } = useQuery({
+    queryKey: ["class", classId, user?.id],
     queryFn: async () => {
       if (!classId) return null;
       
@@ -44,7 +47,7 @@ export default function ClassSchedules() {
       console.log("Class data received:", data);
       return data as Class;
     },
-    enabled: !!classId,
+    enabled: !!classId && !!user,
   });
 
   if (isLoading) {
@@ -57,11 +60,21 @@ export default function ClassSchedules() {
     );
   }
 
+  if (error) {
+    return (
+      <DashboardLayout>
+        <div className="w-full py-6 flex justify-center">
+          <p>Error loading class data: {error instanceof Error ? error.message : "Unknown error"}</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   if (!classData && !isLoading) {
     return (
       <DashboardLayout>
         <div className="w-full py-6 flex justify-center">
-          <p>Class not found. The class ID may be invalid or the class no longer exists.</p>
+          <p>Class not found. The class ID may be invalid, the class no longer exists, or you may need to log in.</p>
         </div>
       </DashboardLayout>
     );

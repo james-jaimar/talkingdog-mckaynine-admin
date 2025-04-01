@@ -1,9 +1,12 @@
+
 import { useState, useCallback, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
 
 export function useClassTabNavigation() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user } = useAuth();
   
   // Determine active tab from URL path
   const getActiveTabFromPath = useCallback(() => {
@@ -38,6 +41,7 @@ export function useClassTabNavigation() {
     activeTab,
     setActiveTab,
     handleTabClick,
-    isClassesPath: location.pathname.includes('/classes')
+    isClassesPath: location.pathname.includes('/classes'),
+    isAuthenticated: !!user
   };
 }
