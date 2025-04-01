@@ -76,17 +76,18 @@ export function useUsersData() {
   // Set user with email as admin
   const setUserAsAdmin = async (email: string) => {
     try {
-      console.log("Setting user as admin:", email);
+      console.log("Attempting to set user as admin:", email);
       
-      // First find the user by email
+      // First find the user by email in profiles
+      // The username field in profiles table contains the email
       const { data: user, error: findError } = await supabase
         .from('profiles')
         .select('id, username, role')
         .eq('username', email)
-        .single();
+        .maybeSingle();
       
       if (findError) {
-        console.error("Error finding user:", findError);
+        console.error("Error finding user by email:", findError);
         toast({
           title: "User not found",
           description: `Could not find user with email ${email}.`,
@@ -97,53 +98,78 @@ export function useUsersData() {
       
       if (!user) {
         console.log("No user found with email:", email);
+        
+        // Try to find using case-insensitive search as fallback
+        const { data: usersWithSimilarEmail, error: fallbackError } = await supabase
+          .from('profiles')
+          .select('id, username, role')
+          .ilike('username', `%${email}%`);
+        
+        if (fallbackError || !usersWithSimilarEmail?.length) {
+          console.log("No similar email found either:", email);
+          toast({
+            title: "User not found",
+            description: `No user found with email ${email}. Please ensure the user has registered.`,
+            variant: "destructive",
+          });
+          
+          console.log("All available users:", users);
+          return null;
+        }
+        
+        console.log("Found similar emails:", usersWithSimilarEmail);
+      }
+      
+      // If we found the user, proceed with role update
+      if (user) {
+        console.log("Found user:", user);
+        
+        // Check if user is already an admin
+        if (user.role === 'admin') {
+          console.log("User is already an admin:", email);
+          toast({
+            title: "Already an admin",
+            description: `User ${email} is already an administrator.`,
+          });
+          return user;
+        }
+        
+        // Update the user role to admin
+        const { data, error } = await supabase
+          .from('profiles')
+          .update({ role: 'admin' })
+          .eq('id', user.id)
+          .select();
+        
+        if (error) {
+          console.error("Error setting user as admin:", error);
+          toast({
+            title: "Update failed",
+            description: error.message || "Failed to update user role to admin.",
+            variant: "destructive",
+          });
+          return null;
+        }
+        
+        console.log("Successfully set user as admin:", data);
+        toast({
+          title: "Admin privileges granted",
+          description: `User ${email} is now an administrator.`,
+        });
+        
+        // Refresh the users list
+        queryClient.invalidateQueries({ queryKey: ['users-admin'] });
+        
+        return data;
+      } else {
         toast({
           title: "User not found",
-          description: `No user found with email ${email}.`,
+          description: `Could not find user with email ${email}.`,
           variant: "destructive",
         });
+        
         return null;
       }
-      
-      console.log("Found user:", user);
-      
-      // Check if user is already an admin
-      if (user.role === 'admin') {
-        console.log("User is already an admin:", email);
-        toast({
-          title: "Already an admin",
-          description: `User ${email} is already an administrator.`,
-        });
-        return user;
-      }
-      
-      // Update the user role to admin
-      const { data, error } = await supabase
-        .from('profiles')
-        .update({ role: 'admin' })
-        .eq('id', user.id)
-        .select();
-      
-      if (error) {
-        console.error("Error setting user as admin:", error);
-        toast({
-          title: "Update failed",
-          description: error.message || "Failed to update user role to admin.",
-          variant: "destructive",
-        });
-        return null;
-      }
-      
-      console.log("Successfully set user as admin:", data);
-      toast({
-        title: "Admin privileges granted",
-        description: `User ${email} is now an administrator.`,
-      });
-      
-      // Refresh the users list
-      queryClient.invalidateQueries({ queryKey: ['users-admin'] });
-      
-      return data;
     } catch (error) {
       console.error("Unexpected error setting user as admin:", error);
       toast({

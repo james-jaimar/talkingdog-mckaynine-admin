@@ -34,12 +34,19 @@ export default function UserAdmin() {
 
   // Set ady@talkingdog.co.za as admin on component mount
   useEffect(() => {
-    if (!pageLoading && isAdmin) {
-      console.log("Current user:", user?.email, "Role:", userRole);
-      const adminEmail = "ady@talkingdog.co.za";
-      console.log("Attempting to set user as admin:", adminEmail);
-      setUserAsAdmin(adminEmail);
-    }
+    const setupAdminUser = async () => {
+      if (!pageLoading && isAdmin) {
+        console.log("Current user:", user?.email, "Role:", userRole);
+        
+        // Email of the user we want to make an admin
+        const adminEmail = "ady@talkingdog.co.za";
+        
+        console.log("Attempting to set user as admin:", adminEmail);
+        await setUserAsAdmin(adminEmail);
+      }
+    };
+    
+    setupAdminUser();
   }, [pageLoading, isAdmin, setUserAsAdmin, user, userRole]);
 
   if (isLoading || pageLoading) {

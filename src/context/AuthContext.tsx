@@ -3,7 +3,6 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
-import { useNavigate } from "react-router-dom";
 
 interface AuthContextType {
   user: User | null;
@@ -71,6 +70,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!userId) return;
     
     try {
+      console.log("Fetching profile for user ID:", userId);
+      
       const { data, error } = await supabase
         .from('profiles')
         .select('role')
@@ -82,7 +83,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
       
+      console.log("Fetched user profile data:", data);
       setUserRole(data?.role || null);
+      
+      // Special case for ady@talkingdog.co.za
+      if (user?.email === "ady@talkingdog.co.za" && data?.role !== "admin") {
+        console.log("This is the admin user, ensuring admin role");
+        
+        // Update role to admin for this special user
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({ role: 'admin' })
+          .eq('id', userId);
+        
+        if (updateError) {
+          console.error("Error updating admin role:", updateError);
+        } else {
+          console.log("Successfully set ady@talkingdog.co.za as admin");
+          setUserRole('admin');
+        }
+      }
     } catch (error) {
       console.error("Error in fetchUserProfile:", error);
     }

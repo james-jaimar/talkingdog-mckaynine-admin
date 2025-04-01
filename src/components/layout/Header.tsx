@@ -8,10 +8,15 @@ import { LogOut, User, Users } from "lucide-react";
 
 export function Header() {
   const { currentBranch } = useBranch();
-  const { user, signOut, isAdmin, isTrainer } = useAuth();
+  const { user, signOut, isAdmin, isTrainer, userRole } = useAuth();
 
   // Only show branch selector for admin and trainer roles
   const showBranchSelector = user && (isAdmin || isTrainer);
+  
+  // For debugging
+  console.log("Header - Current user:", user?.email);
+  console.log("Header - User role:", userRole);
+  console.log("Header - Is admin:", isAdmin);
 
   return (
     <header className="bg-mckaynine-600 text-white sticky top-0 z-50 shadow-md">
@@ -67,6 +72,7 @@ export function Header() {
                 <span className="hidden md:inline-flex items-center">
                   <User className="inline-block mr-1 h-4 w-4" />
                   {user.email}
+                  {isAdmin && <span className="ml-1 text-xs bg-blue-600 px-1.5 py-0.5 rounded">Admin</span>}
                 </span>
                 <Button 
                   variant="ghost" 
