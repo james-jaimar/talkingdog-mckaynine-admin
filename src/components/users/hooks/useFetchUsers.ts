@@ -10,6 +10,10 @@ export function useFetchUsers() {
       try {
         console.log("Fetching user profiles...");
         
+        // Get the current user's ID for comparison
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        console.log("Current authenticated user ID:", currentUser?.id);
+        
         // First get all profiles from the profiles table - no filtering
         const { data: profiles, error: profilesError } = await supabase
           .from('profiles')
@@ -22,13 +26,16 @@ export function useFetchUsers() {
         }
         
         console.log("Fetched profiles:", profiles?.length, "profiles");
-        if (profiles && profiles.length > 0) {
-          console.log("Profile data sample:", profiles);
-        } else {
-          console.log("No profiles found in the database");
+        console.log("All profile records:", profiles);
+        
+        if (profiles && profiles.length === 0) {
+          console.log("No profiles found in the database. This is likely because no users have registered yet.");
         }
         
-        // Check if the profiles table has appropriate data
+        // Get table information to verify structure
+        console.log("Checking auth status and database structure...");
+        
+        // Check if the profiles table has appropriate data with a count query
         const { count, error: countError } = await supabase
           .from('profiles')
           .select('*', { count: 'exact', head: true });
@@ -44,13 +51,13 @@ export function useFetchUsers() {
         // source of user information in our application
         
         // Then get trainer information for users linked to trainers
-        const userIds = profiles.map(profile => profile.id);
+        const userIds = profiles?.map(profile => profile.id) || [];
         console.log("Looking up trainers for", userIds.length, "user IDs");
         
         const { data: trainers, error: trainersError } = await supabase
           .from('trainers')
           .select('*')
-          .in('user_id', userIds);
+          .in('user_id', userIds.length > 0 ? userIds : ['00000000-0000-0000-0000-000000000000']); // Prevent empty array error
           
         if (trainersError) {
           console.error("Error fetching trainers for users:", trainersError);
@@ -60,27 +67,29 @@ export function useFetchUsers() {
         }
         
         // Join the data and return all profiles
-        const usersWithTrainers = profiles.map(profile => {
+        const usersWithTrainers = profiles?.map(profile => {
           // Check for trainer linked to this user
           const linkedTrainer = trainers?.find(t => {
             if (typeof t.user_id !== 'string') return false;
             return t.user_id === profile.id;
           }) || null;
           
+          const isCurrentUser = profile.id === currentUser?.id;
+          if (isCurrentUser) {
+            console.log("Current user found in profiles:", profile);
+          }
+          
           return {
             ...profile,
             trainer: linkedTrainer,
             // Use the email address from the username field as a fallback
-            email: profile.username
+            email: profile.username,
+            isCurrentUser
           };
-        });
+        }) || [];
         
         console.log("Final user list:", usersWithTrainers.length, "users");
-        if (usersWithTrainers.length > 0) {
-          console.log("Sample users:", usersWithTrainers);
-        } else {
-          console.log("WARNING: No users found in the profiles table!");
-        }
+        console.log("All user records:", usersWithTrainers);
         
         return usersWithTrainers as UserProfile[];
       } catch (error) {
