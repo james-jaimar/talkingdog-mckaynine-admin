@@ -40,6 +40,8 @@ export function AddUserDialog() {
           data: {
             full_name: fullName,
           },
+          // This prevents automatic login after signup
+          emailRedirectTo: window.location.origin,
         },
       });
       
