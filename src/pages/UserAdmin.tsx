@@ -10,7 +10,7 @@ import { Loader2 } from "lucide-react";
 import { useUsersData } from "@/components/users/hooks/useUsersData";
 
 export default function UserAdmin() {
-  const { isAdmin, isLoading } = useAuth();
+  const { user, isAdmin, isLoading, userRole } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [pageLoading, setPageLoading] = useState(true);
@@ -35,10 +35,12 @@ export default function UserAdmin() {
   // Set ady@talkingdog.co.za as admin on component mount
   useEffect(() => {
     if (!pageLoading && isAdmin) {
+      console.log("Current user:", user?.email, "Role:", userRole);
       const adminEmail = "ady@talkingdog.co.za";
+      console.log("Attempting to set user as admin:", adminEmail);
       setUserAsAdmin(adminEmail);
     }
-  }, [pageLoading, isAdmin, setUserAsAdmin]);
+  }, [pageLoading, isAdmin, setUserAsAdmin, user, userRole]);
 
   if (isLoading || pageLoading) {
     return (

@@ -76,10 +76,12 @@ export function useUsersData() {
   // Set user with email as admin
   const setUserAsAdmin = async (email: string) => {
     try {
+      console.log("Setting user as admin:", email);
+      
       // First find the user by email
       const { data: user, error: findError } = await supabase
         .from('profiles')
-        .select('id')
+        .select('id, username, role')
         .eq('username', email)
         .single();
       
@@ -94,12 +96,25 @@ export function useUsersData() {
       }
       
       if (!user) {
+        console.log("No user found with email:", email);
         toast({
           title: "User not found",
           description: `No user found with email ${email}.`,
           variant: "destructive",
         });
         return null;
+      }
+      
+      console.log("Found user:", user);
+      
+      // Check if user is already an admin
+      if (user.role === 'admin') {
+        console.log("User is already an admin:", email);
+        toast({
+          title: "Already an admin",
+          description: `User ${email} is already an administrator.`,
+        });
+        return user;
       }
       
       // Update the user role to admin
@@ -119,6 +134,7 @@ export function useUsersData() {
         return null;
       }
       
+      console.log("Successfully set user as admin:", data);
       toast({
         title: "Admin privileges granted",
         description: `User ${email} is now an administrator.`,
