@@ -1,108 +1,75 @@
 
-import { Dog } from "lucide-react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { cn } from "@/lib/utils";
+import { useBranch } from "@/context/BranchContext";
 import { BranchSelector } from "@/components/branches/BranchSelector";
-import { ClassesTabs } from "@/components/classes/ClassesTabs";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { LogOut, User } from "lucide-react";
 
 export function Header() {
-  const location = useLocation();
-  const currentPath = location.pathname;
-  const { user, userRole, signOut } = useAuth();
-  
-  const getUserInitials = () => {
-    if (!user) return "U";
-    const email = user.email || "";
-    return email.charAt(0).toUpperCase();
-  };
-  
+  const { pathname } = useLocation();
+  const { currentBranch } = useBranch();
+  const { user, signOut, isAdmin, isTrainer } = useAuth();
+  const [pageTitle, setPageTitle] = useState("Dashboard");
+
+  // Map routes to page titles
+  useEffect(() => {
+    const routeTitles: Record<string, string> = {
+      "/": "Dashboard",
+      "/dashboard": "Dashboard",
+      "/classes": "Classes",
+      "/class-schedules": "Class Schedules",
+      "/trainers": "Trainers",
+      "/handlers": "Handlers",
+      "/branches": "Branches",
+      "/unpaid-handlers": "Unpaid Handlers",
+      "/auth": "Authentication",
+    };
+
+    // Extract the base route (e.g., /handlers/123 -> /handlers)
+    const baseRoute = pathname.split("/").slice(0, 2).join("/") || "/";
+    setPageTitle(routeTitles[baseRoute] || "McKaynine Training Centre");
+  }, [pathname]);
+
+  // Only show branch selector for admin and trainer roles
+  const showBranchSelector = user && (isAdmin || isTrainer);
+
   return (
-    <header className="border-b bg-white w-full">
-      <div className="p-4">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <Dog className="h-8 w-8 text-mckaynine-600" />
-            <span className="font-bold text-xl text-mckaynine-700">McKaynine</span>
+    <header className="bg-mckaynine-600 text-white sticky top-0 z-50 shadow-md">
+      <div className="container mx-auto px-4 md:px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            <Link to="/" className="text-white font-bold text-xl mr-6">
+              McKaynine
+            </Link>
+            <h1 className="text-xl font-semibold hidden md:block">{pageTitle}</h1>
           </div>
-          <div className="flex items-center gap-4">
-            <BranchSelector />
-            {user ? (
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2">
-                  <Avatar className="h-8 w-8">
-                    <AvatarFallback>{getUserInitials()}</AvatarFallback>
-                  </Avatar>
-                  <div className="hidden md:block">
-                    <span className="text-sm font-medium">{user.email}</span>
-                    {userRole && (
-                      <span className="text-xs text-gray-500 block capitalize">
-                        {userRole}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <Button variant="outline" size="sm" onClick={signOut}>
-                  Sign Out
+          
+          <div className="flex items-center space-x-4">
+            {showBranchSelector && currentBranch && (
+              <BranchSelector />
+            )}
+            
+            {user && (
+              <div className="flex items-center gap-2">
+                <span className="hidden md:inline-block">
+                  <User className="inline-block mr-1 h-4 w-4" />
+                  {user.email}
+                </span>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={signOut}
+                  className="text-white hover:text-white hover:bg-mckaynine-700"
+                >
+                  <LogOut className="h-4 w-4 mr-1" />
+                  <span className="hidden md:inline">Logout</span>
                 </Button>
               </div>
-            ) : (
-              <Link to="/auth">
-                <Button variant="outline" size="sm">
-                  Sign In
-                </Button>
-              </Link>
             )}
           </div>
         </div>
-        
-        <div className="mt-4 overflow-x-auto">
-          <Tabs defaultValue={currentPath === "/" ? "/" : currentPath} className="w-full">
-            <TabsList className="w-max min-w-full justify-start">
-              <TabsTrigger value="/" asChild>
-                <Link to="/" className={cn(currentPath === "/" ? "font-medium" : "")}>
-                  Dashboard
-                </Link>
-              </TabsTrigger>
-              <TabsTrigger value="/handlers" asChild>
-                <Link to="/handlers" className={cn(currentPath === "/handlers" ? "font-medium" : "")}>
-                  Handlers
-                </Link>
-              </TabsTrigger>
-              <TabsTrigger value="/trainers" asChild>
-                <Link to="/trainers" className={cn(currentPath === "/trainers" ? "font-medium" : "")}>
-                  Trainers
-                </Link>
-              </TabsTrigger>
-              <TabsTrigger value="/classes" asChild>
-                <Link to="/classes" className={cn(currentPath === "/classes" ? "font-medium" : "")}>
-                  Classes
-                </Link>
-              </TabsTrigger>
-              <TabsTrigger value="/branches" asChild>
-                <Link to="/branches" className={cn(currentPath === "/branches" ? "font-medium" : "")}>
-                  Branches
-                </Link>
-              </TabsTrigger>
-              <TabsTrigger value="/reports" asChild>
-                <Link to="/reports" className={cn(currentPath === "/reports" ? "font-medium" : "")}>
-                  Reports
-                </Link>
-              </TabsTrigger>
-              <TabsTrigger value="/settings" asChild>
-                <Link to="/settings" className={cn(currentPath === "/settings" ? "font-medium" : "")}>
-                  Settings
-                </Link>
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
-        
-        {/* Add the class tabs */}
-        <ClassesTabs />
       </div>
     </header>
   );

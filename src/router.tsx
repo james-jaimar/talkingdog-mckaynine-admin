@@ -12,6 +12,7 @@ import Branches from "./pages/Branches";
 import UnpaidHandlers from "./pages/UnpaidHandlers";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
+import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 
 // Use basename to handle subdirectory routing in preview environments
 const basename = import.meta.env.MODE === 'production' 
@@ -21,51 +22,51 @@ const basename = import.meta.env.MODE === 'production'
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <Dashboard />,
+    element: <ProtectedRoute><Dashboard /></ProtectedRoute>,
   },
   {
     path: "/dashboard",
-    element: <Dashboard />,
+    element: <ProtectedRoute><Dashboard /></ProtectedRoute>,
   },
   {
     path: "/classes",
-    element: <Classes />,
+    element: <ProtectedRoute><Classes /></ProtectedRoute>,
   },
   {
     path: "/class-schedules",
-    element: <ClassSchedules />,
+    element: <ProtectedRoute><ClassSchedules /></ProtectedRoute>,
   },
   {
     path: "/class-handlers/:id",
-    element: <ClassHandlers />,
+    element: <ProtectedRoute><ClassHandlers /></ProtectedRoute>,
   },
   {
     path: "/classes/:classId/handlers",
-    element: <ClassHandlers />,
+    element: <ProtectedRoute><ClassHandlers /></ProtectedRoute>,
   },
   {
     path: "/classes/:classId/schedules",
-    element: <ClassSchedules />,
+    element: <ProtectedRoute><ClassSchedules /></ProtectedRoute>,
   },
   {
     path: "/trainers",
-    element: <Trainers />,
+    element: <ProtectedRoute><Trainers /></ProtectedRoute>,
   },
   {
     path: "/handlers",
-    element: <Handlers />,
+    element: <ProtectedRoute><Handlers /></ProtectedRoute>,
   },
   {
     path: "/handler/:id",
-    element: <HandlerDetail />,
+    element: <ProtectedRoute><HandlerDetail /></ProtectedRoute>,
   },
   {
     path: "/branches",
-    element: <Branches />,
+    element: <ProtectedRoute><Branches /></ProtectedRoute>,
   },
   {
     path: "/unpaid-handlers",
-    element: <UnpaidHandlers />,
+    element: <ProtectedRoute><UnpaidHandlers /></ProtectedRoute>,
   },
   {
     path: "/auth",
@@ -79,7 +80,7 @@ const router = createBrowserRouter([
   {
     // Catch all route for any undefined paths
     path: "*",
-    element: <Dashboard />, 
+    element: <ProtectedRoute><Dashboard /></ProtectedRoute>, 
   },
 ], {
   basename,
