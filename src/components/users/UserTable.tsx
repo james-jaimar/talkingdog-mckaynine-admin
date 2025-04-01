@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useUsersData, UserProfile } from "./hooks/useUsersData";
 import {
@@ -40,6 +39,7 @@ import { ResetPasswordDialog } from "./ResetPasswordDialog";
 import { AddUserDialog } from "./AddUserDialog";
 
 export function UserTable() {
+  // Get user data from the hook
   const {
     users,
     isLoading,
@@ -53,33 +53,26 @@ export function UserTable() {
     refetchUsers,
   } = useUsersData();
 
+  // Local state
   const [filter, setFilter] = useState("");
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
   const [resetPasswordOpen, setResetPasswordOpen] = useState(false);
   const [userToResetPassword, setUserToResetPassword] = useState<UserProfile | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Debug: Log all users on component mount and render
-  useEffect(() => {
-    console.log("UserTable - Current users array:", users);
-    console.log(`UserTable - Total users loaded: ${users.length}`);
-  }, [users]);
-
-  // Filter users by name or email - only filter by what's typed, don't apply other filters
+  // Filter users by name or email
   const filteredUsers = users.filter(
     (user) =>
       (user.full_name?.toLowerCase() || '').includes(filter.toLowerCase()) ||
       (user.username?.toLowerCase() || '').includes(filter.toLowerCase())
   );
 
-  // Debug: Log filtered users
+  // Log all users for debugging
   useEffect(() => {
-    console.log(`UserTable - Filtered users: ${filteredUsers.length}`);
-    filteredUsers.forEach((user, index) => {
-      console.log(`Filtered user ${index + 1}:`, user.id, user.username);
-    });
-  }, [filteredUsers]);
+    console.log(`UserTable - Total users: ${users.length}, Filtered users: ${filteredUsers.length}`);
+  }, [users, filteredUsers]);
 
+  // Role change handler
   const handleRoleChange = (role: string) => {
     if (editingUser) {
       updateUserRole({ userId: editingUser.id, role });
@@ -87,11 +80,13 @@ export function UserTable() {
     }
   };
 
+  // Password reset handler
   const handleResetPassword = (user: UserProfile) => {
     setUserToResetPassword(user);
     setResetPasswordOpen(true);
   };
 
+  // Refresh handler
   const handleRefresh = async () => {
     setIsRefreshing(true);
     await refetchUsers();
@@ -100,10 +95,10 @@ export function UserTable() {
 
   // Auto-refresh when the component mounts
   useEffect(() => {
-    console.log("UserTable mounted - triggering initial data fetch");
     refetchUsers();
   }, [refetchUsers]);
 
+  // Loading state
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -113,6 +108,7 @@ export function UserTable() {
     );
   }
 
+  // Error state
   if (error) {
     return (
       <Card>
