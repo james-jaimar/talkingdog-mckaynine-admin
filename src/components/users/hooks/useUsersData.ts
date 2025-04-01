@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { UserProfile } from "../types/userTypes";
 import { useFetchUsers } from "./useFetchUsers";
@@ -6,7 +7,7 @@ import { useTrainerLinking } from "./useTrainerLinking";
 import { useUserRoleManagement } from "./useUserRoleManagement";
 import { useAdminSetup } from "./useAdminSetup";
 
-// Re-export the type for external use
+// Re-export the type for external use correctly
 export type { UserProfile };
 
 export function useUsersData() {
@@ -46,6 +47,7 @@ export function useUsersData() {
 
   // Listen for user creation events and refetch
   useEffect(() => {
+    console.log("Setting up user-created event listener");
     const handleUserCreated = () => {
       console.log("User created event detected, refetching users...");
       refetch();
@@ -53,7 +55,11 @@ export function useUsersData() {
 
     window.addEventListener('user-created', handleUserCreated);
     
+    // Initial fetch on component mount
+    refetch();
+    
     return () => {
+      console.log("Removing user-created event listener");
       window.removeEventListener('user-created', handleUserCreated);
     };
   }, [refetch]);
