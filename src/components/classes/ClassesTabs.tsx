@@ -20,16 +20,13 @@ export function ClassesTabs() {
   const location = useLocation();
   const navigate = useNavigate();
   const { currentBranch } = useBranch();
-  const { user, isAdmin, isTrainer } = useAuth();
-  
-  // Don't fetch if user doesn't have access
-  const hasAccess = user && (isAdmin || isTrainer);
+  const { user } = useAuth();
   
   // Fetch active classes (those that have schedules)
   const { data: activeClasses = [], isLoading } = useQuery({
     queryKey: ['active-classes', currentBranch?.id],
     queryFn: async () => {
-      if (!currentBranch || !hasAccess) return [];
+      if (!currentBranch) return [];
       
       const { data, error } = await supabase
         .from('classes')
@@ -51,7 +48,7 @@ export function ClassesTabs() {
       
       return data as ActiveClass[];
     },
-    enabled: !!currentBranch && hasAccess,
+    enabled: !!currentBranch,
   });
   
   // Get the ordered classes using our hook
@@ -62,8 +59,8 @@ export function ClassesTabs() {
     return <div className="mt-4 bg-gray-100 rounded-md p-3">Loading class tabs...</div>;
   }
   
-  // Don't show tabs if user doesn't have access or there are no active classes
-  if (!hasAccess || !currentBranch || orderedClasses.length === 0) {
+  // Don't render anything if there are no active classes
+  if (!currentBranch || orderedClasses.length === 0) {
     return null;
   }
   
