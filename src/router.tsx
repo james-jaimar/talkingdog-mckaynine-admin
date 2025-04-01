@@ -14,6 +14,7 @@ import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import HandlerDetail from "./pages/HandlerDetail";
 import ClassDetail from "./pages/ClassDetail";
 import Dashboard from "./pages/Dashboard";
+import NotFound from "./pages/NotFound";
 
 // Add a new import for the TrainerDashboard page
 import TrainerDashboard from "./pages/TrainerDashboard";
@@ -52,6 +53,14 @@ const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <ClassDetail />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/classes/:classId/schedules",
+    element: (
+      <ProtectedRoute>
+        <ClassSchedules />
       </ProtectedRoute>
     ),
   },
@@ -103,8 +112,6 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
-
-  // Add a new route for the TrainerDashboard
   {
     path: "/trainer-dashboard",
     element: (
@@ -112,6 +119,10 @@ const router = createBrowserRouter([
         <TrainerDashboard />
       </ProtectedRoute>
     ),
+  },
+  {
+    path: "*",
+    element: <NotFound />,
   },
 ]);
 

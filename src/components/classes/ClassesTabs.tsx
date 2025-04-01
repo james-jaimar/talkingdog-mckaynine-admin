@@ -48,14 +48,17 @@ export function ClassesTabs() {
   // Extract the current class ID from the URL
   let currentClassId = null;
   
-  // Check for class ID in both /classes/:id and /classes/:id/schedules paths
-  const classesMatch = location.pathname.match(/\/classes\/([^/]+)/);
+  // Check for class ID in various path patterns
+  const classesMatch = location.pathname.match(/\/classes\/([^/]+)$/);
   const schedulesMatch = location.pathname.match(/\/classes\/([^/]+)\/schedules/);
+  const handlersMatch = location.pathname.match(/\/classes\/([^/]+)\/handlers/);
   
   if (classesMatch && classesMatch[1]) {
     currentClassId = classesMatch[1];
   } else if (schedulesMatch && schedulesMatch[1]) {
     currentClassId = schedulesMatch[1];
+  } else if (handlersMatch && handlersMatch[1]) {
+    currentClassId = handlersMatch[1];
   }
   
   console.log("ClassesTabs - Extracted currentClassId:", currentClassId);

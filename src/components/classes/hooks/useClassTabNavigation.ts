@@ -10,7 +10,8 @@ export function useClassTabNavigation() {
   
   // Determine active tab from URL path
   const getActiveTabFromPath = useCallback(() => {
-    const classIdMatch = location.pathname.match(/\/classes\/([^/]+)/);
+    // Check for class ID in the class detail path
+    const classIdMatch = location.pathname.match(/\/classes\/([^/]+)$/);
     if (classIdMatch) {
       return classIdMatch[1];
     }
@@ -19,6 +20,12 @@ export function useClassTabNavigation() {
     const scheduleMatch = location.pathname.match(/\/classes\/([^/]+)\/schedules/);
     if (scheduleMatch) {
       return scheduleMatch[1];
+    }
+    
+    // Check for class ID in the class handlers path
+    const handlersMatch = location.pathname.match(/\/classes\/([^/]+)\/handlers/);
+    if (handlersMatch) {
+      return handlersMatch[1];
     }
     
     return "all";
