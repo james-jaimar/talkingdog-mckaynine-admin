@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { ExtendedBadge } from "@/components/ui/badge-variants";
 
 export function BranchSelector() {
   const { branches, currentBranch, setCurrentBranch, isLoading } = useBranch();
@@ -25,10 +26,10 @@ export function BranchSelector() {
 
   if (!branches || branches.length === 0) {
     return (
-      <Badge variant="outline" className="flex items-center gap-2 px-3 py-1">
+      <ExtendedBadge variant="warning" className="flex items-center gap-2 px-3 py-1">
         <GitBranch className="w-4 h-4" />
         <span>No branches available</span>
-      </Badge>
+      </ExtendedBadge>
     );
   }
 
@@ -44,7 +45,7 @@ export function BranchSelector() {
           }
         }}
       >
-        <SelectTrigger className="w-[180px]">
+        <SelectTrigger className="w-[180px] bg-background border-input text-foreground">
           <SelectValue placeholder="Select branch" />
         </SelectTrigger>
         <SelectContent>
