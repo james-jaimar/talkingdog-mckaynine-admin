@@ -8,8 +8,10 @@ function App({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
       <BranchProvider>
-        {children}
-        <Toaster />
+        <div className="min-h-screen bg-gray-100">
+          {children}
+          <Toaster />
+        </div>
       </BranchProvider>
     </AuthProvider>
   );

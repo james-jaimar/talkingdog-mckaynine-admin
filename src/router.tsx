@@ -6,13 +6,17 @@ import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
 import RequireAuth from "@/components/auth/RequireAuth";
 import RequireAdmin from "@/components/auth/RequireAdmin";
+import UserAdmin from "./pages/UserAdmin";
 import UserManagement from "./pages/UserManagement";
 
 const router = createBrowserRouter([
   {
     path: "/",
     element: <App>
-      <div>Welcome to McKaynine Training Centre</div>
+      <div className="container mx-auto py-8">
+        <h1 className="text-3xl font-bold mb-4">Welcome to McKaynine Training Centre</h1>
+        <p className="text-lg">Please sign in to access your dashboard.</p>
+      </div>
     </App>,
     errorElement: <NotFound />,
   },
@@ -30,6 +34,14 @@ const router = createBrowserRouter([
   },
   {
     path: "/user-admin",
+    element: (
+      <RequireAdmin>
+        <UserAdmin />
+      </RequireAdmin>
+    ),
+  },
+  {
+    path: "/user-management",
     element: (
       <RequireAdmin>
         <UserManagement />
