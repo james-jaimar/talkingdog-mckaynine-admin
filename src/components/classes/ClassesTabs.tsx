@@ -66,8 +66,10 @@ export function ClassesTabs() {
   
   // Extract the current class ID from the URL
   const urlParts = location.pathname.split('/');
-  const classIdIndex = urlParts.indexOf('classes') + 1;
-  const currentClassId = classIdIndex < urlParts.length ? urlParts[classIdIndex] : null;
+  const classesIndex = urlParts.indexOf('classes');
+  const currentClassId = (classesIndex >= 0 && urlParts.length > classesIndex + 1) 
+    ? urlParts[classesIndex + 1] 
+    : null;
   
   // Handle tab click
   const handleTabClick = (tabValue: string, path: string) => {
