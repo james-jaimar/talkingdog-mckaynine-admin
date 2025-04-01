@@ -33,6 +33,10 @@ const router = createBrowserRouter([
     element: <ProtectedRoute><Classes /></ProtectedRoute>,
   },
   {
+    path: "/classes/:classId",
+    element: <ProtectedRoute><Classes /></ProtectedRoute>,
+  },
+  {
     path: "/class-schedules",
     element: <ProtectedRoute><ClassSchedules /></ProtectedRoute>,
   },

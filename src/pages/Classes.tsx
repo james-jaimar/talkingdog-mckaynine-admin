@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { ClassesTable } from "@/components/classes/ClassesTable";
+import { ClassesTabs } from "@/components/classes/ClassesTabs";
 import { AddClassModal } from "@/components/classes/AddClassModal";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
@@ -24,7 +25,12 @@ export default function Classes() {
           </Button>
         </div>
 
-        <ClassesTable />
+        {/* Display class tabs navigation */}
+        <ClassesTabs />
+
+        <div className="mt-6">
+          <ClassesTable />
+        </div>
 
         <AddClassModal 
           open={isAddClassModalOpen} 

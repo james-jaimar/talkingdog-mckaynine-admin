@@ -57,12 +57,13 @@ export function ClassesTabs() {
   // Get the ordered classes using our hook
   const { orderedClasses, isLoadingOrder } = useClassTabOrder(activeClasses, currentBranch?.id);
   
-  if (isLoading || isLoadingOrder || !currentBranch || !hasAccess) {
-    return null; // Don't render anything while loading or if no access
+  // Show loading state while fetching data
+  if (isLoading || isLoadingOrder) {
+    return <div className="mt-4 bg-gray-100 rounded-md p-3">Loading class tabs...</div>;
   }
   
-  // Don't show tabs if there are no active classes
-  if (orderedClasses.length === 0) {
+  // Don't show tabs if user doesn't have access or there are no active classes
+  if (!hasAccess || !currentBranch || orderedClasses.length === 0) {
     return null;
   }
   

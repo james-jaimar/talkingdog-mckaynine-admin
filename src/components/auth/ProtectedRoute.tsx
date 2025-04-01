@@ -1,6 +1,7 @@
 
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
+import { Loader2 } from "lucide-react";
 
 interface ProtectedRouteProps {
   children?: React.ReactNode;
@@ -13,9 +14,14 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 }) => {
   const { user, isLoading, isAdmin, isTrainer, isHandler } = useAuth();
   
-  // Show nothing while loading
+  // Show loading indicator while checking authentication
   if (isLoading) {
-    return null;
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-mckaynine-600" />
+        <span className="ml-2 text-lg text-mckaynine-600">Loading...</span>
+      </div>
+    );
   }
   
   // Redirect to auth page if not logged in
