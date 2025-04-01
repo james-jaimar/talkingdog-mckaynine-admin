@@ -79,12 +79,13 @@ export function ClassesTabs() {
   return (
     <div className="mx-4 mt-2 overflow-x-auto">
       <Tabs value={activeTab} className="w-full">
-        <TabsList className="w-max min-w-full justify-start">
+        <TabsList className="w-max min-w-full justify-start bg-background/50 p-1">
           <TabsTrigger 
             value="all" 
             onClick={() => handleTabClick("all", "/classes")}
             className={cn(
-              location.pathname === "/classes" ? "font-medium" : ""
+              "px-4 py-2",
+              location.pathname === "/classes" ? "font-medium bg-accent text-accent-foreground" : ""
             )}
           >
             All Classes

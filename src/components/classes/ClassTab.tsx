@@ -18,8 +18,8 @@ export function ClassTab({ classItem, index, isActive, onTabClick }: ClassTabPro
       value={classItem.id}
       onClick={() => onTabClick(classItem.id, `/classes/${classItem.id}/handlers`)}
       className={cn(
-        "flex items-center gap-1",
-        isActive ? "font-medium" : ""
+        "flex items-center gap-1 px-3 py-1.5",
+        isActive ? "font-medium bg-accent text-accent-foreground" : ""
       )}
     >
       {classItem.name}

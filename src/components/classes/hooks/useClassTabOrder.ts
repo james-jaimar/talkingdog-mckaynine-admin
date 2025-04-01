@@ -95,8 +95,11 @@ export function useClassTabOrder(
       
       setOrderedClasses(orderedClassList);
     } else {
-      // If no saved order or not authenticated, use the default order
-      setOrderedClasses([...activeClasses]);
+      // If no saved order or not authenticated, use alphabetical order
+      const sortedClasses = [...activeClasses].sort((a, b) => 
+        a.name.localeCompare(b.name)
+      );
+      setOrderedClasses(sortedClasses);
     }
   }, [activeClasses, savedOrder, isLoadingOrder, branchId, isAuthenticated]);
 
