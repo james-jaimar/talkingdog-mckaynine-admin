@@ -1,149 +1,163 @@
 
 import { useState } from "react";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, UserPlus } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/components/ui/use-toast";
+import { Loader2, UserPlus } from "lucide-react";
 
 export function AddUserDialog() {
-  const [isOpen, setIsOpen] = useState(false);
+  const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
   const { toast } = useToast();
+
+  const resetForm = () => {
+    setEmail("");
+    setPassword("");
+    setFullName("");
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!email || !password || !fullName) {
+    if (!email || !password) {
       toast({
         title: "Missing fields",
-        description: "Please fill in all fields",
+        description: "Please fill in all required fields.",
         variant: "destructive",
       });
       return;
     }
     
-    setIsSubmitting(true);
-    
     try {
-      // Create user with app metadata to tag users belonging to this application
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+      setIsCreating(true);
+      
+      // Create the user with Supabase Auth
+      const { data, error } = await supabase.auth.admin.createUser({
         email,
         password,
-        options: {
-          data: {
-            full_name: fullName,
-            app_id: "mckaynine-training-centre" // App identifier tag
-          },
-          // This prevents automatic login after signup
-          emailRedirectTo: window.location.origin,
+        email_confirm: true,
+        user_metadata: {
+          full_name: fullName,
         },
       });
       
-      if (signUpError) throw signUpError;
+      if (error) {
+        throw error;
+      }
       
+      // Close dialog and reset form
+      setOpen(false);
+      resetForm();
+      
+      // Show success message
       toast({
         title: "User created",
-        description: `Successfully created user ${email}`,
+        description: `User ${email} has been created successfully.`,
       });
       
-      // Reset form and close dialog
-      setEmail("");
-      setPassword("");
-      setFullName("");
-      setIsOpen(false);
-      
-      // Force refresh the users list by triggering a global event
+      // Dispatch a custom event that listeners can use to refresh data
       window.dispatchEvent(new CustomEvent('user-created'));
       
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating user:", error);
-      toast({
-        title: "Error creating user",
-        description: error instanceof Error ? error.message : "An unexpected error occurred",
-        variant: "destructive",
-      });
+      
+      // Handle specific errors
+      if (error.message?.includes("already registered")) {
+        toast({
+          title: "User already exists",
+          description: "A user with this email already exists.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Failed to create user",
+          description: error.message || "An unexpected error occurred.",
+          variant: "destructive",
+        });
+      }
     } finally {
-      setIsSubmitting(false);
+      setIsCreating(false);
     }
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="flex items-center gap-2">
-          <UserPlus className="h-4 w-4" />
-          <span>Add User</span>
+        <Button>
+          <UserPlus className="h-4 w-4 mr-2" />
+          Add User
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>Add New User</DialogTitle>
-          <DialogDescription>
-            Create a new user account. They will be able to sign in using these credentials.
-          </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit}>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="fullName" className="text-right">
-                Full Name
-              </Label>
-              <Input
-                id="fullName"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                className="col-span-3"
-                autoComplete="name"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="email" className="text-right">
-                Email
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="col-span-3"
-                autoComplete="email"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="password" className="text-right">
-                Password
-              </Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="col-span-3"
-                autoComplete="new-password"
-              />
-            </div>
+        
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="email">Email</Label>
+            <Input 
+              id="email" 
+              type="email" 
+              value={email} 
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="user@example.com"
+              required
+            />
           </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>
+          
+          <div className="space-y-2">
+            <Label htmlFor="fullName">Full Name</Label>
+            <Input 
+              id="fullName" 
+              value={fullName} 
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder="John Doe"
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="password">Password</Label>
+            <Input 
+              id="password" 
+              type="password" 
+              value={password} 
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              required
+            />
+          </div>
+          
+          <div className="flex justify-end pt-4">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => {
+                setOpen(false);
+                resetForm();
+              }}
+              className="mr-2"
+              disabled={isCreating}
+            >
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? (
+            <Button type="submit" disabled={isCreating}>
+              {isCreating ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   Creating...
                 </>
               ) : (
-                "Create User"
+                <>Create User</>
               )}
             </Button>
-          </DialogFooter>
+          </div>
         </form>
       </DialogContent>
     </Dialog>
