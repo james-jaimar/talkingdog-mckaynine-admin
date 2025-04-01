@@ -7,15 +7,12 @@ import { Helmet } from "react-helmet";
 import { UserTable } from "@/components/users/UserTable";
 import { useToast } from "@/components/ui/use-toast";
 import { Loader2 } from "lucide-react";
-import { useUsersData } from "@/components/users/hooks/useUsersData";
 
 export default function UserAdmin() {
-  const { user, isAdmin, isLoading, userRole } = useAuth();
+  const { user, isAdmin, isLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [pageLoading, setPageLoading] = useState(true);
-  const { setUserAsAdmin } = useUsersData();
-  const [adminSetupComplete, setAdminSetupComplete] = useState(false);
 
   // Check if user is admin, if not redirect
   useEffect(() => {
@@ -32,28 +29,6 @@ export default function UserAdmin() {
       }
     }
   }, [isAdmin, isLoading, navigate, toast]);
-
-  // Set ady@talkingdog.co.za as admin - only run once
-  useEffect(() => {
-    const setupAdminUser = async () => {
-      if (!pageLoading && isAdmin && !adminSetupComplete) {
-        console.log("Setting up admin user - once only");
-        
-        // Email of the user we want to make an admin
-        const adminEmail = "ady@talkingdog.co.za";
-        
-        try {
-          await setUserAsAdmin(adminEmail);
-          setAdminSetupComplete(true);
-        } catch (error) {
-          console.error("Error setting up admin user:", error);
-          setAdminSetupComplete(true); // Still mark as complete to prevent retries
-        }
-      }
-    };
-    
-    setupAdminUser();
-  }, [pageLoading, isAdmin, setUserAsAdmin, adminSetupComplete]);
 
   if (isLoading || pageLoading) {
     return (

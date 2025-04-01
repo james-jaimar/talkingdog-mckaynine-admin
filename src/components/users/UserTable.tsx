@@ -37,6 +37,7 @@ import {
 import { format } from "date-fns";
 import { Loader2, Search, UserCog, Key } from "lucide-react";
 import { ResetPasswordDialog } from "./ResetPasswordDialog";
+import { AddUserDialog } from "./AddUserDialog";
 
 export function UserTable() {
   const {
@@ -104,12 +105,17 @@ export function UserTable() {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Users</CardTitle>
-        <CardDescription>
-          Manage user accounts and access roles.
-        </CardDescription>
-        <div className="relative mt-4">
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div>
+          <CardTitle>Users</CardTitle>
+          <CardDescription>
+            Manage user accounts and access roles.
+          </CardDescription>
+        </div>
+        <AddUserDialog />
+      </CardHeader>
+      <CardContent>
+        <div className="relative mb-4">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             type="search"
@@ -119,8 +125,6 @@ export function UserTable() {
             onChange={(e) => setFilter(e.target.value)}
           />
         </div>
-      </CardHeader>
-      <CardContent>
         <div className="rounded-md border">
           <Table>
             <TableHeader>
@@ -209,7 +213,7 @@ export function UserTable() {
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
                         <Button 
-                          variant="ghost" 
+                          variant="outline" 
                           size="sm"
                           onClick={() => handleResetPassword(user)}
                         >
@@ -219,7 +223,7 @@ export function UserTable() {
                         <Dialog>
                           <DialogTrigger asChild>
                             <Button 
-                              variant="ghost" 
+                              variant="outline" 
                               size="sm"
                               onClick={() => setEditingUser(user)}
                             >
