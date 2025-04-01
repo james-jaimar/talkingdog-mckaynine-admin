@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,6 +15,24 @@ export type UserProfile = {
   email?: string;
   trainer?: Trainer | null;
   app_id?: string;
+};
+
+// Define the shape of the user data from Supabase auth.admin.listUsers
+type SupabaseUserMetadata = {
+  app_id?: string;
+  full_name?: string;
+  [key: string]: any;
+};
+
+type SupabaseUser = {
+  id: string;
+  email?: string;
+  user_metadata: SupabaseUserMetadata;
+  created_at?: string;
+};
+
+type SupabaseUsersResponse = {
+  users: SupabaseUser[];
 };
 
 export function useUsersData() {
@@ -42,7 +61,7 @@ export function useUsersData() {
         console.log("Fetched profiles:", profiles);
         
         // Get user metadata to identify app users
-        const { data: users, error: usersError } = await supabase.auth.admin.listUsers();
+        const { data: usersData, error: usersError } = await supabase.auth.admin.listUsers();
         
         if (usersError) {
           console.error("Error fetching user metadata:", usersError);
@@ -51,8 +70,8 @@ export function useUsersData() {
         
         // Create a map of user metadata
         const userMetadataMap = new Map();
-        if (users) {
-          users.users.forEach(user => {
+        if (usersData && usersData.users) {
+          usersData.users.forEach((user: SupabaseUser) => {
             userMetadataMap.set(user.id, {
               app_id: user.user_metadata?.app_id,
               raw_metadata: user.user_metadata
