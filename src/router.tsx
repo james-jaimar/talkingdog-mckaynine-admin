@@ -1,7 +1,7 @@
+
 import {
   createBrowserRouter,
 } from "react-router-dom";
-import App from "./App";
 import Auth from "./pages/Auth";
 import Branches from "./pages/Branches";
 import Classes from "./pages/Classes";
@@ -13,6 +13,7 @@ import UserAdmin from "./pages/UserAdmin";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import HandlerDetail from "./pages/HandlerDetail";
 import ClassDetail from "./pages/ClassDetail";
+import Dashboard from "./pages/Dashboard";
 
 // Add a new import for the TrainerDashboard page
 import TrainerDashboard from "./pages/TrainerDashboard";
@@ -22,7 +23,7 @@ const router = createBrowserRouter([
     path: "/",
     element: (
       <ProtectedRoute>
-        <App />
+        <Dashboard />
       </ProtectedRoute>
     ),
   },

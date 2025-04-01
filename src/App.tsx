@@ -1,30 +1,17 @@
-import { RouterProvider } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import router from './router';
+
 import { Toaster } from '@/components/ui/toaster';
 import './App.css';
 import { BranchProvider } from './context/BranchContext';
 import { AuthProvider } from './context/auth';
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      refetchOnWindowFocus: false,
-      staleTime: 1000 * 60 * 5, // 5 minutes
-    },
-  },
-});
-
-function App() {
+function App({ children }: { children: React.ReactNode }) {
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <BranchProvider>
-          <RouterProvider router={router} />
-          <Toaster />
-        </BranchProvider>
-      </AuthProvider>
-    </QueryClientProvider>
+    <AuthProvider>
+      <BranchProvider>
+        {children}
+        <Toaster />
+      </BranchProvider>
+    </AuthProvider>
   );
 }
 
