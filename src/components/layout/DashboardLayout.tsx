@@ -1,7 +1,7 @@
 
 import { Header } from "./Header";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/context/auth";
 import { useEffect } from "react";
 import { Loader2 } from "lucide-react";
 

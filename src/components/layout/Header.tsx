@@ -2,7 +2,7 @@
 import { Link } from "react-router-dom";
 import { useBranch } from "@/context/BranchContext";
 import { BranchSelector } from "@/components/branches/BranchSelector";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/context/auth";
 import { Button } from "@/components/ui/button";
 import { LogOut, User, Users } from "lucide-react";
 

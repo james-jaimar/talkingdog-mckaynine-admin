@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/context/auth";
 import { Helmet } from "react-helmet";
 import { UserTable } from "@/components/users/UserTable";
 import { useToast } from "@/components/ui/use-toast";
