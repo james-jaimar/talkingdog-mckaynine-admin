@@ -50,29 +50,31 @@ export default function UserAdmin() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   
   // Simple auth redirection
-  if (!isLoading && !isAdmin) {
-    toast({
-      title: "Access Denied",
-      description: "You don't have permission to access this page.",
-      variant: "destructive",
-    });
-    navigate("/");
-    return null;
-  }
+  useEffect(() => {
+    if (!isLoading && !isAdmin) {
+      toast({
+        title: "Access Denied",
+        description: "You don't have permission to access this page.",
+        variant: "destructive",
+      });
+      navigate("/");
+    }
+  }, [isLoading, isAdmin, navigate, toast]);
 
-  // Fetch users
+  // Fetch users with proper debugging
   const fetchUsers = async () => {
     try {
       setIsLoadingUsers(true);
       setError(null);
       
-      console.log("Fetching users directly in UserAdmin component");
+      console.log("Fetching ALL users from profiles table");
       
       // Get current user for marking in the UI
       const { data: { user: currentUser } } = await supabase.auth.getUser();
-      console.log("Current user ID:", currentUser?.id);
+      const currentUserId = currentUser?.id;
+      console.log("Current user ID:", currentUserId);
       
-      // Simple fetch of all profiles
+      // Fetch all profiles - making sure we don't have any filters that would limit results
       const { data: profiles, error } = await supabase
         .from('profiles')
         .select('*');
@@ -83,6 +85,7 @@ export default function UserAdmin() {
       }
       
       console.log("Raw profile data:", profiles);
+      console.log(`Found ${profiles?.length || 0} total profiles`);
       
       if (!profiles || profiles.length === 0) {
         console.log("No profiles found");
@@ -93,7 +96,7 @@ export default function UserAdmin() {
       // Map to user profiles with current user marked
       const mappedUsers = profiles.map(profile => ({
         ...profile,
-        isCurrentUser: currentUser?.id === profile.id
+        isCurrentUser: currentUserId === profile.id
       }));
       
       console.log("Mapped users:", mappedUsers);
@@ -180,6 +183,10 @@ export default function UserAdmin() {
     );
   }
 
+  if (!isAdmin) {
+    return null; // Already redirected in useEffect
+  }
+
   return (
     <DashboardLayout>
       <Helmet>
@@ -230,6 +237,14 @@ export default function UserAdmin() {
               <div className="p-4 text-red-500 border border-red-200 rounded-md">
                 <p className="font-semibold">Error loading users:</p>
                 <p>{error.message}</p>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleRefresh}
+                  className="mt-2"
+                >
+                  Try Again
+                </Button>
               </div>
             ) : (
               <div className="rounded-md border">
@@ -353,6 +368,12 @@ export default function UserAdmin() {
                                       >
                                         Cancel
                                       </Button>
+                                      {isUpdating && (
+                                        <div className="flex items-center">
+                                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                          <span>Updating...</span>
+                                        </div>
+                                      )}
                                     </DialogFooter>
                                   </DialogContent>
                                 )}
