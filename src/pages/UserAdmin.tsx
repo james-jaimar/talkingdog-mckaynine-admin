@@ -7,7 +7,7 @@ import { Helmet } from "react-helmet";
 import { useToast } from "@/components/ui/use-toast";
 import { Loader2, RefreshCw, UserCog, Key, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 
 // UI Components
@@ -101,11 +101,9 @@ export default function UserAdmin() {
     refetchOnWindowFocus: true,
   });
 
-  // Mutation for updating user role
-  const { mutate: updateUserRole, isPending: isUpdating } = useQuery({
-    queryKey: ['update-user-role', editingUser?.id, editingUser?.role],
-    enabled: false, // Only run when triggered manually
-    queryFn: async () => {
+  // Mutation for updating user role - Changed from useQuery to useMutation
+  const { mutate: updateUserRole, isPending: isUpdating } = useMutation({
+    mutationFn: async () => {
       if (!editingUser) return;
       
       const { error } = await supabase
@@ -116,7 +114,8 @@ export default function UserAdmin() {
       if (error) {
         throw error;
       }
-      
+    },
+    onSuccess: () => {
       toast({
         title: "User updated",
         description: "User role has been updated successfully.",
@@ -126,6 +125,13 @@ export default function UserAdmin() {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
       setEditingUser(null);
     },
+    onError: (error) => {
+      toast({
+        title: "Update failed",
+        description: error.message || "Failed to update user role",
+        variant: "destructive"
+      });
+    }
   });
 
   // Handle role change
