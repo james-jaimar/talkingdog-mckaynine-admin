@@ -26,22 +26,20 @@ export function useFetchUsers() {
         }
         
         console.log("Fetched profiles:", profiles?.length, "profiles");
-        console.log("All profile records:", profiles);
+        console.log("Raw profiles data:", profiles);
         
-        if (profiles && profiles.length === 0) {
-          console.log("No profiles found in the database. This is likely because no users have registered yet.");
+        if (!profiles || profiles.length === 0) {
+          console.log("No profiles found in the database.");
           return [];
         }
         
         // DEBUG - show a clear log of all the profiles we found
-        if (profiles) {
-          profiles.forEach((profile, index) => {
-            console.log(`Profile ${index + 1}:`, profile.id, profile.username, profile.role);
-          });
-        }
+        profiles.forEach((profile, index) => {
+          console.log(`Profile ${index + 1}:`, profile.id, profile.username, profile.role);
+        });
         
         // Then get trainer information for users linked to trainers
-        const userIds = profiles?.map(profile => profile.id) || [];
+        const userIds = profiles.map(profile => profile.id);
         console.log("Looking up trainers for", userIds.length, "user IDs");
         
         // Use non-empty array check to prevent query error
@@ -58,22 +56,14 @@ export function useFetchUsers() {
             trainers = trainersData || [];
             console.log("Found", trainers.length, "trainers linked to users");
           }
-        } else {
-          console.log("No user IDs to look up trainers for");
         }
         
         // Join the data and return all profiles
-        const usersWithTrainers = profiles?.map(profile => {
+        const usersWithTrainers = profiles.map(profile => {
           // Check for trainer linked to this user
-          const linkedTrainer = trainers.find(t => {
-            if (typeof t.user_id !== 'string') return false;
-            return t.user_id === profile.id;
-          }) || null;
+          const linkedTrainer = trainers.find(t => t.user_id === profile.id) || null;
           
           const isCurrentUser = profile.id === currentUser?.id;
-          if (isCurrentUser) {
-            console.log("Current user found in profiles:", profile);
-          }
           
           return {
             ...profile,
@@ -82,10 +72,14 @@ export function useFetchUsers() {
             email: profile.username,
             isCurrentUser
           };
-        }) || [];
+        });
         
         console.log("Final user list:", usersWithTrainers.length, "users");
-        console.log("All user records:", usersWithTrainers);
+        
+        // Log all users to ensure they're being returned
+        usersWithTrainers.forEach((user, index) => {
+          console.log(`User ${index + 1}:`, user.id, user.username, user.role);
+        });
         
         return usersWithTrainers as UserProfile[];
       } catch (error) {

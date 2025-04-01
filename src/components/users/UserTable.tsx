@@ -75,6 +75,9 @@ export function UserTable() {
   // Debug: Log filtered users
   useEffect(() => {
     console.log(`UserTable - Filtered users: ${filteredUsers.length}`);
+    filteredUsers.forEach((user, index) => {
+      console.log(`Filtered user ${index + 1}:`, user.id, user.username);
+    });
   }, [filteredUsers]);
 
   const handleRoleChange = (role: string) => {
