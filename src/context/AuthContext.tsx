@@ -3,6 +3,7 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import { useNavigate } from "react-router-dom";
 
 interface AuthContextType {
   user: User | null;
@@ -39,6 +40,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           fetchUserProfile(newSession?.user?.id);
         } else if (event === 'SIGNED_OUT') {
           setUserRole(null);
+          setUser(null);
+          setSession(null);
+          
+          // Force navigation to auth page on sign out
+          // We don't use useNavigate here as it could cause issues in the context
+          window.location.href = '/auth';
         }
       }
     );
@@ -145,7 +152,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     try {
       setIsLoading(true);
-      await supabase.auth.signOut();
+      
+      // Clear state before calling signOut to prevent timing issues
+      setUser(null);
+      setSession(null);
+      setUserRole(null);
+      
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        console.error("Error signing out:", error);
+        throw error;
+      }
+      
+      // Force navigation to auth page
+      window.location.href = '/auth';
+      
       toast({
         title: "Signed out",
         description: "You have been successfully signed out.",

@@ -2,6 +2,7 @@
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { Loader2 } from "lucide-react";
+import { useEffect } from "react";
 
 interface ProtectedRouteProps {
   children?: React.ReactNode;

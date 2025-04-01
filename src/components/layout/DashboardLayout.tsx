@@ -3,6 +3,7 @@ import { Header } from "./Header";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { useEffect } from "react";
+import { Loader2 } from "lucide-react";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -18,17 +19,27 @@ export function DashboardLayout({ children, requireAuth = true }: DashboardLayou
     if (!isLoading) {
       if (requireAuth && !user) {
         // Redirect to auth page if authentication is required but user isn't logged in
-        navigate("/auth");
+        navigate("/auth", { replace: true });
       } else if (!requireAuth && user) {
         // Redirect to dashboard if user is already logged in and tries to access non-auth pages
-        navigate("/");
+        navigate("/", { replace: true });
       }
     }
   }, [user, isLoading, navigate, requireAuth]);
 
-  // Show nothing while authentication is being checked
+  // Show loading indicator while authentication is being checked
   if (isLoading) {
-    return <div className="flex items-center justify-center h-screen">Loading...</div>;
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-mckaynine-600" />
+        <span className="ml-2 text-lg text-mckaynine-600">Loading...</span>
+      </div>
+    );
+  }
+
+  // If requiring auth but no user, render nothing (redirect will happen)
+  if (requireAuth && !user) {
+    return null;
   }
 
   return (
