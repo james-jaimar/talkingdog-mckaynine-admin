@@ -1,218 +1,200 @@
 
 import { useState } from "react";
-import { User, useUsers } from "./hooks/useUsers";
-import { format } from "date-fns";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { UserPlus, Search, RefreshCw, Key, UserCog } from "lucide-react";
-import { AddUserDialog } from "./AddUserDialog";
-import { UserPasswordResetDialog } from "./UserPasswordResetDialog";
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger 
+} from "@/components/ui/dropdown-menu";
+import { 
+  MoreHorizontal, 
+  UserPlus, 
+  RefreshCw, 
+  Key, 
+  UserCog, 
+  Loader2 
+} from "lucide-react";
 import { UserManageDialog } from "./UserManageDialog";
+import { UserPasswordResetDialog } from "./UserPasswordResetDialog";
+import { AddUserDialog } from "./AddUserDialog";
+import { useUsers, User } from "./hooks/useUsers";
 
 export function UserManagementTable() {
-  // Get user data and functions from the hook
-  const {
-    filteredUsers,
-    filter,
-    setFilter,
-    isLoading,
-    error,
-    refetch
-  } = useUsers();
-
-  // UI state
+  const { users, isLoading, refetchUsers } = useUsers();
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [addUserOpen, setAddUserOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [isPasswordResetOpen, setIsPasswordResetOpen] = useState(false);
-  const [isManageDialogOpen, setIsManageDialogOpen] = useState(false);
+  const [manageDialogOpen, setManageDialogOpen] = useState(false);
+  const [resetPasswordDialogOpen, setResetPasswordDialogOpen] = useState(false);
 
-  // Handle refresh with loading state
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await refetch();
-    setTimeout(() => setIsRefreshing(false), 500);
+    await refetchUsers();
+    setIsRefreshing(false);
   };
 
-  // Open password reset dialog
-  const handleResetPassword = (user: User) => {
-    setSelectedUser(user);
-    setIsPasswordResetOpen(true);
-  };
-
-  // Open manage user dialog
   const handleManageUser = (user: User) => {
     setSelectedUser(user);
-    setIsManageDialogOpen(true);
+    setManageDialogOpen(true);
   };
 
-  // Get role badge style
-  const getRoleBadgeClass = (role: string) => {
+  const handleResetPassword = (user: User) => {
+    setSelectedUser(user);
+    setResetPasswordDialogOpen(true);
+  };
+
+  // Helper to determine the badge color based on user role
+  const getRoleBadgeColor = (role: string) => {
     switch (role) {
-      case "admin": return "bg-blue-100 text-blue-800";
-      case "trainer": return "bg-green-100 text-green-800";
-      case "handler": return "bg-orange-100 text-orange-800";
-      default: return "bg-gray-100 text-gray-800";
+      case 'admin':
+        return 'bg-red-100 text-red-800 hover:bg-red-200';
+      case 'trainer':
+        return 'bg-blue-100 text-blue-800 hover:bg-blue-200';
+      case 'handler':
+        return 'bg-green-100 text-green-800 hover:bg-green-200';
+      default:
+        return 'bg-gray-100 text-gray-800 hover:bg-gray-200';
     }
   };
 
-  // Loading state
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-mckaynine-600 mx-auto"></div>
-          <p className="mt-2 text-gray-600">Loading users...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Error state
-  if (error) {
-    return (
-      <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative">
-        <strong className="font-bold">Error: </strong>
-        <span className="block sm:inline">
-          {error instanceof Error ? error.message : "Failed to load users"}
-        </span>
-      </div>
-    );
-  }
-
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <div>
-          <CardTitle>Users ({filteredUsers.length})</CardTitle>
-          <CardDescription>
-            Manage user accounts and access roles.
-          </CardDescription>
-        </div>
+    <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="p-4 flex justify-between items-center border-b">
+        <h2 className="text-lg font-medium">Users</h2>
         <div className="flex space-x-2">
-          <Button 
-            variant="outline" 
-            size="sm" 
+          <Button
+            variant="outline"
+            size="sm"
             onClick={handleRefresh}
             disabled={isRefreshing}
           >
-            <RefreshCw className={`h-4 w-4 mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
+            {isRefreshing ? (
+              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4 mr-1" />
+            )}
             Refresh
           </Button>
-          <AddUserDialog onUserAdded={refetch} />
+          <Button 
+            size="sm"
+            onClick={() => setAddUserOpen(true)}
+          >
+            <UserPlus className="h-4 w-4 mr-1" />
+            Add User
+          </Button>
         </div>
-      </CardHeader>
-      <CardContent>
-        <div className="relative mb-4">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            type="search"
-            placeholder="Search users..."
-            className="pl-8"
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-          />
-        </div>
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
+      </div>
+
+      <div className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead>Role</TableHead>
+              <TableHead>Created</TableHead>
+              <TableHead className="w-[80px]">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading ? (
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableCell colSpan={5} className="h-24 text-center">
+                  <Loader2 className="h-6 w-6 animate-spin mx-auto" />
+                  <span className="mt-2 block text-sm text-muted-foreground">
+                    Loading users...
+                  </span>
+                </TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredUsers.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                    {filter ? "No users match your search." : "No users found."}
+            ) : users.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} className="h-24 text-center">
+                  No users found.
+                </TableCell>
+              </TableRow>
+            ) : (
+              users.map((user) => (
+                <TableRow key={user.id}>
+                  <TableCell className="font-medium">
+                    {user.full_name || 'No name'}
                   </TableCell>
-                </TableRow>
-              ) : (
-                filteredUsers.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell>
-                      {user.full_name || "—"}
-                      {user.isCurrentUser && (
-                        <span className="ml-2 text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded">
-                          You
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell>{user.email}</TableCell>
-                    <TableCell>
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${getRoleBadgeClass(user.role)}`}>
-                        {user.role || "user"}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      {user.created_at 
-                        ? format(new Date(user.created_at), "PPP") 
-                        : "—"}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
+                  <TableCell>{user.email}</TableCell>
+                  <TableCell>
+                    <Badge 
+                      variant="outline" 
+                      className={getRoleBadgeColor(user.role)}
+                    >
+                      {user.role || 'user'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {new Date(user.created_at).toLocaleDateString()}
+                  </TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
                         <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => handleResetPassword(user)}
+                          variant="ghost" 
+                          className="h-8 w-8 p-0"
                         >
-                          <Key className="h-4 w-4 mr-1" />
-                          Reset
+                          <MoreHorizontal className="h-4 w-4" />
                         </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem 
                           onClick={() => handleManageUser(user)}
                         >
-                          <UserCog className="h-4 w-4 mr-1" />
-                          Manage
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      </CardContent>
+                          <UserCog className="h-4 w-4 mr-2" />
+                          Edit Role
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleResetPassword(user)}
+                        >
+                          <Key className="h-4 w-4 mr-2" />
+                          Reset Password
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
 
-      {/* Password Reset Dialog */}
+      {/* Dialogs */}
       {selectedUser && (
-        <UserPasswordResetDialog 
-          user={selectedUser}
-          open={isPasswordResetOpen}
-          onOpenChange={setIsPasswordResetOpen}
-        />
+        <>
+          <UserManageDialog 
+            user={selectedUser}
+            open={manageDialogOpen}
+            onOpenChange={setManageDialogOpen}
+            onUserUpdated={refetchUsers}
+          />
+          <UserPasswordResetDialog
+            user={selectedUser}
+            open={resetPasswordDialogOpen}
+            onOpenChange={setResetPasswordDialogOpen}
+          />
+        </>
       )}
-
-      {/* Manage User Dialog */}
-      {selectedUser && (
-        <UserManageDialog 
-          user={selectedUser}
-          open={isManageDialogOpen}
-          onOpenChange={setIsManageDialogOpen}
-          onUserUpdated={refetch}
-        />
-      )}
-    </Card>
+      
+      <AddUserDialog
+        open={addUserOpen}
+        onOpenChange={setAddUserOpen}
+        onUserAdded={refetchUsers}
+      />
+    </div>
   );
 }
