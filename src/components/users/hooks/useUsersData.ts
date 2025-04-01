@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import type { UserProfile } from "../types/userTypes";
 import { useFetchUsers } from "./useFetchUsers";
 import { useFetchTrainers } from "./useFetchTrainers";
@@ -47,6 +47,19 @@ export function useUsersData() {
     setUserAsAdmin 
   } = useAdminSetup();
 
+  // Ensure refetch is wrapped with error handling and proper logging
+  const refetchUsers = useCallback(async () => {
+    try {
+      console.log("Manually refetching ALL users data...");
+      // Invalidate the cache first to ensure fresh data
+      queryClient.invalidateQueries({ queryKey: ['users-admin'] });
+      await refetch();
+      console.log("Users data refetched successfully, found", users.length, "users");
+    } catch (error) {
+      console.error("Error refetching users data:", error);
+    }
+  }, [queryClient, refetch, users.length]);
+
   // Initial fetch on mount and set up a periodic refresh
   useEffect(() => {
     console.log("useUsersData hook mounted, fetching initial users data");
@@ -61,20 +74,7 @@ export function useUsersData() {
     
     // Cleanup on unmount
     return () => clearInterval(intervalId);
-  }, []);
-
-  // Ensure refetch is wrapped with error handling and proper logging
-  const refetchUsers = async () => {
-    try {
-      console.log("Manually refetching ALL users data...");
-      // Invalidate the cache first to ensure fresh data
-      queryClient.invalidateQueries({ queryKey: ['users-admin'] });
-      await refetch();
-      console.log("Users data refetched successfully, found", users.length, "users");
-    } catch (error) {
-      console.error("Error refetching users data:", error);
-    }
-  };
+  }, [refetchUsers]);
 
   // Debug the users array
   console.log(`useUsersData hook - current users count: ${users.length}`);
