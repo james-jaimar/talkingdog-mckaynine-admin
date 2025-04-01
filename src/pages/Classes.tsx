@@ -5,7 +5,7 @@ import { ClassesTable } from "@/components/classes/ClassesTable";
 import { ClassesTabs } from "@/components/classes/ClassesTabs";
 import { AddClassModal } from "@/components/classes/AddClassModal";
 import { Button } from "@/components/ui/button";
-import { Plus, ListFilter } from "lucide-react";
+import { Plus } from "lucide-react";
 import { Helmet } from "react-helmet";
 import { useParams } from "react-router-dom";
 

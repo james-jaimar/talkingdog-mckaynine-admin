@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useBranch } from "@/context/BranchContext";
@@ -13,7 +12,11 @@ import { useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/context/AuthContext";
 
-export function ClassesTable() {
+interface ClassesTableProps {
+  filter?: string;
+}
+
+export function ClassesTable({ filter }: ClassesTableProps = {}) {
   const { currentBranch } = useBranch();
   const [editingClass, setEditingClass] = useState<Class | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -94,7 +97,14 @@ export function ClassesTable() {
     return [...classes].sort((a, b) => a.name.localeCompare(b.name));
   };
 
-  const orderedClasses = getOrderedClasses();
+  let orderedClasses = getOrderedClasses();
+
+  // Apply filter if provided
+  if (filter) {
+    orderedClasses = orderedClasses.filter(classItem => 
+      classItem.id === filter
+    );
+  }
 
   // Save class order to database
   const saveClassOrderMutation = useMutation({
