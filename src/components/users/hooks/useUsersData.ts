@@ -7,7 +7,8 @@ import { useTrainerLinking } from "./useTrainerLinking";
 import { useUserRoleManagement } from "./useUserRoleManagement";
 import { useAdminSetup } from "./useAdminSetup";
 
-export { UserProfile } from "../types/userTypes";
+// Change the re-export to use 'export type' to fix the error
+export type { UserProfile } from "../types/userTypes";
 
 export function useUsersData() {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);

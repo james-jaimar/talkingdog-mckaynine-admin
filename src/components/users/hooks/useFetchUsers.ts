@@ -72,7 +72,7 @@ export function useFetchUsers() {
           console.log("Found", trainers?.length, "trainers linked to users");
         }
         
-        // Join the data - IMPORTANT: No filtering!
+        // Join the data - No filtering, show ALL users regardless of app_id
         const usersWithTrainers = profiles.map(profile => {
           // Check for trainer linked to this user
           const linkedTrainer = trainers?.find(t => {
@@ -103,6 +103,6 @@ export function useFetchUsers() {
       }
     },
     // Reduce stale time to ensure we get fresh data more often
-    staleTime: 1000 * 60 * 1 // 1 minute
+    staleTime: 1000 * 30 // 30 seconds
   });
 }
