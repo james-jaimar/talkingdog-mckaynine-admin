@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import type { UserProfile } from "../types/userTypes";
 import { useFetchUsers } from "./useFetchUsers";
@@ -6,12 +5,14 @@ import { useFetchTrainers } from "./useFetchTrainers";
 import { useTrainerLinking } from "./useTrainerLinking";
 import { useUserRoleManagement } from "./useUserRoleManagement";
 import { useAdminSetup } from "./useAdminSetup";
+import { useQueryClient } from "@tanstack/react-query";
 
 // Re-export the type for external use
 export type { UserProfile };
 
 export function useUsersData() {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const queryClient = useQueryClient();
   
   // Fetch users data with proper error handling
   const { 
@@ -49,6 +50,8 @@ export function useUsersData() {
   const refetchUsers = async () => {
     try {
       console.log("Manually refetching ALL users data...");
+      // Invalidate the cache first to ensure fresh data
+      queryClient.invalidateQueries({ queryKey: ['users-admin'] });
       await refetch();
       console.log("Users data refetched successfully, found", users.length, "users");
     } catch (error) {

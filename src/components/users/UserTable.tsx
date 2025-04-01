@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useUsersData, UserProfile } from "./hooks/useUsersData";
 import {
@@ -73,7 +72,14 @@ export function UserTable() {
   useEffect(() => {
     console.log(`UserTable - Total users: ${users.length}, Filtered users: ${filteredUsers.length}`);
     if (users.length > 0) {
-      console.log("Users data in UserTable:", users);
+      console.log("Users available in UserTable:", users.map(u => ({
+        id: u.id.substring(0, 8), 
+        email: u.username,
+        role: u.role,
+        isCurrentUser: u.isCurrentUser
+      })));
+    } else {
+      console.log("No users available to display in UserTable");
     }
   }, [users, filteredUsers]);
 
@@ -95,6 +101,16 @@ export function UserTable() {
   useEffect(() => {
     console.log("UserTable mounted, fetching all users...");
     refetchUsers();
+  }, [refetchUsers]);
+
+  // Add a periodic refresh to ensure latest data
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      console.log("Automatic periodic refresh...");
+      refetchUsers();
+    }, 10000); // Refresh every 10 seconds
+    
+    return () => clearInterval(intervalId);
   }, [refetchUsers]);
 
   // Role change handler

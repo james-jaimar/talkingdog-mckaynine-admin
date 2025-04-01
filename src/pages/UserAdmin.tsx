@@ -17,6 +17,7 @@ export default function UserAdmin() {
   // Debug admin status
   console.log("UserAdmin page - User is admin:", isAdmin);
   console.log("UserAdmin page - Auth loading:", isLoading);
+  console.log("UserAdmin page - Current user:", user?.id);
 
   // Check if user is admin, if not redirect
   useEffect(() => {
@@ -29,6 +30,7 @@ export default function UserAdmin() {
         });
         navigate("/");
       } else {
+        console.log("User has admin access, loading page content");
         setPageLoading(false);
       }
     }

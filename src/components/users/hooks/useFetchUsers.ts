@@ -14,7 +14,8 @@ export function useFetchUsers() {
         const { data: { user: currentUser } } = await supabase.auth.getUser();
         console.log("Current user ID:", currentUser?.id);
         
-        // Fetch ALL profiles directly from the profiles table (not filtered to current user)
+        // IMPORTANT: Make sure we're getting ALL users, not just the current user
+        // Use a simpler query with no filters to get all profiles
         const { data: profiles, error: profilesError } = await supabase
           .from('profiles')
           .select('*');
@@ -24,7 +25,7 @@ export function useFetchUsers() {
           throw profilesError;
         }
         
-        // Debug log the raw profiles count
+        // Log the raw response for debugging
         console.log(`Found ${profiles?.length || 0} total profiles in database:`, profiles);
         
         if (!profiles || profiles.length === 0) {
@@ -73,6 +74,7 @@ export function useFetchUsers() {
         throw error;
       }
     },
-    staleTime: 5 * 1000, // 5 seconds
+    staleTime: 0, // No stale time, always fetch fresh data
+    refetchOnWindowFocus: true, // Refetch when window gets focus
   });
 }
