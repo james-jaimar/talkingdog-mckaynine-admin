@@ -47,10 +47,20 @@ export function useUsersData() {
     setUserAsAdmin 
   } = useAdminSetup();
 
-  // Initial fetch on mount
+  // Initial fetch on mount and set up a periodic refresh
   useEffect(() => {
     console.log("useUsersData hook mounted, fetching initial users data");
+    // Do an immediate fetch
     refetchUsers();
+    
+    // Set up a periodic refresh
+    const intervalId = setInterval(() => {
+      console.log("Periodic refresh in useUsersData triggered");
+      refetchUsers();
+    }, 5000);
+    
+    // Cleanup on unmount
+    return () => clearInterval(intervalId);
   }, []);
 
   // Ensure refetch is wrapped with error handling and proper logging

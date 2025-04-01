@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useUsersData, UserProfile } from "./hooks/useUsersData";
 import {
@@ -39,6 +40,8 @@ import { ResetPasswordDialog } from "./ResetPasswordDialog";
 import { AddUserDialog } from "./AddUserDialog";
 
 export function UserTable() {
+  console.log("UserTable component rendering");
+
   // Get user data from the hook
   const {
     users,
@@ -68,10 +71,14 @@ export function UserTable() {
       (user.username?.toLowerCase() || '').includes(filter.toLowerCase())
   );
 
-  // Log users data for debugging
+  // Log users data for debugging and component state
+  console.log(`UserTable - Component mount/render`);
+  console.log(`UserTable - Total users: ${users?.length || 0}, Filtered users: ${filteredUsers?.length || 0}`);
+  
+  // Debug all users on component mount and when users change
   useEffect(() => {
-    console.log(`UserTable - Total users: ${users.length}, Filtered users: ${filteredUsers.length}`);
-    if (users.length > 0) {
+    console.log("UserTable - Users data changed:", users?.length);
+    if (users?.length > 0) {
       console.log("Users available in UserTable:", users.map(u => ({
         id: u.id.substring(0, 8), 
         email: u.username,
@@ -81,7 +88,7 @@ export function UserTable() {
     } else {
       console.log("No users available to display in UserTable");
     }
-  }, [users, filteredUsers]);
+  }, [users]);
 
   // Listen for user creation events
   useEffect(() => {
@@ -97,20 +104,10 @@ export function UserTable() {
     };
   }, [refetchUsers]);
 
-  // Auto-refresh when the component mounts
+  // Refresh on component mount
   useEffect(() => {
     console.log("UserTable mounted, fetching all users...");
     refetchUsers();
-  }, [refetchUsers]);
-
-  // Add a periodic refresh to ensure latest data
-  useEffect(() => {
-    const intervalId = setInterval(() => {
-      console.log("Automatic periodic refresh...");
-      refetchUsers();
-    }, 10000); // Refresh every 10 seconds
-    
-    return () => clearInterval(intervalId);
   }, [refetchUsers]);
 
   // Role change handler
@@ -164,11 +161,14 @@ export function UserTable() {
     );
   }
 
+  // Log rendering decision
+  console.log(`UserTable - Rendering table with ${filteredUsers?.length || 0} users`);
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
-          <CardTitle>Users ({users.length})</CardTitle>
+          <CardTitle>Users ({users?.length || 0})</CardTitle>
           <CardDescription>
             Manage user accounts and access roles.
           </CardDescription>
@@ -210,10 +210,16 @@ export function UserTable() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredUsers.length === 0 ? (
+              {!users || users.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                    No users found.
+                    No users found in database.
+                  </TableCell>
+                </TableRow>
+              ) : filteredUsers.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                    No users match your search.
                   </TableCell>
                 </TableRow>
               ) : (

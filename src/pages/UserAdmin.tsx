@@ -21,6 +21,7 @@ export default function UserAdmin() {
 
   // Check if user is admin, if not redirect
   useEffect(() => {
+    console.log("UserAdmin auth state changed:", { isLoading, isAdmin });
     if (!isLoading) {
       if (!isAdmin) {
         toast({
