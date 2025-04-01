@@ -38,8 +38,8 @@ export function useClassTabNavigation() {
     // Update the state
     setActiveTab(tabValue);
     
-    // Navigate to the path (replace rather than push to avoid history buildup)
-    navigate(path, { replace: true });
+    // Navigate to the path
+    navigate(path);
   }, [navigate]);
 
   // Handle drag events

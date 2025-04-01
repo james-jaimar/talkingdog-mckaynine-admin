@@ -71,19 +71,27 @@ export function ClassesTabs() {
   const {
     orderedClasses,
     setOrderedClasses,
-    saveOrderToDatabase
+    saveOrderToDatabase,
+    isLoadingOrder
   } = useClassTabOrder(activeClasses, currentBranch?.id);
 
   const handleDragEnd = (result: any) => {
-    // If there's no destination, don't do anything
+    // Reset the dragging state immediately
+    isDraggingRef.current = false;
+    
+    // If there's no destination, do nothing
     if (!result.destination) {
-      isDraggingRef.current = false;
       return;
     }
     
     // Get the old and new indexes from the drag event
     const oldIndex = result.source.index;
     const newIndex = result.destination.index;
+    
+    // If there's no change in position, do nothing
+    if (oldIndex === newIndex) {
+      return;
+    }
     
     // Reorder the array of classes
     const items = Array.from(orderedClasses);
@@ -93,10 +101,7 @@ export function ClassesTabs() {
     // Update state with the reordered items
     setOrderedClasses(items);
     
-    // Save the new order to the database
-    saveOrderToDatabase(items);
-    
-    // Set a flag to prevent the next navigation
+    // Set a flag to prevent navigation if the active tab was moved
     if (reorderedItem.id === activeTab) {
       preventNextNavigationRef.current = true;
       
@@ -106,8 +111,8 @@ export function ClassesTabs() {
       }, 100);
     }
     
-    // Reset the dragging state
-    isDraggingRef.current = false;
+    // Save the new order to the database
+    saveOrderToDatabase(items);
     
     // Show toast after successful reordering
     toast({
@@ -116,7 +121,7 @@ export function ClassesTabs() {
     });
   };
 
-  if (isLoading) {
+  if (isLoading || isLoadingOrder) {
     return null;
   }
   

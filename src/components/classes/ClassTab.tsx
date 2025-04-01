@@ -35,6 +35,7 @@ export function ClassTab({ classItem, index, isActive, onTabClick }: ClassTabPro
           <div 
             {...provided.dragHandleProps}
             className="cursor-grab px-1"
+            onClick={(e) => e.stopPropagation()} // Prevent tab click when clicking drag handle
           >
             <GripVertical className="h-4 w-4 text-muted-foreground" />
           </div>
