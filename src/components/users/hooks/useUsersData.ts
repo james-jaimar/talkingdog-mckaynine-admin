@@ -73,6 +73,72 @@ export function useUsersData() {
     },
   });
 
+  // Set user with email as admin
+  const setUserAsAdmin = async (email: string) => {
+    try {
+      // First find the user by email
+      const { data: user, error: findError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('username', email)
+        .single();
+      
+      if (findError) {
+        console.error("Error finding user:", findError);
+        toast({
+          title: "User not found",
+          description: `Could not find user with email ${email}.`,
+          variant: "destructive",
+        });
+        return null;
+      }
+      
+      if (!user) {
+        toast({
+          title: "User not found",
+          description: `No user found with email ${email}.`,
+          variant: "destructive",
+        });
+        return null;
+      }
+      
+      // Update the user role to admin
+      const { data, error } = await supabase
+        .from('profiles')
+        .update({ role: 'admin' })
+        .eq('id', user.id)
+        .select();
+      
+      if (error) {
+        console.error("Error setting user as admin:", error);
+        toast({
+          title: "Update failed",
+          description: error.message || "Failed to update user role to admin.",
+          variant: "destructive",
+        });
+        return null;
+      }
+      
+      toast({
+        title: "Admin privileges granted",
+        description: `User ${email} is now an administrator.`,
+      });
+      
+      // Refresh the users list
+      queryClient.invalidateQueries({ queryKey: ['users-admin'] });
+      
+      return data;
+    } catch (error) {
+      console.error("Unexpected error setting user as admin:", error);
+      toast({
+        title: "Operation failed",
+        description: "An unexpected error occurred while setting the admin role.",
+        variant: "destructive",
+      });
+      return null;
+    }
+  };
+
   return {
     users,
     isLoading,
@@ -81,5 +147,6 @@ export function useUsersData() {
     setSelectedUserId,
     updateUserRole,
     isUpdating,
+    setUserAsAdmin,
   };
 }

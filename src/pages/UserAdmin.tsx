@@ -7,12 +7,14 @@ import { Helmet } from "react-helmet";
 import { UserTable } from "@/components/users/UserTable";
 import { useToast } from "@/components/ui/use-toast";
 import { Loader2 } from "lucide-react";
+import { useUsersData } from "@/components/users/hooks/useUsersData";
 
 export default function UserAdmin() {
   const { isAdmin, isLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [pageLoading, setPageLoading] = useState(true);
+  const { setUserAsAdmin } = useUsersData();
 
   // Check if user is admin, if not redirect
   useEffect(() => {
@@ -29,6 +31,14 @@ export default function UserAdmin() {
       }
     }
   }, [isAdmin, isLoading, navigate, toast]);
+
+  // Set ady@talkingdog.co.za as admin on component mount
+  useEffect(() => {
+    if (!pageLoading && isAdmin) {
+      const adminEmail = "ady@talkingdog.co.za";
+      setUserAsAdmin(adminEmail);
+    }
+  }, [pageLoading, isAdmin, setUserAsAdmin]);
 
   if (isLoading || pageLoading) {
     return (
