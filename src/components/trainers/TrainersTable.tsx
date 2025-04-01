@@ -6,13 +6,17 @@ import { useBranch } from "@/context/BranchContext";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { ExtendedBadge } from "@/components/ui/badge-variants";
 import { Trainer } from "./types/trainer";
-import { MapPin } from "lucide-react";
+import { MapPin, UserCheck, UserX } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/use-toast";
 
 export function TrainersTable() {
   const { currentBranch } = useBranch();
+  const { toast } = useToast();
 
-  const { data: trainers, isLoading } = useQuery({
+  const { data: trainers, isLoading, refetch } = useQuery({
     queryKey: ['trainers', currentBranch?.id],
     queryFn: async () => {
       let query = supabase
@@ -21,6 +25,10 @@ export function TrainersTable() {
           *,
           branches:branch_id (
             name
+          ),
+          profiles:user_id (
+            username,
+            role
           )
         `);
       
@@ -32,10 +40,151 @@ export function TrainersTable() {
       const { data, error } = await query;
       
       if (error) throw error;
-      return data as (Trainer & { branches: { name: string } | null })[];
+      return data as (Trainer & { 
+        branches: { name: string } | null;
+        profiles: { username: string; role: string } | null;
+      })[];
     },
     enabled: !!currentBranch // Only run query when a branch is selected
   });
+  
+  const createUserAccount = async (trainer: Trainer) => {
+    if (trainer.user_id) {
+      toast({
+        title: "User account already exists",
+        description: `${trainer.first_name} ${trainer.last_name} already has a user account.`,
+        variant: "warning",
+      });
+      return;
+    }
+
+    try {
+      // First, check if a user with this email already exists
+      const { data: existingProfiles } = await supabase
+        .from('profiles')
+        .select('id, username')
+        .eq('username', trainer.email);
+      
+      if (existingProfiles && existingProfiles.length > 0) {
+        // User exists, link trainer to existing user
+        const { error: updateError } = await supabase
+          .from('trainers')
+          .update({ user_id: existingProfiles[0].id })
+          .eq('id', trainer.id);
+        
+        if (updateError) throw updateError;
+        
+        // Update their role to 'trainer' if not already
+        const { error: roleError } = await supabase
+          .from('profiles')
+          .update({ role: 'trainer' })
+          .eq('id', existingProfiles[0].id);
+        
+        if (roleError) throw roleError;
+        
+        toast({
+          title: "User account linked",
+          description: `${trainer.first_name} ${trainer.last_name} has been linked to an existing user account.`,
+        });
+      } else {
+        // User doesn't exist, generate a random password
+        const tempPassword = Math.random().toString(36).slice(-8);
+        
+        // Create user with Supabase Auth - this requires admin privileges
+        const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
+          email: trainer.email,
+          password: tempPassword,
+          email_confirm: true,
+          user_metadata: { 
+            full_name: `${trainer.first_name} ${trainer.last_name}`,
+            trainer_id: trainer.id 
+          }
+        });
+        
+        if (authError) {
+          if (authError.message.includes("User already registered")) {
+            toast({
+              title: "Email already registered",
+              description: `The email ${trainer.email} is already registered but not linked. Please check user administration.`,
+              variant: "destructive",
+            });
+          } else {
+            throw authError;
+          }
+          return;
+        }
+        
+        if (authUser?.user) {
+          // Link the trainer to the new user
+          const { error: updateError } = await supabase
+            .from('trainers')
+            .update({ user_id: authUser.user.id })
+            .eq('id', trainer.id);
+          
+          if (updateError) throw updateError;
+          
+          // Set role to 'trainer'
+          const { error: roleError } = await supabase
+            .from('profiles')
+            .update({ role: 'trainer' })
+            .eq('id', authUser.user.id);
+          
+          if (roleError) throw roleError;
+          
+          toast({
+            title: "User account created",
+            description: `User account created for ${trainer.first_name} ${trainer.last_name} with temporary password: ${tempPassword}`,
+          });
+        }
+      }
+      
+      // Refresh the data
+      refetch();
+    } catch (error) {
+      console.error("Error creating user account:", error);
+      toast({
+        title: "Error creating user account",
+        description: error instanceof Error ? error.message : "An unexpected error occurred",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const removeUserAccount = async (trainer: Trainer) => {
+    if (!trainer.user_id) {
+      toast({
+        title: "No user account",
+        description: `${trainer.first_name} ${trainer.last_name} doesn't have a user account.`,
+        variant: "warning",
+      });
+      return;
+    }
+
+    try {
+      // Just unlink the user account from the trainer, don't delete the user
+      const { error } = await supabase
+        .from('trainers')
+        .update({ user_id: null })
+        .eq('id', trainer.id);
+      
+      if (error) throw error;
+      
+      toast({
+        title: "User account unlinked",
+        description: `${trainer.first_name} ${trainer.last_name}'s user account has been unlinked. The user account still exists in the system.`,
+      });
+      
+      // Refresh the data
+      refetch();
+    } catch (error) {
+      console.error("Error unlinking user account:", error);
+      toast({
+        title: "Error unlinking user account",
+        description: error instanceof Error ? error.message : "An unexpected error occurred",
+        variant: "destructive",
+      });
+    }
+  };
   
   if (isLoading) {
     return <div className="text-center p-6">Loading trainers...</div>;
@@ -57,6 +206,7 @@ export function TrainersTable() {
           <TableHead>Contact</TableHead>
           <TableHead>Branch</TableHead>
           <TableHead>Specialties</TableHead>
+          <TableHead>User Account</TableHead>
           <TableHead>Actions</TableHead>
         </TableRow>
       </TableHeader>
@@ -107,6 +257,42 @@ export function TrainersTable() {
                   <span className="text-muted-foreground">None specified</span>
                 )}
               </div>
+            </TableCell>
+            <TableCell>
+              {trainer.user_id ? (
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-1">
+                    <UserCheck className="h-3.5 w-3.5 text-green-500" />
+                    <span className="text-sm">
+                      Has access
+                    </span>
+                  </div>
+                  {trainer.profiles && (
+                    <ExtendedBadge variant="info" className="text-xs">
+                      {trainer.profiles.role}
+                    </ExtendedBadge>
+                  )}
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => removeUserAccount(trainer)}
+                    className="mt-1 h-7 text-xs text-red-500 hover:text-red-700 hover:bg-red-50"
+                  >
+                    <UserX className="h-3 w-3 mr-1" />
+                    Unlink account
+                  </Button>
+                </div>
+              ) : (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => createUserAccount(trainer)}
+                  className="h-7 text-xs"
+                >
+                  <UserCheck className="h-3 w-3 mr-1" />
+                  Create account
+                </Button>
+              )}
             </TableCell>
             <TableCell>
               <EditTrainerModal trainer={trainer} />

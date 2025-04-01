@@ -11,7 +11,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [trainerProfile, setTrainerProfile] = useState<{ 
+    id: string; 
+    first_name: string; 
+    last_name: string 
+  } | null>(null);
   const { toast } = useToast();
+
+  // Function to fetch trainer profile for a user
+  const fetchTrainerProfile = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('trainers')
+        .select('id, first_name, last_name')
+        .eq('user_id', userId)
+        .maybeSingle();
+      
+      if (error) {
+        console.error("Error fetching trainer profile:", error);
+        return null;
+      }
+      
+      return data;
+    } catch (error) {
+      console.error("Exception in fetchTrainerProfile:", error);
+      return null;
+    }
+  };
 
   useEffect(() => {
     // Set up auth state listener
@@ -26,6 +52,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           fetchUserProfile(newSession?.user?.id).then(profileData => {
             if (profileData) {
               setUserRole(profileData.role || null);
+              
+              // If user is a trainer, fetch their trainer profile
+              if (profileData.role === 'trainer') {
+                fetchTrainerProfile(newSession!.user.id).then(trainerData => {
+                  setTrainerProfile(trainerData);
+                });
+              } else {
+                setTrainerProfile(null);
+              }
               
               // Handle special admin user case
               ensureAdminRole(
@@ -43,6 +78,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUserRole(null);
           setUser(null);
           setSession(null);
+          setTrainerProfile(null);
           
           // Force navigation to auth page on sign out
           window.location.href = '/auth';
@@ -59,6 +95,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         fetchUserProfile(currentSession.user.id).then(profileData => {
           if (profileData) {
             setUserRole(profileData.role || null);
+            
+            // If user is a trainer, fetch their trainer profile
+            if (profileData.role === 'trainer') {
+              fetchTrainerProfile(currentSession.user.id).then(trainerData => {
+                setTrainerProfile(trainerData);
+              });
+            }
             
             // Handle special admin user case
             ensureAdminRole(
@@ -195,6 +238,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isTrainer,
         isHandler,
         userRole,
+        trainerProfile,
       }}
     >
       {children}

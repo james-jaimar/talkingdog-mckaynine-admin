@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import { Trainer } from "@/components/trainers/types/trainer";
 
 export type UserProfile = {
   id: string;
@@ -11,7 +12,8 @@ export type UserProfile = {
   avatar_url: string | null;
   role: string;
   created_at: string;
-  email?: string; // From auth.users
+  email?: string;
+  trainer?: Trainer | null;
 };
 
 export function useUsersData() {
@@ -24,18 +26,63 @@ export function useUsersData() {
   const { data: users = [], isLoading, error } = useQuery({
     queryKey: ['users-admin'],
     queryFn: async () => {
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
+      try {
+        // First get all profiles
+        const { data: profiles, error: profilesError } = await supabase
+          .from('profiles')
+          .select('*')
+          .order('created_at', { ascending: false });
+        
+        if (profilesError) {
+          console.error("Error fetching user profiles:", profilesError);
+          throw profilesError;
+        }
+        
+        // Then get trainer information for users linked to trainers
+        const userIds = profiles.map(profile => profile.id);
+        
+        const { data: trainers, error: trainersError } = await supabase
+          .from('trainers')
+          .select('*')
+          .in('user_id', userIds);
+          
+        if (trainersError) {
+          console.error("Error fetching trainers for users:", trainersError);
+          // Don't throw, just continue with profiles data
+        }
+        
+        // Join the data
+        const usersWithTrainers = profiles.map(profile => {
+          const linkedTrainer = trainers?.find(t => t.user_id === profile.id) || null;
+          return {
+            ...profile,
+            trainer: linkedTrainer
+          };
+        });
+        
+        return usersWithTrainers as UserProfile[];
+      } catch (error) {
+        console.error("Error in users query:", error);
+        throw error;
+      }
+    }
+  });
+
+  // Fetch trainers for linking to users
+  const { data: trainers = [], isLoading: isLoadingTrainers } = useQuery({
+    queryKey: ['trainers-for-users'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('trainers')
+        .select('*');
       
-      if (profilesError) {
-        console.error("Error fetching user profiles:", profilesError);
-        throw profilesError;
+      if (error) {
+        console.error("Error fetching trainers:", error);
+        throw error;
       }
       
-      return profiles as UserProfile[];
-    },
+      return data as Trainer[];
+    }
   });
 
   // Update user role
@@ -69,6 +116,65 @@ export function useUsersData() {
       });
     },
   });
+
+  // Link trainer to user
+  const linkTrainerToUser = async (userId: string, trainerId: string) => {
+    try {
+      // Update trainer record to link to this user
+      const { error } = await supabase
+        .from('trainers')
+        .update({ user_id: userId })
+        .eq('id', trainerId);
+      
+      if (error) throw error;
+
+      toast({
+        title: "Trainer linked",
+        description: "User has been linked to the trainer profile.",
+      });
+      
+      // Refresh both users and trainers data
+      queryClient.invalidateQueries({ queryKey: ['users-admin'] });
+      queryClient.invalidateQueries({ queryKey: ['trainers-for-users'] });
+    } catch (error) {
+      console.error("Error linking trainer to user:", error);
+      toast({
+        title: "Link failed",
+        description: error instanceof Error ? error.message : "Failed to link trainer to user.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Unlink trainer from user
+  const unlinkTrainerFromUser = async (userId: string, trainerId: string) => {
+    try {
+      // Update trainer record to remove user link
+      const { error } = await supabase
+        .from('trainers')
+        .update({ user_id: null })
+        .eq('id', trainerId)
+        .eq('user_id', userId); // Double check it's the correct user
+      
+      if (error) throw error;
+
+      toast({
+        title: "Trainer unlinked",
+        description: "User has been unlinked from the trainer profile.",
+      });
+      
+      // Refresh both users and trainers data
+      queryClient.invalidateQueries({ queryKey: ['users-admin'] });
+      queryClient.invalidateQueries({ queryKey: ['trainers-for-users'] });
+    } catch (error) {
+      console.error("Error unlinking trainer from user:", error);
+      toast({
+        title: "Unlink failed",
+        description: error instanceof Error ? error.message : "Failed to unlink trainer from user.",
+        variant: "destructive",
+      });
+    }
+  };
 
   // Set user with email as admin
   const setUserAsAdmin = async (email: string) => {
@@ -189,5 +295,9 @@ export function useUsersData() {
     updateUserRole,
     isUpdating,
     setUserAsAdmin,
+    trainers,
+    isLoadingTrainers,
+    linkTrainerToUser,
+    unlinkTrainerFromUser,
   };
 }

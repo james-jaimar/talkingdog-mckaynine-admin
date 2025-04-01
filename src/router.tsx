@@ -1,99 +1,117 @@
-
-import { createBrowserRouter } from "react-router-dom";
-
-import Dashboard from "./pages/Dashboard";
+import {
+  createBrowserRouter,
+} from "react-router-dom";
+import App from "./App";
+import Auth from "./pages/Auth";
+import Branches from "./pages/Branches";
 import Classes from "./pages/Classes";
 import ClassSchedules from "./pages/ClassSchedules";
-import ClassHandlers from "./pages/ClassHandlers";
-import Trainers from "./pages/Trainers";
 import Handlers from "./pages/Handlers";
-import HandlerDetail from "./pages/HandlerDetail";
-import Branches from "./pages/Branches";
 import UnpaidHandlers from "./pages/UnpaidHandlers";
-import NotFound from "./pages/NotFound";
-import Auth from "./pages/Auth";
+import Trainers from "./pages/Trainers";
 import UserAdmin from "./pages/UserAdmin";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
+import HandlerDetail from "./pages/HandlerDetail";
+import ClassDetail from "./pages/ClassDetail";
 
-// Use basename to handle subdirectory routing in preview environments
-const basename = import.meta.env.MODE === 'production' 
-  ? '/' 
-  : '/';
+// Add a new import for the TrainerDashboard page
+import TrainerDashboard from "./pages/TrainerDashboard";
 
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <ProtectedRoute><Dashboard /></ProtectedRoute>,
-  },
-  {
-    path: "/dashboard",
-    element: <ProtectedRoute><Dashboard /></ProtectedRoute>,
-  },
-  {
-    path: "/classes",
-    element: <ProtectedRoute><Classes /></ProtectedRoute>,
-  },
-  {
-    path: "/classes/:classId",
-    element: <ProtectedRoute><Classes /></ProtectedRoute>,
-  },
-  {
-    path: "/class-schedules",
-    element: <ProtectedRoute><ClassSchedules /></ProtectedRoute>,
-  },
-  {
-    path: "/class-handlers/:id",
-    element: <ProtectedRoute><ClassHandlers /></ProtectedRoute>,
-  },
-  // Keep this route for backward compatibility, but main navigation will use /classes/:classId
-  {
-    path: "/classes/:classId/handlers",
-    element: <ProtectedRoute><ClassHandlers /></ProtectedRoute>,
-  },
-  {
-    path: "/classes/:classId/schedules",
-    element: <ProtectedRoute><ClassSchedules /></ProtectedRoute>,
-  },
-  {
-    path: "/trainers",
-    element: <ProtectedRoute><Trainers /></ProtectedRoute>,
-  },
-  {
-    path: "/handlers",
-    element: <ProtectedRoute><Handlers /></ProtectedRoute>,
-  },
-  {
-    path: "/handler/:id",
-    element: <ProtectedRoute><HandlerDetail /></ProtectedRoute>,
-  },
-  {
-    path: "/branches",
-    element: <ProtectedRoute requiredRole="admin"><Branches /></ProtectedRoute>,
-  },
-  {
-    path: "/unpaid-handlers",
-    element: <ProtectedRoute requiredRole="admin"><UnpaidHandlers /></ProtectedRoute>,
-  },
-  {
-    path: "/user-admin",
-    element: <ProtectedRoute requiredRole="admin"><UserAdmin /></ProtectedRoute>,
+    element: (
+      <ProtectedRoute>
+        <App />
+      </ProtectedRoute>
+    ),
   },
   {
     path: "/auth",
     element: <Auth />,
   },
   {
-    // Explicit 404 route
-    path: "/404",
-    element: <NotFound />,
+    path: "/branches",
+    element: (
+      <ProtectedRoute requiredRole="admin">
+        <Branches />
+      </ProtectedRoute>
+    ),
   },
   {
-    // Catch all route for any undefined paths
-    path: "*",
-    element: <NotFound />,
+    path: "/classes",
+    element: (
+      <ProtectedRoute>
+        <Classes />
+      </ProtectedRoute>
+    ),
   },
-], {
-  basename,
-});
+  {
+    path: "/classes/:classId",
+    element: (
+      <ProtectedRoute>
+        <ClassDetail />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/class-schedules",
+    element: (
+      <ProtectedRoute>
+        <ClassSchedules />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/handlers",
+    element: (
+      <ProtectedRoute>
+        <Handlers />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/handlers/:handlerId",
+    element: (
+      <ProtectedRoute>
+        <HandlerDetail />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/unpaid-handlers",
+    element: (
+      <ProtectedRoute requiredRole="admin">
+        <UnpaidHandlers />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/trainers",
+    element: (
+      <ProtectedRoute>
+        <Trainers />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/user-admin",
+    element: (
+      <ProtectedRoute requiredRole="admin">
+        <UserAdmin />
+      </ProtectedRoute>
+    ),
+  },
+
+  // Add a new route for the TrainerDashboard
+  {
+    path: "/trainer-dashboard",
+    element: (
+      <ProtectedRoute requiredRole="trainer">
+        <TrainerDashboard />
+      </ProtectedRoute>
+    ),
+  },
+]);
 
 export default router;

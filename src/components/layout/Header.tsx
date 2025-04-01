@@ -4,11 +4,11 @@ import { useBranch } from "@/context/BranchContext";
 import { BranchSelector } from "@/components/branches/BranchSelector";
 import { useAuth } from "@/context/auth";
 import { Button } from "@/components/ui/button";
-import { LogOut, User, Users } from "lucide-react";
+import { LogOut, User, Users, Clipboard } from "lucide-react";
 
 export function Header() {
   const { currentBranch } = useBranch();
-  const { user, signOut, isAdmin, isTrainer, userRole } = useAuth();
+  const { user, signOut, isAdmin, isTrainer, userRole, trainerProfile } = useAuth();
 
   // Only show branch selector for admin and trainer roles
   const showBranchSelector = user && (isAdmin || isTrainer);
@@ -17,7 +17,7 @@ export function Header() {
   if (user && process.env.NODE_ENV === 'development') {
     console.log(
       "Header - User info:", 
-      { email: user?.email, role: userRole, isAdmin }
+      { email: user?.email, role: userRole, isAdmin, isTrainer, trainerProfile }
     );
   }
 
@@ -32,33 +32,50 @@ export function Header() {
             
             {user && (
               <nav className="flex space-x-4 overflow-x-auto">
-                <Link to="/" className="text-white hover:text-gray-200 px-2 py-1 rounded whitespace-nowrap">
-                  Dashboard
-                </Link>
-                <Link to="/handlers" className="text-white hover:text-gray-200 px-2 py-1 rounded whitespace-nowrap">
-                  Handlers
-                </Link>
-                <Link to="/classes" className="text-white hover:text-gray-200 px-2 py-1 rounded whitespace-nowrap">
-                  Classes
-                </Link>
-                <Link to="/class-schedules" className="text-white hover:text-gray-200 px-2 py-1 rounded whitespace-nowrap">
-                  Class Schedules
-                </Link>
-                <Link to="/trainers" className="text-white hover:text-gray-200 px-2 py-1 rounded whitespace-nowrap">
-                  Trainers
-                </Link>
-                {isAdmin && (
+                {isTrainer && !isAdmin ? (
                   <>
-                    <Link to="/branches" className="text-white hover:text-gray-200 px-2 py-1 rounded whitespace-nowrap">
-                      Branches
+                    <Link to="/trainer-dashboard" className="text-white hover:text-gray-200 px-2 py-1 rounded whitespace-nowrap">
+                      <Clipboard className="inline-block mr-1 h-4 w-4" />
+                      My Dashboard
                     </Link>
-                    <Link to="/unpaid-handlers" className="text-white hover:text-gray-200 px-2 py-1 rounded whitespace-nowrap">
-                      Unpaid Handlers
+                    <Link to="/class-schedules" className="text-white hover:text-gray-200 px-2 py-1 rounded whitespace-nowrap">
+                      Class Schedules
                     </Link>
-                    <Link to="/user-admin" className="text-white hover:text-gray-200 px-2 py-1 rounded whitespace-nowrap">
-                      <Users className="inline-block mr-1 h-4 w-4" />
-                      User Admin
+                    <Link to="/handlers" className="text-white hover:text-gray-200 px-2 py-1 rounded whitespace-nowrap">
+                      Handlers
                     </Link>
+                  </>
+                ) : (
+                  <>
+                    <Link to="/" className="text-white hover:text-gray-200 px-2 py-1 rounded whitespace-nowrap">
+                      Dashboard
+                    </Link>
+                    <Link to="/handlers" className="text-white hover:text-gray-200 px-2 py-1 rounded whitespace-nowrap">
+                      Handlers
+                    </Link>
+                    <Link to="/classes" className="text-white hover:text-gray-200 px-2 py-1 rounded whitespace-nowrap">
+                      Classes
+                    </Link>
+                    <Link to="/class-schedules" className="text-white hover:text-gray-200 px-2 py-1 rounded whitespace-nowrap">
+                      Class Schedules
+                    </Link>
+                    <Link to="/trainers" className="text-white hover:text-gray-200 px-2 py-1 rounded whitespace-nowrap">
+                      Trainers
+                    </Link>
+                    {isAdmin && (
+                      <>
+                        <Link to="/branches" className="text-white hover:text-gray-200 px-2 py-1 rounded whitespace-nowrap">
+                          Branches
+                        </Link>
+                        <Link to="/unpaid-handlers" className="text-white hover:text-gray-200 px-2 py-1 rounded whitespace-nowrap">
+                          Unpaid Handlers
+                        </Link>
+                        <Link to="/user-admin" className="text-white hover:text-gray-200 px-2 py-1 rounded whitespace-nowrap">
+                          <Users className="inline-block mr-1 h-4 w-4" />
+                          User Admin
+                        </Link>
+                      </>
+                    )}
                   </>
                 )}
               </nav>
@@ -76,6 +93,8 @@ export function Header() {
                   <User className="inline-block mr-1 h-4 w-4" />
                   {user.email}
                   {isAdmin && <span className="ml-1 text-xs bg-blue-600 px-1.5 py-0.5 rounded">Admin</span>}
+                  {isTrainer && !isAdmin && <span className="ml-1 text-xs bg-green-600 px-1.5 py-0.5 rounded">Trainer</span>}
+                  {trainerProfile && <span className="ml-1 text-xs">{trainerProfile.first_name}</span>}
                 </span>
                 <Button 
                   variant="ghost" 

@@ -35,7 +35,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { format } from "date-fns";
-import { Loader2, Search, UserCog } from "lucide-react";
+import { Loader2, Search, UserCog, Key } from "lucide-react";
+import { ResetPasswordDialog } from "./ResetPasswordDialog";
 
 export function UserTable() {
   const {
@@ -44,10 +45,16 @@ export function UserTable() {
     error,
     updateUserRole,
     isUpdating,
+    trainers,
+    isLoadingTrainers,
+    linkTrainerToUser,
+    unlinkTrainerFromUser,
   } = useUsersData();
 
   const [filter, setFilter] = useState("");
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
+  const [resetPasswordOpen, setResetPasswordOpen] = useState(false);
+  const [userToResetPassword, setUserToResetPassword] = useState<UserProfile | null>(null);
 
   // Filter users by name or email
   const filteredUsers = users.filter(
@@ -61,6 +68,11 @@ export function UserTable() {
       updateUserRole({ userId: editingUser.id, role });
       setEditingUser(null);
     }
+  };
+
+  const handleResetPassword = (user: UserProfile) => {
+    setUserToResetPassword(user);
+    setResetPasswordOpen(true);
   };
 
   if (isLoading) {
@@ -116,6 +128,7 @@ export function UserTable() {
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Role</TableHead>
+                <TableHead>Trainer</TableHead>
                 <TableHead>Created</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -123,7 +136,7 @@ export function UserTable() {
             <TableBody>
               {filteredUsers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                     No users found.
                   </TableCell>
                 </TableRow>
@@ -146,91 +159,144 @@ export function UserTable() {
                       </span>
                     </TableCell>
                     <TableCell>
+                      {isLoadingTrainers ? (
+                        <span className="text-sm text-muted-foreground">Loading...</span>
+                      ) : (
+                        <div>
+                          {user.trainer ? (
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm">
+                                {user.trainer.first_name} {user.trainer.last_name}
+                              </span>
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                className="h-6 p-0 text-xs text-red-500 hover:text-red-700"
+                                onClick={() => unlinkTrainerFromUser(user.id, user.trainer!.id)}
+                              >
+                                Unlink
+                              </Button>
+                            </div>
+                          ) : user.role === "trainer" ? (
+                            <Select onValueChange={(trainerId) => linkTrainerToUser(user.id, trainerId)}>
+                              <SelectTrigger className="h-7 text-xs w-[180px]">
+                                <SelectValue placeholder="Link to trainer" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {trainers.filter(t => !t.user_id).map((trainer) => (
+                                  <SelectItem key={trainer.id} value={trainer.id}>
+                                    {trainer.first_name} {trainer.last_name}
+                                  </SelectItem>
+                                ))}
+                                {trainers.filter(t => !t.user_id).length === 0 && (
+                                  <SelectItem value="none" disabled>
+                                    No unlinked trainers
+                                  </SelectItem>
+                                )}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">Not a trainer</span>
+                          )}
+                        </div>
+                      )}
+                    </TableCell>
+                    <TableCell>
                       {user.created_at 
                         ? format(new Date(user.created_at), "PPP") 
                         : "—"}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => setEditingUser(user)}
-                          >
-                            <UserCog className="h-4 w-4 mr-1" />
-                            Manage
-                          </Button>
-                        </DialogTrigger>
-                        {editingUser && editingUser.id === user.id && (
-                          <DialogContent>
-                            <DialogHeader>
-                              <DialogTitle>Edit User</DialogTitle>
-                              <DialogDescription>
-                                Update role and permissions for {editingUser.full_name || editingUser.username}
-                              </DialogDescription>
-                            </DialogHeader>
-                            
-                            <div className="py-4">
-                              <div className="space-y-4">
-                                <div>
-                                  <label className="text-sm font-medium mb-1 block">
-                                    Role
-                                  </label>
-                                  <Select 
-                                    defaultValue={editingUser.role} 
-                                    onValueChange={handleRoleChange}
-                                  >
-                                    <SelectTrigger>
-                                      <SelectValue placeholder="Select role" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="admin">Admin</SelectItem>
-                                      <SelectItem value="trainer">Trainer</SelectItem>
-                                      <SelectItem value="handler">Handler</SelectItem>
-                                      <SelectItem value="user">User</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                </div>
+                      <div className="flex justify-end gap-1">
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => handleResetPassword(user)}
+                        >
+                          <Key className="h-4 w-4 mr-1" />
+                          Reset
+                        </Button>
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => setEditingUser(user)}
+                            >
+                              <UserCog className="h-4 w-4 mr-1" />
+                              Manage
+                            </Button>
+                          </DialogTrigger>
+                          {editingUser && editingUser.id === user.id && (
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>Edit User</DialogTitle>
+                                <DialogDescription>
+                                  Update role and permissions for {editingUser.full_name || editingUser.username}
+                                </DialogDescription>
+                              </DialogHeader>
+                              
+                              <div className="py-4">
+                                <div className="space-y-4">
+                                  <div>
+                                    <label className="text-sm font-medium mb-1 block">
+                                      Role
+                                    </label>
+                                    <Select 
+                                      defaultValue={editingUser.role} 
+                                      onValueChange={handleRoleChange}
+                                    >
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Select role" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="admin">Admin</SelectItem>
+                                        <SelectItem value="trainer">Trainer</SelectItem>
+                                        <SelectItem value="handler">Handler</SelectItem>
+                                        <SelectItem value="user">User</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
 
-                                <div>
-                                  <label className="text-sm font-medium mb-1 block">
-                                    User ID
-                                  </label>
-                                  <Input 
-                                    value={editingUser.id} 
-                                    disabled 
-                                    className="bg-muted"
-                                  />
-                                  <p className="text-xs text-muted-foreground mt-1">
-                                    This is the user's unique identifier
-                                  </p>
+                                  <div>
+                                    <label className="text-sm font-medium mb-1 block">
+                                      User ID
+                                    </label>
+                                    <Input 
+                                      value={editingUser.id} 
+                                      disabled 
+                                      className="bg-muted"
+                                    />
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                      This is the user's unique identifier
+                                    </p>
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                            
-                            <DialogFooter>
-                              <Button 
-                                variant="outline" 
-                                onClick={() => setEditingUser(null)}
-                              >
-                                Cancel
-                              </Button>
-                              <Button 
-                                disabled={isUpdating} 
-                                onClick={() => {
-                                  // Dialog will close automatically when the select changes
-                                  // But we provide this button for UX purposes
-                                  setEditingUser(null);
-                                }}
-                              >
-                                {isUpdating && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                                Save Changes
-                              </Button>
-                            </DialogFooter>
-                          </DialogContent>
-                        )}
-                      </Dialog>
+                              
+                              <DialogFooter>
+                                <Button 
+                                  variant="outline" 
+                                  onClick={() => setEditingUser(null)}
+                                >
+                                  Cancel
+                                </Button>
+                                <Button 
+                                  disabled={isUpdating} 
+                                  onClick={() => {
+                                    // Dialog will close automatically when the select changes
+                                    // But we provide this button for UX purposes
+                                    setEditingUser(null);
+                                  }}
+                                >
+                                  {isUpdating && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                                  Save Changes
+                                </Button>
+                              </DialogFooter>
+                            </DialogContent>
+                          )}
+                        </Dialog>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -239,6 +305,15 @@ export function UserTable() {
           </Table>
         </div>
       </CardContent>
+
+      {/* Password Reset Dialog */}
+      {userToResetPassword && (
+        <ResetPasswordDialog 
+          user={userToResetPassword}
+          open={resetPasswordOpen}
+          onOpenChange={setResetPasswordOpen}
+        />
+      )}
     </Card>
   );
 }

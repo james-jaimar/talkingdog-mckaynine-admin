@@ -12,4 +12,5 @@ export interface AuthContextType {
   isTrainer: boolean;
   isHandler: boolean;
   userRole: string | null;
+  trainerProfile: { id: string; first_name: string; last_name: string } | null;
 }
