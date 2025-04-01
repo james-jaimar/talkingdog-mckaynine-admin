@@ -13,10 +13,13 @@ export function Header() {
   // Only show branch selector for admin and trainer roles
   const showBranchSelector = user && (isAdmin || isTrainer);
   
-  // For debugging
-  console.log("Header - Current user:", user?.email);
-  console.log("Header - User role:", userRole);
-  console.log("Header - Is admin:", isAdmin);
+  // Reduced debugging output - only log once during render
+  if (user && process.env.NODE_ENV === 'development') {
+    console.log(
+      "Header - User info:", 
+      { email: user?.email, role: userRole, isAdmin }
+    );
+  }
 
   return (
     <header className="bg-mckaynine-600 text-white sticky top-0 z-50 shadow-md">

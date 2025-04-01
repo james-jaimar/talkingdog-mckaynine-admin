@@ -15,6 +15,7 @@ export default function UserAdmin() {
   const { toast } = useToast();
   const [pageLoading, setPageLoading] = useState(true);
   const { setUserAsAdmin } = useUsersData();
+  const [adminSetupComplete, setAdminSetupComplete] = useState(false);
 
   // Check if user is admin, if not redirect
   useEffect(() => {
@@ -32,22 +33,27 @@ export default function UserAdmin() {
     }
   }, [isAdmin, isLoading, navigate, toast]);
 
-  // Set ady@talkingdog.co.za as admin on component mount
+  // Set ady@talkingdog.co.za as admin - only run once
   useEffect(() => {
     const setupAdminUser = async () => {
-      if (!pageLoading && isAdmin) {
-        console.log("Current user:", user?.email, "Role:", userRole);
+      if (!pageLoading && isAdmin && !adminSetupComplete) {
+        console.log("Setting up admin user - once only");
         
         // Email of the user we want to make an admin
         const adminEmail = "ady@talkingdog.co.za";
         
-        console.log("Attempting to set user as admin:", adminEmail);
-        await setUserAsAdmin(adminEmail);
+        try {
+          await setUserAsAdmin(adminEmail);
+          setAdminSetupComplete(true);
+        } catch (error) {
+          console.error("Error setting up admin user:", error);
+          setAdminSetupComplete(true); // Still mark as complete to prevent retries
+        }
       }
     };
     
     setupAdminUser();
-  }, [pageLoading, isAdmin, setUserAsAdmin, user, userRole]);
+  }, [pageLoading, isAdmin, setUserAsAdmin, adminSetupComplete]);
 
   if (isLoading || pageLoading) {
     return (

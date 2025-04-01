@@ -18,6 +18,7 @@ export function useUsersData() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [adminSetupAttempted, setAdminSetupAttempted] = useState<Record<string, boolean>>({});
 
   // Fetch all users with their profile information
   const { data: users = [], isLoading, error } = useQuery({
@@ -32,10 +33,6 @@ export function useUsersData() {
         console.error("Error fetching user profiles:", profilesError);
         throw profilesError;
       }
-
-      // Enhance profiles with email from auth.users if needed
-      // Note: This will only work if you have appropriate permissions
-      // Typically, only service_role keys can access auth.users
       
       return profiles as UserProfile[];
     },
@@ -75,7 +72,14 @@ export function useUsersData() {
 
   // Set user with email as admin
   const setUserAsAdmin = async (email: string) => {
+    // Skip if we've already attempted for this email in this session
+    if (adminSetupAttempted[email]) {
+      console.log(`Already attempted to set ${email} as admin in this session`);
+      return null;
+    }
+    
     try {
+      setAdminSetupAttempted(prev => ({ ...prev, [email]: true }));
       console.log("Attempting to set user as admin:", email);
       
       // First find the user by email in profiles
@@ -113,7 +117,6 @@ export function useUsersData() {
             variant: "destructive",
           });
           
-          console.log("All available users:", users);
           return null;
         }
         
@@ -127,10 +130,6 @@ export function useUsersData() {
         // Check if user is already an admin
         if (user.role === 'admin') {
           console.log("User is already an admin:", email);
-          toast({
-            title: "Already an admin",
-            description: `User ${email} is already an administrator.`,
-          });
           return user;
         }
         
