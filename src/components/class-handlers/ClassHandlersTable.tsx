@@ -4,12 +4,14 @@ import { BookingRow } from "./BookingRow";
 import { useClassHandlers } from "./hooks/useClassHandlers";
 import { useScheduleDates } from "./hooks/useScheduleDates";
 import { useHandlerForm } from "./hooks/useHandlerForm";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface ClassHandlersTableProps {
   classId: string;
 }
 
 export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
+  const queryClient = useQueryClient();
   // Use our custom hooks
   const { data: handlers, isLoading: isLoadingHandlers } = useClassHandlers(classId);
   const { data: scheduleDates, isLoading: isLoadingDates } = useScheduleDates(classId);
@@ -58,7 +60,12 @@ export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
                 bookingData={bookingData}
                 handleInputChange={handleInputChange}
                 startEditing={startEditing}
-                saveChanges={(bookingId) => saveChanges(bookingId, classId)}
+                saveChanges={(bookingId) => {
+                  saveChanges(bookingId, classId).then(() => {
+                    // Refresh the handlers data after saving changes
+                    queryClient.invalidateQueries({ queryKey: ['class-handlers', classId] });
+                  });
+                }}
               />
             );
           })}

@@ -17,6 +17,7 @@ import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
 import TrainerDashboard from "./pages/TrainerDashboard";
 import TrainerReferences from "./pages/TrainerReferences";
+import ClassHandlers from "./pages/ClassHandlers";
 
 const router = createBrowserRouter([
   {
@@ -60,6 +61,14 @@ const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <ClassSchedules />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/classes/:classId/handlers",
+    element: (
+      <ProtectedRoute>
+        <ClassHandlers />
       </ProtectedRoute>
     ),
   },

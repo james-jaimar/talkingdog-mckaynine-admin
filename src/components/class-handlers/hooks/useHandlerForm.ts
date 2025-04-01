@@ -53,7 +53,11 @@ export function useHandlerForm() {
       });
       
       setEditingBookingId(null);
+      
+      // Invalidate the query to refresh data
       queryClient.invalidateQueries({ queryKey: ['class-handlers', classId] });
+      
+      return Promise.resolve();
     } catch (error) {
       console.error('Error updating booking:', error);
       toast({
@@ -61,6 +65,8 @@ export function useHandlerForm() {
         description: "Failed to update handler information",
         variant: "destructive"
       });
+      
+      return Promise.reject(error);
     }
   };
 

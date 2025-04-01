@@ -7,12 +7,9 @@ import { AddClassModal } from "@/components/classes/AddClassModal";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { Helmet } from "react-helmet";
-import { useParams } from "react-router-dom";
-import { ClassHandlersTable } from "@/components/class-handlers/ClassHandlersTable";
 
 export default function Classes() {
   const [isAddClassModalOpen, setIsAddClassModalOpen] = useState(false);
-  const { classId } = useParams<{ classId: string }>();
 
   return (
     <DashboardLayout>
@@ -33,13 +30,9 @@ export default function Classes() {
           <ClassesTabs />
         </div>
 
-        {/* Show handlers table if a class is selected, otherwise show classes table */}
+        {/* Show classes table */}
         <div className="mt-4">
-          {classId ? (
-            <ClassHandlersTable classId={classId} />
-          ) : (
-            <ClassesTable filter={classId} />
-          )}
+          <ClassesTable />
         </div>
 
         <AddClassModal 
