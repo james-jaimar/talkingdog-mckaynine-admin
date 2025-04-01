@@ -183,7 +183,7 @@ export function UserTable() {
             <RefreshCw className={`h-4 w-4 mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
-          <AddUserDialog />
+          <AddUserDialog onUserAdded={refetchUsers} />
         </div>
       </CardHeader>
       <CardContent>
