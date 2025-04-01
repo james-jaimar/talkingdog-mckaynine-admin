@@ -6,7 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 export function useClassTabNavigation() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   
   // Determine active tab from URL path
   const getActiveTabFromPath = useCallback(() => {
@@ -14,6 +14,13 @@ export function useClassTabNavigation() {
     if (classIdMatch) {
       return classIdMatch[1];
     }
+    
+    // Check for class ID in the class schedules path
+    const scheduleMatch = location.pathname.match(/\/classes\/([^/]+)\/schedules/);
+    if (scheduleMatch) {
+      return scheduleMatch[1];
+    }
+    
     return "all";
   }, [location.pathname]);
   
@@ -30,6 +37,7 @@ export function useClassTabNavigation() {
 
   // Handle tab click
   const handleTabClick = useCallback((tabValue: string, path: string) => {
+    console.log("Tab clicked:", tabValue, "path:", path);
     // Update the state
     setActiveTab(tabValue);
     
@@ -42,6 +50,6 @@ export function useClassTabNavigation() {
     setActiveTab,
     handleTabClick,
     isClassesPath: location.pathname.includes('/classes'),
-    isAuthenticated: !!user
+    isAuthenticated: !!user && !!session
   };
 }

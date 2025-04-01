@@ -14,13 +14,16 @@ interface ActiveClass {
 
 export function useClassesData() {
   const { currentBranch } = useBranch();
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   
   // Fetch active classes (those that have schedules)
-  const { data: activeClasses = [], isLoading } = useQuery({
+  const { data: activeClasses = [], isLoading, error } = useQuery({
     queryKey: ['active-classes', currentBranch?.id, user?.id],
     queryFn: async () => {
       if (!currentBranch) return [];
+      
+      console.log("Fetching active classes with branch ID:", currentBranch.id);
+      console.log("Current user ID:", user?.id);
       
       const { data, error } = await supabase
         .from('classes')
@@ -43,13 +46,18 @@ export function useClassesData() {
       console.log("Active classes data:", data);
       return data as ActiveClass[];
     },
-    enabled: !!currentBranch && !!user,
+    enabled: !!currentBranch && !!user && !!session,
   });
+
+  if (error) {
+    console.error("Error in useClassesData:", error);
+  }
 
   return {
     activeClasses,
     isLoading,
     hasBranch: !!currentBranch,
-    isAuthenticated: !!user
+    isAuthenticated: !!user && !!session,
+    error
   };
 }

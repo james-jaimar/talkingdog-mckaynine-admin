@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, Edit, Trash, Users } from "lucide-react";
+import { MoreHorizontal, Edit, Trash, Users, AlertCircle } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,6 +17,7 @@ import { useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { EditClassScheduleModal } from "./EditClassScheduleModal";
 import { useAuth } from "@/context/AuthContext";
+import { useBranch } from "@/context/BranchContext";
 
 interface ClassSchedulesTableProps {
   classId: string;
@@ -26,12 +27,20 @@ export function ClassSchedulesTable({ classId }: ClassSchedulesTableProps) {
   const [scheduleToEdit, setScheduleToEdit] = useState<ClassSchedule | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, session } = useAuth();
+  const { currentBranch } = useBranch();
 
-  const { data: schedules, isLoading, refetch } = useQuery({
-    queryKey: ["class-schedules", classId, user?.id],
+  const { data: schedules, isLoading, error, refetch } = useQuery({
+    queryKey: ["class-schedules", classId, user?.id, currentBranch?.id],
     queryFn: async () => {
       console.log("Fetching class schedules for classId:", classId);
+      console.log("Current user ID:", user?.id);
+      console.log("Current branch ID:", currentBranch?.id);
+      
+      if (!user || !session) {
+        console.log("User not authenticated, aborting fetch");
+        return [];
+      }
       
       const { data, error } = await supabase
         .from("class_schedules")
@@ -50,7 +59,7 @@ export function ClassSchedulesTable({ classId }: ClassSchedulesTableProps) {
       console.log("Class schedules data:", data);
       return data as ClassSchedule[];
     },
-    enabled: !!classId && !!user,
+    enabled: !!classId && !!user && !!session && !!currentBranch,
   });
 
   const handleDeleteSchedule = async (id: string) => {
@@ -82,6 +91,39 @@ export function ClassSchedulesTable({ classId }: ClassSchedulesTableProps) {
     setScheduleToEdit(schedule);
     setIsEditModalOpen(true);
   };
+
+  if (!user || !session) {
+    return (
+      <div className="bg-amber-50 border border-amber-200 p-4 rounded-md">
+        <div className="flex items-center text-amber-700">
+          <AlertCircle className="h-5 w-5 mr-2" />
+          <p>You need to log in to view class schedules.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!currentBranch) {
+    return (
+      <div className="bg-amber-50 border border-amber-200 p-4 rounded-md">
+        <div className="flex items-center text-amber-700">
+          <AlertCircle className="h-5 w-5 mr-2" />
+          <p>Please select a branch to view class schedules.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 p-4 rounded-md">
+        <div className="flex items-center text-red-700">
+          <AlertCircle className="h-5 w-5 mr-2" />
+          <p>Error loading schedules: {error instanceof Error ? error.message : "Unknown error"}</p>
+        </div>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return <div className="py-10 text-center">Loading schedules...</div>;
