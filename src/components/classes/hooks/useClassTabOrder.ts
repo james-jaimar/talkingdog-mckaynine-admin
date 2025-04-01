@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -65,8 +65,6 @@ export function useClassTabOrder(
   useEffect(() => {
     if (!activeClasses || activeClasses.length === 0 || isLoadingOrder) return;
     
-    console.log("Setting up ordered classes", { savedOrder, activeClasses });
-    
     if (savedOrder && savedOrder.class_ids && savedOrder.class_ids.length > 0) {
       // We have a saved order from the database
       const savedOrderIds = savedOrder.class_ids;
@@ -89,8 +87,8 @@ export function useClassTabOrder(
     }
   }, [activeClasses, savedOrder, isLoadingOrder, branchId]);
 
-  // Save the order to database whenever it changes
-  const saveOrderToDatabase = useCallback(async (newOrder: ClassWithExtras[]) => {
+  // Save the order to database
+  const saveOrderToDatabase = async (newOrder: ClassWithExtras[]) => {
     try {
       // Check if we have a logged in user
       const { data: { user } } = await supabase.auth.getUser();
@@ -121,13 +119,11 @@ export function useClassTabOrder(
           description: "There was a problem saving your class order.",
           variant: "destructive"
         });
-      } else {
-        console.log("Successfully saved order to database");
       }
     } catch (error) {
       console.error("Error in saveOrderToDatabase:", error);
     }
-  }, [branchId, toast]);
+  };
 
   return {
     orderedClasses,

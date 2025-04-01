@@ -17,10 +17,7 @@ export function ClassesTabs() {
   
   const {
     activeTab,
-    isDraggingRef,
     handleTabClick,
-    handleDragStart,
-    handleDragEnd,
     isClassesPath
   } = useClassTabNavigation();
   
@@ -75,10 +72,7 @@ export function ClassesTabs() {
     isLoadingOrder
   } = useClassTabOrder(activeClasses, currentBranch?.id);
 
-  const handleDragEndInternal = (result: DropResult) => {
-    // Reset the dragging state
-    handleDragEnd();
-    
+  const handleDragEnd = (result: DropResult) => {
     // If there's no destination, do nothing
     if (!result.destination) {
       return;
@@ -123,10 +117,7 @@ export function ClassesTabs() {
   return (
     <div className="mx-4 mt-2 overflow-x-auto">
       <Tabs value={activeTab} className="w-full">
-        <DragDropContext 
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEndInternal}
-        >
+        <DragDropContext onDragEnd={handleDragEnd}>
           <Droppable droppableId="class-tabs" direction="horizontal">
             {(provided) => (
               <TabsList 
