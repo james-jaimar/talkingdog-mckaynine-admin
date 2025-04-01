@@ -22,11 +22,16 @@ export function useFetchUsers() {
         
         console.log("Fetched profiles:", profiles);
         
-        // Get user metadata to identify app users
-        const { data: usersData, error: usersError } = await supabase.auth.admin.listUsers();
+        // Get user metadata from auth API
+        let usersData = null;
+        let usersError = null;
         
-        if (usersError) {
-          console.error("Error fetching user metadata:", usersError);
+        try {
+          const result = await supabase.auth.admin.listUsers();
+          usersData = result.data;
+          usersError = result.error;
+        } catch (err) {
+          console.error("Error fetching user metadata:", err);
           // Continue with profiles data even if metadata fetch fails
         }
         
@@ -57,7 +62,7 @@ export function useFetchUsers() {
           // Don't throw, just continue with profiles data
         }
         
-        // Join the data and filter for app users
+        // Join the data 
         const appId = "mckaynine-training-centre";
         const usersWithTrainers = profiles
           .map(profile => {
@@ -77,14 +82,13 @@ export function useFetchUsers() {
             };
           })
           .filter(user => {
-            // Keep users from this app, or admin users, or if no app_id is specified (legacy users)
-            return !userMetadataMap.has(user.id) || 
-                  userMetadataMap.get(user.id)?.app_id === appId || 
-                  user.role === 'admin' ||
-                  user.username === 'ady@talkingdog.co.za';  // Always include the primary admin
+            // Include all users from profile table in admin view
+            // This is the key change - we're not filtering based on app_id anymore
+            // which was causing some users to be filtered out incorrectly
+            return true;
           });
         
-        console.log("Filtered users with trainers:", usersWithTrainers);
+        console.log("All users with trainers:", usersWithTrainers);
         
         return usersWithTrainers as UserProfile[];
       } catch (error) {
