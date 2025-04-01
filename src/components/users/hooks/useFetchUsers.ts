@@ -8,9 +8,13 @@ export function useFetchUsers() {
     queryKey: ['users-admin'],
     queryFn: async () => {
       try {
-        console.log("Fetching all user profiles from profiles table");
+        console.log("Fetching ALL user profiles from profiles table");
         
-        // Fetch all profiles from the profiles table with no filters
+        // Get current user for marking in the UI
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        console.log("Current user ID:", currentUser?.id);
+        
+        // Fetch ALL profiles from the profiles table without filtering for current user
         const { data: profiles, error: profilesError } = await supabase
           .from('profiles')
           .select('*')
@@ -21,14 +25,11 @@ export function useFetchUsers() {
           throw profilesError;
         }
         
-        console.log(`Found ${profiles?.length || 0} profiles in database`);
+        console.log(`Found ${profiles?.length || 0} total profiles in database`);
         
         if (!profiles || profiles.length === 0) {
           return [];
         }
-        
-        // Get current user for marking in the UI
-        const { data: { user: currentUser } } = await supabase.auth.getUser();
         
         // Get trainers in a separate query
         const { data: trainers, error: trainersError } = await supabase
@@ -40,9 +41,8 @@ export function useFetchUsers() {
         }
         
         const trainersList = trainers || [];
-        console.log(`Found ${trainersList.length} trainers`);
         
-        // Map profiles to user profile objects without filtering
+        // Map ALL profiles to user profile objects
         const userProfiles: UserProfile[] = profiles.map(profile => {
           const linkedTrainer = trainersList.find(t => t.user_id === profile.id);
           const isCurrentUser = currentUser?.id === profile.id;
@@ -61,13 +61,14 @@ export function useFetchUsers() {
         });
         
         // Debug log all found users
+        console.log("All users found:");
         userProfiles.forEach((user, index) => {
-          console.log(`User ${index + 1}: ${user.full_name || user.username} (${user.role})`);
+          console.log(`User ${index + 1}: ID=${user.id}, Name=${user.full_name || user.username}, Role=${user.role}, IsCurrentUser=${user.isCurrentUser}`);
         });
         
         return userProfiles;
       } catch (error) {
-        console.error("Error fetching users:", error);
+        console.error("Error in useFetchUsers:", error);
         throw error;
       }
     },

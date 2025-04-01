@@ -69,14 +69,18 @@ export function UserTable() {
       (user.username?.toLowerCase() || '').includes(filter.toLowerCase())
   );
 
-  // Log all users for debugging
+  // Log users data for debugging
   useEffect(() => {
     console.log(`UserTable - Total users: ${users.length}, Filtered users: ${filteredUsers.length}`);
+    if (users.length > 0) {
+      console.log("Users data in UserTable:", users);
+    }
   }, [users, filteredUsers]);
 
   // Listen for user creation events
   useEffect(() => {
     const handleUserCreated = () => {
+      console.log("User created event received, refreshing data...");
       refetchUsers();
     };
     
@@ -89,6 +93,7 @@ export function UserTable() {
 
   // Auto-refresh when the component mounts
   useEffect(() => {
+    console.log("UserTable mounted, fetching all users...");
     refetchUsers();
   }, [refetchUsers]);
 
@@ -109,6 +114,7 @@ export function UserTable() {
   // Refresh handler
   const handleRefresh = async () => {
     setIsRefreshing(true);
+    console.log("Manual refresh clicked, fetching all users...");
     await refetchUsers();
     setIsRefreshing(false);
   };
@@ -197,7 +203,14 @@ export function UserTable() {
               ) : (
                 filteredUsers.map((user) => (
                   <TableRow key={user.id}>
-                    <TableCell>{user.full_name || "—"}</TableCell>
+                    <TableCell>
+                      {user.full_name || "—"}
+                      {user.isCurrentUser && (
+                        <span className="ml-2 text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded">
+                          You
+                        </span>
+                      )}
+                    </TableCell>
                     <TableCell>{user.username}</TableCell>
                     <TableCell>
                       <span className={`px-2 py-1 rounded text-xs font-medium ${

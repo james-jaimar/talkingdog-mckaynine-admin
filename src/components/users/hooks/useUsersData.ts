@@ -45,10 +45,10 @@ export function useUsersData() {
     setUserAsAdmin 
   } = useAdminSetup();
 
-  // Ensure refetch is wrapped with error handling
+  // Ensure refetch is wrapped with error handling and proper logging
   const refetchUsers = async () => {
     try {
-      console.log("Manually refetching users data");
+      console.log("Manually refetching ALL users data...");
       await refetch();
       console.log("Users data refetched successfully");
     } catch (error) {
