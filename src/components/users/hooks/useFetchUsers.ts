@@ -15,7 +15,6 @@ export function useFetchUsers() {
         console.log("Current authenticated user ID:", currentUser?.id);
         
         // First get all profiles from the profiles table - no filtering
-        // IMPORTANT: Modified from to use * instead of ids so we get all columns
         const { data: profiles, error: profilesError } = await supabase
           .from('profiles')
           .select('*')
@@ -31,6 +30,7 @@ export function useFetchUsers() {
         
         if (profiles && profiles.length === 0) {
           console.log("No profiles found in the database. This is likely because no users have registered yet.");
+          return [];
         }
         
         // DEBUG - show a clear log of all the profiles we found
@@ -44,22 +44,28 @@ export function useFetchUsers() {
         const userIds = profiles?.map(profile => profile.id) || [];
         console.log("Looking up trainers for", userIds.length, "user IDs");
         
-        const { data: trainers, error: trainersError } = await supabase
-          .from('trainers')
-          .select('*')
-          .in('user_id', userIds.length > 0 ? userIds : ['00000000-0000-0000-0000-000000000000']); // Prevent empty array error
-          
-        if (trainersError) {
-          console.error("Error fetching trainers for users:", trainersError);
-          // Continue with profiles data only
+        // Use non-empty array check to prevent query error
+        let trainers = [];
+        if (userIds.length > 0) {
+          const { data: trainersData, error: trainersError } = await supabase
+            .from('trainers')
+            .select('*')
+            .in('user_id', userIds);
+            
+          if (trainersError) {
+            console.error("Error fetching trainers for users:", trainersError);
+          } else {
+            trainers = trainersData || [];
+            console.log("Found", trainers.length, "trainers linked to users");
+          }
         } else {
-          console.log("Found", trainers?.length, "trainers linked to users");
+          console.log("No user IDs to look up trainers for");
         }
         
         // Join the data and return all profiles
         const usersWithTrainers = profiles?.map(profile => {
           // Check for trainer linked to this user
-          const linkedTrainer = trainers?.find(t => {
+          const linkedTrainer = trainers.find(t => {
             if (typeof t.user_id !== 'string') return false;
             return t.user_id === profile.id;
           }) || null;

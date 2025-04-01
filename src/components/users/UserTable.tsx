@@ -65,11 +65,11 @@ export function UserTable() {
     console.log(`UserTable - Total users loaded: ${users.length}`);
   }, [users]);
 
-  // Filter users by name or email
+  // Filter users by name or email - only filter by what's typed, don't apply other filters
   const filteredUsers = users.filter(
     (user) =>
-      user.full_name?.toLowerCase().includes(filter.toLowerCase()) ||
-      user.username?.toLowerCase().includes(filter.toLowerCase())
+      (user.full_name?.toLowerCase() || '').includes(filter.toLowerCase()) ||
+      (user.username?.toLowerCase() || '').includes(filter.toLowerCase())
   );
 
   // Debug: Log filtered users
