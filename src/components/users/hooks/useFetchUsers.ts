@@ -36,7 +36,6 @@ export function useFetchUsers() {
         
         // Log the raw response to help debug
         console.log(`Found ${profiles?.length || 0} total profiles in database (RAW):`, profiles);
-        console.log("Raw profile data (JSON):", JSON.stringify(profiles));
         
         if (!profiles || profiles.length === 0) {
           console.warn("No profiles found in the database");
@@ -59,8 +58,6 @@ export function useFetchUsers() {
           const linkedTrainer = trainersList.find(t => t.user_id === profile.id);
           const isCurrentUser = currentUser?.id === profile.id;
           
-          console.log(`Processing profile: ${profile.id}, username: ${profile.username}, role: ${profile.role}`);
-          
           return {
             id: profile.id,
             username: profile.username || "",
@@ -74,10 +71,8 @@ export function useFetchUsers() {
           };
         });
         
-        console.log("ALL user profiles after mapping:");
-        console.log(JSON.stringify(userProfiles, null, 2));
+        console.log("Mapped user profiles:", userProfiles);
         
-        // Important: Return the profiles array directly
         return userProfiles;
       } catch (error) {
         console.error("Error in useFetchUsers:", error);

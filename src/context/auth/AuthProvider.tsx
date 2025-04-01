@@ -1,249 +1,189 @@
-import React, { useState, useEffect } from "react";
-import { Session, User } from "@supabase/supabase-js";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/components/ui/use-toast";
-import { AuthContext } from "./AuthContext";
-import { fetchUserProfile, ensureAdminRole } from "./utils";
 
-// Define a more specific trainer profile type to avoid deep type issues
-type TrainerProfileType = {
-  id: string;
-  first_name: string;
-  last_name: string;
-};
+import React, { createContext, useState, useEffect, PropsWithChildren } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { Session, User } from '@supabase/supabase-js';
+import { AuthContextType } from './types';
+import { AuthContext } from './AuthContext';
+import { fetchUserProfile, ensureAdminRole } from './utils';
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+export const AuthProvider: React.FC<PropsWithChildren> = ({ children }) => {
+  // Session and user state
   const [session, setSession] = useState<Session | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [role, setRole] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [userRole, setUserRole] = useState<string | null>(null);
-  const [trainerProfile, setTrainerProfile] = useState<TrainerProfileType | null>(null);
-  const { toast } = useToast();
+  const [trainerProfile, setTrainerProfile] = useState(null);
 
-  // Function to fetch trainer profile for a user
-  const fetchTrainerProfile = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('trainers')
-        .select('id, first_name, last_name')
-        .eq('user_id', userId)
-        .maybeSingle();
-      
-      if (error) {
-        console.error("Error fetching trainer profile:", error);
-        return null;
-      }
-      
-      return data;
-    } catch (error) {
-      console.error("Exception in fetchTrainerProfile:", error);
-      return null;
-    }
-  };
+  // Derived states
+  const isAdmin = role === 'admin';
+  const isTrainer = role === 'trainer';
 
+  // Auth state initialization and subscription
   useEffect(() => {
-    // Set up auth state listener
+    console.log("AuthProvider initializing");
+    setIsLoading(true);
+
+    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, newSession) => {
+      async (event, session) => {
         console.log("Auth state changed:", event);
-        setSession(newSession);
-        setUser(newSession?.user ?? null);
-        
-        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-          // Fetch user profile when signed in
-          fetchUserProfile(newSession?.user?.id).then(profileData => {
-            if (profileData) {
-              setUserRole(profileData.role || null);
-              
-              // If user is a trainer, fetch their trainer profile
-              if (profileData.role === 'trainer') {
-                fetchTrainerProfile(newSession!.user.id).then(trainerData => {
-                  setTrainerProfile(trainerData);
-                });
-              } else {
-                setTrainerProfile(null);
-              }
-              
-              // Handle special admin user case
-              ensureAdminRole(
-                newSession!.user.id, 
-                newSession!.user.email, 
-                profileData.role
-              ).then(adminRole => {
-                if (adminRole === 'admin' && profileData.role !== 'admin') {
-                  setUserRole('admin');
-                }
-              });
-            }
-          });
-        } else if (event === 'SIGNED_OUT') {
-          setUserRole(null);
-          setUser(null);
-          setSession(null);
-          setTrainerProfile(null);
-          
-          // Force navigation to auth page on sign out
-          window.location.href = '/auth';
+        setSession(session);
+        setUser(session?.user ?? null);
+
+        // Fetch user role if session exists
+        if (session?.user) {
+          try {
+            const profileData = await fetchUserProfile(session.user.id);
+            
+            // Handle special admin case and set role
+            const finalRole = await ensureAdminRole(
+              session.user.id, 
+              session.user.email,
+              profileData?.role
+            );
+            
+            console.log("User role set to:", finalRole);
+            setRole(finalRole);
+          } catch (error) {
+            console.error("Error fetching user profile:", error);
+            setRole(null);
+          }
+        } else {
+          setRole(null);
         }
+
+        setIsLoading(false);
       }
     );
 
-    // Check for existing session
-    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
-      setSession(currentSession);
-      setUser(currentSession?.user ?? null);
+    // Initial session check
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
       
-      if (currentSession?.user) {
-        fetchUserProfile(currentSession.user.id).then(profileData => {
-          if (profileData) {
-            setUserRole(profileData.role || null);
-            
-            // If user is a trainer, fetch their trainer profile
-            if (profileData.role === 'trainer') {
-              fetchTrainerProfile(currentSession.user.id).then(trainerData => {
-                setTrainerProfile(trainerData);
-              });
-            }
-            
-            // Handle special admin user case
-            ensureAdminRole(
-              currentSession.user.id, 
-              currentSession.user.email, 
-              profileData.role
-            ).then(adminRole => {
-              if (adminRole === 'admin' && profileData.role !== 'admin') {
-                setUserRole('admin');
-              }
-            });
-          }
-        });
+      // Fetch user role if session exists
+      if (session?.user) {
+        fetchUserProfile(session.user.id)
+          .then(profileData => 
+            ensureAdminRole(session.user.id, session.user.email, profileData?.role)
+          )
+          .then(finalRole => {
+            setRole(finalRole);
+            setIsLoading(false);
+          })
+          .catch(error => {
+            console.error("Error in initial profile fetch:", error);
+            setRole(null);
+            setIsLoading(false);
+          });
+      } else {
+        setIsLoading(false);
       }
-      
-      setIsLoading(false);
     });
 
+    // Cleanup subscription on unmount
     return () => {
       subscription.unsubscribe();
     };
   }, []);
 
-  const signIn = async (email: string, password: string) => {
-    try {
-      setIsLoading(true);
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+  // Fetch trainer profile if user is a trainer
+  useEffect(() => {
+    const fetchTrainerProfile = async () => {
+      if (user && isTrainer) {
+        try {
+          const { data, error } = await supabase
+            .from('trainers')
+            .select('*')
+            .eq('user_id', user.id)
+            .single();
 
-      if (error) {
-        throw error;
+          if (error) {
+            console.error("Error fetching trainer profile:", error);
+            setTrainerProfile(null);
+          } else {
+            setTrainerProfile(data);
+          }
+        } catch (error) {
+          console.error("Error in fetchTrainerProfile:", error);
+          setTrainerProfile(null);
+        }
+      } else {
+        setTrainerProfile(null);
       }
-      
-      toast({
-        title: "Welcome back!",
-        description: "You have successfully signed in.",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Sign in failed",
-        description: error.message || "An error occurred during sign in.",
-        variant: "destructive",
-      });
-      throw error;
-    } finally {
-      setIsLoading(false);
+    };
+
+    fetchTrainerProfile();
+  }, [user, isTrainer]);
+
+  // Auth context value
+  const value: AuthContextType = {
+    session,
+    user,
+    role,
+    isAdmin,
+    isTrainer,
+    isLoading,
+    trainerProfile,
+    
+    // Login, signup and logout functions
+    login: async (email, password) => {
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        
+        if (error) throw error;
+        return { success: true, error: null };
+      } catch (error) {
+        console.error("Login error:", error);
+        return { 
+          success: false, 
+          error: error instanceof Error ? error.message : 'An unknown error occurred'
+        };
+      }
+    },
+    
+    signup: async (email, password, metadata) => {
+      try {
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: metadata
+          }
+        });
+        
+        if (error) throw error;
+        return { success: true, error: null };
+      } catch (error) {
+        console.error("Signup error:", error);
+        return { 
+          success: false, 
+          error: error instanceof Error ? error.message : 'An unknown error occurred'
+        };
+      }
+    },
+    
+    logout: async () => {
+      try {
+        const { error } = await supabase.auth.signOut();
+        if (error) throw error;
+        return { success: true, error: null };
+      } catch (error) {
+        console.error("Logout error:", error);
+        return { 
+          success: false, 
+          error: error instanceof Error ? error.message : 'An unknown error occurred'
+        };
+      }
     }
   };
-
-  const signUp = async (email: string, password: string, fullName: string) => {
-    try {
-      setIsLoading(true);
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: fullName,
-          },
-        },
-      });
-
-      if (error) {
-        throw error;
-      }
-      
-      toast({
-        title: "Account created",
-        description: "Your account has been created successfully. You can now sign in.",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Sign up failed",
-        description: error.message || "An error occurred during sign up.",
-        variant: "destructive",
-      });
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const signOut = async () => {
-    try {
-      setIsLoading(true);
-      
-      // Clear state before calling signOut to prevent timing issues
-      setUser(null);
-      setSession(null);
-      setUserRole(null);
-      
-      const { error } = await supabase.auth.signOut();
-      
-      if (error) {
-        console.error("Error signing out:", error);
-        throw error;
-      }
-      
-      // Force navigation to auth page
-      window.location.href = '/auth';
-      
-      toast({
-        title: "Signed out",
-        description: "You have been successfully signed out.",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Error signing out",
-        description: error.message || "An error occurred during sign out.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Compute role-based flags
-  const isAdmin = userRole === 'admin';
-  const isTrainer = userRole === 'trainer';
-  const isHandler = userRole === 'handler';
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        session,
-        signIn,
-        signUp,
-        signOut,
-        isLoading,
-        isAdmin,
-        isTrainer,
-        isHandler,
-        userRole,
-        trainerProfile,
-      }}
-    >
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
-}
+};

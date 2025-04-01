@@ -1,72 +1,29 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { useAuth } from "@/context/auth";
 import { Helmet } from "react-helmet";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
-import { supabase } from "@/integrations/supabase/client";
 import UserAdminTable from "@/components/users/UserAdminTable";
 import { Loader2 } from "lucide-react";
-import type { User } from "@/components/users/hooks/useUsers";
+import { useFetchUsers } from "@/components/users/hooks/useFetchUsers";
 
 export default function UserAdmin() {
   const { isAdmin, isLoading: authLoading, user: currentUser } = useAuth();
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  // Fetch users directly in the component with better error handling
-  const fetchUsers = async () => {
-    try {
-      console.log("Fetching users in UserAdmin page");
-      setLoading(true);
-      
-      // Use a more direct approach to fetch profiles
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*');
-      
-      if (error) {
-        console.error("Error fetching users:", error);
-        throw error;
-      }
-      
-      console.log(`Found ${data?.length || 0} profiles:`, data);
-      
-      if (!data || data.length === 0) {
-        console.warn("No profiles found in database");
-      }
-      
-      // Map to a simpler user structure and mark current user
-      const mappedUsers: User[] = (data || []).map(profile => ({
-        id: profile.id,
-        email: profile.username || '',
-        full_name: profile.full_name || '',
-        role: profile.role || 'user',
-        created_at: profile.created_at,
-        isCurrentUser: profile.id === currentUser?.id
-      }));
-      
-      setUsers(mappedUsers);
-      console.log("Users after mapping:", mappedUsers);
-    } catch (err) {
-      console.error("Error fetching users:", err);
-      setError(err instanceof Error ? err : new Error('Unknown error occurred'));
-      toast({
-        title: "Error",
-        description: "Failed to load users. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Use React Query to fetch users instead of direct Supabase queries
+  const { 
+    data: users = [], 
+    isLoading, 
+    error, 
+    refetch: refetchUsers 
+  } = useFetchUsers();
+  
   // Auth check and redirection
-  useEffect(() => {
+  useState(() => {
     if (!authLoading && !isAdmin) {
       toast({
         title: "Access Denied",
@@ -75,35 +32,11 @@ export default function UserAdmin() {
       });
       navigate("/dashboard");
     }
-  }, [authLoading, isAdmin, navigate, toast]);
-
-  // Fetch users on mount
-  useEffect(() => {
-    if (isAdmin) {
-      fetchUsers();
-      
-      // Set up real-time subscription to profiles table
-      const subscription = supabase
-        .channel('profiles-changes')
-        .on('postgres_changes', { 
-          event: '*', 
-          schema: 'public', 
-          table: 'profiles' 
-        }, () => {
-          console.log('Profiles changed, refreshing...');
-          fetchUsers();
-        })
-        .subscribe();
-      
-      return () => {
-        subscription.unsubscribe();
-      };
-    }
-  }, [isAdmin]);
+  });
 
   // Handle refresh button click
   const handleRefresh = () => {
-    fetchUsers();
+    refetchUsers();
     toast({
       title: "Refreshed",
       description: "User list has been refreshed.",
@@ -118,7 +51,7 @@ export default function UserAdmin() {
           <h1 className="text-2xl font-bold mb-6">User Administration</h1>
           <div className="flex items-center justify-center h-64">
             <Loader2 className="h-8 w-8 animate-spin text-mckaynine-600" />
-            <p className="text-lg text-gray-600 mt-2">Checking permissions...</p>
+            <span className="ml-2">Checking permissions...</span>
           </div>
         </div>
       </DashboardLayout>
@@ -138,7 +71,7 @@ export default function UserAdmin() {
       <div className="container mx-auto py-6">
         <h1 className="text-2xl font-bold mb-6">User Administration</h1>
         
-        {loading ? (
+        {isLoading ? (
           <div className="flex items-center justify-center h-64">
             <Loader2 className="h-8 w-8 animate-spin text-mckaynine-600" />
             <span className="ml-2">Loading users...</span>
@@ -146,11 +79,18 @@ export default function UserAdmin() {
         ) : error ? (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative">
             <strong className="font-bold">Error: </strong> 
-            <span className="block sm:inline">{error.message}</span>
+            <span className="block sm:inline">{error instanceof Error ? error.message : 'Failed to load users'}</span>
           </div>
         ) : (
           <UserAdminTable 
-            users={users} 
+            users={users.map(profile => ({
+              id: profile.id,
+              email: profile.username || '',
+              full_name: profile.full_name || '',
+              role: profile.role || 'user',
+              created_at: profile.created_at,
+              isCurrentUser: profile.id === currentUser?.id
+            }))} 
             onRefresh={handleRefresh} 
             currentUserId={currentUser?.id || ''}
           />

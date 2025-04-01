@@ -41,8 +41,8 @@ export default function UserAdminTable({ users, onRefresh, currentUserId }: User
   // Filter users by name or email
   const filteredUsers = users.filter(
     (user) =>
-      user.full_name?.toLowerCase().includes(filter.toLowerCase()) ||
-      user.email?.toLowerCase().includes(filter.toLowerCase())
+      (user.full_name?.toLowerCase() || '').includes(filter.toLowerCase()) ||
+      (user.email?.toLowerCase() || '').includes(filter.toLowerCase())
   );
 
   // Handle refresh with loading state
@@ -135,7 +135,7 @@ export default function UserAdminTable({ users, onRefresh, currentUserId }: User
                   <TableRow key={user.id}>
                     <TableCell>
                       {user.full_name || "—"}
-                      {user.isCurrentUser && (
+                      {user.id === currentUserId && (
                         <span className="ml-2 text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded">
                           You
                         </span>
