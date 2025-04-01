@@ -1,5 +1,5 @@
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { EditTrainerModal } from "./EditTrainerModal";
 import { useBranch } from "@/context/BranchContext";
@@ -8,13 +8,17 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ExtendedBadge } from "@/components/ui/badge-variants";
 import { Trainer } from "./types/trainer";
-import { MapPin, UserCheck, UserX } from "lucide-react";
+import { MapPin, UserCheck, UserX, Trash2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
+import { Link } from "react-router-dom";
+import { useState } from "react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export function TrainersTable() {
   const { currentBranch } = useBranch();
   const { toast } = useToast();
+  const [deletionError, setDeletionError] = useState<string | null>(null);
 
   const { data: trainers, isLoading, refetch } = useQuery({
     queryKey: ['trainers', currentBranch?.id],
@@ -61,6 +65,47 @@ export function TrainersTable() {
       })[];
     },
     enabled: !!currentBranch // Only run query when a branch is selected
+  });
+  
+  // Add mutation for deleting trainers
+  const { mutate: deleteTrainer } = useMutation({
+    mutationFn: async (trainerId: string) => {
+      try {
+        const { error } = await supabase
+          .from('trainers')
+          .delete()
+          .eq('id', trainerId);
+        
+        if (error) {
+          // Check for foreign key violation error
+          if (error.message.includes('violates foreign key constraint')) {
+            setDeletionError("This trainer can't be deleted because they are referenced in class schedules. Please reassign all their classes first.");
+            throw new Error("Foreign key constraint violation");
+          }
+          throw error;
+        }
+        
+        setDeletionError(null);
+        return trainerId;
+      } catch (error) {
+        console.error("Error deleting trainer:", error);
+        throw error;
+      }
+    },
+    onSuccess: (trainerId) => {
+      toast({
+        title: "Trainer deleted",
+        description: "The trainer has been successfully removed."
+      });
+      refetch();
+    },
+    onError: (error) => {
+      // Toast is shown, but we don't overwrite the detailed error message
+      toast({
+        title: "Failed to delete trainer",
+        variant: "destructive"
+      });
+    }
   });
   
   const createUserAccount = async (trainer: Trainer) => {
@@ -201,6 +246,12 @@ export function TrainersTable() {
     }
   };
   
+  const handleDeleteTrainer = (trainer: Trainer) => {
+    if (window.confirm(`Are you sure you want to delete ${trainer.first_name} ${trainer.last_name}?`)) {
+      deleteTrainer(trainer.id);
+    }
+  };
+  
   if (isLoading) {
     return <div className="text-center p-6">Loading trainers...</div>;
   }
@@ -214,107 +265,133 @@ export function TrainersTable() {
   }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Name</TableHead>
-          <TableHead>Contact</TableHead>
-          <TableHead>Branch</TableHead>
-          <TableHead>Specialties</TableHead>
-          <TableHead>User Account</TableHead>
-          <TableHead>Actions</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {trainers?.map((trainer) => (
-          <TableRow key={trainer.id}>
-            <TableCell>
-              <div className="flex items-center gap-3">
-                <Avatar>
-                  {trainer.avatar_url ? (
-                    <AvatarImage src={trainer.avatar_url} alt={`${trainer.first_name} ${trainer.last_name}`} />
-                  ) : null}
-                  <AvatarFallback>
-                    {trainer.first_name.charAt(0)}{trainer.last_name.charAt(0)}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <div className="font-medium">{trainer.first_name} {trainer.last_name}</div>
-                  {trainer.bio && <div className="text-xs text-muted-foreground line-clamp-1">{trainer.bio}</div>}
-                </div>
-              </div>
-            </TableCell>
-            <TableCell>
-              <div className="space-y-1">
-                <div className="text-sm">{trainer.email}</div>
-                {trainer.phone && <div className="text-sm text-muted-foreground">{trainer.phone}</div>}
-              </div>
-            </TableCell>
-            <TableCell>
-              {trainer.branches ? (
-                <div className="flex items-center gap-1">
-                  <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span>{trainer.branches.name}</span>
-                </div>
-              ) : (
-                <span className="text-muted-foreground">Unassigned</span>
-              )}
-            </TableCell>
-            <TableCell>
-              <div className="flex flex-wrap gap-1">
-                {trainer.specialties && trainer.specialties.length > 0 ? (
-                  trainer.specialties.map((specialty, index) => (
-                    <Badge key={index} variant="outline" className="bg-mckaynine-50 text-mckaynine-700">
-                      {specialty}
-                    </Badge>
-                  ))
-                ) : (
-                  <span className="text-muted-foreground">None specified</span>
-                )}
-              </div>
-            </TableCell>
-            <TableCell>
-              {trainer.user_id ? (
-                <div className="flex flex-col gap-1">
-                  <div className="flex items-center gap-1">
-                    <UserCheck className="h-3.5 w-3.5 text-green-500" />
-                    <span className="text-sm">
-                      Has access
-                    </span>
+    <>
+      {deletionError && (
+        <Alert variant="destructive" className="mb-4">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Cannot delete trainer</AlertTitle>
+          <AlertDescription>
+            {deletionError}{" "}
+            <Link to="/trainer-references" className="font-medium underline">
+              Go to Trainer References
+            </Link> page to resolve this issue.
+          </AlertDescription>
+        </Alert>
+      )}
+      
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Name</TableHead>
+            <TableHead>Contact</TableHead>
+            <TableHead>Branch</TableHead>
+            <TableHead>Specialties</TableHead>
+            <TableHead>User Account</TableHead>
+            <TableHead>Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {trainers?.map((trainer) => (
+            <TableRow key={trainer.id}>
+              <TableCell>
+                <div className="flex items-center gap-3">
+                  <Avatar>
+                    {trainer.avatar_url ? (
+                      <AvatarImage src={trainer.avatar_url} alt={`${trainer.first_name} ${trainer.last_name}`} />
+                    ) : null}
+                    <AvatarFallback>
+                      {trainer.first_name.charAt(0)}{trainer.last_name.charAt(0)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <div className="font-medium">{trainer.first_name} {trainer.last_name}</div>
+                    {trainer.bio && <div className="text-xs text-muted-foreground line-clamp-1">{trainer.bio}</div>}
                   </div>
-                  {trainer.profiles && (
-                    <ExtendedBadge variant="info" className="text-xs">
-                      {trainer.profiles.role}
-                    </ExtendedBadge>
+                </div>
+              </TableCell>
+              <TableCell>
+                <div className="space-y-1">
+                  <div className="text-sm">{trainer.email}</div>
+                  {trainer.phone && <div className="text-sm text-muted-foreground">{trainer.phone}</div>}
+                </div>
+              </TableCell>
+              <TableCell>
+                {trainer.branches ? (
+                  <div className="flex items-center gap-1">
+                    <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span>{trainer.branches.name}</span>
+                  </div>
+                ) : (
+                  <span className="text-muted-foreground">Unassigned</span>
+                )}
+              </TableCell>
+              <TableCell>
+                <div className="flex flex-wrap gap-1">
+                  {trainer.specialties && trainer.specialties.length > 0 ? (
+                    trainer.specialties.map((specialty, index) => (
+                      <Badge key={index} variant="outline" className="bg-mckaynine-50 text-mckaynine-700">
+                        {specialty}
+                      </Badge>
+                    ))
+                  ) : (
+                    <span className="text-muted-foreground">None specified</span>
                   )}
+                </div>
+              </TableCell>
+              <TableCell>
+                {trainer.user_id ? (
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center gap-1">
+                      <UserCheck className="h-3.5 w-3.5 text-green-500" />
+                      <span className="text-sm">
+                        Has access
+                      </span>
+                    </div>
+                    {trainer.profiles && (
+                      <ExtendedBadge variant="info" className="text-xs">
+                        {trainer.profiles.role}
+                      </ExtendedBadge>
+                    )}
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => removeUserAccount(trainer)}
+                      className="mt-1 h-7 text-xs text-red-500 hover:text-red-700 hover:bg-red-50"
+                    >
+                      <UserX className="h-3 w-3 mr-1" />
+                      Unlink account
+                    </Button>
+                  </div>
+                ) : (
                   <Button 
-                    variant="ghost" 
+                    variant="outline" 
                     size="sm" 
-                    onClick={() => removeUserAccount(trainer)}
-                    className="mt-1 h-7 text-xs text-red-500 hover:text-red-700 hover:bg-red-50"
+                    onClick={() => createUserAccount(trainer)}
+                    className="h-7 text-xs"
                   >
-                    <UserX className="h-3 w-3 mr-1" />
-                    Unlink account
+                    <UserCheck className="h-3 w-3 mr-1" />
+                    Create account
+                  </Button>
+                )}
+              </TableCell>
+              <TableCell>
+                <div className="flex items-center gap-2">
+                  <EditTrainerModal trainer={trainer} />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDeleteTrainer(trainer)}
+                    className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    <span className="sr-only">Delete</span>
                   </Button>
                 </div>
-              ) : (
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => createUserAccount(trainer)}
-                  className="h-7 text-xs"
-                >
-                  <UserCheck className="h-3 w-3 mr-1" />
-                  Create account
-                </Button>
-              )}
-            </TableCell>
-            <TableCell>
-              <EditTrainerModal trainer={trainer} />
-            </TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </>
   );
 }

@@ -15,9 +15,8 @@ import HandlerDetail from "./pages/HandlerDetail";
 import ClassDetail from "./pages/ClassDetail";
 import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
-
-// Add a new import for the TrainerDashboard page
 import TrainerDashboard from "./pages/TrainerDashboard";
+import TrainerReferences from "./pages/TrainerReferences";
 
 const router = createBrowserRouter([
   {
@@ -101,6 +100,14 @@ const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <Trainers />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/trainer-references",
+    element: (
+      <ProtectedRoute requiredRole="admin">
+        <TrainerReferences />
       </ProtectedRoute>
     ),
   },
