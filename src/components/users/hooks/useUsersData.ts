@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { UserProfile } from "../types/userTypes";
+import type { UserProfile } from "../types/userTypes";
 import { useFetchUsers } from "./useFetchUsers";
 import { useFetchTrainers } from "./useFetchTrainers";
 import { useTrainerLinking } from "./useTrainerLinking";

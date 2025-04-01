@@ -21,43 +21,15 @@ export function useFetchUsers() {
         }
         
         console.log("Fetched profiles:", profiles?.length, "profiles");
-        console.log("Profile data sample:", profiles?.slice(0, 2));
-        
-        // Try to get user metadata from auth API
-        let usersData = null;
-        let usersError = null;
-        
-        try {
-          console.log("Attempting to fetch user metadata...");
-          // Use admin.listUsers() - this requires service_role key
-          const result = await supabase.auth.admin.listUsers();
-          usersData = result.data;
-          usersError = result.error;
-          
-          if (usersError) {
-            console.error("Error in metadata response:", usersError);
-            console.log("This is likely a permissions issue. The app might be using the anon key instead of service_role key.");
-            // Continue anyway with just profiles data
-          } else {
-            console.log("Fetched metadata for", usersData?.users?.length, "users");
-          }
-        } catch (err) {
-          console.error("Exception when fetching user metadata:", err);
-          console.log("Will continue with just profiles data - users will still show up but might be missing some metadata");
+        if (profiles && profiles.length > 0) {
+          console.log("Profile data sample:", profiles.slice(0, 2));
+        } else {
+          console.log("No profiles found in the database");
         }
         
-        // Create a map of user metadata if we have it
-        const userMetadataMap = new Map<string, { app_id?: string; raw_metadata: any }>();
-        if (usersData && usersData.users) {
-          const supabaseUsers = usersData.users as SupabaseUser[];
-          supabaseUsers.forEach((user) => {
-            userMetadataMap.set(user.id, {
-              app_id: user.user_metadata?.app_id,
-              raw_metadata: user.user_metadata
-            });
-          });
-          console.log("Created metadata map with", userMetadataMap.size, "entries");
-        }
+        // Since we can't access admin APIs with the anon key,
+        // we'll rely on the profiles table data, which is the primary
+        // source of user information in our application
         
         // Then get trainer information for users linked to trainers
         const userIds = profiles.map(profile => profile.id);
@@ -75,7 +47,7 @@ export function useFetchUsers() {
           console.log("Found", trainers?.length, "trainers linked to users");
         }
         
-        // Join the data - IMPORTANT: No filtering, show ALL users from profiles table
+        // Join the data and return all profiles
         const usersWithTrainers = profiles.map(profile => {
           // Check for trainer linked to this user
           const linkedTrainer = trainers?.find(t => {
@@ -83,13 +55,11 @@ export function useFetchUsers() {
             return t.user_id === profile.id;
           }) || null;
           
-          // Get user metadata if available
-          const metadata = userMetadataMap.get(profile.id);
-          
           return {
             ...profile,
             trainer: linkedTrainer,
-            app_id: metadata?.app_id
+            // Use the email address from the username field as a fallback
+            email: profile.username
           };
         });
         
