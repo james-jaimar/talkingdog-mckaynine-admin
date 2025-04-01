@@ -1,4 +1,5 @@
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import type { UserProfile } from "../types/userTypes";
 import { useFetchUsers } from "./useFetchUsers";
 import { useFetchTrainers } from "./useFetchTrainers";
@@ -46,6 +47,12 @@ export function useUsersData() {
     setUserAsAdmin 
   } = useAdminSetup();
 
+  // Initial fetch on mount
+  useEffect(() => {
+    console.log("useUsersData hook mounted, fetching initial users data");
+    refetchUsers();
+  }, []);
+
   // Ensure refetch is wrapped with error handling and proper logging
   const refetchUsers = async () => {
     try {
@@ -63,8 +70,9 @@ export function useUsersData() {
   console.log(`useUsersData hook - current users count: ${users.length}`);
   if (users.length > 0) {
     console.log("Current users in useUsersData:", users.map(u => ({
-      id: u.id, 
-      name: u.full_name || u.username,
+      id: u.id.substring(0, 8), 
+      email: u.username,
+      role: u.role,
       isCurrentUser: u.isCurrentUser
     })));
   }

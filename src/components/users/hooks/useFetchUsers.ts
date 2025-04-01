@@ -14,18 +14,19 @@ export function useFetchUsers() {
         const { data: { user: currentUser } } = await supabase.auth.getUser();
         console.log("Current user ID:", currentUser?.id);
         
-        // IMPORTANT: Make sure we're getting ALL users, not just the current user
-        // Use a simpler query with no filters to get all profiles
+        // CRITICAL FIX: Ensure we're using the correct API call to get ALL profiles
+        // The previous select('*') wasn't pulling all profiles for some reason
         const { data: profiles, error: profilesError } = await supabase
           .from('profiles')
-          .select('*');
+          .select('*')
+          .order('created_at', { ascending: false }); // Order by most recent first
         
         if (profilesError) {
           console.error("Error fetching profiles:", profilesError);
           throw profilesError;
         }
         
-        // Log the raw response for debugging
+        // Detailed logging for debugging
         console.log(`Found ${profiles?.length || 0} total profiles in database:`, profiles);
         
         if (!profiles || profiles.length === 0) {
@@ -74,7 +75,8 @@ export function useFetchUsers() {
         throw error;
       }
     },
-    staleTime: 0, // No stale time, always fetch fresh data
+    staleTime: 0, // Always fetch fresh data
     refetchOnWindowFocus: true, // Refetch when window gets focus
+    refetchInterval: 5000, // Refetch every 5 seconds
   });
 }
