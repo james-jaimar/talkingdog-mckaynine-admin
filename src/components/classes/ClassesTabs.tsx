@@ -18,7 +18,6 @@ export function ClassesTabs() {
   const {
     activeTab,
     isDraggingRef,
-    preventNextNavigationRef,
     handleTabClick,
     handleDragStart,
     isClassesPath
@@ -100,16 +99,6 @@ export function ClassesTabs() {
     
     // Update state with the reordered items
     setOrderedClasses(items);
-    
-    // Set a flag to prevent navigation if the active tab was moved
-    if (reorderedItem.id === activeTab) {
-      preventNextNavigationRef.current = true;
-      
-      // Clear the flag after a short delay
-      setTimeout(() => {
-        preventNextNavigationRef.current = false;
-      }, 100);
-    }
     
     // Save the new order to the database
     saveOrderToDatabase(items);

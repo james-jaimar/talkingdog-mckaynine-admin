@@ -26,7 +26,6 @@ export function useClassTabOrder(
 ) {
   const { toast } = useToast();
   const [orderedClasses, setOrderedClasses] = useState<ClassWithExtras[]>([]);
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   // Query to fetch saved class order from database
   const { data: savedOrder, isLoading: isLoadingOrder } = useQuery({
@@ -88,8 +87,6 @@ export function useClassTabOrder(
       // If no saved order, use the default order
       setOrderedClasses([...activeClasses]);
     }
-    
-    setIsInitialLoad(false);
   }, [activeClasses, savedOrder, isLoadingOrder, branchId]);
 
   // Save the order to database whenever it changes
@@ -135,7 +132,7 @@ export function useClassTabOrder(
   return {
     orderedClasses,
     setOrderedClasses,
-    isLoadingOrder: isLoadingOrder || isInitialLoad,
+    isLoadingOrder,
     saveOrderToDatabase
   };
 }
