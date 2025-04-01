@@ -13,7 +13,7 @@ export type { UserProfile };
 export function useUsersData() {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   
-  // Fetch users data - this now includes proper error handling
+  // Fetch users data with proper error handling
   const { 
     data: users = [], 
     isLoading, 
@@ -45,6 +45,17 @@ export function useUsersData() {
     setUserAsAdmin 
   } = useAdminSetup();
 
+  // Ensure refetch is wrapped with error handling
+  const refetchUsers = async () => {
+    try {
+      console.log("Manually refetching users data");
+      await refetch();
+      console.log("Users data refetched successfully");
+    } catch (error) {
+      console.error("Error refetching users data:", error);
+    }
+  };
+
   return {
     users,
     isLoading,
@@ -58,7 +69,7 @@ export function useUsersData() {
     isLoadingTrainers,
     linkTrainerToUser,
     unlinkTrainerFromUser,
-    refetchUsers: refetch,
+    refetchUsers,
     adminSetupAttempted
   };
 }

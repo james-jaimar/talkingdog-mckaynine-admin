@@ -10,7 +10,7 @@ export function useFetchUsers() {
       try {
         console.log("Fetching all user profiles from profiles table");
         
-        // First get all profiles from the profiles table with a direct query
+        // Fetch all profiles from the profiles table with no filters
         const { data: profiles, error: profilesError } = await supabase
           .from('profiles')
           .select('*')
@@ -42,7 +42,7 @@ export function useFetchUsers() {
         const trainersList = trainers || [];
         console.log(`Found ${trainersList.length} trainers`);
         
-        // Map profiles to user profile objects
+        // Map profiles to user profile objects without filtering
         const userProfiles: UserProfile[] = profiles.map(profile => {
           const linkedTrainer = trainersList.find(t => t.user_id === profile.id);
           const isCurrentUser = currentUser?.id === profile.id;

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useUsersData, UserProfile } from "./hooks/useUsersData";
 import {
@@ -51,6 +52,7 @@ export function UserTable() {
     linkTrainerToUser,
     unlinkTrainerFromUser,
     refetchUsers,
+    adminSetupAttempted
   } = useUsersData();
 
   // Local state
@@ -72,6 +74,24 @@ export function UserTable() {
     console.log(`UserTable - Total users: ${users.length}, Filtered users: ${filteredUsers.length}`);
   }, [users, filteredUsers]);
 
+  // Listen for user creation events
+  useEffect(() => {
+    const handleUserCreated = () => {
+      refetchUsers();
+    };
+    
+    window.addEventListener('user-created', handleUserCreated);
+    
+    return () => {
+      window.removeEventListener('user-created', handleUserCreated);
+    };
+  }, [refetchUsers]);
+
+  // Auto-refresh when the component mounts
+  useEffect(() => {
+    refetchUsers();
+  }, [refetchUsers]);
+
   // Role change handler
   const handleRoleChange = (role: string) => {
     if (editingUser) {
@@ -92,11 +112,6 @@ export function UserTable() {
     await refetchUsers();
     setIsRefreshing(false);
   };
-
-  // Auto-refresh when the component mounts
-  useEffect(() => {
-    refetchUsers();
-  }, [refetchUsers]);
 
   // Loading state
   if (isLoading) {
