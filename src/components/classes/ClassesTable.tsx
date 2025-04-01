@@ -1,5 +1,5 @@
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useBranch } from "@/context/BranchContext";
 import { Class } from "./types/class";
@@ -8,13 +8,16 @@ import { EditClassModal } from "./EditClassModal";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, DollarSign, MapPin, Users } from "lucide-react";
+import { Calendar, DollarSign, MapPin, Users, ChevronUp, ChevronDown } from "lucide-react";
 import { useState } from "react";
+import { useToast } from "@/components/ui/use-toast";
 
 export function ClassesTable() {
   const { currentBranch } = useBranch();
   const [editingClass, setEditingClass] = useState<Class | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const { data: classes, isLoading, refetch } = useQuery({
     queryKey: ['classes', currentBranch?.id],
@@ -40,6 +43,139 @@ export function ClassesTable() {
     },
     enabled: !!currentBranch // Only run query when a branch is selected
   });
+
+  // Get user's saved order
+  const { data: savedOrder } = useQuery({
+    queryKey: ['class-tab-order', currentBranch?.id],
+    queryFn: async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return null;
+
+        const { data, error } = await (supabase
+          .from('class_tab_order') as any)
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('branch_id', currentBranch?.id || null)
+          .maybeSingle();
+        
+        if (error && error.code !== 'PGRST116') {
+          console.error("Error fetching class order:", error);
+          return null;
+        }
+        
+        return data;
+      } catch (error) {
+        console.error("Error in fetchSavedOrder:", error);
+        return null;
+      }
+    },
+    enabled: !!currentBranch
+  });
+
+  // Order classes based on saved order or alphabetically
+  const getOrderedClasses = () => {
+    if (!classes) return [];
+    
+    if (savedOrder && savedOrder.class_ids && savedOrder.class_ids.length > 0) {
+      // First include ordered classes, then any others not in the order
+      const orderedIds = new Set(savedOrder.class_ids);
+      const orderedClasses = [
+        ...savedOrder.class_ids
+          .map(id => classes.find(c => c.id === id))
+          .filter(Boolean),
+        ...classes.filter(c => !orderedIds.has(c.id))
+      ];
+      return orderedClasses;
+    }
+    
+    // Default alphabetical order
+    return [...classes].sort((a, b) => a.name.localeCompare(b.name));
+  };
+
+  const orderedClasses = getOrderedClasses();
+
+  // Save class order to database
+  const saveClassOrderMutation = useMutation({
+    mutationFn: async (classIds: string[]) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error("User not authenticated");
+      }
+
+      // Check if order already exists for this user and branch
+      const { data: existingOrder } = await (supabase
+        .from('class_tab_order') as any)
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('branch_id', currentBranch?.id || null)
+        .maybeSingle();
+
+      if (existingOrder) {
+        // Update existing order
+        const { error } = await (supabase
+          .from('class_tab_order') as any)
+          .update({ class_ids: classIds })
+          .eq('id', existingOrder.id);
+          
+        if (error) throw error;
+      } else {
+        // Create new order
+        const { error } = await (supabase
+          .from('class_tab_order') as any)
+          .insert({
+            user_id: user.id,
+            branch_id: currentBranch?.id || null,
+            class_ids: classIds
+          });
+          
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['class-tab-order', currentBranch?.id] });
+      // Also invalidate the classes tabs query to trigger a refresh
+      queryClient.invalidateQueries({ queryKey: ['active-classes', currentBranch?.id] });
+    },
+    onError: (error) => {
+      console.error("Error saving class order:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save class order. Please try again.",
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Move class up in the order
+  const moveClassUp = (index: number) => {
+    if (index <= 0) return; // Already at the top
+    
+    const newOrder = [...orderedClasses];
+    [newOrder[index - 1], newOrder[index]] = [newOrder[index], newOrder[index - 1]];
+    
+    saveClassOrderMutation.mutate(newOrder.map(c => c.id));
+    
+    toast({
+      title: "Class moved up",
+      description: "The class order has been updated.",
+    });
+  };
+
+  // Move class down in the order
+  const moveClassDown = (index: number) => {
+    if (index >= orderedClasses.length - 1) return; // Already at the bottom
+    
+    const newOrder = [...orderedClasses];
+    [newOrder[index], newOrder[index + 1]] = [newOrder[index + 1], newOrder[index]];
+    
+    saveClassOrderMutation.mutate(newOrder.map(c => c.id));
+    
+    toast({
+      title: "Class moved down",
+      description: "The class order has been updated.",
+    });
+  };
   
   const handleEditSuccess = () => {
     setIsEditModalOpen(false);
@@ -67,6 +203,7 @@ export function ClassesTable() {
       <Table>
         <TableHeader>
           <TableRow>
+            <TableHead className="w-16">Order</TableHead>
             <TableHead>Class Name</TableHead>
             <TableHead>Level</TableHead>
             <TableHead>Duration</TableHead>
@@ -77,8 +214,30 @@ export function ClassesTable() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {classes.map((classItem) => (
+          {orderedClasses.map((classItem, index) => (
             <TableRow key={classItem.id}>
+              <TableCell>
+                <div className="flex flex-col gap-1">
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-7 w-7" 
+                    onClick={() => moveClassUp(index)}
+                    disabled={index === 0}
+                  >
+                    <ChevronUp className="h-4 w-4" />
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-7 w-7" 
+                    onClick={() => moveClassDown(index)}
+                    disabled={index === orderedClasses.length - 1}
+                  >
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </div>
+              </TableCell>
               <TableCell className="font-medium">{classItem.name}</TableCell>
               <TableCell>
                 <Badge variant="outline">{classItem.level}</Badge>
