@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { useAuth } from "@/context/auth";
@@ -8,11 +7,11 @@ import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import UserAdminTable from "@/components/users/UserAdminTable";
 import { Loader2 } from "lucide-react";
-import type { User as AdminUser } from "@/components/users/hooks/useUsers";
+import type { User } from "@/components/users/hooks/useUsers";
 
 export default function UserAdmin() {
   const { isAdmin, isLoading: authLoading, user: currentUser } = useAuth();
-  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const navigate = useNavigate();
@@ -33,7 +32,7 @@ export default function UserAdmin() {
       console.log(`Found ${data?.length || 0} profiles:`, data);
       
       // Map to a simpler user structure and mark current user
-      const mappedUsers: AdminUser[] = (data || []).map(profile => ({
+      const mappedUsers: User[] = (data || []).map(profile => ({
         id: profile.id,
         email: profile.username || '',
         full_name: profile.full_name || '',
@@ -124,7 +123,7 @@ export default function UserAdmin() {
           </div>
         ) : error ? (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative">
-            <strong className="font-bold">Error: </strong>
+            <strong className="font-bold">Error: </strong> 
             <span className="block sm:inline">{error.message}</span>
           </div>
         ) : (

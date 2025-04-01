@@ -9,6 +9,7 @@ export type User = {
   role: string;
   full_name: string;
   created_at: string;
+  isCurrentUser?: boolean; // Adding the missing property
 };
 
 export function useUsers() {
@@ -21,6 +22,9 @@ export function useUsers() {
     try {
       setIsLoading(true);
       setError(null);
+      
+      // Get current user for marking in the UI
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
       
       // Query profiles table to get user data
       const { data, error } = await supabase
@@ -42,7 +46,8 @@ export function useUsers() {
         email: user.username || '',  // Email is stored in username field
         role: user.role || 'user',
         full_name: user.full_name || '',
-        created_at: user.created_at || new Date().toISOString()
+        created_at: user.created_at || new Date().toISOString(),
+        isCurrentUser: user.id === currentUser?.id // Add the isCurrentUser flag
       }));
       
       setUsers(formattedUsers);
