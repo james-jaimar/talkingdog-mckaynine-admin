@@ -1,6 +1,5 @@
 
 import { createBrowserRouter } from "react-router-dom";
-import App from "./App";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
@@ -12,12 +11,12 @@ import UserManagement from "./pages/UserManagement";
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <App>
+    element: (
       <div className="container mx-auto py-8">
         <h1 className="text-3xl font-bold mb-4">Welcome to McKaynine Training Centre</h1>
         <p className="text-lg">Please sign in to access your dashboard.</p>
       </div>
-    </App>,
+    ),
     errorElement: <NotFound />,
   },
   {
