@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useBranch } from "@/context/BranchContext";
@@ -33,6 +34,12 @@ export function ClassesTable({ filter }: ClassesTableProps = {}) {
           *,
           branches:branch_id (
             name
+          ),
+          class_schedules:class_schedules (
+            id,
+            bookings:bookings (
+              id
+            )
           )
         `);
       
@@ -44,7 +51,13 @@ export function ClassesTable({ filter }: ClassesTableProps = {}) {
       const { data, error } = await query;
       
       if (error) throw error;
-      return data as (Class & { branches: { name: string } })[];
+      return data as (Class & { 
+        branches: { name: string },
+        class_schedules: {
+          id: string,
+          bookings: { id: string }[]
+        }[]
+      })[];
     },
     enabled: !!currentBranch // Only run query when a branch is selected
   });
@@ -210,6 +223,19 @@ export function ClassesTable({ filter }: ClassesTableProps = {}) {
     refetch();
   };
 
+  // Calculate available slots
+  const calculateAvailableSlots = (classItem: typeof orderedClasses[0]) => {
+    if (!classItem.class_schedules) return classItem.capacity;
+    
+    // Count total bookings across all schedules
+    const totalBookings = classItem.class_schedules.reduce((total, schedule) => {
+      return total + (schedule.bookings ? schedule.bookings.length : 0);
+    }, 0);
+    
+    // Available slots = capacity - total bookings
+    return Math.max(0, classItem.capacity - totalBookings);
+  };
+
   if (isLoading) {
     return (
       <div className="text-center p-8">
@@ -237,85 +263,102 @@ export function ClassesTable({ filter }: ClassesTableProps = {}) {
             <TableHead>Duration</TableHead>
             <TableHead>Price</TableHead>
             <TableHead>Capacity</TableHead>
+            <TableHead>Available Slots</TableHead>
             <TableHead>Branch</TableHead>
             <TableHead>Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {orderedClasses.map((classItem, index) => (
-            <TableRow key={classItem.id}>
-              <TableCell>
-                <div className="flex flex-col gap-1">
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-7 w-7" 
-                    onClick={() => moveClassUp(index)}
-                    disabled={index === 0 || !user}
-                  >
-                    <ChevronUp className="h-4 w-4" />
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-7 w-7" 
-                    onClick={() => moveClassDown(index)}
-                    disabled={index === orderedClasses.length - 1 || !user}
-                  >
-                    <ChevronDown className="h-4 w-4" />
-                  </Button>
-                </div>
-              </TableCell>
-              <TableCell className="font-medium">{classItem.name}</TableCell>
-              <TableCell>
-                <Badge variant="outline">{classItem.level}</Badge>
-              </TableCell>
-              <TableCell>
-                <div className="flex items-center gap-1">
-                  <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span>{classItem.duration} min</span>
-                </div>
-              </TableCell>
-              <TableCell>
-                <div className="flex items-center gap-1">
-                  <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span>{classItem.price}</span>
-                </div>
-              </TableCell>
-              <TableCell>{classItem.capacity} dogs</TableCell>
-              <TableCell>
-                <div className="flex items-center gap-1">
-                  <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span>{classItem.branches?.name || 'Unknown'}</span>
-                </div>
-              </TableCell>
-              <TableCell>
-                <div className="flex space-x-2">
-                  <Link to={`/classes/${classItem.id}/schedules`}>
-                    <Button variant="outline" size="sm">
-                      Schedules
+          {orderedClasses.map((classItem, index) => {
+            const availableSlots = calculateAvailableSlots(classItem);
+            return (
+              <TableRow key={classItem.id}>
+                <TableCell>
+                  <div className="flex flex-col gap-1">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-7 w-7" 
+                      onClick={() => moveClassUp(index)}
+                      disabled={index === 0 || !user}
+                    >
+                      <ChevronUp className="h-4 w-4" />
                     </Button>
-                  </Link>
-                  <Link to={`/classes/${classItem.id}/handlers`}>
-                    <Button variant="outline" size="sm">
-                      <Users className="h-3.5 w-3.5 mr-1" />
-                      Handlers
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-7 w-7" 
+                      onClick={() => moveClassDown(index)}
+                      disabled={index === orderedClasses.length - 1 || !user}
+                    >
+                      <ChevronDown className="h-4 w-4" />
                     </Button>
-                  </Link>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => {
-                      setEditingClass(classItem);
-                      setIsEditModalOpen(true);
-                    }}
+                  </div>
+                </TableCell>
+                <TableCell className="font-medium">{classItem.name}</TableCell>
+                <TableCell>
+                  <Badge variant="outline">{classItem.level}</Badge>
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-1">
+                    <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span>{classItem.duration} min</span>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-1">
+                    <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span>R {classItem.price}</span>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-1">
+                    <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span>{classItem.capacity} dogs</span>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <Badge 
+                    variant={availableSlots === 0 ? "destructive" : availableSlots < 3 ? "outline" : "secondary"}
+                    className={availableSlots < 3 ? "bg-amber-100" : ""}
                   >
-                    Edit
-                  </Button>
-                </div>
-              </TableCell>
-            </TableRow>
-          ))}
+                    {availableSlots} slot{availableSlots !== 1 ? 's' : ''} left
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-1">
+                    <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span>{classItem.branches?.name || 'Unknown'}</span>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex space-x-2">
+                    <Link to={`/classes/${classItem.id}/schedules`}>
+                      <Button variant="outline" size="sm">
+                        Schedules
+                      </Button>
+                    </Link>
+                    <Link to={`/classes/${classItem.id}/handlers`}>
+                      <Button variant="outline" size="sm">
+                        <Users className="h-3.5 w-3.5 mr-1" />
+                        Handlers
+                      </Button>
+                    </Link>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        setEditingClass(classItem);
+                        setIsEditModalOpen(true);
+                      }}
+                    >
+                      Edit
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
 
