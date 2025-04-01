@@ -1,3 +1,4 @@
+
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { EditTrainerModal } from "./EditTrainerModal";
@@ -54,7 +55,7 @@ export function TrainersTable() {
           // Set profiles to null if it has an error
           profiles: hasProfileError ? null : trainer.profiles
         };
-      }) as (Trainer & { 
+      }) as unknown as (Trainer & { 
         branches: { name: string } | null;
         profiles: { username: string; role: string } | null;
       })[];

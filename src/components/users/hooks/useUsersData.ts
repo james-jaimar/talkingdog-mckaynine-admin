@@ -53,7 +53,12 @@ export function useUsersData() {
         
         // Join the data
         const usersWithTrainers = profiles.map(profile => {
-          const linkedTrainer = trainers?.find(t => t.user_id === profile.id) || null;
+          // Check for trainer linked to this user, handle potential error cases
+          const linkedTrainer = trainers?.find(t => {
+            if (typeof t.user_id !== 'string') return false;
+            return t.user_id === profile.id;
+          }) || null;
+          
           return {
             ...profile,
             trainer: linkedTrainer
