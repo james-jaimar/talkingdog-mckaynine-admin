@@ -1,144 +1,60 @@
-
-import {
-  createBrowserRouter,
-} from "react-router-dom";
+import { createBrowserRouter } from "react-router-dom";
+import App from "./App";
 import Auth from "./pages/Auth";
-import Branches from "./pages/Branches";
-import Classes from "./pages/Classes";
-import ClassSchedules from "./pages/ClassSchedules";
-import Handlers from "./pages/Handlers";
-import UnpaidHandlers from "./pages/UnpaidHandlers";
-import Trainers from "./pages/Trainers";
-import UserAdmin from "./pages/UserAdmin";
-import { ProtectedRoute } from "./components/auth/ProtectedRoute";
-import HandlerDetail from "./pages/HandlerDetail";
-import ClassDetail from "./pages/ClassDetail";
 import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
+import RequireAuth from "./components/auth/RequireAuth";
+import RequireAdmin from "./components/auth/RequireAdmin";
 import TrainerDashboard from "./pages/TrainerDashboard";
-import TrainerReferences from "./pages/TrainerReferences";
-import ClassHandlers from "./pages/ClassHandlers";
+import HandlerDashboard from "./pages/HandlerDashboard";
+import TrainingSession from "./pages/TrainingSession";
+import UserManagement from "./pages/UserManagement";
 
 const router = createBrowserRouter([
   {
     path: "/",
-    element: (
-      <ProtectedRoute>
-        <Dashboard />
-      </ProtectedRoute>
-    ),
+    element: <App />,
+    errorElement: <NotFound />,
   },
   {
     path: "/auth",
     element: <Auth />,
   },
   {
-    path: "/branches",
+    path: "/dashboard",
     element: (
-      <ProtectedRoute requiredRole="admin">
-        <Branches />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/classes",
-    element: (
-      <ProtectedRoute>
-        <Classes />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/classes/:classId",
-    element: (
-      <ProtectedRoute>
-        <ClassDetail />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/classes/:classId/schedules",
-    element: (
-      <ProtectedRoute>
-        <ClassSchedules />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/classes/:classId/handlers",
-    element: (
-      <ProtectedRoute>
-        <ClassHandlers />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/class-schedules",
-    element: (
-      <ProtectedRoute>
-        <ClassSchedules />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/handlers",
-    element: (
-      <ProtectedRoute>
-        <Handlers />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/handlers/:handlerId",
-    element: (
-      <ProtectedRoute>
-        <HandlerDetail />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/unpaid-handlers",
-    element: (
-      <ProtectedRoute requiredRole="admin">
-        <UnpaidHandlers />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/trainers",
-    element: (
-      <ProtectedRoute>
-        <Trainers />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/trainer-references",
-    element: (
-      <ProtectedRoute requiredRole="admin">
-        <TrainerReferences />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/user-admin",
-    element: (
-      <ProtectedRoute requiredRole="admin">
-        <UserAdmin />
-      </ProtectedRoute>
+      <RequireAuth>
+        <Dashboard />
+      </RequireAuth>
     ),
   },
   {
     path: "/trainer-dashboard",
     element: (
-      <ProtectedRoute requiredRole="trainer">
+      <RequireAuth>
         <TrainerDashboard />
-      </ProtectedRoute>
+      </RequireAuth>
     ),
   },
   {
-    path: "*",
-    element: <NotFound />,
+    path: "/handler-dashboard",
+    element: (
+      <RequireAuth>
+        <HandlerDashboard />
+      </RequireAuth>
+    ),
+  },
+  {
+    path: "/training-session/:id",
+    element: (
+      <RequireAuth>
+        <TrainingSession />
+      </RequireAuth>
+    ),
+  },
+  {
+    path: "/user-admin",
+    element: <UserManagement />,
   },
 ]);
 

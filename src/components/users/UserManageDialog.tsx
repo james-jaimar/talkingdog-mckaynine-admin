@@ -2,8 +2,8 @@
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { Loader2 } from "lucide-react";
@@ -14,15 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-type User = {
-  id: string;
-  email: string;
-  full_name?: string;
-  role: string;
-  created_at: string;
-  isCurrentUser: boolean;
-};
+import { User } from "./hooks/useUsers";
 
 interface UserManageDialogProps {
   user: User;

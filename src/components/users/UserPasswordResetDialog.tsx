@@ -7,15 +7,7 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { Loader2 } from "lucide-react";
-
-type User = {
-  id: string;
-  email: string;
-  full_name?: string;
-  role: string;
-  created_at: string;
-  isCurrentUser: boolean;
-};
+import { User } from "./hooks/useUsers";
 
 interface UserPasswordResetDialogProps {
   user: User;
