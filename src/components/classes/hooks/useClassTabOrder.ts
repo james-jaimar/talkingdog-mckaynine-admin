@@ -42,6 +42,8 @@ export function useClassTabOrder(
   const { data: savedOrder, isLoading: isLoadingOrder } = useQuery({
     queryKey: ['class-tab-order', branchId],
     queryFn: async () => {
+      if (!isAuthenticated) return null;
+      
       try {
         // Check if we have a logged in user
         const { data: { user } } = await supabase.auth.getUser();
@@ -103,7 +105,7 @@ export function useClassTabOrder(
   // Save the order to database
   const saveOrderToDatabase = async (newOrder: ClassWithExtras[]) => {
     // If not authenticated, just update the local state and don't try to save
-    if (isAuthenticated !== true) {
+    if (!isAuthenticated) {
       return;
     }
     

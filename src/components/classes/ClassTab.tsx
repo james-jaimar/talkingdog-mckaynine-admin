@@ -21,7 +21,7 @@ export function ClassTab({ classItem, index, isActive, onTabClick }: ClassTabPro
       draggableId={classItem.id} 
       index={index}
     >
-      {(provided) => (
+      {(provided, snapshot) => (
         <TabsTrigger 
           value={classItem.id} 
           ref={provided.innerRef}
@@ -29,7 +29,8 @@ export function ClassTab({ classItem, index, isActive, onTabClick }: ClassTabPro
           onClick={() => onTabClick(classItem.id, `/classes/${classItem.id}/handlers`)}
           className={cn(
             "flex items-center gap-1",
-            isActive ? "font-medium" : ""
+            isActive ? "font-medium" : "",
+            snapshot.isDragging ? "opacity-70" : ""
           )}
         >
           <div 
