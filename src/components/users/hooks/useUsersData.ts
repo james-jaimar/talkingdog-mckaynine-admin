@@ -1,13 +1,13 @@
 
 import { useState, useEffect } from "react";
-import type { UserProfile } from "../types/userTypes";
+import { UserProfile } from "../types/userTypes";
 import { useFetchUsers } from "./useFetchUsers";
 import { useFetchTrainers } from "./useFetchTrainers";
 import { useTrainerLinking } from "./useTrainerLinking";
 import { useUserRoleManagement } from "./useUserRoleManagement";
 import { useAdminSetup } from "./useAdminSetup";
 
-export type { UserProfile } from "../types/userTypes";
+export { UserProfile } from "../types/userTypes";
 
 export function useUsersData() {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);

@@ -20,18 +20,26 @@ export function useFetchUsers() {
           throw profilesError;
         }
         
-        console.log("Fetched profiles:", profiles);
+        console.log("Fetched profiles:", profiles?.length, "profiles");
+        console.log("Profile data:", profiles);
         
         // Get user metadata from auth API
         let usersData = null;
         let usersError = null;
         
         try {
+          console.log("Fetching user metadata...");
           const result = await supabase.auth.admin.listUsers();
           usersData = result.data;
           usersError = result.error;
+          
+          if (usersError) {
+            console.error("Error in metadata response:", usersError);
+          } else {
+            console.log("Fetched metadata for", usersData?.users?.length, "users");
+          }
         } catch (err) {
-          console.error("Error fetching user metadata:", err);
+          console.error("Exception when fetching user metadata:", err);
           // Continue with profiles data even if metadata fetch fails
         }
         
@@ -45,12 +53,12 @@ export function useFetchUsers() {
               raw_metadata: user.user_metadata
             });
           });
+          console.log("Created metadata map with", userMetadataMap.size, "entries");
         }
-        
-        console.log("User metadata map:", userMetadataMap);
         
         // Then get trainer information for users linked to trainers
         const userIds = profiles.map(profile => profile.id);
+        console.log("Looking up trainers for", userIds.length, "user IDs");
         
         const { data: trainers, error: trainersError } = await supabase
           .from('trainers')
@@ -60,41 +68,41 @@ export function useFetchUsers() {
         if (trainersError) {
           console.error("Error fetching trainers for users:", trainersError);
           // Don't throw, just continue with profiles data
+        } else {
+          console.log("Found", trainers?.length, "trainers linked to users");
         }
         
-        // Join the data 
-        const appId = "mckaynine-training-centre";
-        const usersWithTrainers = profiles
-          .map(profile => {
-            // Check for trainer linked to this user
-            const linkedTrainer = trainers?.find(t => {
-              if (typeof t.user_id !== 'string') return false;
-              return t.user_id === profile.id;
-            }) || null;
-            
-            // Get user metadata
-            const metadata = userMetadataMap.get(profile.id);
-            
-            return {
-              ...profile,
-              trainer: linkedTrainer,
-              app_id: metadata?.app_id
-            };
-          })
-          .filter(user => {
-            // Include all users from profile table in admin view
-            // This is the key change - we're not filtering based on app_id anymore
-            // which was causing some users to be filtered out incorrectly
-            return true;
-          });
+        // Join the data - IMPORTANT: No filtering!
+        const usersWithTrainers = profiles.map(profile => {
+          // Check for trainer linked to this user
+          const linkedTrainer = trainers?.find(t => {
+            if (typeof t.user_id !== 'string') return false;
+            return t.user_id === profile.id;
+          }) || null;
+          
+          // Get user metadata
+          const metadata = userMetadataMap.get(profile.id);
+          
+          return {
+            ...profile,
+            trainer: linkedTrainer,
+            app_id: metadata?.app_id
+          };
+        });
         
-        console.log("All users with trainers:", usersWithTrainers);
+        console.log("Final user list:", usersWithTrainers.length, "users");
+        // Log the first few users for debugging
+        if (usersWithTrainers.length > 0) {
+          console.log("Sample users:", usersWithTrainers.slice(0, Math.min(3, usersWithTrainers.length)));
+        }
         
         return usersWithTrainers as UserProfile[];
       } catch (error) {
         console.error("Error in users query:", error);
         throw error;
       }
-    }
+    },
+    // Reduce stale time to ensure we get fresh data more often
+    staleTime: 1000 * 60 * 1 // 1 minute
   });
 }
