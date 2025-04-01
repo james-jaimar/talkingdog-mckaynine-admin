@@ -4,7 +4,8 @@ import App from "./App";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
-import RequireAuth from "./components/auth/RequireAuth";
+import RequireAuth from "@/components/auth/RequireAuth";
+import RequireAdmin from "@/components/auth/RequireAdmin";
 import UserManagement from "./pages/UserManagement";
 
 const router = createBrowserRouter([
@@ -28,9 +29,9 @@ const router = createBrowserRouter([
   {
     path: "/user-admin",
     element: (
-      <RequireAuth>
+      <RequireAdmin>
         <UserManagement />
-      </RequireAuth>
+      </RequireAdmin>
     ),
   },
 ]);

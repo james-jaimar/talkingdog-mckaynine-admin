@@ -27,7 +27,7 @@ import { AddUserDialog } from "./AddUserDialog";
 type User = {
   id: string;
   email: string;
-  full_name?: string;
+  full_name: string;
   role: string;
   created_at: string;
   isCurrentUser: boolean;
@@ -45,6 +45,7 @@ export default function UserAdminTable({ users, onRefresh, currentUserId }: User
   const [isPasswordResetOpen, setIsPasswordResetOpen] = useState(false);
   const [isManageDialogOpen, setIsManageDialogOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [addUserDialogOpen, setAddUserDialogOpen] = useState(false);
 
   // Filter users by name or email
   const filteredUsers = users.filter(
@@ -101,7 +102,12 @@ export default function UserAdminTable({ users, onRefresh, currentUserId }: User
             <RefreshCw className={`h-4 w-4 mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
-          <AddUserDialog onUserAdded={onRefresh} />
+          <Button 
+            size="sm" 
+            onClick={() => setAddUserDialogOpen(true)}
+          >
+            Add User
+          </Button>
         </div>
       </CardHeader>
       <CardContent>
@@ -182,6 +188,13 @@ export default function UserAdminTable({ users, onRefresh, currentUserId }: User
           </Table>
         </div>
       </CardContent>
+
+      {/* User Management Dialogs */}
+      <AddUserDialog 
+        open={addUserDialogOpen}
+        onOpenChange={setAddUserDialogOpen}
+        onUserAdded={onRefresh}
+      />
 
       {/* Password Reset Dialog */}
       {selectedUser && (

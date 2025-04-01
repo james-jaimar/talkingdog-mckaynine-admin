@@ -2,11 +2,12 @@
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { Loader2 } from "lucide-react";
+import { User } from "./hooks/useUsers";
 import {
   Select,
   SelectContent,
@@ -14,7 +15,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { User } from "./hooks/useUsers";
 
 interface UserManageDialogProps {
   user: User;
@@ -23,39 +23,45 @@ interface UserManageDialogProps {
   onUserUpdated: () => void;
 }
 
-export function UserManageDialog({ user, open, onOpenChange, onUserUpdated }: UserManageDialogProps) {
-  const [selectedRole, setSelectedRole] = useState(user.role);
+export function UserManageDialog({ 
+  user, 
+  open, 
+  onOpenChange, 
+  onUserUpdated 
+}: UserManageDialogProps) {
+  const [role, setRole] = useState(user.role);
   const [isUpdating, setIsUpdating] = useState(false);
   const { toast } = useToast();
 
-  const handleRoleChange = async () => {
-    if (selectedRole === user.role) {
-      onOpenChange(false);
-      return;
-    }
-    
+  const handleUpdateUser = async () => {
     try {
       setIsUpdating(true);
       
+      // Update the user's role in the database
       const { error } = await supabase
         .from('profiles')
-        .update({ role: selectedRole })
+        .update({ role })
         .eq('id', user.id);
       
       if (error) throw error;
       
+      // Show success message
       toast({
-        title: "Role updated",
-        description: `User role has been updated to ${selectedRole}.`,
+        title: "User updated",
+        description: `Role for ${user.full_name || user.email} has been updated to ${role}.`,
       });
       
-      onUserUpdated();
+      // Close dialog
       onOpenChange(false);
-    } catch (error) {
-      console.error("Error updating role:", error);
+      
+      // Refresh user list
+      onUserUpdated();
+      
+    } catch (error: any) {
+      console.error("Error updating user:", error);
       toast({
-        title: "Update failed",
-        description: error instanceof Error ? error.message : "Failed to update user role.",
+        title: "Failed to update user",
+        description: error.message || "An unexpected error occurred.",
         variant: "destructive",
       });
     } finally {
@@ -67,47 +73,34 @@ export function UserManageDialog({ user, open, onOpenChange, onUserUpdated }: Us
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Edit User</DialogTitle>
+          <DialogTitle>Manage User</DialogTitle>
           <DialogDescription>
-            Update role and permissions for {user.full_name || user.email}
+            Update role and settings for {user.full_name || user.email}
           </DialogDescription>
         </DialogHeader>
         
-        <div className="py-4">
-          <div className="space-y-4">
-            <div>
-              <Label className="text-sm font-medium mb-1 block">
-                Role
-              </Label>
-              <Select 
-                defaultValue={user.role} 
-                onValueChange={setSelectedRole}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select role" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="trainer">Trainer</SelectItem>
-                  <SelectItem value="handler">Handler</SelectItem>
-                  <SelectItem value="user">User</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label className="text-sm font-medium mb-1 block">
-                User ID
-              </Label>
-              <Input 
-                value={user.id} 
-                disabled 
-                className="bg-muted"
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                This is the user's unique identifier
-              </p>
-            </div>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="role">Role</Label>
+            <Select value={role} onValueChange={setRole}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select role" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="admin">Admin</SelectItem>
+                <SelectItem value="trainer">Trainer</SelectItem>
+                <SelectItem value="handler">Handler</SelectItem>
+                <SelectItem value="user">User</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="userId">User ID</Label>
+            <Input id="userId" value={user.id} disabled className="bg-muted" />
+            <p className="text-xs text-muted-foreground">
+              This is the user's unique identifier in the database
+            </p>
           </div>
         </div>
         
@@ -119,14 +112,11 @@ export function UserManageDialog({ user, open, onOpenChange, onUserUpdated }: Us
           >
             Cancel
           </Button>
-          <Button 
-            onClick={handleRoleChange}
-            disabled={isUpdating || selectedRole === user.role}
-          >
+          <Button onClick={handleUpdateUser} disabled={isUpdating}>
             {isUpdating ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Updating...
+                Saving...
               </>
             ) : (
               "Save Changes"

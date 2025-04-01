@@ -22,12 +22,12 @@ export function useUsers() {
       setIsLoading(true);
       setError(null);
       
-      // Query auth.users join with profiles to get combined user data
+      // Query profiles table to get user data
       const { data, error } = await supabase
         .from('profiles')
         .select(`
           id,
-          email,
+          username,
           role,
           full_name,
           created_at
@@ -39,7 +39,7 @@ export function useUsers() {
       // Transform the data to ensure it matches our User type
       const formattedUsers: User[] = data.map(user => ({
         id: user.id,
-        email: user.email || '',
+        email: user.username || '',  // Email is stored in username field
         role: user.role || 'user',
         full_name: user.full_name || '',
         created_at: user.created_at || new Date().toISOString()

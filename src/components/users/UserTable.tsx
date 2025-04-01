@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useUsersData, UserProfile } from "./hooks/useUsersData";
 import {
@@ -35,13 +34,11 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { format } from "date-fns";
-import { Loader2, Search, UserCog, Key, RefreshCw } from "lucide-react";
+import { Loader2, Search, UserCog, Key, RefreshCw, UserPlus } from "lucide-react";
 import { ResetPasswordDialog } from "./ResetPasswordDialog";
 import { AddUserDialog } from "./AddUserDialog";
 
 export function UserTable() {
-  console.log("UserTable component rendering");
-
   // Get user data from the hook
   const {
     users,
@@ -63,6 +60,7 @@ export function UserTable() {
   const [resetPasswordOpen, setResetPasswordOpen] = useState(false);
   const [userToResetPassword, setUserToResetPassword] = useState<UserProfile | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [addUserDialogOpen, setAddUserDialogOpen] = useState(false);
 
   // Filter users by name or email
   const filteredUsers = users.filter(
@@ -71,42 +69,8 @@ export function UserTable() {
       (user.username?.toLowerCase() || '').includes(filter.toLowerCase())
   );
 
-  // Log users data for debugging and component state
-  console.log(`UserTable - Component mount/render`);
-  console.log(`UserTable - Total users: ${users?.length || 0}, Filtered users: ${filteredUsers?.length || 0}`);
-  
-  // Debug all users on component mount and when users change
+  // Fetch users on component mount
   useEffect(() => {
-    console.log("UserTable - Users data changed:", users?.length);
-    if (users?.length > 0) {
-      console.log("Users available in UserTable:", users.map(u => ({
-        id: u.id.substring(0, 8), 
-        email: u.username,
-        role: u.role,
-        isCurrentUser: u.isCurrentUser
-      })));
-    } else {
-      console.log("No users available to display in UserTable");
-    }
-  }, [users]);
-
-  // Listen for user creation events
-  useEffect(() => {
-    const handleUserCreated = () => {
-      console.log("User created event received, refreshing data...");
-      refetchUsers();
-    };
-    
-    window.addEventListener('user-created', handleUserCreated);
-    
-    return () => {
-      window.removeEventListener('user-created', handleUserCreated);
-    };
-  }, [refetchUsers]);
-
-  // Refresh on component mount
-  useEffect(() => {
-    console.log("UserTable mounted, fetching all users...");
     refetchUsers();
   }, [refetchUsers]);
 
@@ -127,7 +91,6 @@ export function UserTable() {
   // Refresh handler
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    console.log("Manual refresh clicked, fetching all users...");
     await refetchUsers();
     setIsRefreshing(false);
   };
@@ -161,9 +124,6 @@ export function UserTable() {
     );
   }
 
-  // Log rendering decision
-  console.log(`UserTable - Rendering table with ${filteredUsers?.length || 0} users`);
-
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
@@ -183,7 +143,13 @@ export function UserTable() {
             <RefreshCw className={`h-4 w-4 mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
-          <AddUserDialog onUserAdded={refetchUsers} />
+          <Button 
+            size="sm" 
+            onClick={() => setAddUserDialogOpen(true)}
+          >
+            <UserPlus className="h-4 w-4 mr-1" />
+            Add User
+          </Button>
         </div>
       </CardHeader>
       <CardContent>
@@ -394,6 +360,13 @@ export function UserTable() {
           </Table>
         </div>
       </CardContent>
+
+      {/* Add User Dialog */}
+      <AddUserDialog 
+        open={addUserDialogOpen}
+        onOpenChange={setAddUserDialogOpen}
+        onUserAdded={refetchUsers}
+      />
 
       {/* Password Reset Dialog */}
       {userToResetPassword && (
