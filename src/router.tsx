@@ -62,11 +62,11 @@ const router = createBrowserRouter([
   },
   {
     path: "/branches",
-    element: <ProtectedRoute><Branches /></ProtectedRoute>,
+    element: <ProtectedRoute requiredRole="admin"><Branches /></ProtectedRoute>,
   },
   {
     path: "/unpaid-handlers",
-    element: <ProtectedRoute><UnpaidHandlers /></ProtectedRoute>,
+    element: <ProtectedRoute requiredRole="admin"><UnpaidHandlers /></ProtectedRoute>,
   },
   {
     path: "/auth",
@@ -80,7 +80,7 @@ const router = createBrowserRouter([
   {
     // Catch all route for any undefined paths
     path: "*",
-    element: <ProtectedRoute><Dashboard /></ProtectedRoute>, 
+    element: <NotFound />,
   },
 ], {
   basename,

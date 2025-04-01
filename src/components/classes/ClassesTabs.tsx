@@ -20,13 +20,16 @@ export function ClassesTabs() {
   const location = useLocation();
   const navigate = useNavigate();
   const { currentBranch } = useBranch();
-  const { user } = useAuth();
+  const { user, isAdmin, isTrainer } = useAuth();
+  
+  // Don't fetch if user doesn't have access
+  const hasAccess = user && (isAdmin || isTrainer);
   
   // Fetch active classes (those that have schedules)
   const { data: activeClasses = [], isLoading } = useQuery({
     queryKey: ['active-classes', currentBranch?.id],
     queryFn: async () => {
-      if (!currentBranch) return [];
+      if (!currentBranch || !hasAccess) return [];
       
       const { data, error } = await supabase
         .from('classes')
@@ -48,14 +51,14 @@ export function ClassesTabs() {
       
       return data as ActiveClass[];
     },
-    enabled: !!currentBranch,
+    enabled: !!currentBranch && hasAccess,
   });
   
   // Get the ordered classes using our hook
   const { orderedClasses, isLoadingOrder } = useClassTabOrder(activeClasses, currentBranch?.id);
   
-  if (isLoading || isLoadingOrder || !currentBranch) {
-    return null; // Don't render anything while loading
+  if (isLoading || isLoadingOrder || !currentBranch || !hasAccess) {
+    return null; // Don't render anything while loading or if no access
   }
   
   // Don't show tabs if there are no active classes

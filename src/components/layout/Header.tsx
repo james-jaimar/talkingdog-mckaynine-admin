@@ -22,33 +22,35 @@ export function Header() {
               McKaynine
             </Link>
             
-            <nav className="flex space-x-4">
-              <Link to="/" className="text-white hover:text-gray-200 px-2 py-1 rounded">
-                Dashboard
-              </Link>
-              <Link to="/handlers" className="text-white hover:text-gray-200 px-2 py-1 rounded">
-                Handlers
-              </Link>
-              <Link to="/classes" className="text-white hover:text-gray-200 px-2 py-1 rounded">
-                Classes
-              </Link>
-              <Link to="/class-schedules" className="text-white hover:text-gray-200 px-2 py-1 rounded">
-                Class Schedules
-              </Link>
-              <Link to="/trainers" className="text-white hover:text-gray-200 px-2 py-1 rounded">
-                Trainers
-              </Link>
-              {isAdmin && (
-                <>
-                  <Link to="/branches" className="text-white hover:text-gray-200 px-2 py-1 rounded">
-                    Branches
-                  </Link>
-                  <Link to="/unpaid-handlers" className="text-white hover:text-gray-200 px-2 py-1 rounded">
-                    Unpaid Handlers
-                  </Link>
-                </>
-              )}
-            </nav>
+            {user && (
+              <nav className="flex space-x-4 overflow-x-auto">
+                <Link to="/" className="text-white hover:text-gray-200 px-2 py-1 rounded whitespace-nowrap">
+                  Dashboard
+                </Link>
+                <Link to="/handlers" className="text-white hover:text-gray-200 px-2 py-1 rounded whitespace-nowrap">
+                  Handlers
+                </Link>
+                <Link to="/classes" className="text-white hover:text-gray-200 px-2 py-1 rounded whitespace-nowrap">
+                  Classes
+                </Link>
+                <Link to="/class-schedules" className="text-white hover:text-gray-200 px-2 py-1 rounded whitespace-nowrap">
+                  Class Schedules
+                </Link>
+                <Link to="/trainers" className="text-white hover:text-gray-200 px-2 py-1 rounded whitespace-nowrap">
+                  Trainers
+                </Link>
+                {isAdmin && (
+                  <>
+                    <Link to="/branches" className="text-white hover:text-gray-200 px-2 py-1 rounded whitespace-nowrap">
+                      Branches
+                    </Link>
+                    <Link to="/unpaid-handlers" className="text-white hover:text-gray-200 px-2 py-1 rounded whitespace-nowrap">
+                      Unpaid Handlers
+                    </Link>
+                  </>
+                )}
+              </nav>
+            )}
           </div>
           
           <div className="flex items-center space-x-4">
@@ -58,7 +60,7 @@ export function Header() {
             
             {user && (
               <div className="flex items-center gap-2">
-                <span className="inline-flex items-center">
+                <span className="hidden md:inline-flex items-center">
                   <User className="inline-block mr-1 h-4 w-4" />
                   {user.email}
                 </span>
@@ -69,7 +71,7 @@ export function Header() {
                   className="text-white hover:text-white hover:bg-mckaynine-700"
                 >
                   <LogOut className="h-4 w-4 md:mr-1" />
-                  <span className="md:inline">Logout</span>
+                  <span className="hidden md:inline">Logout</span>
                 </Button>
               </div>
             )}

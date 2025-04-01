@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dog } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import { Helmet } from "react-helmet";
 
 export default function Auth() {
   const { user, signIn, signUp, isLoading } = useAuth();
@@ -19,7 +20,10 @@ export default function Auth() {
   }
 
   return (
-    <DashboardLayout>
+    <DashboardLayout requireAuth={false}>
+      <Helmet>
+        <title>Sign In - McKaynine Training Centre</title>
+      </Helmet>
       <div className="container mx-auto flex flex-col items-center justify-center py-12">
         <div className="mb-8 flex flex-col items-center">
           <Dog className="h-12 w-12 text-mckaynine-600" />
