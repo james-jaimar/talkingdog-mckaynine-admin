@@ -76,7 +76,19 @@ export function AddTrainerForm({ onSuccess }: AddTrainerFormProps) {
         specialties: specialtiesArray,
       });
       
-      if (error) throw error;
+      if (error) {
+        let errorMessage = "An unexpected error occurred.";
+        
+        // Handle specific error types with more user-friendly messages
+        if (error.code === "23505" && error.message.includes("trainers_email_key")) {
+          errorMessage = `A trainer with the email ${values.email} already exists.`;
+        } else {
+          console.error("Error details:", error);
+          errorMessage = error.message || errorMessage;
+        }
+        
+        throw new Error(errorMessage);
+      }
       
       toast({
         title: "Trainer added successfully",
@@ -95,7 +107,7 @@ export function AddTrainerForm({ onSuccess }: AddTrainerFormProps) {
       console.error("Error adding trainer:", error);
       toast({
         title: "Failed to add trainer",
-        description: String(error) || "An unexpected error occurred.",
+        description: error instanceof Error ? error.message : "Failed to add trainer.",
         variant: "destructive",
       });
     } finally {
@@ -179,7 +191,7 @@ export function AddTrainerForm({ onSuccess }: AddTrainerFormProps) {
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
+                  <SelectItem value="">None</SelectItem>
                   {branches?.map((branch) => (
                     <SelectItem key={branch.id} value={branch.id}>
                       {branch.name}
