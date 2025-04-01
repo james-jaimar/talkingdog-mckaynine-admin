@@ -31,14 +31,14 @@ export function AddUserDialog() {
     setIsSubmitting(true);
     
     try {
-      // Create user through a manual insert into profiles 
-      // and rely on email/password signup instead of admin creation
+      // Create user with app metadata to tag users belonging to this application
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
             full_name: fullName,
+            app_id: "mckaynine-training-centre" // App identifier tag
           },
           // This prevents automatic login after signup
           emailRedirectTo: window.location.origin,
@@ -57,6 +57,9 @@ export function AddUserDialog() {
       setPassword("");
       setFullName("");
       setIsOpen(false);
+      
+      // Force refresh the users list by triggering a global event
+      window.dispatchEvent(new CustomEvent('user-created'));
       
     } catch (error) {
       console.error("Error creating user:", error);

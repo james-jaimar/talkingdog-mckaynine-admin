@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
@@ -14,6 +13,7 @@ export type UserProfile = {
   created_at: string;
   email?: string;
   trainer?: Trainer | null;
+  app_id?: string;
 };
 
 export function useUsersData() {
@@ -23,10 +23,11 @@ export function useUsersData() {
   const [adminSetupAttempted, setAdminSetupAttempted] = useState<Record<string, boolean>>({});
 
   // Fetch all users with their profile information
-  const { data: users = [], isLoading, error } = useQuery({
+  const { data: users = [], isLoading, error, refetch } = useQuery({
     queryKey: ['users-admin'],
     queryFn: async () => {
       try {
+        console.log("Fetching user profiles...");
         // First get all profiles
         const { data: profiles, error: profilesError } = await supabase
           .from('profiles')
@@ -37,6 +38,29 @@ export function useUsersData() {
           console.error("Error fetching user profiles:", profilesError);
           throw profilesError;
         }
+        
+        console.log("Fetched profiles:", profiles);
+        
+        // Get user metadata to identify app users
+        const { data: users, error: usersError } = await supabase.auth.admin.listUsers();
+        
+        if (usersError) {
+          console.error("Error fetching user metadata:", usersError);
+          // Continue with profiles data even if metadata fetch fails
+        }
+        
+        // Create a map of user metadata
+        const userMetadataMap = new Map();
+        if (users) {
+          users.users.forEach(user => {
+            userMetadataMap.set(user.id, {
+              app_id: user.user_metadata?.app_id,
+              raw_metadata: user.user_metadata
+            });
+          });
+        }
+        
+        console.log("User metadata map:", userMetadataMap);
         
         // Then get trainer information for users linked to trainers
         const userIds = profiles.map(profile => profile.id);
@@ -51,19 +75,34 @@ export function useUsersData() {
           // Don't throw, just continue with profiles data
         }
         
-        // Join the data
-        const usersWithTrainers = profiles.map(profile => {
-          // Check for trainer linked to this user, handle potential error cases
-          const linkedTrainer = trainers?.find(t => {
-            if (typeof t.user_id !== 'string') return false;
-            return t.user_id === profile.id;
-          }) || null;
-          
-          return {
-            ...profile,
-            trainer: linkedTrainer
-          };
-        });
+        // Join the data and filter for app users
+        const appId = "mckaynine-training-centre";
+        const usersWithTrainers = profiles
+          .map(profile => {
+            // Check for trainer linked to this user
+            const linkedTrainer = trainers?.find(t => {
+              if (typeof t.user_id !== 'string') return false;
+              return t.user_id === profile.id;
+            }) || null;
+            
+            // Get user metadata
+            const metadata = userMetadataMap.get(profile.id);
+            
+            return {
+              ...profile,
+              trainer: linkedTrainer,
+              app_id: metadata?.app_id
+            };
+          })
+          .filter(user => {
+            // Keep users from this app, or admin users, or if no app_id is specified (legacy users)
+            return !userMetadataMap.has(user.id) || 
+                  userMetadataMap.get(user.id)?.app_id === appId || 
+                  user.role === 'admin' ||
+                  user.username === 'ady@talkingdog.co.za';  // Always include the primary admin
+          });
+        
+        console.log("Filtered users with trainers:", usersWithTrainers);
         
         return usersWithTrainers as UserProfile[];
       } catch (error) {
@@ -72,6 +111,20 @@ export function useUsersData() {
       }
     }
   });
+
+  // Listen for user creation events and refetch
+  useEffect(() => {
+    const handleUserCreated = () => {
+      console.log("User created event detected, refetching users...");
+      refetch();
+    };
+
+    window.addEventListener('user-created', handleUserCreated);
+    
+    return () => {
+      window.removeEventListener('user-created', handleUserCreated);
+    };
+  }, [refetch]);
 
   // Fetch trainers for linking to users
   const { data: trainers = [], isLoading: isLoadingTrainers } = useQuery({
@@ -304,5 +357,6 @@ export function useUsersData() {
     isLoadingTrainers,
     linkTrainerToUser,
     unlinkTrainerFromUser,
+    refetchUsers: refetch,
   };
 }

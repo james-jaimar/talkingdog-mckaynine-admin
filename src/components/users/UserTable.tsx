@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useUsersData, UserProfile } from "./hooks/useUsersData";
 import {
   Table,
@@ -35,7 +35,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { format } from "date-fns";
-import { Loader2, Search, UserCog, Key } from "lucide-react";
+import { Loader2, Search, UserCog, Key, RefreshCw } from "lucide-react";
 import { ResetPasswordDialog } from "./ResetPasswordDialog";
 import { AddUserDialog } from "./AddUserDialog";
 
@@ -50,12 +50,14 @@ export function UserTable() {
     isLoadingTrainers,
     linkTrainerToUser,
     unlinkTrainerFromUser,
+    refetchUsers,
   } = useUsersData();
 
   const [filter, setFilter] = useState("");
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
   const [resetPasswordOpen, setResetPasswordOpen] = useState(false);
   const [userToResetPassword, setUserToResetPassword] = useState<UserProfile | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Filter users by name or email
   const filteredUsers = users.filter(
@@ -75,6 +77,17 @@ export function UserTable() {
     setUserToResetPassword(user);
     setResetPasswordOpen(true);
   };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await refetchUsers();
+    setIsRefreshing(false);
+  };
+
+  // Auto-refresh when the component mounts
+  useEffect(() => {
+    refetchUsers();
+  }, [refetchUsers]);
 
   if (isLoading) {
     return (
@@ -112,7 +125,18 @@ export function UserTable() {
             Manage user accounts and access roles.
           </CardDescription>
         </div>
-        <AddUserDialog />
+        <div className="flex space-x-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+          >
+            <RefreshCw className={`h-4 w-4 mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+          <AddUserDialog />
+        </div>
       </CardHeader>
       <CardContent>
         <div className="relative mb-4">
