@@ -56,7 +56,7 @@ export default function TrainerReferences() {
 
   // Reassign trainer mutation
   const { mutate: reassignTrainer, isPending: isReassigning } = useMutation({
-    mutationFn: async ({ scheduleId, trainerId }: { scheduleId: string, trainerId: string }) => {
+    mutationFn: async ({ scheduleId, trainerId }: { scheduleId: string, trainerId: string | null }) => {
       const { error } = await supabase
         .from('class_schedules')
         .update({ trainer_id: trainerId })
@@ -98,16 +98,18 @@ export default function TrainerReferences() {
 
   // Handle reassignment
   const handleReassign = (scheduleId: string) => {
-    const newTrainerId = selectedReplacement[scheduleId];
-    if (!newTrainerId) {
+    const newTrainerIdOrNone = selectedReplacement[scheduleId];
+    if (!newTrainerIdOrNone) {
       toast({
         title: "No trainer selected",
-        description: "Please select a replacement trainer.",
+        description: "Please select a replacement trainer or 'None'.",
         variant: "destructive",
       });
       return;
     }
 
+    // If "none" is selected, set trainer_id to null
+    const newTrainerId = newTrainerIdOrNone === "none" ? null : newTrainerIdOrNone;
     reassignTrainer({ scheduleId, trainerId: newTrainerId });
   };
 
@@ -226,6 +228,11 @@ export default function TrainerReferences() {
                             <SelectValue placeholder="Select a trainer" />
                           </SelectTrigger>
                           <SelectContent>
+                            {/* Add a "None" option at the beginning */}
+                            <SelectItem value="none" className="text-gray-500">
+                              None (Remove trainer)
+                            </SelectItem>
+                            
                             {trainers?.filter(t => t.id !== reference.trainer_id).map(trainer => (
                               <SelectItem key={trainer.id} value={trainer.id}>
                                 {trainer.first_name} {trainer.last_name}
