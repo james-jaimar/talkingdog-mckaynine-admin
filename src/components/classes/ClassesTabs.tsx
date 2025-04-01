@@ -1,58 +1,22 @@
 
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { useLocation } from "react-router-dom";
 import { Tabs, TabsList } from "@/components/ui/tabs";
-import { useLocation, useNavigate } from "react-router-dom";
 import { ClassTab } from "./ClassTab";
 import { useBranch } from "@/context/BranchContext";
 import { useClassTabOrder } from "./hooks/useClassTabOrder";
-import { useAuth } from "@/context/AuthContext";
-
-// Define the type for activeClasses to match what we get from the query
-interface ActiveClass {
-  id: string;
-  name: string;
-  branches: { name: string };
-  class_schedules: { id: string }[];
-}
+import { useClassesData } from "./hooks/useClassesData";
+import { useClassTabNavigation } from "./hooks/useClassTabNavigation";
 
 export function ClassesTabs() {
   const location = useLocation();
-  const navigate = useNavigate();
   const { currentBranch } = useBranch();
-  const { user } = useAuth();
-  
-  // Fetch active classes (those that have schedules)
-  const { data: activeClasses = [], isLoading } = useQuery({
-    queryKey: ['active-classes', currentBranch?.id],
-    queryFn: async () => {
-      if (!currentBranch) return [];
-      
-      const { data, error } = await supabase
-        .from('classes')
-        .select(`
-          id,
-          name,
-          branches:branch_id (name),
-          class_schedules:class_schedules (id)
-        `)
-        .eq('branch_id', currentBranch.id)
-        // Only get classes that have schedules
-        .not('class_schedules', 'is', null)
-        .order('name');
-      
-      if (error) {
-        console.error("Error fetching active classes:", error);
-        throw error;
-      }
-      
-      return data as ActiveClass[];
-    },
-    enabled: !!currentBranch,
-  });
+  const { activeClasses, isLoading, hasBranch } = useClassesData();
   
   // Get the ordered classes using our hook
   const { orderedClasses, isLoadingOrder } = useClassTabOrder(activeClasses, currentBranch?.id);
+
+  // Use tab navigation hook
+  const { handleTabClick } = useClassTabNavigation();
   
   // Show loading state while fetching data
   if (isLoading || isLoadingOrder) {
@@ -60,7 +24,7 @@ export function ClassesTabs() {
   }
   
   // Don't render anything if there are no active classes
-  if (!currentBranch || orderedClasses.length === 0) {
+  if (!hasBranch || orderedClasses.length === 0) {
     return null;
   }
   
@@ -70,11 +34,6 @@ export function ClassesTabs() {
   const currentClassId = (classesIndex >= 0 && urlParts.length > classesIndex + 1) 
     ? urlParts[classesIndex + 1] 
     : null;
-  
-  // Handle tab click
-  const handleTabClick = (tabValue: string, path: string) => {
-    navigate(path);
-  };
   
   return (
     <div className="mt-4 overflow-x-auto bg-gray-100 rounded-md p-1">

@@ -1,5 +1,4 @@
-
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 export function useClassTabNavigation() {
@@ -17,6 +16,14 @@ export function useClassTabNavigation() {
   
   // Initialize active tab state from URL
   const [activeTab, setActiveTab] = useState<string>(getActiveTabFromPath());
+
+  // Keep the active tab in sync with URL changes
+  useEffect(() => {
+    const currentTabFromPath = getActiveTabFromPath();
+    if (currentTabFromPath !== activeTab) {
+      setActiveTab(currentTabFromPath);
+    }
+  }, [location.pathname, getActiveTabFromPath, activeTab]);
 
   // Handle tab click
   const handleTabClick = useCallback((tabValue: string, path: string) => {
