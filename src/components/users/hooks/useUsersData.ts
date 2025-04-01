@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -116,7 +117,7 @@ export function useUsersData() {
     },
   });
 
-  // Fix the linkTrainerToUser function
+  // Link trainer to user
   const linkTrainerToUser = async (userId: string, trainerId: string) => {
     try {
       // Update trainer record to link to this user
@@ -145,7 +146,7 @@ export function useUsersData() {
     }
   };
 
-  // Fix the unlinkTrainerFromUser function
+  // Unlink trainer from user
   const unlinkTrainerFromUser = async (userId: string, trainerId: string) => {
     try {
       // Update trainer record to remove user link

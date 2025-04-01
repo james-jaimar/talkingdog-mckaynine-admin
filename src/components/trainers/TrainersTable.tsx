@@ -1,4 +1,3 @@
-
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { EditTrainerModal } from "./EditTrainerModal";
@@ -41,11 +40,14 @@ export function TrainersTable() {
       
       if (error) throw error;
       
-      // Add null checks and type safety for profiles
+      // Transform data to handle potential join errors and null values
       return (data || []).map(trainer => ({
         ...trainer,
         branches: trainer.branches || null,
-        profiles: trainer.profiles || null
+        // Handle the case where profiles could be an error object
+        profiles: typeof trainer.profiles === 'object' && !Array.isArray(trainer.profiles) && !trainer.profiles?.error 
+          ? trainer.profiles 
+          : null
       })) as (Trainer & { 
         branches: { name: string } | null;
         profiles: { username: string; role: string } | null;
@@ -59,7 +61,7 @@ export function TrainersTable() {
       toast({
         title: "User account already exists",
         description: `${trainer.first_name} ${trainer.last_name} already has a user account.`,
-        variant: "destructive", // Changed from "warning" to "destructive"
+        variant: "destructive",
       });
       return;
     }
@@ -161,7 +163,7 @@ export function TrainersTable() {
       toast({
         title: "No user account",
         description: `${trainer.first_name} ${trainer.last_name} doesn't have a user account.`,
-        variant: "destructive", // Changed from "warning" to "destructive"
+        variant: "destructive",
       });
       return;
     }
@@ -217,7 +219,7 @@ export function TrainersTable() {
         </TableRow>
       </TableHeader>
       <TableBody>
-        {trainers.map((trainer) => (
+        {trainers?.map((trainer) => (
           <TableRow key={trainer.id}>
             <TableCell>
               <div className="flex items-center gap-3">
