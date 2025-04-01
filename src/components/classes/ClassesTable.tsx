@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Calendar, DollarSign, MapPin, Users, ChevronUp, ChevronDown } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
+import { useAuth } from "@/context/AuthContext";
 
 export function ClassesTable() {
   const { currentBranch } = useBranch();
@@ -18,6 +19,7 @@ export function ClassesTable() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   const { data: classes, isLoading, refetch } = useQuery({
     queryKey: ['classes', currentBranch?.id],
@@ -49,7 +51,6 @@ export function ClassesTable() {
     queryKey: ['class-tab-order', currentBranch?.id],
     queryFn: async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
         if (!user) return null;
 
         const { data, error } = await (supabase
@@ -70,7 +71,7 @@ export function ClassesTable() {
         return null;
       }
     },
-    enabled: !!currentBranch
+    enabled: !!currentBranch && !!user
   });
 
   // Order classes based on saved order or alphabetically
@@ -98,7 +99,6 @@ export function ClassesTable() {
   // Save class order to database
   const saveClassOrderMutation = useMutation({
     mutationFn: async (classIds: string[]) => {
-      const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         throw new Error("User not authenticated");
       }
@@ -154,6 +154,15 @@ export function ClassesTable() {
     const newOrder = [...orderedClasses];
     [newOrder[index - 1], newOrder[index]] = [newOrder[index], newOrder[index - 1]];
     
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please sign in to save class order.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     saveClassOrderMutation.mutate(newOrder.map(c => c.id));
     
     toast({
@@ -168,6 +177,15 @@ export function ClassesTable() {
     
     const newOrder = [...orderedClasses];
     [newOrder[index], newOrder[index + 1]] = [newOrder[index + 1], newOrder[index]];
+    
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please sign in to save class order.",
+        variant: "destructive",
+      });
+      return;
+    }
     
     saveClassOrderMutation.mutate(newOrder.map(c => c.id));
     
@@ -223,7 +241,7 @@ export function ClassesTable() {
                     size="icon" 
                     className="h-7 w-7" 
                     onClick={() => moveClassUp(index)}
-                    disabled={index === 0}
+                    disabled={index === 0 || !user}
                   >
                     <ChevronUp className="h-4 w-4" />
                   </Button>
@@ -232,7 +250,7 @@ export function ClassesTable() {
                     size="icon" 
                     className="h-7 w-7" 
                     onClick={() => moveClassDown(index)}
-                    disabled={index === orderedClasses.length - 1}
+                    disabled={index === orderedClasses.length - 1 || !user}
                   >
                     <ChevronDown className="h-4 w-4" />
                   </Button>

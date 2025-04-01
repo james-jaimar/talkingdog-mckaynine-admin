@@ -5,10 +5,20 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { BranchSelector } from "@/components/branches/BranchSelector";
 import { ClassesTabs } from "@/components/classes/ClassesTabs";
+import { useAuth } from "@/context/AuthContext";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 export function Header() {
   const location = useLocation();
   const currentPath = location.pathname;
+  const { user, userRole, signOut } = useAuth();
+  
+  const getUserInitials = () => {
+    if (!user) return "U";
+    const email = user.email || "";
+    return email.charAt(0).toUpperCase();
+  };
   
   return (
     <header className="border-b bg-white w-full">
@@ -20,7 +30,32 @@ export function Header() {
           </div>
           <div className="flex items-center gap-4">
             <BranchSelector />
-            <span className="text-sm text-gray-600">Welcome, Admin</span>
+            {user ? (
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback>{getUserInitials()}</AvatarFallback>
+                  </Avatar>
+                  <div className="hidden md:block">
+                    <span className="text-sm font-medium">{user.email}</span>
+                    {userRole && (
+                      <span className="text-xs text-gray-500 block capitalize">
+                        {userRole}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <Button variant="outline" size="sm" onClick={signOut}>
+                  Sign Out
+                </Button>
+              </div>
+            ) : (
+              <Link to="/auth">
+                <Button variant="outline" size="sm">
+                  Sign In
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
         

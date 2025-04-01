@@ -1,102 +1,80 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useBranch } from "@/context/BranchContext";
-import { Class } from "./types/class";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { cn } from "@/lib/utils";
-import { useClassTabOrder } from "./hooks/useClassTabOrder";
-import { useClassTabNavigation } from "./hooks/useClassTabNavigation";
+import { Tabs, TabsList } from "@/components/ui/tabs";
+import { useLocation, useNavigate } from "react-router-dom";
 import { ClassTab } from "./ClassTab";
+import { useBranch } from "@/context/BranchContext";
+import { useClassTabOrder } from "./hooks/useClassTabOrder";
+import { useAuth } from "@/context/AuthContext";
 
 export function ClassesTabs() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const { currentBranch } = useBranch();
+  const { user } = useAuth();
   
-  const {
-    activeTab,
-    handleTabClick,
-    isClassesPath
-  } = useClassTabNavigation();
-  
-  // Only display the class tabs on the classes page or class-related pages
-  if (!isClassesPath) {
-    return null;
-  }
-  
-  // Query to fetch classes
-  const { data: classes = [], isLoading } = useQuery({
+  // Fetch active classes (those that have schedules)
+  const { data: activeClasses = [], isLoading } = useQuery({
     queryKey: ['active-classes', currentBranch?.id],
     queryFn: async () => {
-      try {
-        let query = supabase
-          .from('classes')
-          .select(`
-            *,
-            branches:branch_id (
-              name
-            ),
-            class_schedules!inner(id)
-          `)
-          .order('name');
-        
-        // Filter by branch if one is selected
-        if (currentBranch) {
-          query = query.eq('branch_id', currentBranch.id);
-        }
-        
-        const { data, error } = await query;
-        
-        if (error) throw error;
-        return data as (Class & { 
-          branches: { name: string }, 
-          class_schedules: { id: string }[] 
-        })[];
-      } catch (error) {
-        console.error("Error fetching classes:", error);
-        return [];
+      if (!currentBranch) return [];
+      
+      const { data, error } = await supabase
+        .from('classes')
+        .select(`
+          id,
+          name,
+          branches:branch_id (name),
+          class_schedules:class_schedules (id)
+        `)
+        .eq('branch_id', currentBranch.id)
+        // Only get classes that have schedules
+        .not('class_schedules', 'is', null)
+        .order('name');
+      
+      if (error) {
+        console.error("Error fetching active classes:", error);
+        throw error;
       }
+      
+      return data;
     },
-    enabled: true
+    enabled: !!currentBranch,
   });
   
-  // Filter to only include classes with schedules
-  const activeClasses = classes?.filter(c => c.class_schedules.length > 0) || [];
+  // Get the ordered classes using our hook
+  const { orderedClasses, isLoadingOrder } = useClassTabOrder(activeClasses, currentBranch?.id);
   
-  const {
-    orderedClasses,
-    isLoadingOrder,
-  } = useClassTabOrder(activeClasses, currentBranch?.id);
-
-  if (isLoading || isLoadingOrder) {
+  if (isLoading || isLoadingOrder || !currentBranch) {
+    return null; // Don't render anything while loading
+  }
+  
+  // Don't show tabs if there are no active classes
+  if (orderedClasses.length === 0) {
     return null;
   }
   
-  // If we have no active classes, don't render
-  if (activeClasses.length === 0) {
-    return null;
-  }
-
+  // Extract the current class ID from the URL
+  const urlParts = location.pathname.split('/');
+  const classIdIndex = urlParts.indexOf('classes') + 1;
+  const currentClassId = classIdIndex < urlParts.length ? urlParts[classIdIndex] : null;
+  
+  // Handle tab click
+  const handleTabClick = (tabValue: string, path: string) => {
+    navigate(path);
+  };
+  
   return (
-    <div className="mx-4 mt-2 overflow-x-auto">
-      <Tabs value={activeTab} className="w-full">
-        <TabsList className="w-max min-w-full justify-start bg-background/50 p-1">
-          <TabsTrigger 
-            value="all" 
-            onClick={() => handleTabClick("all", "/classes")}
-            className={cn(
-              "px-4 py-2",
-              location.pathname === "/classes" ? "font-medium bg-accent text-accent-foreground" : ""
-            )}
-          >
-            All Classes
-          </TabsTrigger>
-          
+    <div className="mt-4 overflow-x-auto bg-gray-100 rounded-md p-1">
+      <Tabs value={currentClassId || ""} className="w-full">
+        <TabsList className="w-max min-w-full justify-start h-auto bg-transparent">
           {orderedClasses.map((classItem, index) => (
             <ClassTab
               key={classItem.id}
               classItem={classItem}
               index={index}
-              isActive={location.pathname.includes(`/classes/${classItem.id}`)}
+              isActive={classItem.id === currentClassId}
               onTabClick={handleTabClick}
             />
           ))}

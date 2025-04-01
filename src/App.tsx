@@ -5,6 +5,7 @@ import router from './router';
 import { Toaster } from '@/components/ui/toaster';
 import './App.css';
 import { BranchProvider } from './context/BranchContext';
+import { AuthProvider } from './context/AuthContext';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -18,10 +19,12 @@ const queryClient = new QueryClient({
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <BranchProvider>
-        <RouterProvider router={router} />
-        <Toaster />
-      </BranchProvider>
+      <AuthProvider>
+        <BranchProvider>
+          <RouterProvider router={router} />
+          <Toaster />
+        </BranchProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

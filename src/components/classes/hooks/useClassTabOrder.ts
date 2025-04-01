@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Class } from "../types/class";
+import { useAuth } from "@/context/AuthContext";
 
 // Define interface for class tab order data
 interface ClassTabOrder {
@@ -24,32 +25,15 @@ export function useClassTabOrder(
   branchId: string | undefined
 ) {
   const [orderedClasses, setOrderedClasses] = useState<ClassWithExtras[]>([]);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
-
-  // Check authentication status
-  useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setIsAuthenticated(!!user);
-    };
-    
-    checkAuth();
-  }, []);
+  const { user } = useAuth();
 
   // Query to fetch saved class order from database
   const { data: savedOrder, isLoading: isLoadingOrder } = useQuery({
     queryKey: ['class-tab-order', branchId],
     queryFn: async () => {
-      if (!isAuthenticated) return null;
+      if (!user) return null;
       
       try {
-        // Check if we have a logged in user
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          return null;
-        }
-
-        // Use type assertion to bypass TypeScript's type checking
         const { data, error } = await (supabase
           .from('class_tab_order') as any)
           .select('*')
@@ -68,17 +52,17 @@ export function useClassTabOrder(
         return null;
       }
     },
-    enabled: !!branchId && isAuthenticated === true
+    enabled: !!branchId && !!user
   });
 
   // Initialize ordered classes from database or default order
   useEffect(() => {
     if (!activeClasses || activeClasses.length === 0) return;
     
-    // If still loading or checking authentication, don't update yet
-    if (isLoadingOrder || isAuthenticated === null) return;
+    // If still loading, don't update yet
+    if (isLoadingOrder) return;
     
-    if (isAuthenticated && savedOrder && savedOrder.class_ids && savedOrder.class_ids.length > 0) {
+    if (user && savedOrder && savedOrder.class_ids && savedOrder.class_ids.length > 0) {
       // We have a saved order from the database
       const savedOrderIds = savedOrder.class_ids;
       
@@ -101,11 +85,10 @@ export function useClassTabOrder(
       );
       setOrderedClasses(sortedClasses);
     }
-  }, [activeClasses, savedOrder, isLoadingOrder, branchId, isAuthenticated]);
+  }, [activeClasses, savedOrder, isLoadingOrder, branchId, user]);
 
   return {
     orderedClasses,
-    isLoadingOrder: isLoadingOrder || isAuthenticated === null,
-    isAuthenticated
+    isLoadingOrder
   };
 }

@@ -11,6 +11,7 @@ import HandlerDetail from "./pages/HandlerDetail";
 import Branches from "./pages/Branches";
 import UnpaidHandlers from "./pages/UnpaidHandlers";
 import NotFound from "./pages/NotFound";
+import Auth from "./pages/Auth";
 
 // Use basename to handle subdirectory routing in preview environments
 const basename = import.meta.env.MODE === 'production' 
@@ -65,6 +66,10 @@ const router = createBrowserRouter([
   {
     path: "/unpaid-handlers",
     element: <UnpaidHandlers />,
+  },
+  {
+    path: "/auth",
+    element: <Auth />,
   },
   {
     // Explicit 404 route
