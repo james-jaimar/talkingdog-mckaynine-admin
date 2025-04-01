@@ -1,7 +1,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { UserProfile, SupabaseUser, SupabaseUsersResponse } from "../types/userTypes";
+import { UserProfile } from "../types/userTypes";
 
 export function useFetchUsers() {
   return useQuery({
@@ -9,7 +9,8 @@ export function useFetchUsers() {
     queryFn: async () => {
       try {
         console.log("Fetching user profiles...");
-        // First get all profiles from the profiles table
+        
+        // First get all profiles from the profiles table - no filtering
         const { data: profiles, error: profilesError } = await supabase
           .from('profiles')
           .select('*')
@@ -22,9 +23,20 @@ export function useFetchUsers() {
         
         console.log("Fetched profiles:", profiles?.length, "profiles");
         if (profiles && profiles.length > 0) {
-          console.log("Profile data sample:", profiles.slice(0, 2));
+          console.log("Profile data sample:", profiles);
         } else {
           console.log("No profiles found in the database");
+        }
+        
+        // Check if the profiles table has appropriate data
+        const { count, error: countError } = await supabase
+          .from('profiles')
+          .select('*', { count: 'exact', head: true });
+        
+        console.log("Total profiles in database (count):", count);
+        
+        if (countError) {
+          console.error("Error counting profiles:", countError);
         }
         
         // Since we can't access admin APIs with the anon key,
@@ -65,7 +77,7 @@ export function useFetchUsers() {
         
         console.log("Final user list:", usersWithTrainers.length, "users");
         if (usersWithTrainers.length > 0) {
-          console.log("Sample users:", usersWithTrainers.slice(0, Math.min(3, usersWithTrainers.length)));
+          console.log("Sample users:", usersWithTrainers);
         } else {
           console.log("WARNING: No users found in the profiles table!");
         }
