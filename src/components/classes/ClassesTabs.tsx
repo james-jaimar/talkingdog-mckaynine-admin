@@ -5,15 +5,12 @@ import { useBranch } from "@/context/BranchContext";
 import { Class } from "./types/class";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-import { DragDropContext, Droppable, DropResult } from "react-beautiful-dnd";
-import { useToast } from "@/hooks/use-toast";
 import { useClassTabOrder } from "./hooks/useClassTabOrder";
 import { useClassTabNavigation } from "./hooks/useClassTabNavigation";
 import { ClassTab } from "./ClassTab";
 
 export function ClassesTabs() {
   const { currentBranch } = useBranch();
-  const { toast } = useToast();
   
   const {
     activeTab,
@@ -67,46 +64,8 @@ export function ClassesTabs() {
   
   const {
     orderedClasses,
-    setOrderedClasses,
-    saveOrderToDatabase,
     isLoadingOrder,
-    isAuthenticated
   } = useClassTabOrder(activeClasses, currentBranch?.id);
-
-  const handleDragEnd = (result: DropResult) => {
-    // If there's no destination, do nothing
-    if (!result.destination) {
-      return;
-    }
-    
-    // Get the old and new indexes from the drag event
-    const oldIndex = result.source.index;
-    const newIndex = result.destination.index;
-    
-    // If there's no change in position, do nothing
-    if (oldIndex === newIndex) {
-      return;
-    }
-    
-    // Create a new array to avoid state mutations
-    const items = Array.from(orderedClasses);
-    const [reorderedItem] = items.splice(oldIndex, 1);
-    items.splice(newIndex, 0, reorderedItem);
-    
-    // Update state with the reordered items
-    setOrderedClasses(items);
-    
-    // Save the new order to the database if user is authenticated
-    if (isAuthenticated) {
-      saveOrderToDatabase(items);
-      
-      // Show toast after successful reordering
-      toast({
-        title: "Class order updated",
-        description: "The order of class tabs has been updated and saved."
-      });
-    }
-  };
 
   if (isLoading || isLoadingOrder) {
     return null;
@@ -120,38 +79,27 @@ export function ClassesTabs() {
   return (
     <div className="mx-4 mt-2 overflow-x-auto">
       <Tabs value={activeTab} className="w-full">
-        <DragDropContext onDragEnd={handleDragEnd}>
-          <Droppable droppableId="class-tabs" direction="horizontal">
-            {(provided) => (
-              <TabsList 
-                className="w-max min-w-full justify-start"
-                ref={provided.innerRef}
-                {...provided.droppableProps}
-              >
-                <TabsTrigger 
-                  value="all" 
-                  onClick={() => handleTabClick("all", "/classes")}
-                  className={cn(
-                    location.pathname === "/classes" ? "font-medium" : ""
-                  )}
-                >
-                  All Classes
-                </TabsTrigger>
-                
-                {orderedClasses.map((classItem, index) => (
-                  <ClassTab
-                    key={classItem.id}
-                    classItem={classItem}
-                    index={index}
-                    isActive={location.pathname.includes(`/classes/${classItem.id}`)}
-                    onTabClick={handleTabClick}
-                  />
-                ))}
-                {provided.placeholder}
-              </TabsList>
+        <TabsList className="w-max min-w-full justify-start">
+          <TabsTrigger 
+            value="all" 
+            onClick={() => handleTabClick("all", "/classes")}
+            className={cn(
+              location.pathname === "/classes" ? "font-medium" : ""
             )}
-          </Droppable>
-        </DragDropContext>
+          >
+            All Classes
+          </TabsTrigger>
+          
+          {orderedClasses.map((classItem, index) => (
+            <ClassTab
+              key={classItem.id}
+              classItem={classItem}
+              index={index}
+              isActive={location.pathname.includes(`/classes/${classItem.id}`)}
+              onTabClick={handleTabClick}
+            />
+          ))}
+        </TabsList>
       </Tabs>
     </div>
   );

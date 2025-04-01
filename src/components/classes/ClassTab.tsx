@@ -1,8 +1,6 @@
 
 import { cn } from "@/lib/utils";
-import { Draggable } from "react-beautiful-dnd";
 import { TabsTrigger } from "@/components/ui/tabs";
-import { GripVertical } from "lucide-react";
 
 interface ClassTabProps {
   classItem: {
@@ -16,33 +14,15 @@ interface ClassTabProps {
 
 export function ClassTab({ classItem, index, isActive, onTabClick }: ClassTabProps) {
   return (
-    <Draggable 
-      key={classItem.id} 
-      draggableId={classItem.id} 
-      index={index}
-    >
-      {(provided, snapshot) => (
-        <TabsTrigger 
-          value={classItem.id} 
-          ref={provided.innerRef}
-          {...provided.draggableProps}
-          onClick={() => onTabClick(classItem.id, `/classes/${classItem.id}/handlers`)}
-          className={cn(
-            "flex items-center gap-1",
-            isActive ? "font-medium" : "",
-            snapshot.isDragging ? "opacity-70" : ""
-          )}
-        >
-          <div 
-            {...provided.dragHandleProps}
-            className="cursor-grab px-1"
-            onClick={(e) => e.stopPropagation()} // Prevent tab click when clicking drag handle
-          >
-            <GripVertical className="h-4 w-4 text-muted-foreground" />
-          </div>
-          {classItem.name}
-        </TabsTrigger>
+    <TabsTrigger 
+      value={classItem.id}
+      onClick={() => onTabClick(classItem.id, `/classes/${classItem.id}/handlers`)}
+      className={cn(
+        "flex items-center gap-1",
+        isActive ? "font-medium" : ""
       )}
-    </Draggable>
+    >
+      {classItem.name}
+    </TabsTrigger>
   );
 }

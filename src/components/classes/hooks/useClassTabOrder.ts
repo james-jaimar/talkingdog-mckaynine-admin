@@ -2,7 +2,6 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 import { Class } from "../types/class";
 
 // Define interface for class tab order data
@@ -24,7 +23,6 @@ export function useClassTabOrder(
   activeClasses: ClassWithExtras[],
   branchId: string | undefined
 ) {
-  const { toast } = useToast();
   const [orderedClasses, setOrderedClasses] = useState<ClassWithExtras[]>([]);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
@@ -102,53 +100,9 @@ export function useClassTabOrder(
     }
   }, [activeClasses, savedOrder, isLoadingOrder, branchId, isAuthenticated]);
 
-  // Save the order to database
-  const saveOrderToDatabase = async (newOrder: ClassWithExtras[]) => {
-    // If not authenticated, just update the local state and don't try to save
-    if (!isAuthenticated) {
-      return;
-    }
-    
-    try {
-      // Check if we have a logged in user
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        return;
-      }
-
-      const orderIds = newOrder.map(item => item.id);
-      
-      // Upsert the order (insert if not exists, update if exists)
-      // Use type assertion to bypass TypeScript's type checking
-      const { error } = await (supabase
-        .from('class_tab_order') as any)
-        .upsert({
-          user_id: user.id,
-          branch_id: branchId || null,
-          class_ids: orderIds
-        }, {
-          onConflict: 'user_id, branch_id',
-          ignoreDuplicates: false
-        });
-      
-      if (error) {
-        console.error("Error saving class order:", error);
-        toast({
-          title: "Error saving order",
-          description: "There was a problem saving your class order.",
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
-      console.error("Error in saveOrderToDatabase:", error);
-    }
-  };
-
   return {
     orderedClasses,
-    setOrderedClasses,
     isLoadingOrder: isLoadingOrder || isAuthenticated === null,
-    saveOrderToDatabase,
     isAuthenticated
   };
 }
