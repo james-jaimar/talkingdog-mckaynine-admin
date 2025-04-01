@@ -41,14 +41,20 @@ export function TrainersTable() {
       if (error) throw error;
       
       // Transform data to handle potential join errors and null values
-      return (data || []).map(trainer => ({
-        ...trainer,
-        branches: trainer.branches || null,
-        // Handle the case where profiles could be an error object
-        profiles: typeof trainer.profiles === 'object' && !Array.isArray(trainer.profiles) && !trainer.profiles?.error 
-          ? trainer.profiles 
-          : null
-      })) as (Trainer & { 
+      return (data || []).map(trainer => {
+        // Check if profiles is an object but actually contains error info
+        const hasProfileError = typeof trainer.profiles === 'object' && 
+                               !Array.isArray(trainer.profiles) && 
+                               // Use hasOwnProperty to check if the error property exists
+                               Object.prototype.hasOwnProperty.call(trainer.profiles, 'error');
+        
+        return {
+          ...trainer,
+          branches: trainer.branches || null,
+          // Set profiles to null if it has an error
+          profiles: hasProfileError ? null : trainer.profiles
+        };
+      }) as (Trainer & { 
         branches: { name: string } | null;
         profiles: { username: string; role: string } | null;
       })[];
