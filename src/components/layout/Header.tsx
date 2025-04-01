@@ -4,7 +4,7 @@ import { useBranch } from "@/context/BranchContext";
 import { BranchSelector } from "@/components/branches/BranchSelector";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
-import { LogOut, User } from "lucide-react";
+import { LogOut, User, Users } from "lucide-react";
 
 export function Header() {
   const { currentBranch } = useBranch();
@@ -46,6 +46,10 @@ export function Header() {
                     </Link>
                     <Link to="/unpaid-handlers" className="text-white hover:text-gray-200 px-2 py-1 rounded whitespace-nowrap">
                       Unpaid Handlers
+                    </Link>
+                    <Link to="/user-admin" className="text-white hover:text-gray-200 px-2 py-1 rounded whitespace-nowrap">
+                      <Users className="inline-block mr-1 h-4 w-4" />
+                      User Admin
                     </Link>
                   </>
                 )}

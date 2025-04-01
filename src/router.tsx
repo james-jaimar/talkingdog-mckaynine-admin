@@ -1,3 +1,4 @@
+
 import { createBrowserRouter } from "react-router-dom";
 
 import Dashboard from "./pages/Dashboard";
@@ -11,6 +12,7 @@ import Branches from "./pages/Branches";
 import UnpaidHandlers from "./pages/UnpaidHandlers";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
+import UserAdmin from "./pages/UserAdmin";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 
 // Use basename to handle subdirectory routing in preview environments
@@ -71,6 +73,10 @@ const router = createBrowserRouter([
   {
     path: "/unpaid-handlers",
     element: <ProtectedRoute requiredRole="admin"><UnpaidHandlers /></ProtectedRoute>,
+  },
+  {
+    path: "/user-admin",
+    element: <ProtectedRoute requiredRole="admin"><UserAdmin /></ProtectedRoute>,
   },
   {
     path: "/auth",
