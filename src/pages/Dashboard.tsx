@@ -22,7 +22,7 @@ export default function Dashboard() {
     queryFn: async () => {
       console.log("Dashboard - Fetching stats");
       try {
-        // Modified the unpaid count query to match what's used in UnpaidHandlers page
+        // Use the exact same query as the UnpaidHandlers page for consistency
         const [
           { count: clientCount }, 
           { count: dogCount }, 

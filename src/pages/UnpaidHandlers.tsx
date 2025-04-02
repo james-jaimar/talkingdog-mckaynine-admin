@@ -18,10 +18,12 @@ export default function UnpaidHandlers() {
     queryFn: async () => {
       console.log("Fetching unpaid bookings");
       
+      // Updated query to fetch ALL bookings without proof of payment, regardless of class
       const { data, error } = await supabase
         .from('bookings')
         .select(`
           id,
+          proof_of_payment,
           class_schedule_id,
           dogs:dog_id(id, name, breed),
           clients:client_id(id, first_name, last_name, email, phone),
