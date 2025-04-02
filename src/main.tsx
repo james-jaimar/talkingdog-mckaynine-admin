@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RouterProvider } from 'react-router-dom';
 import router from './router';
 import { AuthProvider } from '@/context/auth';
+import { BranchProvider } from '@/context/BranchContext';
 import './index.css';
 
 // Configure React Query
@@ -32,7 +33,9 @@ createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <RouterProvider router={router} />
+        <BranchProvider>
+          <RouterProvider router={router} />
+        </BranchProvider>
       </AuthProvider>
     </QueryClientProvider>
   </React.StrictMode>

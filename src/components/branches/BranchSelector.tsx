@@ -13,7 +13,15 @@ import { Badge } from "@/components/ui/badge";
 import { ExtendedBadge } from "@/components/ui/badge-variants";
 
 export function BranchSelector() {
-  const { branches, currentBranch, setCurrentBranch, isLoading } = useBranch();
+  let branchInfo = { branches: [], currentBranch: null, setCurrentBranch: () => {}, isLoading: true };
+  
+  try {
+    branchInfo = useBranch();
+  } catch (error) {
+    console.error("Error accessing branch context:", error);
+  }
+  
+  const { branches, currentBranch, setCurrentBranch, isLoading } = branchInfo;
 
   if (isLoading) {
     return (
@@ -27,7 +35,7 @@ export function BranchSelector() {
   if (!branches || branches.length === 0) {
     return (
       <ExtendedBadge variant="warning" className="flex items-center gap-2 px-3 py-1">
-        <GitBranch className="w-4 h-4" />
+        <GitBranch className="w-4 w-4" />
         <span>No branches available</span>
       </ExtendedBadge>
     );

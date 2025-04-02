@@ -7,8 +7,17 @@ import { Button } from "@/components/ui/button";
 import { LogOut, User, Users, Clipboard } from "lucide-react";
 
 export function Header() {
-  const { currentBranch } = useBranch();
   const { user, logout, isAdmin, isTrainer, role, trainerProfile } = useAuth();
+  
+  // Safely use useBranch hook
+  let branchInfo = { currentBranch: null };
+  try {
+    branchInfo = useBranch();
+  } catch (error) {
+    console.error("Error accessing branch context:", error);
+  }
+  
+  const { currentBranch } = branchInfo;
 
   // Only show branch selector for admin and trainer roles
   const showBranchSelector = user && (isAdmin || isTrainer);
