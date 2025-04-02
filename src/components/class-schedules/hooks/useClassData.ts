@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/auth";
@@ -9,6 +10,7 @@ interface EnrichedClassData extends Class {
   time?: string;
   location?: string;
   schedule_id?: string;
+  selected_dates?: string[];
 }
 
 interface UseClassDataProps {
@@ -70,7 +72,8 @@ export const useClassData = ({ classId }: UseClassDataProps): UseClassDataReturn
             schedule_id: scheduleData.id,
             start_date: new Date(scheduleData.start_time).toLocaleDateString(),
             time: `${new Date(scheduleData.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${new Date(scheduleData.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
-            location: 'Main Branch' // Default location if not specified
+            location: 'Main Branch', // Default location if not specified
+            selected_dates: scheduleData.selected_dates
           };
           
           setClassData(enrichedClassData);

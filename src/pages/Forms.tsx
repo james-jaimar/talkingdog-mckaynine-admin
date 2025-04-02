@@ -39,55 +39,62 @@ export default function Forms() {
   const { data: puppyClasses, isLoading: classesLoading } = useQuery({
     queryKey: ['forms-puppy-classes'],
     queryFn: async () => {
-      // First get the class schedule data
-      const { data: schedules, error: scheduleError } = await supabase
-        .from('class_schedules')
-        .select(`
-          *,
-          classes:class_id (*)
-        `)
-        .order('start_time', { ascending: true });
-      
-      if (scheduleError) {
-        console.error("Error fetching class schedules:", scheduleError);
-        throw scheduleError;
+      try {
+        // First get the class schedule data
+        const { data: schedules, error: scheduleError } = await supabase
+          .from('class_schedules')
+          .select(`
+            *,
+            classes:class_id (*)
+          `)
+          .order('start_time', { ascending: true });
+        
+        if (scheduleError) {
+          console.error("Error fetching class schedules:", scheduleError);
+          throw scheduleError;
+        }
+        
+        // Then get active class information
+        const { data: classes, error: classError } = await supabase
+          .from('classes')
+          .select('*')
+          .eq('level', 'puppy')
+          .order('created_at', { ascending: false });
+        
+        if (classError) {
+          console.error("Error fetching puppy classes:", classError);
+          throw classError;
+        }
+        
+        // Combine the data to create a more complete representation
+        const enrichedClasses = schedules.map((schedule) => {
+          const classData = schedule.classes as Class;
+          return {
+            id: schedule.id,
+            class_id: classData.id,
+            name: classData.name,
+            description: classData.description,
+            level: classData.level,
+            price: classData.price,
+            branch_id: classData.branch_id,
+            capacity: classData.capacity,
+            created_at: schedule.created_at,
+            updated_at: schedule.updated_at,
+            // Display fields formatted from the schedule data
+            title: `${classData.name} - ${classData.description}`,
+            start_date: new Date(schedule.start_time).toLocaleDateString(),
+            time: `${new Date(schedule.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${new Date(schedule.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+            location: 'Main Branch', // Default location if not specified
+            schedule_id: schedule.id,
+            selected_dates: schedule.selected_dates
+          };
+        });
+        
+        return enrichedClasses;
+      } catch (error) {
+        console.error("Error in fetchPuppyClasses:", error);
+        return [];
       }
-      
-      // Then get active class information
-      const { data: classes, error: classError } = await supabase
-        .from('classes')
-        .select('*')
-        .eq('level', 'puppy')
-        .order('created_at', { ascending: false });
-      
-      if (classError) {
-        console.error("Error fetching puppy classes:", classError);
-        throw classError;
-      }
-      
-      // Combine the data to create a more complete representation
-      const enrichedClasses = schedules.map((schedule) => {
-        const classData = schedule.classes as Class;
-        return {
-          id: schedule.id,
-          class_id: classData.id,
-          name: classData.name,
-          description: classData.description,
-          level: classData.level,
-          price: classData.price,
-          branch_id: classData.branch_id,
-          capacity: classData.capacity,
-          created_at: schedule.created_at,
-          updated_at: schedule.updated_at,
-          // Display fields formatted from the schedule data
-          title: `${classData.name} - ${classData.description}`,
-          start_date: new Date(schedule.start_time).toLocaleDateString(),
-          time: `${new Date(schedule.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${new Date(schedule.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
-          location: 'Main Branch' // Default location if not specified
-        };
-      });
-      
-      return enrichedClasses;
     },
     enabled: !!isAdmin && !authLoading,
   });

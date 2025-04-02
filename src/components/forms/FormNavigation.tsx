@@ -2,6 +2,7 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Printer, Save } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface FormNavigationProps {
   title: string;
@@ -20,6 +21,8 @@ export function FormNavigation({
   backPath = "/forms",
   backLabel = "Back to Forms"
 }: FormNavigationProps) {
+  const isMobile = useIsMobile();
+  
   const handlePrint = () => {
     if (onPrint) {
       onPrint();
@@ -34,7 +37,7 @@ export function FormNavigation({
         <Button variant="outline" size="sm" asChild>
           <Link to={backPath}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            {backLabel}
+            {isMobile ? "Back" : backLabel}
           </Link>
         </Button>
         <h1 className="text-2xl font-bold">{title}</h1>
@@ -44,12 +47,12 @@ export function FormNavigation({
         {onSave && (
           <Button variant="mckaynine" size="sm" onClick={onSave} disabled={isSubmitting}>
             <Save className="mr-2 h-4 w-4" />
-            Save Form
+            {isMobile ? "Save" : "Save Form"}
           </Button>
         )}
         <Button variant="outline" size="sm" onClick={handlePrint}>
           <Printer className="mr-2 h-4 w-4" />
-          Print Form
+          {isMobile ? "Print" : "Print Form"}
         </Button>
       </div>
     </div>

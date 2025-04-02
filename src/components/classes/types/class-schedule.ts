@@ -16,4 +16,5 @@ export interface ClassSchedule {
   start_date?: string;
   time?: string;
   location?: string;
+  schedule_id?: string;
 }
