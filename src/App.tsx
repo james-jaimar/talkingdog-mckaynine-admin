@@ -1,17 +1,20 @@
 
+import { useState, useEffect } from 'react';
 import { Toaster } from '@/components/ui/toaster';
+import { AuthProvider } from '@/context/auth'; // Fixed import path
+import { BranchProvider } from '@/context/BranchContext';
 import './App.css';
-import { BranchProvider } from './context/BranchContext';
-import { AuthProvider } from './context/auth';
 
-function App({ children }: { children: React.ReactNode }) {
+interface AppProps {
+  children: React.ReactNode;
+}
+
+function App({ children }: AppProps) {
   return (
     <AuthProvider>
       <BranchProvider>
-        <div className="min-h-screen bg-gray-100">
-          {children}
-          <Toaster />
-        </div>
+        {children}
+        <Toaster />
       </BranchProvider>
     </AuthProvider>
   );

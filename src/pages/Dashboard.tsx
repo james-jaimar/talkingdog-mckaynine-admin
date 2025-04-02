@@ -8,9 +8,14 @@ import { ClassesScheduled } from "@/components/dashboard/ClassesScheduled";
 import { Dog, Users, Calendar, MapPin, AlertCircle } from "lucide-react";
 import { Helmet } from "react-helmet";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/context/auth"; // Add this import to check auth state
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { user, isLoading: authLoading } = useAuth(); // Get auth state
+  
+  // Add a console log to debug auth state
+  console.log("Dashboard - Auth state:", { user: !!user, isLoading: authLoading });
   
   const { data: stats, isLoading } = useQuery({
     queryKey: ['dashboard-stats'],
@@ -37,12 +42,16 @@ export default function Dashboard() {
         branchCount: branchCount || 0,
         unpaidCount: unpaidCount || 0
       };
-    }
+    },
+    enabled: !!user // Only run query when user is authenticated
   });
 
   const handleUnpaidClick = () => {
     navigate('/unpaid-handlers');
   };
+
+  // Add this console log to verify the query is running
+  console.log("Dashboard - Query state:", { isLoading, hasStats: !!stats });
 
   return (
     <DashboardLayout>

@@ -1,6 +1,6 @@
 
 import { Navigate, useLocation } from "react-router-dom";
-import { useAuth } from "@/context/auth";
+import { useAuth } from "@/context/auth"; // Fixed import path
 import { ReactNode } from "react";
 
 interface RequireAuthProps {

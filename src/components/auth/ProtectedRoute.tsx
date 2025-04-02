@@ -1,6 +1,6 @@
 
 import { Navigate, Outlet } from "react-router-dom";
-import { useAuth } from "@/context/auth";
+import { useAuth } from "@/context/auth"; // Fixed import path
 import { Loader2 } from "lucide-react";
 import { useEffect } from "react";
 

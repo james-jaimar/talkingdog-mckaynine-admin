@@ -2,7 +2,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useBranch } from "@/context/BranchContext";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/context/auth"; // Fixed import path
 
 // Define the type for activeClasses to match what we get from the query
 interface ActiveClass {
