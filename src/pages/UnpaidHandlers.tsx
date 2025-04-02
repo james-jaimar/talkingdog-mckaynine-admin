@@ -18,7 +18,7 @@ export default function UnpaidHandlers() {
     queryFn: async () => {
       console.log("Fetching unpaid bookings");
       
-      // Updated query to fetch ALL bookings without proof of payment, regardless of class
+      // Query to fetch ALL bookings where proof_of_payment is null
       const { data, error } = await supabase
         .from('bookings')
         .select(`
@@ -41,7 +41,7 @@ export default function UnpaidHandlers() {
         throw error;
       }
       
-      console.log(`Found ${data?.length || 0} unpaid bookings`);
+      console.log(`Found ${data?.length || 0} unpaid bookings:`, data);
       return data;
     }
   });

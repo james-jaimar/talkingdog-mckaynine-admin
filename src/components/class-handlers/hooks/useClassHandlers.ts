@@ -45,6 +45,7 @@ export function useClassHandlers(classId: string) {
       if (error) throw error;
       
       console.log("Found bookings:", data?.length || 0);
+      console.log("Bookings with null proof_of_payment:", data?.filter(b => b.proof_of_payment === null).length || 0);
       return data as Booking[];
     }
   });

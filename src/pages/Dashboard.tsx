@@ -22,7 +22,7 @@ export default function Dashboard() {
     queryFn: async () => {
       console.log("Dashboard - Fetching stats");
       try {
-        // Use the exact same query as the UnpaidHandlers page for consistency
+        // Ensure the unpaid count query matches exactly what's in the UnpaidHandlers page
         const [
           { count: clientCount }, 
           { count: dogCount }, 
@@ -34,7 +34,8 @@ export default function Dashboard() {
           supabase.from('dogs').select('*', { count: 'exact', head: true }),
           supabase.from('bookings').select('*', { count: 'exact', head: true }),
           supabase.from('branches').select('*', { count: 'exact', head: true }),
-          supabase.from('bookings').select('*', { count: 'exact', head: true })
+          supabase.from('bookings')
+            .select('*', { count: 'exact', head: true })
             .is('proof_of_payment', null)
         ]);
         
