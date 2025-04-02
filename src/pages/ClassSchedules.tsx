@@ -1,33 +1,23 @@
 
 import { useParams, useNavigate } from "react-router-dom";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { ClassSchedulesTable } from "@/components/class-schedules/ClassSchedulesTable";
-import { AddClassScheduleModal } from "@/components/class-schedules/AddClassScheduleModal";
-import { Button } from "@/components/ui/button";
-import { Plus, ArrowLeft } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Class } from "@/components/classes/types/class";
 import { useToast } from "@/hooks/use-toast";
-import { Helmet } from "react-helmet";
 import { useAuth } from "@/context/AuthContext";
 import { useBranch } from "@/context/BranchContext";
-import { 
-  Breadcrumb,
-  BreadcrumbList,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbSeparator,
-  BreadcrumbPage
-} from "@/components/ui/breadcrumb";
+import { ClassSchedulesLoading } from "@/components/class-schedules/ClassSchedulesLoading";
+import { ClassSchedulesContent } from "@/components/class-schedules/ClassSchedulesContent";
+import { NoClassSelected } from "@/components/class-schedules/NoClassSelected";
+import { ClassNotFound } from "@/components/class-schedules/ClassNotFound";
+import { AuthRequirements } from "@/components/class-schedules/AuthRequirements";
 
 export default function ClassSchedules() {
   // Update to use both id and classId to support both URL patterns
   const { id, classId: urlClassId } = useParams<{ id: string; classId: string }>();
   const classId = id || urlClassId; // Use id from /classes/:id/schedules or classId from /class/:classId/schedules
   
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const { toast } = useToast();
   const { user, session } = useAuth();
   const { currentBranch } = useBranch();
@@ -75,141 +65,30 @@ export default function ClassSchedules() {
 
   // If user is not authenticated, show auth message
   if (!user || !session) {
-    return (
-      <DashboardLayout>
-        <div className="w-full py-6 flex justify-center">
-          <p>You need to log in to view class schedules.</p>
-        </div>
-      </DashboardLayout>
-    );
+    return <AuthRequirements message="You need to log in to view class schedules." />;
   }
 
   // If no branch is selected, show message
   if (!currentBranch) {
-    return (
-      <DashboardLayout>
-        <div className="w-full py-6 flex justify-center">
-          <p>Please select a branch to view class schedules.</p>
-        </div>
-      </DashboardLayout>
-    );
+    return <AuthRequirements message="Please select a branch to view class schedules." />;
   }
 
   if (isLoading) {
-    return (
-      <DashboardLayout>
-        <div className="w-full py-6 flex justify-center">
-          <p>Loading class information...</p>
-        </div>
-      </DashboardLayout>
-    );
+    return <ClassSchedulesLoading message="Loading class information..." />;
   }
 
   if (error) {
-    return (
-      <DashboardLayout>
-        <div className="w-full py-6 flex justify-center">
-          <p>Error loading class data: {error instanceof Error ? error.message : "Unknown error"}</p>
-        </div>
-      </DashboardLayout>
-    );
+    return <ClassSchedulesLoading message={`Error loading class data: ${error instanceof Error ? error.message : "Unknown error"}`} />;
   }
 
   if (!classData && !isLoading && classId) {
-    return (
-      <DashboardLayout>
-        <div className="w-full py-6 flex justify-center">
-          <p>Class not found. The class may no longer exist or you might not have permission to view it.</p>
-          <Button 
-            variant="outline" 
-            className="ml-4"
-            onClick={() => navigate("/classes")}
-          >
-            Return to Classes
-          </Button>
-        </div>
-      </DashboardLayout>
-    );
+    return <ClassNotFound />;
   }
 
   // If no classId was provided in the URL
   if (!classId) {
-    return (
-      <DashboardLayout>
-        <Helmet>
-          <title>Class Schedules - McKaynine Training Centre</title>
-        </Helmet>
-        <div className="w-full py-6">
-          <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-            <div>
-              <h1 className="text-2xl font-bold">Class Schedules</h1>
-              <p className="text-muted-foreground">Select a class to view its schedules</p>
-            </div>
-          </div>
-          
-          <div className="bg-white p-6 rounded-md shadow-sm">
-            <p>Please select a class from the Classes page to view its schedules.</p>
-            <Button 
-              onClick={() => navigate("/classes")}
-              className="mt-4"
-            >
-              Go to Classes
-            </Button>
-          </div>
-        </div>
-      </DashboardLayout>
-    );
+    return <NoClassSelected />;
   }
 
-  return (
-    <DashboardLayout>
-      <Helmet>
-        <title>{classData?.name} Schedules - McKaynine Training Centre</title>
-      </Helmet>
-      <div className="w-full py-6">
-        <Breadcrumb className="mb-4">
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbLink href="/classes">Classes</BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbPage>{classData?.name || 'Class'} Schedules</BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
-
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-          <div>
-            <div className="flex items-center gap-2">
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => navigate("/classes")}
-                className="mr-2"
-              >
-                <ArrowLeft className="h-4 w-4 mr-1" />
-                Back to Classes
-              </Button>
-              <h1 className="text-2xl font-bold">{classData?.name} Schedules</h1>
-            </div>
-            <p className="text-muted-foreground">Manage schedules for this class</p>
-          </div>
-          <Button onClick={() => setIsAddModalOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Schedule
-          </Button>
-        </div>
-
-        <ClassSchedulesTable classId={classId} />
-
-        <AddClassScheduleModal 
-          open={isAddModalOpen} 
-          onOpenChange={setIsAddModalOpen} 
-          classId={classId}
-          classData={classData!}
-        />
-      </div>
-    </DashboardLayout>
-  );
+  return <ClassSchedulesContent classId={classId} classData={classData!} />;
 }
