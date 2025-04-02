@@ -1,5 +1,5 @@
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { StatsCard } from "@/components/dashboard/StatsCard";
@@ -9,13 +9,25 @@ import { Dog, Users, Calendar, MapPin, AlertCircle } from "lucide-react";
 import { Helmet } from "react-helmet";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/auth";
+import { useEffect } from "react";
+import { toast } from "sonner";
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const { user, isLoading: authLoading } = useAuth();
+  const queryClient = useQueryClient();
   
   // Add a console log to debug auth state
   console.log("Dashboard - Auth state:", { user: !!user, isLoading: authLoading });
+  
+  // Force refetch dashboard stats on every dashboard visit
+  useEffect(() => {
+    if (user) {
+      console.log("Dashboard - Force refreshing payment data");
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+      toast.info("Payment data refreshed");
+    }
+  }, [user, queryClient]);
   
   const { data: stats, isLoading } = useQuery({
     queryKey: ['dashboard-stats'],
