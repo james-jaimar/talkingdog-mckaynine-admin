@@ -83,7 +83,39 @@ export function AddHandlerForm({ onSuccess }: AddHandlerFormProps) {
     setIsSubmitting(true);
     console.log("Form submitted with data:", data);
 
+    // Check if the currentBranch exists
+    if (!currentBranch?.id) {
+      toast({
+        title: "Error",
+        description: "No branch selected. Please select a branch to add a handler.",
+        variant: "destructive",
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
+      // Check if client with this email already exists
+      const { data: existingClient, error: checkError } = await supabase
+        .from("clients")
+        .select("id")
+        .eq("email", data.email)
+        .maybeSingle();
+
+      if (checkError) {
+        console.error("Error checking existing client:", checkError);
+      }
+
+      if (existingClient) {
+        toast({
+          title: "Client already exists",
+          description: "A client with this email already exists.",
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
       // Insert client data with branch_id
       const { data: clientData, error: clientError } = await supabase
         .from("clients")
@@ -93,17 +125,21 @@ export function AddHandlerForm({ onSuccess }: AddHandlerFormProps) {
           email: data.email,
           phone: data.phone || null,
           notes: data.comments || null,
-          branch_id: currentBranch?.id || null
+          branch_id: currentBranch.id
         })
         .select("id")
         .single();
 
       if (clientError) {
-        console.error("Client error:", clientError);
-        throw clientError;
+        console.error("Client insertion error:", clientError);
+        throw new Error(clientError.message || "Failed to create client");
       }
 
       console.log("Client created successfully:", clientData);
+
+      if (!clientData?.id) {
+        throw new Error("Client was created but no ID was returned");
+      }
 
       // Insert dog data
       const dogData = {
@@ -123,13 +159,17 @@ export function AddHandlerForm({ onSuccess }: AddHandlerFormProps) {
         .single();
 
       if (dogError) {
-        console.error("Dog error:", dogError);
-        throw dogError;
+        console.error("Dog insertion error:", dogError);
+        throw new Error(dogError.message || "Failed to create dog");
       }
 
       console.log("Dog created successfully:", dogData2);
 
-      // Insert class enrollment data
+      if (!dogData2?.id) {
+        throw new Error("Dog was created but no ID was returned");
+      }
+
+      // Insert class enrollment data only if at least one class has data
       const enrollmentData = {
         dog_id: dogData2.id,
         puppy_class: data.puppyClass || null,
@@ -141,7 +181,6 @@ export function AddHandlerForm({ onSuccess }: AddHandlerFormProps) {
         yoga_class: data.yogaClass || null
       };
 
-      // Only insert if at least one class has data
       const hasClasses = Object.entries(enrollmentData).some(
         ([key, value]) => key !== 'dog_id' && value !== null && value !== ''
       );
@@ -155,10 +194,15 @@ export function AddHandlerForm({ onSuccess }: AddHandlerFormProps) {
 
         if (enrollmentError) {
           console.error("Enrollment error:", enrollmentError);
-          throw enrollmentError;
+          // We don't throw here as this is optional data
+          toast({
+            title: "Warning",
+            description: "Handler and dog created, but there was an issue with class enrollments.",
+            variant: "default",
+          });
+        } else {
+          console.log("Class enrollment created successfully");
         }
-
-        console.log("Class enrollment created successfully");
       }
 
       // Create notes for WhatsApp and photo permission
@@ -179,6 +223,7 @@ export function AddHandlerForm({ onSuccess }: AddHandlerFormProps) {
 
         if (updateError) {
           console.error("Error updating notes:", updateError);
+          // We don't throw as this is just updating additional info
         }
       }
 
@@ -195,11 +240,11 @@ export function AddHandlerForm({ onSuccess }: AddHandlerFormProps) {
       
       // Close the modal
       onSuccess();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error adding handler:", error);
       toast({
         title: "Failed to add handler",
-        description: "There was an error adding the handler. Please try again.",
+        description: error.message || "There was an error adding the handler. Please try again.",
         variant: "destructive",
       });
     } finally {
