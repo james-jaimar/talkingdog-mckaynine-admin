@@ -22,6 +22,7 @@ export default function Dashboard() {
     queryFn: async () => {
       console.log("Dashboard - Fetching stats");
       try {
+        // Modified the unpaid count query to match what's used in UnpaidHandlers page
         const [
           { count: clientCount }, 
           { count: dogCount }, 
@@ -36,6 +37,8 @@ export default function Dashboard() {
           supabase.from('bookings').select('*', { count: 'exact', head: true })
             .is('proof_of_payment', null)
         ]);
+        
+        console.log("Dashboard stats:", { clientCount, dogCount, bookingCount, branchCount, unpaidCount });
         
         return {
           clientCount: clientCount || 0,

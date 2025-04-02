@@ -35,6 +35,8 @@ export function useClassHandlers(classId: string) {
           social_media_consent,
           info_pg,
           class_schedule_id,
+          status,
+          payment_status,
           dogs:dog_id(id, name, breed),
           clients:client_id(id, first_name, last_name, email, phone)
         `)

@@ -5,10 +5,10 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Helmet } from "react-helmet";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, ExternalLink } from "lucide-react";
 import { Booking } from "@/components/class-handlers/types/booking";
 import { Button } from "@/components/ui/button";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 
 export default function UnpaidHandlers() {
   const navigate = useNavigate();
@@ -16,6 +16,8 @@ export default function UnpaidHandlers() {
   const { data: bookings, isLoading } = useQuery({
     queryKey: ['unpaid-bookings'],
     queryFn: async () => {
+      console.log("Fetching unpaid bookings");
+      
       const { data, error } = await supabase
         .from('bookings')
         .select(`
@@ -24,14 +26,20 @@ export default function UnpaidHandlers() {
           dogs:dog_id(id, name, breed),
           clients:client_id(id, first_name, last_name, email, phone),
           class_schedules(
+            id,
             start_time,
-            classes(name)
+            classes(id, name)
           )
         `)
         .is('proof_of_payment', null)
         .order('created_at', { ascending: false });
       
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching unpaid bookings:", error);
+        throw error;
+      }
+      
+      console.log(`Found ${data?.length || 0} unpaid bookings`);
       return data;
     }
   });
@@ -68,6 +76,7 @@ export default function UnpaidHandlers() {
                     <TableHead>Contact</TableHead>
                     <TableHead>Class</TableHead>
                     <TableHead>Class Date</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -86,6 +95,16 @@ export default function UnpaidHandlers() {
                         {booking.class_schedules?.start_time ? 
                           new Date(booking.class_schedules.start_time).toLocaleDateString() : 
                           'Not scheduled'}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {booking.class_schedules?.classes?.id && (
+                          <Link to={`/class/${booking.class_schedules.classes.id}/handlers`}>
+                            <Button variant="ghost" size="sm" className="h-8">
+                              <ExternalLink className="h-3.5 w-3.5 mr-1" />
+                              View Class
+                            </Button>
+                          </Link>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
