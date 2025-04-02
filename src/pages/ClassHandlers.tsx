@@ -11,6 +11,8 @@ import { AddHandlerToClassModal } from "@/components/classes/handlers/AddHandler
 import { Helmet } from "react-helmet";
 import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
+import { FormNavigation } from "@/components/forms/FormNavigation";
+import { useClassData } from "@/components/class-schedules/hooks/useClassData";
 
 export default function ClassHandlers() {
   const { id } = useParams<{ id: string }>();
@@ -18,27 +20,12 @@ export default function ClassHandlers() {
   const [isAddHandlerModalOpen, setIsAddHandlerModalOpen] = useState(false);
   const queryClient = useQueryClient();
   
-  const { data: classInfo, isLoading } = useQuery({
-    queryKey: ['class-details', classId],
-    queryFn: async () => {
-      if (!classId) return null;
-      
-      const { data, error } = await supabase
-        .from('classes')
-        .select(`
-          *,
-          branches:branch_id (
-            name
-          )
-        `)
-        .eq('id', classId)
-        .single();
-      
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!classId
-  });
+  // Use the enhanced useClassData hook that handles both class and schedule data
+  const { 
+    classData, 
+    scheduleData,
+    isLoading 
+  } = useClassData({ classId });
 
   const handleAddHandlerSuccess = () => {
     // Explicitly refresh the handlers data for this class
@@ -69,7 +56,7 @@ export default function ClassHandlers() {
     );
   }
 
-  if (!classInfo) {
+  if (!classData) {
     return (
       <DashboardLayout>
         <div className="py-10 text-center">Class not found</div>
@@ -77,31 +64,34 @@ export default function ClassHandlers() {
     );
   }
 
+  // Create a display time string from schedule data if available
+  const timeDisplay = scheduleData ? 
+    `${new Date(scheduleData.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - 
+     ${new Date(scheduleData.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 
+    '';
+
+  // Create a subtitle with branch, level, and time information
+  const subtitle = `${classData.branches?.name || ''} | Level: ${classData.level}${timeDisplay ? ` | ${timeDisplay}` : ''}`;
+
   return (
     <DashboardLayout>
       <Helmet>
-        <title>{classInfo.name} Handlers - McKaynine Training Centre</title>
+        <title>{classData.name} Handlers - McKaynine Training Centre</title>
       </Helmet>
       
       <div className="w-full py-6">
-        <div className="mb-6">
-          <Link to="/classes" className="flex items-center text-muted-foreground hover:text-foreground mb-4">
-            <ArrowLeft className="h-4 w-4 mr-1" />
-            Back to Classes
-          </Link>
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-bold">{classInfo.name} - Handlers</h1>
-              <p className="text-muted-foreground">
-                Branch: {classInfo.branches?.name} | Level: {classInfo.level}
-              </p>
-            </div>
-            
-            <Button onClick={() => setIsAddHandlerModalOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Handler
-            </Button>
-          </div>
+        <FormNavigation
+          title={`${classData.name} - Handlers`}
+          subtitle={subtitle}
+          backPath="/classes"
+          backLabel="Back to Classes"
+        />
+        
+        <div className="mb-6 flex justify-end">
+          <Button onClick={() => setIsAddHandlerModalOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Handler
+          </Button>
         </div>
         
         {classId && <ClassHandlersTable classId={classId} />}
@@ -111,7 +101,7 @@ export default function ClassHandlers() {
             open={isAddHandlerModalOpen}
             onOpenChange={setIsAddHandlerModalOpen}
             classId={classId}
-            classData={classInfo}
+            classData={classData}
             onSuccess={handleAddHandlerSuccess}
           />
         )}

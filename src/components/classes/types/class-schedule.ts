@@ -17,4 +17,6 @@ export interface ClassSchedule {
   time?: string;
   location?: string;
   schedule_id?: string;
+  // Additional class data
+  classes?: any;
 }
