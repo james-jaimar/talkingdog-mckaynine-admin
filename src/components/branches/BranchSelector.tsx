@@ -11,9 +11,16 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { ExtendedBadge } from "@/components/ui/badge-variants";
+import { Branch } from "@/context/BranchContext";
 
 export function BranchSelector() {
-  let branchInfo = { branches: [], currentBranch: null, setCurrentBranch: () => {}, isLoading: true };
+  // Define a type-safe default state that matches the BranchContextType structure
+  let branchInfo = { 
+    branches: [] as Branch[], 
+    currentBranch: null as Branch | null, 
+    setCurrentBranch: (branch: Branch | null) => {}, 
+    isLoading: true 
+  };
   
   try {
     branchInfo = useBranch();
@@ -35,7 +42,7 @@ export function BranchSelector() {
   if (!branches || branches.length === 0) {
     return (
       <ExtendedBadge variant="warning" className="flex items-center gap-2 px-3 py-1">
-        <GitBranch className="w-4 w-4" />
+        <GitBranch className="w-4 h-4" />
         <span>No branches available</span>
       </ExtendedBadge>
     );

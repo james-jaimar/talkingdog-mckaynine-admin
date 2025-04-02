@@ -1,6 +1,6 @@
 
 import { Link } from "react-router-dom";
-import { useBranch } from "@/context/BranchContext";
+import { useBranch, Branch } from "@/context/BranchContext";
 import { BranchSelector } from "@/components/branches/BranchSelector";
 import { useAuth } from "@/context/auth";
 import { Button } from "@/components/ui/button";
@@ -9,8 +9,8 @@ import { LogOut, User, Users, Clipboard } from "lucide-react";
 export function Header() {
   const { user, logout, isAdmin, isTrainer, role, trainerProfile } = useAuth();
   
-  // Safely use useBranch hook
-  let branchInfo = { currentBranch: null };
+  // Safely use useBranch hook with proper typing
+  let branchInfo = { currentBranch: null as Branch | null };
   try {
     branchInfo = useBranch();
   } catch (error) {
