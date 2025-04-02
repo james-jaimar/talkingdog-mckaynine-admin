@@ -8,7 +8,7 @@ import { LogOut, User, Users, Clipboard } from "lucide-react";
 
 export function Header() {
   const { currentBranch } = useBranch();
-  const { user, signOut, isAdmin, isTrainer, userRole, trainerProfile } = useAuth();
+  const { user, logout, isAdmin, isTrainer, role, trainerProfile } = useAuth();
 
   // Only show branch selector for admin and trainer roles
   const showBranchSelector = user && (isAdmin || isTrainer);
@@ -17,7 +17,7 @@ export function Header() {
   if (user && process.env.NODE_ENV === 'development') {
     console.log(
       "Header - User info:", 
-      { email: user?.email, role: userRole, isAdmin, isTrainer, trainerProfile }
+      { email: user?.email, role, isAdmin, isTrainer, trainerProfile }
     );
   }
 
@@ -99,7 +99,7 @@ export function Header() {
                 <Button 
                   variant="ghost" 
                   size="sm" 
-                  onClick={signOut}
+                  onClick={logout}
                   className="text-white hover:text-white hover:bg-mckaynine-700"
                 >
                   <LogOut className="h-4 w-4 md:mr-1" />

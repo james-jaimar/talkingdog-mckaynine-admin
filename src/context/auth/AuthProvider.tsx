@@ -17,6 +17,7 @@ export const AuthProvider: React.FC<PropsWithChildren> = ({ children }) => {
   // Derived states
   const isAdmin = role === 'admin';
   const isTrainer = role === 'trainer';
+  const isHandler = role === 'handler';
 
   // Auth state initialization and subscription
   useEffect(() => {
@@ -123,6 +124,7 @@ export const AuthProvider: React.FC<PropsWithChildren> = ({ children }) => {
     role,
     isAdmin,
     isTrainer,
+    isHandler,
     isLoading,
     trainerProfile,
     
