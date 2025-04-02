@@ -16,12 +16,16 @@ export function DashboardLayout({ children, requireAuth = true }: DashboardLayou
   
   // Handle authentication redirects
   useEffect(() => {
+    console.log("DashboardLayout - Auth state:", { user: !!user, isLoading });
+    
     if (!isLoading) {
       if (requireAuth && !user) {
         // Redirect to auth page if authentication is required but user isn't logged in
+        console.log("DashboardLayout - Redirecting to auth page (no user)");
         navigate("/auth", { replace: true });
       } else if (!requireAuth && user) {
         // Redirect to dashboard if user is already logged in and tries to access non-auth pages
+        console.log("DashboardLayout - Redirecting to dashboard (user already logged in)");
         navigate("/", { replace: true });
       }
     }
@@ -29,6 +33,7 @@ export function DashboardLayout({ children, requireAuth = true }: DashboardLayou
 
   // Show loading indicator while authentication is being checked
   if (isLoading) {
+    console.log("DashboardLayout - Showing loading indicator");
     return (
       <div className="flex items-center justify-center h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-mckaynine-600" />
@@ -39,6 +44,7 @@ export function DashboardLayout({ children, requireAuth = true }: DashboardLayou
 
   // If requiring auth but no user, render nothing (redirect will happen)
   if (requireAuth && !user) {
+    console.log("DashboardLayout - Not rendering (no user)");
     return null;
   }
 

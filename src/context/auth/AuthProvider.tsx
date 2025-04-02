@@ -48,17 +48,19 @@ export const AuthProvider: React.FC<PropsWithChildren> = ({ children }) => {
           } catch (error) {
             console.error("Error fetching user profile:", error);
             setRole(null);
+          } finally {
+            setIsLoading(false);
           }
         } else {
           setRole(null);
+          setIsLoading(false);
         }
-
-        setIsLoading(false);
       }
     );
 
     // Initial session check
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log("Initial session check:", !!session);
       setSession(session);
       setUser(session?.user ?? null);
       
@@ -69,6 +71,7 @@ export const AuthProvider: React.FC<PropsWithChildren> = ({ children }) => {
             ensureAdminRole(session.user.id, session.user.email, profileData?.role)
           )
           .then(finalRole => {
+            console.log("Initial role check:", finalRole);
             setRole(finalRole);
             setIsLoading(false);
           })
@@ -80,6 +83,9 @@ export const AuthProvider: React.FC<PropsWithChildren> = ({ children }) => {
       } else {
         setIsLoading(false);
       }
+    }).catch(error => {
+      console.error("Error checking initial session:", error);
+      setIsLoading(false);
     });
 
     // Cleanup subscription on unmount

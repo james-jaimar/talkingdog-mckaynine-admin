@@ -8,11 +8,11 @@ import { ClassesScheduled } from "@/components/dashboard/ClassesScheduled";
 import { Dog, Users, Calendar, MapPin, AlertCircle } from "lucide-react";
 import { Helmet } from "react-helmet";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/context/auth"; // Add this import to check auth state
+import { useAuth } from "@/context/auth";
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { user, isLoading: authLoading } = useAuth(); // Get auth state
+  const { user, isLoading: authLoading } = useAuth();
   
   // Add a console log to debug auth state
   console.log("Dashboard - Auth state:", { user: !!user, isLoading: authLoading });
@@ -20,28 +20,34 @@ export default function Dashboard() {
   const { data: stats, isLoading } = useQuery({
     queryKey: ['dashboard-stats'],
     queryFn: async () => {
-      const [
-        { count: clientCount }, 
-        { count: dogCount }, 
-        { count: bookingCount }, 
-        { count: branchCount },
-        { count: unpaidCount }
-      ] = await Promise.all([
-        supabase.from('clients').select('*', { count: 'exact', head: true }),
-        supabase.from('dogs').select('*', { count: 'exact', head: true }),
-        supabase.from('bookings').select('*', { count: 'exact', head: true }),
-        supabase.from('branches').select('*', { count: 'exact', head: true }),
-        supabase.from('bookings').select('*', { count: 'exact', head: true })
-          .is('proof_of_payment', null)
-      ]);
-      
-      return {
-        clientCount: clientCount || 0,
-        dogCount: dogCount || 0,
-        bookingCount: bookingCount || 0,
-        branchCount: branchCount || 0,
-        unpaidCount: unpaidCount || 0
-      };
+      console.log("Dashboard - Fetching stats");
+      try {
+        const [
+          { count: clientCount }, 
+          { count: dogCount }, 
+          { count: bookingCount }, 
+          { count: branchCount },
+          { count: unpaidCount }
+        ] = await Promise.all([
+          supabase.from('clients').select('*', { count: 'exact', head: true }),
+          supabase.from('dogs').select('*', { count: 'exact', head: true }),
+          supabase.from('bookings').select('*', { count: 'exact', head: true }),
+          supabase.from('branches').select('*', { count: 'exact', head: true }),
+          supabase.from('bookings').select('*', { count: 'exact', head: true })
+            .is('proof_of_payment', null)
+        ]);
+        
+        return {
+          clientCount: clientCount || 0,
+          dogCount: dogCount || 0,
+          bookingCount: bookingCount || 0,
+          branchCount: branchCount || 0,
+          unpaidCount: unpaidCount || 0
+        };
+      } catch (error) {
+        console.error("Dashboard - Error fetching stats:", error);
+        throw error;
+      }
     },
     enabled: !!user // Only run query when user is authenticated
   });
