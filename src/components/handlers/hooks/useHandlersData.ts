@@ -1,3 +1,4 @@
+
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
@@ -45,7 +46,7 @@ export function useHandlersData() {
   const itemsPerPage = 50;
   const { currentBranch } = useBranch();
 
-  // Add refetch interval to periodically check for new data
+  // Modified refetch interval to avoid excessive refetching
   const { data: handlers = [], isLoading, refetch } = useQuery({
     queryKey: ['handlers', currentBranch?.id],
     queryFn: async () => {
@@ -105,8 +106,12 @@ export function useHandlersData() {
       }
     },
     enabled: !!currentBranch, // Only run query when a branch is selected
-    refetchInterval: 10000, // Refetch every 10 seconds to see new imports
-    refetchOnWindowFocus: true
+    // Reduced refetch interval from 10 seconds to 30 seconds to prevent constant fetching
+    refetchInterval: 30000,
+    // Disable auto refetch on window focus to prevent unnecessary fetches
+    refetchOnWindowFocus: false,
+    // Add stale time to reduce unnecessary refetches
+    staleTime: 10000
   });
 
   // Filter handlers by search query

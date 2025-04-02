@@ -10,7 +10,7 @@ import { HandlerAlphabetPagination } from "@/components/handlers/HandlerAlphabet
 import { HandlerTable } from "@/components/handlers/HandlerTable";
 import { useHandlersData } from "@/components/handlers/hooks/useHandlersData";
 import { Helmet } from "react-helmet";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 export default function Handlers() {
   const { 
@@ -23,19 +23,12 @@ export default function Handlers() {
     itemsPerPage,
     refetch
   } = useHandlersData();
+  
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
-  // Force refetch data when component mounts to ensure we have the latest data after imports
+  // Initial load on mount, but no interval refetch
   useEffect(() => {
-    // Immediate refetch on mount
     refetch();
-    
-    // Setup a refetch interval while the component is mounted
-    const interval = setInterval(() => {
-      refetch();
-    }, 5000);
-    
-    // Clean up interval on unmount
-    return () => clearInterval(interval);
   }, [refetch]);
 
   return (

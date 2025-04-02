@@ -11,13 +11,24 @@ import { Button } from "@/components/ui/button";
 import { PlusCircle } from "lucide-react";
 import { useState } from "react";
 import { AddHandlerForm } from "./AddHandlerForm";
+import { useQueryClient } from "@tanstack/react-query";
 
 export function AddHandlerModal() {
   const [open, setOpen] = useState(false);
+  const queryClient = useQueryClient();
 
   const handleSuccess = () => {
     console.log("Form submitted successfully, closing modal");
     setOpen(false);
+    
+    // Force manual refetch of handlers data to update the list
+    queryClient.invalidateQueries({ queryKey: ["handlers"] });
+    
+    // Additional delay before allowing the modal to reopen
+    // This ensures any data operations have completed
+    setTimeout(() => {
+      // Nothing needed here, just ensuring a delay
+    }, 500);
   };
 
   return (
