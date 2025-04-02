@@ -3,7 +3,7 @@ import { TableRow, TableCell } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Check, Save, UserMinus } from "lucide-react";
+import { Check, Save, UserMinus, Pencil } from "lucide-react";
 import { Booking } from "./types/booking";
 
 interface BookingRowProps {
@@ -155,6 +155,7 @@ export function BookingRow({
               variant="ghost"
               onClick={() => startEditing(booking)}
             >
+              <Pencil className="h-4 w-4 mr-1" />
               Edit
             </Button>
           )}
