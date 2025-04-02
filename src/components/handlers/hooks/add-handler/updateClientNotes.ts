@@ -5,13 +5,19 @@ import { FormValues } from "../../form/handlerAddFormSchema";
 export const useClientNotesUpdate = () => {
   const updateClientNotes = async (data: FormValues, clientId: string): Promise<void> => {
     try {
-      // Create notes for WhatsApp and photo permission
+      // Create notes for WhatsApp, photo permission, and indemnity agreement
       let notes = data.comments || "";
+      
       if (data.whatsApp) {
         notes += (notes ? "\n" : "") + "WhatsApp: yes";
       }
+      
       if (data.photoPermission) {
         notes += (notes ? "\n" : "") + "Photo Permission: yes";
+      }
+      
+      if (data.indemnityAgreement) {
+        notes += (notes ? "\n" : "") + "Signed Indemnity Agreement: yes";
       }
 
       if (notes && notes !== data.comments) {

@@ -13,13 +13,62 @@ export const useDogCreation = () => {
     clientId: string
   ): Promise<DogData> => {
     try {
+      // Prepare notes with more structured information
+      let notesArray = [];
+      
+      if (data.dogDob) {
+        notesArray.push(`DOB: ${data.dogDob}`);
+      }
+      
+      // Add puppy-specific information to notes if available
+      if (data.puppyVaccinated) {
+        notesArray.push(`Vaccinated: Yes${data.puppyVaccinationDate ? `, Date: ${data.puppyVaccinationDate}` : ''}`);
+      }
+      
+      if (data.puppyMicrochipped) {
+        notesArray.push(`Microchipped: Yes${data.puppyMicrochipNumber ? `, Number: ${data.puppyMicrochipNumber}` : ''}`);
+      }
+      
+      if (data.puppyDewormingDate) {
+        notesArray.push(`Last Deworming: ${data.puppyDewormingDate}`);
+      }
+      
+      if (data.puppyVetName) {
+        let vetInfo = `Vet: ${data.puppyVetName}`;
+        if (data.puppyVetPhone) vetInfo += `, Phone: ${data.puppyVetPhone}`;
+        if (data.puppyVetAddress) vetInfo += `, Address: ${data.puppyVetAddress}`;
+        notesArray.push(vetInfo);
+      }
+      
+      // Compile notes
+      const notes = notesArray.length > 0 ? notesArray.join('\n') : null;
+      
+      // Prepare medical notes
+      let medicalNotes = data.puppyMedicalConditions || '';
+      
+      // Prepare behavior notes with puppy-specific information
+      let behaviorNotes = data.assessment || '';
+      
+      if (data.puppyBehaviorIssues) {
+        behaviorNotes += (behaviorNotes ? '\n\n' : '') + `Behavior concerns: ${data.puppyBehaviorIssues}`;
+      }
+      
+      if (data.puppyPreviousTraining) {
+        behaviorNotes += (behaviorNotes ? '\n\n' : '') + `Previous training: ${data.puppyPreviousTraining}`;
+      }
+      
+      if (data.puppyDiet) {
+        behaviorNotes += (behaviorNotes ? '\n\n' : '') + `Diet: ${data.puppyDiet}`;
+      }
+      
       // Insert dog data
       const dogData = {
         name: data.dogName,
         breed: data.breed,
         client_id: clientId,
-        behavior_notes: data.assessment || null,
-        notes: data.dogDob ? `DOB: ${data.dogDob}` : null,
+        behavior_notes: behaviorNotes || null,
+        medical_notes: medicalNotes || null,
+        notes: notes,
       };
       
       console.log("Inserting dog data:", dogData);

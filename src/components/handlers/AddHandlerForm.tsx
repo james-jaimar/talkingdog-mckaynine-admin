@@ -3,11 +3,13 @@ import { Form } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { HandlerPersonalInfoFields } from "./form/HandlerPersonalInfoFields";
 import { DogInfoFields } from "./form/DogInfoFields";
+import { PuppyClassFields } from "./form/PuppyClassFields";
 import { ClassAndPreferencesFields } from "./form/ClassAndPreferencesFields";
 import { Separator } from "@/components/ui/separator";
 import { useAddHandlerForm } from "./hooks/add-handler";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface AddHandlerFormProps {
   onSuccess: () => void;
@@ -27,24 +29,41 @@ export function AddHandlerForm({ onSuccess }: AddHandlerFormProps) {
           </Alert>
         )}
         
-        <div>
-          <h3 className="text-lg font-medium mb-4">Handler Information</h3>
-          <HandlerPersonalInfoFields control={form.control} />
-        </div>
-        
-        <Separator className="my-6" />
-        
-        <div>
-          <h3 className="text-lg font-medium mb-4">Dog Information</h3>
-          <DogInfoFields control={form.control} />
-        </div>
-        
-        <Separator className="my-6" />
-        
-        <div>
-          <h3 className="text-lg font-medium mb-4">Class & Preferences</h3>
-          <ClassAndPreferencesFields control={form.control} />
-        </div>
+        <Tabs defaultValue="basic" className="w-full">
+          <TabsList>
+            <TabsTrigger value="basic">Basic Information</TabsTrigger>
+            <TabsTrigger value="puppy">Puppy Class</TabsTrigger>
+            <TabsTrigger value="classes">Classes & Preferences</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="basic" className="space-y-6 pt-4">
+            <div>
+              <h3 className="text-lg font-medium mb-4">Handler Information</h3>
+              <HandlerPersonalInfoFields control={form.control} />
+            </div>
+            
+            <Separator className="my-6" />
+            
+            <div>
+              <h3 className="text-lg font-medium mb-4">Dog Information</h3>
+              <DogInfoFields control={form.control} />
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="puppy" className="pt-4">
+            <div>
+              <h3 className="text-lg font-medium mb-4">Puppy Class Information</h3>
+              <PuppyClassFields control={form.control} />
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="classes" className="pt-4">
+            <div>
+              <h3 className="text-lg font-medium mb-4">Class & Preferences</h3>
+              <ClassAndPreferencesFields control={form.control} />
+            </div>
+          </TabsContent>
+        </Tabs>
 
         <div className="pt-4">
           <Button

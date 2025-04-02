@@ -33,10 +33,28 @@ export function useAddHandlerForm(onSuccess: () => void) {
       dogName: "",
       breed: "",
       dogDob: "",
+      dogAge: "",
       assessment: "",
       comments: "",
       whatsApp: false,
       photoPermission: false,
+      
+      // Puppy class specific fields
+      puppyVaccinated: false,
+      puppyVaccinationDate: "",
+      puppyMicrochipped: false,
+      puppyMicrochipNumber: "",
+      puppyVetName: "",
+      puppyVetPhone: "",
+      puppyVetAddress: "",
+      puppyDewormingDate: "",
+      puppyDiet: "",
+      puppyPreviousTraining: "",
+      puppyBehaviorIssues: "",
+      puppyMedicalConditions: "",
+      indemnityAgreement: false,
+      
+      // Class enrollment fields
       classEnrollment: "",
       puppyClass: "",
       eoClass: "",
@@ -52,6 +70,18 @@ export function useAddHandlerForm(onSuccess: () => void) {
     setIsSubmitting(true);
     setErrorMessage(null);
     console.log("Form submitted with data:", data);
+
+    // Validate required puppy information if puppy class is selected
+    if (data.puppyClass && !data.indemnityAgreement) {
+      setErrorMessage("Indemnity agreement is required for puppy class enrollment.");
+      setIsSubmitting(false);
+      toast({
+        title: "Missing Required Information",
+        description: "Indemnity agreement is required for puppy class enrollment.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
       // Check if the currentBranch exists
