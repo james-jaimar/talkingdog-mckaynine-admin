@@ -83,19 +83,20 @@ export function AddHandlerForm({ onSuccess }: AddHandlerFormProps) {
     setIsSubmitting(true);
     console.log("Form submitted with data:", data);
 
-    // Check if the currentBranch exists
-    if (!currentBranch?.id) {
-      toast({
-        title: "Error",
-        description: "No branch selected. Please select a branch to add a handler.",
-        variant: "destructive",
-      });
-      setIsSubmitting(false);
-      return;
-    }
-
     try {
+      // Check if the currentBranch exists
+      if (!currentBranch?.id) {
+        toast({
+          title: "Error",
+          description: "No branch selected. Please select a branch to add a handler.",
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
       // Check if client with this email already exists
+      console.log("Checking if client exists with email:", data.email);
       const { data: existingClient, error: checkError } = await supabase
         .from("clients")
         .select("id")
@@ -104,9 +105,11 @@ export function AddHandlerForm({ onSuccess }: AddHandlerFormProps) {
 
       if (checkError) {
         console.error("Error checking existing client:", checkError);
+        throw new Error(`Error checking existing client: ${checkError.message}`);
       }
 
       if (existingClient) {
+        console.log("Client already exists:", existingClient);
         toast({
           title: "Client already exists",
           description: "A client with this email already exists.",
@@ -116,6 +119,7 @@ export function AddHandlerForm({ onSuccess }: AddHandlerFormProps) {
         return;
       }
 
+      console.log("Creating new client with branch ID:", currentBranch.id);
       // Insert client data with branch_id
       const { data: clientData, error: clientError } = await supabase
         .from("clients")
@@ -132,7 +136,7 @@ export function AddHandlerForm({ onSuccess }: AddHandlerFormProps) {
 
       if (clientError) {
         console.error("Client insertion error:", clientError);
-        throw new Error(clientError.message || "Failed to create client");
+        throw new Error(`Failed to create client: ${clientError.message}`);
       }
 
       console.log("Client created successfully:", clientData);
@@ -160,7 +164,7 @@ export function AddHandlerForm({ onSuccess }: AddHandlerFormProps) {
 
       if (dogError) {
         console.error("Dog insertion error:", dogError);
-        throw new Error(dogError.message || "Failed to create dog");
+        throw new Error(`Failed to create dog: ${dogError.message}`);
       }
 
       console.log("Dog created successfully:", dogData2);
@@ -227,6 +231,11 @@ export function AddHandlerForm({ onSuccess }: AddHandlerFormProps) {
         }
       }
 
+      console.log("Handler creation complete, refreshing data");
+      
+      // Force immediate data refresh
+      await queryClient.invalidateQueries({ queryKey: ["handlers"] });
+      
       toast({
         title: "Handler added successfully",
         description: "The new handler and dog have been added to the system.",
@@ -234,10 +243,8 @@ export function AddHandlerForm({ onSuccess }: AddHandlerFormProps) {
 
       // Reset form
       form.reset();
-
-      // Refresh the handlers list
-      queryClient.invalidateQueries({ queryKey: ["handlers"] });
       
+      console.log("Calling onSuccess to close modal");
       // Close the modal
       onSuccess();
     } catch (error: any) {

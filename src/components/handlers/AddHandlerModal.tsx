@@ -9,30 +9,58 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { PlusCircle } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AddHandlerForm } from "./AddHandlerForm";
 import { useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 
 export function AddHandlerModal() {
   const [open, setOpen] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
-  const handleSuccess = () => {
-    console.log("Form submitted successfully, closing modal");
-    setOpen(false);
+  // Reset processing state when dialog closes
+  useEffect(() => {
+    if (!open) {
+      setIsProcessing(false);
+    }
+  }, [open]);
+
+  const handleSuccess = async () => {
+    console.log("Form submitted successfully, closing modal and refreshing data");
+    setIsProcessing(true);
     
-    // Force manual refetch of handlers data to update the list
-    queryClient.invalidateQueries({ queryKey: ["handlers"] });
-    
-    // Additional delay before allowing the modal to reopen
-    // This ensures any data operations have completed
-    setTimeout(() => {
-      // Nothing needed here, just ensuring a delay
-    }, 500);
+    try {
+      // Force manual refetch of handlers data to update the list
+      await queryClient.invalidateQueries({ queryKey: ["handlers"] });
+      console.log("Data invalidated, closing modal");
+      
+      // Close modal
+      setOpen(false);
+      
+      // Show success notification
+      toast({
+        title: "Success",
+        description: "Handler added successfully. The list will update momentarily.",
+        variant: "default",
+      });
+    } catch (error) {
+      console.error("Error refreshing handlers data:", error);
+    }
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog 
+      open={open} 
+      onOpenChange={(newOpen) => {
+        // Prevent closing while processing
+        if (isProcessing && newOpen === false) {
+          return;
+        }
+        setOpen(newOpen);
+      }}
+    >
       <DialogTrigger asChild>
         <Button 
           id="add-handler-trigger"
