@@ -1,7 +1,7 @@
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileText, ChevronRight } from "lucide-react";
+import { FileText, ChevronRight, ExternalLink } from "lucide-react";
 import { Link } from "react-router-dom";
 
 interface FormOption {

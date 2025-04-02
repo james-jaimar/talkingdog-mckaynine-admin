@@ -1,14 +1,18 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { useAuth } from "@/context/auth";
 import { Helmet } from "react-helmet";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
 import { FormSelector } from "@/components/forms/FormSelector";
-import { Clipboard, FileText } from "lucide-react";
+import { Clipboard, FileText, School } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 
-const formOptions = [
+const staticFormOptions = [
   {
     id: "puppy-class",
     title: "Puppy Class Registration",
@@ -29,8 +33,30 @@ export default function Forms() {
   const navigate = useNavigate();
   const { toast } = useToast();
   
+  // Fetch available puppy classes for registration
+  const { data: puppyClasses, isLoading: classesLoading } = useQuery({
+    queryKey: ['forms-puppy-classes'],
+    queryFn: async () => {
+      // Example query - modify based on your schema
+      const { data, error } = await supabase
+        .from('classes')
+        .select('*')
+        .eq('type', 'puppy')
+        .eq('status', 'active')
+        .order('start_date', { ascending: true });
+      
+      if (error) {
+        console.error("Error fetching puppy classes:", error);
+        throw error;
+      }
+      
+      return data || [];
+    },
+    enabled: !!isAdmin && !authLoading,
+  });
+  
   // Auth check and redirection
-  useState(() => {
+  useEffect(() => {
     if (!authLoading && !isAdmin) {
       toast({
         title: "Access Denied",
@@ -39,7 +65,7 @@ export default function Forms() {
       });
       navigate("/dashboard");
     }
-  });
+  }, [authLoading, isAdmin, navigate, toast]);
 
   if (!isAdmin) {
     return null; // Already redirected in useEffect
@@ -54,7 +80,38 @@ export default function Forms() {
       <div className="container mx-auto py-6">
         <h1 className="text-2xl font-bold mb-6">Forms Management</h1>
         
-        <FormSelector forms={formOptions} />
+        <FormSelector forms={staticFormOptions} />
+        
+        {!classesLoading && puppyClasses && puppyClasses.length > 0 && (
+          <div className="mt-8">
+            <h2 className="text-xl font-semibold mb-4">Register New Handlers for Puppy Classes</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {puppyClasses.map((puppyClass) => (
+                <div key={puppyClass.id} className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow">
+                  <div className="flex items-start gap-3">
+                    <School className="h-5 w-5 text-mckaynine-600 mt-1" />
+                    <div>
+                      <h3 className="font-medium">{puppyClass.title || 'Puppy Class'}</h3>
+                      <p className="text-sm text-gray-500 mt-1">{puppyClass.description || 'No description'}</p>
+                      <div className="mt-2 text-sm text-gray-600">
+                        <p>Start date: {new Date(puppyClass.start_date).toLocaleDateString()}</p>
+                        <p>Time: {puppyClass.time || 'Not specified'}</p>
+                        <p>Location: {puppyClass.location || 'Main Branch'}</p>
+                      </div>
+                      <div className="mt-4">
+                        <Button variant="mckaynine" size="sm" asChild>
+                          <Link to={`/forms/puppy-class-registration/${puppyClass.id}`}>
+                            Register Handler
+                          </Link>
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         
         {/* Placeholder card for future forms */}
         <div className="mt-12">

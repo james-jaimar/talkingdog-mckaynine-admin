@@ -1,4 +1,3 @@
-
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
@@ -164,7 +163,8 @@ const router = createBrowserRouter([
       </RequireAuth>
     ),
   },
-  // New routes for Forms
+  
+  // Forms routes
   {
     path: "/forms",
     element: (
@@ -175,6 +175,14 @@ const router = createBrowserRouter([
   },
   {
     path: "/forms/puppy-class-registration",
+    element: (
+      <RequireAuth>
+        <PuppyClassForm />
+      </RequireAuth>
+    ),
+  },
+  {
+    path: "/forms/puppy-class-registration/:id",
     element: (
       <RequireAuth>
         <PuppyClassForm />

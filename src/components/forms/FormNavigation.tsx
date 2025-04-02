@@ -7,6 +7,7 @@ interface FormNavigationProps {
   title: string;
   isSubmitting?: boolean;
   onPrint?: () => void;
+  onSave?: () => void;
   backPath?: string;
   backLabel?: string;
 }
@@ -15,6 +16,7 @@ export function FormNavigation({
   title,
   isSubmitting = false,
   onPrint,
+  onSave,
   backPath = "/forms",
   backLabel = "Back to Forms"
 }: FormNavigationProps) {
@@ -39,6 +41,12 @@ export function FormNavigation({
       </div>
       
       <div className="space-x-2">
+        {onSave && (
+          <Button variant="mckaynine" size="sm" onClick={onSave} disabled={isSubmitting}>
+            <Save className="mr-2 h-4 w-4" />
+            Save Form
+          </Button>
+        )}
         <Button variant="outline" size="sm" onClick={handlePrint}>
           <Printer className="mr-2 h-4 w-4" />
           Print Form
