@@ -21,11 +21,12 @@ export function FormCheckboxField({
       control={control}
       name={name}
       render={({ field }) => (
-        <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md p-3 bg-gray-50 border">
+        <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md p-3 bg-white border border-gray-200 shadow-sm hover:bg-gray-50 transition-colors">
           <FormControl>
             <Checkbox
               checked={field.value}
               onCheckedChange={field.onChange}
+              className="data-[state=checked]:bg-mckaynine-600 data-[state=checked]:border-mckaynine-600"
             />
           </FormControl>
           <div className="space-y-1 leading-none">

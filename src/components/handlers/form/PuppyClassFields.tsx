@@ -15,14 +15,15 @@ export function PuppyClassFields({ control }: PuppyClassFieldsProps) {
   return (
     <PuppyClassLayout>
       <div className="space-y-8">
-        <div>
-          <h4 className="text-lg font-semibold mb-4 text-mckaynine-600 border-b pb-2">Puppy Health Information</h4>
+        <div className="bg-blue-50 rounded-lg p-6 border border-blue-200">
+          <h4 className="text-lg font-semibold mb-4 text-mckaynine-600 border-b pb-2 border-blue-200">Puppy Health Information</h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
               <FormCheckboxField
                 control={control}
                 name="puppyVaccinated"
                 label="Puppy has been vaccinated"
+                description="Puppies must have two vaccinations"
               />
               
               <FormTextField
@@ -30,6 +31,7 @@ export function PuppyClassFields({ control }: PuppyClassFieldsProps) {
                 name="puppyVaccinationDate"
                 label="Date of last vaccination"
                 type="date"
+                required={true}
               />
             </div>
             
@@ -62,14 +64,15 @@ export function PuppyClassFields({ control }: PuppyClassFieldsProps) {
         
         <Separator />
         
-        <div>
-          <h4 className="text-lg font-semibold mb-4 text-mckaynine-600 border-b pb-2">Veterinary Information</h4>
+        <div className="bg-amber-50 rounded-lg p-6 border border-amber-200">
+          <h4 className="text-lg font-semibold mb-4 text-mckaynine-600 border-b pb-2 border-amber-200">Veterinary Information</h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <FormTextField
               control={control}
               name="puppyVetName"
               label="Veterinarian Name"
               placeholder="Dr. Smith"
+              required={true}
             />
             
             <FormTextField
@@ -77,6 +80,7 @@ export function PuppyClassFields({ control }: PuppyClassFieldsProps) {
               name="puppyVetPhone"
               label="Veterinarian Phone"
               placeholder="+1 (123) 456-7890"
+              required={true}
             />
           </div>
           
@@ -92,8 +96,8 @@ export function PuppyClassFields({ control }: PuppyClassFieldsProps) {
         
         <Separator />
         
-        <div>
-          <h4 className="text-lg font-semibold mb-4 text-mckaynine-600 border-b pb-2">Puppy Behavior & Care</h4>
+        <div className="bg-green-50 rounded-lg p-6 border border-green-200">
+          <h4 className="text-lg font-semibold mb-4 text-mckaynine-600 border-b pb-2 border-green-200">Puppy Behavior & Care</h4>
           <div className="space-y-6">
             <FormTextAreaField
               control={control}
