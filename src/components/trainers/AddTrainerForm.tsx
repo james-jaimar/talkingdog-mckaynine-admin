@@ -66,8 +66,8 @@ export function AddTrainerForm({ onSuccess }: AddTrainerFormProps) {
         ? values.specialties.split(",").map(s => s.trim()).filter(Boolean)
         : null;
       
-      // Set branch_id to null if "no_branch" is selected
-      const branchId = values.branchId === "no_branch" ? null : values.branchId || null;
+      // Set branch_id to null if empty string or undefined
+      const branchId = values.branchId && values.branchId.trim() !== "" ? values.branchId : null;
       
       const { error } = await supabase.from("trainers").insert({
         first_name: values.firstName,
@@ -187,14 +187,18 @@ export function AddTrainerForm({ onSuccess }: AddTrainerFormProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Branch</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <Select 
+                onValueChange={field.onChange} 
+                value={field.value || undefined}
+              >
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Select a branch" />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  {/* Use a non-empty string for the "None" option */}
+                  <SelectItem value="none">None</SelectItem>
                   {branches?.map((branch) => (
                     <SelectItem key={branch.id} value={branch.id}>
                       {branch.name}
