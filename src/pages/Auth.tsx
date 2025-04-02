@@ -1,7 +1,7 @@
 
 import { useState } from "react";
 import { Navigate } from "react-router-dom";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/context/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,7 +11,7 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Helmet } from "react-helmet";
 
 export default function Auth() {
-  const { user, signIn, signUp, isLoading } = useAuth();
+  const { user, login, signup, isLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<"signin" | "signup">("signin");
   
   // Redirect if already logged in
@@ -39,11 +39,11 @@ export default function Auth() {
             </TabsList>
             
             <TabsContent value="signin">
-              <SignInForm isLoading={isLoading} onSubmit={signIn} />
+              <SignInForm isLoading={isLoading} onSubmit={login} />
             </TabsContent>
             
             <TabsContent value="signup">
-              <SignUpForm isLoading={isLoading} onSubmit={signUp} />
+              <SignUpForm isLoading={isLoading} onSubmit={signup} />
             </TabsContent>
           </Tabs>
         </Card>
@@ -54,7 +54,7 @@ export default function Auth() {
 
 interface SignInFormProps {
   isLoading: boolean;
-  onSubmit: (email: string, password: string) => Promise<void>;
+  onSubmit: (email: string, password: string) => Promise<{ success: boolean; error: string | null }>;
 }
 
 function SignInForm({ isLoading, onSubmit }: SignInFormProps) {
@@ -67,7 +67,10 @@ function SignInForm({ isLoading, onSubmit }: SignInFormProps) {
     setError("");
     
     try {
-      await onSubmit(email, password);
+      const result = await onSubmit(email, password);
+      if (!result.success && result.error) {
+        setError(result.error);
+      }
     } catch (err: any) {
       setError(err.message || "Failed to sign in");
     }
@@ -115,7 +118,7 @@ function SignInForm({ isLoading, onSubmit }: SignInFormProps) {
 
 interface SignUpFormProps {
   isLoading: boolean;
-  onSubmit: (email: string, password: string, fullName: string) => Promise<void>;
+  onSubmit: (email: string, password: string, metadata?: any) => Promise<{ success: boolean; error: string | null }>;
 }
 
 function SignUpForm({ isLoading, onSubmit }: SignUpFormProps) {
@@ -134,11 +137,15 @@ function SignUpForm({ isLoading, onSubmit }: SignUpFormProps) {
     }
     
     try {
-      await onSubmit(email, password, fullName);
-      // Clear form fields after successful submission
-      setEmail("");
-      setPassword("");
-      setFullName("");
+      const result = await onSubmit(email, password, { full_name: fullName });
+      if (!result.success && result.error) {
+        setError(result.error);
+      } else {
+        // Clear form fields after successful submission
+        setEmail("");
+        setPassword("");
+        setFullName("");
+      }
     } catch (err: any) {
       setError(err.message || "Failed to sign up");
     }
