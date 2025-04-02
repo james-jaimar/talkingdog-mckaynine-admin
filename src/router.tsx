@@ -131,6 +131,14 @@ const router = createBrowserRouter([
     ),
   },
   {
+    path: "/classes/:id/schedules",
+    element: (
+      <RequireAuth>
+        <ClassSchedules />
+      </RequireAuth>
+    ),
+  },
+  {
     path: "/branches",
     element: (
       <RequireAdmin>

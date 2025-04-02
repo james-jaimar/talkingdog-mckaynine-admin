@@ -16,7 +16,7 @@ export function ClassActionButtons({ classId, onEdit }: ClassActionButtonsProps)
           Schedules
         </Button>
       </Link>
-      <Link to={`/classes/${classId}/handlers`}>
+      <Link to={`/class/${classId}/handlers`}>
         <Button variant="outline" size="sm">
           <Users className="h-3.5 w-3.5 mr-1" />
           Handlers
