@@ -54,6 +54,12 @@ export function useClassHandlers(classId: string) {
       });
       
       return data as Booking[];
-    }
+    },
+    // More frequent refetching (every 5 seconds)
+    refetchInterval: 5000,
+    // Enable refetching when window gets focus
+    refetchOnWindowFocus: true,
+    // Stale time of 0 means it will always refetch when needed
+    staleTime: 0,
   });
 }

@@ -2,11 +2,11 @@
 import { useParams } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { ClassHandlersTable } from "@/components/class-handlers/ClassHandlersTable";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AddHandlerToClassModal } from "@/components/classes/handlers/AddHandlerToClassModal";
 import { Helmet } from "react-helmet";
 import { Link } from "react-router-dom";
@@ -16,6 +16,7 @@ export default function ClassHandlers() {
   const { id } = useParams<{ id: string }>();
   const classId = id; // Use the id from the URL parameter
   const [isAddHandlerModalOpen, setIsAddHandlerModalOpen] = useState(false);
+  const queryClient = useQueryClient();
   
   const { data: classInfo, isLoading } = useQuery({
     queryKey: ['class-details', classId],
@@ -40,9 +41,25 @@ export default function ClassHandlers() {
   });
 
   const handleAddHandlerSuccess = () => {
-    // Invalidate the handlers data query
+    // Explicitly refresh the handlers data for this class
+    if (classId) {
+      console.log("Refreshing class handlers data after adding handler");
+      queryClient.invalidateQueries({ queryKey: ['class-handlers', classId] });
+    }
     setIsAddHandlerModalOpen(false);
   };
+
+  // Auto-refresh the data periodically when on the handlers page
+  useEffect(() => {
+    if (!classId) return;
+    
+    // Auto-refresh every 3 seconds while on this page
+    const refreshInterval = setInterval(() => {
+      queryClient.invalidateQueries({ queryKey: ['class-handlers', classId] });
+    }, 3000);
+    
+    return () => clearInterval(refreshInterval);
+  }, [classId, queryClient]);
 
   if (isLoading) {
     return (

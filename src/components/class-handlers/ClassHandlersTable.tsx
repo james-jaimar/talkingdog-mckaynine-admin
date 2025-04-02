@@ -5,6 +5,7 @@ import { useClassHandlers } from "./hooks/useClassHandlers";
 import { useScheduleDates } from "./hooks/useScheduleDates";
 import { useHandlerForm } from "./hooks/useHandlerForm";
 import { useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 
 interface ClassHandlersTableProps {
   classId: string;
@@ -13,9 +14,15 @@ interface ClassHandlersTableProps {
 export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
   const queryClient = useQueryClient();
   // Use our custom hooks
-  const { data: handlers, isLoading: isLoadingHandlers } = useClassHandlers(classId);
+  const { data: handlers, isLoading: isLoadingHandlers, refetch } = useClassHandlers(classId);
   const { data: scheduleDates, isLoading: isLoadingDates } = useScheduleDates(classId);
   const { editingBookingId, formData, handleInputChange, startEditing, saveChanges } = useHandlerForm();
+
+  // Ensure the component refetches when it mounts
+  useEffect(() => {
+    // Immediate refetch on mount
+    refetch();
+  }, [refetch]);
 
   if (isLoadingHandlers || isLoadingDates) {
     return <div className="text-center p-6">Loading class handlers...</div>;
