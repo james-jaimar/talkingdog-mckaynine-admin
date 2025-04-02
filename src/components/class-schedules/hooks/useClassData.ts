@@ -1,8 +1,7 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/auth";
-import { useBranch } from "@/context/auth/useAuth";
+import { useBranch } from "@/context/BranchContext"; // Fixed import for useBranch
 import { Class } from "@/components/classes/types/class";
 
 interface EnrichedClassData extends Class {
@@ -27,7 +26,7 @@ interface UseClassDataReturn {
 
 export const useClassData = ({ classId }: UseClassDataProps): UseClassDataReturn => {
   const { user } = useAuth();
-  const { selectedBranch } = useBranch();
+  const { currentBranch: selectedBranch } = useBranch(); // Updated to use the correct property name
   const [classData, setClassData] = useState<EnrichedClassData | null>(null);
   const [scheduleData, setScheduleData] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
