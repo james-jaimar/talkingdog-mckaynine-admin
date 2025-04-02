@@ -16,7 +16,7 @@ export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
   // Use our custom hooks
   const { data: handlers, isLoading: isLoadingHandlers, refetch } = useClassHandlers(classId);
   const { data: scheduleDates, isLoading: isLoadingDates } = useScheduleDates(classId);
-  const { editingBookingId, formData, handleInputChange, startEditing, saveChanges } = useHandlerForm();
+  const { editingBookingId, formData, handleInputChange, startEditing, saveChanges, removeHandler } = useHandlerForm();
 
   // Ensure the component refetches when it mounts
   useEffect(() => {
@@ -51,7 +51,7 @@ export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
             <TableHead className="text-center">WA</TableHead>
             <TableHead className="text-center">Social</TableHead>
             <TableHead>Info PG</TableHead>
-            <TableHead className="w-[100px]">Actions</TableHead>
+            <TableHead className="w-[150px]">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -72,6 +72,15 @@ export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
                     // Refresh the handlers data after saving changes
                     queryClient.invalidateQueries({ queryKey: ['class-handlers', classId] });
                   });
+                }}
+                removeHandler={(bookingId) => {
+                  // Confirm before removing
+                  if (window.confirm('Are you sure you want to remove this handler from the class?')) {
+                    removeHandler(bookingId, classId).then(() => {
+                      // Refresh the handlers data after removing
+                      queryClient.invalidateQueries({ queryKey: ['class-handlers', classId] });
+                    });
+                  }
                 }}
               />
             );

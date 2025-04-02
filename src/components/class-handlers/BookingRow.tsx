@@ -3,7 +3,7 @@ import { TableRow, TableCell } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Check, Save } from "lucide-react";
+import { Check, Save, UserMinus } from "lucide-react";
 import { Booking } from "./types/booking";
 
 interface BookingRowProps {
@@ -13,6 +13,7 @@ interface BookingRowProps {
   handleInputChange: (bookingId: string, field: string, value: any) => void;
   startEditing: (booking: Booking) => void;
   saveChanges: (bookingId: string) => void;
+  removeHandler: (bookingId: string) => void;
 }
 
 export function BookingRow({
@@ -21,7 +22,8 @@ export function BookingRow({
   bookingData,
   handleInputChange,
   startEditing,
-  saveChanges
+  saveChanges,
+  removeHandler
 }: BookingRowProps) {
   return (
     <TableRow key={booking.id}>
@@ -137,24 +139,35 @@ export function BookingRow({
       </TableCell>
       
       <TableCell>
-        {isEditing ? (
-          <Button 
-            size="sm" 
-            variant="outline"
-            onClick={() => saveChanges(booking.id)}
-          >
-            <Save className="h-4 w-4 mr-1" />
-            Save
-          </Button>
-        ) : (
+        <div className="flex space-x-2">
+          {isEditing ? (
+            <Button 
+              size="sm" 
+              variant="outline"
+              onClick={() => saveChanges(booking.id)}
+            >
+              <Save className="h-4 w-4 mr-1" />
+              Save
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => startEditing(booking)}
+            >
+              Edit
+            </Button>
+          )}
+          
           <Button
             size="sm"
             variant="ghost"
-            onClick={() => startEditing(booking)}
+            className="text-destructive hover:text-destructive hover:bg-red-50"
+            onClick={() => removeHandler(booking.id)}
           >
-            Edit
+            <UserMinus className="h-4 w-4" />
           </Button>
-        )}
+        </div>
       </TableCell>
     </TableRow>
   );

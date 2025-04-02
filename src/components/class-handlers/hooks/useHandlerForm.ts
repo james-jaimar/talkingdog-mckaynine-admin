@@ -70,11 +70,43 @@ export function useHandlerForm() {
     }
   };
 
+  const removeHandler = async (bookingId: string, classId: string) => {
+    try {
+      // Delete the booking record
+      const { error } = await supabase
+        .from('bookings')
+        .delete()
+        .eq('id', bookingId);
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Success",
+        description: "Handler removed from class"
+      });
+      
+      // Invalidate the query to refresh data
+      queryClient.invalidateQueries({ queryKey: ['class-handlers', classId] });
+      
+      return Promise.resolve();
+    } catch (error) {
+      console.error('Error removing handler:', error);
+      toast({
+        title: "Error",
+        description: "Failed to remove handler from class",
+        variant: "destructive"
+      });
+      
+      return Promise.reject(error);
+    }
+  };
+
   return {
     editingBookingId,
     formData,
     handleInputChange,
     startEditing,
-    saveChanges
+    saveChanges,
+    removeHandler
   };
 }
