@@ -15,7 +15,10 @@ import { useAuth } from "@/context/AuthContext";
 import { useBranch } from "@/context/BranchContext";
 
 export default function ClassSchedules() {
-  const { classId } = useParams<{ classId: string }>();
+  // Update to use both id and classId to support both URL patterns
+  const { id, classId: urlClassId } = useParams<{ id: string; classId: string }>();
+  const classId = id || urlClassId; // Use id from /classes/:id/schedules or classId from /class/:classId/schedules
+  
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const { toast } = useToast();
   const { user, session } = useAuth();
