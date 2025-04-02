@@ -11,6 +11,8 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import { Class } from "@/components/classes/types/class";
+import { ClassSchedule } from "@/components/classes/types/class-schedule";
 
 const staticFormOptions = [
   {
@@ -37,20 +39,55 @@ export default function Forms() {
   const { data: puppyClasses, isLoading: classesLoading } = useQuery({
     queryKey: ['forms-puppy-classes'],
     queryFn: async () => {
-      // Example query - modify based on your schema
-      const { data, error } = await supabase
-        .from('classes')
-        .select('*')
-        .eq('type', 'puppy')
-        .eq('status', 'active')
-        .order('start_date', { ascending: true });
+      // First get the class schedule data
+      const { data: schedules, error: scheduleError } = await supabase
+        .from('class_schedules')
+        .select(`
+          *,
+          classes:class_id (*)
+        `)
+        .order('start_time', { ascending: true });
       
-      if (error) {
-        console.error("Error fetching puppy classes:", error);
-        throw error;
+      if (scheduleError) {
+        console.error("Error fetching class schedules:", scheduleError);
+        throw scheduleError;
       }
       
-      return data || [];
+      // Then get active class information
+      const { data: classes, error: classError } = await supabase
+        .from('classes')
+        .select('*')
+        .eq('level', 'puppy')
+        .order('created_at', { ascending: false });
+      
+      if (classError) {
+        console.error("Error fetching puppy classes:", classError);
+        throw classError;
+      }
+      
+      // Combine the data to create a more complete representation
+      const enrichedClasses = schedules.map((schedule) => {
+        const classData = schedule.classes as Class;
+        return {
+          id: schedule.id,
+          class_id: classData.id,
+          name: classData.name,
+          description: classData.description,
+          level: classData.level,
+          price: classData.price,
+          branch_id: classData.branch_id,
+          capacity: classData.capacity,
+          created_at: schedule.created_at,
+          updated_at: schedule.updated_at,
+          // Display fields formatted from the schedule data
+          title: `${classData.name} - ${classData.description}`,
+          start_date: new Date(schedule.start_time).toLocaleDateString(),
+          time: `${new Date(schedule.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${new Date(schedule.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+          location: 'Main Branch' // Default location if not specified
+        };
+      });
+      
+      return enrichedClasses;
     },
     enabled: !!isAdmin && !authLoading,
   });
@@ -94,7 +131,7 @@ export default function Forms() {
                       <h3 className="font-medium">{puppyClass.title || 'Puppy Class'}</h3>
                       <p className="text-sm text-gray-500 mt-1">{puppyClass.description || 'No description'}</p>
                       <div className="mt-2 text-sm text-gray-600">
-                        <p>Start date: {new Date(puppyClass.start_date).toLocaleDateString()}</p>
+                        <p>Start date: {puppyClass.start_date}</p>
                         <p>Time: {puppyClass.time || 'Not specified'}</p>
                         <p>Location: {puppyClass.location || 'Main Branch'}</p>
                       </div>
