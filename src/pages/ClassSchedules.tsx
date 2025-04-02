@@ -4,7 +4,7 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { ClassSchedulesTable } from "@/components/class-schedules/ClassSchedulesTable";
 import { AddClassScheduleModal } from "@/components/class-schedules/AddClassScheduleModal";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, ArrowLeft } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,6 +13,14 @@ import { useToast } from "@/hooks/use-toast";
 import { Helmet } from "react-helmet";
 import { useAuth } from "@/context/AuthContext";
 import { useBranch } from "@/context/BranchContext";
+import { 
+  Breadcrumb,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbSeparator,
+  BreadcrumbPage
+} from "@/components/ui/breadcrumb";
 
 export default function ClassSchedules() {
   // Update to use both id and classId to support both URL patterns
@@ -159,9 +167,32 @@ export default function ClassSchedules() {
         <title>{classData?.name} Schedules - McKaynine Training Centre</title>
       </Helmet>
       <div className="w-full py-6">
+        <Breadcrumb className="mb-4">
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink href="/classes">Classes</BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage>{classData?.name || 'Class'} Schedules</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
+
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-2xl font-bold">{classData?.name} Schedules</h1>
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => navigate("/classes")}
+                className="mr-2"
+              >
+                <ArrowLeft className="h-4 w-4 mr-1" />
+                Back to Classes
+              </Button>
+              <h1 className="text-2xl font-bold">{classData?.name} Schedules</h1>
+            </div>
             <p className="text-muted-foreground">Manage schedules for this class</p>
           </div>
           <Button onClick={() => setIsAddModalOpen(true)}>
