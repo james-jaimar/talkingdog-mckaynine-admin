@@ -10,7 +10,7 @@ interface DogInfoFieldsProps {
 export function DogInfoFields({ control }: DogInfoFieldsProps) {
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <FormTextField 
           control={control}
           name="dogName"
@@ -25,7 +25,7 @@ export function DogInfoFields({ control }: DogInfoFieldsProps) {
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <FormTextField 
           control={control}
           name="dogDob"
@@ -46,7 +46,7 @@ export function DogInfoFields({ control }: DogInfoFieldsProps) {
       <FormTextAreaField 
         control={control}
         name="assessment"
-        label="Assessment"
+        label="Initial Assessment"
         placeholder="General assessment notes"
         description="Include any initial behavioral observations or training history"
       />

@@ -30,36 +30,31 @@ export function AddHandlerForm({ onSuccess }: AddHandlerFormProps) {
         )}
         
         <Tabs defaultValue="basic" className="w-full">
-          <TabsList>
+          <TabsList className="mb-4 w-full justify-start">
             <TabsTrigger value="basic">Basic Information</TabsTrigger>
             <TabsTrigger value="puppy">Puppy Class</TabsTrigger>
             <TabsTrigger value="classes">Classes & Preferences</TabsTrigger>
           </TabsList>
           
           <TabsContent value="basic" className="space-y-6 pt-4">
-            <div>
-              <h3 className="text-lg font-medium mb-4">Handler Information</h3>
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <h3 className="text-lg font-semibold mb-4 text-mckaynine-600 border-b pb-2">Handler Information</h3>
               <HandlerPersonalInfoFields control={form.control} />
             </div>
             
-            <Separator className="my-6" />
-            
-            <div>
-              <h3 className="text-lg font-medium mb-4">Dog Information</h3>
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <h3 className="text-lg font-semibold mb-4 text-mckaynine-600 border-b pb-2">Dog Information</h3>
               <DogInfoFields control={form.control} />
             </div>
           </TabsContent>
           
           <TabsContent value="puppy" className="pt-4">
-            <div>
-              <h3 className="text-lg font-medium mb-4">Puppy Class Information</h3>
-              <PuppyClassFields control={form.control} />
-            </div>
+            <PuppyClassFields control={form.control} />
           </TabsContent>
           
           <TabsContent value="classes" className="pt-4">
-            <div>
-              <h3 className="text-lg font-medium mb-4">Class & Preferences</h3>
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <h3 className="text-lg font-semibold mb-4 text-mckaynine-600 border-b pb-2">Class & Preferences</h3>
               <ClassAndPreferencesFields control={form.control} />
             </div>
           </TabsContent>

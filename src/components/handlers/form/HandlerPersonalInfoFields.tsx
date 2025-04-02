@@ -12,14 +12,14 @@ export function HandlerPersonalInfoFields({ control }: HandlerPersonalInfoFields
       <FormTextField 
         control={control}
         name="name"
-        label="Name"
+        label="Handler's Name"
         placeholder="John Doe"
       />
 
       <FormTextField 
         control={control}
         name="email"
-        label="Email"
+        label="Email Address"
         type="email"
         placeholder="john.doe@example.com"
       />
@@ -27,7 +27,7 @@ export function HandlerPersonalInfoFields({ control }: HandlerPersonalInfoFields
       <FormTextField 
         control={control}
         name="phone"
-        label="Phone Number"
+        label="Contact Number"
         placeholder="+1 (123) 456-7890"
         description="We'll use this for class updates and notifications"
       />
