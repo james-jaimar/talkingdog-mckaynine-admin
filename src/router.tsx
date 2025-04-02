@@ -17,6 +17,8 @@ import TrainerDashboard from "./pages/TrainerDashboard";
 import HandlerDetail from "./pages/HandlerDetail";
 import ClassDetail from "./pages/ClassDetail";
 import ClassHandlers from "./pages/ClassHandlers";
+import Forms from "./pages/Forms";
+import PuppyClassForm from "./pages/PuppyClassForm";
 import { useAuth } from "@/context/auth";
 import { Loader2 } from "lucide-react";
 
@@ -159,6 +161,23 @@ const router = createBrowserRouter([
     element: (
       <RequireAuth>
         <TrainerDashboard />
+      </RequireAuth>
+    ),
+  },
+  // New routes for Forms
+  {
+    path: "/forms",
+    element: (
+      <RequireAdmin>
+        <Forms />
+      </RequireAdmin>
+    ),
+  },
+  {
+    path: "/forms/puppy-class-registration",
+    element: (
+      <RequireAuth>
+        <PuppyClassForm />
       </RequireAuth>
     ),
   },
