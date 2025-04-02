@@ -13,7 +13,8 @@ import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 
 export default function ClassHandlers() {
-  const { classId } = useParams<{ classId: string }>();
+  const { id } = useParams<{ id: string }>();
+  const classId = id; // Use the id from the URL parameter
   const [isAddHandlerModalOpen, setIsAddHandlerModalOpen] = useState(false);
   
   const { data: classInfo, isLoading } = useQuery({
