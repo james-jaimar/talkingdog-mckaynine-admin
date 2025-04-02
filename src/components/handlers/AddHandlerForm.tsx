@@ -5,18 +5,28 @@ import { HandlerPersonalInfoFields } from "./form/HandlerPersonalInfoFields";
 import { DogInfoFields } from "./form/DogInfoFields";
 import { ClassAndPreferencesFields } from "./form/ClassAndPreferencesFields";
 import { Separator } from "@/components/ui/separator";
-import { useAddHandlerForm } from "./hooks/useAddHandlerForm";
+import { useAddHandlerForm } from "./hooks/add-handler";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 
 interface AddHandlerFormProps {
   onSuccess: () => void;
 }
 
 export function AddHandlerForm({ onSuccess }: AddHandlerFormProps) {
-  const { form, isSubmitting, onSubmit } = useAddHandlerForm(onSuccess);
+  const { form, isSubmitting, errorMessage, onSubmit } = useAddHandlerForm(onSuccess);
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        {errorMessage && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>{errorMessage}</AlertDescription>
+          </Alert>
+        )}
+        
         <div>
           <h3 className="text-lg font-medium mb-4">Handler Information</h3>
           <HandlerPersonalInfoFields control={form.control} />

@@ -4,26 +4,36 @@ import { FormValues } from "../../form/handlerAddFormSchema";
 
 export const useClientNotesUpdate = () => {
   const updateClientNotes = async (data: FormValues, clientId: string): Promise<void> => {
-    // Create notes for WhatsApp and photo permission
-    let notes = data.comments || "";
-    if (data.whatsApp) {
-      notes += (notes ? "\n" : "") + "WhatsApp: yes";
-    }
-    if (data.photoPermission) {
-      notes += (notes ? "\n" : "") + "Photo Permission: yes";
-    }
-
-    if (notes && notes !== data.comments) {
-      // Update client with the notes
-      const { error: updateError } = await supabase
-        .from("clients")
-        .update({ notes })
-        .eq("id", clientId);
-
-      if (updateError) {
-        console.error("Error updating notes:", updateError);
-        // We don't throw as this is just updating additional info
+    try {
+      // Create notes for WhatsApp and photo permission
+      let notes = data.comments || "";
+      if (data.whatsApp) {
+        notes += (notes ? "\n" : "") + "WhatsApp: yes";
       }
+      if (data.photoPermission) {
+        notes += (notes ? "\n" : "") + "Photo Permission: yes";
+      }
+
+      if (notes && notes !== data.comments) {
+        // Update client with the notes
+        const { error: updateError } = await supabase
+          .from("clients")
+          .update({ notes })
+          .eq("id", clientId);
+
+        if (updateError) {
+          console.error("Error updating notes:", updateError);
+          // We log this but don't throw as it's supplementary information
+          if (updateError.code === "23503") {
+            console.warn("Client no longer exists, cannot update preferences notes");
+          } else {
+            console.warn(`Notes update failed: ${updateError.message}`);
+          }
+        }
+      }
+    } catch (error: any) {
+      console.error("Failed to update client notes:", error);
+      // We don't throw here as this is just supplementary information
     }
   };
 
