@@ -1,9 +1,11 @@
+
 import { useLocation } from "react-router-dom";
 import { Tabs, TabsList } from "@/components/ui/tabs";
 import { ClassTab } from "./ClassTab";
 import { useBranch } from "@/context/BranchContext";
 import { useClassTabOrder } from "./hooks/useClassTabOrder";
 import { useClassesData } from "./hooks/useClassesData";
+import { useClassTabNavigation } from "./hooks/useClassTabNavigation";
 import { useAuth } from "@/context/auth";
 
 export function ClassesTabs() {

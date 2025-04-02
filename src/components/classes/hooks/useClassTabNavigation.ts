@@ -1,7 +1,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/context/auth"; // Fixed import path
 
 export function useClassTabNavigation() {
   const location = useLocation();
