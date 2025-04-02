@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { Plus } from "lucide-react";
@@ -158,7 +157,7 @@ export function HandlerTable({
                 {photoPermission ? "Yes" : "No"}
               </TableCell>
               <TableCell className="text-right">
-                <Link to={`/handlers/${handler.id}`}>
+                <Link to={`/handler/${handler.id}`}>
                   <Button variant="outline" size="sm">View</Button>
                 </Link>
               </TableCell>
