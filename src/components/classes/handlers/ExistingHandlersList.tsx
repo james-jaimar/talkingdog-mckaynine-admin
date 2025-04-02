@@ -138,7 +138,7 @@ export function ExistingHandlersList({ searchQuery, onSelect, classId, isProcess
                 </Button>
               </TableCell>
             </TableRow>
-          )}
+          ))}
         </TableBody>
       </Table>
 
