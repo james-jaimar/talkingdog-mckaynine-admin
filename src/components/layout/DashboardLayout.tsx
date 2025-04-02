@@ -26,7 +26,7 @@ export function DashboardLayout({ children, requireAuth = true }: DashboardLayou
       } else if (!requireAuth && user) {
         // Redirect to dashboard if user is already logged in and tries to access non-auth pages
         console.log("DashboardLayout - Redirecting to dashboard (user already logged in)");
-        navigate("/", { replace: true });
+        navigate("/dashboard", { replace: true });
       }
     }
   }, [user, isLoading, navigate, requireAuth]);
@@ -35,9 +35,10 @@ export function DashboardLayout({ children, requireAuth = true }: DashboardLayou
   if (isLoading) {
     console.log("DashboardLayout - Showing loading indicator");
     return (
-      <div className="flex items-center justify-center h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-mckaynine-600" />
-        <span className="ml-2 text-lg text-mckaynine-600">Loading...</span>
+      <div className="flex flex-col items-center justify-center h-screen">
+        <Loader2 className="h-12 w-12 animate-spin text-mckaynine-600 mb-4" />
+        <span className="text-lg text-mckaynine-600">Authenticating...</span>
+        <p className="text-sm text-gray-500 mt-2">Please wait while we load your dashboard.</p>
       </div>
     );
   }

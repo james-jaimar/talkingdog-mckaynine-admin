@@ -28,27 +28,38 @@ export const AuthProvider: React.FC<PropsWithChildren> = ({ children }) => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log("Auth state changed:", event);
+        
+        // Handle synchronous updates first to avoid deadlocks
         setSession(session);
         setUser(session?.user ?? null);
-
-        // Fetch user role if session exists
+        
+        // If session exists, fetch profile in separate async operation
         if (session?.user) {
           try {
-            const profileData = await fetchUserProfile(session.user.id);
-            
-            // Handle special admin case and set role
-            const finalRole = await ensureAdminRole(
-              session.user.id, 
-              session.user.email,
-              profileData?.role
-            );
-            
-            console.log("User role set to:", finalRole);
-            setRole(finalRole);
+            // Use setTimeout to avoid Supabase deadlock
+            setTimeout(async () => {
+              try {
+                const profileData = await fetchUserProfile(session.user.id);
+                
+                // Handle special admin case and set role
+                const finalRole = await ensureAdminRole(
+                  session.user.id, 
+                  session.user.email,
+                  profileData?.role
+                );
+                
+                console.log("User role set to:", finalRole);
+                setRole(finalRole);
+                setIsLoading(false);
+              } catch (error) {
+                console.error("Error in deferred profile fetch:", error);
+                setRole(null);
+                setIsLoading(false);
+              }
+            }, 0);
           } catch (error) {
             console.error("Error fetching user profile:", error);
             setRole(null);
-          } finally {
             setIsLoading(false);
           }
         } else {

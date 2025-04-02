@@ -1,3 +1,4 @@
+
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
@@ -17,10 +18,20 @@ import HandlerDetail from "./pages/HandlerDetail";
 import ClassDetail from "./pages/ClassDetail";
 import ClassHandlers from "./pages/ClassHandlers";
 import { useAuth } from "@/context/auth";
+import { Loader2 } from "lucide-react";
 
 // Home component with redirect logic
 const Home = () => {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
+  
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen">
+        <Loader2 className="h-12 w-12 animate-spin text-mckaynine-600 mb-4" />
+        <span className="text-lg text-mckaynine-600">Loading...</span>
+      </div>
+    );
+  }
   
   if (user) {
     return <Navigate to="/dashboard" replace />;
