@@ -1,7 +1,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useAuth } from "@/context/auth"; // Fixed import path
+import { useAuth } from "@/context/auth"; 
 
 export function useClassTabNavigation() {
   const location = useLocation();
@@ -11,7 +11,7 @@ export function useClassTabNavigation() {
   // Determine active tab from URL path
   const getActiveTabFromPath = useCallback(() => {
     // Check for class ID in the class detail path
-    const classIdMatch = location.pathname.match(/\/classes\/([^/]+)$/);
+    const classIdMatch = location.pathname.match(/\/class\/([^/]+)$/);
     if (classIdMatch) {
       return classIdMatch[1];
     }
@@ -23,7 +23,7 @@ export function useClassTabNavigation() {
     }
     
     // Check for class ID in the class handlers path
-    const handlersMatch = location.pathname.match(/\/classes\/([^/]+)\/handlers/);
+    const handlersMatch = location.pathname.match(/\/class\/([^/]+)\/handlers/);
     if (handlersMatch) {
       return handlersMatch[1];
     }
@@ -56,7 +56,7 @@ export function useClassTabNavigation() {
     activeTab,
     setActiveTab,
     handleTabClick,
-    isClassesPath: location.pathname.includes('/classes'),
+    isClassesPath: location.pathname.includes('/classes') || location.pathname.includes('/class/'),
     isAuthenticated: !!user && !!session
   };
 }

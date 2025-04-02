@@ -51,7 +51,7 @@ export function ClassesTabs() {
   // Check for class ID in various path patterns
   const classesMatch = location.pathname.match(/\/classes\/([^/]+)$/);
   const schedulesMatch = location.pathname.match(/\/classes\/([^/]+)\/schedules/);
-  const handlersMatch = location.pathname.match(/\/classes\/([^/]+)\/handlers/);
+  const handlersMatch = location.pathname.match(/\/class\/([^/]+)\/handlers/);
   
   if (classesMatch && classesMatch[1]) {
     currentClassId = classesMatch[1];
