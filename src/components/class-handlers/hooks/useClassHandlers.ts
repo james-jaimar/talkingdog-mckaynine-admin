@@ -45,7 +45,14 @@ export function useClassHandlers(classId: string) {
       if (error) throw error;
       
       console.log("Found bookings:", data?.length || 0);
-      console.log("Bookings with null proof_of_payment:", data?.filter(b => b.proof_of_payment === null).length || 0);
+      
+      // Check for bookings with missing proof_of_payment and log them in detail
+      const unpaidBookings = data?.filter(b => !b.proof_of_payment || b.proof_of_payment === '');
+      console.log(`Bookings missing proof_of_payment: ${unpaidBookings?.length || 0}`);
+      unpaidBookings?.forEach(booking => {
+        console.log(`Unpaid booking: ${booking.id} - ${booking.clients?.first_name} ${booking.clients?.last_name} - ${booking.dogs?.name}`);
+      });
+      
       return data as Booking[];
     }
   });

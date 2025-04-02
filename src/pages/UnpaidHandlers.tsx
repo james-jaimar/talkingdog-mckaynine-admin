@@ -18,7 +18,7 @@ export default function UnpaidHandlers() {
     queryFn: async () => {
       console.log("Fetching unpaid bookings");
       
-      // Query to fetch ALL bookings where proof_of_payment is null
+      // Update query to catch both NULL values and empty strings
       const { data, error } = await supabase
         .from('bookings')
         .select(`
@@ -33,7 +33,7 @@ export default function UnpaidHandlers() {
             classes(id, name)
           )
         `)
-        .is('proof_of_payment', null)
+        .or('proof_of_payment.is.null,proof_of_payment.eq.')  // Match both NULL and empty string values
         .order('created_at', { ascending: false });
       
       if (error) {
@@ -41,7 +41,13 @@ export default function UnpaidHandlers() {
         throw error;
       }
       
-      console.log(`Found ${data?.length || 0} unpaid bookings:`, data);
+      console.log(`Found ${data?.length || 0} unpaid bookings`);
+      
+      // Log details of each unpaid booking for debugging
+      data?.forEach(booking => {
+        console.log(`Unpaid booking: ID=${booking.id}, Client=${booking.clients?.first_name} ${booking.clients?.last_name}, Dog=${booking.dogs?.name}, Class=${booking.class_schedules?.classes?.name}, POP=${booking.proof_of_payment}`);
+      });
+      
       return data;
     }
   });

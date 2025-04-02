@@ -22,7 +22,7 @@ export default function Dashboard() {
     queryFn: async () => {
       console.log("Dashboard - Fetching stats");
       try {
-        // Ensure the unpaid count query matches exactly what's in the UnpaidHandlers page
+        // Match the exact same unpaid check as in UnpaidHandlers page
         const [
           { count: clientCount }, 
           { count: dogCount }, 
@@ -36,7 +36,7 @@ export default function Dashboard() {
           supabase.from('branches').select('*', { count: 'exact', head: true }),
           supabase.from('bookings')
             .select('*', { count: 'exact', head: true })
-            .is('proof_of_payment', null)
+            .or('proof_of_payment.is.null,proof_of_payment.eq.')  // Count both NULL and empty string values
         ]);
         
         console.log("Dashboard stats:", { clientCount, dogCount, bookingCount, branchCount, unpaidCount });
