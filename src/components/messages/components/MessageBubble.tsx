@@ -27,35 +27,41 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           return;
         }
         
-        // Extract path from URL - handles both public and signed URLs
-        const extractPath = (url: string) => {
-          // Extract path from URL structure
-          const matches = url.match(/\/storage\/v1\/object\/(?:public|auth|sign)\/message-attachments\/([^?]+)/);
-          if (matches && matches[1]) {
-            return decodeURIComponent(matches[1]);
+        // Extract path for direct upload to the bucket
+        const directUploadToStorage = async (fullUrl: string) => {
+          console.log("Processing URL:", fullUrl);
+          
+          // Get the file path after the bucket name
+          const userId = fullUrl.split('/').filter(Boolean)[6]; // Extract user ID
+          const fileName = fullUrl.split('/').pop(); // Get filename
+          
+          if (!userId || !fileName) {
+            console.error("Could not parse URL components:", fullUrl);
+            return null;
           }
-          return null;
+          
+          const filePath = `${userId}/${fileName}`;
+          console.log("Extracted file path:", filePath);
+          
+          const { data, error } = await supabase
+            .storage
+            .from('message-attachments')
+            .createSignedUrl(filePath, 60 * 60); // 1 hour expiry
+            
+          if (error) {
+            console.error("Error creating signed URL:", error);
+            return null;
+          }
+          
+          return data.signedUrl;
         };
         
-        const path = extractPath(message.attachment_url);
-        if (!path) {
-          console.error("Could not extract path from URL:", message.attachment_url);
-          return;
+        const signedFileUrl = await directUploadToStorage(message.attachment_url);
+        if (signedFileUrl) {
+          setSignedUrl(signedFileUrl);
+        } else {
+          console.error("Failed to get signed URL for:", message.attachment_url);
         }
-        
-        console.log("Creating signed URL for path:", path);
-        
-        const { data, error } = await supabase
-          .storage
-          .from('message-attachments')
-          .createSignedUrl(path, 60 * 60); // 1 hour expiry
-          
-        if (error) {
-          console.error("Error creating signed URL:", error);
-          return;
-        }
-        
-        setSignedUrl(data.signedUrl);
       } catch (error) {
         console.error("Error processing attachment URL:", error);
       }

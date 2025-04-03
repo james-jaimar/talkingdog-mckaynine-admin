@@ -54,8 +54,12 @@ export const uploadMessageAttachment = async (file: File) => {
     
     // Create unique file path to avoid collisions
     const fileExt = file.name.split('.').pop();
-    const fileName = `${Math.random().toString(36).substring(2, 15)}_${file.name}`;
-    const filePath = `${sessionData.session.user.id}/${fileName}`;
+    const randomId = Math.random().toString(36).substring(2, 15);
+    const fileName = `${randomId}_${Date.now()}.${fileExt}`;
+    const userId = sessionData.session.user.id;
+    const filePath = `${userId}/${fileName}`;
+    
+    console.log("Uploading to path:", filePath);
     
     // Upload the file with proper content type and cacheControl
     const { data, error } = await supabase
