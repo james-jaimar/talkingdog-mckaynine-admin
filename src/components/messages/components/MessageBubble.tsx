@@ -60,22 +60,25 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           console.error("Image failed to load:", message.attachment_url);
           setImageError(true);
           setAttachmentError(true);
+          
+          // Try to determine if this is a CORS issue
+          const isSubapaseUrl = message.attachment_url.includes('supabase');
+          console.log("Is Supabase URL:", isSubapaseUrl, "URL:", message.attachment_url);
         };
         
         // Add cache buster to the URL to prevent browser caching issues
+        // and force a fresh request every time
         const cacheBuster = `?t=${Date.now()}`;
         img.src = `${message.attachment_url}${cacheBuster}`;
       } 
       
-      // Skip the HEAD request for non-image files
-      // This is because the Supabase storage sometimes returns 400 for HEAD requests
-      // but still allows GET requests to work properly
+      // For non-image files, we'll assume they're available
+      // This avoids CORS issues with HEAD requests
       else if (!isImage) {
-        // We'll assume non-image files are available unless proven otherwise when clicked
         setAttachmentError(false);
         
-        // Only check if the URL seems invalid based on structure
-        if (!message.attachment_url.includes("message-attachments") || 
+        // Only flag if the URL seems obviously invalid
+        if (!message.attachment_url.includes("storage/v1/object") || 
             message.attachment_url.includes("error") || 
             message.attachment_url.includes("not found")) {
           setAttachmentError(true);
