@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -36,7 +36,6 @@ interface CustomerProfileFormProps {
 
 export function CustomerProfileForm({ client, onSuccess }: CustomerProfileFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { toast } = useToast();
   
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
@@ -55,6 +54,9 @@ export function CustomerProfileForm({ client, onSuccess }: CustomerProfileFormPr
     setIsSubmitting(true);
     
     try {
+      console.log("Updating profile for client ID:", client.id);
+      console.log("Update data:", data);
+      
       const { error } = await supabase
         .from('clients')
         .update({
