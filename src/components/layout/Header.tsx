@@ -5,6 +5,7 @@ import { BranchSelector } from "@/components/branches/BranchSelector";
 import { useAuth } from "@/context/auth";
 import { Button } from "@/components/ui/button";
 import { LogOut, User, Users, Clipboard, FileText } from "lucide-react";
+import { toast } from "sonner";
 
 export function Header() {
   const { user, logout, isAdmin, isTrainer, role, trainerProfile } = useAuth();
@@ -29,6 +30,21 @@ export function Header() {
       { email: user?.email, role, isAdmin, isTrainer, trainerProfile }
     );
   }
+
+  // Handle logout with proper error handling
+  const handleLogout = async () => {
+    try {
+      const result = await logout();
+      if (result.success) {
+        toast.success("Successfully logged out");
+      } else if (result.error) {
+        toast.error(`Logout error: ${result.error}`);
+      }
+    } catch (error) {
+      console.error("Unexpected error during logout:", error);
+      toast.error("An unexpected error occurred during logout");
+    }
+  };
 
   return (
     <header className="bg-mckaynine-600 text-white sticky top-0 z-50 shadow-md">
@@ -112,7 +128,7 @@ export function Header() {
                 <Button 
                   variant="ghost" 
                   size="sm" 
-                  onClick={logout}
+                  onClick={handleLogout}
                   className="text-white hover:text-white hover:bg-mckaynine-700"
                 >
                   <LogOut className="h-4 w-4 md:mr-1" />

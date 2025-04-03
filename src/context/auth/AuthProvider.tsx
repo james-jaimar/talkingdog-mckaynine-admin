@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useEffect, PropsWithChildren } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Session, User } from '@supabase/supabase-js';
@@ -185,13 +184,33 @@ export const AuthProvider: React.FC<PropsWithChildren> = ({ children }) => {
       }
     },
     
+    // Updated logout function with better error handling
     logout: async () => {
       try {
+        // Clear local state first to prevent UI issues
+        setUser(null);
+        setSession(null);
+        setRole(null);
+        
+        // First check if there's a valid session to avoid the error
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (!sessionData.session) {
+          console.log("No active session found, already logged out");
+          return { success: true, error: null };
+        }
+        
+        // Attempt to sign out
         const { error } = await supabase.auth.signOut();
         if (error) throw error;
+        
         return { success: true, error: null };
       } catch (error) {
         console.error("Logout error:", error);
+        // Even if there's an error, we should still clear local state
+        setUser(null);
+        setSession(null);
+        setRole(null);
+        
         return { 
           success: false, 
           error: error instanceof Error ? error.message : 'An unknown error occurred'
