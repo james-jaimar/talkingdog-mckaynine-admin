@@ -1,4 +1,3 @@
-
 import { Link } from "react-router-dom";
 import { Helmet } from "react-helmet";
 import { Button } from "@/components/ui/button";
@@ -17,12 +16,7 @@ export default function Home() {
       <header className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
           <div className="flex items-center">
-            <img
-              src="/lovable-uploads/02f80db5-fcad-4633-862b-5c42a27cf712.png"
-              alt="McKaynine Logo"
-              className="h-10 w-auto"
-            />
-            <h1 className="ml-3 text-2xl font-bold text-mckaynine-700">
+            <h1 className="text-2xl font-bold text-mckaynine-700">
               McKaynine Training Centre
             </h1>
           </div>
