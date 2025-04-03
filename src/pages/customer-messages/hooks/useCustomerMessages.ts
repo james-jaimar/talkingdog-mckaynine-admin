@@ -2,13 +2,13 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/context/auth";
 import { useToast } from "@/components/ui/use-toast";
-import { ClientMessage } from "@/components/messages/types";
+import { supabase } from "@/integrations/supabase/client";
 import { 
   getClientMessages, 
   sendClientMessage, 
   subscribeToClientMessages 
 } from "@/components/messages/messageService";
-import { supabase } from "@/integrations/supabase/client";
+import { ClientMessage } from "@/components/messages/types";
 
 export function useCustomerMessages(clientId: string | null) {
   const [messages, setMessages] = useState<ClientMessage[]>([]);

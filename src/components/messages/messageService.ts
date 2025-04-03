@@ -72,7 +72,7 @@ export const sendClientMessage = async (message: ClientMessagesInsert) => {
       sender_id: userId
     };
     
-    // Insert message
+    // Insert message without any reference to the users table
     const { data, error } = await supabase
       .from('client_messages')
       .insert(messageToSend)
