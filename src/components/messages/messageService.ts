@@ -9,7 +9,7 @@ export const getClientMessages = async (clientId: string) => {
   try {
     console.log("Fetching messages for client ID:", clientId);
     
-    // Simple query to get only the necessary data, without profiles reference
+    // Simple query to get only the necessary data, no profiles reference
     const { data, error } = await supabase
       .from('client_messages')
       .select(`
