@@ -30,7 +30,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
         // Extract path from URL - handles both public and signed URLs
         const extractPath = (url: string) => {
           // Extract path from URL structure
-          const matches = url.match(/\/storage\/v1\/object\/(?:public|auth)\/([^?]+)/);
+          const matches = url.match(/\/storage\/v1\/object\/(?:public|auth|sign)\/message-attachments\/([^?]+)/);
           if (matches && matches[1]) {
             return decodeURIComponent(matches[1]);
           }
