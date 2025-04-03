@@ -34,7 +34,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
     if (attachmentError) {
       e.preventDefault();
       toast.error("This attachment is currently unavailable", {
-        description: "The file may have been deleted or you may not have permission to access it."
+        description: "The file may have been deleted or there might be an issue with the storage bucket."
       });
     }
   };
@@ -49,15 +49,31 @@ export function MessageBubble({ message }: MessageBubbleProps) {
         img.onerror = () => {
           setImageError(true);
           setAttachmentError(true);
+          console.error("Image failed to load:", message.attachment_url);
         };
         img.src = message.attachment_url;
       } 
       // For other attachments, we'll check if the URL contains common error indicators
-      else if (message.attachment_url.includes("error") || 
-               message.attachment_url.includes("not found") ||
-               !message.attachment_url.includes("supabase.co/storage")) {
+      // or if it does not point to our Supabase bucket
+      else if (!message.attachment_url.includes("message-attachments") || 
+               message.attachment_url.includes("error") || 
+               message.attachment_url.includes("not found")) {
         setAttachmentError(true);
+        console.error("Attachment URL appears invalid:", message.attachment_url);
       }
+      
+      // Additional check - fetch the headers to see if the file exists
+      fetch(message.attachment_url, { method: 'HEAD' })
+        .then(response => {
+          if (!response.ok) {
+            setAttachmentError(true);
+            console.error("Attachment HEAD request failed:", response.status, response.statusText);
+          }
+        })
+        .catch(err => {
+          setAttachmentError(true);
+          console.error("Error checking attachment availability:", err);
+        });
     }
   }, [message.attachment_url, isImage]);
 
@@ -98,6 +114,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
                       onError={() => {
                         setImageError(true);
                         setAttachmentError(true);
+                        console.error("Image failed to load in img tag:", message.attachment_url);
                       }}
                     />
                   </a>

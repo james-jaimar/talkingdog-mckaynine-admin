@@ -26,6 +26,14 @@ export const uploadMessageAttachment = async (file: File) => {
     
     console.log("Uploading to path:", filePath);
     
+    // Log bucket information to debug
+    const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
+    if (bucketsError) {
+      console.error("Error listing buckets:", bucketsError);
+    } else {
+      console.log("Available buckets:", buckets.map(b => b.name));
+    }
+    
     // Upload the file with proper content type and cacheControl
     const { data, error } = await supabase
       .storage
