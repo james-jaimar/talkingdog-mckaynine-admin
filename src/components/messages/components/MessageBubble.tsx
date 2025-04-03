@@ -58,10 +58,10 @@ export function MessageBubble({ message }: MessageBubbleProps) {
     setIsRetrying(true);
     
     // Add a cache buster to the URL
-    const cacheBuster = `?t=${Date.now()}`;
+    const cacheBuster = `t=${Date.now()}`;
     const url = message.attachment_url.includes('?') 
-      ? `${message.attachment_url}&cache=${Date.now()}` 
-      : `${message.attachment_url}${cacheBuster}`;
+      ? `${message.attachment_url}&${cacheBuster}` 
+      : `${message.attachment_url}?${cacheBuster}`;
       
     imageRef.current.src = url;
     
@@ -76,9 +76,10 @@ export function MessageBubble({ message }: MessageBubbleProps) {
     if (!message.attachment_url) return;
     
     // Create a direct download URL with anti-cache parameter
+    const cacheBuster = `t=${Date.now()}`;
     const downloadUrl = message.attachment_url.includes('?')
-      ? `${message.attachment_url}&cache=${Date.now()}`
-      : `${message.attachment_url}?cache=${Date.now()}`;
+      ? `${message.attachment_url}&${cacheBuster}`
+      : `${message.attachment_url}?${cacheBuster}`;
     
     // For images, we can use an Image object to check if they load
     if (isImage) {
