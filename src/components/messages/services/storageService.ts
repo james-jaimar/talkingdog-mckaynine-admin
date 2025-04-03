@@ -59,15 +59,20 @@ export const uploadMessageAttachment = async (file: File) => {
     
     console.log("File uploaded successfully:", data.path);
     
-    // Generate the public URL
-    // This directly creates the URL without relying on the getPublicUrl method
-    const bucketName = 'message-attachments';
-    const publicUrl = `${supabase.supabaseUrl}/storage/v1/object/public/${bucketName}/${data.path}`;
+    // Generate the public URL safely - avoiding using the protected supabaseUrl property directly
+    const { data: publicUrlData } = supabase
+      .storage
+      .from('message-attachments')
+      .getPublicUrl(data.path);
+      
+    if (!publicUrlData || !publicUrlData.publicUrl) {
+      throw new Error("Could not generate public URL");
+    }
     
-    console.log("Public URL generated:", publicUrl);
+    console.log("Public URL generated:", publicUrlData.publicUrl);
       
     return {
-      url: publicUrl,
+      url: publicUrlData.publicUrl,
       type: file.type
     };
   } catch (error) {

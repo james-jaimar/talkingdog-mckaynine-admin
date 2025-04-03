@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ClientMessage } from "@/components/messages/types";
 import { formatMessageTime, getInitials } from "@/components/messages/utils/messageFormatters";
@@ -15,6 +15,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
   const [attachmentError, setAttachmentError] = useState(false);
   const isImage = message.attachment_type?.startsWith('image/');
   const isPdf = message.attachment_type === 'application/pdf';
+  const imageRef = useRef<HTMLImageElement>(null);
   
   const getAttachmentFilename = (url: string) => {
     try {
@@ -31,60 +32,81 @@ export function MessageBubble({ message }: MessageBubbleProps) {
   };
   
   const handleAttachmentClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    // Don't prevent default for images that are displayed correctly
-    if (isImage && !imageError) return;
-    
-    // For other attachments or error cases, check before navigating
     if (attachmentError) {
       e.preventDefault();
       toast.error("This attachment is currently unavailable", {
         description: "The file may have been deleted or there might be an issue with the storage bucket."
       });
+      return;
+    }
+    
+    // For images that are displaying correctly, let the browser handle the click
+    if (isImage && !imageError) return;
+    
+    // For PDFs and other documents, open in a new tab
+    if (isPdf || !isImage) {
+      // Don't prevent default - allow the browser to open the file
+      console.log("Opening attachment in new tab:", message.attachment_url);
+    }
+  };
+
+  // Try to reload the image if it fails
+  const retryLoadImage = () => {
+    if (imageRef.current && message.attachment_url) {
+      const cacheBuster = `?t=${Date.now()}`;
+      imageRef.current.src = `${message.attachment_url}${cacheBuster}`;
     }
   };
 
   // Check if attachment exists when component mounts
   useEffect(() => {
-    if (message.attachment_url) {
-      // For images, we can use an Image object to check if they load
-      if (isImage) {
-        const img = new Image();
-        
-        img.onload = () => {
-          console.log("Image loaded successfully:", message.attachment_url);
-          setImageError(false);
-          setAttachmentError(false);
-        };
-        
-        img.onerror = () => {
-          console.error("Image failed to load:", message.attachment_url);
-          setImageError(true);
-          setAttachmentError(true);
-          
-          // Try to determine if this is a CORS issue
-          const isSubapaseUrl = message.attachment_url.includes('supabase');
-          console.log("Is Supabase URL:", isSubapaseUrl, "URL:", message.attachment_url);
-        };
-        
-        // Add cache buster to the URL to prevent browser caching issues
-        // and force a fresh request every time
-        const cacheBuster = `?t=${Date.now()}`;
-        img.src = `${message.attachment_url}${cacheBuster}`;
-      } 
+    if (!message.attachment_url) return;
+    
+    // For images, we can use an Image object to check if they load
+    if (isImage) {
+      const img = new Image();
       
-      // For non-image files, we'll assume they're available
-      // This avoids CORS issues with HEAD requests
-      else if (!isImage) {
+      img.onload = () => {
+        console.log("Image loaded successfully:", message.attachment_url);
+        setImageError(false);
         setAttachmentError(false);
+      };
+      
+      img.onerror = () => {
+        console.error("Image failed to load:", message.attachment_url);
+        setImageError(true);
+        setAttachmentError(true);
         
-        // Only flag if the URL seems obviously invalid
-        if (!message.attachment_url.includes("storage/v1/object") || 
-            message.attachment_url.includes("error") || 
-            message.attachment_url.includes("not found")) {
-          setAttachmentError(true);
-          console.error("Attachment URL appears invalid:", message.attachment_url);
-        }
-      }
+        // Debug information to help with troubleshooting
+        const isSupabaseUrl = message.attachment_url.includes('supabase');
+        console.log("Is Supabase URL:", isSupabaseUrl, "URL:", message.attachment_url);
+      };
+      
+      // Add cache buster to the URL to prevent browser caching issues
+      const cacheBuster = `?t=${Date.now()}`;
+      img.src = `${message.attachment_url}${cacheBuster}`;
+    } 
+    // For non-image files, try a fetch with HEAD method to check availability
+    else if (!isImage) {
+      // Start by assuming the file exists to avoid blocking the UI
+      setAttachmentError(false);
+      
+      // Perform a background check with fetch to verify
+      fetch(message.attachment_url, { method: 'HEAD' })
+        .then(response => {
+          if (!response.ok) {
+            console.error("Attachment unavailable:", message.attachment_url, "Status:", response.status);
+            setAttachmentError(true);
+          } else {
+            console.log("Attachment available:", message.attachment_url);
+            setAttachmentError(false);
+          }
+        })
+        .catch(error => {
+          console.error("Error checking attachment:", error);
+          // Don't automatically set as error - might be CORS blocking the HEAD request
+          // but the file could still be accessible directly
+        });
     }
   }, [message.attachment_url, isImage]);
 
@@ -119,6 +141,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
                     onClick={handleAttachmentClick}
                   >
                     <img 
+                      ref={imageRef}
                       src={`${message.attachment_url}?t=${Date.now()}`} 
                       alt="Attached image" 
                       className="max-w-full rounded border border-gray-200 max-h-[200px] object-contain bg-white"
@@ -127,7 +150,24 @@ export function MessageBubble({ message }: MessageBubbleProps) {
                         setImageError(true);
                         setAttachmentError(true);
                       }}
+                      onLoad={() => {
+                        console.log("Image loaded successfully in img tag");
+                        setImageError(false);
+                        setAttachmentError(false);
+                      }}
                     />
+                    {imageError && (
+                      <button 
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          retryLoadImage();
+                        }}
+                        className="mt-1 text-xs text-blue-500 hover:underline"
+                      >
+                        Retry loading image
+                      </button>
+                    )}
                   </a>
                 ) : (
                   <a 
