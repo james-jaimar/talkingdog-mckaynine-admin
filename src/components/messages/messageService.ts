@@ -37,6 +37,23 @@ export const getClientMessages = async (clientId: string) => {
 };
 
 /**
+ * Check if storage bucket exists
+ */
+const checkBucketExists = async (bucketName: string): Promise<boolean> => {
+  try {
+    // Try to get bucket details - will return error if bucket doesn't exist
+    const { data, error } = await supabase
+      .storage
+      .getBucket(bucketName);
+      
+    return !error && !!data;
+  } catch (error) {
+    console.error("Error checking if bucket exists:", error);
+    return false;
+  }
+}
+
+/**
  * Upload a file attachment for a message
  */
 export const uploadMessageAttachment = async (file: File) => {
@@ -52,6 +69,13 @@ export const uploadMessageAttachment = async (file: File) => {
       throw new Error("You must be logged in to upload files");
     }
     
+    // Check if bucket exists
+    const bucketExists = await checkBucketExists('message-attachments');
+    if (!bucketExists) {
+      console.error("The message-attachments bucket does not exist");
+      throw new Error("Storage not properly configured. Please contact the administrator.");
+    }
+    
     // Create unique file path to avoid collisions
     const fileExt = file.name.split('.').pop();
     const randomId = Math.random().toString(36).substring(2, 15);
@@ -60,22 +84,6 @@ export const uploadMessageAttachment = async (file: File) => {
     const filePath = `${userId}/${fileName}`;
     
     console.log("Uploading to path:", filePath);
-    
-    // Check if the bucket exists before uploading
-    const { data: buckets, error: bucketError } = await supabase
-      .storage
-      .listBuckets();
-      
-    if (bucketError) {
-      console.error("Error checking buckets:", bucketError);
-      throw new Error("Could not check storage buckets");
-    }
-    
-    const bucketExists = buckets?.some(bucket => bucket.name === 'message-attachments');
-    if (!bucketExists) {
-      console.error("The message-attachments bucket does not exist");
-      throw new Error("Storage not properly configured");
-    }
     
     // Upload the file with proper content type and cacheControl
     const { data, error } = await supabase

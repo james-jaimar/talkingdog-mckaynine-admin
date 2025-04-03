@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ClientMessage } from "@/components/messages/types";
 import { formatMessageTime, getInitials } from "@/components/messages/utils/messageFormatters";
-import { FileIcon, ImageIcon, FileText, ExternalLink } from "lucide-react";
+import { FileIcon, ImageIcon, FileText, ExternalLink, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 
 interface MessageBubbleProps {
@@ -12,6 +12,7 @@ interface MessageBubbleProps {
 
 export function MessageBubble({ message }: MessageBubbleProps) {
   const [imageError, setImageError] = useState(false);
+  const [attachmentError, setAttachmentError] = useState(false);
   const isImage = message.attachment_type?.startsWith('image/');
   const isPdf = message.attachment_type === 'application/pdf';
   
@@ -20,30 +21,35 @@ export function MessageBubble({ message }: MessageBubbleProps) {
       // Extract just the filename part
       const filename = url.split('/').pop() || 'attachment';
       // Remove any query parameters
-      return filename.split('?')[0];
+      return decodeURIComponent(filename.split('?')[0]);
     } catch (e) {
       return 'attachment';
     }
   };
   
   const handleAttachmentClick = (e: React.MouseEvent<HTMLAnchorElement>, url: string) => {
-    // Check if the URL is accessible before opening it
-    fetch(url, { method: 'HEAD' })
-      .then(response => {
-        if (!response.ok) {
-          e.preventDefault();
-          toast.error("This attachment is currently unavailable", {
-            description: "The file may have been deleted or you may not have permission to access it."
-          });
-        }
-      })
-      .catch(() => {
-        e.preventDefault();
-        toast.error("Cannot access this attachment", {
-          description: "There was an error accessing this file."
-        });
+    // Don't try to validate URLs - just open in new tab
+    // This avoids HEAD requests which may fail with CORS errors
+    if (attachmentError) {
+      e.preventDefault();
+      toast.error("This attachment is currently unavailable", {
+        description: "The file may have been deleted or you may not have permission to access it."
       });
+    }
   };
+
+  // Check if attachment exists when component mounts
+  useState(() => {
+    if (message.attachment_url) {
+      const img = new Image();
+      img.onload = () => setAttachmentError(false);
+      img.onerror = () => setAttachmentError(true);
+      
+      if (isImage) {
+        img.src = message.attachment_url;
+      }
+    }
+  });
 
   return (
     <div 
@@ -79,7 +85,10 @@ export function MessageBubble({ message }: MessageBubbleProps) {
                       src={message.attachment_url} 
                       alt="Attached image" 
                       className="max-w-full rounded border border-gray-200 max-h-[200px] object-contain bg-white"
-                      onError={() => setImageError(true)}
+                      onError={() => {
+                        setImageError(true);
+                        setAttachmentError(true);
+                      }}
                     />
                   </a>
                 ) : (
@@ -89,11 +98,13 @@ export function MessageBubble({ message }: MessageBubbleProps) {
                     rel="noopener noreferrer"
                     className={`flex items-center gap-2 p-2 rounded ${
                       message.is_from_client ? 'bg-white' : 'bg-mckaynine-500'
-                    } hover:bg-opacity-90 transition-colors`}
+                    } hover:bg-opacity-90 transition-colors ${attachmentError ? 'opacity-60' : ''}`}
                     onClick={(e) => handleAttachmentClick(e, message.attachment_url!)}
                   >
                     <div className="flex-shrink-0">
-                      {isPdf ? (
+                      {attachmentError ? (
+                        <AlertCircle className="h-5 w-5 text-red-500" />
+                      ) : isPdf ? (
                         <FileText className="h-5 w-5" />
                       ) : isImage ? (
                         <ImageIcon className="h-5 w-5" />
@@ -105,6 +116,9 @@ export function MessageBubble({ message }: MessageBubbleProps) {
                       {getAttachmentFilename(message.attachment_url)}
                     </span>
                     <ExternalLink className="h-4 w-4 flex-shrink-0 opacity-70" />
+                    {attachmentError && (
+                      <span className="text-xs text-red-500">(unavailable)</span>
+                    )}
                   </a>
                 )}
               </div>
