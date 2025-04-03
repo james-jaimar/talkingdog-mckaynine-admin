@@ -32,7 +32,7 @@ export function useCustomerMessages(clientId: string | null) {
         console.log("Fetching messages for client:", clientId);
         const messagesData = await getClientMessages(clientId);
         
-        // Format messages with sender name
+        // Format messages with sender name without profile info
         const formattedMessages = messagesData.map((msg) => ({
           ...msg,
           sender_name: msg.is_from_client ? 'You' : 'Staff'
@@ -74,7 +74,7 @@ export function useCustomerMessages(clientId: string | null) {
           return prev;
         }
         
-        // Format the new message
+        // Format the new message with sender name
         const formattedMessage = {
           ...newMsg,
           sender_name: newMsg.is_from_client ? 'You' : 'Staff'

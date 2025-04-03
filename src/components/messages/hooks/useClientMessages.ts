@@ -36,7 +36,7 @@ export function useClientMessages({ clientId, clientName }: UseClientMessagesPro
       try {
         const messagesData = await getClientMessages(clientId);
         
-        // Format messages with sender name
+        // Format messages with sender name without profile lookup
         const formattedMessages = messagesData.map((msg) => ({
           ...msg,
           sender_name: msg.is_from_client ? clientName : 'Staff'

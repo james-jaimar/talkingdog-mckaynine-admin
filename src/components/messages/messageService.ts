@@ -16,17 +16,10 @@ export const getClientMessages = async (clientId: string) => {
       throw new Error("Authentication required");
     }
     
-    // Simple query to get only the necessary data
+    // Simple query to get only the necessary data without any joins to users table
     const { data, error } = await supabase
       .from('client_messages')
-      .select(`
-        id,
-        client_id,
-        sender_id,
-        content,
-        is_from_client,
-        created_at
-      `)
+      .select('id, client_id, sender_id, content, is_from_client, created_at')
       .eq('client_id', clientId)
       .order('created_at', { ascending: true });
       
