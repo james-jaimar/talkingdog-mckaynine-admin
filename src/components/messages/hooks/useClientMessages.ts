@@ -100,6 +100,7 @@ export function useClientMessages({ clientId, clientName }: UseClientMessagesPro
     setIsUploading(true);
     
     try {
+      console.log("Uploading file:", file.name);
       const result = await uploadMessageAttachment(file);
       setAttachmentData(result);
       toast({
