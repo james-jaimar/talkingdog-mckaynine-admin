@@ -58,12 +58,12 @@ export function MessageBubble({ message }: MessageBubbleProps) {
     setIsRetrying(true);
     
     // Add a cache buster to the URL
-    const cacheBuster = `t=${Date.now()}`;
-    const url = message.attachment_url.includes('?') 
-      ? `${message.attachment_url}&${cacheBuster}` 
-      : `${message.attachment_url}?${cacheBuster}`;
+    const timestamp = Date.now();
+    const cacheBuster = `t=${timestamp}`;
+    const url = new URL(message.attachment_url);
+    url.searchParams.set('t', timestamp.toString());
       
-    imageRef.current.src = url;
+    imageRef.current.src = url.toString();
     
     // Reset retry state after a timeout
     setTimeout(() => {
@@ -76,10 +76,19 @@ export function MessageBubble({ message }: MessageBubbleProps) {
     if (!message.attachment_url) return;
     
     // Create a direct download URL with anti-cache parameter
-    const cacheBuster = `t=${Date.now()}`;
-    const downloadUrl = message.attachment_url.includes('?')
-      ? `${message.attachment_url}&${cacheBuster}`
-      : `${message.attachment_url}?${cacheBuster}`;
+    const timestamp = Date.now();
+    let downloadUrl;
+    
+    try {
+      const url = new URL(message.attachment_url);
+      url.searchParams.set('t', timestamp.toString());
+      downloadUrl = url.toString();
+    } catch (e) {
+      // If URL parsing fails, fallback to string manipulation
+      downloadUrl = message.attachment_url.includes('?')
+        ? `${message.attachment_url}&t=${timestamp}`
+        : `${message.attachment_url}?t=${timestamp}`;
+    }
     
     // For images, we can use an Image object to check if they load
     if (isImage) {
@@ -154,7 +163,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
                   >
                     <img 
                       ref={imageRef}
-                      src={`${message.attachment_url}?cache=${Date.now()}`} 
+                      src={message.attachment_url} 
                       alt="Attached image" 
                       className="max-w-full rounded border border-gray-200 max-h-[200px] object-contain bg-white"
                       onError={() => {
@@ -171,7 +180,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
                   </a>
                 ) : (
                   <a 
-                    href={`${message.attachment_url}?download=true&cache=${Date.now()}`} 
+                    href={message.attachment_url} 
                     target="_blank" 
                     rel="noopener noreferrer"
                     className={`flex items-center gap-2 p-2 rounded ${

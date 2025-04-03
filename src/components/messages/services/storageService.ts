@@ -58,14 +58,14 @@ export const uploadMessageAttachment = async (file: File) => {
     
     console.log("File uploaded successfully:", data.path);
     
-    // Get the public URL using getPublicUrl method
-    const { data: publicUrlData } = supabase
+    // Get the public URL and ensure we're using the correct method
+    const publicUrlData = supabase
       .storage
       .from('message-attachments')
       .getPublicUrl(data.path);
       
     // Add a cache-busting parameter to prevent browser caching
-    const publicUrl = `${publicUrlData.publicUrl}?t=${Date.now()}`;
+    const publicUrl = `${publicUrlData.data.publicUrl}?t=${Date.now()}`;
     console.log("Public URL generated:", publicUrl);
       
     return {
