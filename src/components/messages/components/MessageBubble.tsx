@@ -53,8 +53,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
         };
         img.src = message.attachment_url;
       } 
-      // For other attachments, check if the URL contains common error indicators
-      // or if it does not point to our Supabase bucket
+      // For other attachments, check if the URL seems valid
       else if (!message.attachment_url.includes("message-attachments") || 
                message.attachment_url.includes("error") || 
                message.attachment_url.includes("not found")) {

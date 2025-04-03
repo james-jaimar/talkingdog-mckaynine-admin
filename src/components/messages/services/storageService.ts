@@ -1,5 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 /**
  * Upload a file attachment for a message
@@ -26,15 +27,8 @@ export const uploadMessageAttachment = async (file: File) => {
     
     console.log("Uploading to path:", filePath);
     
-    // Log bucket information
-    const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
-    if (bucketsError) {
-      console.error("Error listing buckets:", bucketsError);
-    } else {
-      console.log("Available buckets:", buckets.map(b => b.name));
-    }
-    
-    // Upload the file to the existing bucket created in the SQL migration
+    // Directly attempt to upload to the bucket without checking if it exists first
+    // The bucket should have been created by the SQL migration
     const { data, error } = await supabase
       .storage
       .from('message-attachments')
@@ -46,6 +40,20 @@ export const uploadMessageAttachment = async (file: File) => {
       
     if (error) {
       console.error("Error uploading file:", error);
+      // Show more user-friendly error message
+      if (error.message.includes("bucket") || error.message.includes("not found")) {
+        toast.error("Storage configuration issue", {
+          description: "The storage bucket is not properly configured. Please contact support."
+        });
+      } else if (error.message.includes("permission") || error.message.includes("policy")) {
+        toast.error("Permission denied", {
+          description: "You don't have permission to upload this file. Please log out and log back in."
+        });
+      } else {
+        toast.error("Upload failed", {
+          description: error.message
+        });
+      }
       throw error;
     }
     
