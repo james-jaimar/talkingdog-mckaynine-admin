@@ -62,6 +62,45 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
       
       if (updateError) throw updateError;
       
+      // If the role is "handler", create a corresponding entry in the clients table
+      if (role === "handler") {
+        // First check if a client with this email already exists
+        const { data: existingClient, error: checkError } = await supabase
+          .from('clients')
+          .select('id')
+          .eq('email', email)
+          .maybeSingle();
+          
+        if (checkError && checkError.code !== 'PGRST116') {
+          console.error("Error checking existing client:", checkError);
+        }
+        
+        // Only create a new client record if one doesn't already exist
+        if (!existingClient) {
+          const nameParts = fullName.split(' ');
+          const firstName = nameParts[0] || '';
+          const lastName = nameParts.slice(1).join(' ') || '';
+          
+          const { error: clientError } = await supabase
+            .from('clients')
+            .insert({
+              email: email,
+              first_name: firstName,
+              last_name: lastName
+            });
+            
+          if (clientError) {
+            console.error("Error creating client record:", clientError);
+            // Don't throw - we still want to show success for the user creation
+            toast({
+              title: "User created, but client record failed",
+              description: "The user was created successfully, but there was an issue creating the client record.",
+              variant: "default",
+            });
+          }
+        }
+      }
+      
       // Success - clear form and close dialog
       toast({
         title: "User added",

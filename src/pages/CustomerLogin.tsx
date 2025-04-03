@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Helmet } from "react-helmet";
@@ -9,14 +8,16 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { toast } from "sonner";
 
 export default function CustomerLogin() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { login } = useAuth();
+  const { login, signup } = useAuth();
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<"login" | "signup">("login");
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,6 +34,37 @@ export default function CustomerLogin() {
     } catch (err) {
       setError("An unexpected error occurred.");
       console.error("Login error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Add a register function for the signup tab
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Register with handler role in metadata
+      const result = await signup(email, password, { 
+        full_name: "",
+        role: "handler" 
+      });
+      
+      if (result.success) {
+        toast({
+          title: "Registration successful",
+          description: "Your account has been created. You can now log in.",
+        });
+        // Switch to login tab after successful registration
+        setActiveTab("login");
+      } else {
+        setError(result.error || "An error occurred during registration.");
+      }
+    } catch (err) {
+      setError("An unexpected error occurred.");
+      console.error("Registration error:", err);
     } finally {
       setLoading(false);
     }
@@ -63,7 +95,7 @@ export default function CustomerLogin() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="login" className="w-full">
+            <Tabs defaultValue="login" className="w-full" value={activeTab} onValueChange={(value) => setActiveTab(value)}>
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="login">Login</TabsTrigger>
                 <TabsTrigger value="signup">Register</TabsTrigger>
@@ -128,21 +160,56 @@ export default function CustomerLogin() {
               </TabsContent>
               
               <TabsContent value="signup">
-                <div className="p-4 text-center bg-gray-50 rounded-md">
-                  <p className="text-sm text-gray-600">
-                    New accounts are created during class registration. 
-                    Please contact us if you need assistance.
-                  </p>
+                {error && (
+                  <Alert variant="destructive" className="mb-4">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                )}
+                
+                <form onSubmit={handleRegister} className="space-y-4">
+                  <div className="space-y-2">
+                    <label htmlFor="register-email" className="text-sm font-medium">
+                      Email
+                    </label>
+                    <Input
+                      id="register-email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="your.email@example.com"
+                      required
+                      autoComplete="email"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label htmlFor="register-password" className="text-sm font-medium">
+                      Password
+                    </label>
+                    <Input
+                      id="register-password"
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="••••••••"
+                      required
+                      autoComplete="new-password"
+                    />
+                    <p className="text-xs text-gray-500">
+                      Password must be at least 6 characters
+                    </p>
+                  </div>
+                  
                   <Button
-                    variant="outline"
-                    className="mt-4"
-                    asChild
+                    type="submit"
+                    className="w-full"
+                    variant="mckaynine"
+                    disabled={loading}
                   >
-                    <a href="mailto:info@mckaynine.co.za">
-                      Contact Support
-                    </a>
+                    {loading ? "Registering..." : "Register"}
                   </Button>
-                </div>
+                </form>
               </TabsContent>
             </Tabs>
           </CardContent>
