@@ -2,42 +2,6 @@
 import { supabase } from "@/integrations/supabase/client";
 
 /**
- * Create message attachments bucket if it doesn't exist
- */
-export const createBucketIfNotExists = async (bucketName: string): Promise<void> => {
-  try {
-    // Check if bucket exists
-    const { data: buckets } = await supabase
-      .storage
-      .listBuckets();
-      
-    const bucketExists = buckets?.some(bucket => bucket.name === bucketName);
-    
-    if (!bucketExists) {
-      console.log(`Bucket '${bucketName}' does not exist, attempting to create it`);
-      const { error } = await supabase
-        .storage
-        .createBucket(bucketName, {
-          public: true, // Make bucket publicly accessible
-          fileSizeLimit: 10485760, // 10MB limit
-        });
-        
-      if (error) {
-        console.error("Error creating bucket:", error);
-        throw new Error(`Failed to create bucket: ${error.message}`);
-      }
-      
-      console.log(`Bucket '${bucketName}' created successfully`);
-    } else {
-      console.log(`Bucket '${bucketName}' already exists`);
-    }
-  } catch (error) {
-    console.error("Error in createBucketIfNotExists:", error);
-    throw error;
-  }
-};
-
-/**
  * Upload a file attachment for a message
  */
 export const uploadMessageAttachment = async (file: File) => {
@@ -53,10 +17,6 @@ export const uploadMessageAttachment = async (file: File) => {
       throw new Error("You must be logged in to upload files");
     }
     
-    // Ensure bucket exists
-    const bucketName = 'message-attachments';
-    await createBucketIfNotExists(bucketName);
-    
     // Create unique file path to avoid collisions
     const fileExt = file.name.split('.').pop();
     const randomId = Math.random().toString(36).substring(2, 15);
@@ -69,7 +29,7 @@ export const uploadMessageAttachment = async (file: File) => {
     // Upload the file with proper content type and cacheControl
     const { data, error } = await supabase
       .storage
-      .from(bucketName)
+      .from('message-attachments')
       .upload(filePath, file, {
         cacheControl: '3600',
         contentType: file.type, // Explicitly set content type
@@ -86,7 +46,7 @@ export const uploadMessageAttachment = async (file: File) => {
     // Get a public URL for the file
     const { data: publicUrlData } = await supabase
       .storage
-      .from(bucketName)
+      .from('message-attachments')
       .getPublicUrl(data.path);
       
     if (!publicUrlData?.publicUrl) {

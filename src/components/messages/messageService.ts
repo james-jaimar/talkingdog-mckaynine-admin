@@ -6,12 +6,11 @@
 
 import { getClientMessages, sendClientMessage } from './services/messageApi';
 import { subscribeToClientMessages } from './services/messageSubscription';
-import { uploadMessageAttachment, createBucketIfNotExists } from './services/storageService';
+import { uploadMessageAttachment } from './services/storageService';
 
 export {
   getClientMessages,
   sendClientMessage,
   subscribeToClientMessages,
-  uploadMessageAttachment,
-  createBucketIfNotExists
+  uploadMessageAttachment
 };
