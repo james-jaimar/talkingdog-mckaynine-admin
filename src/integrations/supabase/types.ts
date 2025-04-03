@@ -456,6 +456,8 @@ export type Database = {
       }
       client_messages: {
         Row: {
+          attachment_type: string | null
+          attachment_url: string | null
           client_id: string
           content: string
           created_at: string
@@ -465,6 +467,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          attachment_type?: string | null
+          attachment_url?: string | null
           client_id: string
           content: string
           created_at?: string
@@ -474,6 +478,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          attachment_type?: string | null
+          attachment_url?: string | null
           client_id?: string
           content?: string
           created_at?: string

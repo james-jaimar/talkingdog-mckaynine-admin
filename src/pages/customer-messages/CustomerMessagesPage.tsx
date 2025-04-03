@@ -77,7 +77,11 @@ export default function CustomerMessagesPage() {
     setNewMessage,
     isLoading,
     isSending,
-    sendMessage
+    sendMessage,
+    selectedFile,
+    isUploading,
+    handleFileSelect,
+    clearSelectedFile
   } = useCustomerMessages(clientId);
 
   return (
@@ -111,7 +115,11 @@ export default function CustomerMessagesPage() {
                 value={newMessage}
                 onChange={setNewMessage}
                 onSend={sendMessage}
+                onFileSelect={handleFileSelect}
                 isSending={isSending}
+                isUploading={isUploading}
+                selectedFile={selectedFile}
+                onClearFile={clearSelectedFile}
               />
             </>
           )}

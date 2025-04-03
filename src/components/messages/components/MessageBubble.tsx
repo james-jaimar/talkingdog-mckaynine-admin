@@ -2,12 +2,16 @@
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ClientMessage } from "@/components/messages/types";
 import { formatMessageTime, getInitials } from "@/components/messages/utils/messageFormatters";
+import { FileIcon, ImageIcon, FileText } from "lucide-react";
 
 interface MessageBubbleProps {
   message: ClientMessage;
 }
 
 export function MessageBubble({ message }: MessageBubbleProps) {
+  const isImage = message.attachment_type?.startsWith('image/');
+  const isPdf = message.attachment_type === 'application/pdf';
+  
   return (
     <div 
       className={`flex ${message.is_from_client ? 'justify-start' : 'justify-end'}`}
@@ -27,6 +31,43 @@ export function MessageBubble({ message }: MessageBubbleProps) {
             }`}
           >
             {message.content}
+            
+            {message.attachment_url && (
+              <div className="mt-2">
+                {isImage ? (
+                  <a 
+                    href={message.attachment_url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="block"
+                  >
+                    <img 
+                      src={message.attachment_url} 
+                      alt="Attached image" 
+                      className="max-w-full rounded border border-gray-200 max-h-[200px] object-contain bg-white"
+                    />
+                  </a>
+                ) : (
+                  <a 
+                    href={message.attachment_url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className={`flex items-center gap-2 p-2 rounded ${
+                      message.is_from_client ? 'bg-white' : 'bg-mckaynine-500'
+                    }`}
+                  >
+                    {isPdf ? (
+                      <FileText className="h-5 w-5" />
+                    ) : (
+                      <FileIcon className="h-5 w-5" />
+                    )}
+                    <span className="text-sm truncate">
+                      {message.attachment_url.split('/').pop()?.split('_').pop() || 'Download attachment'}
+                    </span>
+                  </a>
+                )}
+              </div>
+            )}
           </div>
           <div className="text-xs text-gray-500 mt-1">
             {message.sender_name} · {formatMessageTime(message.created_at)}

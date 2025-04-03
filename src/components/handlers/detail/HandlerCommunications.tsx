@@ -16,7 +16,11 @@ export function HandlerCommunications({ clientId, clientName }: HandlerCommunica
     setNewMessage,
     isLoading,
     isSending,
-    sendMessage
+    sendMessage,
+    selectedFile,
+    isUploading,
+    handleFileSelect,
+    clearSelectedFile
   } = useClientMessages({ clientId, clientName });
 
   return (
@@ -34,7 +38,11 @@ export function HandlerCommunications({ clientId, clientName }: HandlerCommunica
           value={newMessage}
           onChange={setNewMessage}
           onSend={sendMessage}
+          onFileSelect={handleFileSelect}
           isSending={isSending}
+          isUploading={isUploading}
+          selectedFile={selectedFile}
+          onClearFile={clearSelectedFile}
         />
       </CardContent>
     </Card>

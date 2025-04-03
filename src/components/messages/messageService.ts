@@ -19,7 +19,7 @@ export const getClientMessages = async (clientId: string) => {
     // Simple query to get only the necessary data
     const { data, error } = await supabase
       .from('client_messages')
-      .select('id, client_id, sender_id, content, is_from_client, created_at')
+      .select('id, client_id, sender_id, content, is_from_client, created_at, attachment_url, attachment_type')
       .eq('client_id', clientId)
       .order('created_at', { ascending: true });
       
@@ -37,6 +37,59 @@ export const getClientMessages = async (clientId: string) => {
 };
 
 /**
+ * Upload a file attachment for a message
+ */
+export const uploadMessageAttachment = async (file: File) => {
+  try {
+    console.log("Uploading file:", file.name, "Size:", file.size, "Type:", file.type);
+    
+    // Get current auth session
+    const { data: sessionData } = await supabase.auth.getSession();
+    
+    // Check if user is authenticated
+    if (!sessionData.session) {
+      console.error("No active session found");
+      throw new Error("You must be logged in to upload files");
+    }
+    
+    // Create unique file path to avoid collisions
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
+    const filePath = `${sessionData.session.user.id}/${fileName}`;
+    
+    // Upload the file
+    const { data, error } = await supabase
+      .storage
+      .from('message-attachments')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false
+      });
+      
+    if (error) {
+      console.error("Error uploading file:", error);
+      throw error;
+    }
+    
+    console.log("File uploaded successfully:", data.path);
+    
+    // Get the public URL
+    const { data: { publicUrl } } = supabase
+      .storage
+      .from('message-attachments')
+      .getPublicUrl(data.path);
+      
+    return {
+      url: publicUrl,
+      type: file.type
+    };
+  } catch (error) {
+    console.error("Error in uploadMessageAttachment:", error);
+    throw error;
+  }
+};
+
+/**
  * Send a new message
  */
 export const sendClientMessage = async (message: ClientMessagesInsert) => {
@@ -44,7 +97,8 @@ export const sendClientMessage = async (message: ClientMessagesInsert) => {
     console.log("Sending message with data:", {
       client_id: message.client_id,
       is_from_client: message.is_from_client,
-      content_length: message.content?.length || 0
+      content_length: message.content?.length || 0,
+      has_attachment: !!message.attachment_url
     });
     
     // Get current auth session

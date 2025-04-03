@@ -6,7 +6,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { 
   getClientMessages, 
   sendClientMessage, 
-  subscribeToClientMessages 
+  subscribeToClientMessages,
+  uploadMessageAttachment
 } from "@/components/messages/messageService";
 import { ClientMessage } from "@/components/messages/types";
 
@@ -20,6 +21,9 @@ export function useClientMessages({ clientId, clientName }: UseClientMessagesPro
   const [newMessage, setNewMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [attachmentData, setAttachmentData] = useState<{ url: string; type: string } | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -90,8 +94,39 @@ export function useClientMessages({ clientId, clientName }: UseClientMessagesPro
     };
   }, [clientId, clientName]);
 
+  // Handle file selection
+  const handleFileSelect = useCallback(async (file: File) => {
+    setSelectedFile(file);
+    setIsUploading(true);
+    
+    try {
+      const result = await uploadMessageAttachment(file);
+      setAttachmentData(result);
+      toast({
+        title: "File uploaded",
+        description: "Your file has been uploaded successfully.",
+      });
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      toast({
+        title: "Upload failed",
+        description: "There was a problem uploading your file. Please try again.",
+        variant: "destructive",
+      });
+      setSelectedFile(null);
+    } finally {
+      setIsUploading(false);
+    }
+  }, [toast]);
+
+  // Clear selected file
+  const clearSelectedFile = useCallback(() => {
+    setSelectedFile(null);
+    setAttachmentData(null);
+  }, []);
+
   const sendMessage = useCallback(async () => {
-    if (!newMessage.trim() || !user || !clientId) {
+    if ((!newMessage.trim() && !attachmentData) || !user || !clientId) {
       console.log("Cannot send message: missing required data");
       return;
     }
@@ -101,12 +136,16 @@ export function useClientMessages({ clientId, clientName }: UseClientMessagesPro
       await sendClientMessage({
         client_id: clientId,
         sender_id: user.id,
-        content: newMessage.trim(),
-        is_from_client: false
+        content: newMessage.trim() || (attachmentData ? "Sent an attachment" : ""),
+        is_from_client: false,
+        attachment_url: attachmentData?.url,
+        attachment_type: attachmentData?.type
       });
       
-      // Clear input field
+      // Clear input field and attachment
       setNewMessage("");
+      setSelectedFile(null);
+      setAttachmentData(null);
     } catch (error) {
       console.error("Error sending message:", error);
       toast({
@@ -117,7 +156,7 @@ export function useClientMessages({ clientId, clientName }: UseClientMessagesPro
     } finally {
       setIsSending(false);
     }
-  }, [newMessage, clientId, user, toast]);
+  }, [newMessage, clientId, user, toast, attachmentData]);
 
   return {
     messages,
@@ -125,6 +164,10 @@ export function useClientMessages({ clientId, clientName }: UseClientMessagesPro
     setNewMessage,
     isLoading,
     isSending,
-    sendMessage
+    sendMessage,
+    selectedFile,
+    isUploading,
+    handleFileSelect,
+    clearSelectedFile
   };
 }
