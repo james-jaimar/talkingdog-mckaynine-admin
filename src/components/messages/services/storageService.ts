@@ -26,7 +26,7 @@ export const uploadMessageAttachment = async (file: File) => {
     
     console.log("Uploading to path:", filePath);
     
-    // Log bucket information to debug
+    // Log bucket information
     const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
     if (bucketsError) {
       console.error("Error listing buckets:", bucketsError);
@@ -34,13 +34,13 @@ export const uploadMessageAttachment = async (file: File) => {
       console.log("Available buckets:", buckets.map(b => b.name));
     }
     
-    // Upload the file with proper content type and cacheControl
+    // Upload the file to the existing bucket created in the SQL migration
     const { data, error } = await supabase
       .storage
       .from('message-attachments')
       .upload(filePath, file, {
         cacheControl: '3600',
-        contentType: file.type, // Explicitly set content type
+        contentType: file.type,
         upsert: false
       });
       
