@@ -46,7 +46,7 @@ export default function CustomerMessagesPage() {
           return;
         }
         
-        // Simple direct query to find the client by email
+        // Direct query to find the client by email
         const { data, error } = await supabase
           .from('clients')
           .select('id')

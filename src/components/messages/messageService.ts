@@ -9,7 +9,14 @@ export const getClientMessages = async (clientId: string) => {
   try {
     console.log("Fetching messages for client ID:", clientId);
     
-    // Simple query to get only the necessary data, no profiles reference
+    // Check if we have an active session first
+    const { data: session } = await supabase.auth.getSession();
+    if (!session.session) {
+      console.error("No active session when trying to fetch messages");
+      throw new Error("Authentication required");
+    }
+    
+    // Simple query to get only the necessary data
     const { data, error } = await supabase
       .from('client_messages')
       .select(`
@@ -56,11 +63,13 @@ export const sendClientMessage = async (message: ClientMessagesInsert) => {
       throw new Error("You must be logged in to send messages");
     }
     
-    // Ensure sender_id matches current user
+    // Use authenticated user's ID as sender
     const userId = sessionData.session.user.id;
+    
+    // Create message object with current user as sender
     const messageToSend = {
       ...message,
-      sender_id: userId // Override sender_id with authenticated user id
+      sender_id: userId
     };
     
     // Insert message

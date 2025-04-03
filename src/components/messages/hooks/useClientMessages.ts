@@ -100,7 +100,7 @@ export function useClientMessages({ clientId, clientName }: UseClientMessagesPro
     try {
       await sendClientMessage({
         client_id: clientId,
-        sender_id: user.id, // This will be overridden in the service
+        sender_id: user.id,
         content: newMessage.trim(),
         is_from_client: false
       });

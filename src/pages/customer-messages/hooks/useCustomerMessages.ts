@@ -108,7 +108,7 @@ export function useCustomerMessages(clientId: string | null) {
       
       const messageData = {
         client_id: clientId,
-        sender_id: user.id, // Will be overridden in service with authenticated user's ID
+        sender_id: user.id,
         content: newMessage.trim(),
         is_from_client: true
       };
