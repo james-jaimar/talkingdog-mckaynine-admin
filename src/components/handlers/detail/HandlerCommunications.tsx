@@ -1,8 +1,6 @@
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { MessageComposer } from "@/components/messages/components/MessageComposer";
-import { MessagesContainer } from "@/components/messages/components/MessagesContainer";
 import { useClientMessages } from "@/components/messages/hooks/useClientMessages";
+import { ConversationView } from "@/components/messages/components/ConversationView";
 
 interface HandlerCommunicationsProps {
   clientId: string;
@@ -24,27 +22,19 @@ export function HandlerCommunications({ clientId, clientName }: HandlerCommunica
   } = useClientMessages({ clientId, clientName });
 
   return (
-    <Card className="h-full flex flex-col">
-      <CardHeader className="pb-4 border-b">
-        <CardTitle>Communications</CardTitle>
-      </CardHeader>
-      <CardContent className="flex-1 flex flex-col p-0">
-        <MessagesContainer 
-          messages={messages}
-          isLoading={isLoading}
-        />
-        
-        <MessageComposer
-          value={newMessage}
-          onChange={setNewMessage}
-          onSend={sendMessage}
-          onFileSelect={handleFileSelect}
-          isSending={isSending}
-          isUploading={isUploading}
-          selectedFile={selectedFile}
-          onClearFile={clearSelectedFile}
-        />
-      </CardContent>
-    </Card>
+    <ConversationView
+      title="Communications"
+      messages={messages}
+      newMessage={newMessage}
+      setNewMessage={setNewMessage}
+      isLoading={isLoading}
+      isSending={isSending}
+      sendMessage={sendMessage}
+      selectedFile={selectedFile}
+      isUploading={isUploading}
+      handleFileSelect={handleFileSelect}
+      clearSelectedFile={clearSelectedFile}
+      emptyStateMessage="No messages yet. Send a message to start the conversation with this handler."
+    />
   );
 }

@@ -1,76 +1,24 @@
 
-import { useState, useEffect } from "react";
+import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { useAuth } from "@/context/auth";
-import { DashboardLayout } from "@/components/layout/CustomerDashboardLayout";
+import { useEffect, useState } from "react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
+import { ConversationView } from "@/components/messages/components/ConversationView";
+import { useCustomerConversation } from "./hooks/useCustomerConversation";
 import { Helmet } from "react-helmet";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/components/ui/use-toast";
-import { Card } from "@/components/ui/card";
-import { MessagesContainer } from "@/components/messages/components/MessagesContainer";
-import { MessageComposer } from "@/components/messages/components/MessageComposer";
-import { useCustomerMessages } from "./hooks/useCustomerMessages";
-import { Loader2 } from "lucide-react";
 
 export default function CustomerMessagesPage() {
-  const { user } = useAuth();
-  const { toast } = useToast();
+  const { user, isHandler } = useAuth();
   const [clientId, setClientId] = useState<string | null>(null);
-  const [isLoadingClient, setIsLoadingClient] = useState(true);
   
-  // Get client ID for the current authenticated user
+  // Set client ID from user data if handler
   useEffect(() => {
-    if (!user) {
-      console.log("No user is logged in");
-      setIsLoadingClient(false);
-      return;
+    if (user && isHandler) {
+      setClientId(user.id);
     }
-    
-    const getClientId = async () => {
-      setIsLoadingClient(true);
-      try {
-        console.log("Fetching client ID for user:", {
-          userId: user.id,
-          email: user.email
-        });
-        
-        // Direct query to find the client by email
-        const { data, error } = await supabase
-          .from('clients')
-          .select('id')
-          .eq('email', user.email)
-          .maybeSingle();
-          
-        if (error) {
-          console.error("Error fetching client ID:", error);
-          throw error;
-        }
-        
-        if (data) {
-          console.log("Found client:", data);
-          setClientId(data.id);
-        } else {
-          console.log("No client found for email:", user.email);
-          toast({
-            title: "Account not linked",
-            description: "Your user account is not linked to a client profile. Please contact support.",
-            variant: "destructive",
-          });
-        }
-      } catch (error) {
-        console.error("Error fetching client ID:", error);
-        toast({
-          title: "Error loading profile",
-          description: "There was a problem loading your profile information.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoadingClient(false);
-      }
-    };
-    
-    getClientId();
-  }, [user, toast]);
-
+  }, [user, isHandler]);
+  
   const {
     messages,
     newMessage,
@@ -81,49 +29,52 @@ export default function CustomerMessagesPage() {
     selectedFile,
     isUploading,
     handleFileSelect,
-    clearSelectedFile
-  } = useCustomerMessages(clientId);
+    clearSelectedFile,
+    conversationReady
+  } = useCustomerConversation(clientId);
+
+  if (!conversationReady) {
+    return (
+      <DashboardLayout>
+        <Helmet>
+          <title>Messages - McKaynine Training Centre</title>
+        </Helmet>
+        <div className="container py-8">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Access Denied</AlertTitle>
+            <AlertDescription>
+              You need to be logged in as a handler to view your messages.
+            </AlertDescription>
+          </Alert>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
       <Helmet>
         <title>Messages - McKaynine Training Centre</title>
       </Helmet>
-      
-      <div className="py-6">
+      <div className="container py-8">
         <h1 className="text-2xl font-bold mb-6">Messages</h1>
-        
-        <Card className="min-h-[500px] flex flex-col">
-          {isLoadingClient ? (
-            <div className="flex flex-col items-center justify-center py-10">
-              <Loader2 className="h-8 w-8 animate-spin text-mckaynine-600 mb-4" />
-              <p className="text-gray-500">Loading your profile...</p>
-            </div>
-          ) : !clientId ? (
-            <div className="flex flex-col items-center justify-center py-10">
-              <p className="text-gray-500">No client profile found for your account.</p>
-              <p className="text-gray-500">Please contact support for assistance.</p>
-            </div>
-          ) : (
-            <>
-              <MessagesContainer 
-                messages={messages}
-                isLoading={isLoading} 
-              />
-              
-              <MessageComposer
-                value={newMessage}
-                onChange={setNewMessage}
-                onSend={sendMessage}
-                onFileSelect={handleFileSelect}
-                isSending={isSending}
-                isUploading={isUploading}
-                selectedFile={selectedFile}
-                onClearFile={clearSelectedFile}
-              />
-            </>
-          )}
-        </Card>
+        <div className="max-w-4xl mx-auto h-[600px]">
+          <ConversationView
+            title="Staff Communication"
+            messages={messages}
+            newMessage={newMessage}
+            setNewMessage={setNewMessage}
+            isLoading={isLoading}
+            isSending={isSending}
+            sendMessage={sendMessage}
+            selectedFile={selectedFile}
+            isUploading={isUploading}
+            handleFileSelect={handleFileSelect}
+            clearSelectedFile={clearSelectedFile}
+            emptyStateMessage="No messages yet. Send a message to contact our staff."
+          />
+        </div>
       </div>
     </DashboardLayout>
   );
