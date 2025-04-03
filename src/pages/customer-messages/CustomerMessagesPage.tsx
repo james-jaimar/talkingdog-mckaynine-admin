@@ -17,7 +17,7 @@ export default function CustomerMessagesPage() {
   const [clientId, setClientId] = useState<string | null>(null);
   const [isLoadingClient, setIsLoadingClient] = useState(true);
   
-  // Get client ID from user email
+  // Get client ID for the current authenticated user
   useEffect(() => {
     if (!user) {
       console.log("No user is logged in");
@@ -32,19 +32,6 @@ export default function CustomerMessagesPage() {
           userId: user.id,
           email: user.email
         });
-        
-        // Check for active session first
-        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError || !sessionData.session) {
-          console.error("No active auth session found when trying to get client");
-          toast({
-            title: "Authentication error", 
-            description: "Please refresh the page and try again.",
-            variant: "destructive"
-          });
-          setIsLoadingClient(false);
-          return;
-        }
         
         // Direct query to find the client by email
         const { data, error } = await supabase

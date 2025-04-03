@@ -16,7 +16,7 @@ export const getClientMessages = async (clientId: string) => {
       throw new Error("Authentication required");
     }
     
-    // Simple query to get only the necessary data without any joins to users table
+    // Simple query to get only the necessary data
     const { data, error } = await supabase
       .from('client_messages')
       .select('id, client_id, sender_id, content, is_from_client, created_at')
@@ -65,7 +65,7 @@ export const sendClientMessage = async (message: ClientMessagesInsert) => {
       sender_id: userId
     };
     
-    // Insert message without any reference to the users table
+    // Insert message
     const { data, error } = await supabase
       .from('client_messages')
       .insert(messageToSend)
