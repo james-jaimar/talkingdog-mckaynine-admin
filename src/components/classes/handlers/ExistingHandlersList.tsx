@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,7 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface ExistingHandlersListProps {
@@ -25,51 +25,77 @@ export function ExistingHandlersList({ searchQuery, onSelect, classId, isProcess
   const [expandedHandlers, setExpandedHandlers] = useState<string[]>([]);
 
   // Fetch handlers that aren't already in this class
-  const { data: handlers, isLoading } = useQuery({
+  const { data: handlers, isLoading, error } = useQuery({
     queryKey: ["available-handlers", classId, searchQuery],
     queryFn: async () => {
-      // First get existing bookings for this class to exclude those handlers
-      const { data: existingBookings } = await supabase
-        .from('bookings')
-        .select('client_id')
-        .eq('class_schedule_id', classId);
+      console.log("Fetching available handlers for class:", classId);
       
-      const existingClientIds = existingBookings?.map(booking => booking.client_id) || [];
-      
-      // Then fetch handlers that aren't already in this class
-      let query = supabase
-        .from('clients')
-        .select(`
-          id,
-          first_name,
-          last_name,
-          email,
-          phone,
-          dogs (
+      try {
+        // First get existing bookings for this class to exclude those handlers
+        const { data: existingBookings, error: bookingsError } = await supabase
+          .from('bookings')
+          .select('client_id')
+          .eq('class_schedule_id', classId);
+        
+        if (bookingsError) {
+          console.error("Error fetching existing bookings:", bookingsError);
+          throw bookingsError;
+        }
+        
+        console.log("Existing bookings for class:", existingBookings);
+        
+        const existingClientIds = existingBookings?.map(booking => booking.client_id) || [];
+        
+        // Then fetch handlers that aren't already in this class
+        let query = supabase
+          .from('clients')
+          .select(`
             id,
-            name,
-            breed
-          )
-        `);
-      
-      // Add search filter if searchQuery exists
-      if (searchQuery) {
-        query = query.or(
-          `first_name.ilike.%${searchQuery}%,last_name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%`
-        );
+            first_name,
+            last_name,
+            email,
+            phone,
+            dogs (
+              id,
+              name,
+              breed
+            )
+          `);
+        
+        // Add search filter if searchQuery exists
+        if (searchQuery) {
+          query = query.or(
+            `first_name.ilike.%${searchQuery}%,last_name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%`
+          );
+        }
+        
+        // Exclude handlers already in the class
+        if (existingClientIds.length > 0) {
+          query = query.not('id', 'in', `(${existingClientIds.join(',')})`);
+        }
+        
+        const { data, error } = await query;
+        
+        if (error) {
+          console.error("Error fetching available handlers:", error);
+          throw error;
+        }
+        
+        console.log("Available handlers:", data);
+        return data || [];
+      } catch (err) {
+        console.error("Error in fetchAvailableHandlers:", err);
+        throw err;
       }
-      
-      // Exclude handlers already in the class
-      if (existingClientIds.length > 0) {
-        query = query.not('id', 'in', `(${existingClientIds.join(',')})`);
-      }
-      
-      const { data, error } = await query;
-      
-      if (error) throw error;
-      return data || [];
     }
   });
+
+  // Log any errors for debugging
+  useEffect(() => {
+    if (error) {
+      console.error("Error in ExistingHandlersList:", error);
+    }
+  }, [error]);
 
   const toggleHandler = (handlerId: string) => {
     setExpandedHandlers(prev => 
@@ -77,6 +103,11 @@ export function ExistingHandlersList({ searchQuery, onSelect, classId, isProcess
         ? prev.filter(id => id !== handlerId) 
         : [...prev, handlerId]
     );
+  };
+
+  const handleSelect = (handlerId: string, dogId: string) => {
+    console.log("Selected handler and dog:", { handlerId, dogId });
+    onSelect(handlerId, dogId);
   };
 
   if (isLoading) {
@@ -88,6 +119,17 @@ export function ExistingHandlersList({ searchQuery, onSelect, classId, isProcess
             <Skeleton className="h-4 w-1/2" />
           </div>
         ))}
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center p-8 bg-red-50 rounded-md border border-red-200">
+        <p className="text-red-700">Error loading handlers.</p>
+        <p className="text-sm mt-2 text-red-600">
+          Please try refreshing the page or contact support.
+        </p>
       </div>
     );
   }
@@ -160,10 +202,14 @@ export function ExistingHandlersList({ searchQuery, onSelect, classId, isProcess
                     <Button
                       variant="mckaynine"
                       size="sm"
-                      onClick={() => onSelect(handler.id, dog.id)}
+                      onClick={() => handleSelect(handler.id, dog.id)}
                       disabled={isProcessing}
                     >
-                      <PlusCircle className="h-4 w-4 mr-1" />
+                      {isProcessing ? (
+                        <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                      ) : (
+                        <PlusCircle className="h-4 w-4 mr-1" />
+                      )}
                       Add
                     </Button>
                   </div>

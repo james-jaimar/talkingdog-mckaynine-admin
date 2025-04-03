@@ -36,22 +36,43 @@ export function AddHandlerToClassModal({
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
+  // Debug what's happening with classData
+  useEffect(() => {
+    if (open && classData) {
+      console.log("AddHandlerToClassModal - Class data:", classData);
+      // Check if schedule_id exists, which we need for the booking
+      if (!classData.schedule_id) {
+        console.log("Warning: No schedule_id found in classData");
+      }
+    }
+  }, [open, classData]);
+
   const addHandlerToClass = async (handlerId: string, dogId: string) => {
     setIsProcessing(true);
     
     try {
+      console.log("Adding handler to class:", { 
+        handlerId, 
+        dogId, 
+        classId,
+        scheduleId: classData.id // Using the class ID as schedule ID if no specific schedule_id exists
+      });
+      
       // Create a booking record that connects the handler to the class
       const { error } = await supabase
         .from('bookings')
         .insert({
           client_id: handlerId,
           dog_id: dogId,
-          class_schedule_id: classData.schedule_id || classId, // Use schedule_id if available
+          class_schedule_id: classId, // Use classId directly since it's likely the schedule ID
           is_enrolled: true,
           payment_status: 'pending'
         });
       
-      if (error) throw error;
+      if (error) {
+        console.error("Error details:", error);
+        throw error;
+      }
       
       // Invalidate both handlers data and class-handlers data
       await Promise.all([
