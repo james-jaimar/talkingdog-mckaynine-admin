@@ -40,10 +40,6 @@ export function AddHandlerToClassModal({
   useEffect(() => {
     if (open && classData) {
       console.log("AddHandlerToClassModal - Class data:", classData);
-      // Check if schedule_id exists, which we need for the booking
-      if (!classData.schedule_id) {
-        console.log("Warning: No schedule_id found in classData");
-      }
     }
   }, [open, classData]);
 
@@ -54,30 +50,50 @@ export function AddHandlerToClassModal({
       console.log("Adding handler to class:", { 
         handlerId, 
         dogId, 
-        classId,
-        scheduleId: classData.id // Using the class ID as schedule ID if no specific schedule_id exists
+        classId
       });
       
+      // First check if this handler-dog combination is already booked for this class
+      const { data: existingBookings, error: checkError } = await supabase
+        .from('bookings')
+        .select('id')
+        .eq('client_id', handlerId)
+        .eq('dog_id', dogId)
+        .eq('class_schedule_id', classId);
+      
+      if (checkError) {
+        console.error("Error checking existing bookings:", checkError);
+        throw checkError;
+      }
+      
+      if (existingBookings && existingBookings.length > 0) {
+        throw new Error("This handler and dog are already enrolled in this class");
+      }
+      
       // Create a booking record that connects the handler to the class
-      const { error } = await supabase
+      const { data: newBooking, error } = await supabase
         .from('bookings')
         .insert({
           client_id: handlerId,
           dog_id: dogId,
-          class_schedule_id: classId, // Use classId directly since it's likely the schedule ID
+          class_schedule_id: classId,
           is_enrolled: true,
           payment_status: 'pending'
-        });
+        })
+        .select();
       
       if (error) {
         console.error("Error details:", error);
         throw error;
       }
       
+      console.log("Successfully created booking:", newBooking);
+      
       // Invalidate both handlers data and class-handlers data
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["handlers"] }),
-        queryClient.invalidateQueries({ queryKey: ["class-handlers", classId] })
+        queryClient.invalidateQueries({ queryKey: ["class-handlers", classId] }),
+        queryClient.invalidateQueries({ queryKey: ["available-handlers", classId] })
       ]);
       
       toast({

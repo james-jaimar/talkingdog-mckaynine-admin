@@ -23,6 +23,7 @@ interface ExistingHandlersListProps {
 
 export function ExistingHandlersList({ searchQuery, onSelect, classId, isProcessing }: ExistingHandlersListProps) {
   const [expandedHandlers, setExpandedHandlers] = useState<string[]>([]);
+  const [processingDogId, setProcessingDogId] = useState<string | null>(null);
 
   // Fetch handlers that aren't already in this class
   const { data: handlers, isLoading, error } = useQuery({
@@ -31,10 +32,10 @@ export function ExistingHandlersList({ searchQuery, onSelect, classId, isProcess
       console.log("Fetching available handlers for class:", classId);
       
       try {
-        // First get existing bookings for this class to exclude those handlers
+        // Get existing bookings for this class to exclude those handlers/dogs
         const { data: existingBookings, error: bookingsError } = await supabase
           .from('bookings')
-          .select('client_id')
+          .select('client_id, dog_id')
           .eq('class_schedule_id', classId);
         
         if (bookingsError) {
@@ -44,9 +45,13 @@ export function ExistingHandlersList({ searchQuery, onSelect, classId, isProcess
         
         console.log("Existing bookings for class:", existingBookings);
         
-        const existingClientIds = existingBookings?.map(booking => booking.client_id) || [];
+        // Create lookup map of existing client-dog combinations
+        const existingClientDogPairs = new Set();
+        existingBookings?.forEach(booking => {
+          existingClientDogPairs.add(`${booking.client_id}-${booking.dog_id}`);
+        });
         
-        // Then fetch handlers that aren't already in this class
+        // Then fetch all handlers with their dogs
         let query = supabase
           .from('clients')
           .select(`
@@ -69,11 +74,6 @@ export function ExistingHandlersList({ searchQuery, onSelect, classId, isProcess
           );
         }
         
-        // Exclude handlers already in the class
-        if (existingClientIds.length > 0) {
-          query = query.not('id', 'in', `(${existingClientIds.join(',')})`);
-        }
-        
         const { data, error } = await query;
         
         if (error) {
@@ -81,8 +81,20 @@ export function ExistingHandlersList({ searchQuery, onSelect, classId, isProcess
           throw error;
         }
         
-        console.log("Available handlers:", data);
-        return data || [];
+        // Filter out handlers who have ALL their dogs already in the class
+        const filteredData = data?.filter(client => {
+          // If client has no dogs, they can't be added to a class
+          if (!client.dogs || client.dogs.length === 0) return false;
+          
+          // Check if at least one dog is not yet enrolled
+          return client.dogs.some(dog => !existingClientDogPairs.has(`${client.id}-${dog.id}`));
+        }) || [];
+        
+        // For each handler, filter their dogs to only show those not already enrolled
+        return filteredData.map(client => ({
+          ...client,
+          dogs: client.dogs.filter(dog => !existingClientDogPairs.has(`${client.id}-${dog.id}`))
+        }));
       } catch (err) {
         console.error("Error in fetchAvailableHandlers:", err);
         throw err;
@@ -106,9 +118,16 @@ export function ExistingHandlersList({ searchQuery, onSelect, classId, isProcess
   };
 
   const handleSelect = (handlerId: string, dogId: string) => {
-    console.log("Selected handler and dog:", { handlerId, dogId });
+    setProcessingDogId(dogId);
     onSelect(handlerId, dogId);
   };
+
+  // Reset processing dog ID when global processing state changes
+  useEffect(() => {
+    if (!isProcessing) {
+      setProcessingDogId(null);
+    }
+  }, [isProcessing]);
 
   if (isLoading) {
     return (
@@ -205,7 +224,7 @@ export function ExistingHandlersList({ searchQuery, onSelect, classId, isProcess
                       onClick={() => handleSelect(handler.id, dog.id)}
                       disabled={isProcessing}
                     >
-                      {isProcessing ? (
+                      {isProcessing && processingDogId === dog.id ? (
                         <Loader2 className="h-4 w-4 mr-1 animate-spin" />
                       ) : (
                         <PlusCircle className="h-4 w-4 mr-1" />
@@ -216,7 +235,7 @@ export function ExistingHandlersList({ searchQuery, onSelect, classId, isProcess
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">No dogs found for this handler.</p>
+              <p className="text-sm text-muted-foreground">No dogs available to add for this handler.</p>
             )}
           </div>
         );
