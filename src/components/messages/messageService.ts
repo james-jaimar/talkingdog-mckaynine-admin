@@ -9,7 +9,6 @@ export const getClientMessages = async (clientId: string) => {
   try {
     console.log("Fetching messages for client ID:", clientId);
     
-    // Fixed table name - remove 'as any' that was bypassing TypeScript's type checking
     const { data, error } = await supabase
       .from('client_messages')
       .select(`
@@ -44,11 +43,15 @@ export const sendClientMessage = async (message: ClientMessagesInsert) => {
   try {
     console.log("Sending message with data:", {
       client_id: message.client_id,
+      sender_id: message.sender_id,
       is_from_client: message.is_from_client,
       content_length: message.content?.length || 0
     });
     
-    // Fixed table name - remove 'as any' that was bypassing TypeScript's type checking
+    // Ensure auth session is active - log current session status
+    const { data: sessionData } = await supabase.auth.getSession();
+    console.log("Current auth session exists:", !!sessionData.session);
+    
     const { data, error } = await supabase
       .from('client_messages')
       .insert(message)

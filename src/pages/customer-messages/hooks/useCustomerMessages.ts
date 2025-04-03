@@ -19,7 +19,11 @@ export function useCustomerMessages(clientId: string | null) {
 
   // Fetch messages for this client
   useEffect(() => {
-    if (!clientId) return;
+    if (!clientId) {
+      console.log("No client ID provided for fetching messages");
+      setIsLoading(false);
+      return;
+    }
     
     const fetchMessages = async () => {
       setIsLoading(true);
@@ -33,12 +37,13 @@ export function useCustomerMessages(clientId: string | null) {
           sender_name: msg.is_from_client ? 'You' : msg.profiles?.full_name || 'Staff'
         }));
         
+        console.log(`Formatted ${formattedMessages.length} messages`);
         setMessages(formattedMessages);
       } catch (error) {
         console.error("Error fetching messages:", error);
         toast({
           title: "Error loading messages",
-          description: "There was a problem loading your conversation history.",
+          description: "Please refresh the page or try again later.",
           variant: "destructive",
         });
       } finally {
@@ -51,41 +56,53 @@ export function useCustomerMessages(clientId: string | null) {
 
   // Set up real-time subscription for new messages
   useEffect(() => {
-    if (!clientId) return;
+    if (!clientId) {
+      console.log("No client ID provided for message subscription");
+      return;
+    }
+    
+    console.log("Setting up real-time message subscription");
     
     const handleNewMessage = async (newMsg: ClientMessage) => {
+      console.log("Received new message:", newMsg);
       try {
-        // Check if the message is from the client or a staff member
+        // Make a shallow copy with proper sender name
+        const processedMsg = { ...newMsg };
+        
         if (!newMsg.is_from_client) {
-          // Try to get staff name from profiles
           try {
             const { data } = await supabase
               .from('profiles')
               .select('full_name')
               .eq('id', newMsg.sender_id)
-              .single();
+              .maybeSingle();
               
-            newMsg.sender_name = data?.full_name || 'Staff';
+            processedMsg.sender_name = data?.full_name || 'Staff';
           } catch (err) {
             console.error("Error getting sender profile:", err);
-            newMsg.sender_name = 'Staff';
+            processedMsg.sender_name = 'Staff';
           }
         } else {
-          newMsg.sender_name = 'You';
+          processedMsg.sender_name = 'You';
         }
         
-        // Add new message to state
-        setMessages(prev => [...prev, newMsg]);
+        // Add new message to state, avoiding duplicates
+        setMessages(prev => {
+          // Check if message already exists
+          if (prev.some(msg => msg.id === processedMsg.id)) {
+            return prev;
+          }
+          return [...prev, processedMsg];
+        });
       } catch (error) {
         console.error("Error processing new message:", error);
       }
     };
     
-    console.log("Setting up real-time subscription for client:", clientId);
     const channel = subscribeToClientMessages(clientId, handleNewMessage);
       
     return () => {
-      console.log("Cleaning up real-time subscription");
+      console.log("Cleaning up message subscription");
       supabase.removeChannel(channel);
     };
   }, [clientId]);
@@ -102,12 +119,20 @@ export function useCustomerMessages(clientId: string | null) {
     
     setIsSending(true);
     try {
-      console.log("Preparing to send message:");
-      console.log("- User ID:", user.id);
-      console.log("- Client ID:", clientId);
-      console.log("- Message length:", newMessage.trim().length);
+      console.log("Preparing to send message as client");
       
-      // Always ensure is_from_client is TRUE when sending from customer portal
+      // Verify authenticated state before attempting to send
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        console.error("No active auth session found when trying to send message");
+        toast({
+          title: "Authentication error", 
+          description: "You need to be logged in to send messages. Please refresh the page and try again.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
       const messageData = {
         client_id: clientId,
         sender_id: user.id,
@@ -117,7 +142,6 @@ export function useCustomerMessages(clientId: string | null) {
 
       console.log("Sending message with data:", messageData);
       const result = await sendClientMessage(messageData);
-      console.log("Message sent result:", result);
       
       // Clear input field
       setNewMessage("");
@@ -130,7 +154,7 @@ export function useCustomerMessages(clientId: string | null) {
       console.error("Error sending message:", error);
       toast({
         title: "Error sending message",
-        description: "There was a problem sending your message. Please try again.",
+        description: "Please try again or refresh the page.",
         variant: "destructive",
       });
     } finally {

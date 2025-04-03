@@ -28,11 +28,22 @@ export default function CustomerMessagesPage() {
     const getClientId = async () => {
       setIsLoadingClient(true);
       try {
-        console.log("Fetching client ID for email:", user.email);
+        console.log("Fetching client ID for user:", {
+          userId: user.id,
+          email: user.email
+        });
         
-        // Add detailed logging to help diagnose issues
-        console.log("Auth user ID:", user.id);
-        console.log("Auth user email:", user.email);
+        // First check if we can get the client by auth ID
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (!sessionData.session) {
+          console.error("No active auth session found when trying to get client");
+          toast({
+            title: "Authentication error", 
+            description: "Please refresh the page and try again.",
+            variant: "destructive"
+          });
+          return;
+        }
         
         const { data, error } = await supabase
           .from('clients')
