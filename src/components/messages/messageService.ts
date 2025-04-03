@@ -54,7 +54,7 @@ export const uploadMessageAttachment = async (file: File) => {
     
     // Create unique file path to avoid collisions
     const fileExt = file.name.split('.').pop();
-    const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
+    const fileName = `${Math.random().toString(36).substring(2, 15)}_${file.name}`;
     const filePath = `${sessionData.session.user.id}/${fileName}`;
     
     // Upload the file with proper content type and cacheControl
@@ -74,11 +74,11 @@ export const uploadMessageAttachment = async (file: File) => {
     
     console.log("File uploaded successfully:", data.path);
     
-    // Get the public URL - force method to support newer browser API
+    // Get a signed URL with long expiry
     const { data: urlData } = await supabase
       .storage
       .from('message-attachments')
-      .createSignedUrl(data.path, 60 * 60 * 24 * 365); // 1 year expiry
+      .createSignedUrl(data.path, 60 * 60 * 24 * 7); // 7 days expiry
       
     if (!urlData?.signedUrl) {
       throw new Error("Could not generate signed URL");

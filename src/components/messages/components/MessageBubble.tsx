@@ -1,16 +1,70 @@
 
+import { useState, useEffect } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ClientMessage } from "@/components/messages/types";
 import { formatMessageTime, getInitials } from "@/components/messages/utils/messageFormatters";
 import { FileIcon, ImageIcon, FileText } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface MessageBubbleProps {
   message: ClientMessage;
 }
 
 export function MessageBubble({ message }: MessageBubbleProps) {
+  const [signedUrl, setSignedUrl] = useState<string | null>(null);
   const isImage = message.attachment_type?.startsWith('image/');
   const isPdf = message.attachment_type === 'application/pdf';
+  
+  useEffect(() => {
+    // Get a fresh signed URL for attachments when the component mounts
+    const getSignedUrl = async () => {
+      if (!message.attachment_url) return;
+      
+      try {
+        // Check if it's already a signed URL
+        if (message.attachment_url.includes('token=')) {
+          setSignedUrl(message.attachment_url);
+          return;
+        }
+        
+        // Extract path from URL - handles both public and signed URLs
+        const extractPath = (url: string) => {
+          // Extract path from URL structure
+          const matches = url.match(/\/storage\/v1\/object\/(?:public|auth)\/([^?]+)/);
+          if (matches && matches[1]) {
+            return decodeURIComponent(matches[1]);
+          }
+          return null;
+        };
+        
+        const path = extractPath(message.attachment_url);
+        if (!path) {
+          console.error("Could not extract path from URL:", message.attachment_url);
+          return;
+        }
+        
+        console.log("Creating signed URL for path:", path);
+        
+        const { data, error } = await supabase
+          .storage
+          .from('message-attachments')
+          .createSignedUrl(path, 60 * 60); // 1 hour expiry
+          
+        if (error) {
+          console.error("Error creating signed URL:", error);
+          return;
+        }
+        
+        setSignedUrl(data.signedUrl);
+      } catch (error) {
+        console.error("Error processing attachment URL:", error);
+      }
+    };
+    
+    if (message.attachment_url) {
+      getSignedUrl();
+    }
+  }, [message.attachment_url]);
   
   const getAttachmentFilename = (url: string) => {
     try {
@@ -21,6 +75,10 @@ export function MessageBubble({ message }: MessageBubbleProps) {
     } catch (e) {
       return 'attachment';
     }
+  };
+  
+  const getAttachmentUrl = () => {
+    return signedUrl || message.attachment_url || '';
   };
   
   return (
@@ -47,20 +105,20 @@ export function MessageBubble({ message }: MessageBubbleProps) {
               <div className="mt-2">
                 {isImage ? (
                   <a 
-                    href={message.attachment_url} 
+                    href={getAttachmentUrl()} 
                     target="_blank" 
                     rel="noopener noreferrer"
                     className="block"
                   >
                     <img 
-                      src={message.attachment_url} 
+                      src={getAttachmentUrl()} 
                       alt="Attached image" 
                       className="max-w-full rounded border border-gray-200 max-h-[200px] object-contain bg-white"
                     />
                   </a>
                 ) : (
                   <a 
-                    href={message.attachment_url} 
+                    href={getAttachmentUrl()} 
                     target="_blank" 
                     rel="noopener noreferrer"
                     className={`flex items-center gap-2 p-2 rounded ${
