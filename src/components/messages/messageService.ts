@@ -78,18 +78,20 @@ export const uploadMessageAttachment = async (file: File) => {
     
     console.log("File uploaded successfully:", data.path);
     
-    // Get a signed URL with long expiry
-    const { data: urlData } = await supabase
+    // Get a public URL for the file
+    const { data: publicUrlData } = await supabase
       .storage
       .from('message-attachments')
-      .createSignedUrl(data.path, 60 * 60 * 24 * 7); // 7 days expiry
+      .getPublicUrl(data.path);
       
-    if (!urlData?.signedUrl) {
-      throw new Error("Could not generate signed URL");
+    if (!publicUrlData?.publicUrl) {
+      throw new Error("Could not generate public URL");
     }
+    
+    console.log("Public URL generated:", publicUrlData.publicUrl);
       
     return {
-      url: urlData.signedUrl,
+      url: publicUrlData.publicUrl,
       type: file.type
     };
   } catch (error) {
