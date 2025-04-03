@@ -12,6 +12,17 @@ export function MessageBubble({ message }: MessageBubbleProps) {
   const isImage = message.attachment_type?.startsWith('image/');
   const isPdf = message.attachment_type === 'application/pdf';
   
+  const getAttachmentFilename = (url: string) => {
+    try {
+      // Extract the filename from the URL
+      const urlParts = url.split('/').pop()?.split('_') || [];
+      // Return the last part which should be the original filename
+      return urlParts.length > 1 ? urlParts.slice(1).join('_') : 'attachment';
+    } catch (e) {
+      return 'attachment';
+    }
+  };
+  
   return (
     <div 
       className={`flex ${message.is_from_client ? 'justify-start' : 'justify-end'}`}
@@ -62,7 +73,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
                       <FileIcon className="h-5 w-5" />
                     )}
                     <span className="text-sm truncate">
-                      {message.attachment_url.split('/').pop()?.split('_').pop() || 'Download attachment'}
+                      {getAttachmentFilename(message.attachment_url)}
                     </span>
                   </a>
                 )}
