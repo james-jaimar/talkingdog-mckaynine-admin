@@ -1,6 +1,6 @@
 
-import { useState } from "react";
-import { Navigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,15 +9,20 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dog } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Helmet } from "react-helmet";
+import { toast } from "sonner";
 
 export default function Auth() {
   const { user, login, signup, isLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<"signin" | "signup">("signin");
+  const navigate = useNavigate();
   
   // Redirect if already logged in
-  if (user) {
-    return <Navigate to="/" />;
-  }
+  useEffect(() => {
+    if (user) {
+      toast.success("Login successful!");
+      navigate("/dashboard");
+    }
+  }, [user, navigate]);
 
   return (
     <DashboardLayout requireAuth={false}>
