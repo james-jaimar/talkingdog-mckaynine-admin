@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ClientMessage } from "@/components/messages/types";
 import { formatMessageTime, getInitials } from "@/components/messages/utils/messageFormatters";
@@ -19,17 +19,18 @@ export function MessageBubble({ message }: MessageBubbleProps) {
   const getAttachmentFilename = (url: string) => {
     try {
       // Extract just the filename part
-      const filename = url.split('/').pop() || 'attachment';
+      const pathParts = url.split('/');
+      const fileNameWithParams = pathParts[pathParts.length - 1];
       // Remove any query parameters
-      return decodeURIComponent(filename.split('?')[0]);
+      const fileName = fileNameWithParams.split('?')[0];
+      // Decode URI components
+      return decodeURIComponent(fileName);
     } catch (e) {
       return 'attachment';
     }
   };
   
-  const handleAttachmentClick = (e: React.MouseEvent<HTMLAnchorElement>, url: string) => {
-    // Don't try to validate URLs - just open in new tab
-    // This avoids HEAD requests which may fail with CORS errors
+  const handleAttachmentClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     if (attachmentError) {
       e.preventDefault();
       toast.error("This attachment is currently unavailable", {
@@ -39,17 +40,26 @@ export function MessageBubble({ message }: MessageBubbleProps) {
   };
 
   // Check if attachment exists when component mounts
-  useState(() => {
+  useEffect(() => {
     if (message.attachment_url) {
-      const img = new Image();
-      img.onload = () => setAttachmentError(false);
-      img.onerror = () => setAttachmentError(true);
-      
+      // For images, we can use an Image object to check if they load
       if (isImage) {
+        const img = new Image();
+        img.onload = () => setAttachmentError(false);
+        img.onerror = () => {
+          setImageError(true);
+          setAttachmentError(true);
+        };
         img.src = message.attachment_url;
+      } 
+      // For other attachments, we'll check if the URL contains common error indicators
+      else if (message.attachment_url.includes("error") || 
+               message.attachment_url.includes("not found") ||
+               !message.attachment_url.includes("supabase.co/storage")) {
+        setAttachmentError(true);
       }
     }
-  });
+  }, [message.attachment_url, isImage]);
 
   return (
     <div 
@@ -79,7 +89,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
                     target="_blank" 
                     rel="noopener noreferrer"
                     className="block"
-                    onClick={(e) => handleAttachmentClick(e, message.attachment_url!)}
+                    onClick={handleAttachmentClick}
                   >
                     <img 
                       src={message.attachment_url} 
@@ -99,7 +109,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
                     className={`flex items-center gap-2 p-2 rounded ${
                       message.is_from_client ? 'bg-white' : 'bg-mckaynine-500'
                     } hover:bg-opacity-90 transition-colors ${attachmentError ? 'opacity-60' : ''}`}
-                    onClick={(e) => handleAttachmentClick(e, message.attachment_url!)}
+                    onClick={handleAttachmentClick}
                   >
                     <div className="flex-shrink-0">
                       {attachmentError ? (
