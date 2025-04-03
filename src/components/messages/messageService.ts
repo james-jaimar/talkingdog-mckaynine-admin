@@ -9,9 +9,9 @@ export const getClientMessages = async (clientId: string) => {
   try {
     console.log("Fetching messages for client ID:", clientId);
     
-    // Using 'as any' to bypass TypeScript's type checking for now
-    const { data, error } = await (supabase
-      .from('client_messages' as any)
+    // Fixed table name - remove 'as any' that was bypassing TypeScript's type checking
+    const { data, error } = await supabase
+      .from('client_messages')
       .select(`
         id,
         client_id,
@@ -19,10 +19,10 @@ export const getClientMessages = async (clientId: string) => {
         content,
         is_from_client,
         created_at,
-        profiles:sender_id (full_name)
+        profiles(full_name)
       `)
       .eq('client_id', clientId)
-      .order('created_at', { ascending: true }) as any);
+      .order('created_at', { ascending: true });
       
     if (error) {
       console.error("Error fetching client messages:", error);
@@ -48,11 +48,11 @@ export const sendClientMessage = async (message: ClientMessagesInsert) => {
       content_length: message.content?.length || 0
     });
     
-    // Using 'as any' to bypass TypeScript's type checking for now
-    const { data, error } = await (supabase
-      .from('client_messages' as any)
+    // Fixed table name - remove 'as any' that was bypassing TypeScript's type checking
+    const { data, error } = await supabase
+      .from('client_messages')
       .insert(message)
-      .select() as any);
+      .select();
       
     if (error) {
       console.error("Error sending client message:", error);

@@ -57,13 +57,19 @@ export function useCustomerMessages(clientId: string | null) {
       try {
         // Check if the message is from the client or a staff member
         if (!newMsg.is_from_client) {
-          const { data } = await supabase
-            .from('profiles')
-            .select('full_name')
-            .eq('id', newMsg.sender_id)
-            .single();
-            
-          newMsg.sender_name = data?.full_name || 'Staff';
+          // Try to get staff name from profiles
+          try {
+            const { data } = await supabase
+              .from('profiles')
+              .select('full_name')
+              .eq('id', newMsg.sender_id)
+              .single();
+              
+            newMsg.sender_name = data?.full_name || 'Staff';
+          } catch (err) {
+            console.error("Error getting sender profile:", err);
+            newMsg.sender_name = 'Staff';
+          }
         } else {
           newMsg.sender_name = 'You';
         }

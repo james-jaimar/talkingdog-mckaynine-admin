@@ -30,6 +30,10 @@ export default function CustomerMessagesPage() {
       try {
         console.log("Fetching client ID for email:", user.email);
         
+        // Add detailed logging to help diagnose issues
+        console.log("Auth user ID:", user.id);
+        console.log("Auth user email:", user.email);
+        
         const { data, error } = await supabase
           .from('clients')
           .select('id, email')
