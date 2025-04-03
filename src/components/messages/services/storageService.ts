@@ -27,20 +27,19 @@ export const uploadMessageAttachment = async (file: File) => {
     
     console.log("Uploading to path:", filePath);
     
-    // Upload to the message-attachments bucket with UPSERT enabled to overwrite any existing file
+    // Upload to the message-attachments bucket
     const { data, error } = await supabase
       .storage
       .from('message-attachments')
       .upload(filePath, file, {
         cacheControl: '3600',
         contentType: file.type,
-        upsert: true // Set to true to overwrite existing files
+        upsert: true
       });
       
     if (error) {
       console.error("Error uploading file:", error);
       
-      // Show more user-friendly error message
       if (error.message.includes("bucket") || error.message.includes("not found")) {
         toast.error("Storage configuration issue", {
           description: "The message attachments storage is not properly configured. Please contact support."
@@ -59,20 +58,12 @@ export const uploadMessageAttachment = async (file: File) => {
     
     console.log("File uploaded successfully:", data.path);
     
-    // Generate the public URL safely - avoiding using the protected supabaseUrl property directly
-    const { data: publicUrlData } = supabase
-      .storage
-      .from('message-attachments')
-      .getPublicUrl(data.path);
-      
-    if (!publicUrlData || !publicUrlData.publicUrl) {
-      throw new Error("Could not generate public URL");
-    }
-    
-    console.log("Public URL generated:", publicUrlData.publicUrl);
+    // Get the public URL directly without using getPublicUrl
+    const publicUrl = `${supabase.storageUrl}/object/public/message-attachments/${data.path}`;
+    console.log("Public URL generated:", publicUrl);
       
     return {
-      url: publicUrlData.publicUrl,
+      url: publicUrl,
       type: file.type
     };
   } catch (error) {

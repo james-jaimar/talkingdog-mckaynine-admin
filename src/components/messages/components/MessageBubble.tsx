@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ClientMessage } from "@/components/messages/types";
 import { formatMessageTime, getInitials } from "@/components/messages/utils/messageFormatters";
-import { FileIcon, ImageIcon, FileText, ExternalLink, AlertCircle } from "lucide-react";
+import { FileIcon, ImageIcon, FileText, ExternalLink, AlertCircle, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 interface MessageBubbleProps {
@@ -13,6 +13,7 @@ interface MessageBubbleProps {
 export function MessageBubble({ message }: MessageBubbleProps) {
   const [imageError, setImageError] = useState(false);
   const [attachmentError, setAttachmentError] = useState(false);
+  const [isRetrying, setIsRetrying] = useState(false);
   const isImage = message.attachment_type?.startsWith('image/');
   const isPdf = message.attachment_type === 'application/pdf';
   const imageRef = useRef<HTMLImageElement>(null);
@@ -52,60 +53,70 @@ export function MessageBubble({ message }: MessageBubbleProps) {
 
   // Try to reload the image if it fails
   const retryLoadImage = () => {
-    if (imageRef.current && message.attachment_url) {
-      const cacheBuster = `?t=${Date.now()}`;
-      imageRef.current.src = `${message.attachment_url}${cacheBuster}`;
-    }
+    if (!imageRef.current || !message.attachment_url) return;
+    
+    setIsRetrying(true);
+    
+    // Add a cache buster to the URL
+    const cacheBuster = `?t=${Date.now()}`;
+    const url = message.attachment_url.includes('?') 
+      ? `${message.attachment_url}&cache=${Date.now()}` 
+      : `${message.attachment_url}${cacheBuster}`;
+      
+    imageRef.current.src = url;
+    
+    // Reset retry state after a timeout
+    setTimeout(() => {
+      setIsRetrying(false);
+    }, 3000);
   };
 
   // Check if attachment exists when component mounts
   useEffect(() => {
     if (!message.attachment_url) return;
     
+    // Create a direct download URL with anti-cache parameter
+    const downloadUrl = message.attachment_url.includes('?')
+      ? `${message.attachment_url}&cache=${Date.now()}`
+      : `${message.attachment_url}?cache=${Date.now()}`;
+    
     // For images, we can use an Image object to check if they load
     if (isImage) {
       const img = new Image();
       
       img.onload = () => {
-        console.log("Image loaded successfully:", message.attachment_url);
+        console.log("Image loaded successfully:", downloadUrl);
         setImageError(false);
         setAttachmentError(false);
       };
       
       img.onerror = () => {
-        console.error("Image failed to load:", message.attachment_url);
+        console.error("Image failed to load:", downloadUrl);
         setImageError(true);
         setAttachmentError(true);
-        
-        // Debug information to help with troubleshooting
-        const isSupabaseUrl = message.attachment_url.includes('supabase');
-        console.log("Is Supabase URL:", isSupabaseUrl, "URL:", message.attachment_url);
       };
       
-      // Add cache buster to the URL to prevent browser caching issues
-      const cacheBuster = `?t=${Date.now()}`;
-      img.src = `${message.attachment_url}${cacheBuster}`;
+      img.src = downloadUrl;
     } 
     // For non-image files, try a fetch with HEAD method to check availability
     else if (!isImage) {
       // Start by assuming the file exists to avoid blocking the UI
       setAttachmentError(false);
       
-      // Perform a background check with fetch to verify
-      fetch(message.attachment_url, { method: 'HEAD' })
+      fetch(downloadUrl, { method: 'HEAD' })
         .then(response => {
           if (!response.ok) {
-            console.error("Attachment unavailable:", message.attachment_url, "Status:", response.status);
+            console.error("Attachment unavailable:", downloadUrl, "Status:", response.status);
             setAttachmentError(true);
           } else {
-            console.log("Attachment available:", message.attachment_url);
+            console.log("Attachment available:", downloadUrl);
             setAttachmentError(false);
           }
         })
         .catch(error => {
           console.error("Error checking attachment:", error);
-          // Don't automatically set as error - might be CORS blocking the HEAD request
-          // but the file could still be accessible directly
+          // Set as error since we couldn't verify
+          setAttachmentError(true);
         });
     }
   }, [message.attachment_url, isImage]);
@@ -142,7 +153,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
                   >
                     <img 
                       ref={imageRef}
-                      src={`${message.attachment_url}?t=${Date.now()}`} 
+                      src={`${message.attachment_url}?cache=${Date.now()}`} 
                       alt="Attached image" 
                       className="max-w-full rounded border border-gray-200 max-h-[200px] object-contain bg-white"
                       onError={() => {
@@ -156,22 +167,10 @@ export function MessageBubble({ message }: MessageBubbleProps) {
                         setAttachmentError(false);
                       }}
                     />
-                    {imageError && (
-                      <button 
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          retryLoadImage();
-                        }}
-                        className="mt-1 text-xs text-blue-500 hover:underline"
-                      >
-                        Retry loading image
-                      </button>
-                    )}
                   </a>
                 ) : (
                   <a 
-                    href={message.attachment_url} 
+                    href={`${message.attachment_url}?download=true&cache=${Date.now()}`} 
                     target="_blank" 
                     rel="noopener noreferrer"
                     className={`flex items-center gap-2 p-2 rounded ${
@@ -194,10 +193,21 @@ export function MessageBubble({ message }: MessageBubbleProps) {
                       {getAttachmentFilename(message.attachment_url)}
                     </span>
                     <ExternalLink className="h-4 w-4 flex-shrink-0 opacity-70" />
-                    {attachmentError && (
-                      <span className="text-xs text-red-500">(unavailable)</span>
-                    )}
                   </a>
+                )}
+                
+                {(imageError || attachmentError) && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <span className="text-xs text-red-500">File unavailable</span>
+                    <button 
+                      onClick={retryLoadImage}
+                      disabled={isRetrying}
+                      className={`text-xs flex items-center gap-1 ${isRetrying ? 'text-gray-400' : 'text-blue-500 hover:underline'}`}
+                    >
+                      <RefreshCw className={`h-3 w-3 ${isRetrying ? 'animate-spin' : ''}`} />
+                      {isRetrying ? 'Retrying...' : 'Retry'}
+                    </button>
+                  </div>
                 )}
               </div>
             )}
