@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/context/auth";
 import { useToast } from "@/components/ui/use-toast";
 import { ClientMessage } from "@/components/messages/types";
@@ -8,6 +8,7 @@ import {
   sendClientMessage, 
   subscribeToClientMessages 
 } from "@/components/messages/messageService";
+import { supabase } from "@/integrations/supabase/client";
 
 export function useCustomerMessages(clientId: string | null) {
   const [messages, setMessages] = useState<ClientMessage[]>([]);
@@ -91,7 +92,7 @@ export function useCustomerMessages(clientId: string | null) {
     };
   }, [clientId]);
 
-  const sendMessage = async () => {
+  const sendMessage = useCallback(async () => {
     if (!newMessage.trim() || !clientId || !user) {
       console.log("Cannot send message: missing data", { 
         hasMessage: !!newMessage.trim(), 
@@ -116,7 +117,7 @@ export function useCustomerMessages(clientId: string | null) {
       };
 
       console.log("Sending message with data:", messageData);
-      const result = await sendClientMessage(messageData);
+      await sendClientMessage(messageData);
       
       // Clear input field
       setNewMessage("");
@@ -135,7 +136,7 @@ export function useCustomerMessages(clientId: string | null) {
     } finally {
       setIsSending(false);
     }
-  };
+  }, [newMessage, clientId, user, toast]);
 
   return {
     messages,
@@ -146,6 +147,3 @@ export function useCustomerMessages(clientId: string | null) {
     sendMessage
   };
 }
-
-// Import supabase here to avoid circular dependencies
-import { supabase } from "@/integrations/supabase/client";

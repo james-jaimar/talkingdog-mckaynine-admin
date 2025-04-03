@@ -9,6 +9,7 @@ export const getClientMessages = async (clientId: string) => {
   try {
     console.log("Fetching messages for client ID:", clientId);
     
+    // Simpler query without trying to access auth.users
     const { data, error } = await supabase
       .from('client_messages')
       .select(`
@@ -47,14 +48,22 @@ export const sendClientMessage = async (message: ClientMessagesInsert) => {
       content_length: message.content?.length || 0
     });
     
-    // Check for active session first
-    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError || !sessionData.session) {
-      console.error("No active auth session found:", sessionError || "Session is null");
-      throw new Error("Authentication required to send messages");
+    // Get current auth session
+    const { data: sessionData } = await supabase.auth.getSession();
+    
+    // Check if user is authenticated
+    if (!sessionData.session) {
+      console.error("No active session found");
+      throw new Error("You must be logged in to send messages");
     }
     
-    // Insert the message directly without any joins or other complex operations
+    // Make sure sender_id matches the authenticated user
+    if (message.sender_id !== sessionData.session.user.id) {
+      console.error("Sender ID does not match authenticated user");
+      throw new Error("Sender ID must match authenticated user");
+    }
+    
+    // Insert message
     const { data, error } = await supabase
       .from('client_messages')
       .insert(message)
@@ -83,7 +92,7 @@ export const subscribeToClientMessages = (
   console.log("Setting up subscription for client:", clientId);
   
   const channel = supabase
-    .channel('client-messages-changes')
+    .channel(`client-messages-${clientId}`)
     .on(
       'postgres_changes',
       {

@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/context/auth";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -58,25 +58,22 @@ export function useClientMessages({ clientId, clientName }: UseClientMessagesPro
   useEffect(() => {
     if (!clientId) return;
     
-    const handleNewMessage = async (newMsg: ClientMessage) => {
-      try {
-        if (!newMsg.is_from_client) {
-          const { data } = await supabase
-            .from('profiles')
-            .select('full_name')
-            .eq('id', newMsg.sender_id)
-            .single();
-            
-          newMsg.sender_name = data?.full_name || 'Staff';
-        } else {
-          newMsg.sender_name = clientName;
+    const handleNewMessage = (newMsg: ClientMessage) => {
+      console.log("Received new message:", newMsg);
+      
+      // Process new message and add sender name
+      const formattedMessage = {
+        ...newMsg,
+        sender_name: newMsg.is_from_client ? clientName : 'Staff'
+      };
+      
+      // Add to state if not duplicate
+      setMessages(prev => {
+        if (prev.some(msg => msg.id === newMsg.id)) {
+          return prev;
         }
-        
-        // Add new message to state
-        setMessages(prev => [...prev, newMsg]);
-      } catch (error) {
-        console.error("Error processing new message:", error);
-      }
+        return [...prev, formattedMessage];
+      });
     };
     
     const channel = subscribeToClientMessages(clientId, handleNewMessage);
@@ -86,7 +83,7 @@ export function useClientMessages({ clientId, clientName }: UseClientMessagesPro
     };
   }, [clientId, clientName]);
 
-  const sendMessage = async () => {
+  const sendMessage = useCallback(async () => {
     if (!newMessage.trim() || !user) return;
     
     setIsSending(true);
@@ -110,7 +107,7 @@ export function useClientMessages({ clientId, clientName }: UseClientMessagesPro
     } finally {
       setIsSending(false);
     }
-  };
+  }, [newMessage, clientId, user, toast]);
 
   return {
     messages,
