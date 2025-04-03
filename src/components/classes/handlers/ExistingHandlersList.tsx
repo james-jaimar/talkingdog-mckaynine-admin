@@ -43,7 +43,7 @@ export function ExistingHandlersList({ searchQuery, onSelect, classId, isProcess
           throw bookingsError;
         }
         
-        console.log("Existing bookings for class:", existingBookings);
+        console.log("Existing bookings for class:", existingBookings?.length || 0);
         
         // Create lookup map of existing client-dog combinations
         const existingClientDogPairs = new Set();
@@ -99,7 +99,8 @@ export function ExistingHandlersList({ searchQuery, onSelect, classId, isProcess
         console.error("Error in fetchAvailableHandlers:", err);
         throw err;
       }
-    }
+    },
+    staleTime: 30000, // 30 seconds
   });
 
   // Log any errors for debugging

@@ -79,15 +79,14 @@ export function AddHandlerToClassModal({
           class_schedule_id: classId,
           is_enrolled: true,
           payment_status: 'pending'
-        })
-        .select();
+        });
       
       if (error) {
         console.error("Error details:", error);
         throw error;
       }
       
-      console.log("Successfully created booking:", newBooking);
+      console.log("Successfully created booking");
       
       // Invalidate both handlers data and class-handlers data
       await Promise.all([
