@@ -12,10 +12,6 @@ interface ConversationViewProps {
   isLoading: boolean;
   isSending: boolean;
   sendMessage: () => void;
-  selectedFile: File | null;
-  isUploading: boolean;
-  handleFileSelect: (file: File) => void;
-  clearSelectedFile: () => void;
   emptyStateMessage?: string;
 }
 
@@ -27,10 +23,6 @@ export function ConversationView({
   isLoading,
   isSending,
   sendMessage,
-  selectedFile,
-  isUploading,
-  handleFileSelect,
-  clearSelectedFile,
   emptyStateMessage = "No messages yet. Send a message to start the conversation."
 }: ConversationViewProps) {
   return (
@@ -49,11 +41,7 @@ export function ConversationView({
           value={newMessage}
           onChange={setNewMessage}
           onSend={sendMessage}
-          onFileSelect={handleFileSelect}
           isSending={isSending}
-          isUploading={isUploading}
-          selectedFile={selectedFile}
-          onClearFile={clearSelectedFile}
         />
       </CardContent>
     </Card>

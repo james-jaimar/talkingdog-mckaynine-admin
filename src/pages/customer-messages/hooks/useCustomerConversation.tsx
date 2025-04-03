@@ -15,11 +15,7 @@ export function useCustomerConversation(clientId: string | null) {
     setNewMessage,
     isLoading,
     isSending,
-    sendMessage,
-    selectedFile,
-    isUploading,
-    handleFileSelect,
-    clearSelectedFile
+    sendMessage
   } = useCustomerMessages(clientId);
 
   // Check if we have everything needed for conversation
@@ -54,10 +50,6 @@ export function useCustomerConversation(clientId: string | null) {
     isLoading,
     isSending,
     sendMessage,
-    selectedFile,
-    isUploading,
-    handleFileSelect,
-    clearSelectedFile,
     conversationReady
   };
 }

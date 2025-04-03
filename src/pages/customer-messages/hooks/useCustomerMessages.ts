@@ -6,8 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { 
   getClientMessages, 
   sendClientMessage, 
-  subscribeToClientMessages,
-  uploadMessageAttachment
+  subscribeToClientMessages
 } from "@/components/messages/messageService";
 import { ClientMessage } from "@/components/messages/types";
 
@@ -16,9 +15,6 @@ export function useCustomerMessages(clientId: string | null) {
   const [newMessage, setNewMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [attachmentData, setAttachmentData] = useState<{ url: string; type: string } | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -96,42 +92,10 @@ export function useCustomerMessages(clientId: string | null) {
     };
   }, [clientId]);
 
-  // Handle file selection
-  const handleFileSelect = useCallback(async (file: File) => {
-    setSelectedFile(file);
-    setIsUploading(true);
-    
-    try {
-      const result = await uploadMessageAttachment(file);
-      setAttachmentData(result);
-      toast({
-        title: "File uploaded",
-        description: "Your file is ready to send.",
-      });
-    } catch (error) {
-      console.error("Error uploading file:", error);
-      toast({
-        title: "Upload failed",
-        description: "There was a problem uploading your file. Please try again.",
-        variant: "destructive",
-      });
-      setSelectedFile(null);
-    } finally {
-      setIsUploading(false);
-    }
-  }, [toast]);
-
-  // Clear selected file
-  const clearSelectedFile = useCallback(() => {
-    setSelectedFile(null);
-    setAttachmentData(null);
-  }, []);
-
   const sendMessage = useCallback(async () => {
-    if ((!newMessage.trim() && !attachmentData) || !clientId || !user) {
+    if (!newMessage.trim() || !clientId || !user) {
       console.log("Cannot send message: missing data", { 
         hasMessage: !!newMessage.trim(), 
-        hasAttachment: !!attachmentData,
         hasClientId: !!clientId, 
         hasUser: !!user
       });
@@ -145,19 +109,15 @@ export function useCustomerMessages(clientId: string | null) {
       const messageData = {
         client_id: clientId,
         sender_id: user.id,
-        content: newMessage.trim() || (attachmentData ? "Sent an attachment" : ""),
-        is_from_client: true,
-        attachment_url: attachmentData?.url,
-        attachment_type: attachmentData?.type
+        content: newMessage.trim(),
+        is_from_client: true
       };
 
       console.log("Sending message with data:", messageData);
       await sendClientMessage(messageData);
       
-      // Clear input field and attachment
+      // Clear input field
       setNewMessage("");
-      setSelectedFile(null);
-      setAttachmentData(null);
       
       toast({
         title: "Message sent",
@@ -173,7 +133,7 @@ export function useCustomerMessages(clientId: string | null) {
     } finally {
       setIsSending(false);
     }
-  }, [newMessage, clientId, user, toast, attachmentData]);
+  }, [newMessage, clientId, user, toast]);
 
   return {
     messages,
@@ -181,10 +141,6 @@ export function useCustomerMessages(clientId: string | null) {
     setNewMessage,
     isLoading,
     isSending,
-    sendMessage,
-    selectedFile,
-    isUploading,
-    handleFileSelect,
-    clearSelectedFile
+    sendMessage
   };
 }

@@ -6,11 +6,9 @@
 
 import { getClientMessages, sendClientMessage } from './services/messageApi';
 import { subscribeToClientMessages } from './services/messageSubscription';
-import { uploadMessageAttachment } from './services/storageService';
 
 export {
   getClientMessages,
   sendClientMessage,
-  subscribeToClientMessages,
-  uploadMessageAttachment
+  subscribeToClientMessages
 };

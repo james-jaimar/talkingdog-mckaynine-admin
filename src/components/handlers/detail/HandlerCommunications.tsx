@@ -14,11 +14,7 @@ export function HandlerCommunications({ clientId, clientName }: HandlerCommunica
     setNewMessage,
     isLoading,
     isSending,
-    sendMessage,
-    selectedFile,
-    isUploading,
-    handleFileSelect,
-    clearSelectedFile
+    sendMessage
   } = useClientMessages({ clientId, clientName });
 
   return (
@@ -30,10 +26,6 @@ export function HandlerCommunications({ clientId, clientName }: HandlerCommunica
       isLoading={isLoading}
       isSending={isSending}
       sendMessage={sendMessage}
-      selectedFile={selectedFile}
-      isUploading={isUploading}
-      handleFileSelect={handleFileSelect}
-      clearSelectedFile={clearSelectedFile}
       emptyStateMessage="No messages yet. Send a message to start the conversation with this handler."
     />
   );

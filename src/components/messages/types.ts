@@ -8,8 +8,6 @@ export interface ClientMessage {
   created_at: string;
   updated_at?: string;
   sender_name?: string;
-  attachment_url?: string;
-  attachment_type?: string;
   profiles?: {
     full_name?: string;
   };

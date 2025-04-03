@@ -26,10 +26,6 @@ export default function CustomerMessagesPage() {
     isLoading,
     isSending,
     sendMessage,
-    selectedFile,
-    isUploading,
-    handleFileSelect,
-    clearSelectedFile,
     conversationReady
   } = useCustomerConversation(clientId);
 
@@ -68,10 +64,6 @@ export default function CustomerMessagesPage() {
             isLoading={isLoading}
             isSending={isSending}
             sendMessage={sendMessage}
-            selectedFile={selectedFile}
-            isUploading={isUploading}
-            handleFileSelect={handleFileSelect}
-            clearSelectedFile={clearSelectedFile}
             emptyStateMessage="No messages yet. Send a message to contact our staff."
           />
         </div>
