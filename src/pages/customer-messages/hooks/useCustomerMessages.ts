@@ -63,40 +63,24 @@ export function useCustomerMessages(clientId: string | null) {
     
     console.log("Setting up real-time message subscription");
     
-    const handleNewMessage = async (newMsg: ClientMessage) => {
+    const handleNewMessage = (newMsg: ClientMessage) => {
       console.log("Received new message:", newMsg);
-      try {
-        // Make a shallow copy with proper sender name
-        const processedMsg = { ...newMsg };
-        
-        if (!newMsg.is_from_client) {
-          try {
-            const { data } = await supabase
-              .from('profiles')
-              .select('full_name')
-              .eq('id', newMsg.sender_id)
-              .maybeSingle();
-              
-            processedMsg.sender_name = data?.full_name || 'Staff';
-          } catch (err) {
-            console.error("Error getting sender profile:", err);
-            processedMsg.sender_name = 'Staff';
-          }
-        } else {
-          processedMsg.sender_name = 'You';
+      
+      // Add new message to state, avoiding duplicates
+      setMessages(prev => {
+        // Check if message already exists
+        if (prev.some(msg => msg.id === newMsg.id)) {
+          return prev;
         }
         
-        // Add new message to state, avoiding duplicates
-        setMessages(prev => {
-          // Check if message already exists
-          if (prev.some(msg => msg.id === processedMsg.id)) {
-            return prev;
-          }
-          return [...prev, processedMsg];
-        });
-      } catch (error) {
-        console.error("Error processing new message:", error);
-      }
+        // Format the new message
+        const formattedMessage = {
+          ...newMsg,
+          sender_name: newMsg.is_from_client ? 'You' : 'Staff'
+        };
+        
+        return [...prev, formattedMessage];
+      });
     };
     
     const channel = subscribeToClientMessages(clientId, handleNewMessage);
@@ -120,18 +104,9 @@ export function useCustomerMessages(clientId: string | null) {
     setIsSending(true);
     try {
       console.log("Preparing to send message as client");
-      
-      // Verify authenticated state before attempting to send
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (!sessionData.session) {
-        console.error("No active auth session found when trying to send message");
-        toast({
-          title: "Authentication error", 
-          description: "You need to be logged in to send messages. Please refresh the page and try again.",
-          variant: "destructive"
-        });
-        return;
-      }
+      console.log("- User ID:", user.id);
+      console.log("- Client ID:", clientId);
+      console.log("- Message length:", newMessage.length);
       
       const messageData = {
         client_id: clientId,

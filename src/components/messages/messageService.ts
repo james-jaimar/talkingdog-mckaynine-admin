@@ -43,15 +43,18 @@ export const sendClientMessage = async (message: ClientMessagesInsert) => {
   try {
     console.log("Sending message with data:", {
       client_id: message.client_id,
-      sender_id: message.sender_id,
       is_from_client: message.is_from_client,
       content_length: message.content?.length || 0
     });
     
-    // Ensure auth session is active - log current session status
-    const { data: sessionData } = await supabase.auth.getSession();
-    console.log("Current auth session exists:", !!sessionData.session);
+    // Check for active session first
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !sessionData.session) {
+      console.error("No active auth session found:", sessionError || "Session is null");
+      throw new Error("Authentication required to send messages");
+    }
     
+    // Insert the message directly without any joins or other complex operations
     const { data, error } = await supabase
       .from('client_messages')
       .insert(message)
@@ -91,7 +94,6 @@ export const subscribeToClientMessages = (
       },
       (payload) => {
         console.log("New message received:", payload);
-        // The payload.new contains the inserted row
         callback(payload.new as ClientMessage);
       }
     )

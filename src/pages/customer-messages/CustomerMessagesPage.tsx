@@ -33,21 +33,23 @@ export default function CustomerMessagesPage() {
           email: user.email
         });
         
-        // First check if we can get the client by auth ID
-        const { data: sessionData } = await supabase.auth.getSession();
-        if (!sessionData.session) {
+        // Check for active session first
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError || !sessionData.session) {
           console.error("No active auth session found when trying to get client");
           toast({
             title: "Authentication error", 
             description: "Please refresh the page and try again.",
             variant: "destructive"
           });
+          setIsLoadingClient(false);
           return;
         }
         
+        // Simple direct query to find the client by email
         const { data, error } = await supabase
           .from('clients')
-          .select('id, email')
+          .select('id')
           .eq('email', user.email)
           .maybeSingle();
           
