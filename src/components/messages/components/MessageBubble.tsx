@@ -3,19 +3,21 @@ import { useState } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ClientMessage } from "@/components/messages/types";
 import { formatMessageTime, getInitials } from "@/components/messages/utils/messageFormatters";
-import { FileIcon, ImageIcon, FileText } from "lucide-react";
+import { FileIcon, ImageIcon, FileText, ExternalLink } from "lucide-react";
+import { toast } from "sonner";
 
 interface MessageBubbleProps {
   message: ClientMessage;
 }
 
 export function MessageBubble({ message }: MessageBubbleProps) {
+  const [imageError, setImageError] = useState(false);
   const isImage = message.attachment_type?.startsWith('image/');
   const isPdf = message.attachment_type === 'application/pdf';
   
   const getAttachmentFilename = (url: string) => {
     try {
-      // Extract the filename from the URL
+      // Extract just the filename part
       const filename = url.split('/').pop() || 'attachment';
       // Remove any query parameters
       return filename.split('?')[0];
@@ -24,6 +26,25 @@ export function MessageBubble({ message }: MessageBubbleProps) {
     }
   };
   
+  const handleAttachmentClick = (e: React.MouseEvent<HTMLAnchorElement>, url: string) => {
+    // Check if the URL is accessible before opening it
+    fetch(url, { method: 'HEAD' })
+      .then(response => {
+        if (!response.ok) {
+          e.preventDefault();
+          toast.error("This attachment is currently unavailable", {
+            description: "The file may have been deleted or you may not have permission to access it."
+          });
+        }
+      })
+      .catch(() => {
+        e.preventDefault();
+        toast.error("Cannot access this attachment", {
+          description: "There was an error accessing this file."
+        });
+      });
+  };
+
   return (
     <div 
       className={`flex ${message.is_from_client ? 'justify-start' : 'justify-end'}`}
@@ -46,17 +67,19 @@ export function MessageBubble({ message }: MessageBubbleProps) {
             
             {message.attachment_url && (
               <div className="mt-2">
-                {isImage ? (
+                {isImage && !imageError ? (
                   <a 
                     href={message.attachment_url} 
                     target="_blank" 
                     rel="noopener noreferrer"
                     className="block"
+                    onClick={(e) => handleAttachmentClick(e, message.attachment_url!)}
                   >
                     <img 
                       src={message.attachment_url} 
                       alt="Attached image" 
                       className="max-w-full rounded border border-gray-200 max-h-[200px] object-contain bg-white"
+                      onError={() => setImageError(true)}
                     />
                   </a>
                 ) : (
@@ -66,16 +89,22 @@ export function MessageBubble({ message }: MessageBubbleProps) {
                     rel="noopener noreferrer"
                     className={`flex items-center gap-2 p-2 rounded ${
                       message.is_from_client ? 'bg-white' : 'bg-mckaynine-500'
-                    }`}
+                    } hover:bg-opacity-90 transition-colors`}
+                    onClick={(e) => handleAttachmentClick(e, message.attachment_url!)}
                   >
-                    {isPdf ? (
-                      <FileText className="h-5 w-5" />
-                    ) : (
-                      <FileIcon className="h-5 w-5" />
-                    )}
-                    <span className="text-sm truncate">
+                    <div className="flex-shrink-0">
+                      {isPdf ? (
+                        <FileText className="h-5 w-5" />
+                      ) : isImage ? (
+                        <ImageIcon className="h-5 w-5" />
+                      ) : (
+                        <FileIcon className="h-5 w-5" />
+                      )}
+                    </div>
+                    <span className="text-sm truncate flex-1">
                       {getAttachmentFilename(message.attachment_url)}
                     </span>
+                    <ExternalLink className="h-4 w-4 flex-shrink-0 opacity-70" />
                   </a>
                 )}
               </div>

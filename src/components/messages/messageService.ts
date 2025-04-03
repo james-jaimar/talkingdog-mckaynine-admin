@@ -61,6 +61,22 @@ export const uploadMessageAttachment = async (file: File) => {
     
     console.log("Uploading to path:", filePath);
     
+    // Check if the bucket exists before uploading
+    const { data: buckets, error: bucketError } = await supabase
+      .storage
+      .listBuckets();
+      
+    if (bucketError) {
+      console.error("Error checking buckets:", bucketError);
+      throw new Error("Could not check storage buckets");
+    }
+    
+    const bucketExists = buckets?.some(bucket => bucket.name === 'message-attachments');
+    if (!bucketExists) {
+      console.error("The message-attachments bucket does not exist");
+      throw new Error("Storage not properly configured");
+    }
+    
     // Upload the file with proper content type and cacheControl
     const { data, error } = await supabase
       .storage
