@@ -27,7 +27,7 @@ export const uploadMessageAttachment = async (file: File) => {
     
     console.log("Uploading to path:", filePath);
     
-    // Upload directly to the existing bucket
+    // Upload to the message-attachments bucket
     const { data, error } = await supabase
       .storage
       .from('message-attachments')
@@ -39,10 +39,11 @@ export const uploadMessageAttachment = async (file: File) => {
       
     if (error) {
       console.error("Error uploading file:", error);
+      
       // Show more user-friendly error message
       if (error.message.includes("bucket") || error.message.includes("not found")) {
         toast.error("Storage configuration issue", {
-          description: "The storage bucket is not properly configured. Please contact support."
+          description: "The message attachments storage is not properly configured. Please contact support."
         });
       } else if (error.message.includes("permission") || error.message.includes("policy")) {
         toast.error("Permission denied", {
@@ -59,7 +60,7 @@ export const uploadMessageAttachment = async (file: File) => {
     console.log("File uploaded successfully:", data.path);
     
     // Get a public URL for the file
-    const { data: publicUrlData } = await supabase
+    const { data: publicUrlData } = supabase
       .storage
       .from('message-attachments')
       .getPublicUrl(data.path);

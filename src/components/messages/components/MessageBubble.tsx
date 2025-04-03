@@ -31,6 +31,10 @@ export function MessageBubble({ message }: MessageBubbleProps) {
   };
   
   const handleAttachmentClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    // Don't prevent default for images that are displayed correctly
+    if (isImage && !imageError) return;
+    
+    // For other attachments or error cases, check before navigating
     if (attachmentError) {
       e.preventDefault();
       toast.error("This attachment is currently unavailable", {
