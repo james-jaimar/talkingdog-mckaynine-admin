@@ -24,6 +24,7 @@ export function useCustomerMessages(clientId: string | null) {
     const fetchMessages = async () => {
       setIsLoading(true);
       try {
+        console.log("Fetching messages for client:", clientId);
         const messagesData = await getClientMessages(clientId);
         
         // Format messages with sender name
@@ -74,29 +75,43 @@ export function useCustomerMessages(clientId: string | null) {
       }
     };
     
+    console.log("Setting up real-time subscription for client:", clientId);
     const channel = subscribeToClientMessages(clientId, handleNewMessage);
       
     return () => {
+      console.log("Cleaning up real-time subscription");
       supabase.removeChannel(channel);
     };
   }, [clientId]);
 
   const sendMessage = async () => {
-    if (!newMessage.trim() || !clientId || !user) return;
+    if (!newMessage.trim() || !clientId || !user) {
+      console.log("Cannot send message: missing data", { 
+        hasMessage: !!newMessage.trim(), 
+        hasClientId: !!clientId, 
+        hasUser: !!user
+      });
+      return;
+    }
     
     setIsSending(true);
     try {
-      console.log("User ID:", user.id);
-      console.log("Client ID:", clientId);
+      console.log("Preparing to send message:");
+      console.log("- User ID:", user.id);
+      console.log("- Client ID:", clientId);
+      console.log("- Message length:", newMessage.trim().length);
       
-      // CRITICAL FIX: For handler users, we need to ensure is_from_client is set to TRUE
-      // since they are acting as a client when sending from customer portal
-      await sendClientMessage({
+      // Always ensure is_from_client is TRUE when sending from customer portal
+      const messageData = {
         client_id: clientId,
         sender_id: user.id,
         content: newMessage.trim(),
         is_from_client: true
-      });
+      };
+
+      console.log("Sending message with data:", messageData);
+      const result = await sendClientMessage(messageData);
+      console.log("Message sent result:", result);
       
       // Clear input field
       setNewMessage("");

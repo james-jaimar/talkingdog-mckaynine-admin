@@ -19,7 +19,11 @@ export default function CustomerMessagesPage() {
   
   // Get client ID from user email
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      console.log("No user is logged in");
+      setIsLoadingClient(false);
+      return;
+    }
     
     const getClientId = async () => {
       setIsLoadingClient(true);
@@ -28,7 +32,7 @@ export default function CustomerMessagesPage() {
         
         const { data, error } = await supabase
           .from('clients')
-          .select('id')
+          .select('id, email')
           .eq('email', user.email)
           .maybeSingle();
           

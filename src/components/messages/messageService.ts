@@ -7,6 +7,8 @@ import { ClientMessage, ClientMessagesInsert } from "./types";
  */
 export const getClientMessages = async (clientId: string) => {
   try {
+    console.log("Fetching messages for client ID:", clientId);
+    
     // Using 'as any' to bypass TypeScript's type checking for now
     const { data, error } = await (supabase
       .from('client_messages' as any)
@@ -27,7 +29,7 @@ export const getClientMessages = async (clientId: string) => {
       throw error;
     }
     
-    console.log("Fetched messages:", data);
+    console.log("Successfully fetched messages:", data?.length || 0);
     return data as ClientMessage[];
   } catch (error) {
     console.error("Error in getClientMessages:", error);
@@ -40,20 +42,25 @@ export const getClientMessages = async (clientId: string) => {
  */
 export const sendClientMessage = async (message: ClientMessagesInsert) => {
   try {
-    console.log("Sending message:", message);
+    console.log("Sending message with data:", {
+      client_id: message.client_id,
+      is_from_client: message.is_from_client,
+      content_length: message.content?.length || 0
+    });
     
     // Using 'as any' to bypass TypeScript's type checking for now
-    const { error } = await (supabase
+    const { data, error } = await (supabase
       .from('client_messages' as any)
-      .insert(message) as any);
+      .insert(message)
+      .select() as any);
       
     if (error) {
       console.error("Error sending client message:", error);
       throw error;
     }
     
-    console.log("Message sent successfully");
-    return true;
+    console.log("Message sent successfully:", data);
+    return data;
   } catch (error) {
     console.error("Error in sendClientMessage:", error);
     throw error;
@@ -85,7 +92,9 @@ export const subscribeToClientMessages = (
         callback(payload.new as ClientMessage);
       }
     )
-    .subscribe();
+    .subscribe((status) => {
+      console.log("Subscription status:", status);
+    });
     
   // Return the channel so it can be unsubscribed
   return channel;
