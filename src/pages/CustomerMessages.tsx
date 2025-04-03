@@ -10,19 +10,11 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Send } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-
-interface Message {
-  id: string;
-  client_id: string;
-  sender_id: string;
-  content: string;
-  is_from_client: boolean;
-  created_at: string;
-  sender_name?: string;
-}
+import { getClientMessages, sendClientMessage, subscribeToClientMessages } from "@/components/messages/messageService";
+import { ClientMessage } from "@/components/messages/types";
 
 export default function CustomerMessages() {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<ClientMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
@@ -59,24 +51,10 @@ export default function CustomerMessages() {
     const fetchMessages = async () => {
       setIsLoading(true);
       try {
-        const { data, error } = await supabase
-          .from('client_messages')
-          .select(`
-            id,
-            client_id,
-            sender_id,
-            content,
-            is_from_client,
-            created_at,
-            profiles:sender_id (full_name)
-          `)
-          .eq('client_id', clientId)
-          .order('created_at', { ascending: true });
-          
-        if (error) throw error;
+        const messagesData = await getClientMessages(clientId);
         
         // Format messages with sender name
-        const formattedMessages = data.map((msg: any) => ({
+        const formattedMessages = messagesData.map((msg) => ({
           ...msg,
           sender_name: msg.is_from_client ? 'You' : msg.profiles?.full_name || 'Staff'
         }));
@@ -101,40 +79,28 @@ export default function CustomerMessages() {
   useEffect(() => {
     if (!clientId) return;
     
-    const channel = supabase
-      .channel('client-messages-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'client_messages',
-          filter: `client_id=eq.${clientId}`
-        },
-        async (payload) => {
-          // Get sender name for new message
-          const newMsg = payload.new as Message;
-          try {
-            if (!newMsg.is_from_client) {
-              const { data } = await supabase
-                .from('profiles')
-                .select('full_name')
-                .eq('id', newMsg.sender_id)
-                .single();
-                
-              newMsg.sender_name = data?.full_name || 'Staff';
-            } else {
-              newMsg.sender_name = 'You';
-            }
+    const handleNewMessage = async (newMsg: ClientMessage) => {
+      try {
+        if (!newMsg.is_from_client) {
+          const { data } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('id', newMsg.sender_id)
+            .single();
             
-            // Add new message to state
-            setMessages(prev => [...prev, newMsg]);
-          } catch (error) {
-            console.error("Error processing new message:", error);
-          }
+          newMsg.sender_name = data?.full_name || 'Staff';
+        } else {
+          newMsg.sender_name = 'You';
         }
-      )
-      .subscribe();
+        
+        // Add new message to state
+        setMessages(prev => [...prev, newMsg]);
+      } catch (error) {
+        console.error("Error processing new message:", error);
+      }
+    };
+    
+    const channel = subscribeToClientMessages(clientId, handleNewMessage);
       
     return () => {
       supabase.removeChannel(channel);
@@ -142,20 +108,16 @@ export default function CustomerMessages() {
   }, [clientId]);
 
   const sendMessage = async () => {
-    if (!newMessage.trim() || !clientId) return;
+    if (!newMessage.trim() || !clientId || !user) return;
     
     setIsSending(true);
     try {
-      const { error } = await supabase
-        .from('client_messages')
-        .insert({
-          client_id: clientId,
-          sender_id: user?.id || '',
-          content: newMessage.trim(),
-          is_from_client: true
-        });
-        
-      if (error) throw error;
+      await sendClientMessage({
+        client_id: clientId,
+        sender_id: user.id,
+        content: newMessage.trim(),
+        is_from_client: true
+      });
       
       // Clear input field
       setNewMessage("");
