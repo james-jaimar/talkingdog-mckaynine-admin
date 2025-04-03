@@ -53,26 +53,22 @@ export function MessageBubble({ message }: MessageBubbleProps) {
         };
         img.src = message.attachment_url;
       } 
-      // For other attachments, check if the URL seems valid
-      else if (!message.attachment_url.includes("message-attachments") || 
-               message.attachment_url.includes("error") || 
-               message.attachment_url.includes("not found")) {
-        setAttachmentError(true);
-        console.error("Attachment URL appears invalid:", message.attachment_url);
-      }
       
-      // Additional check - fetch the headers to see if the file exists
-      fetch(message.attachment_url, { method: 'HEAD' })
-        .then(response => {
-          if (!response.ok) {
-            setAttachmentError(true);
-            console.error("Attachment HEAD request failed:", response.status, response.statusText);
-          }
-        })
-        .catch(err => {
+      // Skip the HEAD request for non-image files
+      // This is because the Supabase storage sometimes returns 400 for HEAD requests
+      // but still allows GET requests to work properly
+      else if (!isImage) {
+        // We'll assume non-image files are available unless proven otherwise when clicked
+        setAttachmentError(false);
+        
+        // Only check if the URL seems invalid based on structure
+        if (!message.attachment_url.includes("message-attachments") || 
+            message.attachment_url.includes("error") || 
+            message.attachment_url.includes("not found")) {
           setAttachmentError(true);
-          console.error("Error checking attachment availability:", err);
-        });
+          console.error("Attachment URL appears invalid:", message.attachment_url);
+        }
+      }
     }
   }, [message.attachment_url, isImage]);
 
