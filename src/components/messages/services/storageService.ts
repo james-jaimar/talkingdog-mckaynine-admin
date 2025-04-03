@@ -59,7 +59,8 @@ export const uploadMessageAttachment = async (file: File) => {
     
     console.log("File uploaded successfully:", data.path);
     
-    // Get a public URL for the file
+    // Get the correct public URL for the file
+    // Use the full URL format to ensure it works properly
     const { data: publicUrlData } = supabase
       .storage
       .from('message-attachments')
@@ -69,6 +70,7 @@ export const uploadMessageAttachment = async (file: File) => {
       throw new Error("Could not generate public URL");
     }
     
+    // Log the full URL to help with debugging
     console.log("Public URL generated:", publicUrlData.publicUrl);
       
     return {

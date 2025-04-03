@@ -49,13 +49,22 @@ export function MessageBubble({ message }: MessageBubbleProps) {
       // For images, we can use an Image object to check if they load
       if (isImage) {
         const img = new Image();
-        img.onload = () => setAttachmentError(false);
+        
+        img.onload = () => {
+          console.log("Image loaded successfully:", message.attachment_url);
+          setImageError(false);
+          setAttachmentError(false);
+        };
+        
         img.onerror = () => {
+          console.error("Image failed to load:", message.attachment_url);
           setImageError(true);
           setAttachmentError(true);
-          console.error("Image failed to load:", message.attachment_url);
         };
-        img.src = message.attachment_url;
+        
+        // Add cache buster to the URL to prevent browser caching issues
+        const cacheBuster = `?t=${Date.now()}`;
+        img.src = `${message.attachment_url}${cacheBuster}`;
       } 
       
       // Skip the HEAD request for non-image files
@@ -107,13 +116,13 @@ export function MessageBubble({ message }: MessageBubbleProps) {
                     onClick={handleAttachmentClick}
                   >
                     <img 
-                      src={message.attachment_url} 
+                      src={`${message.attachment_url}?t=${Date.now()}`} 
                       alt="Attached image" 
                       className="max-w-full rounded border border-gray-200 max-h-[200px] object-contain bg-white"
                       onError={() => {
+                        console.error("Image failed to load in img tag:", message.attachment_url);
                         setImageError(true);
                         setAttachmentError(true);
-                        console.error("Image failed to load in img tag:", message.attachment_url);
                       }}
                     />
                   </a>
