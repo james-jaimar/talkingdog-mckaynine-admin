@@ -9,7 +9,7 @@ export const getClientMessages = async (clientId: string) => {
   try {
     console.log("Fetching messages for client ID:", clientId);
     
-    // Simpler query without trying to access auth.users
+    // Simple query to get only the necessary data
     const { data, error } = await supabase
       .from('client_messages')
       .select(`
@@ -18,8 +18,7 @@ export const getClientMessages = async (clientId: string) => {
         sender_id,
         content,
         is_from_client,
-        created_at,
-        profiles(full_name)
+        created_at
       `)
       .eq('client_id', clientId)
       .order('created_at', { ascending: true });
@@ -57,16 +56,17 @@ export const sendClientMessage = async (message: ClientMessagesInsert) => {
       throw new Error("You must be logged in to send messages");
     }
     
-    // Make sure sender_id matches the authenticated user
-    if (message.sender_id !== sessionData.session.user.id) {
-      console.error("Sender ID does not match authenticated user");
-      throw new Error("Sender ID must match authenticated user");
-    }
+    // Ensure sender_id matches current user
+    const userId = sessionData.session.user.id;
+    const messageToSend = {
+      ...message,
+      sender_id: userId // Override sender_id with authenticated user id
+    };
     
     // Insert message
     const { data, error } = await supabase
       .from('client_messages')
-      .insert(message)
+      .insert(messageToSend)
       .select();
       
     if (error) {

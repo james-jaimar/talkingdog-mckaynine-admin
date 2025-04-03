@@ -25,6 +25,12 @@ export function useClientMessages({ clientId, clientName }: UseClientMessagesPro
 
   // Fetch messages for this client
   useEffect(() => {
+    if (!clientId) {
+      console.log("No client ID provided, skipping message fetch");
+      setIsLoading(false);
+      return;
+    }
+    
     const fetchMessages = async () => {
       setIsLoading(true);
       try {
@@ -33,7 +39,7 @@ export function useClientMessages({ clientId, clientName }: UseClientMessagesPro
         // Format messages with sender name
         const formattedMessages = messagesData.map((msg) => ({
           ...msg,
-          sender_name: msg.is_from_client ? clientName : msg.profiles?.full_name || 'Staff'
+          sender_name: msg.is_from_client ? clientName : 'Staff'
         }));
         
         setMessages(formattedMessages);
@@ -49,14 +55,15 @@ export function useClientMessages({ clientId, clientName }: UseClientMessagesPro
       }
     };
 
-    if (clientId) {
-      fetchMessages();
-    }
+    fetchMessages();
   }, [clientId, clientName, toast]);
 
   // Set up real-time subscription for new messages
   useEffect(() => {
-    if (!clientId) return;
+    if (!clientId) {
+      console.log("No client ID provided for subscription");
+      return;
+    }
     
     const handleNewMessage = (newMsg: ClientMessage) => {
       console.log("Received new message:", newMsg);
@@ -84,13 +91,16 @@ export function useClientMessages({ clientId, clientName }: UseClientMessagesPro
   }, [clientId, clientName]);
 
   const sendMessage = useCallback(async () => {
-    if (!newMessage.trim() || !user) return;
+    if (!newMessage.trim() || !user || !clientId) {
+      console.log("Cannot send message: missing required data");
+      return;
+    }
     
     setIsSending(true);
     try {
       await sendClientMessage({
         client_id: clientId,
-        sender_id: user.id,
+        sender_id: user.id, // This will be overridden in the service
         content: newMessage.trim(),
         is_from_client: false
       });

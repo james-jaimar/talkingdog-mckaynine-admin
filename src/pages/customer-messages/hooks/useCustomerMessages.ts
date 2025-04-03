@@ -35,7 +35,7 @@ export function useCustomerMessages(clientId: string | null) {
         // Format messages with sender name
         const formattedMessages = messagesData.map((msg) => ({
           ...msg,
-          sender_name: msg.is_from_client ? 'You' : msg.profiles?.full_name || 'Staff'
+          sender_name: msg.is_from_client ? 'You' : 'Staff'
         }));
         
         console.log(`Formatted ${formattedMessages.length} messages`);
@@ -105,13 +105,10 @@ export function useCustomerMessages(clientId: string | null) {
     setIsSending(true);
     try {
       console.log("Preparing to send message as client");
-      console.log("- User ID:", user.id);
-      console.log("- Client ID:", clientId);
-      console.log("- Message length:", newMessage.length);
       
       const messageData = {
         client_id: clientId,
-        sender_id: user.id,
+        sender_id: user.id, // Will be overridden in service with authenticated user's ID
         content: newMessage.trim(),
         is_from_client: true
       };
