@@ -27,8 +27,7 @@ export const uploadMessageAttachment = async (file: File) => {
     
     console.log("Uploading to path:", filePath);
     
-    // Directly attempt to upload to the bucket without checking if it exists first
-    // The bucket should have been created by the SQL migration
+    // Upload directly to the existing bucket
     const { data, error } = await supabase
       .storage
       .from('message-attachments')
