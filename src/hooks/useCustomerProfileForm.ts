@@ -84,16 +84,13 @@ export function useCustomerProfileForm(client: ClientData, onSuccess: () => void
       if (error) {
         console.error("Database error:", error);
         setFormError(error.message || "Failed to update profile");
-        toast({
-          title: "Error updating profile",
+        toast("Error updating profile", {
           description: error.message || "There was a problem updating your profile. Please try again.",
-          variant: "destructive",
         });
         throw error;
       }
       
-      toast({
-        title: "Profile updated",
+      toast("Profile updated", {
         description: "Your profile has been updated successfully.",
       });
       

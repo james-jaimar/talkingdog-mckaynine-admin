@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Helmet } from "react-helmet";
@@ -53,8 +54,7 @@ export default function CustomerLogin() {
       });
       
       if (result.success) {
-        toast({
-          title: "Registration successful",
+        toast("Registration successful", {
           description: "Your account has been created. You can now log in.",
         });
         // Switch to login tab after successful registration
@@ -95,7 +95,7 @@ export default function CustomerLogin() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="login" className="w-full" value={activeTab} onValueChange={(value) => setActiveTab(value)}>
+            <Tabs defaultValue="login" className="w-full" value={activeTab} onValueChange={(value: "login" | "signup") => setActiveTab(value)}>
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="login">Login</TabsTrigger>
                 <TabsTrigger value="signup">Register</TabsTrigger>
