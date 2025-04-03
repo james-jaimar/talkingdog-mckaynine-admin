@@ -54,6 +54,7 @@ export function useCustomerMessages(clientId: string | null) {
     
     const handleNewMessage = async (newMsg: ClientMessage) => {
       try {
+        // Check if the message is from the client or a staff member
         if (!newMsg.is_from_client) {
           const { data } = await supabase
             .from('profiles')
@@ -85,6 +86,11 @@ export function useCustomerMessages(clientId: string | null) {
     
     setIsSending(true);
     try {
+      console.log("User ID:", user.id);
+      console.log("Client ID:", clientId);
+      
+      // CRITICAL FIX: For handler users, we need to ensure is_from_client is set to TRUE
+      // since they are acting as a client when sending from customer portal
       await sendClientMessage({
         client_id: clientId,
         sender_id: user.id,
@@ -94,6 +100,11 @@ export function useCustomerMessages(clientId: string | null) {
       
       // Clear input field
       setNewMessage("");
+      
+      toast({
+        title: "Message sent",
+        description: "Your message has been sent successfully.",
+      });
     } catch (error) {
       console.error("Error sending message:", error);
       toast({
