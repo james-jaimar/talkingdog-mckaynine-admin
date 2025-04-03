@@ -36,30 +36,51 @@ export function AddHandlerToClassModal({
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  // Debug what's happening with classData
-  useEffect(() => {
-    if (open && classData) {
-      console.log("AddHandlerToClassModal - Class data:", classData);
+  // Get actual schedule IDs for this class to ensure we're using the correct one
+  const fetchScheduleId = async (): Promise<string | null> => {
+    try {
+      const { data: scheduleIds, error } = await supabase
+        .from('class_schedules')
+        .select('id')
+        .eq('class_id', classId)
+        .order('start_time', { ascending: true })
+        .limit(1);
+      
+      if (error) throw error;
+      
+      return scheduleIds && scheduleIds.length > 0 ? scheduleIds[0].id : null;
+    } catch (err) {
+      console.error("Error fetching schedule ID:", err);
+      return null;
     }
-  }, [open, classData]);
+  };
 
   const addHandlerToClass = async (handlerId: string, dogId: string) => {
+    if (isProcessing) return; // Prevent multiple submissions
+    
     setIsProcessing(true);
     
     try {
-      console.log("Adding handler to class:", { 
+      // First, find the correct schedule ID for this class
+      const scheduleId = await fetchScheduleId();
+      
+      if (!scheduleId) {
+        throw new Error("Could not find a schedule for this class");
+      }
+      
+      console.log("Adding handler to class schedule:", { 
         handlerId, 
         dogId, 
-        classId
+        scheduleId
       });
       
-      // First check if this handler-dog combination is already booked for this class
+      // First check if this handler-dog combination is already booked for this class schedule
       const { data: existingBookings, error: checkError } = await supabase
         .from('bookings')
         .select('id')
         .eq('client_id', handlerId)
         .eq('dog_id', dogId)
-        .eq('class_schedule_id', classId);
+        .eq('class_schedule_id', scheduleId);
       
       if (checkError) {
         console.error("Error checking existing bookings:", checkError);
@@ -71,12 +92,12 @@ export function AddHandlerToClassModal({
       }
       
       // Create a booking record that connects the handler to the class
-      const { data: newBooking, error } = await supabase
+      const { error } = await supabase
         .from('bookings')
         .insert({
           client_id: handlerId,
           dog_id: dogId,
-          class_schedule_id: classId,
+          class_schedule_id: scheduleId,
           is_enrolled: true,
           payment_status: 'pending'
         });
@@ -85,8 +106,6 @@ export function AddHandlerToClassModal({
         console.error("Error details:", error);
         throw error;
       }
-      
-      console.log("Successfully created booking");
       
       // Invalidate both handlers data and class-handlers data
       await Promise.all([
@@ -123,6 +142,12 @@ export function AddHandlerToClassModal({
       onOpenChange={(newOpen) => {
         // Prevent closing while processing
         if (isProcessing && newOpen === false) return;
+        
+        // Clear search when opening/closing
+        if (!newOpen) {
+          setSearchQuery("");
+        }
+        
         onOpenChange(newOpen);
       }}
     >

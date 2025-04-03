@@ -25,25 +25,39 @@ export function ExistingHandlersList({ searchQuery, onSelect, classId, isProcess
   const [expandedHandlers, setExpandedHandlers] = useState<string[]>([]);
   const [processingDogId, setProcessingDogId] = useState<string | null>(null);
 
-  // Fetch handlers that aren't already in this class
-  const { data: handlers, isLoading, error } = useQuery({
-    queryKey: ["available-handlers", classId, searchQuery],
+  // Fetch schedule IDs for the class
+  const { data: scheduleIds, isLoading: isLoadingSchedules } = useQuery({
+    queryKey: ["class-schedules", classId],
     queryFn: async () => {
-      console.log("Fetching available handlers for class:", classId);
+      const { data, error } = await supabase
+        .from('class_schedules')
+        .select('id')
+        .eq('class_id', classId);
+        
+      if (error) throw error;
+      return data?.map(item => item.id) || [];
+    },
+    staleTime: 60000, // 1 minute
+  });
+
+  // Fetch handlers that aren't already in this class
+  const { data: handlers, isLoading, error, refetch } = useQuery({
+    queryKey: ["available-handlers", classId, searchQuery, scheduleIds],
+    queryFn: async () => {
+      if (!scheduleIds || scheduleIds.length === 0) {
+        return [];
+      }
       
       try {
         // Get existing bookings for this class to exclude those handlers/dogs
         const { data: existingBookings, error: bookingsError } = await supabase
           .from('bookings')
           .select('client_id, dog_id')
-          .eq('class_schedule_id', classId);
+          .in('class_schedule_id', scheduleIds);
         
         if (bookingsError) {
-          console.error("Error fetching existing bookings:", bookingsError);
           throw bookingsError;
         }
-        
-        console.log("Existing bookings for class:", existingBookings?.length || 0);
         
         // Create lookup map of existing client-dog combinations
         const existingClientDogPairs = new Set();
@@ -77,7 +91,6 @@ export function ExistingHandlersList({ searchQuery, onSelect, classId, isProcess
         const { data, error } = await query;
         
         if (error) {
-          console.error("Error fetching available handlers:", error);
           throw error;
         }
         
@@ -96,19 +109,17 @@ export function ExistingHandlersList({ searchQuery, onSelect, classId, isProcess
           dogs: client.dogs.filter(dog => !existingClientDogPairs.has(`${client.id}-${dog.id}`))
         }));
       } catch (err) {
-        console.error("Error in fetchAvailableHandlers:", err);
         throw err;
       }
     },
+    enabled: !!scheduleIds && scheduleIds.length > 0,
     staleTime: 30000, // 30 seconds
   });
 
-  // Log any errors for debugging
+  // Reset expanded handlers when the search query changes
   useEffect(() => {
-    if (error) {
-      console.error("Error in ExistingHandlersList:", error);
-    }
-  }, [error]);
+    setExpandedHandlers([]);
+  }, [searchQuery]);
 
   const toggleHandler = (handlerId: string) => {
     setExpandedHandlers(prev => 
@@ -130,6 +141,26 @@ export function ExistingHandlersList({ searchQuery, onSelect, classId, isProcess
     }
   }, [isProcessing]);
 
+  if (isLoadingSchedules) {
+    return (
+      <div className="space-y-2">
+        <Skeleton className="h-6 w-full" />
+        <Skeleton className="h-24 w-full" />
+      </div>
+    );
+  }
+
+  if (!scheduleIds || scheduleIds.length === 0) {
+    return (
+      <div className="text-center p-8 bg-yellow-50 rounded-md border border-yellow-200">
+        <p className="text-yellow-700">No schedules found for this class.</p>
+        <p className="text-sm mt-2 text-yellow-600">
+          Please add a schedule to this class before adding handlers.
+        </p>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="space-y-2">
@@ -150,6 +181,13 @@ export function ExistingHandlersList({ searchQuery, onSelect, classId, isProcess
         <p className="text-sm mt-2 text-red-600">
           Please try refreshing the page or contact support.
         </p>
+        <Button 
+          variant="outline" 
+          className="mt-4" 
+          onClick={() => refetch()}
+        >
+          Try Again
+        </Button>
       </div>
     );
   }
