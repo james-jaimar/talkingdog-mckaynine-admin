@@ -18,28 +18,21 @@ import ClassDetail from "./pages/ClassDetail";
 import ClassHandlers from "./pages/ClassHandlers";
 import Forms from "./pages/Forms";
 import PuppyClassForm from "./pages/PuppyClassForm";
+import CustomerLogin from "./pages/CustomerLogin";
+import CustomerDashboard from "./pages/CustomerDashboard";
+import CustomerProfile from "./pages/CustomerProfile";
+import CustomerMessages from "./pages/CustomerMessages";
+import Home from "./pages/Home";
 import { useAuth } from "@/context/auth";
 import { Loader2 } from "lucide-react";
 
-// Home component with redirect logic
-const Home = () => {
-  const { user, isLoading } = useAuth();
-  
-  if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-screen">
-        <Loader2 className="h-12 w-12 animate-spin text-mckaynine-600 mb-4" />
-        <span className="text-lg text-mckaynine-600">Loading...</span>
-      </div>
-    );
-  }
-  
-  if (user) {
-    return <Navigate to="/dashboard" replace />;
-  }
-  
-  return <Navigate to="/auth" replace />;
-};
+// Loading component
+const LoadingScreen = () => (
+  <div className="flex flex-col items-center justify-center h-screen">
+    <Loader2 className="h-12 w-12 animate-spin text-mckaynine-600 mb-4" />
+    <span className="text-lg text-mckaynine-600">Loading...</span>
+  </div>
+);
 
 const router = createBrowserRouter([
   {
@@ -47,6 +40,7 @@ const router = createBrowserRouter([
     element: <Home />,
     errorElement: <NotFound />,
   },
+  // Admin/Staff routes
   {
     path: "/auth",
     element: <Auth />,
@@ -164,7 +158,7 @@ const router = createBrowserRouter([
     ),
   },
   
-  // Forms routes
+  // Forms routes for staff
   {
     path: "/forms",
     element: (
@@ -186,6 +180,61 @@ const router = createBrowserRouter([
     element: (
       <RequireAuth>
         <PuppyClassForm />
+      </RequireAuth>
+    ),
+  },
+  
+  // Customer-facing routes
+  {
+    path: "/customer/login",
+    element: <CustomerLogin />,
+  },
+  {
+    path: "/customer/dashboard",
+    element: (
+      <RequireAuth>
+        <CustomerDashboard />
+      </RequireAuth>
+    ),
+  },
+  {
+    path: "/customer/profile",
+    element: (
+      <RequireAuth>
+        <CustomerProfile />
+      </RequireAuth>
+    ),
+  },
+  {
+    path: "/customer/messages",
+    element: (
+      <RequireAuth>
+        <CustomerMessages />
+      </RequireAuth>
+    ),
+  },
+  // Redirect customer URLs that haven't been implemented yet
+  {
+    path: "/customer/classes",
+    element: (
+      <RequireAuth>
+        <Navigate to="/customer/dashboard" replace />
+      </RequireAuth>
+    ),
+  },
+  {
+    path: "/customer/forms",
+    element: (
+      <RequireAuth>
+        <Navigate to="/customer/dashboard" replace />
+      </RequireAuth>
+    ),
+  },
+  {
+    path: "/customer/forms/:formType",
+    element: (
+      <RequireAuth>
+        <Navigate to="/customer/dashboard" replace />
       </RequireAuth>
     ),
   },

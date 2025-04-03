@@ -8,6 +8,7 @@ import { HandlerInfo } from "@/components/handlers/detail/HandlerInfo";
 import { DogsList } from "@/components/handlers/detail/DogsList";
 import { HandlerNotFound } from "@/components/handlers/detail/HandlerNotFound";
 import { HandlerDetailSkeleton } from "@/components/handlers/detail/HandlerDetailSkeleton";
+import { HandlerCommunications } from "@/components/handlers/detail/HandlerCommunications";
 import { Helmet } from "react-helmet";
 
 interface Dog {
@@ -107,13 +108,20 @@ export default function HandlerDetail() {
           <HandlerDetailSkeleton />
         ) : handler ? (
           <div className="grid gap-6 grid-cols-1 lg:grid-cols-3">
-            <HandlerInfo handler={handler} />
-            <DogsList 
-              dogs={handler.dogs} 
-              clientId={handler.id}
-              onDogsUpdated={handleHandlerUpdated}
-            />
-            {/* Future components like upcoming classes/bookings can be added here */}
+            <div className="lg:col-span-2 space-y-6">
+              <HandlerInfo handler={handler} />
+              <DogsList 
+                dogs={handler.dogs} 
+                clientId={handler.id}
+                onDogsUpdated={handleHandlerUpdated}
+              />
+            </div>
+            <div className="lg:col-span-1">
+              <HandlerCommunications 
+                clientId={handler.id}
+                clientName={`${handler.first_name} ${handler.last_name}`}
+              />
+            </div>
           </div>
         ) : (
           <HandlerNotFound />
