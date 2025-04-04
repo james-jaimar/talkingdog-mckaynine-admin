@@ -131,7 +131,7 @@ export function CustomerDashboardLayout({ children }: DashboardLayoutProps) {
                     </nav>
                     <div className="mt-auto px-3 pb-3">
                       <Button
-                        variant="outline"
+                        variant="destructive"
                         className="w-full justify-start"
                         onClick={handleLogout}
                       >
@@ -152,10 +152,10 @@ export function CustomerDashboardLayout({ children }: DashboardLayoutProps) {
                   <span className="hidden sm:inline">{user?.email}</span>
                 </div>
                 <Button
-                  variant="outline"
+                  variant="destructive"
                   onClick={handleLogout}
                   size="sm"
-                  className="text-white border-white hover:bg-mckaynine-700"
+                  className="text-white hover:bg-red-700"
                 >
                   <LogOut className="mr-1 h-4 w-4" />
                   <span className="hidden sm:inline">Logout</span>
