@@ -5,8 +5,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   getClientMessages, 
-  sendClientMessage, 
-  subscribeToClientMessages
+  sendClientMessage
 } from "@/components/messages/messageService";
 import { ClientMessage } from "@/components/messages/types";
 
@@ -64,27 +63,39 @@ export function useCustomerMessages(clientId: string | null) {
     
     console.log("Setting up real-time message subscription");
     
-    const handleNewMessage = (newMsg: ClientMessage) => {
-      console.log("Received new message:", newMsg);
-      
-      // Add new message to state, avoiding duplicates
-      setMessages(prev => {
-        // Check if message already exists
-        if (prev.some(msg => msg.id === newMsg.id)) {
-          return prev;
+    const channel = supabase
+      .channel(`client-messages-${clientId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'client_messages',
+          filter: `client_id=eq.${clientId}`
+        },
+        (payload) => {
+          console.log("Received new message:", payload);
+          
+          // Add new message to state, avoiding duplicates
+          setMessages(prev => {
+            // Check if message already exists
+            if (prev.some(msg => msg.id === payload.new.id)) {
+              return prev;
+            }
+            
+            // Format the new message with sender name
+            const formattedMessage = {
+              ...payload.new,
+              sender_name: payload.new.is_from_client ? 'You' : 'Staff'
+            };
+            
+            return [...prev, formattedMessage];
+          });
         }
-        
-        // Format the new message with sender name
-        const formattedMessage = {
-          ...newMsg,
-          sender_name: newMsg.is_from_client ? 'You' : 'Staff'
-        };
-        
-        return [...prev, formattedMessage];
+      )
+      .subscribe((status) => {
+        console.log("Subscription status:", status);
       });
-    };
-    
-    const channel = subscribeToClientMessages(clientId, handleNewMessage);
       
     return () => {
       console.log("Cleaning up message subscription");

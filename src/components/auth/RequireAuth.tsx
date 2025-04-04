@@ -39,8 +39,11 @@ export default function RequireAuth({ children }: RequireAuthProps) {
                       location.pathname.startsWith('/forms') || 
                       location.pathname.startsWith('/user-admin');
   
-  // If this is a handler trying to access an admin route, redirect to customer dashboard
-  if (isHandler && isAdminRoute && location.pathname !== "/customer/dashboard") {
+  const isRootRoute = location.pathname === '/';
+  
+  // If this is a handler trying to access an admin route or the root route, redirect to customer dashboard
+  if (isHandler && (isAdminRoute || isRootRoute)) {
+    console.log("Handler attempting to access restricted route, redirecting to customer dashboard");
     return <Navigate to="/customer/dashboard" replace />;
   }
 
