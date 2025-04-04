@@ -4,9 +4,16 @@ import { AuthContext } from './AuthContext';
 import { useAuthState } from './useAuthState';
 import { supabase } from '@/integrations/supabase/client';
 import { loginWithEmailAndPassword, signupWithEmailAndPassword, logout } from './authOperations';
+import { useAuthSetup } from './useAuthSetup';
 
 export const AuthProvider: React.FC<PropsWithChildren> = ({ children }) => {
   // Get auth state from custom hook
+  const authState = useAuthState();
+  
+  // Use the auth setup hook to initialize auth state
+  useAuthSetup(authState);
+
+  // Destructure values from auth state
   const {
     user,
     session,
@@ -18,104 +25,13 @@ export const AuthProvider: React.FC<PropsWithChildren> = ({ children }) => {
     setUser,
     setSession,
     setRole,
-    setIsLoading,
     trainerProfile,
     setTrainerProfile
-  } = useAuthState();
+  } = authState;
 
-  // Handle auth state changes
+  // Fetch trainer profile if user is a trainer
   useEffect(() => {
-    setIsLoading(true);
-    console.log("Setting up auth listener");
-
-    // Subscribe to auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log("Auth state changed:", event);
-        
-        // Update session and user state immediately
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        // Fetch user role if we have a session
-        if (session?.user) {
-          try {
-            // Wait a tick to prevent Supabase deadlock
-            setTimeout(async () => {
-              try {
-                // Fetch profile for role
-                const { data: profile } = await supabase
-                  .from('profiles')
-                  .select('role')
-                  .eq('id', session.user.id)
-                  .single();
-                
-                // Special admin check for specific email
-                let finalRole = profile?.role || null;
-                if (session.user.email === "ady@talkingdog.co.za" && finalRole !== "admin") {
-                  await supabase.from('profiles').update({ role: 'admin' }).eq('id', session.user.id);
-                  finalRole = "admin";
-                }
-                
-                console.log("Setting user role:", finalRole);
-                setRole(finalRole);
-                setIsLoading(false);
-              } catch (error) {
-                console.error("Error in auth state profile fetch:", error);
-                setRole(null);
-                setIsLoading(false);
-              }
-            }, 0);
-          } catch (error) {
-            console.error("Error in auth state change:", error);
-            setRole(null);
-            setIsLoading(false);
-          }
-        } else {
-          // No session = no role and not loading
-          setRole(null);
-          setIsLoading(false);
-        }
-      }
-    );
-
-    // Initial session check
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', session.user.id)
-          .single()
-          .then(({ data: profile }) => {
-            // Check for special admin case
-            let userRole = profile?.role || null;
-            if (session.user.email === "ady@talkingdog.co.za" && userRole !== "admin") {
-              supabase.from('profiles').update({ role: 'admin' }).eq('id', session.user.id)
-                .then(() => {
-                  setRole("admin");
-                  setIsLoading(false);
-                });
-            } else {
-              setRole(userRole);
-              setIsLoading(false);
-            }
-          })
-          .catch(error => {
-            console.error("Error in initial profile fetch:", error);
-            setRole(null);
-            setIsLoading(false);
-          });
-      } else {
-        setIsLoading(false);
-      }
-    });
-
-    // Fetch trainer profile if user is a trainer
-    if (user && isTrainer) {
+    if (user && isTrainer && !trainerProfile) {
       supabase
         .from('trainers')
         .select('*')
@@ -128,14 +44,14 @@ export const AuthProvider: React.FC<PropsWithChildren> = ({ children }) => {
           } else {
             setTrainerProfile(data);
           }
+        })
+        .catch(error => {
+          // This addresses the TypeScript error by properly handling promise rejection
+          console.error("Exception in trainer profile fetch:", error);
+          setTrainerProfile(null);
         });
     }
-
-    // Cleanup subscription
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [setIsLoading, setSession, setUser, setRole, user, isTrainer, setTrainerProfile]);
+  }, [user, isTrainer, trainerProfile, setTrainerProfile]);
 
   return (
     <AuthContext.Provider
@@ -155,7 +71,12 @@ export const AuthProvider: React.FC<PropsWithChildren> = ({ children }) => {
           setUser(null);
           setSession(null);
           setRole(null);
-          return logout();
+          try {
+            return await logout();
+          } catch (error) {
+            console.error("Error during logout:", error);
+            return { success: false, error: "Failed to logout" };
+          }
         }
       }}
     >
