@@ -30,7 +30,7 @@ export const fetchUserProfile = async (userId: string | undefined) => {
 
 // Handle special admin user and preserve handler role
 export const ensureAdminRole = async (userId: string, email: string | undefined, currentRole: string | null) => {
-  // If the user already has a handler role, preserve it
+  // Most important: If the user has a handler role, preserve it
   if (currentRole === 'handler') {
     console.log("User has handler role, preserving it");
     return 'handler';

@@ -15,11 +15,14 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const { user, isLoading, isAdmin, isTrainer, isHandler, role } = useAuth();
   const location = useLocation();
   
+  // Ensure consistent handler identification
+  const userIsHandler = isHandler || role === 'handler';
+  
   // Debug info with added role information
   console.log("ProtectedRoute - Path:", location.pathname, "Required role:", requiredRole, "User roles:", { 
     isAdmin, 
     isTrainer, 
-    isHandler,
+    isHandler: userIsHandler,
     actualRole: role 
   });
   
@@ -38,11 +41,9 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     console.log("ProtectedRoute - No user, redirecting to /auth");
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
-  
-  // Handler check - only redirect if not already on customer path
-  // Check both isHandler flag and explicit role value
-  const userIsHandler = isHandler || role === 'handler';
-  
+
+  // IMPORTANT: Handler redirection logic - must happen before other role checks
+  // Only redirect if not already on a customer path
   if (userIsHandler && !location.pathname.startsWith("/customer/")) {
     console.log("ProtectedRoute - Handler on wrong path, redirecting to /customer/dashboard");
     return <Navigate to="/customer/dashboard" replace />;
@@ -53,7 +54,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     const hasRequiredRole = 
       (requiredRole === 'admin' && isAdmin) || 
       (requiredRole === 'trainer' && isTrainer) ||
-      (requiredRole === 'handler' && (isHandler || role === 'handler'));
+      (requiredRole === 'handler' && userIsHandler);
     
     if (!hasRequiredRole) {
       console.log("ProtectedRoute - User doesn't have required role:", requiredRole);

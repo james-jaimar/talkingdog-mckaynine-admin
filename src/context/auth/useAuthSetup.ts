@@ -39,7 +39,7 @@ export const useAuthSetup = (authState: any) => {
                 
                 console.log("Fetched user profile data:", profileData);
                 
-                // Handle special admin case and set role
+                // IMPORTANT: Handle special admin case but preserve handler role
                 const finalRole = await ensureAdminRole(
                   session.user.id, 
                   session.user.email,

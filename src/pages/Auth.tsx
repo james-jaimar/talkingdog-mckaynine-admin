@@ -16,13 +16,18 @@ export default function Auth() {
   const navigate = useNavigate();
   const location = useLocation();
   
-  // Single, simple redirection effect
+  // Single, simple redirection effect with added logging
   useEffect(() => {
     // Only redirect when we have a user and auth loading is complete
     if (!isLoading && user) {
-      // Check both isHandler flag and explicit role
+      // IMPORTANT: Check both isHandler flag and explicit role for consistent behavior
       const userIsHandler = isHandler || role === 'handler';
-      console.log("Auth page - User authenticated, checking role:", userIsHandler ? "handler" : "staff", "actual role:", role);
+      console.log("Auth page - User authenticated:", {
+        userIsHandler,
+        isHandler,
+        role,
+        path: location.pathname
+      });
       
       // Simple redirection logic based on role
       if (userIsHandler) {
@@ -33,7 +38,7 @@ export default function Auth() {
         navigate("/dashboard", { replace: true });
       }
     }
-  }, [user, isLoading, isHandler, navigate, role]);
+  }, [user, isLoading, isHandler, navigate, role, location]);
 
   return (
     <DashboardLayout requireAuth={false}>

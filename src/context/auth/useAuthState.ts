@@ -16,6 +16,8 @@ export const useAuthState = () => {
   // Derived states - ensure handler role is properly identified
   const isAdmin = useMemo(() => role === 'admin', [role]);
   const isTrainer = useMemo(() => role === 'trainer' || role === 'admin', [role]);
+  
+  // CRITICAL: Explicitly check for handler role
   const isHandler = useMemo(() => role === 'handler', [role]);
 
   return {

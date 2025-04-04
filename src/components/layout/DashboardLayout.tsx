@@ -15,10 +15,10 @@ export function DashboardLayout({ children, requireAuth = true }: DashboardLayou
   const navigate = useNavigate();
   const location = useLocation();
   
-  // Check both isHandler flag and explicit role
+  // Always use both methods for handler detection for consistency
   const userIsHandler = isHandler || role === 'handler';
   
-  // Simplified redirection effect
+  // Simplified redirection effect with immediate path check
   useEffect(() => {
     // Skip if still loading auth state
     if (isLoading) return;
@@ -33,7 +33,7 @@ export function DashboardLayout({ children, requireAuth = true }: DashboardLayou
       return;
     }
     
-    // Handler on wrong route check - redirect handlers to customer dashboard if they're on staff routes
+    // CRITICAL - HANDLER CHECK: Force handlers to customer dashboard when on staff routes
     if (user && userIsHandler && requireAuth && 
         !location.pathname.startsWith("/customer/") && 
         !location.pathname.startsWith("/auth")) {
@@ -62,7 +62,7 @@ export function DashboardLayout({ children, requireAuth = true }: DashboardLayou
     return (
       <div className="flex flex-col items-center justify-center h-screen">
         <Loader2 className="h-12 w-12 animate-spin text-mckaynine-600 mb-4" />
-        <span className="text-lg text-mckaynine-600">Redirecting...</span>
+        <span className="text-lg text-mckaynine-600">Redirecting to handler dashboard...</span>
       </div>
     );
   }

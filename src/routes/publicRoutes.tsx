@@ -21,7 +21,8 @@ export const HandlerRedirect = () => {
     user: !!user, 
     isLoading, 
     isHandler, 
-    role 
+    role,
+    path: window.location.pathname
   });
   
   // Always show loading while authentication is in progress
@@ -29,18 +30,21 @@ export const HandlerRedirect = () => {
     return <LoadingScreen />;
   }
   
-  // Simple redirection logic with clear paths
+  // Not logged in - go to auth
   if (!user) {
     console.log("HandlerRedirect - No user, redirecting to /auth");
     return <Navigate to="/auth" replace />;
   }
   
-  // Redirect based on role - prioritize handler check
-  if (isHandler || role === 'handler') {
+  // Important: Check both isHandler flag AND role value
+  const userIsHandler = isHandler || role === 'handler';
+  
+  // Redirect based on role
+  if (userIsHandler) {
     console.log("HandlerRedirect - User is a handler, redirecting to /customer/dashboard");
     return <Navigate to="/customer/dashboard" replace />;
   } else {
-    console.log("HandlerRedirect - User is not a handler, redirecting to /dashboard");
+    console.log("HandlerRedirect - User is staff, redirecting to /dashboard");
     return <Navigate to="/dashboard" replace />;
   }
 };
