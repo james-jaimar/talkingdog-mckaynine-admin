@@ -1,6 +1,5 @@
-
 import { useState, useEffect } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,29 +11,25 @@ import { Helmet } from "react-helmet";
 import { toast } from "sonner";
 
 export default function Auth() {
-  const { user, login, signup, isLoading, isAdmin, isTrainer, isHandler } = useAuth();
+  const { user, login, signup, isLoading, isHandler } = useAuth();
   const [activeTab, setActiveTab] = useState<"signin" | "signup">("signin");
   const navigate = useNavigate();
   
-  // Redirect if already logged in
+  // Clear and direct redirect logic
   useEffect(() => {
     if (user && !isLoading) {
       toast.success("Login successful!");
       
-      // Redirect based on user role
+      // Simple redirect logic based on role
       if (isHandler) {
         console.log("Auth: Handler login detected, redirecting to customer dashboard");
         navigate("/customer/dashboard", { replace: true });
-      } else if (isAdmin || isTrainer) {
-        console.log("Auth: Staff login detected, redirecting to staff dashboard");
-        navigate("/dashboard", { replace: true });
       } else {
-        // Default fallback if role is not recognized
-        console.log("Auth: Unknown role, defaulting to dashboard");
+        console.log("Auth: Staff login detected, redirecting to dashboard");
         navigate("/dashboard", { replace: true });
       }
     }
-  }, [user, navigate, isLoading, isAdmin, isTrainer, isHandler]);
+  }, [user, navigate, isLoading, isHandler]);
 
   return (
     <DashboardLayout requireAuth={false}>

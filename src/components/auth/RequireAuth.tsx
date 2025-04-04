@@ -12,13 +12,12 @@ export default function RequireAuth({ children }: RequireAuthProps) {
   const { user, isLoading, isHandler } = useAuth();
   const location = useLocation();
 
-  // If still loading auth state, show an improved loader
+  // If still loading auth state, show loader
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-screen">
         <Loader2 className="h-12 w-12 animate-spin text-mckaynine-600 mb-4" />
         <span className="text-lg text-mckaynine-600">Authenticating...</span>
-        <p className="text-sm text-gray-500 mt-2">Please wait while we verify your credentials.</p>
       </div>
     );
   }
@@ -29,13 +28,13 @@ export default function RequireAuth({ children }: RequireAuthProps) {
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
-  // If this is a handler, ALWAYS redirect them to the customer dashboard
-  // This ensures handlers can NEVER access admin/staff routes
-  if (isHandler) {
-    console.log("RequireAuth: Handler detected, forcing redirect to customer dashboard");
+  // Critical handler check: if this is a handler trying to access a non-customer route,
+  // immediately redirect to customer dashboard
+  if (isHandler && !location.pathname.startsWith("/customer/")) {
+    console.log("RequireAuth: Handler trying to access non-customer route, redirecting");
     return <Navigate to="/customer/dashboard" replace />;
   }
 
-  // If authenticated and not a handler, render children
+  // User is authenticated and has appropriate role for this route
   return <>{children}</>;
 }

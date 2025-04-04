@@ -24,20 +24,18 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     );
   }
   
-  // Redirect to unified auth page if not logged in
+  // Redirect to auth if not logged in
   if (!user) {
-    console.log("ProtectedRoute: No user, redirecting to auth page");
     return <Navigate to="/auth" replace />;
   }
   
-  // If user is a handler, ALWAYS redirect to customer dashboard regardless of the route
-  // This ensures handlers can never access admin pages
+  // Early handler redirect - ALWAYS redirect handlers to customer dashboard
   if (isHandler) {
-    console.log("ProtectedRoute: Handler detected, forcing redirect to customer dashboard");
+    console.log("ProtectedRoute: Handler detected, redirecting to customer dashboard");
     return <Navigate to="/customer/dashboard" replace />;
   }
   
-  // For non-handlers, check for required role if specified
+  // For non-handlers, check required role
   if (requiredRole) {
     const hasPermission = (
       (requiredRole === 'admin' && isAdmin) || 
@@ -45,11 +43,10 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     );
     
     if (!hasPermission) {
-      console.log("ProtectedRoute: User lacks required role, redirecting to home");
       return <Navigate to="/" replace />;
     }
   }
   
-  // If children exist, render them, otherwise render the Outlet
+  // Render children or Outlet
   return children ? <>{children}</> : <Outlet />;
 };

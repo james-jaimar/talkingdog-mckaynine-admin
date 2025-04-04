@@ -14,58 +14,44 @@ export function DashboardLayout({ children, requireAuth = true }: DashboardLayou
   const { user, isLoading, isHandler } = useAuth();
   const navigate = useNavigate();
   
-  // Handle authentication redirects
+  // Simplified authentication redirect logic
   useEffect(() => {
-    console.log("DashboardLayout - Auth state:", { user: !!user, isLoading, isHandler });
-    
     if (!isLoading) {
+      // If auth required but no user, redirect to login
       if (requireAuth && !user) {
-        // Redirect to unified auth page if authentication is required but user isn't logged in
-        console.log("DashboardLayout - Redirecting to auth page (no user)");
         navigate("/auth", { replace: true });
-      } else if (!requireAuth && user) {
-        // Redirect to appropriate dashboard if user is already logged in
-        console.log("DashboardLayout - Redirecting to dashboard (user already logged in)");
-        if (isHandler) {
-          console.log("DashboardLayout - Redirecting handler to customer dashboard");
-          navigate("/customer/dashboard", { replace: true });
-        } else {
-          navigate("/dashboard", { replace: true });
-        }
-      } else if (user && isHandler && window.location.pathname !== "/customer/dashboard" && 
-                 !window.location.pathname.startsWith("/customer/")) {
-        // IMPORTANT: Always redirect handlers to customer dashboard if they try to access any non-customer route
-        console.log("DashboardLayout - Forcing handler redirect to customer dashboard");
+      }
+      // If user is handler but not on a customer route, redirect
+      else if (user && isHandler && !window.location.pathname.startsWith("/customer/")) {
+        console.log("DashboardLayout: Handler on non-customer route, redirecting");
         navigate("/customer/dashboard", { replace: true });
+      }
+      // If user is logged in but on auth page, redirect to appropriate dashboard
+      else if (!requireAuth && user) {
+        navigate(isHandler ? "/customer/dashboard" : "/dashboard", { replace: true });
       }
     }
   }, [user, isLoading, navigate, requireAuth, isHandler]);
 
-  // Show loading indicator while authentication is being checked
+  // Show loading indicator while checking authentication
   if (isLoading) {
-    console.log("DashboardLayout - Showing loading indicator");
     return (
       <div className="flex flex-col items-center justify-center h-screen">
         <Loader2 className="h-12 w-12 animate-spin text-mckaynine-600 mb-4" />
         <span className="text-lg text-mckaynine-600">Authenticating...</span>
-        <p className="text-sm text-gray-500 mt-2">Please wait while we load your dashboard.</p>
       </div>
     );
   }
 
-  // If requiring auth but no user, render nothing (redirect will happen)
-  if (requireAuth && !user) {
-    console.log("DashboardLayout - Not rendering (no user)");
+  // Render nothing if auth check fails (redirects will happen)
+  if (requireAuth && !user) return null;
+  
+  // Don't render main layout for handlers on non-customer routes
+  if (user && isHandler && !window.location.pathname.startsWith("/customer/")) {
     return null;
   }
-  
-  // If this is a handler trying to access the main layout, don't render
-  if (user && isHandler && window.location.pathname !== "/customer/dashboard" && 
-      !window.location.pathname.startsWith("/customer/")) {
-    console.log("DashboardLayout - Not rendering for handler on non-customer route");
-    return null; // Don't render anything, redirect will happen
-  }
 
+  // Render normal layout
   return (
     <div className="flex flex-col min-h-screen w-full bg-gray-100">
       {(user || !requireAuth) && <Header />}
