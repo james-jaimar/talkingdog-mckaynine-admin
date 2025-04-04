@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/auth";
@@ -21,13 +22,16 @@ export default function Auth() {
       toast.success("Login successful!");
       
       // Redirect based on user role
-      if (isAdmin || isTrainer) {
-        navigate("/dashboard");
-      } else if (isHandler) {
-        navigate("/customer/dashboard");
+      if (isHandler) {
+        console.log("Auth: Handler login detected, redirecting to customer dashboard");
+        navigate("/customer/dashboard", { replace: true });
+      } else if (isAdmin || isTrainer) {
+        console.log("Auth: Staff login detected, redirecting to staff dashboard");
+        navigate("/dashboard", { replace: true });
       } else {
         // Default fallback if role is not recognized
-        navigate("/dashboard");
+        console.log("Auth: Unknown role, defaulting to dashboard");
+        navigate("/dashboard", { replace: true });
       }
     }
   }, [user, navigate, isLoading, isAdmin, isTrainer, isHandler]);

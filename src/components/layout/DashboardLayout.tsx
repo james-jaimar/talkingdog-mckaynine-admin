@@ -27,13 +27,15 @@ export function DashboardLayout({ children, requireAuth = true }: DashboardLayou
         // Redirect to appropriate dashboard if user is already logged in
         console.log("DashboardLayout - Redirecting to dashboard (user already logged in)");
         if (isHandler) {
+          console.log("DashboardLayout - Redirecting handler to customer dashboard");
           navigate("/customer/dashboard", { replace: true });
         } else {
           navigate("/dashboard", { replace: true });
         }
-      } else if (user && isHandler) {
-        // Important: Always redirect handlers to customer dashboard, no exceptions
-        console.log("DashboardLayout - Redirecting handler to customer dashboard");
+      } else if (user && isHandler && window.location.pathname !== "/customer/dashboard" && 
+                 !window.location.pathname.startsWith("/customer/")) {
+        // IMPORTANT: Always redirect handlers to customer dashboard if they try to access any non-customer route
+        console.log("DashboardLayout - Forcing handler redirect to customer dashboard");
         navigate("/customer/dashboard", { replace: true });
       }
     }
@@ -58,7 +60,9 @@ export function DashboardLayout({ children, requireAuth = true }: DashboardLayou
   }
   
   // If this is a handler trying to access the main layout, don't render
-  if (user && isHandler) {
+  if (user && isHandler && window.location.pathname !== "/customer/dashboard" && 
+      !window.location.pathname.startsWith("/customer/")) {
+    console.log("DashboardLayout - Not rendering for handler on non-customer route");
     return null; // Don't render anything, redirect will happen
   }
 

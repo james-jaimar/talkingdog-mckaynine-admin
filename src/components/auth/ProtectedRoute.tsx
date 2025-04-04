@@ -26,12 +26,14 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   
   // Redirect to unified auth page if not logged in
   if (!user) {
+    console.log("ProtectedRoute: No user, redirecting to auth page");
     return <Navigate to="/auth" replace />;
   }
   
   // If user is a handler, ALWAYS redirect to customer dashboard regardless of the route
   // This ensures handlers can never access admin pages
   if (isHandler) {
+    console.log("ProtectedRoute: Handler detected, forcing redirect to customer dashboard");
     return <Navigate to="/customer/dashboard" replace />;
   }
   
@@ -43,6 +45,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     );
     
     if (!hasPermission) {
+      console.log("ProtectedRoute: User lacks required role, redirecting to home");
       return <Navigate to="/" replace />;
     }
   }

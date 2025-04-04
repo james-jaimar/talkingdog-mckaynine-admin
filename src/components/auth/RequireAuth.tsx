@@ -25,13 +25,14 @@ export default function RequireAuth({ children }: RequireAuthProps) {
 
   // If not authenticated, redirect to login page
   if (!user) {
+    console.log("RequireAuth: No user, redirecting to auth page");
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
   // If this is a handler, ALWAYS redirect them to the customer dashboard
   // This ensures handlers can NEVER access admin/staff routes
   if (isHandler) {
-    console.log("Handler attempting to access protected route, redirecting to customer dashboard");
+    console.log("RequireAuth: Handler detected, forcing redirect to customer dashboard");
     return <Navigate to="/customer/dashboard" replace />;
   }
 

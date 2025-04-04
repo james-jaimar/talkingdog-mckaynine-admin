@@ -16,8 +16,28 @@ const LoadingScreen = () => (
 
 // Component to handle handler redirects - always redirect handlers to customer dashboard
 export const HandlerRedirect = () => {
-  const { isHandler } = useAuth();
-  return <Navigate to={isHandler ? "/customer/dashboard" : "/dashboard"} replace />;
+  const { user, isLoading, isHandler } = useAuth();
+  
+  // If loading, show loading screen
+  if (isLoading) {
+    return <LoadingScreen />;
+  }
+  
+  // If user is a handler, always redirect to customer dashboard
+  if (user && isHandler) {
+    console.log("HandlerRedirect: Redirecting handler to customer dashboard");
+    return <Navigate to="/customer/dashboard" replace />;
+  }
+  
+  // If user is staff (admin or trainer), redirect to staff dashboard
+  if (user) {
+    console.log("HandlerRedirect: Redirecting staff to dashboard");
+    return <Navigate to="/dashboard" replace />;
+  }
+  
+  // If not logged in, redirect to auth page
+  console.log("HandlerRedirect: No user, redirecting to auth");
+  return <Navigate to="/auth" replace />;
 };
 
 export const publicRoutes = [
