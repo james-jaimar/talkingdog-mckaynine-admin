@@ -7,11 +7,11 @@ import { customerRoutes } from "./routes/customerRoutes";
 import Dashboard from "./pages/Dashboard";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 
-// Create a root dashboard route that works for all authenticated users
+// Create a dashboard route that ONLY works for staff (admin and trainer) users
 const dashboardRoute = {
   path: "/dashboard",
   element: (
-    <ProtectedRoute>
+    <ProtectedRoute requiredRole="trainer">
       <Dashboard />
     </ProtectedRoute>
   ),
@@ -20,7 +20,7 @@ const dashboardRoute = {
 // Combine all routes
 const router = createBrowserRouter([
   ...publicRoutes,
-  dashboardRoute, // Add the dashboard route without role restriction
+  dashboardRoute, // Only accessible to trainers and admins (due to requiredRole="trainer")
   ...adminRoutes,
   ...trainerRoutes,
   ...customerRoutes,

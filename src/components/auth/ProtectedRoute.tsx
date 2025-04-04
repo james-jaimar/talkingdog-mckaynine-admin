@@ -12,10 +12,10 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children, 
   requiredRole 
 }) => {
-  const { user, isLoading, role } = useAuth();
+  const { user, isLoading, role, isAdmin, isTrainer, isHandler } = useAuth();
   const location = useLocation();
   
-  // Debug info
+  // Enhanced debug info
   console.log("ProtectedRoute - Path:", location.pathname, "Required role:", requiredRole, "User role:", role);
   
   // Always handle loading state first
@@ -34,26 +34,32 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
-  // Handle handler-specific routes
-  if (role === 'handler' && !location.pathname.startsWith("/customer/")) {
-    console.log("ProtectedRoute - Handler on wrong path, redirecting to /customer/dashboard");
+  // STRICT SECURITY CHECK: Handlers can only access customer routes
+  if ((role === 'handler' || role === 'user') && !location.pathname.startsWith("/customer/")) {
+    console.log("ProtectedRoute - Handler trying to access staff route, redirecting to /customer/dashboard");
     return <Navigate to="/customer/dashboard" replace />;
   }
   
   // Role-based access check
-  if (requiredRole && role !== requiredRole) {
-    console.log(`ProtectedRoute - User doesn't have required role: ${requiredRole}`);
-    
-    // Redirect to appropriate dashboard based on role
-    if (role === 'handler') {
-      return <Navigate to="/customer/dashboard" replace />;
-    } else if (role === 'admin') {
-      return <Navigate to="/dashboard" replace />;
-    } else if (role === 'trainer') {
-      return <Navigate to="/dashboard" replace />;
-    } else {
-      // Default for 'user' role
-      return <Navigate to="/dashboard" replace />;
+  if (requiredRole) {
+    const hasRequiredRole = 
+      (requiredRole === 'admin' && isAdmin) ||
+      (requiredRole === 'trainer' && isTrainer) ||
+      (requiredRole === 'handler' && (role === 'handler' || role === 'user'));
+      
+    if (!hasRequiredRole) {
+      console.log(`ProtectedRoute - User doesn't have required role: ${requiredRole}`);
+      
+      // Role-specific redirection
+      if (role === 'handler' || role === 'user') {
+        return <Navigate to="/customer/dashboard" replace />;
+      } else if (role === 'admin') {
+        return <Navigate to="/dashboard" replace />;
+      } else if (role === 'trainer') {
+        return <Navigate to="/dashboard" replace />;
+      } else {
+        return <Navigate to="/dashboard" replace />;
+      }
     }
   }
   

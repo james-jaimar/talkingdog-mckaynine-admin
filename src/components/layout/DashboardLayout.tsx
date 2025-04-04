@@ -15,7 +15,7 @@ export function DashboardLayout({ children, requireAuth = true }: DashboardLayou
   const navigate = useNavigate();
   const location = useLocation();
   
-  // Simplified redirection effect with immediate path check
+  // Strict security check
   useEffect(() => {
     // Skip if still loading auth state
     if (isLoading) return;
@@ -30,11 +30,12 @@ export function DashboardLayout({ children, requireAuth = true }: DashboardLayou
       return;
     }
     
-    // Handler check: Force handlers to customer dashboard when on staff routes
-    if (user && role === 'handler' && requireAuth && 
+    // STRICT SECURITY CHECK: Handler access control
+    // Handlers can ONLY access customer paths, redirect them if they try to access staff paths
+    if (user && (role === 'handler' || role === 'user') && requireAuth && 
         !location.pathname.startsWith("/customer/") && 
         !location.pathname.startsWith("/auth")) {
-      console.log("DashboardLayout - Handler on wrong route, redirecting to /customer/dashboard");
+      console.log("DashboardLayout - Handler accessing restricted route, redirecting to /customer/dashboard");
       navigate("/customer/dashboard", { replace: true });
     }
   }, [user, isLoading, navigate, requireAuth, role, location.pathname]);
@@ -54,8 +55,8 @@ export function DashboardLayout({ children, requireAuth = true }: DashboardLayou
     return null;
   }
   
-  // Don't render for handlers on non-customer routes (will be redirected)
-  if (requireAuth && user && role === 'handler' && !location.pathname.startsWith("/customer/")) {
+  // Don't render if handler is trying to access non-customer routes
+  if (requireAuth && user && (role === 'handler' || role === 'user') && !location.pathname.startsWith("/customer/")) {
     return (
       <div className="flex flex-col items-center justify-center h-screen">
         <Loader2 className="h-12 w-12 animate-spin text-mckaynine-600 mb-4" />

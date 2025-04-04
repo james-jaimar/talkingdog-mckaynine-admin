@@ -35,12 +35,13 @@ export const HandlerRedirect = () => {
     return <Navigate to="/auth" replace />;
   }
   
-  // Simple role-based redirect logic
-  if (role === 'handler') {
+  // STRICT SECURITY CHECK for handlers
+  // Any user with 'handler' or 'user' role gets sent to customer dashboard
+  if (role === 'handler' || role === 'user') {
     console.log("HandlerRedirect - User is a handler, redirecting to /customer/dashboard");
     return <Navigate to="/customer/dashboard" replace />;
   } else {
-    // For all other roles (admin, trainer, user), go to home dashboard
+    // For all other roles (admin, trainer), go to staff dashboard
     console.log("HandlerRedirect - User is staff, redirecting to /dashboard");
     return <Navigate to="/dashboard" replace />;
   }
