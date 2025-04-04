@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Helmet } from "react-helmet";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/auth";
-import { Dog, ShieldCheck } from "lucide-react";
+import { Dog } from "lucide-react";
 
 export default function Home() {
   const { user } = useAuth();
@@ -31,26 +31,24 @@ export default function Home() {
         </div>
       </header>
       
-      <main className="flex-grow">
-        <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-extrabold text-gray-900">
-              Welcome to McKaynine Training
+      <main className="flex-grow flex items-center justify-center">
+        <div className="max-w-md w-full p-6">
+          <div className="text-center mb-8">
+            <div className="flex justify-center mb-4">
+              <div className="bg-mckaynine-100 rounded-full w-20 h-20 flex items-center justify-center">
+                <Dog className="h-12 w-12 text-mckaynine-600" />
+              </div>
+            </div>
+            <h2 className="text-3xl font-bold text-gray-900 mb-2">
+              McKaynine Training Centre
             </h2>
-            <p className="mt-4 text-xl text-gray-600">
-              Please sign in to access your account
+            <p className="text-gray-600">
+              Sign in to access your account
             </p>
           </div>
           
-          <div className="max-w-md mx-auto bg-white rounded-lg shadow-md overflow-hidden border border-gray-200">
+          <div className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200">
             <div className="p-6">
-              <div className="bg-mckaynine-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-6">
-                <Dog className="h-10 w-10 text-mckaynine-600" />
-              </div>
-              <h3 className="text-xl font-bold text-center mb-2">McKaynine Portal</h3>
-              <p className="text-gray-600 text-center mb-6">
-                Sign in to access your training classes, profiles, and communications
-              </p>
               <Button variant="mckaynine" className="w-full" asChild>
                 <Link to="/auth">
                   Sign In / Register
