@@ -47,6 +47,10 @@ export const sendClientMessage = async (message: ClientMessagesInsert) => {
       content_length: message.content?.length || 0
     });
     
+    if (!message.client_id) {
+      throw new Error("Client ID is required");
+    }
+    
     // Get current auth session
     const { data: sessionData } = await supabase.auth.getSession();
     

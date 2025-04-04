@@ -32,7 +32,7 @@ export function useCustomerMessages(clientId: string | null) {
         const messagesData = await getClientMessages(clientId);
         
         // Format messages with sender name 
-        const formattedMessages = messagesData.map((msg) => ({
+        const formattedMessages: ClientMessage[] = messagesData.map((msg) => ({
           ...msg,
           sender_name: msg.is_from_client ? 'You' : 'Staff'
         }));
@@ -61,7 +61,7 @@ export function useCustomerMessages(clientId: string | null) {
       return;
     }
     
-    console.log("Setting up real-time message subscription");
+    console.log("Setting up real-time message subscription for client:", clientId);
     
     const channel = supabase
       .channel(`client-messages-${clientId}`)
@@ -83,7 +83,7 @@ export function useCustomerMessages(clientId: string | null) {
               return prev;
             }
             
-            // Ensure the new message conforms to ClientMessage type
+            // Cast the new payload to ClientMessage with required fields
             const newMsg = payload.new as ClientMessage;
             
             // Format the new message with sender name
@@ -106,6 +106,7 @@ export function useCustomerMessages(clientId: string | null) {
     };
   }, [clientId]);
 
+  // Send a new message
   const sendMessage = useCallback(async () => {
     if (!newMessage.trim() || !clientId || !user) {
       console.log("Cannot send message: missing data", { 
@@ -118,18 +119,20 @@ export function useCustomerMessages(clientId: string | null) {
     
     setIsSending(true);
     try {
-      console.log("Preparing to send message as client for clientId:", clientId);
+      console.log("Preparing to send message for clientId:", clientId);
       
-      // Modified: ensure is_from_client is true since we're in the customer messages context
+      // Create message object with required fields
       const messageData = {
         client_id: clientId,
         sender_id: user.id,
         content: newMessage.trim(),
-        is_from_client: true
+        is_from_client: true  // Always true in customer messages context
       };
 
       console.log("Sending message with data:", messageData);
-      await sendClientMessage(messageData);
+      const result = await sendClientMessage(messageData);
+      
+      console.log("Message sent successfully:", result);
       
       // Clear input field
       setNewMessage("");
