@@ -12,12 +12,12 @@ export default function CustomerMessagesPage() {
   const { user, isHandler } = useAuth();
   const [clientId, setClientId] = useState<string | null>(null);
   
-  // Set client ID from user data if handler
+  // Set client ID from user data when user is a handler
   useEffect(() => {
-    if (user && isHandler) {
+    if (user) {
       setClientId(user.id);
     }
-  }, [user, isHandler]);
+  }, [user]);
   
   const {
     messages,
@@ -29,7 +29,8 @@ export default function CustomerMessagesPage() {
     conversationReady
   } = useCustomerConversation(clientId);
 
-  if (!conversationReady) {
+  // Show access denied if user is not logged in
+  if (!user) {
     return (
       <DashboardLayout>
         <Helmet>
@@ -40,7 +41,7 @@ export default function CustomerMessagesPage() {
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>Access Denied</AlertTitle>
             <AlertDescription>
-              You need to be logged in as a handler to view your messages.
+              You need to be logged in to view your messages.
             </AlertDescription>
           </Alert>
         </div>

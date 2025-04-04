@@ -20,21 +20,21 @@ export function useCustomerConversation(clientId: string | null) {
 
   // Check if we have everything needed for conversation
   useEffect(() => {
-    if (!clientId) {
-      setConversationReady(false);
-      toast({
-        title: "Conversation error",
-        description: "Unable to load conversation data.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
     if (!user) {
       setConversationReady(false);
       toast({
         title: "Authentication required",
         description: "Please log in to view and send messages.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (!clientId) {
+      setConversationReady(false);
+      toast({
+        title: "Conversation error",
+        description: "Unable to load conversation data.",
         variant: "destructive",
       });
       return;
