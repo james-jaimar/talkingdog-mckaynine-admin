@@ -83,10 +83,13 @@ export function useCustomerMessages(clientId: string | null) {
               return prev;
             }
             
+            // Ensure the new message conforms to ClientMessage type
+            const newMsg = payload.new as ClientMessage;
+            
             // Format the new message with sender name
-            const formattedMessage = {
-              ...payload.new,
-              sender_name: payload.new.is_from_client ? 'You' : 'Staff'
+            const formattedMessage: ClientMessage = {
+              ...newMsg,
+              sender_name: newMsg.is_from_client ? 'You' : 'Staff'
             };
             
             return [...prev, formattedMessage];
