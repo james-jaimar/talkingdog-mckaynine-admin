@@ -118,9 +118,9 @@ export function useCustomerMessages(clientId: string | null) {
     
     setIsSending(true);
     try {
-      console.log("Preparing to send message as client");
+      console.log("Preparing to send message as client for clientId:", clientId);
       
-      // Modified: ensure is_from_client is true since handler is sending as client
+      // Modified: ensure is_from_client is true since we're in the customer messages context
       const messageData = {
         client_id: clientId,
         sender_id: user.id,
