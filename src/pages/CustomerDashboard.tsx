@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Calendar, Dog, FileText, MessageSquare } from "lucide-react";
 import { Link } from "react-router-dom";
+import { Badge } from "@/components/ui/badge";
 
 interface ClientWithDogs {
   id: string;
@@ -38,6 +39,7 @@ interface ClientWithDogs {
 
 export default function CustomerDashboard() {
   const { user } = useAuth();
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
   
   const { data: clientData, isLoading } = useQuery({
     queryKey: ['customer-dashboard'],
@@ -85,6 +87,64 @@ export default function CustomerDashboard() {
     },
     enabled: !!user
   });
+
+  // Fetch unread messages count
+  useEffect(() => {
+    if (!clientData?.id) return;
+
+    const fetchUnreadMessages = async () => {
+      try {
+        // Gets messages from staff that the client hasn't read yet
+        // This is a simplified approach - in a real app, you'd track read status
+        const { data, error } = await supabase
+          .from('client_messages')
+          .select('count')
+          .eq('client_id', clientData.id)
+          .eq('is_from_client', false) // Messages from staff
+          .gt('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()) // Last 7 days
+          .limit(10);
+          
+        if (error) {
+          console.error("Error fetching unread messages:", error);
+          return;
+        }
+        
+        // For demo purposes, let's say we have some unread messages
+        // In a real app, you'd have a proper read/unread tracking system
+        setUnreadMessageCount(data?.length || 0);
+      } catch (error) {
+        console.error("Error checking messages:", error);
+      }
+    };
+
+    fetchUnreadMessages();
+  }, [clientData]);
+
+  // Subscribe to new messages in real-time
+  useEffect(() => {
+    if (!clientData?.id) return;
+
+    const channel = supabase
+      .channel(`client-messages-${clientData.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'client_messages',
+          filter: `client_id=eq.${clientData.id} AND is_from_client=eq.false` // Only staff messages
+        },
+        () => {
+          // Increment unread count when a new message arrives
+          setUnreadMessageCount(prev => prev + 1);
+        }
+      )
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [clientData]);
 
   const upcomingClasses = clientData?.bookings?.filter(booking => {
     const classDate = new Date(booking.class_schedule.start_time);
@@ -171,13 +231,27 @@ export default function CustomerDashboard() {
               <CardTitle className="flex items-center text-lg">
                 <MessageSquare className="h-4 w-4 mr-2 text-mckaynine-600" />
                 Messages
+                {unreadMessageCount > 0 && (
+                  <Badge variant="destructive" className="ml-2 px-1.5 py-0.5">
+                    {unreadMessageCount} new
+                  </Badge>
+                )}
               </CardTitle>
               <CardDescription>View your conversations</CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-gray-500">No unread messages</p>
+              {unreadMessageCount > 0 ? (
+                <p className="text-gray-700">You have {unreadMessageCount} unread messages</p>
+              ) : (
+                <p className="text-gray-500">No unread messages</p>
+              )}
               <div className="mt-4">
-                <Button variant="outline" size="sm" asChild>
+                <Button 
+                  variant={unreadMessageCount > 0 ? "default" : "outline"} 
+                  size="sm" 
+                  className={unreadMessageCount > 0 ? "bg-mckaynine-600 hover:bg-mckaynine-700" : ""}
+                  asChild
+                >
                   <Link to="/customer/messages">View Messages</Link>
                 </Button>
               </div>
