@@ -34,6 +34,13 @@ const LoadingScreen = () => (
   </div>
 );
 
+// Component to handle handler redirects
+const HandlerRedirect = () => {
+  const { isHandler } = useAuth();
+  
+  return isHandler ? <Navigate to="/customer/dashboard" replace /> : <Dashboard />;
+};
+
 const router = createBrowserRouter([
   {
     path: "/",
@@ -49,7 +56,7 @@ const router = createBrowserRouter([
     path: "/dashboard",
     element: (
       <RequireAuth>
-        <Dashboard />
+        <HandlerRedirect />
       </RequireAuth>
     ),
   },

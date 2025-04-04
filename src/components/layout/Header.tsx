@@ -1,14 +1,18 @@
 
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useBranch, Branch } from "@/context/BranchContext";
 import { BranchSelector } from "@/components/branches/BranchSelector";
 import { useAuth } from "@/context/auth";
 import { Button } from "@/components/ui/button";
-import { LogOut, User, Users, Clipboard, FileText } from "lucide-react";
+import { LogOut, User, Users, Clipboard, FileText, MessageSquare, Home } from "lucide-react";
 import { toast } from "sonner";
 
 export function Header() {
-  const { user, logout, isAdmin, isTrainer, role, trainerProfile } = useAuth();
+  const { user, logout, isAdmin, isTrainer, isHandler, role, trainerProfile } = useAuth();
+  const location = useLocation();
+  
+  // Determine if we're on a customer page
+  const isCustomerPage = location.pathname.startsWith('/customer');
   
   // Safely use useBranch hook with proper typing
   let branchInfo = { currentBranch: null as Branch | null };
@@ -27,7 +31,7 @@ export function Header() {
   if (user && process.env.NODE_ENV === 'development') {
     console.log(
       "Header - User info:", 
-      { email: user?.email, role, isAdmin, isTrainer, trainerProfile }
+      { email: user?.email, role, isAdmin, isTrainer, isHandler, trainerProfile }
     );
   }
 
@@ -51,13 +55,29 @@ export function Header() {
       <div className="container mx-auto px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center">
-            <Link to="/" className="text-white font-bold text-xl mr-4">
+            <Link to={isHandler ? "/customer/dashboard" : "/"} className="text-white font-bold text-xl mr-4">
               McKaynine
             </Link>
             
             {user && (
               <nav className="flex space-x-4 overflow-x-auto">
-                {isTrainer && !isAdmin ? (
+                {isHandler ? (
+                  // Navigation for handlers
+                  <>
+                    <Link to="/customer/dashboard" className="text-white hover:text-gray-200 px-2 py-1 rounded whitespace-nowrap">
+                      <Home className="inline-block mr-1 h-4 w-4" />
+                      Dashboard
+                    </Link>
+                    <Link to="/customer/profile" className="text-white hover:text-gray-200 px-2 py-1 rounded whitespace-nowrap">
+                      Profile
+                    </Link>
+                    <Link to="/customer/messages" className="text-white hover:text-gray-200 px-2 py-1 rounded whitespace-nowrap">
+                      <MessageSquare className="inline-block mr-1 h-4 w-4" />
+                      Messages
+                    </Link>
+                  </>
+                ) : isTrainer && !isAdmin ? (
+                  // Navigation for trainers
                   <>
                     <Link to="/trainer-dashboard" className="text-white hover:text-gray-200 px-2 py-1 rounded whitespace-nowrap">
                       <Clipboard className="inline-block mr-1 h-4 w-4" />
@@ -71,6 +91,7 @@ export function Header() {
                     </Link>
                   </>
                 ) : (
+                  // Navigation for admins
                   <>
                     <Link to="/" className="text-white hover:text-gray-200 px-2 py-1 rounded whitespace-nowrap">
                       Dashboard
@@ -123,6 +144,7 @@ export function Header() {
                   {user.email}
                   {isAdmin && <span className="ml-1 text-xs bg-blue-600 px-1.5 py-0.5 rounded">Admin</span>}
                   {isTrainer && !isAdmin && <span className="ml-1 text-xs bg-green-600 px-1.5 py-0.5 rounded">Trainer</span>}
+                  {isHandler && <span className="ml-1 text-xs bg-amber-600 px-1.5 py-0.5 rounded">Handler</span>}
                   {trainerProfile && <span className="ml-1 text-xs">{trainerProfile.first_name}</span>}
                 </span>
                 <Button 

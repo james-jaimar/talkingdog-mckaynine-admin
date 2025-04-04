@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/auth";
@@ -12,17 +11,52 @@ import { Helmet } from "react-helmet";
 import { toast } from "sonner";
 
 export default function Auth() {
-  const { user, login, signup, isLoading } = useAuth();
+  const { user, login, signup, isLoading, isHandler } = useAuth();
   const [activeTab, setActiveTab] = useState<"signin" | "signup">("signin");
   const navigate = useNavigate();
   
   // Redirect if already logged in
   useEffect(() => {
-    if (user) {
+    if (user && !isLoading) {
       toast.success("Login successful!");
-      navigate("/dashboard");
+      
+      // Redirect handlers to customer dashboard, other roles to admin dashboard
+      if (isHandler) {
+        navigate("/customer/dashboard");
+      } else {
+        navigate("/dashboard");
+      }
     }
-  }, [user, navigate]);
+  }, [user, navigate, isLoading, isHandler]);
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [error, setError] = useState("");
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters");
+      return;
+    }
+    
+    try {
+      const result = await signup(email, password, { full_name: fullName });
+      if (!result.success && result.error) {
+        setError(result.error);
+      } else {
+        // Clear form fields after successful submission
+        setEmail("");
+        setPassword("");
+        setFullName("");
+      }
+    } catch (err: any) {
+      setError(err.message || "Failed to sign up");
+    }
+  };
 
   return (
     <DashboardLayout requireAuth={false}>

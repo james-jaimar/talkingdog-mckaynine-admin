@@ -11,12 +11,12 @@ interface DashboardLayoutProps {
 }
 
 export function DashboardLayout({ children, requireAuth = true }: DashboardLayoutProps) {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, isHandler } = useAuth();
   const navigate = useNavigate();
   
   // Handle authentication redirects
   useEffect(() => {
-    console.log("DashboardLayout - Auth state:", { user: !!user, isLoading });
+    console.log("DashboardLayout - Auth state:", { user: !!user, isLoading, isHandler });
     
     if (!isLoading) {
       if (requireAuth && !user) {
@@ -27,9 +27,13 @@ export function DashboardLayout({ children, requireAuth = true }: DashboardLayou
         // Redirect to dashboard if user is already logged in and tries to access non-auth pages
         console.log("DashboardLayout - Redirecting to dashboard (user already logged in)");
         navigate("/dashboard", { replace: true });
+      } else if (user && isHandler && window.location.pathname === "/dashboard") {
+        // Redirect handlers to customer dashboard if they try to access admin dashboard
+        console.log("DashboardLayout - Redirecting handler to customer dashboard");
+        navigate("/customer/dashboard", { replace: true });
       }
     }
-  }, [user, isLoading, navigate, requireAuth]);
+  }, [user, isLoading, navigate, requireAuth, isHandler]);
 
   // Show loading indicator while authentication is being checked
   if (isLoading) {
