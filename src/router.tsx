@@ -23,7 +23,7 @@ const router = createBrowserRouter([
   dashboardRoute, // Only accessible to trainers and admins (due to requiredRole="trainer")
   ...adminRoutes,
   ...trainerRoutes,
-  ...customerRoutes,
+  ...customerRoutes, // Customer routes with handler-specific layouts
 ]);
 
 export default router;

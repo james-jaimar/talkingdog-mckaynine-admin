@@ -1,6 +1,11 @@
 
 import CustomerMessagesPage from "./customer-messages/CustomerMessagesPage";
+import { CustomerDashboardLayout } from "@/components/layout/CustomerDashboardLayout";
 
 export default function CustomerMessages() {
-  return <CustomerMessagesPage />;
+  return (
+    <CustomerDashboardLayout>
+      <CustomerMessagesPage />
+    </CustomerDashboardLayout>
+  );
 }

@@ -1,5 +1,4 @@
 
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { useAuth } from "@/context/auth";
 import { useState, useEffect } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -34,7 +33,7 @@ export default function CustomerMessagesPage() {
   // Show access denied if user is not logged in
   if (!user) {
     return (
-      <DashboardLayout>
+      <>
         <Helmet>
           <title>Messages - McKaynine Training Centre</title>
         </Helmet>
@@ -47,14 +46,14 @@ export default function CustomerMessagesPage() {
             </AlertDescription>
           </Alert>
         </div>
-      </DashboardLayout>
+      </>
     );
   }
 
   // Show loading state while we're initially loading
   if (initializing) {
     return (
-      <DashboardLayout>
+      <>
         <Helmet>
           <title>Messages - McKaynine Training Centre</title>
         </Helmet>
@@ -64,14 +63,14 @@ export default function CustomerMessagesPage() {
             <p className="text-lg text-mckaynine-600">Loading your messages...</p>
           </div>
         </div>
-      </DashboardLayout>
+      </>
     );
   }
 
   // Show error if messaging is not available for this user
   if (!initializing && !conversationReady) {
     return (
-      <DashboardLayout>
+      <>
         <Helmet>
           <title>Messages - McKaynine Training Centre</title>
         </Helmet>
@@ -84,12 +83,12 @@ export default function CustomerMessagesPage() {
             </AlertDescription>
           </Alert>
         </div>
-      </DashboardLayout>
+      </>
     );
   }
 
   return (
-    <DashboardLayout>
+    <>
       <Helmet>
         <title>Messages - McKaynine Training Centre</title>
       </Helmet>
@@ -108,6 +107,6 @@ export default function CustomerMessagesPage() {
           />
         </div>
       </div>
-    </DashboardLayout>
+    </>
   );
 }

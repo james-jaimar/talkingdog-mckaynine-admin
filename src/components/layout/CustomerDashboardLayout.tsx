@@ -21,7 +21,7 @@ interface DashboardLayoutProps {
   children: React.ReactNode;
 }
 
-export function DashboardLayout({ children }: DashboardLayoutProps) {
+export function CustomerDashboardLayout({ children }: DashboardLayoutProps) {
   const { user, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const navigate = useNavigate();
@@ -64,19 +64,35 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
+      <header className="bg-mckaynine-600 text-white sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center">
               <div className="flex-shrink-0 flex items-center">
-                <img
-                  src="/lovable-uploads/02f80db5-fcad-4633-862b-5c42a27cf712.png"
-                  alt="McKaynine Logo"
-                  className="h-8 w-auto"
-                />
-                <span className="ml-2 text-lg font-semibold text-mckaynine-700 hidden md:block">
+                <Link to="/customer/dashboard">
+                  <img
+                    src="/lovable-uploads/02f80db5-fcad-4633-862b-5c42a27cf712.png"
+                    alt="McKaynine Logo"
+                    className="h-8 w-auto"
+                  />
+                </Link>
+                <span className="ml-2 text-lg font-semibold text-white hidden md:block">
                   McKaynine Portal
                 </span>
+              </div>
+              
+              {/* Desktop Navigation */}
+              <div className="hidden md:ml-6 md:flex md:space-x-4">
+                {navItems.map((item) => (
+                  <Link
+                    key={item.name}
+                    to={item.href}
+                    className="text-white hover:text-gray-200 px-3 py-2 rounded-md text-sm font-medium flex items-center"
+                  >
+                    <span className="mr-1">{item.icon}</span>
+                    {item.name}
+                  </Link>
+                ))}
               </div>
             </div>
             
@@ -84,7 +100,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             <div className="flex items-center md:hidden">
               <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
                 <SheetTrigger asChild>
-                  <Button variant="ghost" size="icon">
+                  <Button variant="ghost" size="icon" className="text-white">
                     <Menu className="h-6 w-6" />
                   </Button>
                 </SheetTrigger>
@@ -137,56 +153,41 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               </Sheet>
             </div>
             
-            {/* Desktop nav */}
+            {/* User dropdown and logout button */}
             <div className="hidden md:flex md:items-center">
-              <Button variant="ghost" size="icon" className="mx-2">
-                <Bell className="h-5 w-5" />
-              </Button>
-              
-              <div className="ml-3 relative">
-                <div className="flex items-center">
-                  <Button
-                    variant="outline"
-                    onClick={handleLogout}
-                    className="ml-2"
-                  >
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Logout
-                  </Button>
+              <div className="flex items-center">
+                <div className="text-sm text-white mr-4">
+                  <User className="inline-block mr-1 h-4 w-4" />
+                  <span>{user?.email}</span>
                 </div>
+                <Button
+                  variant="outline"
+                  onClick={handleLogout}
+                  size="sm"
+                  className="text-white border-white hover:bg-mckaynine-700"
+                >
+                  <LogOut className="mr-1 h-4 w-4" />
+                  Logout
+                </Button>
               </div>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Main content */}
-      <div className="flex flex-1">
-        {/* Sidebar for desktop */}
-        <div className="hidden md:flex md:flex-shrink-0">
-          <div className="flex flex-col w-64">
-            <div className="flex flex-col flex-grow border-r border-gray-200 pt-5 pb-4 bg-white overflow-y-auto">
-              <nav className="mt-5 flex-1 px-2 space-y-1">
-                {navItems.map((item) => (
-                  <Link
-                    key={item.name}
-                    to={item.href}
-                    className="flex items-center px-2 py-2 text-sm font-medium rounded-md hover:bg-gray-100"
-                  >
-                    {item.icon}
-                    {item.name}
-                  </Link>
-                ))}
-              </nav>
-            </div>
-          </div>
+      {/* Main Content */}
+      <main className="flex-1">
+        {children}
+      </main>
+      
+      {/* Footer */}
+      <footer className="bg-white border-t border-gray-200 py-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <p className="text-center text-sm text-gray-500">
+            &copy; {new Date().getFullYear()} McKaynine Training Centre. All rights reserved.
+          </p>
         </div>
-        
-        {/* Main content */}
-        <main className="flex-1 relative overflow-y-auto focus:outline-none">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">{children}</div>
-        </main>
-      </div>
+      </footer>
     </div>
   );
 }
