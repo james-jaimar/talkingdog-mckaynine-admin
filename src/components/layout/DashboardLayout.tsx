@@ -11,12 +11,9 @@ interface DashboardLayoutProps {
 }
 
 export function DashboardLayout({ children, requireAuth = true }: DashboardLayoutProps) {
-  const { user, isLoading, isHandler, role } = useAuth();
+  const { user, isLoading, role } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  
-  // Always use both methods for handler detection for consistency
-  const userIsHandler = isHandler || role === 'handler';
   
   // Simplified redirection effect with immediate path check
   useEffect(() => {
@@ -24,7 +21,7 @@ export function DashboardLayout({ children, requireAuth = true }: DashboardLayou
     if (isLoading) return;
     
     // Debug info
-    console.log("DashboardLayout - Path:", location.pathname, "User:", !!user, "Handler:", userIsHandler, "Role:", role);
+    console.log("DashboardLayout - Path:", location.pathname, "User:", !!user, "Role:", role);
     
     // Require auth check - redirect to login if not authenticated
     if (requireAuth && !user) {
@@ -33,14 +30,14 @@ export function DashboardLayout({ children, requireAuth = true }: DashboardLayou
       return;
     }
     
-    // CRITICAL - HANDLER CHECK: Force handlers to customer dashboard when on staff routes
-    if (user && userIsHandler && requireAuth && 
+    // Handler check: Force handlers to customer dashboard when on staff routes
+    if (user && role === 'handler' && requireAuth && 
         !location.pathname.startsWith("/customer/") && 
         !location.pathname.startsWith("/auth")) {
       console.log("DashboardLayout - Handler on wrong route, redirecting to /customer/dashboard");
       navigate("/customer/dashboard", { replace: true });
     }
-  }, [user, isLoading, navigate, requireAuth, userIsHandler, location.pathname, role]);
+  }, [user, isLoading, navigate, requireAuth, role, location.pathname]);
 
   // Show loading state
   if (isLoading) {
@@ -58,7 +55,7 @@ export function DashboardLayout({ children, requireAuth = true }: DashboardLayou
   }
   
   // Don't render for handlers on non-customer routes (will be redirected)
-  if (requireAuth && user && userIsHandler && !location.pathname.startsWith("/customer/")) {
+  if (requireAuth && user && role === 'handler' && !location.pathname.startsWith("/customer/")) {
     return (
       <div className="flex flex-col items-center justify-center h-screen">
         <Loader2 className="h-12 w-12 animate-spin text-mckaynine-600 mb-4" />

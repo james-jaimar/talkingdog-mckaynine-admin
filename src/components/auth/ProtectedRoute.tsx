@@ -12,19 +12,11 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children, 
   requiredRole 
 }) => {
-  const { user, isLoading, isAdmin, isTrainer, isHandler, role } = useAuth();
+  const { user, isLoading, role } = useAuth();
   const location = useLocation();
   
-  // Ensure consistent handler identification
-  const userIsHandler = isHandler || role === 'handler';
-  
-  // Debug info with added role information
-  console.log("ProtectedRoute - Path:", location.pathname, "Required role:", requiredRole, "User roles:", { 
-    isAdmin, 
-    isTrainer, 
-    isHandler: userIsHandler,
-    actualRole: role 
-  });
+  // Debug info
+  console.log("ProtectedRoute - Path:", location.pathname, "Required role:", requiredRole, "User role:", role);
   
   // Always handle loading state first
   if (isLoading) {
@@ -42,24 +34,26 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
-  // IMPORTANT: Handler redirection logic - must happen before other role checks
-  // Only redirect if not already on a customer path
-  if (userIsHandler && !location.pathname.startsWith("/customer/")) {
+  // Handle handler-specific routes
+  if (role === 'handler' && !location.pathname.startsWith("/customer/")) {
     console.log("ProtectedRoute - Handler on wrong path, redirecting to /customer/dashboard");
     return <Navigate to="/customer/dashboard" replace />;
   }
   
   // Role-based access check
-  if (requiredRole) {
-    const hasRequiredRole = 
-      (requiredRole === 'admin' && isAdmin) || 
-      (requiredRole === 'trainer' && isTrainer) ||
-      (requiredRole === 'handler' && userIsHandler);
+  if (requiredRole && role !== requiredRole) {
+    console.log(`ProtectedRoute - User doesn't have required role: ${requiredRole}`);
     
-    if (!hasRequiredRole) {
-      console.log("ProtectedRoute - User doesn't have required role:", requiredRole);
-      // Redirect to appropriate dashboard based on role
-      return <Navigate to={userIsHandler ? "/customer/dashboard" : "/"} replace />;
+    // Redirect to appropriate dashboard based on role
+    if (role === 'handler') {
+      return <Navigate to="/customer/dashboard" replace />;
+    } else if (role === 'admin') {
+      return <Navigate to="/dashboard" replace />;
+    } else if (role === 'trainer') {
+      return <Navigate to="/dashboard" replace />;
+    } else {
+      // Default for 'user' role
+      return <Navigate to="/dashboard" replace />;
     }
   }
   
