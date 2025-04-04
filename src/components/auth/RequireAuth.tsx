@@ -12,15 +12,7 @@ export default function RequireAuth({ children }: RequireAuthProps) {
   const { user, isLoading, isHandler } = useAuth();
   const location = useLocation();
 
-  // Debug logging
-  console.log("RequireAuth Check:", { 
-    authenticated: !!user, 
-    isHandler, 
-    path: location.pathname,
-    isLoading
-  });
-
-  // Still loading auth state - always show loading first
+  // Always handle loading first
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-screen">
@@ -30,19 +22,16 @@ export default function RequireAuth({ children }: RequireAuthProps) {
     );
   }
 
-  // Not authenticated - always redirect to login first
+  // No user means go to auth
   if (!user) {
-    console.log("RequireAuth: No user - redirecting to auth page");
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
-  // Handler check - simplified to only redirect when on a forbidden path
-  // This prevents infinite redirects when already on the correct path
+  // Handlers should only access customer routes
   if (isHandler && !location.pathname.startsWith("/customer/")) {
-    console.log("RequireAuth: Handler detected on non-customer route:", location.pathname);
     return <Navigate to="/customer/dashboard" replace />;
   }
 
-  // User is authenticated and authorized for this route
+  // Authenticated and authorized
   return <>{children}</>;
 }

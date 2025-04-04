@@ -16,33 +16,25 @@ export default function Auth() {
   const navigate = useNavigate();
   const location = useLocation();
   
-  // Simplified handler redirection logic
+  // Single, simple redirection effect
   useEffect(() => {
-    // Only redirect when authentication is complete and we have a user
-    if (isLoading || !user) return;
-    
-    console.log("Auth page - User authenticated:", {
-      isHandler,
-      path: location.pathname,
-    });
-    
-    // Simple, clear logic to handle redirection
-    if (isHandler) {
-      console.log("Auth: Handler detected - redirecting to customer dashboard");
-      navigate("/customer/dashboard", { replace: true });
-    } else {
-      // For staff, redirect to intended location or dashboard
+    // Only redirect when we have a user and auth loading is complete
+    if (!isLoading && user) {
+      // Get intended destination or use default based on role
       const from = location.state?.from?.pathname;
-      console.log("Auth: Staff login redirecting to:", from || "/dashboard");
-      navigate(from || "/dashboard", { replace: true });
+      const destination = isHandler ? "/customer/dashboard" : (from || "/dashboard");
+      
+      console.log(`Auth: Redirecting authenticated ${isHandler ? 'handler' : 'staff'} to ${destination}`);
+      navigate(destination, { replace: true });
     }
-  }, [user, isLoading, isHandler, navigate, location]);
+  }, [user, isLoading, isHandler, navigate, location.state]);
 
   return (
     <DashboardLayout requireAuth={false}>
       <Helmet>
         <title>Sign In - McKaynine Training Centre</title>
       </Helmet>
+      
       <div className="container mx-auto flex flex-col items-center justify-center py-12">
         <div className="mb-8 flex flex-col items-center">
           <Dog className="h-12 w-12 text-mckaynine-600" />

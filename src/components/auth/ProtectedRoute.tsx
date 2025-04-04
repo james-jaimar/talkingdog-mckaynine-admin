@@ -15,15 +15,6 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const { user, isLoading, isAdmin, isTrainer, isHandler } = useAuth();
   const location = useLocation();
   
-  // Debug logging
-  console.log("ProtectedRoute Check:", { 
-    authenticated: !!user, 
-    isHandler, 
-    path: location.pathname, 
-    requiredRole,
-    isLoading
-  });
-  
   // Always handle loading state first
   if (isLoading) {
     return (
@@ -34,35 +25,26 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     );
   }
   
-  // Not authenticated - always redirect to auth
+  // Not authenticated - redirect to auth
   if (!user) {
-    console.log("ProtectedRoute: Not authenticated - redirecting to auth");
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
   
-  // Handler check - added path check to prevent redirect loops
-  // Only redirect if not already on a customer path
+  // Handler check - only redirect if not already on customer path
   if (isHandler && !location.pathname.startsWith("/customer/")) {
-    console.log("ProtectedRoute: Handler detected on non-customer route:", location.pathname);
     return <Navigate to="/customer/dashboard" replace />;
   }
   
-  // Check if handler is trying to access a non-handler role protected route
-  if (isHandler && requiredRole && requiredRole !== 'handler') {
-    console.log("ProtectedRoute: Handler attempting to access route requiring", requiredRole);
-    return <Navigate to="/customer/dashboard" replace />;
-  }
-  
-  // For non-handlers, check required role if specified
-  if (requiredRole && !isHandler) {
-    const hasPermission = (
+  // Role-based access check
+  if (requiredRole) {
+    const hasRequiredRole = 
       (requiredRole === 'admin' && isAdmin) || 
-      (requiredRole === 'trainer' && (isAdmin || isTrainer))
-    );
+      (requiredRole === 'trainer' && isTrainer) ||
+      (requiredRole === 'handler' && isHandler);
     
-    if (!hasPermission) {
-      console.log("ProtectedRoute: Insufficient permissions for route");
-      return <Navigate to="/" replace />;
+    if (!hasRequiredRole) {
+      // Redirect to appropriate dashboard based on role
+      return <Navigate to={isHandler ? "/customer/dashboard" : "/"} replace />;
     }
   }
   

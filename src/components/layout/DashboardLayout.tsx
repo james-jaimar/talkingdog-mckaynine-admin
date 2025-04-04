@@ -2,7 +2,7 @@
 import { Header } from "./Header";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/auth";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Loader2 } from "lucide-react";
 
 interface DashboardLayoutProps {
@@ -14,62 +14,46 @@ export function DashboardLayout({ children, requireAuth = true }: DashboardLayou
   const { user, isLoading, isHandler } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [isRedirecting, setIsRedirecting] = useState(false);
   
-  // Debug logging
-  console.log("DashboardLayout Check:", {
-    authenticated: !!user,
-    isHandler,
-    path: location.pathname,
-    requireAuth,
-    isLoading
-  });
-  
-  // Simplified redirection with anti-loop protection
+  // Simplified redirection effect
   useEffect(() => {
-    // Skip if already redirecting or still loading
-    if (isRedirecting || isLoading) return;
+    // Skip if still loading auth state
+    if (isLoading) return;
     
-    // Auth required but no user
+    // Require auth check - redirect to login if not authenticated
     if (requireAuth && !user) {
-      console.log("DashboardLayout: Auth required but no user - redirecting to auth");
-      setIsRedirecting(true);
-      navigate("/auth", { replace: true });
+      navigate("/auth", { state: { from: location }, replace: true });
       return;
     }
     
-    // Handler on non-customer route - but only if path doesn't already start with /customer/
-    if (user && isHandler && !location.pathname.startsWith("/customer/")) {
-      console.log("DashboardLayout: Handler on non-customer route:", location.pathname);
-      setIsRedirecting(true);
+    // Handler on wrong route check - but only if not already on customer route
+    // This prevents infinite redirect loops
+    if (user && isHandler && requireAuth && !location.pathname.startsWith("/customer/")) {
       navigate("/customer/dashboard", { replace: true });
     }
-  }, [user, isLoading, navigate, requireAuth, isHandler, location.pathname, isRedirecting]);
+  }, [user, isLoading, navigate, requireAuth, isHandler, location]);
 
-  // Reset redirecting state when location changes
-  useEffect(() => {
-    setIsRedirecting(false);
-  }, [location.pathname]);
-
-  // Loading indicator
+  // Show loading state
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-screen">
         <Loader2 className="h-12 w-12 animate-spin text-mckaynine-600 mb-4" />
-        <span className="text-lg text-mckaynine-600">Authenticating...</span>
+        <span className="text-lg text-mckaynine-600">Loading...</span>
       </div>
     );
   }
 
-  // Don't render anything if auth check fails (redirects will happen)
-  if (requireAuth && !user) return null;
+  // Don't render anything if auth check fails and we're redirecting
+  if (requireAuth && !user) {
+    return null;
+  }
   
-  // Don't render main layout for handlers on non-customer routes
-  if (user && isHandler && !location.pathname.startsWith("/customer/")) {
+  // Don't render for handlers on non-customer routes (will be redirected)
+  if (requireAuth && user && isHandler && !location.pathname.startsWith("/customer/")) {
     return (
       <div className="flex flex-col items-center justify-center h-screen">
         <Loader2 className="h-12 w-12 animate-spin text-mckaynine-600 mb-4" />
-        <span className="text-lg text-mckaynine-600">Redirecting to customer dashboard...</span>
+        <span className="text-lg text-mckaynine-600">Redirecting...</span>
       </div>
     );
   }
