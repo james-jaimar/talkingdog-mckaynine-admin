@@ -104,6 +104,7 @@ export default function CustomerMessagesPage() {
             isSending={isSending}
             sendMessage={sendMessage}
             emptyStateMessage="No messages yet. Send a message to contact our staff."
+            clientId={clientId} // Pass client ID to mark messages as read
           />
         </div>
       </div>

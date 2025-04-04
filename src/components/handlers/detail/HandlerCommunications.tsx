@@ -75,6 +75,7 @@ export function HandlerCommunications({ clientId, clientName }: HandlerCommunica
       isSending={isSending}
       sendMessage={sendMessage}
       emptyStateMessage="No messages yet. Send a message to start the conversation with this client."
+      clientId={isClientReady ? clientId : undefined} // Pass client ID to mark messages as read when viewed
     />
   );
 }

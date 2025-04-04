@@ -3,6 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MessageComposer } from "./MessageComposer";
 import { MessagesContainer } from "./MessagesContainer";
 import { ClientMessage } from "../types";
+import { useEffect } from "react";
+import { markMessagesAsRead } from "../services/messageApi";
 
 interface ConversationViewProps {
   title?: string;
@@ -13,6 +15,7 @@ interface ConversationViewProps {
   isSending: boolean;
   sendMessage: () => void;
   emptyStateMessage?: string;
+  clientId?: string; // Added client ID to mark messages as read
 }
 
 export function ConversationView({
@@ -23,8 +26,32 @@ export function ConversationView({
   isLoading,
   isSending,
   sendMessage,
-  emptyStateMessage = "No messages yet. Send a message to start the conversation."
+  emptyStateMessage = "No messages yet. Send a message to start the conversation.",
+  clientId
 }: ConversationViewProps) {
+  // Mark messages as read when conversation is viewed
+  useEffect(() => {
+    const markAsRead = async () => {
+      if (clientId && messages.length > 0 && !isLoading) {
+        // Filter staff messages only (those not from client)
+        const staffMessageIds = messages
+          .filter(msg => !msg.is_from_client)
+          .map(msg => msg.id);
+          
+        if (staffMessageIds.length > 0) {
+          try {
+            console.log(`Marking ${staffMessageIds.length} messages as read for client ${clientId}`);
+            await markMessagesAsRead(clientId, staffMessageIds);
+          } catch (error) {
+            console.error("Failed to mark messages as read:", error);
+          }
+        }
+      }
+    };
+    
+    markAsRead();
+  }, [messages, isLoading, clientId]);
+
   return (
     <Card className="h-full flex flex-col">
       <CardHeader className="pb-4 border-b">

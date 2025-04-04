@@ -88,30 +88,51 @@ export default function CustomerDashboard() {
     enabled: !!user
   });
 
-  // Fetch unread messages count
+  // Fetch unread messages count with improved logic that considers read_message_tracking
   useEffect(() => {
     if (!clientData?.id) return;
 
     const fetchUnreadMessages = async () => {
       try {
-        // Gets messages from staff that the client hasn't read yet
-        // This is a simplified approach - in a real app, you'd track read status
-        const { data, error } = await supabase
+        // Get messages from staff that the client hasn't read
+        const { data: messages, error } = await supabase
           .from('client_messages')
-          .select('count')
+          .select('id, created_at')
           .eq('client_id', clientData.id)
-          .eq('is_from_client', false) // Messages from staff
-          .gt('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()) // Last 7 days
-          .limit(10);
+          .eq('is_from_client', false) // Messages from staff only
+          .order('created_at', { ascending: false });
           
         if (error) {
-          console.error("Error fetching unread messages:", error);
+          console.error("Error fetching messages:", error);
           return;
         }
         
-        // For demo purposes, let's say we have some unread messages
-        // In a real app, you'd have a proper read/unread tracking system
-        setUnreadMessageCount(data?.length || 0);
+        if (!messages || messages.length === 0) {
+          setUnreadMessageCount(0);
+          return;
+        }
+        
+        // Get read status for these messages
+        const messageIds = messages.map(msg => msg.id);
+        
+        // Check which messages have been read
+        const { data: readMessages, error: readError } = await supabase
+          .from('message_read_status')
+          .select('message_id')
+          .eq('client_id', clientData.id)
+          .in('message_id', messageIds);
+          
+        if (readError) {
+          console.error("Error fetching read status:", readError);
+          return;
+        }
+        
+        // Filter out read messages
+        const readMessageIds = new Set((readMessages || []).map(rm => rm.message_id));
+        const unreadMessages = messages.filter(msg => !readMessageIds.has(msg.id));
+        
+        setUnreadMessageCount(unreadMessages.length);
+        console.log(`Found ${unreadMessages.length} unread messages`);
       } catch (error) {
         console.error("Error checking messages:", error);
       }
@@ -134,7 +155,7 @@ export default function CustomerDashboard() {
           table: 'client_messages',
           filter: `client_id=eq.${clientData.id} AND is_from_client=eq.false` // Only staff messages
         },
-        () => {
+        (payload) => {
           // Increment unread count when a new message arrives
           setUnreadMessageCount(prev => prev + 1);
         }
@@ -242,7 +263,7 @@ export default function CustomerDashboard() {
             </CardHeader>
             <CardContent>
               {unreadMessageCount > 0 ? (
-                <p className="text-gray-700">You have {unreadMessageCount} unread messages</p>
+                <p className="text-gray-700">You have {unreadMessageCount} unread {unreadMessageCount === 1 ? 'message' : 'messages'}</p>
               ) : (
                 <p className="text-gray-500">No unread messages</p>
               )}

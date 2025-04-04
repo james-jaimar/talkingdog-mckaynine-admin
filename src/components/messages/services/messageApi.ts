@@ -1,88 +1,106 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { ClientMessage, ClientMessagesInsert } from "../types";
+import { ClientMessage } from "../types";
 
 /**
- * Get all messages for a client
+ * Get messages for a specific client
  */
-export const getClientMessages = async (clientId: string) => {
-  try {
-    console.log("Fetching messages for client ID:", clientId);
-    
-    // Check if we have an active session first
-    const { data: session } = await supabase.auth.getSession();
-    if (!session.session) {
-      console.error("No active session when trying to fetch messages");
-      throw new Error("Authentication required");
-    }
-    
-    // Simple query to get only the necessary data
-    const { data, error } = await supabase
-      .from('client_messages')
-      .select('id, client_id, sender_id, content, is_from_client, created_at, attachment_url, attachment_type')
-      .eq('client_id', clientId)
-      .order('created_at', { ascending: true });
-      
-    if (error) {
-      console.error("Error fetching client messages:", error);
-      throw error;
-    }
-    
-    console.log("Successfully fetched messages:", data?.length || 0);
-    return data as ClientMessage[];
-  } catch (error) {
-    console.error("Error in getClientMessages:", error);
+export const getClientMessages = async (clientId: string): Promise<ClientMessage[]> => {
+  const { data, error } = await supabase
+    .from('client_messages')
+    .select('*')
+    .eq('client_id', clientId)
+    .order('created_at');
+
+  if (error) {
+    console.error('Error fetching messages:', error);
+    throw error;
+  }
+
+  return data as ClientMessage[];
+};
+
+/**
+ * Send a message to a client
+ */
+export const sendClientMessage = async (messageData: {
+  client_id: string;
+  content: string;
+  is_from_client: boolean;
+  sender_id: string;
+}): Promise<ClientMessage> => {
+  const { data, error } = await supabase
+    .from('client_messages')
+    .insert(messageData)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error sending message:', error);
+    throw error;
+  }
+
+  return data as ClientMessage;
+};
+
+/**
+ * Mark specified messages as read by the client
+ */
+export const markMessagesAsRead = async (clientId: string, messageIds: string[]): Promise<void> => {
+  // Create entries for each message to mark as read
+  const readEntries = messageIds.map(messageId => ({
+    client_id: clientId,
+    message_id: messageId,
+    read_at: new Date().toISOString()
+  }));
+  
+  // Use upsert to avoid duplicates - if entry exists, it will be updated with new read_at
+  const { error } = await supabase
+    .from('message_read_status')
+    .upsert(readEntries, { 
+      onConflict: 'client_id,message_id',
+      ignoreDuplicates: false 
+    });
+
+  if (error) {
+    console.error('Error marking messages as read:', error);
     throw error;
   }
 };
 
 /**
- * Send a new message
+ * Get unread message count for a client
  */
-export const sendClientMessage = async (message: ClientMessagesInsert) => {
+export const getUnreadMessageCount = async (clientId: string): Promise<number> => {
   try {
-    console.log("Sending message with data:", message);
-    
-    if (!message.client_id) {
-      console.error("Client ID is missing in message data");
-      throw new Error("Client ID is required");
-    }
-    
-    // Get current auth session
-    const { data: sessionData } = await supabase.auth.getSession();
-    
-    // Check if user is authenticated
-    if (!sessionData.session) {
-      console.error("No active session found");
-      throw new Error("You must be logged in to send messages");
-    }
-    
-    // Use authenticated user's ID as sender
-    const userId = sessionData.session.user.id;
-    
-    // Create message object with current user as sender
-    const messageToSend = {
-      ...message,
-      sender_id: userId
-    };
-    
-    console.log("Final message object to send:", messageToSend);
-    
-    // Insert message
-    const { data, error } = await supabase
+    // Get all messages from staff
+    const { data: messages, error } = await supabase
       .from('client_messages')
-      .insert(messageToSend)
-      .select();
-      
-    if (error) {
-      console.error("Error sending client message:", error);
-      throw error;
-    }
+      .select('id')
+      .eq('client_id', clientId)
+      .eq('is_from_client', false);
     
-    console.log("Message sent successfully:", data);
-    return data;
+    if (error) throw error;
+    if (!messages || messages.length === 0) return 0;
+    
+    const messageIds = messages.map(msg => msg.id);
+    
+    // Get read status entries for these messages
+    const { data: readMessages, error: readError } = await supabase
+      .from('message_read_status')
+      .select('message_id')
+      .eq('client_id', clientId)
+      .in('message_id', messageIds);
+    
+    if (readError) throw readError;
+    
+    // Calculate unread count
+    const readMessageIds = new Set((readMessages || []).map(rm => rm.message_id));
+    const unreadCount = messages.filter(msg => !readMessageIds.has(msg.id)).length;
+    
+    return unreadCount;
   } catch (error) {
-    console.error("Error in sendClientMessage:", error);
+    console.error('Error getting unread message count:', error);
     throw error;
   }
 };
