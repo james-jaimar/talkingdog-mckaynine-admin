@@ -11,7 +11,7 @@ import { Helmet } from "react-helmet";
 import { toast } from "sonner";
 
 export default function Auth() {
-  const { user, login, signup, isLoading, isHandler } = useAuth();
+  const { user, login, signup, isLoading, isAdmin, isTrainer, isHandler } = useAuth();
   const [activeTab, setActiveTab] = useState<"signin" | "signup">("signin");
   const navigate = useNavigate();
   
@@ -20,43 +20,17 @@ export default function Auth() {
     if (user && !isLoading) {
       toast.success("Login successful!");
       
-      // Redirect handlers to customer dashboard, other roles to admin dashboard
-      if (isHandler) {
+      // Redirect based on user role
+      if (isAdmin || isTrainer) {
+        navigate("/dashboard");
+      } else if (isHandler) {
         navigate("/customer/dashboard");
       } else {
+        // Default fallback if role is not recognized
         navigate("/dashboard");
       }
     }
-  }, [user, navigate, isLoading, isHandler]);
-
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [fullName, setFullName] = useState("");
-  const [error, setError] = useState("");
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters");
-      return;
-    }
-    
-    try {
-      const result = await signup(email, password, { full_name: fullName });
-      if (!result.success && result.error) {
-        setError(result.error);
-      } else {
-        // Clear form fields after successful submission
-        setEmail("");
-        setPassword("");
-        setFullName("");
-      }
-    } catch (err: any) {
-      setError(err.message || "Failed to sign up");
-    }
-  };
+  }, [user, navigate, isLoading, isAdmin, isTrainer, isHandler]);
 
   return (
     <DashboardLayout requireAuth={false}>

@@ -1,8 +1,9 @@
+
 import { Link } from "react-router-dom";
 import { Helmet } from "react-helmet";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/auth";
-import { Dog, ShieldCheck, User } from "lucide-react";
+import { Dog, ShieldCheck } from "lucide-react";
 
 export default function Home() {
   const { user } = useAuth();
@@ -23,7 +24,6 @@ export default function Home() {
           {user && (
             <Button variant="outline" asChild>
               <Link to="/dashboard">
-                <User className="mr-2 h-4 w-4" />
                 Dashboard
               </Link>
             </Button>
@@ -38,43 +38,24 @@ export default function Home() {
               Welcome to McKaynine Training
             </h2>
             <p className="mt-4 text-xl text-gray-600">
-              Choose an option below to continue
+              Please sign in to access your account
             </p>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-10 max-w-4xl mx-auto">
-            <div className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200">
-              <div className="p-6">
-                <div className="bg-mckaynine-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-6">
-                  <Dog className="h-10 w-10 text-mckaynine-600" />
-                </div>
-                <h3 className="text-xl font-bold text-center mb-2">Customer Portal</h3>
-                <p className="text-gray-600 text-center mb-6">
-                  Access your class bookings, dog profiles, and communicate with our team
-                </p>
-                <Button variant="mckaynine" className="w-full" asChild>
-                  <Link to="/customer/login">
-                    Customer Login
-                  </Link>
-                </Button>
+          <div className="max-w-md mx-auto bg-white rounded-lg shadow-md overflow-hidden border border-gray-200">
+            <div className="p-6">
+              <div className="bg-mckaynine-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-6">
+                <Dog className="h-10 w-10 text-mckaynine-600" />
               </div>
-            </div>
-            
-            <div className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200">
-              <div className="p-6">
-                <div className="bg-blue-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-6">
-                  <ShieldCheck className="h-10 w-10 text-blue-600" />
-                </div>
-                <h3 className="text-xl font-bold text-center mb-2">Staff Portal</h3>
-                <p className="text-gray-600 text-center mb-6">
-                  For trainers and administrators to manage classes, handlers, and more
-                </p>
-                <Button variant="default" className="w-full" asChild>
-                  <Link to="/auth">
-                    Staff Login
-                  </Link>
-                </Button>
-              </div>
+              <h3 className="text-xl font-bold text-center mb-2">McKaynine Portal</h3>
+              <p className="text-gray-600 text-center mb-6">
+                Sign in to access your training classes, profiles, and communications
+              </p>
+              <Button variant="mckaynine" className="w-full" asChild>
+                <Link to="/auth">
+                  Sign In / Register
+                </Link>
+              </Button>
             </div>
           </div>
         </div>

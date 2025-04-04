@@ -1,8 +1,7 @@
 
 import { Navigate, Outlet } from "react-router-dom";
-import { useAuth } from "@/context/auth"; // Fixed import path
+import { useAuth } from "@/context/auth";
 import { Loader2 } from "lucide-react";
-import { useEffect } from "react";
 
 interface ProtectedRouteProps {
   children?: React.ReactNode;
@@ -25,7 +24,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     );
   }
   
-  // Redirect to auth page if not logged in
+  // Redirect to unified auth page if not logged in
   if (!user) {
     return <Navigate to="/auth" replace />;
   }
@@ -39,8 +38,8 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     );
     
     if (!hasPermission) {
-      // Redirect to dashboard if user doesn't have required role
-      return <Navigate to="/" replace />;
+      // Redirect handlers to customer dashboard, others to admin dashboard
+      return <Navigate to={isHandler ? "/customer/dashboard" : "/"} replace />;
     }
   }
   

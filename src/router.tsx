@@ -18,7 +18,6 @@ import ClassDetail from "./pages/ClassDetail";
 import ClassHandlers from "./pages/ClassHandlers";
 import Forms from "./pages/Forms";
 import PuppyClassForm from "./pages/PuppyClassForm";
-import CustomerLogin from "./pages/CustomerLogin";
 import CustomerDashboard from "./pages/CustomerDashboard";
 import CustomerProfile from "./pages/CustomerProfile";
 import CustomerMessages from "./pages/CustomerMessages";
@@ -47,11 +46,12 @@ const router = createBrowserRouter([
     element: <Home />,
     errorElement: <NotFound />,
   },
-  // Admin/Staff routes
+  // Single auth route for all users
   {
     path: "/auth",
     element: <Auth />,
   },
+  // Admin/Staff routes
   {
     path: "/dashboard",
     element: (
@@ -193,10 +193,6 @@ const router = createBrowserRouter([
   
   // Customer-facing routes
   {
-    path: "/customer/login",
-    element: <CustomerLogin />,
-  },
-  {
     path: "/customer/dashboard",
     element: (
       <RequireAuth>
@@ -219,6 +215,36 @@ const router = createBrowserRouter([
         <CustomerMessages />
       </RequireAuth>
     ),
+  },
+  // Redirect customer URLs that haven't been implemented yet
+  {
+    path: "/customer/classes",
+    element: (
+      <RequireAuth>
+        <Navigate to="/customer/dashboard" replace />
+      </RequireAuth>
+    ),
+  },
+  {
+    path: "/customer/forms",
+    element: (
+      <RequireAuth>
+        <Navigate to="/customer/dashboard" replace />
+      </RequireAuth>
+    ),
+  },
+  {
+    path: "/customer/forms/:formType",
+    element: (
+      <RequireAuth>
+        <Navigate to="/customer/dashboard" replace />
+      </RequireAuth>
+    ),
+  },
+  // Redirect old customer login route to unified auth page
+  {
+    path: "/customer/login",
+    element: <Navigate to="/auth" replace />,
   },
   // Redirect customer URLs that haven't been implemented yet
   {
