@@ -44,8 +44,7 @@ export const sendClientMessage = async (message: ClientMessagesInsert) => {
     console.log("Sending message with data:", {
       client_id: message.client_id,
       is_from_client: message.is_from_client,
-      content_length: message.content?.length || 0,
-      has_attachment: !!message.attachment_url
+      content_length: message.content?.length || 0
     });
     
     // Get current auth session
