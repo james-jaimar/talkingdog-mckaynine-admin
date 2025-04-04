@@ -15,7 +15,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const { user, isLoading, isAdmin, isTrainer, isHandler } = useAuth();
   const location = useLocation();
   
-  // Add clear debug logging
+  // Enhanced logging for debugging
   console.log("ProtectedRoute Check:", { 
     authenticated: !!user, 
     isHandler, 
@@ -24,7 +24,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     isLoading
   });
   
-  // Show loading indicator while checking authentication
+  // Loading state
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -34,27 +34,37 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     );
   }
   
-  // Redirect to auth if not logged in
+  // Not authenticated
   if (!user) {
+    console.log("ProtectedRoute: Not authenticated - redirecting to auth");
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
   
-  // CRITICAL HANDLER CHECK: Always redirect handlers to customer dashboard
-  // This must be the first check after authentication
-  if (isHandler && !location.pathname.startsWith("/customer/")) {
-    console.log("ProtectedRoute: HANDLER DETECTED on non-customer route:", location.pathname);
-    console.log("ProtectedRoute: FORCE redirecting to customer dashboard");
-    return <Navigate to="/customer/dashboard" replace />;
+  // CRITICAL: Handler check is now the first priority after authentication check
+  // This ensures handlers can ONLY access customer routes
+  if (isHandler) {
+    if (!location.pathname.startsWith("/customer/")) {
+      console.log("ProtectedRoute: HANDLER DETECTED on unauthorized route:", location.pathname);
+      console.log("ProtectedRoute: FORCING redirect to customer dashboard");
+      return <Navigate to="/customer/dashboard" replace />;
+    }
+    
+    // If we're explicitly requiring a role that isn't handler, redirect
+    if (requiredRole && requiredRole !== 'handler') {
+      console.log("ProtectedRoute: Handler attempting to access route requiring", requiredRole);
+      return <Navigate to="/customer/dashboard" replace />;
+    }
   }
   
   // For non-handlers, check required role if specified
-  if (requiredRole) {
+  if (requiredRole && !isHandler) {
     const hasPermission = (
       (requiredRole === 'admin' && isAdmin) || 
       (requiredRole === 'trainer' && (isAdmin || isTrainer))
     );
     
     if (!hasPermission) {
+      console.log("ProtectedRoute: Insufficient permissions for route");
       return <Navigate to="/" replace />;
     }
   }

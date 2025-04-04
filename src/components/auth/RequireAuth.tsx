@@ -12,7 +12,7 @@ export default function RequireAuth({ children }: RequireAuthProps) {
   const { user, isLoading, isHandler } = useAuth();
   const location = useLocation();
 
-  // Add clear debug logging
+  // Enhanced logging to track authentication flow
   console.log("RequireAuth Check:", { 
     authenticated: !!user, 
     isHandler, 
@@ -20,7 +20,7 @@ export default function RequireAuth({ children }: RequireAuthProps) {
     isLoading
   });
 
-  // If still loading auth state, show loader
+  // Still loading auth state
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-screen">
@@ -30,20 +30,23 @@ export default function RequireAuth({ children }: RequireAuthProps) {
     );
   }
 
-  // If not authenticated, redirect to login page
+  // Not authenticated - redirect to login
   if (!user) {
-    console.log("RequireAuth: No user, redirecting to auth page");
+    console.log("RequireAuth: No user - redirecting to auth page");
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
-  // CRITICAL HANDLER CHECK: Force redirect handlers to customer dashboard
-  // This strict rule prevents handlers from accessing any non-customer routes
-  if (isHandler && !location.pathname.startsWith("/customer/")) {
-    console.log("RequireAuth: HANDLER DETECTED on non-customer route:", location.pathname);
-    console.log("RequireAuth: FORCE redirecting to customer dashboard");
-    return <Navigate to="/customer/dashboard" replace />;
+  // CRITICAL HANDLER CHECK - Now the first check after authentication
+  // This prevents handlers from accessing ANY non-customer routes
+  if (isHandler) {
+    // Only allow access to paths that start with /customer/
+    if (!location.pathname.startsWith("/customer/")) {
+      console.log("RequireAuth: HANDLER DETECTED on unauthorized route:", location.pathname);
+      console.log("RequireAuth: FORCING redirect to customer dashboard");
+      return <Navigate to="/customer/dashboard" replace />;
+    }
   }
 
-  // User is authenticated and has appropriate role for this route
+  // User is authenticated and authorized for this route
   return <>{children}</>;
 }
