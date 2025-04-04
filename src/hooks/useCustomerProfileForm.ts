@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -7,10 +6,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ClientData } from "@/hooks/useCustomerProfileData";
 
-// Define the validation schema
+// Update the validation schema to use a single name field
 const profileSchema = z.object({
-  first_name: z.string().min(2, "First name must be at least 2 characters"),
-  last_name: z.string().min(2, "Last name must be at least 2 characters"),
+  name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Please enter a valid email address"),
   phone: z
     .string()
@@ -34,11 +32,13 @@ export function useCustomerProfileForm(client: ClientData, onSuccess: () => void
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   
+  // Combine first and last name for the form
+  const fullName = `${client.first_name || ''} ${client.last_name || ''}`.trim();
+  
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
-      first_name: client.first_name || "",
-      last_name: client.last_name || "",
+      name: fullName,
       email: client.email || "",
       phone: client.phone || "",
       address: client.address || "",
@@ -50,8 +50,7 @@ export function useCustomerProfileForm(client: ClientData, onSuccess: () => void
 
   const resetForm = () => {
     form.reset({
-      first_name: client.first_name || "",
-      last_name: client.last_name || "",
+      name: fullName,
       email: client.email || "",
       phone: client.phone || "",
       address: client.address || "",
@@ -69,11 +68,12 @@ export function useCustomerProfileForm(client: ClientData, onSuccess: () => void
       console.log("Updating profile for client ID:", client.id);
       console.log("Update data:", data);
       
+      // Split name into first_name for database (keep all in first_name field)
       const { error } = await supabase
         .from('clients')
         .update({
-          first_name: data.first_name,
-          last_name: data.last_name,
+          first_name: data.name,
+          last_name: "", // Clear the last name field as we're only using the name field
           phone: data.phone,
           address: data.address,
           city: data.city,

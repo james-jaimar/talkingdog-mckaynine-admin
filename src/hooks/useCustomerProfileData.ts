@@ -20,7 +20,7 @@ export interface ClientDog {
 export interface ClientData {
   id: string;
   first_name: string;
-  last_name: string;
+  last_name: string; // We'll keep this in the interface but it will effectively be unused
   email: string;
   phone?: string;
   address?: string;
@@ -102,17 +102,14 @@ export function useCustomerProfileData() {
           
           // Extract name from user metadata if available
           const fullName = user.user_metadata?.full_name || '';
-          const nameParts = fullName.split(' ');
-          const firstName = nameParts[0] || '';
-          const lastName = nameParts.slice(1).join(' ') || '';
           
           // Create new client record for this handler
           const { data: newClient, error: insertError } = await supabase
             .from('clients')
             .insert({
               email: user.email,
-              first_name: firstName,
-              last_name: lastName
+              first_name: fullName, // Store full name in first_name field
+              last_name: "" // Leave last_name empty
             })
             .select(`
               id,
