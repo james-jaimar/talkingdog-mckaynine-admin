@@ -41,13 +41,10 @@ export const getClientMessages = async (clientId: string) => {
  */
 export const sendClientMessage = async (message: ClientMessagesInsert) => {
   try {
-    console.log("Sending message with data:", {
-      client_id: message.client_id,
-      is_from_client: message.is_from_client,
-      content_length: message.content?.length || 0
-    });
+    console.log("Sending message with data:", message);
     
     if (!message.client_id) {
+      console.error("Client ID is missing in message data");
       throw new Error("Client ID is required");
     }
     
@@ -68,6 +65,8 @@ export const sendClientMessage = async (message: ClientMessagesInsert) => {
       ...message,
       sender_id: userId
     };
+    
+    console.log("Final message object to send:", messageToSend);
     
     // Insert message
     const { data, error } = await supabase

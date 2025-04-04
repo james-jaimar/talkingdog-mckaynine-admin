@@ -1,12 +1,10 @@
 
 import { useState, useEffect, useCallback } from "react";
-import { useAuth } from "@/context/auth";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   getClientMessages, 
-  sendClientMessage, 
-  subscribeToClientMessages
+  sendClientMessage
 } from "@/components/messages/messageService";
 import { ClientMessage } from "@/components/messages/types";
 
@@ -20,28 +18,29 @@ export function useClientMessages({ clientId, clientName }: UseClientMessagesPro
   const [newMessage, setNewMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
-  const { user } = useAuth();
   const { toast } = useToast();
 
   // Fetch messages for this client
   useEffect(() => {
     if (!clientId) {
-      console.log("No client ID provided, skipping message fetch");
+      console.error("No client ID provided to useClientMessages");
       setIsLoading(false);
       return;
     }
-    
+
     const fetchMessages = async () => {
       setIsLoading(true);
       try {
+        console.log(`Fetching messages for client: ${clientName} (${clientId})`);
         const messagesData = await getClientMessages(clientId);
         
         // Format messages with sender name
-        const formattedMessages = messagesData.map((msg) => ({
+        const formattedMessages: ClientMessage[] = messagesData.map((msg) => ({
           ...msg,
-          sender_name: msg.is_from_client ? clientName : 'Staff'
+          sender_name: msg.is_from_client ? clientName : 'You'
         }));
         
+        console.log(`Fetched ${formattedMessages.length} messages`);
         setMessages(formattedMessages);
       } catch (error) {
         console.error("Error fetching messages:", error);
@@ -58,66 +57,84 @@ export function useClientMessages({ clientId, clientName }: UseClientMessagesPro
     fetchMessages();
   }, [clientId, clientName, toast]);
 
-  // Set up real-time subscription for new messages
+  // Set up real-time subscription
   useEffect(() => {
-    if (!clientId) {
-      console.log("No client ID provided for subscription");
-      return;
-    }
+    if (!clientId) return;
     
-    const handleNewMessage = (newMsg: ClientMessage) => {
-      console.log("Received new message:", newMsg);
-      
-      // Process new message and add sender name
-      const formattedMessage = {
-        ...newMsg,
-        sender_name: newMsg.is_from_client ? clientName : 'Staff'
-      };
-      
-      // Add to state if not duplicate
-      setMessages(prev => {
-        if (prev.some(msg => msg.id === newMsg.id)) {
-          return prev;
+    console.log(`Setting up real-time subscription for client ${clientId}`);
+    
+    const channel = supabase
+      .channel(`client-messages-${clientId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'client_messages',
+          filter: `client_id=eq.${clientId}`
+        },
+        (payload) => {
+          console.log("Real-time message received:", payload);
+          
+          // Add message to state if it's new
+          setMessages(prev => {
+            const newMsg = payload.new as ClientMessage;
+            
+            // Skip if we already have this message
+            if (prev.some(msg => msg.id === newMsg.id)) return prev;
+            
+            const formattedMessage: ClientMessage = {
+              ...newMsg,
+              sender_name: newMsg.is_from_client ? clientName : 'You'
+            };
+            
+            return [...prev, formattedMessage];
+          });
         }
-        return [...prev, formattedMessage];
-      });
-    };
-    
-    const channel = subscribeToClientMessages(clientId, handleNewMessage);
+      )
+      .subscribe();
       
     return () => {
       supabase.removeChannel(channel);
     };
   }, [clientId, clientName]);
 
+  // Send a message to the client
   const sendMessage = useCallback(async () => {
-    if (!newMessage.trim() || !user || !clientId) {
-      console.log("Cannot send message: missing required data");
+    if (!newMessage.trim() || !clientId) {
+      console.log("Cannot send message: missing content or client ID");
       return;
     }
     
     setIsSending(true);
+    
     try {
-      await sendClientMessage({
-        client_id: clientId,
-        sender_id: user.id,
-        content: newMessage.trim(),
-        is_from_client: false
-      });
+      console.log(`Sending message to client: ${clientName} (${clientId})`);
       
-      // Clear input field
-      setNewMessage("");
+      const messageData = {
+        client_id: clientId,
+        content: newMessage.trim(),
+        is_from_client: false // Staff sending to client
+      };
+      
+      await sendClientMessage(messageData);
+      setNewMessage(""); // Clear input on success
+      
+      toast({
+        title: "Message sent",
+        description: `Your message to ${clientName} has been sent.`,
+      });
     } catch (error) {
       console.error("Error sending message:", error);
       toast({
-        title: "Error sending message",
-        description: "There was a problem sending your message. Please try again.",
+        title: "Failed to send message",
+        description: "Please try again later.",
         variant: "destructive",
       });
     } finally {
       setIsSending(false);
     }
-  }, [newMessage, clientId, user, toast]);
+  }, [newMessage, clientId, clientName, toast]);
 
   return {
     messages,

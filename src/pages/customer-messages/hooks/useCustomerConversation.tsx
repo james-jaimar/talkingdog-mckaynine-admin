@@ -4,11 +4,12 @@ import { useAuth } from "@/context/auth";
 import { useToast } from "@/components/ui/use-toast";
 import { useCustomerMessages } from "./useCustomerMessages";
 import { supabase } from "@/integrations/supabase/client";
+import { toast as sonnerToast } from "sonner";
 
 export function useCustomerConversation(initialClientId: string | null) {
   const [conversationReady, setConversationReady] = useState(false);
   const [actualClientId, setActualClientId] = useState<string | null>(initialClientId);
-  const { user, isHandler } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
 
   // Fetch or create client ID based on user information
@@ -21,17 +22,20 @@ export function useCustomerConversation(initialClientId: string | null) {
       }
 
       try {
-        console.log("Looking up client ID for user email:", user.email);
+        console.log("Checking for client with email:", user.email);
         
         // Look for a client with matching email to the user
         const { data: clientData, error } = await supabase
           .from('clients')
           .select('id')
           .eq('email', user.email)
+          .limit(1)
           .single();
           
         if (error) {
-          if (error.code !== 'PGRST116') { // Not found - this is expected sometimes
+          if (error.code === 'PGRST116') { // Not found
+            console.log("No client found for email:", user.email);
+          } else {
             console.error("Error looking up client:", error);
             toast({
               title: "Error finding your client profile",
@@ -39,17 +43,14 @@ export function useCustomerConversation(initialClientId: string | null) {
               variant: "destructive",
             });
           }
-        } else if (clientData) {
+        } else if (clientData?.id) {
           console.log("Found client ID:", clientData.id);
           setActualClientId(clientData.id);
           setConversationReady(true);
           return; // Exit early if we found a client
         }
         
-        // If we didn't return early, we need to create a client
-        console.log("No client found for email:", user.email);
-        
-        // Create a client record regardless of user role to simplify the messaging flow
+        // If we reach here, we need to create a client
         try {
           const { data: newClient, error: createError } = await supabase
             .from('clients')
@@ -75,9 +76,8 @@ export function useCustomerConversation(initialClientId: string | null) {
           console.log("Created new client with ID:", newClient.id);
           setActualClientId(newClient.id);
           setConversationReady(true);
-          toast({
-            title: "Client profile created",
-            description: "A client profile has been created for your account.",
+          sonnerToast.success("Client profile created", {
+            description: "Your messaging account is ready to use."
           });
         } catch (createError) {
           console.error("Error in client creation:", createError);
@@ -127,7 +127,7 @@ export function useCustomerConversation(initialClientId: string | null) {
   }, [actualClientId, sendMessageImpl, toast]);
 
   // Determine overall loading state
-  const isLoading = !actualClientId || messagesLoading;
+  const isLoading = messagesLoading;
 
   return {
     messages,

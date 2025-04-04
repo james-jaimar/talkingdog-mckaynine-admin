@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { 
   getClientMessages, 
   sendClientMessage
-} from "@/components/messages/messageService";
+} from "@/components/messages/services/messageApi";
 import { ClientMessage } from "@/components/messages/types";
 
 export function useCustomerMessages(clientId: string | null) {
@@ -108,11 +108,27 @@ export function useCustomerMessages(clientId: string | null) {
 
   // Send a new message
   const sendMessage = useCallback(async () => {
-    if (!newMessage.trim() || !clientId || !user) {
-      console.log("Cannot send message: missing data", { 
-        hasMessage: !!newMessage.trim(), 
-        hasClientId: !!clientId, 
-        hasUser: !!user
+    if (!newMessage.trim()) {
+      console.log("Cannot send empty message");
+      return;
+    }
+    
+    if (!clientId) {
+      console.error("Cannot send message: No client ID available");
+      toast({
+        title: "Error sending message",
+        description: "Missing client information. Please try again later.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (!user) {
+      console.error("Cannot send message: User not authenticated");
+      toast({
+        title: "Authentication required",
+        description: "Please log in to send messages.",
+        variant: "destructive",
       });
       return;
     }
@@ -124,9 +140,8 @@ export function useCustomerMessages(clientId: string | null) {
       // Create message object with required fields
       const messageData = {
         client_id: clientId,
-        sender_id: user.id,
         content: newMessage.trim(),
-        is_from_client: true  // Always true in customer messages context
+        is_from_client: true  // Always true when sending from customer interface
       };
 
       console.log("Sending message with data:", messageData);
