@@ -54,11 +54,11 @@ export function CustomerDashboardLayout({ children }: DashboardLayoutProps) {
   };
 
   const navItems = [
-    { name: "Dashboard", href: "/customer/dashboard", icon: <Dog className="w-5 h-5 mr-3" /> },
-    { name: "My Profile", href: "/customer/profile", icon: <User className="w-5 h-5 mr-3" /> },
-    { name: "My Classes", href: "/customer/classes", icon: <Calendar className="w-5 h-5 mr-3" /> },
-    { name: "Messages", href: "/customer/messages", icon: <MessageSquare className="w-5 h-5 mr-3" /> },
-    { name: "Forms", href: "/customer/forms", icon: <FileText className="w-5 h-5 mr-3" /> },
+    { name: "Dashboard", href: "/customer/dashboard", icon: <Dog className="w-5 h-5 mr-2" /> },
+    { name: "My Profile", href: "/customer/profile", icon: <User className="w-5 h-5 mr-2" /> },
+    { name: "My Classes", href: "/customer/classes", icon: <Calendar className="w-5 h-5 mr-2" /> },
+    { name: "Messages", href: "/customer/messages", icon: <MessageSquare className="w-5 h-5 mr-2" /> },
+    { name: "Forms", href: "/customer/forms", icon: <FileText className="w-5 h-5 mr-2" /> },
   ];
 
   return (
@@ -68,28 +68,24 @@ export function CustomerDashboardLayout({ children }: DashboardLayoutProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center">
-              <div className="flex-shrink-0 flex items-center">
+              {/* Remove the logo image per request */}
+              <div className="flex-shrink-0">
                 <Link to="/customer/dashboard">
-                  <img
-                    src="/lovable-uploads/02f80db5-fcad-4633-862b-5c42a27cf712.png"
-                    alt="McKaynine Logo"
-                    className="h-8 w-auto"
-                  />
+                  <span className="text-lg font-semibold text-white">
+                    McKaynine Portal
+                  </span>
                 </Link>
-                <span className="ml-2 text-lg font-semibold text-white hidden md:block">
-                  McKaynine Portal
-                </span>
               </div>
               
-              {/* Desktop Navigation */}
-              <div className="hidden md:ml-6 md:flex md:space-x-4">
+              {/* Desktop Navigation - Fixed spacing and layout */}
+              <div className="hidden md:ml-6 md:flex md:space-x-2">
                 {navItems.map((item) => (
                   <Link
                     key={item.name}
                     to={item.href}
-                    className="text-white hover:text-gray-200 px-3 py-2 rounded-md text-sm font-medium flex items-center"
+                    className="text-white hover:text-gray-200 px-3 py-2 rounded-md text-sm font-medium flex items-center whitespace-nowrap"
                   >
-                    <span className="mr-1">{item.icon}</span>
+                    {item.icon}
                     {item.name}
                   </Link>
                 ))}
@@ -104,16 +100,11 @@ export function CustomerDashboardLayout({ children }: DashboardLayoutProps) {
                     <Menu className="h-6 w-6" />
                   </Button>
                 </SheetTrigger>
-                <SheetContent side="left" className="w-[240px] sm:w-[300px]">
+                <SheetContent side="left" className="w-[80%] sm:w-[300px]">
                   <div className="py-4 flex flex-col h-full">
                     <div className="px-4 flex items-center justify-between mb-6">
                       <div className="flex items-center">
-                        <img
-                          src="/lovable-uploads/02f80db5-fcad-4633-862b-5c42a27cf712.png"
-                          alt="McKaynine Logo"
-                          className="h-8 w-auto"
-                        />
-                        <span className="ml-2 text-lg font-semibold text-mckaynine-700">
+                        <span className="text-lg font-semibold text-mckaynine-700">
                           McKaynine Portal
                         </span>
                       </div>
@@ -158,7 +149,7 @@ export function CustomerDashboardLayout({ children }: DashboardLayoutProps) {
               <div className="flex items-center">
                 <div className="text-sm text-white mr-4">
                   <User className="inline-block mr-1 h-4 w-4" />
-                  <span>{user?.email}</span>
+                  <span className="hidden sm:inline">{user?.email}</span>
                 </div>
                 <Button
                   variant="outline"
@@ -167,7 +158,7 @@ export function CustomerDashboardLayout({ children }: DashboardLayoutProps) {
                   className="text-white border-white hover:bg-mckaynine-700"
                 >
                   <LogOut className="mr-1 h-4 w-4" />
-                  Logout
+                  <span className="hidden sm:inline">Logout</span>
                 </Button>
               </div>
             </div>
@@ -175,9 +166,11 @@ export function CustomerDashboardLayout({ children }: DashboardLayoutProps) {
         </div>
       </header>
 
-      {/* Main Content */}
+      {/* Main Content - Added width constraint */}
       <main className="flex-1">
-        {children}
+        <div className="w-[80%] mx-auto">
+          {children}
+        </div>
       </main>
       
       {/* Footer */}

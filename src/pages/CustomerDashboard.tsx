@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/auth";
 import { CustomerDashboardLayout } from "@/components/layout/CustomerDashboardLayout";
@@ -160,8 +161,9 @@ export default function CustomerDashboard() {
         <h1 className="text-2xl font-bold mb-2">Welcome, {isLoading ? "Loading..." : clientData?.first_name || "Handler"}</h1>
         <p className="text-gray-600 mb-6">Manage your dogs, classes, and training progress</p>
         
+        {/* Responsive grid for main cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          <Card>
+          <Card className="h-full">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center text-lg">
                 <Dog className="h-4 w-4 mr-2 text-mckaynine-600" />
@@ -192,7 +194,7 @@ export default function CustomerDashboard() {
             </CardContent>
           </Card>
           
-          <Card>
+          <Card className="h-full">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center text-lg">
                 <Calendar className="h-4 w-4 mr-2 text-mckaynine-600" />
@@ -225,7 +227,7 @@ export default function CustomerDashboard() {
             </CardContent>
           </Card>
           
-          <Card>
+          <Card className="h-full">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center text-lg">
                 <MessageSquare className="h-4 w-4 mr-2 text-mckaynine-600" />
@@ -258,6 +260,7 @@ export default function CustomerDashboard() {
           </Card>
         </div>
         
+        {/* Registration forms section */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center text-lg">
