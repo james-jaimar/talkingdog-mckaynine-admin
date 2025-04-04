@@ -30,6 +30,12 @@ export const fetchUserProfile = async (userId: string | undefined) => {
 
 // Handle special admin user
 export const ensureAdminRole = async (userId: string, email: string | undefined, currentRole: string | null) => {
+  // If the user already has a handler role, preserve it
+  if (currentRole === 'handler') {
+    console.log("User has handler role, preserving it");
+    return 'handler';
+  }
+  
   // Special case for ady@talkingdog.co.za
   if (email === "ady@talkingdog.co.za" && currentRole !== "admin") {
     console.log("This is the admin user, ensuring admin role");
@@ -42,12 +48,13 @@ export const ensureAdminRole = async (userId: string, email: string | undefined,
     
     if (updateError) {
       console.error("Error updating admin role:", updateError);
-      return null;
+      return currentRole;
     } else {
       console.log("Successfully set ady@talkingdog.co.za as admin");
       return 'admin';
     }
   }
   
+  // For all other cases, return the current role
   return currentRole;
 };

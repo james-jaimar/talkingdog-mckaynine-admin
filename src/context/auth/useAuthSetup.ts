@@ -37,6 +37,8 @@ export const useAuthSetup = (authState: any) => {
               try {
                 const profileData = await fetchUserProfile(session.user.id);
                 
+                console.log("Fetched user profile data:", profileData);
+                
                 // Handle special admin case and set role
                 const finalRole = await ensureAdminRole(
                   session.user.id, 
@@ -74,9 +76,10 @@ export const useAuthSetup = (authState: any) => {
       // Fetch user role if session exists
       if (session?.user) {
         fetchUserProfile(session.user.id)
-          .then(profileData => 
-            ensureAdminRole(session.user.id, session.user.email, profileData?.role)
-          )
+          .then(profileData => {
+            console.log("Fetched user profile data:", profileData);
+            return ensureAdminRole(session.user.id, session.user.email, profileData?.role);
+          })
           .then(finalRole => {
             console.log("Initial role check:", finalRole);
             setRole(finalRole);

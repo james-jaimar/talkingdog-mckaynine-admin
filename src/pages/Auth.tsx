@@ -20,14 +20,18 @@ export default function Auth() {
   useEffect(() => {
     // Only redirect when we have a user and auth loading is complete
     if (!isLoading && user) {
-      // Get intended destination or use default based on role
-      const from = location.state?.from?.pathname;
-      const destination = isHandler ? "/customer/dashboard" : (from || "/dashboard");
+      console.log("Auth page - User authenticated, checking role:", isHandler ? "handler" : "staff");
       
-      console.log(`Auth: Redirecting authenticated ${isHandler ? 'handler' : 'staff'} to ${destination}`);
-      navigate(destination, { replace: true });
+      // Simple redirection logic based on role
+      if (isHandler) {
+        console.log("Auth page - Redirecting handler to /customer/dashboard");
+        navigate("/customer/dashboard", { replace: true });
+      } else {
+        console.log("Auth page - Redirecting staff to /dashboard");
+        navigate("/dashboard", { replace: true });
+      }
     }
-  }, [user, isLoading, isHandler, navigate, location.state]);
+  }, [user, isLoading, isHandler, navigate]);
 
   return (
     <DashboardLayout requireAuth={false}>

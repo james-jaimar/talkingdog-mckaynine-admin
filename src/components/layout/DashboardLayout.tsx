@@ -20,18 +20,24 @@ export function DashboardLayout({ children, requireAuth = true }: DashboardLayou
     // Skip if still loading auth state
     if (isLoading) return;
     
+    // Debug info
+    console.log("DashboardLayout - Path:", location.pathname, "User:", !!user, "Handler:", isHandler);
+    
     // Require auth check - redirect to login if not authenticated
     if (requireAuth && !user) {
-      navigate("/auth", { state: { from: location }, replace: true });
+      console.log("DashboardLayout - No user, redirecting to /auth");
+      navigate("/auth", { replace: true });
       return;
     }
     
-    // Handler on wrong route check - but only if not already on customer route
-    // This prevents infinite redirect loops
-    if (user && isHandler && requireAuth && !location.pathname.startsWith("/customer/")) {
+    // Handler on wrong route check - redirect handlers to customer dashboard if they're on staff routes
+    if (user && isHandler && requireAuth && 
+        !location.pathname.startsWith("/customer/") && 
+        !location.pathname.startsWith("/auth")) {
+      console.log("DashboardLayout - Handler on wrong route, redirecting to /customer/dashboard");
       navigate("/customer/dashboard", { replace: true });
     }
-  }, [user, isLoading, navigate, requireAuth, isHandler, location]);
+  }, [user, isLoading, navigate, requireAuth, isHandler, location.pathname]);
 
   // Show loading state
   if (isLoading) {
