@@ -15,7 +15,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const { user, isLoading, isAdmin, isTrainer, isHandler } = useAuth();
   const location = useLocation();
   
-  // Enhanced logging for debugging
+  // Debug logging
   console.log("ProtectedRoute Check:", { 
     authenticated: !!user, 
     isHandler, 
@@ -24,7 +24,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     isLoading
   });
   
-  // Loading state
+  // Always handle loading state first
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -34,26 +34,23 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     );
   }
   
-  // Not authenticated
+  // Not authenticated - always redirect to auth
   if (!user) {
     console.log("ProtectedRoute: Not authenticated - redirecting to auth");
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
   
-  // CRITICAL: Handler check is now the first priority after authentication check
-  // This ensures handlers can ONLY access customer routes
-  if (isHandler) {
-    if (!location.pathname.startsWith("/customer/")) {
-      console.log("ProtectedRoute: HANDLER DETECTED on unauthorized route:", location.pathname);
-      console.log("ProtectedRoute: FORCING redirect to customer dashboard");
-      return <Navigate to="/customer/dashboard" replace />;
-    }
-    
-    // If we're explicitly requiring a role that isn't handler, redirect
-    if (requiredRole && requiredRole !== 'handler') {
-      console.log("ProtectedRoute: Handler attempting to access route requiring", requiredRole);
-      return <Navigate to="/customer/dashboard" replace />;
-    }
+  // Handler check - added path check to prevent redirect loops
+  // Only redirect if not already on a customer path
+  if (isHandler && !location.pathname.startsWith("/customer/")) {
+    console.log("ProtectedRoute: Handler detected on non-customer route:", location.pathname);
+    return <Navigate to="/customer/dashboard" replace />;
+  }
+  
+  // Check if handler is trying to access a non-handler role protected route
+  if (isHandler && requiredRole && requiredRole !== 'handler') {
+    console.log("ProtectedRoute: Handler attempting to access route requiring", requiredRole);
+    return <Navigate to="/customer/dashboard" replace />;
   }
   
   // For non-handlers, check required role if specified

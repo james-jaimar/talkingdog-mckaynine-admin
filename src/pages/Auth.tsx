@@ -16,27 +16,26 @@ export default function Auth() {
   const navigate = useNavigate();
   const location = useLocation();
   
-  // CRITICAL: Improved handler redirection logic with extra logging
+  // Simplified handler redirection logic
   useEffect(() => {
-    if (!user || isLoading) return;
+    // Only redirect when authentication is complete and we have a user
+    if (isLoading || !user) return;
     
     console.log("Auth page - User authenticated:", {
       isHandler,
       path: location.pathname,
-      redirectingTo: isHandler ? "/customer/dashboard" : (location.state?.from?.pathname || "/dashboard")
     });
     
-    // Force handler to customer dashboard - HIGHEST PRIORITY CHECK
+    // Simple, clear logic to handle redirection
     if (isHandler) {
-      console.log("Auth: Handler detected - FORCING redirect to customer dashboard");
+      console.log("Auth: Handler detected - redirecting to customer dashboard");
       navigate("/customer/dashboard", { replace: true });
-      return;
+    } else {
+      // For staff, redirect to intended location or dashboard
+      const from = location.state?.from?.pathname;
+      console.log("Auth: Staff login redirecting to:", from || "/dashboard");
+      navigate(from || "/dashboard", { replace: true });
     }
-    
-    // For admin/trainers, redirect to the intended destination or dashboard
-    const from = location.state?.from?.pathname;
-    console.log("Auth: Staff login redirecting to:", from || "/dashboard");
-    navigate(from || "/dashboard", { replace: true });
   }, [user, isLoading, isHandler, navigate, location]);
 
   return (

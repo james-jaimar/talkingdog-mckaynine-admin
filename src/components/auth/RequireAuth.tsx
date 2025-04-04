@@ -12,7 +12,7 @@ export default function RequireAuth({ children }: RequireAuthProps) {
   const { user, isLoading, isHandler } = useAuth();
   const location = useLocation();
 
-  // Enhanced logging to track authentication flow
+  // Debug logging
   console.log("RequireAuth Check:", { 
     authenticated: !!user, 
     isHandler, 
@@ -20,7 +20,7 @@ export default function RequireAuth({ children }: RequireAuthProps) {
     isLoading
   });
 
-  // Still loading auth state
+  // Still loading auth state - always show loading first
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-screen">
@@ -30,21 +30,17 @@ export default function RequireAuth({ children }: RequireAuthProps) {
     );
   }
 
-  // Not authenticated - redirect to login
+  // Not authenticated - always redirect to login first
   if (!user) {
     console.log("RequireAuth: No user - redirecting to auth page");
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
-  // CRITICAL HANDLER CHECK - Now the first check after authentication
-  // This prevents handlers from accessing ANY non-customer routes
-  if (isHandler) {
-    // Only allow access to paths that start with /customer/
-    if (!location.pathname.startsWith("/customer/")) {
-      console.log("RequireAuth: HANDLER DETECTED on unauthorized route:", location.pathname);
-      console.log("RequireAuth: FORCING redirect to customer dashboard");
-      return <Navigate to="/customer/dashboard" replace />;
-    }
+  // Handler check - simplified to only redirect when on a forbidden path
+  // This prevents infinite redirects when already on the correct path
+  if (isHandler && !location.pathname.startsWith("/customer/")) {
+    console.log("RequireAuth: Handler detected on non-customer route:", location.pathname);
+    return <Navigate to="/customer/dashboard" replace />;
   }
 
   // User is authenticated and authorized for this route

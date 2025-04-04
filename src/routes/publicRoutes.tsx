@@ -13,38 +13,37 @@ const LoadingScreen = () => (
   </div>
 );
 
-// Completely refactored handler redirect with priority checks
+// Simplified handler redirect with clear decision tree
 export const HandlerRedirect = () => {
   const { user, isLoading, isHandler } = useAuth();
   
-  // Add comprehensive logging for debugging
+  // Add debugging info
   console.log("Root HandlerRedirect Check:", {
     authenticated: !!user,
     isHandler,
     isLoading
   });
   
-  // Show loading screen while authentication is in progress
+  // Always show loading while authentication is in progress
   if (isLoading) {
     return <LoadingScreen />;
   }
   
-  // CRITICAL: Handler check is now the first priority after loading
-  // This ensures handlers are always redirected to customer dashboard
-  if (user && isHandler) {
-    console.log("Root HandlerRedirect: Handler detected - FORCING redirect to customer dashboard");
+  // No user means go to auth
+  if (!user) {
+    console.log("Root HandlerRedirect: No authentication - going to auth page");
+    return <Navigate to="/auth" replace />;
+  }
+  
+  // Handler users go to customer dashboard
+  if (isHandler) {
+    console.log("Root HandlerRedirect: Handler detected - going to customer dashboard");
     return <Navigate to="/customer/dashboard" replace />;
   }
   
-  // For authenticated non-handlers, go to dashboard
-  if (user) {
-    console.log("Root HandlerRedirect: Regular staff detected - going to dashboard");
-    return <Navigate to="/dashboard" replace />;
-  }
-  
-  // No authentication, go to auth page
-  console.log("Root HandlerRedirect: No authentication - going to auth page");
-  return <Navigate to="/auth" replace />;
+  // Regular staff go to main dashboard
+  console.log("Root HandlerRedirect: Regular staff detected - going to dashboard");
+  return <Navigate to="/dashboard" replace />;
 };
 
 export const publicRoutes = [

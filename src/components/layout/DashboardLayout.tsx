@@ -2,7 +2,7 @@
 import { Header } from "./Header";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/auth";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 
 interface DashboardLayoutProps {
@@ -14,8 +14,9 @@ export function DashboardLayout({ children, requireAuth = true }: DashboardLayou
   const { user, isLoading, isHandler } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [isRedirecting, setIsRedirecting] = useState(false);
   
-  // Improved debugging logs
+  // Debug logging
   console.log("DashboardLayout Check:", {
     authenticated: !!user,
     isHandler,
@@ -24,27 +25,31 @@ export function DashboardLayout({ children, requireAuth = true }: DashboardLayou
     isLoading
   });
   
-  // Simplified and strict handler redirection logic
+  // Simplified redirection with anti-loop protection
   useEffect(() => {
-    // Don't do anything while still loading
-    if (isLoading) return;
+    // Skip if already redirecting or still loading
+    if (isRedirecting || isLoading) return;
     
-    // Auth required but no user - redirect to auth
+    // Auth required but no user
     if (requireAuth && !user) {
       console.log("DashboardLayout: Auth required but no user - redirecting to auth");
+      setIsRedirecting(true);
       navigate("/auth", { replace: true });
       return;
     }
     
-    // CRITICAL: Handler check with highest priority
-    // Force redirect handlers to customer dashboard from ANY non-customer route
+    // Handler on non-customer route - but only if path doesn't already start with /customer/
     if (user && isHandler && !location.pathname.startsWith("/customer/")) {
-      console.log("DashboardLayout: HANDLER DETECTED on non-customer route:", location.pathname);
-      console.log("DashboardLayout: FORCE redirecting to customer dashboard");
+      console.log("DashboardLayout: Handler on non-customer route:", location.pathname);
+      setIsRedirecting(true);
       navigate("/customer/dashboard", { replace: true });
-      return;
     }
-  }, [user, isLoading, navigate, requireAuth, isHandler, location.pathname]);
+  }, [user, isLoading, navigate, requireAuth, isHandler, location.pathname, isRedirecting]);
+
+  // Reset redirecting state when location changes
+  useEffect(() => {
+    setIsRedirecting(false);
+  }, [location.pathname]);
 
   // Loading indicator
   if (isLoading) {
@@ -60,7 +65,6 @@ export function DashboardLayout({ children, requireAuth = true }: DashboardLayou
   if (requireAuth && !user) return null;
   
   // Don't render main layout for handlers on non-customer routes
-  // This is a failsafe in case the redirect hasn't happened yet
   if (user && isHandler && !location.pathname.startsWith("/customer/")) {
     return (
       <div className="flex flex-col items-center justify-center h-screen">
