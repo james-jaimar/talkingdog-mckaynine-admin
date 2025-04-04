@@ -28,12 +28,24 @@ export function useCustomerConversation(clientId: string | null) {
             
           if (error) {
             console.error("Error looking up client:", error);
+            toast({
+              title: "Error finding your client profile",
+              description: "There was a problem connecting to your handler account.",
+              variant: "destructive",
+            });
             return;
           }
           
           if (clientData) {
             console.log("Found client ID:", clientData.id);
             setActualClientId(clientData.id);
+          } else {
+            console.log("No client found for email:", user.email);
+            toast({
+              title: "Client profile not found",
+              description: "Could not find a client profile for your account.",
+              variant: "destructive",
+            });
           }
         } catch (error) {
           console.error("Error in lookupClientId:", error);
@@ -42,7 +54,7 @@ export function useCustomerConversation(clientId: string | null) {
     };
     
     lookupClientId();
-  }, [clientId, user, isHandler]);
+  }, [clientId, user, isHandler, toast]);
   
   const {
     messages,

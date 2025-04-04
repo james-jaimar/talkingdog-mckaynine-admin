@@ -8,16 +8,20 @@ import { ConversationView } from "@/components/messages/components/ConversationV
 import { useCustomerConversation } from "./hooks/useCustomerConversation";
 import { Helmet } from "react-helmet";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 export default function CustomerMessagesPage() {
   const { user, isHandler } = useAuth();
   const [clientId, setClientId] = useState<string | null>(null);
-  const [isLoadingClientId, setIsLoadingClientId] = useState(false);
+  const [isLoadingClientId, setIsLoadingClientId] = useState(true);
   
   // Get client ID for the current user if they're a handler
   useEffect(() => {
     const fetchClientId = async () => {
-      if (!user || !user.email) return;
+      if (!user || !user.email) {
+        setIsLoadingClientId(false);
+        return;
+      }
       
       setIsLoadingClientId(true);
       try {
@@ -30,6 +34,8 @@ export default function CustomerMessagesPage() {
           
         if (error) {
           console.error("Error fetching client:", error);
+          toast.error("Could not find your client profile");
+          setIsLoadingClientId(false);
           return;
         }
         
@@ -38,6 +44,28 @@ export default function CustomerMessagesPage() {
           setClientId(data.id);
         } else {
           console.log("No client found for email:", user.email);
+          
+          if (isHandler) {
+            // For handlers, try to create a client record if one doesn't exist
+            const { data: newClient, error: createError } = await supabase
+              .from('clients')
+              .insert({
+                email: user.email,
+                first_name: user.user_metadata?.full_name?.split(' ')[0] || 'New', 
+                last_name: user.user_metadata?.full_name?.split(' ').slice(1).join(' ') || 'Handler'
+              })
+              .select('id')
+              .single();
+              
+            if (createError) {
+              console.error("Error creating client:", createError);
+              toast.error("Could not create a client profile for you");
+            } else if (newClient) {
+              console.log("Created new client with ID:", newClient.id);
+              setClientId(newClient.id);
+              toast.success("Created a new client profile for your account");
+            }
+          }
         }
       } catch (error) {
         console.error("Error in fetchClientId:", error);
@@ -47,7 +75,7 @@ export default function CustomerMessagesPage() {
     };
 
     fetchClientId();
-  }, [user]);
+  }, [user, isHandler]);
   
   const {
     messages,

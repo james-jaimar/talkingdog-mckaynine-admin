@@ -120,6 +120,7 @@ export function useCustomerMessages(clientId: string | null) {
     try {
       console.log("Preparing to send message as client");
       
+      // Modified: ensure is_from_client is true since handler is sending as client
       const messageData = {
         client_id: clientId,
         sender_id: user.id,
