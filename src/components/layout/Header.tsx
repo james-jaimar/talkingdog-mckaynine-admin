@@ -148,10 +148,10 @@ export function Header() {
                   {trainerProfile && <span className="ml-1 text-xs">{trainerProfile.first_name}</span>}
                 </span>
                 <Button 
-                  variant="ghost" 
+                  variant="destructive" 
                   size="sm" 
                   onClick={handleLogout}
-                  className="text-white hover:text-white hover:bg-mckaynine-700"
+                  className="text-white hover:bg-red-700"
                 >
                   <LogOut className="h-4 w-4 md:mr-1" />
                   <span className="hidden md:inline">Logout</span>
