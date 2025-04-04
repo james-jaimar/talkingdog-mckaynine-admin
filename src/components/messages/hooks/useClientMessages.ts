@@ -5,10 +5,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { 
   getClientMessages, 
   sendClientMessage
-} from "@/components/messages/messageService";
+} from "@/components/messages/services/messageApi";
 import { ClientMessage } from "@/components/messages/types";
 
-interface UseClientMessagesProps {
+export interface UseClientMessagesProps {
   clientId: string;
   clientName: string;
 }
@@ -111,10 +111,17 @@ export function useClientMessages({ clientId, clientName }: UseClientMessagesPro
     try {
       console.log(`Sending message to client: ${clientName} (${clientId})`);
       
+      // Get current user's session for sender_id
+      const { data: session } = await supabase.auth.getSession();
+      if (!session?.session?.user?.id) {
+        throw new Error("User not authenticated");
+      }
+
       const messageData = {
         client_id: clientId,
         content: newMessage.trim(),
-        is_from_client: false // Staff sending to client
+        is_from_client: false, // Staff sending to client
+        sender_id: session.session.user.id // Add the required sender_id
       };
       
       await sendClientMessage(messageData);

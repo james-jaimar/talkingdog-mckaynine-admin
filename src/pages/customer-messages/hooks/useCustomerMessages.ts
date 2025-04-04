@@ -137,11 +137,12 @@ export function useCustomerMessages(clientId: string | null) {
     try {
       console.log("Preparing to send message for clientId:", clientId);
       
-      // Create message object with required fields
+      // Create message object with required fields, including sender_id
       const messageData = {
         client_id: clientId,
         content: newMessage.trim(),
-        is_from_client: true  // Always true when sending from customer interface
+        is_from_client: true,  // Always true when sending from customer interface
+        sender_id: user.id     // Add the user's ID as the sender_id
       };
 
       console.log("Sending message with data:", messageData);

@@ -57,7 +57,10 @@ export function HandlerCommunications({ clientId, clientName }: HandlerCommunica
     isLoading,
     isSending,
     sendMessage
-  } = useClientMessages(isClientReady ? clientId : null);
+  } = useClientMessages({
+    clientId: isClientReady ? clientId : "", 
+    clientName: clientName
+  });
   
   // If client isn't ready, show loading state (handled by ConversationView)
   const effectiveLoading = isLoading || !isClientReady;
