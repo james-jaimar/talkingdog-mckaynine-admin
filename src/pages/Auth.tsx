@@ -15,19 +15,17 @@ export default function Auth() {
   const [activeTab, setActiveTab] = useState<"signin" | "signup">("signin");
   const navigate = useNavigate();
   
-  // Clear and direct redirect logic
+  // Simplified redirect logic that prioritizes handlers
   useEffect(() => {
-    if (user && !isLoading) {
-      toast.success("Login successful!");
-      
-      // Simple redirect logic based on role
-      if (isHandler) {
-        console.log("Auth: Handler login detected, redirecting to customer dashboard");
-        navigate("/customer/dashboard", { replace: true });
-      } else {
-        console.log("Auth: Staff login detected, redirecting to dashboard");
-        navigate("/dashboard", { replace: true });
-      }
+    if (!user || isLoading) return;
+    
+    // Clear immediate redirect logic - handlers always to customer dashboard
+    if (isHandler) {
+      console.log("Auth: Handler login detected, redirecting to customer dashboard");
+      navigate("/customer/dashboard", { replace: true });
+    } else {
+      console.log("Auth: Staff login detected, redirecting to dashboard");
+      navigate("/dashboard", { replace: true });
     }
   }, [user, navigate, isLoading, isHandler]);
 

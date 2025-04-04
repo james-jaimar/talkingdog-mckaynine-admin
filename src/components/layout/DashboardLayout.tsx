@@ -14,22 +14,20 @@ export function DashboardLayout({ children, requireAuth = true }: DashboardLayou
   const { user, isLoading, isHandler } = useAuth();
   const navigate = useNavigate();
   
-  // Simplified authentication redirect logic
+  // Strict handler redirection logic
   useEffect(() => {
-    if (!isLoading) {
-      // If auth required but no user, redirect to login
-      if (requireAuth && !user) {
-        navigate("/auth", { replace: true });
-      }
-      // If user is handler but not on a customer route, redirect
-      else if (user && isHandler && !window.location.pathname.startsWith("/customer/")) {
-        console.log("DashboardLayout: Handler on non-customer route, redirecting");
-        navigate("/customer/dashboard", { replace: true });
-      }
-      // If user is logged in but on auth page, redirect to appropriate dashboard
-      else if (!requireAuth && user) {
-        navigate(isHandler ? "/customer/dashboard" : "/dashboard", { replace: true });
-      }
+    if (isLoading) return;
+    
+    // Handler role check - MUST BE ON CUSTOMER ROUTES
+    if (user && isHandler && !window.location.pathname.startsWith("/customer/")) {
+      console.log("DashboardLayout: Handler detected on non-customer route, redirecting");
+      navigate("/customer/dashboard", { replace: true });
+      return;
+    }
+    
+    // Regular auth check
+    if (requireAuth && !user) {
+      navigate("/auth", { replace: true });
     }
   }, [user, isLoading, navigate, requireAuth, isHandler]);
 

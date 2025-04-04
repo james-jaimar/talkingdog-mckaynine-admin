@@ -28,10 +28,9 @@ export default function RequireAuth({ children }: RequireAuthProps) {
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
-  // Critical handler check: if this is a handler trying to access a non-customer route,
-  // immediately redirect to customer dashboard
+  // STRICT CHECK: Handlers can ONLY access customer routes
   if (isHandler && !location.pathname.startsWith("/customer/")) {
-    console.log("RequireAuth: Handler trying to access non-customer route, redirecting");
+    console.log("RequireAuth: Handler trying to access non-customer route:", location.pathname);
     return <Navigate to="/customer/dashboard" replace />;
   }
 

@@ -29,13 +29,17 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return <Navigate to="/auth" replace />;
   }
   
-  // Early handler redirect - ALWAYS redirect handlers to customer dashboard
+  // HANDLERS CHECK FIRST: Always redirect handlers to customer dashboard if trying to access staff routes
   if (isHandler) {
-    console.log("ProtectedRoute: Handler detected, redirecting to customer dashboard");
-    return <Navigate to="/customer/dashboard" replace />;
+    // Only let handlers stay if they're on a customer route
+    const onCustomerRoute = window.location.pathname.startsWith("/customer/");
+    if (!onCustomerRoute) {
+      console.log("ProtectedRoute: Handler detected on non-customer route, redirecting");
+      return <Navigate to="/customer/dashboard" replace />;
+    }
   }
   
-  // For non-handlers, check required role
+  // For non-handlers, check required role if specified
   if (requiredRole) {
     const hasPermission = (
       (requiredRole === 'admin' && isAdmin) || 

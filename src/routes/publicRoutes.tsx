@@ -2,7 +2,6 @@
 import { Navigate } from "react-router-dom";
 import Auth from "@/pages/Auth";
 import NotFound from "@/pages/NotFound";
-import Home from "@/pages/Home";
 import { useAuth } from "@/context/auth";
 import { Loader2 } from "lucide-react";
 
@@ -14,7 +13,7 @@ const LoadingScreen = () => (
   </div>
 );
 
-// Simplified root redirect component
+// Simple root redirect with clear handler priority
 export const HandlerRedirect = () => {
   const { user, isLoading, isHandler } = useAuth();
   
@@ -23,7 +22,7 @@ export const HandlerRedirect = () => {
     return <LoadingScreen />;
   }
   
-  // If user is a handler, always redirect to customer dashboard
+  // HANDLERS FIRST: Always redirect handlers to customer dashboard
   if (user && isHandler) {
     console.log("Root redirect: Handler detected, redirecting to customer dashboard");
     return <Navigate to="/customer/dashboard" replace />;
