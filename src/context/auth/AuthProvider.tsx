@@ -1,5 +1,5 @@
 
-import React, { PropsWithChildren, useEffect } from 'react';
+import React, { PropsWithChildren } from 'react';
 import { AuthContext } from './AuthContext';
 import { useAuthState } from './useAuthState';
 import { supabase } from '@/integrations/supabase/client';
@@ -38,7 +38,7 @@ export const AuthProvider: React.FC<PropsWithChildren> = ({ children }) => {
       value={{
         user,
         session,
-        role,
+        role, // Make sure role is included in the context value
         isAdmin,
         isTrainer,
         isHandler,

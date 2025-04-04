@@ -12,11 +12,16 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children, 
   requiredRole 
 }) => {
-  const { user, isLoading, isAdmin, isTrainer, isHandler } = useAuth();
+  const { user, isLoading, isAdmin, isTrainer, isHandler, role } = useAuth();
   const location = useLocation();
   
-  // Debug info
-  console.log("ProtectedRoute - Path:", location.pathname, "Required role:", requiredRole, "User roles:", { isAdmin, isTrainer, isHandler });
+  // Debug info with added role information
+  console.log("ProtectedRoute - Path:", location.pathname, "Required role:", requiredRole, "User roles:", { 
+    isAdmin, 
+    isTrainer, 
+    isHandler,
+    actualRole: role 
+  });
   
   // Always handle loading state first
   if (isLoading) {
@@ -35,7 +40,10 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
   
   // Handler check - only redirect if not already on customer path
-  if (isHandler && !location.pathname.startsWith("/customer/")) {
+  // Check both isHandler flag and explicit role value
+  const userIsHandler = isHandler || role === 'handler';
+  
+  if (userIsHandler && !location.pathname.startsWith("/customer/")) {
     console.log("ProtectedRoute - Handler on wrong path, redirecting to /customer/dashboard");
     return <Navigate to="/customer/dashboard" replace />;
   }
@@ -45,12 +53,12 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     const hasRequiredRole = 
       (requiredRole === 'admin' && isAdmin) || 
       (requiredRole === 'trainer' && isTrainer) ||
-      (requiredRole === 'handler' && isHandler);
+      (requiredRole === 'handler' && (isHandler || role === 'handler'));
     
     if (!hasRequiredRole) {
       console.log("ProtectedRoute - User doesn't have required role:", requiredRole);
       // Redirect to appropriate dashboard based on role
-      return <Navigate to={isHandler ? "/customer/dashboard" : "/"} replace />;
+      return <Navigate to={userIsHandler ? "/customer/dashboard" : "/"} replace />;
     }
   }
   

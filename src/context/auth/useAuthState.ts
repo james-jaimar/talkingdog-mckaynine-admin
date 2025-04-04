@@ -13,7 +13,7 @@ export const useAuthState = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [trainerProfile, setTrainerProfile] = useState(null);
 
-  // Derived states
+  // Derived states - ensure handler role is properly identified
   const isAdmin = useMemo(() => role === 'admin', [role]);
   const isTrainer = useMemo(() => role === 'trainer' || role === 'admin', [role]);
   const isHandler = useMemo(() => role === 'handler', [role]);

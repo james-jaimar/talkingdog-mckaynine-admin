@@ -9,11 +9,11 @@ interface RequireAuthProps {
 }
 
 export default function RequireAuth({ children }: RequireAuthProps) {
-  const { user, isLoading, isHandler } = useAuth();
+  const { user, isLoading, isHandler, role } = useAuth();
   const location = useLocation();
   
   // Debug info
-  console.log("RequireAuth - Path:", location.pathname, "User:", !!user, "Handler:", isHandler);
+  console.log("RequireAuth - Path:", location.pathname, "User:", !!user, "Handler:", isHandler, "Role:", role);
 
   // Always handle loading first
   if (isLoading) {
@@ -31,8 +31,10 @@ export default function RequireAuth({ children }: RequireAuthProps) {
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
-  // Handlers should only access customer routes
-  if (isHandler && !location.pathname.startsWith("/customer/")) {
+  // Handlers should only access customer routes - check both isHandler and role
+  const userIsHandler = isHandler || role === 'handler';
+  
+  if (userIsHandler && !location.pathname.startsWith("/customer/")) {
     console.log("RequireAuth - Handler on wrong route, redirecting to /customer/dashboard");
     return <Navigate to="/customer/dashboard" replace />;
   }

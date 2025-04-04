@@ -11,9 +11,12 @@ interface DashboardLayoutProps {
 }
 
 export function DashboardLayout({ children, requireAuth = true }: DashboardLayoutProps) {
-  const { user, isLoading, isHandler } = useAuth();
+  const { user, isLoading, isHandler, role } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  
+  // Check both isHandler flag and explicit role
+  const userIsHandler = isHandler || role === 'handler';
   
   // Simplified redirection effect
   useEffect(() => {
@@ -21,7 +24,7 @@ export function DashboardLayout({ children, requireAuth = true }: DashboardLayou
     if (isLoading) return;
     
     // Debug info
-    console.log("DashboardLayout - Path:", location.pathname, "User:", !!user, "Handler:", isHandler);
+    console.log("DashboardLayout - Path:", location.pathname, "User:", !!user, "Handler:", userIsHandler, "Role:", role);
     
     // Require auth check - redirect to login if not authenticated
     if (requireAuth && !user) {
@@ -31,13 +34,13 @@ export function DashboardLayout({ children, requireAuth = true }: DashboardLayou
     }
     
     // Handler on wrong route check - redirect handlers to customer dashboard if they're on staff routes
-    if (user && isHandler && requireAuth && 
+    if (user && userIsHandler && requireAuth && 
         !location.pathname.startsWith("/customer/") && 
         !location.pathname.startsWith("/auth")) {
       console.log("DashboardLayout - Handler on wrong route, redirecting to /customer/dashboard");
       navigate("/customer/dashboard", { replace: true });
     }
-  }, [user, isLoading, navigate, requireAuth, isHandler, location.pathname]);
+  }, [user, isLoading, navigate, requireAuth, userIsHandler, location.pathname, role]);
 
   // Show loading state
   if (isLoading) {
@@ -55,7 +58,7 @@ export function DashboardLayout({ children, requireAuth = true }: DashboardLayou
   }
   
   // Don't render for handlers on non-customer routes (will be redirected)
-  if (requireAuth && user && isHandler && !location.pathname.startsWith("/customer/")) {
+  if (requireAuth && user && userIsHandler && !location.pathname.startsWith("/customer/")) {
     return (
       <div className="flex flex-col items-center justify-center h-screen">
         <Loader2 className="h-12 w-12 animate-spin text-mckaynine-600 mb-4" />

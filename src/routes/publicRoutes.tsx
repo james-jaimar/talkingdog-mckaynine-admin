@@ -15,9 +15,14 @@ const LoadingScreen = () => (
 
 // Root redirect based on authentication state
 export const HandlerRedirect = () => {
-  const { user, isLoading, isHandler } = useAuth();
+  const { user, isLoading, isHandler, role } = useAuth();
   
-  console.log("HandlerRedirect - Auth state:", { user: !!user, isLoading, isHandler });
+  console.log("HandlerRedirect - Auth state:", { 
+    user: !!user, 
+    isLoading, 
+    isHandler, 
+    role 
+  });
   
   // Always show loading while authentication is in progress
   if (isLoading) {
@@ -30,8 +35,8 @@ export const HandlerRedirect = () => {
     return <Navigate to="/auth" replace />;
   }
   
-  // Redirect based on role
-  if (isHandler) {
+  // Redirect based on role - prioritize handler check
+  if (isHandler || role === 'handler') {
     console.log("HandlerRedirect - User is a handler, redirecting to /customer/dashboard");
     return <Navigate to="/customer/dashboard" replace />;
   } else {

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Helmet } from "react-helmet";
@@ -15,16 +16,20 @@ export default function CustomerLogin() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { login, signup, user, isHandler } = useAuth();
+  const { login, signup, user, isHandler, role } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<"login" | "signup">("login");
+
+  // Check both isHandler flag and explicit role
+  const userIsHandler = isHandler || role === 'handler';
 
   // Add effect to redirect if already logged in
   useEffect(() => {
     if (user) {
+      console.log("CustomerLogin - User authenticated, role:", role, "isHandler:", isHandler);
       navigate("/customer/dashboard");
     }
-  }, [user, navigate]);
+  }, [user, navigate, role, isHandler]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

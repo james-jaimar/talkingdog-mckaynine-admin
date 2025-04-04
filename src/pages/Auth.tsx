@@ -11,7 +11,7 @@ import { SignInForm } from "@/components/auth/SignInForm";
 import { SignUpForm } from "@/components/auth/SignUpForm";
 
 export default function Auth() {
-  const { user, login, signup, isLoading, isHandler } = useAuth();
+  const { user, login, signup, isLoading, isHandler, role } = useAuth();
   const [activeTab, setActiveTab] = useState<"signin" | "signup">("signin");
   const navigate = useNavigate();
   const location = useLocation();
@@ -20,10 +20,12 @@ export default function Auth() {
   useEffect(() => {
     // Only redirect when we have a user and auth loading is complete
     if (!isLoading && user) {
-      console.log("Auth page - User authenticated, checking role:", isHandler ? "handler" : "staff");
+      // Check both isHandler flag and explicit role
+      const userIsHandler = isHandler || role === 'handler';
+      console.log("Auth page - User authenticated, checking role:", userIsHandler ? "handler" : "staff", "actual role:", role);
       
       // Simple redirection logic based on role
-      if (isHandler) {
+      if (userIsHandler) {
         console.log("Auth page - Redirecting handler to /customer/dashboard");
         navigate("/customer/dashboard", { replace: true });
       } else {
@@ -31,7 +33,7 @@ export default function Auth() {
         navigate("/dashboard", { replace: true });
       }
     }
-  }, [user, isLoading, isHandler, navigate]);
+  }, [user, isLoading, isHandler, navigate, role]);
 
   return (
     <DashboardLayout requireAuth={false}>
