@@ -1,3 +1,4 @@
+
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
@@ -24,6 +25,7 @@ import CustomerMessages from "./pages/CustomerMessages";
 import Home from "./pages/Home";
 import { useAuth } from "@/context/auth";
 import { Loader2 } from "lucide-react";
+import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 
 // Loading component
 const LoadingScreen = () => (
@@ -33,17 +35,16 @@ const LoadingScreen = () => (
   </div>
 );
 
-// Component to handle handler redirects
+// Component to handle handler redirects - always redirect handlers to customer dashboard
 const HandlerRedirect = () => {
   const { isHandler } = useAuth();
-  
-  return isHandler ? <Navigate to="/customer/dashboard" replace /> : <Dashboard />;
+  return <Navigate to={isHandler ? "/customer/dashboard" : "/dashboard"} replace />;
 };
 
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <Home />,
+    element: <HandlerRedirect />,
     errorElement: <NotFound />,
   },
   // Single auth route for all users
@@ -51,117 +52,117 @@ const router = createBrowserRouter([
     path: "/auth",
     element: <Auth />,
   },
-  // Admin/Staff routes
+  // Admin/Staff routes - all protected with role checks
   {
     path: "/dashboard",
     element: (
-      <RequireAuth>
-        <HandlerRedirect />
-      </RequireAuth>
+      <ProtectedRoute requiredRole="trainer">
+        <Dashboard />
+      </ProtectedRoute>
     ),
   },
   {
     path: "/user-admin",
     element: (
-      <RequireAdmin>
+      <ProtectedRoute requiredRole="admin">
         <UserAdmin />
-      </RequireAdmin>
+      </ProtectedRoute>
     ),
   },
   {
     path: "/user-management",
     element: (
-      <RequireAdmin>
+      <ProtectedRoute requiredRole="admin">
         <UserManagement />
-      </RequireAdmin>
+      </ProtectedRoute>
     ),
   },
   {
     path: "/classes",
     element: (
-      <RequireAuth>
+      <ProtectedRoute requiredRole="trainer">
         <Classes />
-      </RequireAuth>
+      </ProtectedRoute>
     ),
   },
   {
     path: "/handlers",
     element: (
-      <RequireAuth>
+      <ProtectedRoute requiredRole="trainer">
         <Handlers />
-      </RequireAuth>
+      </ProtectedRoute>
     ),
   },
   {
     path: "/handler/:id",
     element: (
-      <RequireAuth>
+      <ProtectedRoute requiredRole="trainer">
         <HandlerDetail />
-      </RequireAuth>
+      </ProtectedRoute>
     ),
   },
   {
     path: "/trainers",
     element: (
-      <RequireAuth>
+      <ProtectedRoute requiredRole="trainer">
         <Trainers />
-      </RequireAuth>
+      </ProtectedRoute>
     ),
   },
   {
     path: "/class-schedules",
     element: (
-      <RequireAuth>
+      <ProtectedRoute requiredRole="trainer">
         <ClassSchedules />
-      </RequireAuth>
+      </ProtectedRoute>
     ),
   },
   {
     path: "/class/:id",
     element: (
-      <RequireAuth>
+      <ProtectedRoute requiredRole="trainer">
         <ClassDetail />
-      </RequireAuth>
+      </ProtectedRoute>
     ),
   },
   {
     path: "/class/:id/handlers",
     element: (
-      <RequireAuth>
+      <ProtectedRoute requiredRole="trainer">
         <ClassHandlers />
-      </RequireAuth>
+      </ProtectedRoute>
     ),
   },
   {
     path: "/classes/:id/schedules",
     element: (
-      <RequireAuth>
+      <ProtectedRoute requiredRole="trainer">
         <ClassSchedules />
-      </RequireAuth>
+      </ProtectedRoute>
     ),
   },
   {
     path: "/branches",
     element: (
-      <RequireAdmin>
+      <ProtectedRoute requiredRole="admin">
         <Branches />
-      </RequireAdmin>
+      </ProtectedRoute>
     ),
   },
   {
     path: "/unpaid-handlers",
     element: (
-      <RequireAdmin>
+      <ProtectedRoute requiredRole="admin">
         <UnpaidHandlers />
-      </RequireAdmin>
+      </ProtectedRoute>
     ),
   },
   {
     path: "/trainer-dashboard",
     element: (
-      <RequireAuth>
+      <ProtectedRoute requiredRole="trainer">
         <TrainerDashboard />
-      </RequireAuth>
+      </ProtectedRoute>
     ),
   },
   
@@ -169,25 +170,25 @@ const router = createBrowserRouter([
   {
     path: "/forms",
     element: (
-      <RequireAdmin>
+      <ProtectedRoute requiredRole="admin">
         <Forms />
-      </RequireAdmin>
+      </ProtectedRoute>
     ),
   },
   {
     path: "/forms/puppy-class-registration",
     element: (
-      <RequireAuth>
+      <ProtectedRoute requiredRole="trainer">
         <PuppyClassForm />
-      </RequireAuth>
+      </ProtectedRoute>
     ),
   },
   {
     path: "/forms/puppy-class-registration/:id",
     element: (
-      <RequireAuth>
+      <ProtectedRoute requiredRole="trainer">
         <PuppyClassForm />
-      </RequireAuth>
+      </ProtectedRoute>
     ),
   },
   
@@ -245,31 +246,6 @@ const router = createBrowserRouter([
   {
     path: "/customer/login",
     element: <Navigate to="/auth" replace />,
-  },
-  // Redirect customer URLs that haven't been implemented yet
-  {
-    path: "/customer/classes",
-    element: (
-      <RequireAuth>
-        <Navigate to="/customer/dashboard" replace />
-      </RequireAuth>
-    ),
-  },
-  {
-    path: "/customer/forms",
-    element: (
-      <RequireAuth>
-        <Navigate to="/customer/dashboard" replace />
-      </RequireAuth>
-    ),
-  },
-  {
-    path: "/customer/forms/:formType",
-    element: (
-      <RequireAuth>
-        <Navigate to="/customer/dashboard" replace />
-      </RequireAuth>
-    ),
   },
 ]);
 

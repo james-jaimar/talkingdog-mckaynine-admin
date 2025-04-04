@@ -31,8 +31,8 @@ export function DashboardLayout({ children, requireAuth = true }: DashboardLayou
         } else {
           navigate("/dashboard", { replace: true });
         }
-      } else if (user && isHandler && window.location.pathname === "/dashboard") {
-        // Redirect handlers to customer dashboard if they try to access admin dashboard
+      } else if (user && isHandler) {
+        // Important: Always redirect handlers to customer dashboard, no exceptions
         console.log("DashboardLayout - Redirecting handler to customer dashboard");
         navigate("/customer/dashboard", { replace: true });
       }
@@ -55,6 +55,11 @@ export function DashboardLayout({ children, requireAuth = true }: DashboardLayou
   if (requireAuth && !user) {
     console.log("DashboardLayout - Not rendering (no user)");
     return null;
+  }
+  
+  // If this is a handler trying to access the main layout, don't render
+  if (user && isHandler) {
+    return null; // Don't render anything, redirect will happen
   }
 
   return (

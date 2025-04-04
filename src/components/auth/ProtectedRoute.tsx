@@ -29,17 +29,21 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return <Navigate to="/auth" replace />;
   }
   
-  // Check for required role if specified
+  // If user is a handler, ALWAYS redirect to customer dashboard regardless of the route
+  // This ensures handlers can never access admin pages
+  if (isHandler) {
+    return <Navigate to="/customer/dashboard" replace />;
+  }
+  
+  // For non-handlers, check for required role if specified
   if (requiredRole) {
     const hasPermission = (
       (requiredRole === 'admin' && isAdmin) || 
-      (requiredRole === 'trainer' && (isAdmin || isTrainer)) ||
-      (requiredRole === 'handler' && (isAdmin || isTrainer || isHandler))
+      (requiredRole === 'trainer' && (isAdmin || isTrainer))
     );
     
     if (!hasPermission) {
-      // Redirect handlers to customer dashboard, others to admin dashboard
-      return <Navigate to={isHandler ? "/customer/dashboard" : "/"} replace />;
+      return <Navigate to="/" replace />;
     }
   }
   

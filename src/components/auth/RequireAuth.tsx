@@ -1,7 +1,7 @@
 
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/auth";
-import { ReactNode, useEffect } from "react";
+import { ReactNode } from "react";
 import { Loader2 } from "lucide-react";
 
 interface RequireAuthProps {
@@ -28,25 +28,13 @@ export default function RequireAuth({ children }: RequireAuthProps) {
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
-  // Check if a handler is trying to access an admin page
-  const isAdminRoute = location.pathname.startsWith('/dashboard') || 
-                      location.pathname.startsWith('/handlers') || 
-                      location.pathname.startsWith('/classes') || 
-                      location.pathname.startsWith('/trainers') || 
-                      location.pathname.startsWith('/class-schedules') || 
-                      location.pathname.startsWith('/branches') || 
-                      location.pathname.startsWith('/unpaid-handlers') || 
-                      location.pathname.startsWith('/forms') || 
-                      location.pathname.startsWith('/user-admin');
-  
-  const isRootRoute = location.pathname === '/';
-  
-  // If this is a handler trying to access an admin route or the root route, redirect to customer dashboard
-  if (isHandler && (isAdminRoute || isRootRoute)) {
-    console.log("Handler attempting to access restricted route, redirecting to customer dashboard");
+  // If this is a handler, ALWAYS redirect them to the customer dashboard
+  // This ensures handlers can NEVER access admin/staff routes
+  if (isHandler) {
+    console.log("Handler attempting to access protected route, redirecting to customer dashboard");
     return <Navigate to="/customer/dashboard" replace />;
   }
 
-  // If authenticated, render children
+  // If authenticated and not a handler, render children
   return <>{children}</>;
 }
