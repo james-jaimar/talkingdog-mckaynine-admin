@@ -1,6 +1,5 @@
-
 import { useState } from "react";
-import { DashboardLayout } from "@/components/layout/CustomerDashboardLayout";
+import { CustomerDashboardLayout } from "@/components/layout/CustomerDashboardLayout";
 import { Helmet } from "react-helmet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CustomerProfileTab } from "@/components/customer/CustomerProfileTab";
@@ -12,7 +11,7 @@ export default function CustomerProfile() {
   const { clientData, isLoading, error, handleProfileUpdated } = useCustomerProfileData();
 
   return (
-    <DashboardLayout>
+    <CustomerDashboardLayout>
       <Helmet>
         <title>My Profile - McKaynine Training Centre</title>
       </Helmet>
@@ -49,6 +48,6 @@ export default function CustomerProfile() {
           </TabsContent>
         </Tabs>
       </div>
-    </DashboardLayout>
+    </CustomerDashboardLayout>
   );
 }

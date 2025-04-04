@@ -1,7 +1,6 @@
-
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/auth";
-import { DashboardLayout } from "@/components/layout/CustomerDashboardLayout";
+import { CustomerDashboardLayout } from "@/components/layout/CustomerDashboardLayout";
 import { Helmet } from "react-helmet";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -152,7 +151,7 @@ export default function CustomerDashboard() {
   }) || [];
   
   return (
-    <DashboardLayout>
+    <CustomerDashboardLayout>
       <Helmet>
         <title>Customer Dashboard - McKaynine Training Centre</title>
       </Helmet>
@@ -294,6 +293,6 @@ export default function CustomerDashboard() {
           </CardContent>
         </Card>
       </div>
-    </DashboardLayout>
+    </CustomerDashboardLayout>
   );
 }
