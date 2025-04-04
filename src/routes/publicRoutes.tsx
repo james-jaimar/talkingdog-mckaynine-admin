@@ -13,29 +13,30 @@ const LoadingScreen = () => (
   </div>
 );
 
-// Simple root redirect with clear handler priority
+// Simple, direct handler redirect with clear logging
 export const HandlerRedirect = () => {
   const { user, isLoading, isHandler } = useAuth();
   
-  // If loading, show loading screen
+  // Show loading screen while authentication is in progress
   if (isLoading) {
+    console.log("Root HandlerRedirect: Still loading auth state");
     return <LoadingScreen />;
   }
   
-  // HANDLERS FIRST: Always redirect handlers to customer dashboard
+  // CRITICAL: Always check handler status first and force redirect
   if (user && isHandler) {
-    console.log("Root redirect: Handler detected, redirecting to customer dashboard");
+    console.log("Root HandlerRedirect: Handler detected, FORCE redirecting to customer dashboard");
     return <Navigate to="/customer/dashboard" replace />;
   }
   
-  // If user is staff (admin or trainer), redirect to staff dashboard
+  // For regular staff, go to dashboard
   if (user) {
-    console.log("Root redirect: Staff user, redirecting to dashboard");
+    console.log("Root HandlerRedirect: Regular staff, going to dashboard");
     return <Navigate to="/dashboard" replace />;
   }
   
-  // If not logged in, redirect to auth page
-  console.log("Root redirect: No user, redirecting to auth");
+  // No authentication, go to login
+  console.log("Root HandlerRedirect: No authentication, going to auth page");
   return <Navigate to="/auth" replace />;
 };
 

@@ -12,6 +12,14 @@ export default function RequireAuth({ children }: RequireAuthProps) {
   const { user, isLoading, isHandler } = useAuth();
   const location = useLocation();
 
+  // Add clear debug logging
+  console.log("RequireAuth Check:", { 
+    authenticated: !!user, 
+    isHandler, 
+    path: location.pathname,
+    isLoading
+  });
+
   // If still loading auth state, show loader
   if (isLoading) {
     return (
@@ -28,9 +36,11 @@ export default function RequireAuth({ children }: RequireAuthProps) {
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
-  // STRICT CHECK: Handlers can ONLY access customer routes
+  // CRITICAL HANDLER CHECK: Force redirect handlers to customer dashboard
+  // This strict rule prevents handlers from accessing any non-customer routes
   if (isHandler && !location.pathname.startsWith("/customer/")) {
-    console.log("RequireAuth: Handler trying to access non-customer route:", location.pathname);
+    console.log("RequireAuth: HANDLER DETECTED on non-customer route:", location.pathname);
+    console.log("RequireAuth: FORCE redirecting to customer dashboard");
     return <Navigate to="/customer/dashboard" replace />;
   }
 

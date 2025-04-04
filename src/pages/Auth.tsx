@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,20 +14,26 @@ export default function Auth() {
   const { user, login, signup, isLoading, isHandler } = useAuth();
   const [activeTab, setActiveTab] = useState<"signin" | "signup">("signin");
   const navigate = useNavigate();
+  const location = useLocation();
   
-  // Simplified redirect logic that prioritizes handlers
+  // Improved redirect logic - now with console logging for debugging
   useEffect(() => {
     if (!user || isLoading) return;
     
-    // Clear immediate redirect logic - handlers always to customer dashboard
+    // Get any intended destination from location state
+    const from = location.state?.from?.pathname;
+    
+    // CRITICAL: Always redirect handlers to customer dashboard, with no exceptions
     if (isHandler) {
-      console.log("Auth: Handler login detected, redirecting to customer dashboard");
+      console.log("Auth: Handler login detected, FORCE redirecting to customer dashboard");
       navigate("/customer/dashboard", { replace: true });
-    } else {
-      console.log("Auth: Staff login detected, redirecting to dashboard");
-      navigate("/dashboard", { replace: true });
+      return;
     }
-  }, [user, navigate, isLoading, isHandler]);
+    
+    // For admin/trainers, redirect to dashboard or the page they were trying to access
+    console.log("Auth: Staff login detected, redirecting to:", from || "/dashboard");
+    navigate(from || "/dashboard", { replace: true });
+  }, [user, isLoading, isHandler, navigate, location.state]);
 
   return (
     <DashboardLayout requireAuth={false}>

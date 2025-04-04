@@ -1,5 +1,5 @@
 
-import { Navigate, Outlet } from "react-router-dom";
+import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/auth";
 import { Loader2 } from "lucide-react";
 
@@ -13,6 +13,16 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   requiredRole 
 }) => {
   const { user, isLoading, isAdmin, isTrainer, isHandler } = useAuth();
+  const location = useLocation();
+  
+  // Add clear debug logging
+  console.log("ProtectedRoute Check:", { 
+    authenticated: !!user, 
+    isHandler, 
+    path: location.pathname, 
+    requiredRole,
+    isLoading
+  });
   
   // Show loading indicator while checking authentication
   if (isLoading) {
@@ -26,17 +36,15 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   
   // Redirect to auth if not logged in
   if (!user) {
-    return <Navigate to="/auth" replace />;
+    return <Navigate to="/auth" state={{ from: location }} replace />;
   }
   
-  // HANDLERS CHECK FIRST: Always redirect handlers to customer dashboard if trying to access staff routes
-  if (isHandler) {
-    // Only let handlers stay if they're on a customer route
-    const onCustomerRoute = window.location.pathname.startsWith("/customer/");
-    if (!onCustomerRoute) {
-      console.log("ProtectedRoute: Handler detected on non-customer route, redirecting");
-      return <Navigate to="/customer/dashboard" replace />;
-    }
+  // CRITICAL HANDLER CHECK: Always redirect handlers to customer dashboard
+  // This must be the first check after authentication
+  if (isHandler && !location.pathname.startsWith("/customer/")) {
+    console.log("ProtectedRoute: HANDLER DETECTED on non-customer route:", location.pathname);
+    console.log("ProtectedRoute: FORCE redirecting to customer dashboard");
+    return <Navigate to="/customer/dashboard" replace />;
   }
   
   // For non-handlers, check required role if specified

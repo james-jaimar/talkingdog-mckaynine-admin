@@ -1,6 +1,6 @@
 
 import { Header } from "./Header";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/auth";
 import { useEffect } from "react";
 import { Loader2 } from "lucide-react";
@@ -13,14 +13,25 @@ interface DashboardLayoutProps {
 export function DashboardLayout({ children, requireAuth = true }: DashboardLayoutProps) {
   const { user, isLoading, isHandler } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Add clear debug logging for the dashboard layout
+  console.log("DashboardLayout Check:", {
+    authenticated: !!user,
+    isHandler,
+    path: location.pathname,
+    requireAuth,
+    isLoading
+  });
   
   // Strict handler redirection logic
   useEffect(() => {
     if (isLoading) return;
     
-    // Handler role check - MUST BE ON CUSTOMER ROUTES
-    if (user && isHandler && !window.location.pathname.startsWith("/customer/")) {
-      console.log("DashboardLayout: Handler detected on non-customer route, redirecting");
+    // CRITICAL: Force redirect handlers to customer dashboard
+    if (user && isHandler && !location.pathname.startsWith("/customer/")) {
+      console.log("DashboardLayout: HANDLER DETECTED on non-customer route:", location.pathname);
+      console.log("DashboardLayout: FORCE redirecting to customer dashboard");
       navigate("/customer/dashboard", { replace: true });
       return;
     }
@@ -29,7 +40,7 @@ export function DashboardLayout({ children, requireAuth = true }: DashboardLayou
     if (requireAuth && !user) {
       navigate("/auth", { replace: true });
     }
-  }, [user, isLoading, navigate, requireAuth, isHandler]);
+  }, [user, isLoading, navigate, requireAuth, isHandler, location.pathname]);
 
   // Show loading indicator while checking authentication
   if (isLoading) {
@@ -45,7 +56,7 @@ export function DashboardLayout({ children, requireAuth = true }: DashboardLayou
   if (requireAuth && !user) return null;
   
   // Don't render main layout for handlers on non-customer routes
-  if (user && isHandler && !window.location.pathname.startsWith("/customer/")) {
+  if (user && isHandler && !location.pathname.startsWith("/customer/")) {
     return null;
   }
 
