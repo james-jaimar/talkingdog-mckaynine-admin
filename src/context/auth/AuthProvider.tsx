@@ -5,6 +5,7 @@ import { useAuthState } from './useAuthState';
 import { supabase } from '@/integrations/supabase/client';
 import { loginWithEmailAndPassword, signupWithEmailAndPassword, logout } from './authOperations';
 import { useAuthSetup } from './useAuthSetup';
+import { useTrainerProfile } from './useTrainerProfile';
 
 export const AuthProvider: React.FC<PropsWithChildren> = ({ children }) => {
   // Get auth state from custom hook
@@ -29,29 +30,8 @@ export const AuthProvider: React.FC<PropsWithChildren> = ({ children }) => {
     setTrainerProfile
   } = authState;
 
-  // Fetch trainer profile if user is a trainer
-  useEffect(() => {
-    if (user && isTrainer && !trainerProfile) {
-      supabase
-        .from('trainers')
-        .select('*')
-        .eq('user_id', user.id)
-        .single()
-        .then(({ data, error }) => {
-          if (error) {
-            console.error("Error fetching trainer profile:", error);
-            setTrainerProfile(null);
-          } else {
-            setTrainerProfile(data);
-          }
-        })
-        .catch(error => {
-          // This addresses the TypeScript error by properly handling promise rejection
-          console.error("Exception in trainer profile fetch:", error);
-          setTrainerProfile(null);
-        });
-    }
-  }, [user, isTrainer, trainerProfile, setTrainerProfile]);
+  // Use the trainer profile hook instead of inline effect
+  useTrainerProfile(user, isTrainer, setTrainerProfile);
 
   return (
     <AuthContext.Provider
@@ -71,8 +51,10 @@ export const AuthProvider: React.FC<PropsWithChildren> = ({ children }) => {
           setUser(null);
           setSession(null);
           setRole(null);
+          
           try {
-            return await logout();
+            const result = await logout();
+            return result;
           } catch (error) {
             console.error("Error during logout:", error);
             return { success: false, error: "Failed to logout" };
