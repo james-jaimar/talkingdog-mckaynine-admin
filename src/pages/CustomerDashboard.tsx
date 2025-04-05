@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/auth";
 import { CustomerDashboardLayout } from "@/components/layout/CustomerDashboardLayout";
@@ -88,51 +87,36 @@ export default function CustomerDashboard() {
     enabled: !!user
   });
 
-  // Fetch unread messages count with improved logic that considers read_message_tracking
+  // Fetch unread messages count
   useEffect(() => {
     if (!clientData?.id) return;
 
     const fetchUnreadMessages = async () => {
       try {
-        // Get messages from staff that the client hasn't read
-        const { data: messages, error } = await supabase
-          .from('client_messages')
-          .select('id, created_at')
-          .eq('client_id', clientData.id)
-          .eq('is_from_client', false) // Messages from staff only
-          .order('created_at', { ascending: false });
+        // Use direct RPC function to count unread messages
+        const { data, error } = await supabase
+          .rpc('get_unread_message_count', { p_client_id: clientData.id });
           
         if (error) {
-          console.error("Error fetching messages:", error);
-          return;
-        }
-        
-        if (!messages || messages.length === 0) {
-          setUnreadMessageCount(0);
-          return;
-        }
-        
-        // Get read status for these messages
-        const messageIds = messages.map(msg => msg.id);
-        
-        // Check which messages have been read
-        const { data: readMessages, error: readError } = await supabase
-          .from('message_read_status')
-          .select('message_id')
-          .eq('client_id', clientData.id)
-          .in('message_id', messageIds);
+          console.error("Error getting unread messages count:", error);
           
-        if (readError) {
-          console.error("Error fetching read status:", readError);
-          return;
+          // Fallback approach
+          const { data: messages, error: msgError } = await supabase
+            .from('client_messages')
+            .select('id')
+            .eq('client_id', clientData.id)
+            .eq('is_from_client', false)
+            .is('is_read', false);
+            
+          if (msgError) {
+            console.error("Error in fallback unread count:", msgError);
+            return;
+          }
+          
+          setUnreadMessageCount(messages?.length || 0);
+        } else {
+          setUnreadMessageCount(data || 0);
         }
-        
-        // Filter out read messages
-        const readMessageIds = new Set((readMessages || []).map(rm => rm.message_id));
-        const unreadMessages = messages.filter(msg => !readMessageIds.has(msg.id));
-        
-        setUnreadMessageCount(unreadMessages.length);
-        console.log(`Found ${unreadMessages.length} unread messages`);
       } catch (error) {
         console.error("Error checking messages:", error);
       }

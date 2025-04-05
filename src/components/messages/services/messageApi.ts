@@ -47,22 +47,41 @@ export const sendClientMessage = async (messageData: {
  * Mark specified messages as read by the client
  */
 export const markMessagesAsRead = async (clientId: string, messageIds: string[]): Promise<void> => {
-  // Create entries for each message to mark as read
-  const readEntries = messageIds.map(messageId => ({
-    client_id: clientId,
-    message_id: messageId,
-    read_at: new Date().toISOString()
-  }));
+  if (!messageIds.length) return;
   
-  // Use upsert to avoid duplicates - if entry exists, it will be updated with new read_at
-  const { error } = await supabase
-    .from('message_read_status')
-    .upsert(readEntries, { 
-      onConflict: 'client_id,message_id',
-      ignoreDuplicates: false 
+  try {
+    // Use raw SQL query to insert into message_read_status
+    const entries = messageIds.map(messageId => ({
+      client_id: clientId,
+      message_id: messageId,
+    }));
+    
+    // Convert to array of values for SQL
+    const values = entries.map(entry => 
+      `('${entry.client_id}', '${entry.message_id}', now(), now())`
+    ).join(', ');
+    
+    const { error } = await supabase.rpc('mark_messages_as_read', {
+      p_client_id: clientId,
+      p_message_ids: messageIds
     });
-
-  if (error) {
+    
+    if (error) {
+      console.error('Error marking messages as read (RPC):', error);
+      
+      // Fallback to direct query if RPC fails
+      const { error: fallbackError } = await supabase
+        .from('client_messages')
+        .update({ is_read: true })
+        .eq('client_id', clientId)
+        .in('id', messageIds);
+      
+      if (fallbackError) {
+        console.error('Error in fallback method:', fallbackError);
+        throw fallbackError;
+      }
+    }
+  } catch (error) {
     console.error('Error marking messages as read:', error);
     throw error;
   }
@@ -73,32 +92,27 @@ export const markMessagesAsRead = async (clientId: string, messageIds: string[])
  */
 export const getUnreadMessageCount = async (clientId: string): Promise<number> => {
   try {
-    // Get all messages from staff
-    const { data: messages, error } = await supabase
-      .from('client_messages')
-      .select('id')
-      .eq('client_id', clientId)
-      .eq('is_from_client', false);
+    // Use a direct SQL COUNT query to get unread messages
+    const { data, error } = await supabase
+      .rpc('get_unread_message_count', { p_client_id: clientId });
     
-    if (error) throw error;
-    if (!messages || messages.length === 0) return 0;
+    if (error) {
+      console.error('Error getting unread count (RPC):', error);
+      
+      // Fallback using regular query if RPC fails
+      const { data: messages, error: messagesError } = await supabase
+        .from('client_messages')
+        .select('id')
+        .eq('client_id', clientId)
+        .eq('is_from_client', false)
+        .is('is_read', false);
+      
+      if (messagesError) throw messagesError;
+      
+      return messages?.length || 0;
+    }
     
-    const messageIds = messages.map(msg => msg.id);
-    
-    // Get read status entries for these messages
-    const { data: readMessages, error: readError } = await supabase
-      .from('message_read_status')
-      .select('message_id')
-      .eq('client_id', clientId)
-      .in('message_id', messageIds);
-    
-    if (readError) throw readError;
-    
-    // Calculate unread count
-    const readMessageIds = new Set((readMessages || []).map(rm => rm.message_id));
-    const unreadCount = messages.filter(msg => !readMessageIds.has(msg.id)).length;
-    
-    return unreadCount;
+    return data || 0;
   } catch (error) {
     console.error('Error getting unread message count:', error);
     throw error;
