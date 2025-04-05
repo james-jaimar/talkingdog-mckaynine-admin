@@ -15,7 +15,7 @@ interface ConversationViewProps {
   isSending: boolean;
   sendMessage: () => void;
   emptyStateMessage?: string;
-  clientId?: string; // Added client ID to mark messages as read
+  clientId?: string;
 }
 
 export function ConversationView({
@@ -64,7 +64,7 @@ export function ConversationView({
           emptyStateMessage={emptyStateMessage}
         />
         
-        <div className="mt-auto border-t">
+        <div className="border-t">
           <MessageComposer
             value={newMessage}
             onChange={setNewMessage}
