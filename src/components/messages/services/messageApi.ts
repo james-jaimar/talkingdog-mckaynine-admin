@@ -51,7 +51,8 @@ export const markMessagesAsRead = async (clientId: string, messageIds: string[])
   
   try {
     // Use the RPC function we created in the migration
-    const { error } = await supabase.rpc('mark_messages_as_read', {
+    // Need to use any to bypass TypeScript restriction since our custom RPC isn't in the types
+    const { error } = await (supabase.rpc as any)('mark_messages_as_read', {
       p_client_id: clientId,
       p_message_ids: messageIds
     });
@@ -62,7 +63,7 @@ export const markMessagesAsRead = async (clientId: string, messageIds: string[])
       // Fallback to direct query if RPC fails
       const { error: fallbackError } = await supabase
         .from('client_messages')
-        .update({ is_read: true })
+        .update({ is_read: true } as any) // Type assertion to bypass TypeScript error
         .eq('client_id', clientId)
         .in('id', messageIds);
       
@@ -83,7 +84,8 @@ export const markMessagesAsRead = async (clientId: string, messageIds: string[])
 export const getUnreadMessageCount = async (clientId: string): Promise<number> => {
   try {
     // Use the RPC function we created in the migration
-    const { data, error } = await supabase.rpc(
+    // Need to use any to bypass TypeScript restriction since our custom RPC isn't in the types
+    const { data, error } = await (supabase.rpc as any)(
       'get_unread_message_count', { 
         p_client_id: clientId 
       });
