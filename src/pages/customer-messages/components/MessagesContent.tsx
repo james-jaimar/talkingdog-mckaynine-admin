@@ -3,6 +3,7 @@ import { ConversationView } from "@/components/messages/components/ConversationV
 import { MessagesHeader } from "./MessagesHeader";
 import { ClientMessage } from "@/components/messages/types";
 import { useEffect, useState } from "react";
+import { markMessagesAsRead } from "@/components/messages/services/messageApi";
 
 interface MessagesContentProps {
   messages: ClientMessage[];

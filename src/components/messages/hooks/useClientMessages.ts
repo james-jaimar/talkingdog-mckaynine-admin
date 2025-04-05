@@ -1,14 +1,11 @@
-
 import { useState, useEffect, useCallback } from "react";
+import { ClientMessage } from "../types";
+import * as messageApi from "../services/messageApi";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { 
-  getClientMessages, 
-  sendClientMessage
-} from "@/components/messages/services/messageApi";
-import { ClientMessage } from "@/components/messages/types";
+import { toast as sonnerToast } from "sonner";
 
-export interface UseClientMessagesProps {
+interface UseClientMessagesProps {
   clientId: string;
   clientName: string;
 }
@@ -16,37 +13,23 @@ export interface UseClientMessagesProps {
 export function useClientMessages({ clientId, clientName }: UseClientMessagesProps) {
   const [messages, setMessages] = useState<ClientMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const { toast } = useToast();
 
-  // Fetch messages for this client
+  // Load messages on clientId change
   useEffect(() => {
-    if (!clientId) {
-      console.error("No client ID provided to useClientMessages");
-      setIsLoading(false);
-      return;
-    }
-
-    const fetchMessages = async () => {
+    const loadMessages = async () => {
+      if (!clientId) return;
       setIsLoading(true);
       try {
-        console.log(`Fetching messages for client: ${clientName} (${clientId})`);
-        const messagesData = await getClientMessages(clientId);
-        
-        // Format messages with sender name
-        const formattedMessages: ClientMessage[] = messagesData.map((msg) => ({
-          ...msg,
-          sender_name: msg.is_from_client ? clientName : 'You'
-        }));
-        
-        console.log(`Fetched ${formattedMessages.length} messages`);
-        setMessages(formattedMessages);
+        const loadedMessages = await messageApi.getClientMessages(clientId);
+        setMessages(loadedMessages);
       } catch (error) {
-        console.error("Error fetching messages:", error);
+        console.error("Error loading messages:", error);
         toast({
           title: "Error loading messages",
-          description: "There was a problem loading the conversation history.",
+          description: "Failed to load messages. Please try again.",
           variant: "destructive",
         });
       } finally {
@@ -54,94 +37,111 @@ export function useClientMessages({ clientId, clientName }: UseClientMessagesPro
       }
     };
 
-    fetchMessages();
-  }, [clientId, clientName, toast]);
+    loadMessages();
+  }, [clientId, toast]);
 
-  // Set up real-time subscription
+  // Realtime updates
   useEffect(() => {
     if (!clientId) return;
-    
-    console.log(`Setting up real-time subscription for client ${clientId}`);
-    
+
     const channel = supabase
       .channel(`client-messages-${clientId}`)
       .on(
         'postgres_changes',
         {
-          event: 'INSERT',
+          event: '*',
           schema: 'public',
           table: 'client_messages',
           filter: `client_id=eq.${clientId}`
         },
         (payload) => {
-          console.log("Real-time message received:", payload);
-          
-          // Add message to state if it's new
-          setMessages(prev => {
-            const newMsg = payload.new as ClientMessage;
-            
-            // Skip if we already have this message
-            if (prev.some(msg => msg.id === newMsg.id)) return prev;
-            
-            const formattedMessage: ClientMessage = {
-              ...newMsg,
-              sender_name: newMsg.is_from_client ? clientName : 'You'
-            };
-            
-            return [...prev, formattedMessage];
-          });
+          if (payload.eventType === 'INSERT') {
+            // New message
+            const newMessage = payload.new as ClientMessage;
+            setMessages((prevMessages) => [...prevMessages, newMessage]);
+          } else if (payload.eventType === 'UPDATE') {
+            // Updated message
+            const updatedMessage = payload.new as ClientMessage;
+            setMessages((prevMessages) =>
+              prevMessages.map((msg) => (msg.id === updatedMessage.id ? updatedMessage : msg))
+            );
+          } else if (payload.eventType === 'DELETE') {
+            // Deleted message
+            const deletedMessageId = payload.old?.id as string;
+            setMessages((prevMessages) =>
+              prevMessages.filter((msg) => msg.id !== deletedMessageId)
+            );
+          }
         }
       )
       .subscribe();
-      
+
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [clientId, clientName]);
+  }, [clientId]);
 
-  // Send a message to the client
   const sendMessage = useCallback(async () => {
-    if (!newMessage.trim() || !clientId) {
-      console.log("Cannot send message: missing content or client ID");
-      return;
-    }
-    
-    setIsSending(true);
-    
-    try {
-      console.log(`Sending message to client: ${clientName} (${clientId})`);
-      
-      // Get current user's session for sender_id
-      const { data: session } = await supabase.auth.getSession();
-      if (!session?.session?.user?.id) {
-        throw new Error("User not authenticated");
-      }
+    if (!clientId || !newMessage.trim()) return;
 
+    setIsSending(true);
+    try {
       const messageData = {
         client_id: clientId,
-        content: newMessage.trim(),
-        is_from_client: false, // Staff sending to client
-        sender_id: session.session.user.id // Add the required sender_id
+        content: newMessage,
+        is_from_client: true,
+        sender_id: supabase.auth.user()?.id || 'system', // Use actual user ID
       };
-      
-      await sendClientMessage(messageData);
-      setNewMessage(""); // Clear input on success
-      
-      toast({
-        title: "Message sent",
-        description: `Your message to ${clientName} has been sent.`,
-      });
+      const sentMessage = await messageApi.sendClientMessage(messageData);
+      setMessages((prevMessages) => [...prevMessages, sentMessage]);
+      setNewMessage("");
     } catch (error) {
       console.error("Error sending message:", error);
       toast({
-        title: "Failed to send message",
-        description: "Please try again later.",
+        title: "Error sending message",
+        description: "Failed to send message. Please try again.",
         variant: "destructive",
       });
     } finally {
       setIsSending(false);
     }
-  }, [newMessage, clientId, clientName, toast]);
+  }, [clientId, newMessage, toast]);
+
+  // Make sure we update our local messages state to reflect the read status
+  const markMessagesAsRead = useCallback(async () => {
+    if (!clientId) return;
+    
+    try {
+      // Get all unread messages from the staff
+      const unreadMessageIds = messages
+        .filter(m => !m.is_from_client && !m.is_read)
+        .map(m => m.id);
+        
+      if (unreadMessageIds.length === 0) return;
+      
+      // Mark them as read in the database
+      await messageApi.markMessagesAsRead(clientId, unreadMessageIds);
+      
+      // Update local state
+      setMessages(prev => 
+        prev.map(message => 
+          unreadMessageIds.includes(message.id) 
+            ? { ...message, is_read: true } 
+            : message
+        )
+      );
+      
+    } catch (error) {
+      console.error('Error marking messages as read:', error);
+    }
+  }, [clientId, messages]);
+
+  // Mark messages as read when component mounts or clientId changes
+  useEffect(() => {
+    if (clientId) {
+      markMessagesAsRead();
+    }
+  }, [clientId, markMessagesAsRead]);
 
   return {
     messages,
@@ -149,6 +149,7 @@ export function useClientMessages({ clientId, clientName }: UseClientMessagesPro
     setNewMessage,
     isLoading,
     isSending,
-    sendMessage
+    sendMessage,
+    markMessagesAsRead
   };
 }
