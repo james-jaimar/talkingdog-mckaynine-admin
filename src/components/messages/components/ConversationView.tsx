@@ -64,7 +64,7 @@ export function ConversationView({
           emptyStateMessage={emptyStateMessage}
         />
         
-        <div className="border-t">
+        <div className="mt-auto border-t">
           <MessageComposer
             value={newMessage}
             onChange={setNewMessage}

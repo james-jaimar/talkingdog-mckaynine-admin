@@ -29,13 +29,13 @@ export function MessagesContainer({
   }, [messages.length, isLoading]);
 
   return (
-    <ScrollArea ref={scrollAreaRef} className="flex-1 p-4 space-y-4 h-[400px]">
+    <ScrollArea className="flex-1 px-4 py-2 h-[400px] overflow-y-auto">
       {isLoading ? (
         <LoadingMessages />
       ) : messages.length === 0 ? (
         <EmptyMessages message={emptyStateMessage} />
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-2">
           {messages.map((message) => (
             <MessageBubble key={message.id} message={message} />
           ))}

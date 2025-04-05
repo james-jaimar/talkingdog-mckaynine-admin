@@ -13,7 +13,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
   const senderName = message.sender_name || (isFromClient ? 'User' : 'Staff');
 
   return (
-    <div className={`flex w-full ${isFromClient ? 'justify-start' : 'justify-end'}`}>
+    <div className={`flex w-full ${isFromClient ? 'justify-start' : 'justify-end'} mb-4`}>
       <div className={`flex ${isFromClient ? 'flex-row' : 'flex-row-reverse'} items-start gap-2 max-w-[80%]`}>
         {isFromClient && (
           <MessageAvatar 
