@@ -55,8 +55,7 @@ export const markMessagesAsRead = async (clientId: string, messageIds: string[])
   
   try {
     // Use the enhanced client with proper typing for our custom RPC function
-    // Use type assertion to bypass TypeScript limitations
-    const { error } = await (supabase as any).rpc('mark_messages_as_read', {
+    const { error } = await enhancedSupabase.rpc('mark_messages_as_read', {
       p_client_id: clientId,
       p_message_ids: messageIds
     });
@@ -88,8 +87,7 @@ export const markMessagesAsRead = async (clientId: string, messageIds: string[])
 export const getUnreadMessageCount = async (clientId: string): Promise<number> => {
   try {
     // Use the enhanced client with proper typing for our custom RPC function
-    // Use type assertion to bypass TypeScript limitations
-    const { data, error } = await (supabase as any).rpc(
+    const { data, error } = await enhancedSupabase.rpc(
       'get_unread_message_count', { 
         p_client_id: clientId 
       });

@@ -33,15 +33,15 @@ export function ConversationView({
   useEffect(() => {
     const markAsRead = async () => {
       if (clientId && messages.length > 0 && !isLoading) {
-        // Filter staff messages only (those not from client)
-        const staffMessageIds = messages
-          .filter(msg => !msg.is_from_client)
+        // Filter staff messages only (those not from client) that are unread
+        const unreadStaffMessageIds = messages
+          .filter(msg => !msg.is_from_client && !msg.is_read)
           .map(msg => msg.id);
           
-        if (staffMessageIds.length > 0) {
+        if (unreadStaffMessageIds.length > 0) {
           try {
-            console.log(`Marking ${staffMessageIds.length} messages as read for client ${clientId}`);
-            await markMessagesAsRead(clientId, staffMessageIds);
+            console.log(`Marking ${unreadStaffMessageIds.length} messages as read for client ${clientId}`);
+            await markMessagesAsRead(clientId, unreadStaffMessageIds);
           } catch (error) {
             console.error("Failed to mark messages as read:", error);
           }

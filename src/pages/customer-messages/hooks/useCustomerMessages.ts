@@ -32,9 +32,18 @@ export function useCustomerMessages(clientId: string | null) {
         console.log("Fetching messages for client:", clientId);
         const messagesData = await getClientMessages(clientId);
         
-        // Format messages with sender name and cast to ClientMessage[]
+        // Format messages with sender name and map to ClientMessage type
         const formattedMessages: ClientMessage[] = messagesData.map((msg) => ({
-          ...msg,
+          id: msg.id,
+          client_id: msg.client_id,
+          content: msg.content,
+          created_at: msg.created_at,
+          updated_at: msg.updated_at,
+          is_from_client: msg.is_from_client,
+          sender_id: msg.sender_id,
+          attachment_url: msg.attachment_url,
+          attachment_type: msg.attachment_type,
+          is_read: msg.is_read,
           sender_name: msg.is_from_client ? 'You' : 'Staff'
         }));
         
@@ -84,12 +93,21 @@ export function useCustomerMessages(clientId: string | null) {
               return prev;
             }
             
-            // Cast the new payload to ClientMessage with required fields
+            // Cast the new payload to ClientMessage
             const newMsg = payload.new as ClientMessageWithReadStatus;
             
             // Format the new message with sender name
             const formattedMessage: ClientMessage = {
-              ...newMsg as unknown as ClientMessage,
+              id: newMsg.id,
+              client_id: newMsg.client_id,
+              content: newMsg.content,
+              created_at: newMsg.created_at,
+              updated_at: newMsg.updated_at,
+              is_from_client: newMsg.is_from_client,
+              sender_id: newMsg.sender_id,
+              attachment_url: newMsg.attachment_url,
+              attachment_type: newMsg.attachment_type,
+              is_read: newMsg.is_read,
               sender_name: newMsg.is_from_client ? 'You' : 'Staff'
             };
             

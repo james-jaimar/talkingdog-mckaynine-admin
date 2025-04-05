@@ -463,6 +463,7 @@ export type Database = {
           created_at: string
           id: string
           is_from_client: boolean
+          is_read: boolean | null
           sender_id: string
           updated_at: string
         }
@@ -474,6 +475,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_from_client?: boolean
+          is_read?: boolean | null
           sender_id: string
           updated_at?: string
         }
@@ -485,6 +487,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_from_client?: boolean
+          is_read?: boolean | null
           sender_id?: string
           updated_at?: string
         }
@@ -745,11 +748,24 @@ export type Database = {
         }
         Returns: boolean
       }
+      get_unread_message_count: {
+        Args: {
+          p_client_id: string
+        }
+        Returns: number
+      }
       is_trainer: {
         Args: {
           user_id: string
         }
         Returns: boolean
+      }
+      mark_messages_as_read: {
+        Args: {
+          p_client_id: string
+          p_message_ids: string[]
+        }
+        Returns: undefined
       }
     }
     Enums: {

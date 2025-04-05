@@ -3,10 +3,18 @@ import type { Database } from './types';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 // Extended types for client_messages table to include is_read field
-export interface ClientMessageWithReadStatus extends Database['public']['Tables']['client_messages']['Row'] {
-  is_read?: boolean;
-  sender_name?: string;
+export interface ClientMessageWithReadStatus {
+  id: string;
+  client_id: string;
+  content: string;
+  created_at: string;
+  updated_at: string;
   is_from_client: boolean;
+  sender_id: string;
+  attachment_url?: string;
+  attachment_type?: string;
+  is_read?: boolean; 
+  sender_name?: string; 
 }
 
 // Define RPC function signatures
