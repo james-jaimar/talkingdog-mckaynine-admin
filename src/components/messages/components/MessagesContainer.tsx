@@ -18,23 +18,24 @@ export function MessagesContainer({
   emptyStateMessage
 }: MessagesContainerProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom on initial load and when new messages arrive
   useEffect(() => {
-    if (messages.length && messagesEndRef.current) {
-      // Use scrollIntoView with behavior: 'auto' for initial load to avoid animation
+    if (!isLoading && messages.length && messagesEndRef.current) {
+      // Use scrollIntoView with behavior: 'auto' for instant scrolling without animation
       messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
     }
-  }, [messages.length]);
+  }, [messages.length, isLoading]);
 
   return (
-    <ScrollArea className="flex-1 p-4 space-y-4 h-[400px]">
+    <ScrollArea ref={scrollAreaRef} className="flex-1 p-4 space-y-4 h-[400px]">
       {isLoading ? (
         <LoadingMessages />
       ) : messages.length === 0 ? (
         <EmptyMessages message={emptyStateMessage} />
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-6">
           {messages.map((message) => (
             <MessageBubble key={message.id} message={message} />
           ))}

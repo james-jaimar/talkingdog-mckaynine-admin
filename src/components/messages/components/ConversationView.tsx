@@ -54,7 +54,7 @@ export function ConversationView({
 
   return (
     <Card className="h-full flex flex-col">
-      <CardHeader className="pb-4 border-b">
+      <CardHeader className="pb-2 border-b">
         <CardTitle>{title}</CardTitle>
       </CardHeader>
       <CardContent className="flex-1 flex flex-col p-0">
@@ -64,7 +64,7 @@ export function ConversationView({
           emptyStateMessage={emptyStateMessage}
         />
         
-        <div className="pt-0">
+        <div className="border-t">
           <MessageComposer
             value={newMessage}
             onChange={setNewMessage}

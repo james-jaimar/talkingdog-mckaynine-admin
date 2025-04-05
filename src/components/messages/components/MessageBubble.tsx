@@ -10,17 +10,17 @@ interface MessageBubbleProps {
 
 export function MessageBubble({ message }: MessageBubbleProps) {
   const isFromClient = message.is_from_client;
-  const senderName = message.sender_name || 'User';
+  const senderName = message.sender_name || (isFromClient ? 'User' : 'Staff');
 
   return (
-    <div 
-      className={`flex ${isFromClient ? 'justify-start' : 'justify-end'} w-full`}
-    >
-      <div className={`flex ${isFromClient ? 'flex-row' : 'flex-row-reverse'} max-w-[80%] gap-2`}>
-        <MessageAvatar 
-          name={senderName} 
-          isFromClient={isFromClient} 
-        />
+    <div className={`flex w-full ${isFromClient ? 'justify-start' : 'justify-end'}`}>
+      <div className={`flex ${isFromClient ? 'flex-row' : 'flex-row-reverse'} items-start gap-2 max-w-[80%]`}>
+        {isFromClient && (
+          <MessageAvatar 
+            name={senderName} 
+            isFromClient={isFromClient} 
+          />
+        )}
         <div>
           <MessageContent 
             message={message} 
@@ -31,6 +31,12 @@ export function MessageBubble({ message }: MessageBubbleProps) {
             timestamp={message.created_at} 
           />
         </div>
+        {!isFromClient && (
+          <MessageAvatar 
+            name={senderName} 
+            isFromClient={isFromClient} 
+          />
+        )}
       </div>
     </div>
   );

@@ -10,8 +10,8 @@ interface MessageAvatarProps {
 export function MessageAvatar({ name, isFromClient }: MessageAvatarProps) {
   return (
     <Avatar className="h-8 w-8 mt-1">
-      <AvatarFallback className={isFromClient ? "bg-mckaynine-100" : "bg-blue-100"}>
-        {getInitials(name || 'User')}
+      <AvatarFallback className={isFromClient ? "bg-gray-200" : "bg-mckaynine-200"}>
+        {getInitials(isFromClient ? name : 'S')}
       </AvatarFallback>
     </Avatar>
   );
