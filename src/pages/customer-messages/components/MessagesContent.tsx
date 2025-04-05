@@ -1,6 +1,8 @@
 
 import { ConversationView } from "@/components/messages/components/ConversationView";
+import { MessagesHeader } from "./MessagesHeader";
 import { ClientMessage } from "@/components/messages/types";
+import { useEffect, useState } from "react";
 
 interface MessagesContentProps {
   messages: ClientMessage[];
@@ -12,31 +14,39 @@ interface MessagesContentProps {
   clientId: string | null;
 }
 
-export function MessagesContent({
-  messages,
-  newMessage,
-  setNewMessage,
-  isLoading,
-  isSending,
+export function MessagesContent({ 
+  messages, 
+  newMessage, 
+  setNewMessage, 
+  isLoading, 
+  isSending, 
   sendMessage,
   clientId
 }: MessagesContentProps) {
+  const [unreadCount, setUnreadCount] = useState<number>(0);
+  
+  // Calculate unread count on initial load and when messages change
+  useEffect(() => {
+    if (!isLoading) {
+      const unreadMessages = messages.filter(msg => !msg.is_from_client && !msg.is_read);
+      setUnreadCount(unreadMessages.length);
+    }
+  }, [messages, isLoading]);
+
   return (
     <div className="container py-8">
-      <h1 className="text-2xl font-bold mb-6">Messages</h1>
-      <div className="max-w-4xl mx-auto h-[600px]">
-        <ConversationView
-          title="Staff Communication"
-          messages={messages}
-          newMessage={newMessage}
-          setNewMessage={setNewMessage}
-          isLoading={isLoading}
-          isSending={isSending}
-          sendMessage={sendMessage}
-          emptyStateMessage="No messages yet. Send a message to contact our staff."
-          clientId={clientId} // Pass client ID to mark messages as read
-        />
-      </div>
+      <MessagesHeader unreadCount={unreadCount} />
+      <ConversationView 
+        title="Messages from McKaynine Training Centre"
+        messages={messages}
+        newMessage={newMessage}
+        setNewMessage={setNewMessage}
+        isLoading={isLoading}
+        isSending={isSending}
+        sendMessage={sendMessage}
+        clientId={clientId || undefined}
+        emptyStateMessage="You have no messages yet. Send a message to our team and we'll get back to you soon!"
+      />
     </div>
   );
 }
