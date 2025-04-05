@@ -1,9 +1,11 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { ClientMessage } from "../types";
 import * as messageApi from "../services/messageApi";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { toast as sonnerToast } from "sonner";
+import { ClientMessageWithReadStatus } from "@/integrations/supabase/custom-types";
 
 interface UseClientMessagesProps {
   clientId: string;
@@ -24,7 +26,8 @@ export function useClientMessages({ clientId, clientName }: UseClientMessagesPro
       setIsLoading(true);
       try {
         const loadedMessages = await messageApi.getClientMessages(clientId);
-        setMessages(loadedMessages);
+        // Cast to ClientMessage[] since we know the structure matches
+        setMessages(loadedMessages as unknown as ClientMessage[]);
       } catch (error) {
         console.error("Error loading messages:", error);
         toast({
@@ -86,11 +89,12 @@ export function useClientMessages({ clientId, clientName }: UseClientMessagesPro
 
     setIsSending(true);
     try {
+      const user = await supabase.auth.getUser();
       const messageData = {
         client_id: clientId,
         content: newMessage,
         is_from_client: true,
-        sender_id: supabase.auth.user()?.id || 'system', // Use actual user ID
+        sender_id: user?.data?.user?.id || 'system', // Use actual user ID
       };
       const sentMessage = await messageApi.sendClientMessage(messageData);
       setMessages((prevMessages) => [...prevMessages, sentMessage]);

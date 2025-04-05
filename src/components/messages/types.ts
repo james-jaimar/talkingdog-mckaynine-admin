@@ -1,3 +1,4 @@
+
 export interface ClientMessage {
   id: string;
   client_id: string;
@@ -9,4 +10,5 @@ export interface ClientMessage {
   attachment_url?: string;
   attachment_type?: string;
   is_read?: boolean; // Add is_read field to our interface
+  sender_name?: string; // Add sender_name field to our interface
 }

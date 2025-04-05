@@ -8,6 +8,7 @@ import {
   sendClientMessage
 } from "@/components/messages/services/messageApi";
 import { ClientMessage } from "@/components/messages/types";
+import { ClientMessageWithReadStatus } from "@/integrations/supabase/custom-types";
 
 export function useCustomerMessages(clientId: string | null) {
   const [messages, setMessages] = useState<ClientMessage[]>([]);
@@ -31,7 +32,7 @@ export function useCustomerMessages(clientId: string | null) {
         console.log("Fetching messages for client:", clientId);
         const messagesData = await getClientMessages(clientId);
         
-        // Format messages with sender name 
+        // Format messages with sender name and cast to ClientMessage[]
         const formattedMessages: ClientMessage[] = messagesData.map((msg) => ({
           ...msg,
           sender_name: msg.is_from_client ? 'You' : 'Staff'
@@ -84,11 +85,11 @@ export function useCustomerMessages(clientId: string | null) {
             }
             
             // Cast the new payload to ClientMessage with required fields
-            const newMsg = payload.new as ClientMessage;
+            const newMsg = payload.new as ClientMessageWithReadStatus;
             
             // Format the new message with sender name
             const formattedMessage: ClientMessage = {
-              ...newMsg,
+              ...newMsg as unknown as ClientMessage,
               sender_name: newMsg.is_from_client ? 'You' : 'Staff'
             };
             
