@@ -9,6 +9,6 @@ export interface ClientMessage {
   sender_id: string;
   attachment_url?: string;
   attachment_type?: string;
-  is_read?: boolean; 
-  sender_name?: string; 
+  is_read?: boolean; // Explicitly added to match database schema
+  sender_name?: string; // Keep the sender name field
 }
