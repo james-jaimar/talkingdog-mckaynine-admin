@@ -9,8 +9,18 @@ interface MessageBubbleProps {
 }
 
 export function MessageBubble({ message }: MessageBubbleProps) {
-  const isFromClient = message.is_from_client;
+  // Important: Make sure we're correctly determining message source
+  const isFromClient = message.is_from_client === true;
   const senderName = message.sender_name || (isFromClient ? 'User' : 'Staff');
+  
+  // Add debug output to help diagnose issues
+  console.log("Message data:", { 
+    id: message.id,
+    isFromClient, 
+    senderName,
+    content: message.content.substring(0, 20) + "...",
+    rawIsFromClient: message.is_from_client 
+  });
   
   return (
     <div className="flex w-full mb-4">

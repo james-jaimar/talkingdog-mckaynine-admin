@@ -29,6 +29,18 @@ export function ConversationView({
   emptyStateMessage = "No messages yet. Send a message to start the conversation.",
   clientId
 }: ConversationViewProps) {
+  // Log messages to help diagnose issues
+  useEffect(() => {
+    if (messages.length > 0) {
+      console.log(`ConversationView: Received ${messages.length} messages`);
+      console.log("Message sources:", messages.map(m => ({ 
+        id: m.id.substring(0, 8),
+        isFromClient: m.is_from_client,
+        sender: m.sender_name || (m.is_from_client ? 'Client' : 'Staff')
+      })));
+    }
+  }, [messages]);
+
   // Mark messages as read when conversation is viewed
   useEffect(() => {
     const markAsRead = async () => {
