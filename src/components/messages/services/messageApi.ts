@@ -63,7 +63,7 @@ export const markMessagesAsRead = async (clientId: string, messageIds: string[])
       // Fallback to direct query if RPC fails
       const { error: fallbackError } = await supabase
         .from('client_messages')
-        .update({ is_read: true })
+        .update({ is_read: true } as any) // Type assertion to bypass TypeScript error
         .eq('client_id', clientId)
         .in('id', messageIds);
       
