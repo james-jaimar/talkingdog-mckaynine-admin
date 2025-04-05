@@ -11,41 +11,46 @@ interface MessageBubbleProps {
 export function MessageBubble({ message }: MessageBubbleProps) {
   const isFromClient = message.is_from_client;
   const senderName = message.sender_name || (isFromClient ? 'User' : 'Staff');
-
+  
   return (
     <div className="flex w-full mb-4">
-      {/* Container with conditional justification */}
-      <div className={`flex w-full ${isFromClient ? 'justify-start' : 'justify-end'}`}>
+      {isFromClient ? (
+        // Client message - left aligned
         <div className="flex items-start gap-2 max-w-[80%]">
-          {/* Avatar for client messages */}
-          {isFromClient && (
-            <MessageAvatar 
-              name={senderName} 
-              isFromClient={isFromClient} 
-            />
-          )}
-          
-          {/* Message content and metadata */}
+          <MessageAvatar 
+            name={senderName} 
+            isFromClient={true} 
+          />
           <div>
             <MessageContent 
               message={message} 
-              isFromClient={isFromClient} 
+              isFromClient={true} 
             />
             <MessageMetadata 
               senderName={senderName} 
               timestamp={message.created_at} 
             />
           </div>
-          
-          {/* Avatar for staff messages */}
-          {!isFromClient && (
-            <MessageAvatar 
-              name={senderName} 
-              isFromClient={isFromClient} 
-            />
-          )}
         </div>
-      </div>
+      ) : (
+        // Staff message - right aligned
+        <div className="flex items-start gap-2 max-w-[80%] ml-auto">
+          <div>
+            <MessageContent 
+              message={message} 
+              isFromClient={false} 
+            />
+            <MessageMetadata 
+              senderName={senderName} 
+              timestamp={message.created_at} 
+            />
+          </div>
+          <MessageAvatar 
+            name={senderName} 
+            isFromClient={false} 
+          />
+        </div>
+      )}
     </div>
   );
 }

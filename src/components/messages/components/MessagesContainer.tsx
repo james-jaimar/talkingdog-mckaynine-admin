@@ -22,7 +22,6 @@ export function MessagesContainer({
   // Auto-scroll to bottom on initial load and when new messages arrive
   useEffect(() => {
     if (!isLoading && messages.length && messagesEndRef.current) {
-      // Use scrollIntoView with behavior: 'auto' for immediate scrolling
       messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
     }
   }, [messages.length, isLoading]);
