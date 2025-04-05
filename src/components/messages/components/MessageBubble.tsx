@@ -14,7 +14,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
 
   return (
     <div 
-      className={`flex ${isFromClient ? 'justify-start' : 'justify-end'}`}
+      className={`flex ${isFromClient ? 'justify-start' : 'justify-end'} w-full`}
     >
       <div className={`flex ${isFromClient ? 'flex-row' : 'flex-row-reverse'} max-w-[80%] gap-2`}>
         <MessageAvatar 
