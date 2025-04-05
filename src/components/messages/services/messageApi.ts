@@ -50,21 +50,12 @@ export const markMessagesAsRead = async (clientId: string, messageIds: string[])
   if (!messageIds.length) return;
   
   try {
-    // Use raw SQL query to insert into message_read_status
-    const entries = messageIds.map(messageId => ({
-      client_id: clientId,
-      message_id: messageId,
-    }));
-    
-    // Convert to array of values for SQL
-    const values = entries.map(entry => 
-      `('${entry.client_id}', '${entry.message_id}', now(), now())`
-    ).join(', ');
-    
-    const { error } = await supabase.rpc('mark_messages_as_read', {
-      p_client_id: clientId,
-      p_message_ids: messageIds
-    });
+    // Use the RPC function we created in the migration
+    const { error } = await supabase
+      .rpc('mark_messages_as_read', {
+        p_client_id: clientId,
+        p_message_ids: messageIds
+      });
     
     if (error) {
       console.error('Error marking messages as read (RPC):', error);
@@ -92,9 +83,11 @@ export const markMessagesAsRead = async (clientId: string, messageIds: string[])
  */
 export const getUnreadMessageCount = async (clientId: string): Promise<number> => {
   try {
-    // Use a direct SQL COUNT query to get unread messages
+    // Use the RPC function we created in the migration
     const { data, error } = await supabase
-      .rpc('get_unread_message_count', { p_client_id: clientId });
+      .rpc('get_unread_message_count', { 
+        p_client_id: clientId 
+      });
     
     if (error) {
       console.error('Error getting unread count (RPC):', error);
@@ -112,7 +105,8 @@ export const getUnreadMessageCount = async (clientId: string): Promise<number> =
       return messages?.length || 0;
     }
     
-    return data || 0;
+    // Ensure we return a number, not a boolean
+    return typeof data === 'number' ? data : 0;
   } catch (error) {
     console.error('Error getting unread message count:', error);
     throw error;

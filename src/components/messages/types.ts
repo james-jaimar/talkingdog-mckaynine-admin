@@ -10,6 +10,7 @@ export interface ClientMessage {
   sender_name?: string;
   attachment_url?: string;
   attachment_type?: string;
+  is_read?: boolean;
   profiles?: {
     full_name?: string;
   };

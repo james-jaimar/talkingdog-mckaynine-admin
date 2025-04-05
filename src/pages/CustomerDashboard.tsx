@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/auth";
 import { CustomerDashboardLayout } from "@/components/layout/CustomerDashboardLayout";
@@ -115,7 +116,8 @@ export default function CustomerDashboard() {
           
           setUnreadMessageCount(messages?.length || 0);
         } else {
-          setUnreadMessageCount(data || 0);
+          // Ensure we're setting a number, not a boolean
+          setUnreadMessageCount(typeof data === 'number' ? data : 0);
         }
       } catch (error) {
         console.error("Error checking messages:", error);
