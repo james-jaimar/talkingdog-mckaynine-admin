@@ -42,17 +42,25 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
     try {
       setIsSubmitting(true);
       
-      // Create the user in Supabase Auth
-      const { error: authError, data } = await supabase.auth.admin.createUser({
+      // Use the standard signUp method instead of admin.createUser
+      const { error: authError, data } = await supabase.auth.signUp({
         email,
         password,
-        email_confirm: true,
-        user_metadata: { full_name: fullName },
+        options: {
+          data: { full_name: fullName },
+          emailRedirectTo: window.location.origin,
+        }
       });
       
       if (authError) throw authError;
       
-      const userId = data.user.id;
+      const userId = data.user?.id;
+      
+      if (!userId) {
+        throw new Error("User creation failed - no user ID returned");
+      }
+      
+      console.log("User created successfully with ID:", userId);
       
       // Update the role in the profiles table
       const { error: updateError } = await supabase
@@ -104,7 +112,7 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
       // Success - clear form and close dialog
       toast({
         title: "User added",
-        description: `${email} has been added with role: ${role}`,
+        description: `${email} has been added with role: ${role}. User will need to verify their email.`,
       });
       
       // Reset form
