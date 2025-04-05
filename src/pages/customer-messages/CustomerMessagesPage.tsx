@@ -1,12 +1,12 @@
 
 import { useAuth } from "@/context/auth";
 import { useState, useEffect } from "react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, Loader2 } from "lucide-react";
-import { ConversationView } from "@/components/messages/components/ConversationView";
-import { useCustomerConversation } from "./hooks/useCustomerConversation";
 import { Helmet } from "react-helmet";
-import { toast } from "sonner";
+import { useCustomerConversation } from "./hooks/useCustomerConversation";
+import { AccessDenied } from "./components/AccessDenied";
+import { LoadingState } from "./components/LoadingState";
+import { MessagingNotAvailable } from "./components/MessagingNotAvailable";
+import { MessagesContent } from "./components/MessagesContent";
 
 export default function CustomerMessagesPage() {
   const { user } = useAuth();
@@ -32,59 +32,17 @@ export default function CustomerMessagesPage() {
 
   // Show access denied if user is not logged in
   if (!user) {
-    return (
-      <>
-        <Helmet>
-          <title>Messages - McKaynine Training Centre</title>
-        </Helmet>
-        <div className="container py-8">
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Access Denied</AlertTitle>
-            <AlertDescription>
-              You need to be logged in to view your messages.
-            </AlertDescription>
-          </Alert>
-        </div>
-      </>
-    );
+    return <AccessDenied />;
   }
 
   // Show loading state while we're initially loading
   if (initializing) {
-    return (
-      <>
-        <Helmet>
-          <title>Messages - McKaynine Training Centre</title>
-        </Helmet>
-        <div className="container py-8">
-          <div className="flex flex-col items-center justify-center h-64">
-            <Loader2 className="h-8 w-8 animate-spin text-mckaynine-600 mb-4" />
-            <p className="text-lg text-mckaynine-600">Loading your messages...</p>
-          </div>
-        </div>
-      </>
-    );
+    return <LoadingState />;
   }
 
   // Show error if messaging is not available for this user
   if (!initializing && !conversationReady) {
-    return (
-      <>
-        <Helmet>
-          <title>Messages - McKaynine Training Centre</title>
-        </Helmet>
-        <div className="container py-8">
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Messaging Not Available</AlertTitle>
-            <AlertDescription>
-              We couldn't set up messaging for your account. Please contact support.
-            </AlertDescription>
-          </Alert>
-        </div>
-      </>
-    );
+    return <MessagingNotAvailable />;
   }
 
   return (
@@ -92,22 +50,15 @@ export default function CustomerMessagesPage() {
       <Helmet>
         <title>Messages - McKaynine Training Centre</title>
       </Helmet>
-      <div className="container py-8">
-        <h1 className="text-2xl font-bold mb-6">Messages</h1>
-        <div className="max-w-4xl mx-auto h-[600px]">
-          <ConversationView
-            title="Staff Communication"
-            messages={messages}
-            newMessage={newMessage}
-            setNewMessage={setNewMessage}
-            isLoading={isLoading}
-            isSending={isSending}
-            sendMessage={sendMessage}
-            emptyStateMessage="No messages yet. Send a message to contact our staff."
-            clientId={clientId} // Pass client ID to mark messages as read
-          />
-        </div>
-      </div>
+      <MessagesContent 
+        messages={messages}
+        newMessage={newMessage}
+        setNewMessage={setNewMessage}
+        isLoading={isLoading}
+        isSending={isSending}
+        sendMessage={sendMessage}
+        clientId={clientId}
+      />
     </>
   );
 }
