@@ -64,12 +64,14 @@ export function ConversationView({
           emptyStateMessage={emptyStateMessage}
         />
         
-        <MessageComposer
-          value={newMessage}
-          onChange={setNewMessage}
-          onSend={sendMessage}
-          isSending={isSending}
-        />
+        <div className="pt-0">
+          <MessageComposer
+            value={newMessage}
+            onChange={setNewMessage}
+            onSend={sendMessage}
+            isSending={isSending}
+          />
+        </div>
       </CardContent>
     </Card>
   );
