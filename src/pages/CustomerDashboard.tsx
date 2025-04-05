@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/auth";
 import { CustomerDashboardLayout } from "@/components/layout/CustomerDashboardLayout";
@@ -95,8 +94,9 @@ export default function CustomerDashboard() {
     const fetchUnreadMessages = async () => {
       try {
         // Use direct RPC function to count unread messages
-        const { data, error } = await supabase
-          .rpc('get_unread_message_count', { p_client_id: clientData.id });
+        // Need to use any to bypass TypeScript restriction since our custom RPC isn't in the types
+        const { data, error } = await (supabase.rpc as any)('get_unread_message_count', 
+          { p_client_id: clientData.id });
           
         if (error) {
           console.error("Error getting unread messages count:", error);
