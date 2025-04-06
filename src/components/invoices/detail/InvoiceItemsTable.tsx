@@ -7,6 +7,11 @@ interface InvoiceItemsTableProps {
 }
 
 export function InvoiceItemsTable({ items }: InvoiceItemsTableProps) {
+  // Check if there are any items to display
+  if (!items || items.length === 0) {
+    return <p className="py-4 text-gray-500">No items on this invoice</p>;
+  }
+
   return (
     <table className="w-full">
       <thead>
@@ -18,7 +23,8 @@ export function InvoiceItemsTable({ items }: InvoiceItemsTableProps) {
         </tr>
       </thead>
       <tbody>
-        {items?.map((item) => {
+        {items.map((item) => {
+          // Extract booking-related information
           const booking = item.bookings;
           const classData = booking?.class_schedules?.classes;
           const dogName = booking?.dogs?.name;
@@ -38,7 +44,9 @@ export function InvoiceItemsTable({ items }: InvoiceItemsTableProps) {
               </td>
               <td className="py-4">{item.quantity}</td>
               <td className="py-4">{formatCurrency(item.unit_price)}</td>
-              <td className="py-4 text-right">{formatCurrency(item.amount)}</td>
+              <td className="py-4 text-right">
+                {formatCurrency(item.amount || (item.quantity * item.unit_price))}
+              </td>
             </tr>
           );
         })}
