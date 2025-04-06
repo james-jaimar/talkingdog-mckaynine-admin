@@ -38,7 +38,7 @@ export const trainerRoutes = [
     ),
   },
   {
-    path: "/handler/:id",
+    path: "/handlers/:id",
     element: (
       <ProtectedRoute requiredRole="trainer">
         <HandlerDetail />
