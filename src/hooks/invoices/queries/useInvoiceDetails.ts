@@ -69,7 +69,15 @@ export function useInvoiceDetails(invoiceId: string | undefined) {
         // Now for each item with a booking_id, try to fetch the booking details
         const enhancedItems: InvoiceItem[] = await Promise.all(
           itemsData.map(async (item) => {
-            let enhancedItem = { ...item } as InvoiceItem;
+            // Explicitly create an InvoiceItem object
+            const enhancedItem: InvoiceItem = {
+              id: item.id,
+              description: item.description,
+              quantity: item.quantity,
+              unit_price: item.unit_price,
+              amount: item.amount,
+              booking_id: item.booking_id
+            };
 
             if (item.booking_id) {
               // Try to fetch booking details
@@ -84,6 +92,13 @@ export function useInvoiceDetails(invoiceId: string | undefined) {
                 .single();
 
               if (!bookingError && booking) {
+                // Initialize bookings property
+                enhancedItem.bookings = {
+                  id: booking.id,
+                  dog_id: booking.dog_id,
+                  class_schedule_id: booking.class_schedule_id
+                };
+
                 // Try to fetch dog name separately
                 if (booking.dog_id) {
                   const { data: dog } = await supabase
@@ -93,10 +108,7 @@ export function useInvoiceDetails(invoiceId: string | undefined) {
                     .single();
 
                   if (dog) {
-                    enhancedItem.bookings = {
-                      ...booking,
-                      dogs: dog
-                    };
+                    enhancedItem.bookings.dogs = dog;
                   }
                 }
 
@@ -113,35 +125,33 @@ export function useInvoiceDetails(invoiceId: string | undefined) {
                     .single();
 
                   if (classSchedule) {
-                    enhancedItem.bookings = {
-                      ...(enhancedItem.bookings || booking),
-                      class_schedules: classSchedule
-                    };
+                    enhancedItem.bookings.class_schedules = classSchedule;
                   }
                 }
               }
             }
 
             // If we have class data, use it to improve description and price
-            const booking = enhancedItem.bookings;
-            const classData = booking?.class_schedules?.classes;
-            const dogData = booking?.dogs;
-            
-            if (classData) {
-              // If no description was provided, create one using the class data
-              if (!item.description || item.description === 'Class booking') {
-                enhancedItem.description = classData.name;
-                
-                // Add dog name if available
-                if (dogData?.name) {
-                  enhancedItem.description += ` - ${dogData.name}`;
-                }
-              }
+            if (enhancedItem.bookings) {
+              const classData = enhancedItem.bookings.class_schedules?.classes;
+              const dogData = enhancedItem.bookings.dogs;
               
-              // If price wasn't set correctly, use the class price
-              if ((item.unit_price === 0 || !item.unit_price) && classData.price) {
-                enhancedItem.unit_price = classData.price;
-                enhancedItem.amount = classData.price * item.quantity;
+              if (classData) {
+                // If no description was provided, create one using the class data
+                if (!enhancedItem.description || enhancedItem.description === 'Class booking') {
+                  enhancedItem.description = classData.name;
+                  
+                  // Add dog name if available
+                  if (dogData?.name) {
+                    enhancedItem.description += ` - ${dogData.name}`;
+                  }
+                }
+                
+                // If price wasn't set correctly, use the class price
+                if ((enhancedItem.unit_price === 0 || !enhancedItem.unit_price) && classData.price) {
+                  enhancedItem.unit_price = classData.price;
+                  enhancedItem.amount = classData.price * enhancedItem.quantity;
+                }
               }
             }
             
