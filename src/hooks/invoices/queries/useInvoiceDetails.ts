@@ -66,8 +66,7 @@ export function useInvoiceDetails(invoiceId: string | undefined) {
               )
             )
           `)
-          .eq('invoice_id', invoiceId)
-          .order('created_at', { ascending: true });
+          .eq('invoice_id', invoiceId);
 
         if (itemsError) {
           console.error("Error fetching invoice items:", itemsError);
@@ -87,11 +86,11 @@ export function useInvoiceDetails(invoiceId: string | undefined) {
           // If this item is linked to a booking with class details
           if (item.bookings?.class_schedules?.classes) {
             const classData = item.bookings.class_schedules.classes;
-            const dogData = item.bookings.dogs;
+            const dogName = item.bookings.dogs?.name;
             
             // If no description was provided, create one using the class data
             if (!item.description || item.description === 'Class booking') {
-              enhancedItem.description = `${classData.name} - ${dogData?.name || 'Unknown dog'}`;
+              enhancedItem.description = `${classData.name} - ${dogName || 'Unknown dog'}`;
             }
             
             // If price wasn't set correctly, use the class price
@@ -119,6 +118,7 @@ export function useInvoiceDetails(invoiceId: string | undefined) {
       }
     },
     enabled: !!invoiceId,
+    staleTime: 1000 * 60 * 5, // 5 minutes
     retry: 1, // Only retry once to prevent excessive errors
   });
 }
