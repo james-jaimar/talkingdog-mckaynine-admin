@@ -1,11 +1,12 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Home, Users, BookOpen, Calendar, GraduationCap, FileText, Menu, ExternalLink } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { UserNav } from "@/components/layout/UserNav";
 import { useAuth } from "@/context/auth";
+import { Header } from "@/components/layout/Header";
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
@@ -15,50 +16,28 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(`${path}/`);
 
+  const navItems = [
+    { name: "Dashboard", path: "/dashboard", icon: <Home className="h-5 w-5" /> },
+    { name: "Handlers", path: "/handlers", icon: <Users className="h-5 w-5" /> },
+    { name: "Classes", path: "/classes", icon: <BookOpen className="h-5 w-5" /> },
+    { name: "Schedules", path: "/class-schedules", icon: <Calendar className="h-5 w-5" /> },
+    { name: "Trainers", path: "/trainers", icon: <GraduationCap className="h-5 w-5" /> },
+    { name: "Forms", path: "/forms", icon: <FileText className="h-5 w-5" /> },
+  ];
+
   return (
-    <div className="flex h-full min-h-screen bg-gray-50">
-      {/* Mobile overlay */}
-      <div
-        className={`fixed inset-0 z-40 bg-black/50 transition-opacity duration-300 ease-in-out md:hidden ${
-          sidebarOpen ? 'opacity-100 visible' : 'opacity-0 invisible'
-        }`}
-        onClick={() => setSidebarOpen(false)}
-      ></div>
+    <div className="flex flex-col h-full min-h-screen bg-gray-50">
+      {/* Header */}
+      <Header />
       
       {/* Main Content */}
-      <div className="flex flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-white px-4 md:px-6">
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Toggle Menu"
-            className="md:hidden"
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-          >
-            <Menu className="h-6 w-6" />
-          </Button>
-          <div className="w-full flex items-center justify-between">
-            <div className="md:hidden">
-              <img 
-                src="/lovable-uploads/10dc7b2d-7c92-4408-8a71-edaf248918a0.png" 
-                alt="McKaynine" 
-                className="h-8" 
-              />
-            </div>
-            <div className="ml-auto flex items-center gap-4">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => navigate('/')}
-              >
-                <ExternalLink className="mr-2 h-4 w-4" />
-                Main Website
-              </Button>
-              <UserNav />
-            </div>
+      <div className="flex flex-1">
+        {/* Content Area */}
+        <main className="flex-1 overflow-x-hidden">
+          <div className="container mx-auto px-4 py-6 md:px-6">
+            {children}
           </div>
-        </header>
-        <main className="flex-1">{children}</main>
+        </main>
       </div>
     </div>
   );
