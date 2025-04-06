@@ -75,7 +75,7 @@ export function CreateCustomInvoice({
           <DialogTitle>Create Custom Invoice</DialogTitle>
         </DialogHeader>
 
-        <InvoiceFormProvider onSubmit={onSubmit}>
+        <InvoiceFormProvider onSubmit={onSubmit} defaultTaxRate={0}>
           <div>
             <h3 className="font-medium mb-2">Client: {clientName}</h3>
           </div>

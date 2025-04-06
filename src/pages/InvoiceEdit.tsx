@@ -56,7 +56,7 @@ export default function InvoiceEdit() {
       issued_date: new Date(),
       due_date: new Date(),
       notes: "",
-      tax_rate: 15,
+      tax_rate: 0, // Updated to 0%
       items: [{ description: "", quantity: 1, unit_price: 0 }]
     }
   });

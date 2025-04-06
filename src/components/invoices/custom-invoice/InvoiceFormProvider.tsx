@@ -1,59 +1,47 @@
 
-import { ReactNode } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { Form } from "@/components/ui/form";
+import React from "react";
+import { useForm, FormProvider } from "react-hook-form";
 
-// Form schema
-export const customInvoiceSchema = z.object({
-  notes: z.string().optional(),
-  items: z.array(z.object({
-    description: z.string().min(1, "Description is required"),
-    quantity: z.number().int().positive("Quantity must be a positive number"),
-    unit_price: z.number().positive("Price must be a positive number"),
-  })).min(1, "At least one item is required"),
-  tax_rate: z.number().min(0, "Tax rate cannot be negative").max(100, "Tax rate cannot exceed 100%"),
-});
+export interface InvoiceItem {
+  description: string;
+  quantity: number;
+  unit_price: number;
+}
 
-export type FormValues = z.infer<typeof customInvoiceSchema>;
+export interface FormValues {
+  notes?: string;
+  items: InvoiceItem[];
+  tax_rate: number;
+}
 
 interface InvoiceFormProviderProps {
-  children: ReactNode;
-  onSubmit: (values: FormValues) => Promise<void>;
-  defaultValues?: Partial<FormValues>;
+  children: React.ReactNode;
+  onSubmit: (values: FormValues) => void;
+  defaultTaxRate?: number;
 }
 
 export function InvoiceFormProvider({ 
   children, 
   onSubmit,
-  defaultValues = {
-    notes: "",
-    items: [{ description: "", quantity: 1, unit_price: 0 }],
-    tax_rate: 15,
-  }
+  defaultTaxRate = 0 // Default set to 0%
 }: InvoiceFormProviderProps) {
-  const form = useForm<FormValues>({
-    resolver: zodResolver(customInvoiceSchema),
-    defaultValues,
-  });
-
-  return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        {children}
-      </form>
-    </Form>
-  );
-}
-
-export function useInvoiceForm() {
-  return useForm<FormValues>({
-    resolver: zodResolver(customInvoiceSchema),
+  const methods = useForm<FormValues>({
     defaultValues: {
       notes: "",
+      tax_rate: defaultTaxRate,
       items: [{ description: "", quantity: 1, unit_price: 0 }],
-      tax_rate: 15,
     },
   });
+
+  const handleSubmit = (values: FormValues) => {
+    onSubmit(values);
+  };
+
+  return (
+    <FormProvider {...methods}>
+      <form onSubmit={methods.handleSubmit(handleSubmit)} className="space-y-6">
+        {children}
+      </form>
+    </FormProvider>
+  );
 }

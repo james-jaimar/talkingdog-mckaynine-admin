@@ -103,7 +103,7 @@ export function useAddHandlerModal({
           console.warn("Could not get branch info for invoice number fallback");
         }
         
-        invoiceNumber = `${branchPrefix}[${monthAbbreviation}]FB${timestamp.toString().slice(-4)}${random}`;
+        invoiceNumber = `${branchPrefix}${monthAbbreviation}FB${timestamp.toString().slice(-4)}${random}`;
       }
       
       console.log("Generated invoice number:", invoiceNumber);
@@ -116,7 +116,7 @@ export function useAddHandlerModal({
         issued_date: new Date(),
         due_date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 days from now
         notes: `Invoice for ${className} training class for ${dogName}.`,
-        tax_rate: 15, // Default tax rate
+        tax_rate: 0, // Default tax rate set to 0%
         items: [{
           description: `${className} training class for ${dogName}`,
           quantity: 1,
@@ -139,7 +139,7 @@ export function useAddHandlerModal({
           
           // Calculate totals
           const subtotal = classPrice;
-          const tax_amount = subtotal * (15 / 100); // 15% tax rate
+          const tax_amount = 0; // No tax
           const total = subtotal + tax_amount;
           
           // Insert invoice directly
@@ -153,7 +153,7 @@ export function useAddHandlerModal({
               due_date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
               notes: `Invoice for ${className} training class for ${dogName}.`,
               subtotal,
-              tax_rate: 15,
+              tax_rate: 0,
               tax_amount,
               total,
               payment_received: false,

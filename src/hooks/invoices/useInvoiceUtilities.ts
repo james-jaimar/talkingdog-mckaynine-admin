@@ -5,7 +5,7 @@ import { format } from "date-fns";
 /**
  * Generates a sequential invoice number with branch code and month prefix
  * with multiple fallback mechanisms for resilience
- * Format: McD[Apr]0001 for Delta branch, McR[Apr]0001 for Randburg branch
+ * Format: McDAPR0001 for Delta branch, McRAPR0001 for Randburg branch
  */
 export const generateInvoiceNumber = async (): Promise<string> => {
   try {
@@ -47,7 +47,7 @@ export const generateInvoiceNumber = async (): Promise<string> => {
       const { data, error, count: resultCount } = await supabase
         .from('invoices')
         .select('id', { count: 'exact', head: true })
-        .like('invoice_number', `${branchPrefix}[${monthAbbreviation}]%`);
+        .like('invoice_number', `${branchPrefix}${monthAbbreviation}%`);
         
       if (error) {
         console.warn("Error checking existing invoices, using fallback method:", error);
@@ -65,14 +65,14 @@ export const generateInvoiceNumber = async (): Promise<string> => {
       // Use current timestamp milliseconds as part of the number to ensure uniqueness
       const timestamp = now.getTime();
       const randomPart = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-      return `${branchPrefix}[${monthAbbreviation}]T${timestamp.toString().slice(-4)}${randomPart}`;
+      return `${branchPrefix}${monthAbbreviation}T${timestamp.toString().slice(-4)}${randomPart}`;
     }
     
     // Generate the sequential number (current count + 1)
     const sequentialNumber = String(count + 1).padStart(4, '0');
     
-    // Format the invoice number as McD[Apr]0001 or McR[Apr]0001
-    const invoiceNumber = `${branchPrefix}[${monthAbbreviation}]${sequentialNumber}`;
+    // Format the invoice number as McDAPR0001 or McRAPR0001
+    const invoiceNumber = `${branchPrefix}${monthAbbreviation}${sequentialNumber}`;
     
     return invoiceNumber;
   } catch (error) {
@@ -83,6 +83,6 @@ export const generateInvoiceNumber = async (): Promise<string> => {
     const monthAbbreviation = format(now, "MMM");
     const timestamp = now.getTime();
     const randomPart = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-    return `Mc[${monthAbbreviation}]ERR${timestamp.toString().slice(-3)}${randomPart}`;
+    return `Mc${monthAbbreviation}ERR${timestamp.toString().slice(-3)}${randomPart}`;
   }
 };
