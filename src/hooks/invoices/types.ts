@@ -11,9 +11,9 @@ export interface InvoiceItem {
   // Add the bookings property with its nested structure
   bookings?: {
     id: string;
-    class_schedule_id: string;
+    dog_id?: string;
+    class_schedule_id?: string;
     dogs?: {
-      id: string;
       name: string;
       breed: string;
     };

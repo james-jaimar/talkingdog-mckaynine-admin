@@ -1,7 +1,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Invoice } from "../types";
+import { Invoice, InvoiceItem } from "../types";
 import { toast } from "sonner";
 import { handleQueryError } from "./useQueryUtils";
 
@@ -67,9 +67,9 @@ export function useInvoiceDetails(invoiceId: string | undefined) {
         console.log("Successfully fetched invoice items:", itemsData);
 
         // Now for each item with a booking_id, try to fetch the booking details
-        const enhancedItems = await Promise.all(
+        const enhancedItems: InvoiceItem[] = await Promise.all(
           itemsData.map(async (item) => {
-            let enhancedItem = { ...item };
+            let enhancedItem = { ...item } as InvoiceItem;
 
             if (item.booking_id) {
               // Try to fetch booking details
