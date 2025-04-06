@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Invoice } from "@/types/invoice";
@@ -67,8 +66,13 @@ export function InvoicesList({ invoices, isLoading }: InvoicesListProps) {
 
   const confirmDelete = () => {
     if (selectedInvoiceId) {
-      deleteInvoice.mutate(selectedInvoiceId);
+      // First close the dialog to prevent UI issues
       setDeleteDialogOpen(false);
+      
+      // Small delay before triggering the delete mutation
+      setTimeout(() => {
+        deleteInvoice.mutate(selectedInvoiceId);
+      }, 100);
     }
   };
 
