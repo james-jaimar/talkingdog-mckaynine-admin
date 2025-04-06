@@ -4,8 +4,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Helmet } from "react-helmet";
 import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, ArrowLeft, Edit } from "lucide-react";
+import { Edit } from "lucide-react";
 import { useInvoiceDetails } from "@/hooks/invoices/useInvoiceQueries";
 import { toast } from "sonner";
 import { generateInvoicePDF } from "@/components/invoices/pdf/InvoicePDFGenerator";
@@ -14,6 +13,8 @@ import { InvoiceLoadingState } from "@/components/invoices/detail/InvoiceLoading
 import { InvoiceNotFound } from "@/components/invoices/detail/InvoiceNotFound";
 import { InvoiceDetailsPanel } from "@/components/invoices/detail/InvoiceDetailsPanel";
 import { ClientInfoCard } from "@/components/invoices/detail/ClientInfoCard";
+import { InvoiceError } from "@/components/invoices/detail/InvoiceError";
+import { InvoiceMissingIdError } from "@/components/invoices/detail/InvoiceMissingIdError";
 
 export default function InvoiceDetail() {
   const { id } = useParams<{ id: string }>();
@@ -42,21 +43,7 @@ export default function InvoiceDetail() {
   if (!id) {
     return (
       <DashboardLayout>
-        <div className="container mx-auto py-6">
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Error</AlertTitle>
-            <AlertDescription>Invoice ID is required.</AlertDescription>
-          </Alert>
-          <Button 
-            variant="outline" 
-            onClick={() => navigate('/invoices')} 
-            className="mt-4"
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Invoices
-          </Button>
-        </div>
+        <InvoiceMissingIdError />
       </DashboardLayout>
     );
   }
@@ -72,23 +59,7 @@ export default function InvoiceDetail() {
   if (isError) {
     return (
       <DashboardLayout>
-        <div className="container mx-auto py-6">
-          <Alert variant="destructive" className="mb-6">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Error</AlertTitle>
-            <AlertDescription>
-              {error instanceof Error ? error.message : "Failed to load invoice details. Please try again later."}
-            </AlertDescription>
-          </Alert>
-          <Button 
-            variant="outline" 
-            onClick={() => navigate('/invoices')} 
-            className="mt-4"
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Invoices
-          </Button>
-        </div>
+        <InvoiceError error={error} />
       </DashboardLayout>
     );
   }
@@ -111,25 +82,17 @@ export default function InvoiceDetail() {
       </Helmet>
       <div className="container mx-auto py-6">
         <div className="flex justify-between items-center mb-6">
-          <div className="flex items-center">
-            <Button variant="ghost" onClick={() => navigate('/invoices')} className="mr-2">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Invoices
+          <InvoiceDetailHeader 
+            invoice={invoice} 
+            onGeneratePDF={handleGeneratePDF} 
+            backPath="/invoices" 
+          />
+          {canEdit && (
+            <Button variant="outline" onClick={() => navigate(`/invoices/${id}/edit`)}>
+              <Edit className="mr-2 h-4 w-4" />
+              Edit Invoice
             </Button>
-            <h1 className="text-2xl font-bold">{invoice.invoice_number}</h1>
-          </div>
-          <div className="flex gap-2">
-            {canEdit && (
-              <Button variant="outline" onClick={() => navigate(`/invoices/${id}/edit`)}>
-                <Edit className="mr-2 h-4 w-4" />
-                Edit Invoice
-              </Button>
-            )}
-            <Button variant="outline" onClick={handleGeneratePDF}>
-              <ArrowLeft className="mr-2 h-4 w-4 rotate-180" />
-              Download PDF
-            </Button>
-          </div>
+          )}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
