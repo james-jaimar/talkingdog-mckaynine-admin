@@ -1,64 +1,40 @@
 
 import { useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Helmet } from "react-helmet";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, Download } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { InvoiceStatus } from "@/types/invoice";
+import { useInvoiceDetails } from "@/hooks/invoices/useInvoiceQueries";
+import { toast } from "sonner";
+import { generateInvoicePDF } from "@/components/invoices/pdf/InvoicePDFGenerator";
 
 export default function CustomerInvoiceDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  
+  const { data: invoice, isLoading, error } = useInvoiceDetails(id);
 
-  const { data: invoice, isLoading } = useQuery({
-    queryKey: ["invoice", id],
-    queryFn: async () => {
-      // First get the invoice data
-      const { data: invoiceData, error: invoiceError } = await supabase
-        .from("invoices")
-        .select("*")
-        .eq("id", id)
-        .single();
+  useEffect(() => {
+    if (!id) {
+      navigate('/customer/invoices');
+    }
+  }, [id, navigate]);
 
-      if (invoiceError) {
-        throw invoiceError;
-      }
-
-      // Get client information
-      const { data: clientData, error: clientError } = await supabase
-        .from("clients")
-        .select("id, first_name, last_name, email, phone, address, city, postal_code")
-        .eq("id", invoiceData.client_id)
-        .single();
-
-      if (clientError) {
-        throw clientError;
-      }
-
-      // Get invoice items
-      const { data: itemsData, error: itemsError } = await supabase
-        .from("invoice_items")
-        .select("*")
-        .eq("invoice_id", invoiceData.id);
-
-      if (itemsError) {
-        throw itemsError;
-      }
-
-      // Combine all data
-      return {
-        ...invoiceData,
-        client: clientData,
-        items: itemsData || []
-      };
-    },
-    enabled: !!id,
-  });
+  const handleGeneratePDF = async () => {
+    if (!invoice) return;
+    
+    try {
+      await generateInvoicePDF(invoice);
+      toast.success("Invoice PDF generated successfully");
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      toast.error("Failed to generate PDF");
+    }
+  };
 
   const statusColors: { [key in InvoiceStatus]: string } = {
     draft: "bg-gray-100 text-gray-700",
@@ -87,8 +63,6 @@ export default function CustomerInvoiceDetail() {
     );
   }
 
-  const canEdit = invoice?.status === 'draft' || invoice?.status === 'sent' || invoice?.status === 'overdue';
-
   return (
     <DashboardLayout>
       <Helmet>
@@ -102,6 +76,12 @@ export default function CustomerInvoiceDetail() {
               Back to Invoices
             </Button>
             <h1 className="text-2xl font-bold">{invoice.invoice_number}</h1>
+          </div>
+          <div>
+            <Button variant="outline" onClick={handleGeneratePDF}>
+              <Download className="mr-2 h-4 w-4" />
+              Download PDF
+            </Button>
           </div>
         </div>
 
@@ -134,16 +114,30 @@ export default function CustomerInvoiceDetail() {
                   </tr>
                 </thead>
                 <tbody>
-                  {invoice.items?.map((item) => (
-                    <tr key={item.id} className="border-t border-gray-200">
-                      <td className="py-4">{item.description}</td>
-                      <td className="py-4">{item.quantity}</td>
-                      <td className="py-4">{formatCurrency(item.unit_price)}</td>
-                      <td className="py-4 text-right">
-                        {formatCurrency(item.amount)}
-                      </td>
-                    </tr>
-                  ))}
+                  {invoice.items?.map((item) => {
+                    const booking = item.bookings;
+                    const classData = booking?.class_schedules?.classes;
+                    const dogName = booking?.dogs?.name;
+                    
+                    return (
+                      <tr key={item.id} className="border-t border-gray-200">
+                        <td className="py-4">
+                          <div>
+                            <p className="font-medium">{item.description}</p>
+                            {booking && (
+                              <p className="text-xs text-gray-500">
+                                {dogName && <span>Dog: {dogName} | </span>}
+                                {classData && <span>Class: {classData.name}</span>}
+                              </p>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-4">{item.quantity}</td>
+                        <td className="py-4">{formatCurrency(item.unit_price)}</td>
+                        <td className="py-4 text-right">{formatCurrency(item.amount)}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
 
@@ -176,21 +170,32 @@ export default function CustomerInvoiceDetail() {
           <div>
             <div className="bg-white p-6 rounded-md shadow-sm">
               <h2 className="text-lg font-semibold mb-4">Client Information</h2>
-              <p className="text-gray-700">
-                {invoice.client?.first_name} {invoice.client?.last_name}
-              </p>
-              <p className="text-gray-500">{invoice.client?.email}</p>
-              {invoice.client?.phone && (
-                <p className="text-gray-500">{invoice.client.phone}</p>
+              {invoice.client ? (
+                <>
+                  <p className="font-medium">{invoice.client.first_name} {invoice.client.last_name}</p>
+                  <p className="text-gray-500">{invoice.client.email}</p>
+                  {invoice.client?.phone && (
+                    <p className="text-gray-500">{invoice.client.phone}</p>
+                  )}
+                  {invoice.client?.address && (
+                    <p className="text-gray-500">{invoice.client.address}</p>
+                  )}
+                  {invoice.client?.city && invoice.client?.postal_code && (
+                    <p className="text-gray-500">
+                      {invoice.client.city}, {invoice.client.postal_code}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <p className="text-gray-500">Client information unavailable</p>
               )}
-              {invoice.client?.address && (
-                <p className="text-gray-500">{invoice.client.address}</p>
-              )}
-              {invoice.client?.city && invoice.client?.postal_code && (
-                <p className="text-gray-500">
-                  {invoice.client.city}, {invoice.client.postal_code}
-                </p>
-              )}
+              
+              <div className="mt-6">
+                <Button variant="outline" className="w-full" onClick={handleGeneratePDF}>
+                  <Download className="mr-2 h-4 w-4" />
+                  Download PDF
+                </Button>
+              </div>
             </div>
           </div>
         </div>

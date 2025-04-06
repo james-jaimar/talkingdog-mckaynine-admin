@@ -6,11 +6,12 @@ import { Helmet } from "react-helmet";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency, formatDate } from "@/lib/formatters";
-import { Edit, ArrowLeft, Loader2, Mail, AlertCircle } from "lucide-react";
+import { Edit, ArrowLeft, Loader2, Mail, AlertCircle, Download } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useInvoiceDetails } from "@/hooks/invoices/useInvoiceQueries";
 import { toast } from "sonner";
+import { generateInvoicePDF } from "@/components/invoices/pdf/InvoicePDFGenerator";
 
 export default function InvoiceDetail() {
   const { id } = useParams<{ id: string }>();
@@ -23,6 +24,18 @@ export default function InvoiceDetail() {
       navigate('/invoices');
     }
   }, [id, navigate]);
+
+  const handleGeneratePDF = async () => {
+    if (!invoice) return;
+    
+    try {
+      await generateInvoicePDF(invoice);
+      toast.success("Invoice PDF generated successfully");
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      toast.error("Failed to generate PDF");
+    }
+  };
 
   if (!id) {
     return (
@@ -63,13 +76,17 @@ export default function InvoiceDetail() {
             </Button>
             <h1 className="text-2xl font-bold">{invoice?.invoice_number || 'Invoice Detail'}</h1>
           </div>
-          <div>
+          <div className="flex gap-2">
             {canEdit && invoice && (
               <Button variant="outline" onClick={() => navigate(`/invoices/${id}/edit`)}>
                 <Edit className="mr-2 h-4 w-4" />
                 Edit Invoice
               </Button>
             )}
+            <Button variant="outline" onClick={handleGeneratePDF}>
+              <Download className="mr-2 h-4 w-4" />
+              Download PDF
+            </Button>
           </div>
         </div>
 
@@ -105,7 +122,7 @@ export default function InvoiceDetail() {
                       <p className="text-sm font-medium">Client:</p>
                       {invoice.client ? (
                         <>
-                          <p>{invoice.client.first_name} {invoice.client.last_name}</p>
+                          <p className="text-base font-medium">{invoice.client.first_name} {invoice.client.last_name}</p>
                           <p>{invoice.client.email}</p>
                           {invoice.client.phone && <p>{invoice.client.phone}</p>}
                           {invoice.client.address && <p>{invoice.client.address}</p>}
@@ -120,11 +137,11 @@ export default function InvoiceDetail() {
                     <div>
                       <p className="text-sm font-medium">Invoice Number:</p>
                       <p>{invoice.invoice_number}</p>
-                      <p className="text-sm font-medium">Status:</p>
-                      <Badge variant="secondary">{invoice.status}</Badge>
-                      <p className="text-sm font-medium">Issued Date:</p>
+                      <p className="text-sm font-medium mt-2">Status:</p>
+                      <Badge variant="secondary" className="capitalize">{invoice.status}</Badge>
+                      <p className="text-sm font-medium mt-2">Issued Date:</p>
                       <p>{formatDate(invoice.issued_date)}</p>
-                      <p className="text-sm font-medium">Due Date:</p>
+                      <p className="text-sm font-medium mt-2">Due Date:</p>
                       <p>{formatDate(invoice.due_date)}</p>
                     </div>
                   </div>
@@ -159,14 +176,30 @@ export default function InvoiceDetail() {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {invoice.items?.length > 0 ? invoice.items.map(item => (
-                          <tr key={item.id}>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.description}</td>
-                            <td className="px-6 py-4 text-right whitespace-nowrap text-sm text-gray-500">{item.quantity}</td>
-                            <td className="px-6 py-4 text-right whitespace-nowrap text-sm text-gray-500">{formatCurrency(item.unit_price)}</td>
-                            <td className="px-6 py-4 text-right whitespace-nowrap text-sm text-gray-500">{formatCurrency(item.amount)}</td>
-                          </tr>
-                        )) : (
+                        {invoice.items?.length > 0 ? invoice.items.map(item => {
+                          const booking = item.bookings;
+                          const classData = booking?.class_schedules?.classes;
+                          const dogName = booking?.dogs?.name;
+                          
+                          return (
+                            <tr key={item.id}>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                <div>
+                                  <p className="font-medium">{item.description}</p>
+                                  {booking && (
+                                    <p className="text-xs text-gray-500">
+                                      {dogName && <span>Dog: {dogName} | </span>}
+                                      {classData && <span>Class: {classData.name}</span>}
+                                    </p>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 text-right whitespace-nowrap text-sm text-gray-500">{item.quantity}</td>
+                              <td className="px-6 py-4 text-right whitespace-nowrap text-sm text-gray-500">{formatCurrency(item.unit_price)}</td>
+                              <td className="px-6 py-4 text-right whitespace-nowrap text-sm text-gray-500">{formatCurrency(item.amount)}</td>
+                            </tr>
+                          );
+                        }) : (
                           <tr>
                             <td colSpan={4} className="px-6 py-4 text-center text-sm text-gray-500">
                               No items found for this invoice.
@@ -196,7 +229,7 @@ export default function InvoiceDetail() {
                   </div>
                   <div className="flex justify-between">
                     <p className="text-sm font-bold">Total:</p>
-                    <p>{formatCurrency(invoice.total)}</p>
+                    <p className="font-bold">{formatCurrency(invoice.total)}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -209,6 +242,10 @@ export default function InvoiceDetail() {
                   <Button variant="outline" className="w-full">
                     <Mail className="mr-2 h-4 w-4" />
                     Send Invoice
+                  </Button>
+                  <Button variant="outline" className="w-full" onClick={handleGeneratePDF}>
+                    <Download className="mr-2 h-4 w-4" />
+                    Download PDF
                   </Button>
                 </CardContent>
               </Card>
