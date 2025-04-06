@@ -8,6 +8,26 @@ export interface InvoiceItem {
   unit_price: number;
   amount?: number;
   booking_id?: string | null;
+  // Add the bookings property with its nested structure
+  bookings?: {
+    id: string;
+    class_schedule_id: string;
+    dogs?: {
+      id: string;
+      name: string;
+      breed: string;
+    };
+    class_schedules?: {
+      id: string;
+      start_time: string;
+      classes?: {
+        id: string;
+        name: string;
+        description: string;
+        price: number;
+      }
+    }
+  };
 }
 
 export interface InvoiceFormValues {
