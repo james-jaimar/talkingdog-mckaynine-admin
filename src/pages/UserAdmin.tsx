@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { useAuth } from "@/context/auth";
 import { Helmet } from "react-helmet";
@@ -23,7 +23,7 @@ export default function UserAdmin() {
   } = useFetchUsers();
   
   // Auth check and redirection
-  useState(() => {
+  useEffect(() => {
     if (!authLoading && !isAdmin) {
       toast({
         title: "Access Denied",
@@ -32,7 +32,7 @@ export default function UserAdmin() {
       });
       navigate("/dashboard");
     }
-  });
+  }, [authLoading, isAdmin, navigate, toast]);
 
   // Handle refresh button click
   const handleRefresh = () => {

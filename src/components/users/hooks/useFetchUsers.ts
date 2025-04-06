@@ -8,23 +8,25 @@ export function useFetchUsers() {
     queryKey: ['users-admin'],
     queryFn: async () => {
       try {
-        console.log("Fetching ALL user profiles from profiles table");
+        console.log("Fetching ALL user profiles from auth and profiles table");
         
         // Get current user for marking in the UI
         const { data: { user: currentUser } } = await supabase.auth.getUser();
         console.log("Current user ID:", currentUser?.id);
         
-        // Debug: Check if we can get direct count of profiles
-        const { count, error: countError } = await supabase
-          .from('profiles')
-          .select('*', { count: 'exact', head: true });
-          
-        console.log("Total profile count from database:", count);
-        if (countError) {
-          console.error("Error counting profiles:", countError);
+        // Get all users from auth.users via the admin API
+        const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers({
+          page: 1,
+          perPage: 1000, // Adjust as needed for your user base size
+        });
+        
+        if (authError) {
+          console.error("Error fetching auth users:", authError);
+          // If admin API fails (which it likely will without service_role key), 
+          // fall back to just using profiles table
         }
         
-        // Use a fresh connection and query all profiles
+        // Get all profiles from the profiles table
         const { data: profiles, error: profilesError } = await supabase
           .from('profiles')
           .select('*');
@@ -34,7 +36,6 @@ export function useFetchUsers() {
           throw profilesError;
         }
         
-        // Log the raw response to help debug
         console.log(`Found ${profiles?.length || 0} total profiles in database (RAW):`, profiles);
         
         if (!profiles || profiles.length === 0) {

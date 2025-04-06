@@ -49,13 +49,13 @@ export function useUserRoleManagement() {
         description: `User role has been updated to ${variables.role} successfully.`,
       });
       
-      // Invalidate all potentially affected queries to ensure UI updates
-      queryClient.invalidateQueries({ queryKey: ['users-admin'] });
-      queryClient.invalidateQueries({ queryKey: ['users'] });
+      // Invalidate ALL queries that might be affected
+      queryClient.invalidateQueries();
       
-      // Force refetch after a short delay to ensure consistency
+      // Force refetch specific queries after a short delay to ensure consistency
       setTimeout(() => {
         queryClient.refetchQueries({ queryKey: ['users-admin'] });
+        queryClient.refetchQueries({ queryKey: ['users'] });
       }, 300);
     },
     onError: (error) => {

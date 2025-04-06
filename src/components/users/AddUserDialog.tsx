@@ -62,13 +62,22 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
       
       console.log("User created successfully with ID:", userId);
       
-      // Update the role in the profiles table
-      const { error: updateError } = await supabase
+      // Explicitly create or update the profile record to ensure it exists
+      const { error: profileError } = await supabase
         .from('profiles')
-        .update({ role })
-        .eq('id', userId);
-      
-      if (updateError) throw updateError;
+        .upsert({
+          id: userId,
+          username: email,
+          full_name: fullName,
+          role: role,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        });
+        
+      if (profileError) {
+        console.error("Error creating profile:", profileError);
+        throw profileError;
+      }
       
       // If the role is "handler", create a corresponding entry in the clients table
       if (role === "handler") {
@@ -124,8 +133,15 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
       // Close dialog
       onOpenChange(false);
       
-      // Refresh user list
-      onUserAdded();
+      // Refresh user list using invalidation instead of direct refetch
+      const queryClient = window.queryClient; // Access the query client from the window object
+      if (queryClient) {
+        queryClient.invalidateQueries({ queryKey: ['users-admin'] });
+        queryClient.invalidateQueries({ queryKey: ['users'] });
+      } else {
+        // Fallback to the provided callback
+        onUserAdded();
+      }
       
     } catch (error: any) {
       console.error("Error adding user:", error);
