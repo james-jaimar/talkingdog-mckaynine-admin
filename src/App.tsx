@@ -21,10 +21,7 @@ import Forms from "@/pages/Forms";
 import Invoices from "@/pages/Invoices";
 import ClassHandlers from "@/pages/ClassHandlers";
 import HandlerDetail from "@/pages/HandlerDetail";
-import ClassScheduleDetail from "@/pages/ClassScheduleDetail";
-import TrainerDetail from "@/pages/TrainerDetail";
 import ClassDetail from "@/pages/ClassDetail";
-import FormDetail from "@/pages/FormDetail";
 import InvoiceDetail from "@/pages/InvoiceDetail";
 import { publicRoutes } from "@/routes/publicRoutes";
 import UnpaidHandlers from "@/pages/UnpaidHandlers";
@@ -60,14 +57,14 @@ function App() {
               <Route path="/classes" element={<Classes />} />
               <Route path="/classes/:id" element={<ClassDetail />} />
               <Route path="/class-schedules" element={<ClassSchedules />} />
-              <Route path="/class-schedules/:id" element={<ClassScheduleDetail />} />
+              <Route path="/class-schedules/:id" element={<ClassSchedules />} />
               <Route path="/classes/:id/handlers" element={<ClassHandlers />} />
               <Route path="/trainers" element={<Trainers />} />
-              <Route path="/trainers/:id" element={<TrainerDetail />} />
+              <Route path="/trainers/:id" element={<Trainers />} />
               <Route path="/branches" element={<Branches />} />
               <Route path="/user-admin" element={<UserAdmin />} />
               <Route path="/forms" element={<Forms />} />
-              <Route path="/forms/:id" element={<FormDetail />} />
+              <Route path="/forms/:id" element={<Forms />} />
               <Route path="/invoices" element={<Invoices />} />
               <Route path="/invoices/:id" element={<InvoiceDetail />} />
               <Route path="/unpaid-handlers" element={<UnpaidHandlers />} />
