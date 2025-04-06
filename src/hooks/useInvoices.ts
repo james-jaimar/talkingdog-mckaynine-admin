@@ -74,54 +74,65 @@ export function useInvoices() {
   // Create new invoice
   const createInvoice = useMutation({
     mutationFn: async (values: InvoiceFormValues) => {
-      // Calculate totals
-      const subtotal = values.items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
-      const tax_amount = subtotal * (values.tax_rate / 100);
-      const total = subtotal + tax_amount;
+      try {
+        // Calculate totals
+        const subtotal = values.items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
+        const tax_amount = subtotal * (values.tax_rate / 100);
+        const total = subtotal + tax_amount;
 
-      // Insert invoice
-      const { data: invoice, error: invoiceError } = await supabase
-        .from('invoices')
-        .insert({
-          client_id: values.client_id,
-          invoice_number: values.invoice_number,
-          status: values.status,
-          issued_date: values.issued_date.toISOString(),
-          due_date: values.due_date.toISOString(),
-          notes: values.notes || null,
-          subtotal,
-          tax_rate: values.tax_rate,
-          tax_amount,
-          total
-        })
-        .select('*')
-        .single();
+        // Insert invoice
+        const { data: invoice, error: invoiceError } = await supabase
+          .from('invoices')
+          .insert({
+            client_id: values.client_id,
+            invoice_number: values.invoice_number,
+            status: values.status,
+            issued_date: values.issued_date.toISOString(),
+            due_date: values.due_date.toISOString(),
+            notes: values.notes || null,
+            subtotal,
+            tax_rate: values.tax_rate,
+            tax_amount,
+            total
+          })
+          .select('*')
+          .single();
 
-      if (invoiceError) throw invoiceError;
+        if (invoiceError) {
+          console.error("Error creating invoice:", invoiceError);
+          throw invoiceError;
+        }
 
-      // Insert invoice items
-      const itemsToInsert = values.items.map(item => ({
-        invoice_id: invoice.id,
-        description: item.description,
-        quantity: item.quantity,
-        unit_price: item.unit_price,
-        amount: item.quantity * item.unit_price,
-        booking_id: item.booking_id || null
-      }));
+        // Insert invoice items
+        const itemsToInsert = values.items.map(item => ({
+          invoice_id: invoice.id,
+          description: item.description,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          amount: item.quantity * item.unit_price,
+          booking_id: item.booking_id || null
+        }));
 
-      const { error: itemsError } = await supabase
-        .from('invoice_items')
-        .insert(itemsToInsert);
+        const { error: itemsError } = await supabase
+          .from('invoice_items')
+          .insert(itemsToInsert);
 
-      if (itemsError) throw itemsError;
+        if (itemsError) {
+          console.error("Error creating invoice items:", itemsError);
+          throw itemsError;
+        }
 
-      return invoice;
+        return invoice;
+      } catch (error) {
+        console.error("Error creating invoice:", error);
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       toast.success("Invoice created successfully");
     },
-    onError: (error: Error) => {
+    onError: (error: any) => {
       console.error("Error creating invoice:", error);
       toast.error("Failed to create invoice");
     },
@@ -313,17 +324,21 @@ export function useInvoices() {
     return useQuery({
       queryKey: ['my-invoices'],
       queryFn: async () => {
+        // First get the current user's information
         const { data: authUser } = await supabase.auth.getUser();
         if (!authUser.user) throw new Error('Not authenticated');
         
+        // Then find this user's client record by email
         const { data: clientData, error: clientError } = await supabase
           .from('clients')
           .select('id')
           .eq('email', authUser.user.email)
-          .single();
+          .maybeSingle(); // Changed from .single() to .maybeSingle() to handle the case when no client is found
         
         if (clientError) throw clientError;
+        if (!clientData) throw new Error('No client record found for this user');
         
+        // Then get the client's invoices
         const { data, error } = await supabase
           .from('invoices')
           .select(`
@@ -343,9 +358,14 @@ export function useInvoices() {
   // Generate invoice number
   const generateInvoiceNumber = async (): Promise<string> => {
     try {
-      const { count } = await supabase
+      const { count, error } = await supabase
         .from('invoices')
         .select('*', { count: 'exact', head: true });
+      
+      if (error) {
+        console.error("Error generating invoice number:", error);
+        return `INV-${new Date().getFullYear()}-0001`;
+      }
       
       const nextNumber = (count || 0) + 1;
       const year = new Date().getFullYear();
