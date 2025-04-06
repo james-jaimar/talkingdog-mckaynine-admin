@@ -1,186 +1,137 @@
-
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "@/context/auth";
-import { 
-  Bell, 
-  Calendar, 
-  Dog, 
-  FileText, 
-  LogOut,
-  Menu, 
-  MessageSquare, 
-  User, 
-  X
-} from "lucide-react";
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/components/ui/use-toast";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Home, User, MessageSquare, Menu, ExternalLink, FileText } from "lucide-react";
+import { useIsMobile } from "@/hooks/useIsMobile";
+import { UserNav } from "@/components/layout/UserNav";
+import { useAuth } from "@/context/auth";
 
-interface DashboardLayoutProps {
-  children: React.ReactNode;
-}
-
-export function CustomerDashboardLayout({ children }: DashboardLayoutProps) {
-  const { user, logout } = useAuth();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+export function CustomerDashboardLayout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
-  const { toast } = useToast();
+  const location = useLocation();
+  const isMobile = useIsMobile();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { user, isLoading } = useAuth();
 
-  const handleLogout = async () => {
-    try {
-      const result = await logout();
-      if (result.success) {
-        toast({
-          title: "Logged out successfully",
-          description: "You have been logged out of your account."
-        });
-        navigate("/customer/login");
-      } else {
-        toast({
-          title: "Logout failed",
-          description: result.error || "An error occurred while logging out.",
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
-      console.error("Logout error:", error);
-      toast({
-        title: "Logout failed",
-        description: "An unexpected error occurred.",
-        variant: "destructive"
-      });
+  const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(`${path}/`);
+
+  // Check if user is authenticated
+  useEffect(() => {
+    if (!isLoading && !user) {
+      navigate('/customer-login');
     }
-  };
+  }, [user, isLoading, navigate]);
 
-  const navItems = [
-    { name: "Dashboard", href: "/customer/dashboard", icon: <Dog className="w-5 h-5 mr-2" /> },
-    { name: "My Profile", href: "/customer/profile", icon: <User className="w-5 h-5 mr-2" /> },
-    { name: "My Classes", href: "/customer/classes", icon: <Calendar className="w-5 h-5 mr-2" /> },
-    { name: "Messages", href: "/customer/messages", icon: <MessageSquare className="w-5 h-5 mr-2" /> },
-    { name: "Forms", href: "/customer/forms", icon: <FileText className="w-5 h-5 mr-2" /> },
-  ];
+  // Hidden while checking auth state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-mckaynine-600 text-white sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center">
-              {/* Remove the logo image per request */}
-              <div className="flex-shrink-0">
-                <Link to="/customer/dashboard">
-                  <span className="text-lg font-semibold text-white">
-                    McKaynine Portal
-                  </span>
-                </Link>
-              </div>
-              
-              {/* Desktop Navigation - Fixed spacing and layout */}
-              <div className="hidden md:ml-6 md:flex md:space-x-2">
-                {navItems.map((item) => (
-                  <Link
-                    key={item.name}
-                    to={item.href}
-                    className="text-white hover:text-gray-200 px-3 py-2 rounded-md text-sm font-medium flex items-center whitespace-nowrap"
-                  >
-                    {item.icon}
-                    {item.name}
-                  </Link>
-                ))}
-              </div>
-            </div>
+    <div className="flex h-full min-h-screen bg-gray-50">
+      {/* Sidebar for desktop */}
+      <div 
+        className={`fixed inset-y-0 left-0 z-50 w-64 transform bg-white shadow-lg transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <div className="flex h-16 items-center px-4 border-b">
+          <img 
+            src="/lovable-uploads/10dc7b2d-7c92-4408-8a71-edaf248918a0.png" 
+            alt="McKaynine" 
+            className="h-8"
+            onClick={() => navigate('/customer/dashboard')} 
+          />
+        </div>
+        <div className="py-4">
+          <nav className="flex flex-col space-y-1 px-2">
+            <Button
+              variant="ghost"
+              className={`justify-start ${isActive('/customer/dashboard') ? 'bg-gray-100' : ''}`}
+              onClick={() => navigate('/customer/dashboard')}
+            >
+              <Home className="mr-2 h-4 w-4" />
+              Dashboard
+            </Button>
             
-            {/* Mobile menu button */}
-            <div className="flex items-center md:hidden">
-              <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-                <SheetTrigger asChild>
-                  <Button variant="ghost" size="icon" className="text-white">
-                    <Menu className="h-6 w-6" />
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="left" className="w-[80%] sm:w-[300px]">
-                  <div className="py-4 flex flex-col h-full">
-                    <div className="px-4 flex items-center justify-between mb-6">
-                      <div className="flex items-center">
-                        <span className="text-lg font-semibold text-mckaynine-700">
-                          McKaynine Portal
-                        </span>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setSidebarOpen(false)}
-                      >
-                        <X className="h-5 w-5" />
-                      </Button>
-                    </div>
-                    <nav className="mt-5 flex-1 px-2 space-y-1">
-                      {navItems.map((item) => (
-                        <Link
-                          key={item.name}
-                          to={item.href}
-                          className="flex items-center px-2 py-2 text-base font-medium rounded-md hover:bg-gray-100"
-                          onClick={() => setSidebarOpen(false)}
-                        >
-                          {item.icon}
-                          {item.name}
-                        </Link>
-                      ))}
-                    </nav>
-                    <div className="mt-auto px-3 pb-3">
-                      <Button
-                        variant="destructive"
-                        className="w-full justify-start"
-                        onClick={handleLogout}
-                      >
-                        <LogOut className="mr-2 h-4 w-4" />
-                        Logout
-                      </Button>
-                    </div>
-                  </div>
-                </SheetContent>
-              </Sheet>
-            </div>
+            <Button
+              variant="ghost"
+              className={`justify-start ${isActive('/customer/profile') ? 'bg-gray-100' : ''}`}
+              onClick={() => navigate('/customer/profile')}
+            >
+              <User className="mr-2 h-4 w-4" />
+              My Profile
+            </Button>
             
-            {/* User dropdown and logout button */}
-            <div className="hidden md:flex md:items-center">
-              <div className="flex items-center">
-                <div className="text-sm text-white mr-4">
-                  <User className="inline-block mr-1 h-4 w-4" />
-                  <span className="hidden sm:inline">{user?.email}</span>
-                </div>
-                <Button
-                  variant="destructive"
-                  onClick={handleLogout}
-                  size="sm"
-                  className="text-white hover:bg-red-700"
-                >
-                  <LogOut className="mr-1 h-4 w-4" />
-                  <span className="hidden sm:inline">Logout</span>
-                </Button>
-              </div>
+            <Button
+              variant="ghost"
+              className={`justify-start ${isActive('/customer/messages') ? 'bg-gray-100' : ''}`}
+              onClick={() => navigate('/customer/messages')}
+            >
+              <MessageSquare className="mr-2 h-4 w-4" />
+              Messages
+            </Button>
+
+            <Button
+              variant="ghost"
+              className={`justify-start ${isActive('/customer/invoices') ? 'bg-gray-100' : ''}`}
+              onClick={() => navigate('/customer/invoices')}
+            >
+              <FileText className="mr-2 h-4 w-4" />
+              Invoices
+            </Button>
+          </nav>
+        </div>
+      </div>
+      
+      {/* Mobile overlay */}
+      <div
+        className={`fixed inset-0 z-40 bg-black/50 transition-opacity duration-300 md:hidden ${
+          sidebarOpen ? 'opacity-100 visible' : 'opacity-0 invisible'
+        }`}
+        onClick={() => setSidebarOpen(false)}
+      ></div>
+      
+      {/* Main Content */}
+      <div className="flex flex-1 flex-col">
+        {/* Header */}
+        <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-white px-4 md:px-6">
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Toggle Menu"
+            className="md:hidden"
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+          >
+            <Menu className="h-6 w-6" />
+          </Button>
+          <div className="w-full flex items-center justify-between">
+            <div className="md:hidden">
+              <img 
+                src="/lovable-uploads/10dc7b2d-7c92-4408-8a71-edaf248918a0.png" 
+                alt="McKaynine" 
+                className="h-8" 
+              />
+            </div>
+            <div className="ml-auto flex items-center gap-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate('/')}
+              >
+                <ExternalLink className="mr-2 h-4 w-4" />
+                Main Website
+              </Button>
+              <UserNav />
             </div>
           </div>
-        </div>
-      </header>
-
-      {/* Main Content - Added width constraint */}
-      <main className="flex-1">
-        <div className="w-[80%] mx-auto">
-          {children}
-        </div>
-      </main>
-      
-      {/* Footer */}
-      <footer className="bg-white border-t border-gray-200 py-4">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <p className="text-center text-sm text-gray-500">
-            &copy; {new Date().getFullYear()} McKaynine Training Centre. All rights reserved.
-          </p>
-        </div>
-      </footer>
+        </header>
+        <main className="container mx-auto">{children}</main>
+      </div>
     </div>
   );
 }

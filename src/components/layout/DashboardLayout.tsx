@@ -1,82 +1,137 @@
-
-import { Header } from "./Header";
-import { useNavigate, useLocation } from "react-router-dom";
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Home, Users, BookOpen, Calendar, GraduationCap, FileText, Menu, ExternalLink } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import { useIsMobile } from "@/hooks/useIsMobile";
+import { UserNav } from "@/components/layout/UserNav";
 import { useAuth } from "@/context/auth";
-import { useEffect } from "react";
-import { Loader2 } from "lucide-react";
 
-interface DashboardLayoutProps {
-  children: React.ReactNode;
-  requireAuth?: boolean;
-}
-
-export function DashboardLayout({ children, requireAuth = true }: DashboardLayoutProps) {
-  const { user, isLoading, role } = useAuth();
+export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
-  
-  // Strict security check
-  useEffect(() => {
-    // Skip if still loading auth state
-    if (isLoading) return;
-    
-    // Debug info
-    console.log("DashboardLayout - Path:", location.pathname, "User:", !!user, "Role:", role);
-    
-    // Require auth check - redirect to login if not authenticated
-    if (requireAuth && !user) {
-      console.log("DashboardLayout - No user, redirecting to /auth");
-      navigate("/auth", { replace: true });
-      return;
-    }
-    
-    // STRICT SECURITY CHECK: Handler access control
-    // Handlers can ONLY access customer paths, redirect them if they try to access staff paths
-    if (user && (role === 'handler' || role === 'user') && requireAuth && 
-        !location.pathname.startsWith("/customer/") && 
-        !location.pathname.startsWith("/auth")) {
-      console.log("DashboardLayout - Handler accessing restricted route, redirecting to /customer/dashboard");
-      navigate("/customer/dashboard", { replace: true });
-    }
-  }, [user, isLoading, navigate, requireAuth, role, location.pathname]);
+  const isMobile = useIsMobile();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Show loading state
-  if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-screen">
-        <Loader2 className="h-12 w-12 animate-spin text-mckaynine-600 mb-4" />
-        <span className="text-lg text-mckaynine-600">Loading...</span>
-      </div>
-    );
-  }
+  const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(`${path}/`);
 
-  // Don't render anything if auth check fails and we're redirecting
-  if (requireAuth && !user) {
-    return null;
-  }
-  
-  // Don't render if handler is trying to access non-customer routes
-  if (requireAuth && user && (role === 'handler' || role === 'user') && !location.pathname.startsWith("/customer/")) {
-    return (
-      <div className="flex flex-col items-center justify-center h-screen">
-        <Loader2 className="h-12 w-12 animate-spin text-mckaynine-600 mb-4" />
-        <span className="text-lg text-mckaynine-600">Redirecting to handler dashboard...</span>
-      </div>
-    );
-  }
-
-  // Render normal layout
   return (
-    <div className="flex flex-col min-h-screen w-full bg-gray-100">
-      {(user || !requireAuth) && <Header />}
+    <div className="flex h-full min-h-screen bg-gray-50">
+      {/* Sidebar for desktop */}
+      <div 
+        className={`fixed inset-y-0 left-0 z-50 w-64 transform bg-white shadow-lg transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <div className="flex h-16 items-center px-4 border-b">
+          <img 
+            src="/lovable-uploads/10dc7b2d-7c92-4408-8a71-edaf248918a0.png" 
+            alt="McKaynine" 
+            className="h-8"
+            onClick={() => navigate('/dashboard')} 
+          />
+        </div>
+        <div className="py-4">
+          <nav className="flex flex-col space-y-1 px-2">
+            <Button
+              variant="ghost"
+              className={`justify-start ${isActive('/dashboard') ? 'bg-gray-100' : ''}`}
+              onClick={() => navigate('/dashboard')}
+            >
+              <Home className="mr-2 h-4 w-4" />
+              Dashboard
+            </Button>
+            
+            <Button
+              variant="ghost"
+              className={`justify-start ${isActive('/handlers') ? 'bg-gray-100' : ''}`}
+              onClick={() => navigate('/handlers')}
+            >
+              <Users className="mr-2 h-4 w-4" />
+              Handlers
+            </Button>
+            
+            <Button
+              variant="ghost"
+              className={`justify-start ${isActive('/classes') ? 'bg-gray-100' : ''}`}
+              onClick={() => navigate('/classes')}
+            >
+              <BookOpen className="mr-2 h-4 w-4" />
+              Classes
+            </Button>
+            
+            <Button
+              variant="ghost"
+              className={`justify-start ${isActive('/class-schedules') ? 'bg-gray-100' : ''}`}
+              onClick={() => navigate('/class-schedules')}
+            >
+              <Calendar className="mr-2 h-4 w-4" />
+              Schedules
+            </Button>
+            
+            <Button
+              variant="ghost"
+              className={`justify-start ${isActive('/trainers') ? 'bg-gray-100' : ''}`}
+              onClick={() => navigate('/trainers')}
+            >
+              <GraduationCap className="mr-2 h-4 w-4" />
+              Trainers
+            </Button>
+            
+            <Button
+              variant="ghost"
+              className={`justify-start ${isActive('/invoices') ? 'bg-gray-100' : ''}`}
+              onClick={() => navigate('/invoices')}
+            >
+              <FileText className="mr-2 h-4 w-4" />
+              Invoices
+            </Button>
+          </nav>
+        </div>
+      </div>
       
-      <main className="flex-1 overflow-y-auto p-4 md:p-6">
-        {children}
-      </main>
+      {/* Mobile overlay */}
+      <div
+        className={`fixed inset-0 z-40 bg-black/50 transition-opacity duration-300 ease-in-out md:hidden ${
+          sidebarOpen ? 'opacity-100 visible' : 'opacity-0 invisible'
+        }`}
+        onClick={() => setSidebarOpen(false)}
+      ></div>
       
-      <footer className="border-t py-4 px-6 text-center text-sm text-gray-500">
-        © {new Date().getFullYear()} McKaynine Training Centre
-      </footer>
+      {/* Main Content */}
+      <div className="flex flex-1 flex-col">
+        <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-white px-4 md:px-6">
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Toggle Menu"
+            className="md:hidden"
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+          >
+            <Menu className="h-6 w-6" />
+          </Button>
+          <div className="w-full flex items-center justify-between">
+            <div className="md:hidden">
+              <img 
+                src="/lovable-uploads/10dc7b2d-7c92-4408-8a71-edaf248918a0.png" 
+                alt="McKaynine" 
+                className="h-8" 
+              />
+            </div>
+            <div className="ml-auto flex items-center gap-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate('/')}
+              >
+                <ExternalLink className="mr-2 h-4 w-4" />
+                Main Website
+              </Button>
+              <UserNav />
+            </div>
+          </div>
+        </header>
+        <main className="flex-1">{children}</main>
+      </div>
     </div>
   );
 }

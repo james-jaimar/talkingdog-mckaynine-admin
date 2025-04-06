@@ -1,43 +1,53 @@
 
-import { Link } from "react-router-dom";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+// Import statements stay the same
 import { Badge } from "@/components/ui/badge";
-import { MessageSquare } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { MessageSquare, FileText } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 interface MessagesCardProps {
-  unreadMessageCount: number;
+  unreadMessageCount?: number;
 }
 
-export function MessagesCard({ unreadMessageCount }: MessagesCardProps) {
+export function MessagesCard({ unreadMessageCount = 0 }: MessagesCardProps) {
+  const navigate = useNavigate();
+
   return (
-    <Card className="h-full">
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center text-lg">
-          <MessageSquare className="h-4 w-4 mr-2 text-mckaynine-600" />
-          Messages
-          {unreadMessageCount > 0 && (
-            <Badge variant="destructive" className="ml-2 px-1.5 py-0.5">
-              {unreadMessageCount} new
-            </Badge>
-          )}
-        </CardTitle>
-        <CardDescription>View your conversations</CardDescription>
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-lg">Communication</CardTitle>
+        <CardDescription>Messages and invoices</CardDescription>
       </CardHeader>
-      <CardContent>
-        {unreadMessageCount > 0 ? (
-          <p className="text-gray-700">You have {unreadMessageCount} unread {unreadMessageCount === 1 ? 'message' : 'messages'}</p>
-        ) : (
-          <p className="text-gray-500">No unread messages</p>
-        )}
-        <div className="mt-4">
+      <CardContent className="space-y-4">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center">
+            <MessageSquare className="h-5 w-5 text-blue-600 mr-2" />
+            <span className="font-medium">Messages</span>
+            {unreadMessageCount > 0 && (
+              <Badge className="ml-2 bg-blue-600">{unreadMessageCount}</Badge>
+            )}
+          </div>
           <Button 
-            variant={unreadMessageCount > 0 ? "default" : "outline"} 
+            variant="ghost" 
             size="sm" 
-            className={unreadMessageCount > 0 ? "bg-mckaynine-600 hover:bg-mckaynine-700" : ""}
-            asChild
+            onClick={() => navigate('/customer/messages')}
           >
-            <Link to="/customer/messages">View Messages</Link>
+            View
+          </Button>
+        </div>
+        
+        <div className="flex justify-between items-center">
+          <div className="flex items-center">
+            <FileText className="h-5 w-5 text-green-600 mr-2" />
+            <span className="font-medium">Invoices</span>
+          </div>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => navigate('/customer/invoices')}
+          >
+            View
           </Button>
         </div>
       </CardContent>

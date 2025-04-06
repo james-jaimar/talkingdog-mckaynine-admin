@@ -4,6 +4,8 @@ import RequireAuth from "@/components/auth/RequireAuth";
 import CustomerDashboard from "@/pages/CustomerDashboard";
 import CustomerProfile from "@/pages/CustomerProfile";
 import CustomerMessages from "@/pages/CustomerMessages";
+import CustomerInvoices from "@/pages/CustomerInvoices";
+import CustomerInvoiceDetail from "@/pages/CustomerInvoiceDetail";
 
 export const customerRoutes = [
   {
@@ -27,6 +29,22 @@ export const customerRoutes = [
     element: (
       <RequireAuth>
         <CustomerMessages />
+      </RequireAuth>
+    ),
+  },
+  {
+    path: "/customer/invoices",
+    element: (
+      <RequireAuth>
+        <CustomerInvoices />
+      </RequireAuth>
+    ),
+  },
+  {
+    path: "/customer/invoices/:id",
+    element: (
+      <RequireAuth>
+        <CustomerInvoiceDetail />
       </RequireAuth>
     ),
   },

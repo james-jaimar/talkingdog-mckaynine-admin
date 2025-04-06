@@ -654,6 +654,122 @@ export type Database = {
           },
         ]
       }
+      invoice_items: {
+        Row: {
+          amount: number
+          booking_id: string | null
+          created_at: string
+          description: string
+          id: string
+          invoice_id: string
+          quantity: number
+          unit_price: number
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          booking_id?: string | null
+          created_at?: string
+          description: string
+          id?: string
+          invoice_id: string
+          quantity?: number
+          unit_price: number
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          booking_id?: string | null
+          created_at?: string
+          description?: string
+          id?: string
+          invoice_id?: string
+          quantity?: number
+          unit_price?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_items_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_items_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoices: {
+        Row: {
+          client_id: string
+          created_at: string
+          due_date: string
+          email_sent: boolean | null
+          id: string
+          invoice_number: string
+          issued_date: string
+          notes: string | null
+          payment_date: string | null
+          payment_received: boolean | null
+          status: string
+          subtotal: number
+          tax_amount: number
+          tax_rate: number
+          total: number
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          due_date: string
+          email_sent?: boolean | null
+          id?: string
+          invoice_number: string
+          issued_date?: string
+          notes?: string | null
+          payment_date?: string | null
+          payment_received?: boolean | null
+          status?: string
+          subtotal?: number
+          tax_amount?: number
+          tax_rate?: number
+          total?: number
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          due_date?: string
+          email_sent?: boolean | null
+          id?: string
+          invoice_number?: string
+          issued_date?: string
+          notes?: string | null
+          payment_date?: string | null
+          payment_received?: boolean | null
+          status?: string
+          subtotal?: number
+          tax_amount?: number
+          tax_rate?: number
+          total?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
