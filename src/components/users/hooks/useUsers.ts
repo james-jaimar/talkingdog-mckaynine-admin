@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { UserProfile } from "../types/userTypes";
 
+// Extend UserProfile to ensure email is required
 export type User = UserProfile & {
   email: string; // Make email required for User type
 };

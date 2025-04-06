@@ -86,9 +86,11 @@ export default function UserAdmin() {
             users={users.map(profile => ({
               id: profile.id,
               email: profile.username || '',
+              username: profile.username || '', // Add username
               full_name: profile.full_name || '',
               role: profile.role || 'user',
               created_at: profile.created_at,
+              avatar_url: profile.avatar_url, // Add avatar_url
               isCurrentUser: profile.id === currentUser?.id
             }))} 
             onRefresh={handleRefresh} 
