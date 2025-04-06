@@ -10,6 +10,62 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { ExtendedBadge } from "@/components/ui/badge-variants";
 
+// Move the hook outside of component function
+const useHandlerInvoiceStatus = (clientId) => {
+  return useQuery({
+    queryKey: ['handler-invoice-status', clientId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('invoices')
+        .select('id, status, payment_received')
+        .eq('client_id', clientId)
+        .order('created_at', { ascending: false })
+        .limit(5);
+      
+      if (error) throw error;
+      
+      if (!data || data.length === 0) return { hasInvoices: false };
+      
+      const unpaidInvoices = data.filter(inv => 
+        !inv.payment_received && inv.status !== 'cancelled'
+      );
+      
+      return { 
+        hasInvoices: true,
+        hasUnpaidInvoices: unpaidInvoices.length > 0,
+        invoiceCount: data.length,
+        unpaidCount: unpaidInvoices.length
+      };
+    },
+    enabled: !!clientId,
+  });
+};
+
+// Create a component for the invoice status cell to properly use the hook
+const InvoiceStatusCell = ({ clientId }) => {
+  const { data: invoiceStatus, isLoading: isLoadingInvoices } = useHandlerInvoiceStatus(clientId);
+  
+  if (isLoadingInvoices) {
+    return <Skeleton className="h-5 w-12" />;
+  }
+  
+  if (!invoiceStatus?.hasInvoices) {
+    return "—";
+  }
+  
+  return (
+    <div className="flex items-center space-x-1">
+      <FileText className="h-3.5 w-3.5 text-gray-500" />
+      <span className="text-sm">{invoiceStatus.invoiceCount}</span>
+      {invoiceStatus.hasUnpaidInvoices && (
+        <ExtendedBadge variant="warning" className="text-xs ml-1 px-1.5">
+          {invoiceStatus.unpaidCount} unpaid
+        </ExtendedBadge>
+      )}
+    </div>
+  );
+};
+
 export function HandlerTable({ 
   handlers, 
   searchQuery,
@@ -28,37 +84,6 @@ export function HandlerTable({
     const end = start + itemsPerPage;
     return handlers.slice(start, end);
   }, [handlers, page, itemsPerPage]);
-
-  // Function to check if a handler has unpaid invoices
-  const useHandlerInvoiceStatus = (clientId) => {
-    return useQuery({
-      queryKey: ['handler-invoice-status', clientId],
-      queryFn: async () => {
-        const { data, error } = await supabase
-          .from('invoices')
-          .select('id, status, payment_received')
-          .eq('client_id', clientId)
-          .order('created_at', { ascending: false })
-          .limit(5);
-        
-        if (error) throw error;
-        
-        if (!data || data.length === 0) return { hasInvoices: false };
-        
-        const unpaidInvoices = data.filter(inv => 
-          !inv.payment_received && inv.status !== 'cancelled'
-        );
-        
-        return { 
-          hasInvoices: true,
-          hasUnpaidInvoices: unpaidInvoices.length > 0,
-          invoiceCount: data.length,
-          unpaidCount: unpaidInvoices.length
-        };
-      },
-      enabled: !!clientId,
-    });
-  };
 
   // Return loading state if data is loading
   if (loading) {
@@ -117,61 +142,45 @@ export function HandlerTable({
                 </TableCell>
               </TableRow>
             ) : (
-              currentHandlers.map((handler) => {
-                const { data: invoiceStatus, isLoading: isLoadingInvoices } = useHandlerInvoiceStatus(handler.id);
-                
-                return (
-                  <TableRow key={handler.id}>
-                    <TableCell className="font-medium">
-                      {handler.first_name} {handler.last_name}
-                    </TableCell>
-                    <TableCell>{handler.email}</TableCell>
-                    <TableCell>{handler.phone || "—"}</TableCell>
-                    <TableCell>
-                      {handler.dogs?.length > 0 ? (
-                        <span className="text-sm bg-gray-100 py-0.5 px-2 rounded-full">
-                          {handler.dogs.length}
-                        </span>
-                      ) : "—"}
-                    </TableCell>
-                    <TableCell>
-                      {isLoadingInvoices ? (
-                        <Skeleton className="h-5 w-12" />
-                      ) : invoiceStatus?.hasInvoices ? (
-                        <div className="flex items-center space-x-1">
-                          <FileText className="h-3.5 w-3.5 text-gray-500" />
-                          <span className="text-sm">{invoiceStatus.invoiceCount}</span>
-                          {invoiceStatus.hasUnpaidInvoices && (
-                            <ExtendedBadge variant="warning" className="text-xs ml-1 px-1.5">
-                              {invoiceStatus.unpaidCount} unpaid
-                            </ExtendedBadge>
-                          )}
-                        </div>
-                      ) : "—"}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end space-x-1">
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => navigate(`/handlers/${handler.id}`)}
-                          className="h-8 w-8 p-0"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => navigate(`/handlers/${handler.id}`)}
-                          className="h-8 w-8 p-0"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })
+              currentHandlers.map((handler) => (
+                <TableRow key={handler.id}>
+                  <TableCell className="font-medium">
+                    {handler.first_name} {handler.last_name}
+                  </TableCell>
+                  <TableCell>{handler.email}</TableCell>
+                  <TableCell>{handler.phone || "—"}</TableCell>
+                  <TableCell>
+                    {handler.dogs?.length > 0 ? (
+                      <span className="text-sm bg-gray-100 py-0.5 px-2 rounded-full">
+                        {handler.dogs.length}
+                      </span>
+                    ) : "—"}
+                  </TableCell>
+                  <TableCell>
+                    <InvoiceStatusCell clientId={handler.id} />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end space-x-1">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => navigate(`/handlers/${handler.id}`)}
+                        className="h-8 w-8 p-0"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => navigate(`/handlers/${handler.id}`)}
+                        className="h-8 w-8 p-0"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
             )}
           </TableBody>
         </Table>
