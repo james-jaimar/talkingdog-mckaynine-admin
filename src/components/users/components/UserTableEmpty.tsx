@@ -6,10 +6,10 @@ interface UserTableEmptyProps {
   users: any[];
   filteredUsers: any[];
   filter: string;
-  isLoading: boolean;
+  isLoading?: boolean; // Make isLoading optional
 }
 
-export function UserTableEmpty({ users, filteredUsers, filter, isLoading }: UserTableEmptyProps) {
+export function UserTableEmpty({ users, filteredUsers, filter, isLoading = false }: UserTableEmptyProps) {
   if (isLoading) {
     return (
       <TableRow>

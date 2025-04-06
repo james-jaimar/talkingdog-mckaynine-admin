@@ -9,7 +9,9 @@ export type User = {
   role: string;
   full_name: string;
   created_at: string;
-  isCurrentUser?: boolean; // Adding the missing property
+  isCurrentUser?: boolean;
+  username?: string;
+  avatar_url?: string | null;
 };
 
 export function useUsers() {
@@ -34,7 +36,8 @@ export function useUsers() {
           username,
           role,
           full_name,
-          created_at
+          created_at,
+          avatar_url
         `)
         .order('created_at', { ascending: false });
 
@@ -44,9 +47,11 @@ export function useUsers() {
       const formattedUsers: User[] = data.map(user => ({
         id: user.id,
         email: user.username || '',  // Email is stored in username field
+        username: user.username || '',
         role: user.role || 'user',
         full_name: user.full_name || '',
         created_at: user.created_at || new Date().toISOString(),
+        avatar_url: user.avatar_url,
         isCurrentUser: user.id === currentUser?.id // Add the isCurrentUser flag
       }));
       

@@ -1,13 +1,13 @@
 
 import { useState } from "react";
 import { Table, TableBody, TableHeader } from "@/components/ui/table";
-import { UserTableHeader } from "./components/UserTableHeader";
-import { UserTableRow } from "./components/UserTableRow";
-import { UserTableEmpty } from "./components/UserTableEmpty";
-import { UserManageDialog } from "./UserManageDialog";
-import { UserPasswordResetDialog } from "./UserPasswordResetDialog";
-import { AddUserDialog } from "./AddUserDialog";
-import { useUsers, User } from "./hooks/useUsers";
+import { UserTableHeader } from "../components/UserTableHeader";
+import { UserTableRow } from "../components/UserTableRow";
+import { UserTableEmpty } from "../components/UserTableEmpty";
+import { UserManageDialog } from "../UserManageDialog";
+import { UserPasswordResetDialog } from "../UserPasswordResetDialog";
+import { AddUserDialog } from "../AddUserDialog";
+import { useUsers, User } from "../hooks/useUsers";
 
 export function UserTable() {
   const { users, isLoading, refetchUsers } = useUsers();
