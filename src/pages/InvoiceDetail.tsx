@@ -1,65 +1,22 @@
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Helmet } from "react-helmet";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency, formatDate } from "@/lib/formatters";
-import { Edit, ArrowLeft, Loader2, Mail } from "lucide-react";
+import { Edit, ArrowLeft, Loader2, Mail, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { InvoiceStatus } from "@/types/invoice";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useInvoiceDetails } from "@/hooks/invoices/useInvoiceQueries";
 
 export default function InvoiceDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  const { data: invoice, isLoading } = useQuery({
-    queryKey: ['invoice', id],
-    queryFn: async () => {
-      // First get the invoice data
-      const { data: invoiceData, error: invoiceError } = await supabase
-        .from('invoices')
-        .select('*')
-        .eq('id', id)
-        .single();
-
-      if (invoiceError) {
-        throw invoiceError;
-      }
-
-      // Get client information
-      const { data: clientData, error: clientError } = await supabase
-        .from('clients')
-        .select('id, first_name, last_name, email, phone, address, city, postal_code')
-        .eq('id', invoiceData.client_id)
-        .single();
-
-      if (clientError) {
-        throw clientError;
-      }
-
-      // Get invoice items
-      const { data: itemsData, error: itemsError } = await supabase
-        .from('invoice_items')
-        .select('*')
-        .eq('invoice_id', invoiceData.id);
-
-      if (itemsError) {
-        throw itemsError;
-      }
-
-      // Combine all data
-      return {
-        ...invoiceData,
-        client: clientData,
-        items: itemsData || []
-      };
-    },
-    enabled: !!id,
-  });
+  const { data: invoice, isLoading, error } = useInvoiceDetails(id);
 
   useEffect(() => {
     if (!id) {
@@ -76,7 +33,7 @@ export default function InvoiceDetail() {
   return (
     <DashboardLayout>
       <Helmet>
-        <title>{invoice?.invoice_number} - McKaynine Training Centre</title>
+        <title>{invoice?.invoice_number || 'Invoice Detail'} - McKaynine Training Centre</title>
       </Helmet>
 
       <div className="container mx-auto py-6">
@@ -86,10 +43,10 @@ export default function InvoiceDetail() {
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to Invoices
             </Button>
-            <h1 className="text-2xl font-bold">{invoice?.invoice_number}</h1>
+            <h1 className="text-2xl font-bold">{invoice?.invoice_number || 'Invoice Detail'}</h1>
           </div>
           <div>
-            {canEdit && (
+            {canEdit && invoice && (
               <Button variant="outline" onClick={() => navigate(`/invoices/${id}/edit`)}>
                 <Edit className="mr-2 h-4 w-4" />
                 Edit Invoice
@@ -103,7 +60,21 @@ export default function InvoiceDetail() {
             <Loader2 className="mr-2 h-6 w-6 animate-spin" />
             <span>Loading invoice details...</span>
           </div>
-        ) : invoice ? (
+        ) : error ? (
+          <Alert variant="destructive" className="mb-6">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>
+              Failed to load invoice details. Please try again later.
+            </AlertDescription>
+          </Alert>
+        ) : !invoice ? (
+          <div className="flex flex-col items-center justify-center h-48">
+            <AlertCircle className="h-8 w-8 text-amber-500 mb-2" />
+            <h2 className="text-xl font-semibold mb-2">Invoice not found</h2>
+            <p className="text-gray-600">The invoice you're looking for might have been deleted or doesn't exist.</p>
+          </div>
+        ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
               <Card>
@@ -164,14 +135,20 @@ export default function InvoiceDetail() {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {invoice.items?.map(item => (
+                        {invoice.items?.length > 0 ? invoice.items.map(item => (
                           <tr key={item.id}>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.description}</td>
                             <td className="px-6 py-4 text-right whitespace-nowrap text-sm text-gray-500">{item.quantity}</td>
                             <td className="px-6 py-4 text-right whitespace-nowrap text-sm text-gray-500">{formatCurrency(item.unit_price)}</td>
                             <td className="px-6 py-4 text-right whitespace-nowrap text-sm text-gray-500">{formatCurrency(item.amount)}</td>
                           </tr>
-                        ))}
+                        )) : (
+                          <tr>
+                            <td colSpan={4} className="px-6 py-4 text-center text-sm text-gray-500">
+                              No items found for this invoice.
+                            </td>
+                          </tr>
+                        )}
                       </tbody>
                     </table>
                   </div>
@@ -200,7 +177,7 @@ export default function InvoiceDetail() {
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="mt-6">
                 <CardHeader>
                   <CardTitle>Actions</CardTitle>
                 </CardHeader>
@@ -213,8 +190,6 @@ export default function InvoiceDetail() {
               </Card>
             </div>
           </div>
-        ) : (
-          <div>Invoice not found.</div>
         )}
       </div>
     </DashboardLayout>

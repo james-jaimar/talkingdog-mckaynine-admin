@@ -16,7 +16,10 @@ export function useInvoicesList() {
         `)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching invoices:", error);
+        throw error;
+      }
       
       return data as Invoice[];
     },
@@ -28,41 +31,59 @@ export function useInvoiceDetails(invoiceId: string | undefined) {
   return useQuery({
     queryKey: ['invoice', invoiceId],
     queryFn: async () => {
-      const { data: invoice, error: invoiceError } = await supabase
-        .from('invoices')
-        .select(`
-          *,
-          clients:client_id (id, first_name, last_name, email, phone)
-        `)
-        .eq('id', invoiceId)
-        .single();
+      try {
+        // First get the invoice data
+        const { data: invoice, error: invoiceError } = await supabase
+          .from('invoices')
+          .select(`
+            *,
+            clients:client_id (id, first_name, last_name, email, phone, address, city, postal_code)
+          `)
+          .eq('id', invoiceId)
+          .single();
 
-      if (invoiceError) throw invoiceError;
+        if (invoiceError) {
+          console.error("Error fetching invoice:", invoiceError);
+          throw invoiceError;
+        }
 
-      const { data: items, error: itemsError } = await supabase
-        .from('invoice_items')
-        .select(`
-          *,
-          bookings:booking_id (
-            id, 
-            class_schedule_id,
-            dogs:dog_id (
+        if (!invoice) {
+          throw new Error("Invoice not found");
+        }
+
+        // Then get the invoice items
+        const { data: items, error: itemsError } = await supabase
+          .from('invoice_items')
+          .select(`
+            *,
+            bookings:booking_id (
               id, 
-              name
+              class_schedule_id,
+              dogs:dog_id (
+                id, 
+                name
+              )
             )
-          )
-        `)
-        .eq('invoice_id', invoiceId)
-        .order('created_at', { ascending: true });
+          `)
+          .eq('invoice_id', invoiceId)
+          .order('created_at', { ascending: true });
 
-      if (itemsError) throw itemsError;
+        if (itemsError) {
+          console.error("Error fetching invoice items:", itemsError);
+          throw itemsError;
+        }
 
-      return {
-        ...invoice,
-        items: items
-      } as Invoice;
+        return {
+          ...invoice,
+          items: items || []
+        } as Invoice;
+      } catch (error) {
+        console.error("Error in useInvoiceDetails:", error);
+        throw error;
+      }
     },
     enabled: !!invoiceId,
+    retry: 1, // Only retry once to prevent excessive errors
   });
 }
 
@@ -77,7 +98,10 @@ export function useClientInvoices(clientId: string | undefined) {
         .eq('client_id', clientId)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching client invoices:", error);
+        throw error;
+      }
       
       return data as Invoice[];
     },
