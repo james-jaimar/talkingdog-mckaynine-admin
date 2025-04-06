@@ -9,8 +9,9 @@ import { BookingToInvoice } from "@/components/invoices/BookingToInvoice";
 import { useInvoices } from "@/hooks/useInvoices";
 import { Client } from "@/hooks/useClientsData";
 import { format } from "date-fns";
-import { FilePlus, Loader2, Eye } from "lucide-react";
+import { FilePlus, Loader2, Eye, PlusCircle } from "lucide-react";
 import { formatCurrency } from "@/lib/formatters";
+import { CreateCustomInvoice } from "./CreateCustomInvoice";
 
 interface HandlerInvoicesProps {
   clientData: Client;
@@ -19,6 +20,7 @@ interface HandlerInvoicesProps {
 export function HandlerInvoices({ clientData }: HandlerInvoicesProps) {
   const navigate = useNavigate();
   const [createInvoiceOpen, setCreateInvoiceOpen] = useState(false);
+  const [createCustomInvoiceOpen, setCreateCustomInvoiceOpen] = useState(false);
   const { useClientInvoices } = useInvoices();
   const { data: invoices, isLoading, refetch } = useClientInvoices(clientData?.id);
 
@@ -46,10 +48,25 @@ export function HandlerInvoices({ clientData }: HandlerInvoicesProps) {
           <CardTitle>Invoices</CardTitle>
           <CardDescription>View and manage client invoices</CardDescription>
         </div>
-        <Button size="sm" onClick={() => setCreateInvoiceOpen(true)}>
-          <FilePlus className="mr-2 h-4 w-4" />
-          Generate Invoice
-        </Button>
+        <div className="flex space-x-2">
+          <Button 
+            size="sm" 
+            onClick={() => setCreateInvoiceOpen(true)}
+            className="flex items-center"
+          >
+            <FilePlus className="mr-2 h-4 w-4" />
+            Class Invoice
+          </Button>
+          <Button 
+            size="sm"
+            variant="outline"
+            onClick={() => setCreateCustomInvoiceOpen(true)}
+            className="flex items-center"
+          >
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Custom Invoice
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
         <div className="rounded-md border">
@@ -110,6 +127,14 @@ export function HandlerInvoices({ clientData }: HandlerInvoicesProps) {
         open={createInvoiceOpen} 
         onOpenChange={setCreateInvoiceOpen} 
         clientId={clientData?.id} 
+        onSuccess={refetch}
+      />
+
+      <CreateCustomInvoice
+        open={createCustomInvoiceOpen}
+        onOpenChange={setCreateCustomInvoiceOpen}
+        clientId={clientData?.id}
+        clientName={`${clientData?.first_name} ${clientData?.last_name}`}
         onSuccess={refetch}
       />
     </Card>
