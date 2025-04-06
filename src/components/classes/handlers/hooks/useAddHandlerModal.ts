@@ -69,18 +69,19 @@ export function useAddHandlerModal({
     dogName: string
   ) => {
     try {
-      // Generate invoice number, with fallback handling
+      // Generate invoice number, with improved fallback handling
       let invoiceNumber;
       try {
         invoiceNumber = await generateInvoiceNumber();
       } catch (error) {
-        console.error("Error generating sequential invoice number, using fallback:", error);
-        // Create a fallback invoice number based on timestamp
+        console.error("Error generating invoice number, using simple fallback:", error);
+        // Create a fallback invoice number based on timestamp and random value
         const now = new Date();
         const year = now.getFullYear();
         const month = String(now.getMonth() + 1).padStart(2, '0');
         const timestamp = now.getTime();
-        invoiceNumber = `INV-${year}${month}-${timestamp.toString().slice(-6)}`;
+        const random = Math.floor(Math.random() * 10000);
+        invoiceNumber = `INV-${year}${month}-FB${timestamp.toString().slice(-4)}${random}`;
       }
       
       console.log("Generated invoice number:", invoiceNumber);
@@ -102,7 +103,7 @@ export function useAddHandlerModal({
         }],
       };
       
-      // Attempt to create the invoice
+      // Attempt to create the invoice through the mutation
       try {
         await createInvoice.mutateAsync(invoiceData);
         console.log("Invoice created successfully for handler:", handlerId);
@@ -139,32 +140,41 @@ export function useAddHandlerModal({
             .select('id')
             .single();
           
-          if (directError) throw directError;
+          if (directError) {
+            console.error("Direct invoice creation error:", directError);
+            // We'll continue even if the invoice creation fails
+            // The booking will still be created, just without an invoice
+            return false;
+          }
           
-          // Insert invoice item directly
-          const { error: itemError } = await supabase
-            .from('invoice_items')
-            .insert({
-              invoice_id: invoice.id,
-              description: `${className} training class for ${dogName}`,
-              quantity: 1,
-              unit_price: classPrice,
-              amount: classPrice,
-              booking_id: bookingId
-            });
-          
-          if (itemError) throw itemError;
+          // Insert invoice item if invoice was created
+          if (invoice) {
+            const { error: itemError } = await supabase
+              .from('invoice_items')
+              .insert({
+                invoice_id: invoice.id,
+                description: `${className} training class for ${dogName}`,
+                quantity: 1,
+                unit_price: classPrice,
+                amount: classPrice,
+                booking_id: bookingId
+              });
+            
+            if (itemError) {
+              console.error("Error creating invoice item:", itemError);
+            }
+          }
           
           console.log("Invoice created via direct insertion");
           return true;
         } catch (directError) {
-          console.error("Direct invoice creation also failed:", directError);
-          // Both methods failed, throw the original error
-          throw invoiceError;
+          console.error("All invoice creation methods failed:", directError);
+          // Both methods failed, but we don't want to block the booking
+          return false;
         }
       }
     } catch (error) {
-      console.error("Error creating invoice:", error);
+      console.error("Error in invoice creation process:", error);
       return false;
     }
   };
@@ -242,14 +252,14 @@ export function useAddHandlerModal({
         .single();
       
       if (error) {
-        console.error("Error details:", error);
+        console.error("Error creating booking:", error);
         throw error;
       }
 
       // Get dog name for the invoice
       const dogName = await fetchDogName(dogId);
       
-      // Create an invoice for this booking
+      // Create an invoice for this booking, but don't block if it fails
       const invoiceCreated = await createInvoiceForHandler(
         handlerId, 
         dogId, 
@@ -259,12 +269,7 @@ export function useAddHandlerModal({
         dogName
       );
       
-      if (!invoiceCreated) {
-        console.warn("Invoice could not be created, but booking was successful");
-        // Continue execution as booking was successful even if invoice creation failed
-      }
-      
-      // Invalidate both handlers data and class-handlers data
+      // Invalidate relevant queries to refresh data
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["handlers"] }),
         queryClient.invalidateQueries({ queryKey: ["class-handlers", classId] }),

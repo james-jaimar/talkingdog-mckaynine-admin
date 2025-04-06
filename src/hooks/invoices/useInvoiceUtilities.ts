@@ -4,6 +4,7 @@ import { format } from "date-fns";
 
 /**
  * Generates a sequential invoice number with year and month prefix
+ * with multiple fallback mechanisms for resilience
  */
 export const generateInvoiceNumber = async (): Promise<string> => {
   try {
@@ -21,7 +22,7 @@ export const generateInvoiceNumber = async (): Promise<string> => {
         .like('invoice_number', `INV-${yearMonth}-%`);
         
       if (error) {
-        console.warn("Permission error checking existing invoices, using fallback method:", error);
+        console.warn("Error checking existing invoices, using fallback method:", error);
         // Will use fallback below
       } else {
         count = resultCount;
@@ -34,7 +35,7 @@ export const generateInvoiceNumber = async (): Promise<string> => {
     // If we couldn't get the count (e.g., due to permissions), use a timestamp-based approach
     if (count === null) {
       // Use current timestamp milliseconds as part of the number to ensure uniqueness
-      const timestamp = new Date().getTime();
+      const timestamp = now.getTime();
       const randomPart = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
       return `INV-${yearMonth}-T${timestamp.toString().slice(-4)}${randomPart}`;
     }
@@ -49,10 +50,11 @@ export const generateInvoiceNumber = async (): Promise<string> => {
   } catch (error) {
     console.error("Error generating invoice number:", error);
     
-    // Ultimate fallback - timestamp-based number
+    // Ultimate fallback - timestamp-based number with random component
     const now = new Date();
     const yearMonth = format(now, "yyyyMM");
     const timestamp = now.getTime();
-    return `INV-${yearMonth}-ERR${timestamp.toString().slice(-5)}`;
+    const randomPart = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    return `INV-${yearMonth}-ERR${timestamp.toString().slice(-3)}${randomPart}`;
   }
 };
