@@ -21,10 +21,12 @@ export function useFetchUsers() {
           
         console.log(`Total profile count from database: ${totalProfileCount || 0}`);
         
-        // Get all profiles from the profiles table - explicitly select all columns with no filters
+        // Get all profiles from the profiles table - explicitly select all columns
         const { data: profiles, error: profilesError } = await supabase
           .from('profiles')
-          .select('*');
+          .select('*')
+          // Don't use order here as we want ALL profiles
+          .limit(100); // Add a reasonable limit
         
         if (profilesError) {
           console.error("Error fetching profiles:", profilesError);
@@ -75,8 +77,8 @@ export function useFetchUsers() {
         throw error;
       }
     },
-    staleTime: 0,
-    gcTime: 0,
+    staleTime: 0, // Don't cache data
+    gcTime: 0,    // Don't keep old data
     refetchOnWindowFocus: true,
   });
 }

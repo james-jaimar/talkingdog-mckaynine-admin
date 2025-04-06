@@ -49,13 +49,14 @@ export function useUserRoleManagement() {
         description: `User role has been updated to ${variables.role} successfully.`,
       });
       
-      // Force full refresh of all user queries
+      // Force invalidate all user queries to ensure fresh data
       queryClient.invalidateQueries({ queryKey: ['users-admin'] });
+      queryClient.invalidateQueries({ queryKey: ['users'] });
       
-      // Ensure the changes are immediately visible
+      // Ensure the changes are immediately visible with a forced refetch
       setTimeout(() => {
         queryClient.refetchQueries({ queryKey: ['users-admin'] });
-      }, 300);
+      }, 500); // Longer delay to ensure DB changes are visible
     },
     onError: (error) => {
       toast({

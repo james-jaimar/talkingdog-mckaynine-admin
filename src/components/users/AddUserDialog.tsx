@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -28,7 +29,7 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
   const [role, setRole] = useState("user");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
-  const queryClient = useQueryClient(); // Use the hook directly
+  const queryClient = useQueryClient();
 
   const handleAddUser = async () => {
     if (!email || !password) {
@@ -134,14 +135,15 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
       // Close dialog
       onOpenChange(false);
       
-      // Invalidate queries to refresh user lists
-      if (queryClient) {
-        queryClient.invalidateQueries({ queryKey: ['users-admin'] });
-        queryClient.invalidateQueries({ queryKey: ['users'] });
-      } else {
-        // Fallback to the provided callback
-        onUserAdded();
-      }
+      // Force invalidate and refetch ALL user-related queries to refresh lists
+      queryClient.invalidateQueries({ queryKey: ['users-admin'] });
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      
+      // Add a small delay before refetching to ensure DB changes are visible
+      setTimeout(() => {
+        queryClient.refetchQueries({ queryKey: ['users-admin'] });
+        onUserAdded(); // Call the callback as a backup
+      }, 500);
       
     } catch (error: any) {
       console.error("Error adding user:", error);
