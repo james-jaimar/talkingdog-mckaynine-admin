@@ -41,7 +41,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { format } from "date-fns";
-import { Search, RefreshCw, MoreHorizontal, Key, User, UserPlus } from "lucide-react";
+import { Search, RefreshCw, MoreHorizontal, Key, User, UserPlus, Loader2 } from "lucide-react";
 import { AddUserDialog } from "./AddUserDialog";
 
 export function AdminUsersList() {
