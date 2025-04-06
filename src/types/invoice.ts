@@ -24,6 +24,9 @@ export interface Invoice {
     last_name: string;
     email: string;
     phone: string | null;
+    address?: string | null;
+    city?: string | null;
+    postal_code?: string | null;
   };
   items?: InvoiceItem[];
 }

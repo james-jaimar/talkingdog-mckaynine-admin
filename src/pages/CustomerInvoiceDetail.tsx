@@ -1,243 +1,190 @@
-
-import { useParams, useNavigate } from "react-router-dom";
-import { CustomerDashboardLayout } from "@/components/layout/CustomerDashboardLayout";
+import { useEffect } from "react";
+import { useParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Helmet } from "react-helmet";
-import { useInvoices } from "@/hooks/useInvoices";
-import { Card, CardContent } from "@/components/ui/card";
+import { formatCurrency, formatDate } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
-import { format } from "date-fns";
-import { ArrowLeft, Printer, Download, Loader2 } from "lucide-react";
-import { formatCurrency } from "@/lib/formatters";
+import { ArrowLeft, Loader2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { InvoiceStatus } from "@/types/invoice";
 
 export default function CustomerInvoiceDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { useInvoiceDetails } = useInvoices();
-  const { data: invoice, isLoading, isError } = useInvoiceDetails(id);
 
-  const handlePrint = () => {
-    window.print();
-  };
+  const { data: invoice, isLoading } = useQuery({
+    queryKey: ["invoice", id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("invoices")
+        .select(
+          `
+          *,
+          client (
+            id,
+            first_name,
+            last_name,
+            email,
+            phone
+          ),
+          items (
+            id,
+            description,
+            quantity,
+            unit_price,
+            amount
+          )
+        `
+        )
+        .eq("id", id)
+        .single();
 
-  const getStatusClassName = (status: string | undefined) => {
-    if (!status) return "bg-gray-100 text-gray-800";
-    
-    switch (status) {
-      case 'draft': return "bg-gray-100 text-gray-800";
-      case 'sent': return "bg-blue-100 text-blue-800";
-      case 'paid': return "bg-green-100 text-green-800";
-      case 'overdue': return "bg-red-100 text-red-800";
-      case 'cancelled': return "bg-gray-100 text-gray-800";
-      default: return "bg-gray-100 text-gray-800";
-    }
+      if (error) {
+        throw error;
+      }
+
+      return data;
+    },
+    enabled: !!id,
+  });
+
+  const statusColors: { [key in InvoiceStatus]: string } = {
+    draft: "bg-gray-100 text-gray-700",
+    sent: "bg-blue-100 text-blue-700",
+    paid: "bg-green-100 text-green-700",
+    overdue: "bg-red-100 text-red-700",
+    cancelled: "bg-gray-400 text-gray-900",
   };
 
   if (isLoading) {
     return (
-      <CustomerDashboardLayout>
-        <div className="py-6">
-          <div className="flex items-center justify-center h-64">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <span className="ml-2">Loading invoice...</span>
-          </div>
+      <DashboardLayout>
+        <div className="w-full py-6 flex justify-center">
+          <Loader2 className="h-6 w-6 animate-spin mr-2" />
+          Loading invoice...
         </div>
-      </CustomerDashboardLayout>
+      </DashboardLayout>
     );
   }
 
-  if (isError || !invoice) {
+  if (!invoice) {
     return (
-      <CustomerDashboardLayout>
-        <div className="py-6">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-red-600">Error Loading Invoice</h1>
-            <p className="mt-2">The requested invoice could not be found or you don't have permission to view it.</p>
-            <Button 
-              onClick={() => navigate('/customer/invoices')} 
-              className="mt-4"
-            >
+      <DashboardLayout>
+        <div className="w-full py-6 flex justify-center">Invoice not found</div>
+      </DashboardLayout>
+    );
+  }
+
+  const canEdit = invoice?.status === 'draft' || invoice?.status === 'sent' || invoice?.status === 'overdue';
+
+  return (
+    <DashboardLayout>
+      <Helmet>
+        <title>{invoice.invoice_number} - McKaynine Training Centre</title>
+      </Helmet>
+      <div className="container mx-auto py-6">
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <Button variant="ghost" onClick={() => navigate("/customer/invoices")}>
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to Invoices
             </Button>
-          </div>
-        </div>
-      </CustomerDashboardLayout>
-    );
-  }
-
-  return (
-    <CustomerDashboardLayout>
-      <Helmet>
-        <title>{`Invoice ${invoice.invoice_number} - McKaynine Training Centre`}</title>
-      </Helmet>
-
-      <div className="py-6">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center">
-            <Button 
-              variant="ghost" 
-              onClick={() => navigate('/customer/invoices')} 
-              className="mr-4"
-            >
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back
-            </Button>
-            <h1 className="text-2xl font-bold">Invoice {invoice.invoice_number}</h1>
-            <span className={`ml-4 px-2 py-1 text-xs font-medium rounded ${getStatusClassName(invoice.status)}`}>
-              {invoice.status?.toUpperCase()}
-            </span>
-          </div>
-
-          <div className="flex space-x-2">
-            <Button variant="outline" onClick={handlePrint}>
-              <Printer className="mr-2 h-4 w-4" />
-              Print
-            </Button>
-            
-            <Button>
-              <Download className="mr-2 h-4 w-4" />
-              Download
-            </Button>
+            <h1 className="text-2xl font-bold">{invoice.invoice_number}</h1>
           </div>
         </div>
 
-        <Card className="print:shadow-none print:border-none">
-          <CardContent className="p-8">
-            <div className="flex justify-between items-start mb-8">
-              <div>
-                <h2 className="text-2xl font-bold mb-2 text-mckaynine-600">McKaynine Training Centre</h2>
-                <p className="text-gray-500">123 Training Rd, Johannesburg</p>
-                <p className="text-gray-500">South Africa, 2000</p>
-                <p className="text-gray-500">info@mckaynine.com</p>
-                <p className="text-gray-500">+27 123 456 7890</p>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <div className="bg-white p-6 rounded-md shadow-sm">
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <h2 className="text-lg font-semibold">Invoice Details</h2>
+                  <p className="text-gray-500">
+                    Issued on {formatDate(invoice.issued_date)}
+                  </p>
+                </div>
+                <div
+                  className={`px-2 py-1 rounded-full text-sm font-medium ${
+                    statusColors[invoice.status]
+                  }`}
+                >
+                  {invoice.status}
+                </div>
               </div>
-              <div className="text-right">
-                <h3 className="text-lg font-bold mb-2">Invoice #{invoice.invoice_number}</h3>
-                <p className="text-gray-500">
-                  <span className="font-semibold">Date:</span> {format(new Date(invoice.issued_date), "PP")}
-                </p>
-                <p className="text-gray-500">
-                  <span className="font-semibold">Due Date:</span> {format(new Date(invoice.due_date), "PP")}
-                </p>
-                <p className={`mt-2 px-3 py-1 rounded text-xs font-medium inline-block ${getStatusClassName(invoice.status)}`}>
-                  {invoice.status?.toUpperCase()}
-                </p>
-              </div>
-            </div>
-            
-            <div className="mb-8">
-              <h3 className="text-lg font-bold mb-2">Bill To:</h3>
-              {invoice.client ? (
-                <>
-                  <p className="font-medium">{invoice.client.first_name} {invoice.client.last_name}</p>
-                  <p className="text-gray-500">{invoice.client.email}</p>
-                  {invoice.client.phone && <p className="text-gray-500">{invoice.client.phone}</p>}
-                  {invoice.client.address && (
-                    <>
-                      <p className="text-gray-500">{invoice.client.address}</p>
-                      <p className="text-gray-500">
-                        {invoice.client.city}{invoice.client.city && invoice.client.postal_code ? ', ' : ''}{invoice.client.postal_code}
-                      </p>
-                    </>
-                  )}
-                </>
-              ) : (
-                <p className="text-gray-500">Client information not available</p>
-              )}
-            </div>
-            
-            <div className="mb-8">
-              <table className="w-full border-collapse">
+
+              <table className="w-full">
                 <thead>
-                  <tr className="border-b">
-                    <th className="text-left pb-2">Description</th>
-                    <th className="text-right pb-2">Qty</th>
-                    <th className="text-right pb-2">Unit Price</th>
-                    <th className="text-right pb-2">Amount</th>
+                  <tr className="text-left">
+                    <th className="pb-2">Description</th>
+                    <th className="pb-2">Quantity</th>
+                    <th className="pb-2">Unit Price</th>
+                    <th className="pb-2 text-right">Amount</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {invoice.items && invoice.items.length > 0 ? (
-                    invoice.items.map((item, index) => (
-                      <tr key={item.id} className="border-b">
-                        <td className="py-3">
-                          <div className="font-medium">{item.description}</div>
-                          {item.booking?.dog_name && (
-                            <div className="text-sm text-gray-500">Dog: {item.booking.dog_name}</div>
-                          )}
-                        </td>
-                        <td className="py-3 text-right">{item.quantity}</td>
-                        <td className="py-3 text-right">{formatCurrency(item.unit_price)}</td>
-                        <td className="py-3 text-right">{formatCurrency(item.amount)}</td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={4} className="py-4 text-center text-gray-500">No items available</td>
+                  {invoice.items?.map((item) => (
+                    <tr key={item.id} className="border-t border-gray-200">
+                      <td className="py-4">{item.description}</td>
+                      <td className="py-4">{item.quantity}</td>
+                      <td className="py-4">{formatCurrency(item.unit_price)}</td>
+                      <td className="py-4 text-right">
+                        {formatCurrency(item.amount)}
+                      </td>
                     </tr>
-                  )}
+                  ))}
                 </tbody>
               </table>
-            </div>
-            
-            <div className="flex justify-end">
-              <div className="w-64">
-                <div className="flex justify-between py-2">
-                  <span>Subtotal:</span>
-                  <span className="font-medium">{formatCurrency(invoice.subtotal)}</span>
-                </div>
-                <div className="flex justify-between py-2">
-                  <span>Tax ({invoice.tax_rate}%):</span>
-                  <span className="font-medium">{formatCurrency(invoice.tax_amount)}</span>
-                </div>
-                <div className="flex justify-between py-2 border-t border-b">
-                  <span className="font-bold">Total:</span>
-                  <span className="font-bold">{formatCurrency(invoice.total)}</span>
-                </div>
-                
-                {invoice.payment_received && invoice.payment_date && (
-                  <div className="mt-4 bg-green-50 border border-green-200 rounded-md p-3">
-                    <p className="text-green-800 text-sm font-medium">
-                      Payment received on {format(new Date(invoice.payment_date), "PP")}
-                    </p>
+
+              <div className="flex justify-end mt-4">
+                <div className="w-full max-w-md space-y-2">
+                  <div className="flex justify-between">
+                    <span>Subtotal:</span>
+                    <span>{formatCurrency(invoice.subtotal)}</span>
                   </div>
-                )}
-                
-                {invoice.status === 'sent' && (
-                  <div className="mt-4 bg-blue-50 border border-blue-200 rounded-md p-3">
-                    <p className="text-blue-800 text-sm font-medium">
-                      Please complete payment by {format(new Date(invoice.due_date), "PP")}
-                    </p>
+                  <div className="flex justify-between">
+                    <span>Tax ({invoice.tax_rate}%):</span>
+                    <span>{formatCurrency(invoice.tax_amount)}</span>
                   </div>
-                )}
-                
-                {invoice.status === 'overdue' && (
-                  <div className="mt-4 bg-red-50 border border-red-200 rounded-md p-3">
-                    <p className="text-red-800 text-sm font-medium">
-                      This invoice is overdue. Please make payment as soon as possible.
-                    </p>
+                  <div className="flex justify-between font-semibold">
+                    <span>Total:</span>
+                    <span>{formatCurrency(invoice.total)}</span>
                   </div>
-                )}
-              </div>
-            </div>
-            
-            {invoice.notes && (
-              <div className="mt-8">
-                <h3 className="text-lg font-medium mb-2">Notes</h3>
-                <div className="p-4 bg-gray-50 rounded-md text-gray-700">
-                  {invoice.notes}
                 </div>
               </div>
-            )}
-            
-            <div className="mt-8 border-t pt-6">
-              <p className="text-center text-gray-500">
-                Thank you for your business! Payment is due by {format(new Date(invoice.due_date), "PP")}.
+
+              {invoice.notes && (
+                <div className="mt-6">
+                  <h3 className="text-sm font-semibold mb-2">Notes:</h3>
+                  <p className="text-gray-700">{invoice.notes}</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <div className="bg-white p-6 rounded-md shadow-sm">
+              <h2 className="text-lg font-semibold mb-4">Client Information</h2>
+              <p className="text-gray-700">
+                {invoice.client?.first_name} {invoice.client?.last_name}
               </p>
+              <p className="text-gray-500">{invoice.client?.email}</p>
+              {invoice.client?.phone && (
+                <p className="text-gray-500">{invoice.client.phone}</p>
+              )}
+              {invoice.client?.address && (
+                <p className="text-gray-500">{invoice.client.address}</p>
+              )}
+              {invoice.client?.city && invoice.client?.postal_code && (
+                <p className="text-gray-500">
+                  {invoice.client.city}, {invoice.client.postal_code}
+                </p>
+              )}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
-    </CustomerDashboardLayout>
+    </DashboardLayout>
   );
 }

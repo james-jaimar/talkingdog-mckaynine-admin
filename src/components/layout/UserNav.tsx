@@ -15,11 +15,11 @@ import { useNavigate } from "react-router-dom"
 import { LogOut, Settings, User } from "lucide-react"
 
 export function UserNav() {
-  const { user, signOut } = useAuth()
+  const { user, logout } = useAuth()
   const navigate = useNavigate()
   
   const handleSignOut = async () => {
-    await signOut()
+    await logout()
     navigate("/")
   }
   

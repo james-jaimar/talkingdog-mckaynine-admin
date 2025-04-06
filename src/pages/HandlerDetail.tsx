@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -25,6 +26,17 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { cn } from "@/lib/utils";
 import { HandlerInvoices } from "@/components/handlers/detail/HandlerInvoices";
+import { 
+  Form,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+  FormControl,
+  FormDescription
+} from "@/components/ui/form";
+import { EditDogForm } from "@/components/handlers/detail/EditDogForm";
+import { EditDogModal } from "@/components/handlers/detail/EditDogModal";
 
 // Define Zod schema for handler profile form
 const handlerProfileSchema = z.object({
@@ -356,7 +368,15 @@ export default function HandlerDetail() {
         // Update existing dog
         const { error } = await supabase
           .from('dogs')
-          .update(values)
+          .update({
+            name: values.name,
+            breed: values.breed, // Make sure breed is always provided
+            age: values.age,
+            weight: values.weight,
+            notes: values.notes,
+            behavior_notes: values.behavior_notes,
+            medical_notes: values.medical_notes,
+          })
           .eq('id', selectedDog.id);
 
         if (error) {
@@ -377,7 +397,16 @@ export default function HandlerDetail() {
         // Create new dog
         const { error } = await supabase
           .from('dogs')
-          .insert({ ...values, client_id: id });
+          .insert({
+            client_id: id,
+            name: values.name,
+            breed: values.breed, // Make sure breed is always provided
+            age: values.age,
+            weight: values.weight, 
+            notes: values.notes,
+            behavior_notes: values.behavior_notes, 
+            medical_notes: values.medical_notes,
+          });
 
         if (error) {
           toast({
@@ -470,14 +499,9 @@ export default function HandlerDetail() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>First Name</FormLabel>
-                      <Controller
-                        name="first_name"
-                        control={handlerForm.control}
-                        defaultValue=""
-                        render={({ field }) => (
-                          <Input {...field} />
-                        )}
-                      />
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -488,14 +512,9 @@ export default function HandlerDetail() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Last Name</FormLabel>
-                      <Controller
-                        name="last_name"
-                        control={handlerForm.control}
-                        defaultValue=""
-                        render={({ field }) => (
-                          <Input {...field} />
-                        )}
-                      />
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -506,14 +525,9 @@ export default function HandlerDetail() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Email</FormLabel>
-                      <Controller
-                        name="email"
-                        control={handlerForm.control}
-                        defaultValue=""
-                        render={({ field }) => (
-                          <Input {...field} />
-                        )}
-                      />
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -524,14 +538,9 @@ export default function HandlerDetail() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Phone</FormLabel>
-                      <Controller
-                        name="phone"
-                        control={handlerForm.control}
-                        defaultValue=""
-                        render={({ field }) => (
-                          <Input {...field} />
-                        )}
-                      />
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -542,14 +551,9 @@ export default function HandlerDetail() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Address</FormLabel>
-                      <Controller
-                        name="address"
-                        control={handlerForm.control}
-                        defaultValue=""
-                        render={({ field }) => (
-                          <Input {...field} />
-                        )}
-                      />
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -560,14 +564,9 @@ export default function HandlerDetail() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>City</FormLabel>
-                      <Controller
-                        name="city"
-                        control={handlerForm.control}
-                        defaultValue=""
-                        render={({ field }) => (
-                          <Input {...field} />
-                        )}
-                      />
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -578,14 +577,9 @@ export default function HandlerDetail() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Postal Code</FormLabel>
-                      <Controller
-                        name="postal_code"
-                        control={handlerForm.control}
-                        defaultValue=""
-                        render={({ field }) => (
-                          <Input {...field} />
-                        )}
-                      />
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -596,14 +590,9 @@ export default function HandlerDetail() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Notes</FormLabel>
-                      <Controller
-                        name="notes"
-                        control={handlerForm.control}
-                        defaultValue=""
-                        render={({ field }) => (
-                          <Textarea {...field} />
-                        )}
-                      />
+                      <FormControl>
+                        <Textarea {...field} />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -619,317 +608,30 @@ export default function HandlerDetail() {
           </DialogContent>
         </Dialog>
 
-        {/* Add Dog Modal */}
-        <Dialog open={addDogOpen} onOpenChange={closeAddDogModal}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Add New Dog</DialogTitle>
-              <DialogDescription>
-                Enter the dog's information to create a new profile.
-              </DialogDescription>
-            </DialogHeader>
-            <Form {...dogForm}>
-              <form onSubmit={dogForm.handleSubmit(handleDogSubmit)} className="space-y-4">
-                <FormField
-                  control={dogForm.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Name</FormLabel>
-                      <Controller
-                        name="name"
-                        control={dogForm.control}
-                        defaultValue=""
-                        render={({ field }) => (
-                          <Input {...field} />
-                        )}
-                      />
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={dogForm.control}
-                  name="breed"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Breed</FormLabel>
-                      <Controller
-                        name="breed"
-                        control={dogForm.control}
-                        defaultValue=""
-                        render={({ field }) => (
-                          <Input {...field} />
-                        )}
-                      />
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={dogForm.control}
-                  name="age"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Age</FormLabel>
-                      <Controller
-                        name="age"
-                        control={dogForm.control}
-                        defaultValue={0}
-                        render={({ field }) => (
-                          <Input
-                            type="number"
-                            {...field}
-                            onChange={(e) => field.onChange(Number(e.target.value))}
-                          />
-                        )}
-                      />
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={dogForm.control}
-                  name="weight"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Weight</FormLabel>
-                      <Controller
-                        name="weight"
-                        control={dogForm.control}
-                        defaultValue={0}
-                        render={({ field }) => (
-                          <Input
-                            type="number"
-                            {...field}
-                            onChange={(e) => field.onChange(Number(e.target.value))}
-                          />
-                        )}
-                      />
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={dogForm.control}
-                  name="notes"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Notes</FormLabel>
-                      <Controller
-                        name="notes"
-                        control={dogForm.control}
-                        defaultValue=""
-                        render={({ field }) => (
-                          <Textarea {...field} />
-                        )}
-                      />
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={dogForm.control}
-                  name="behavior_notes"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Behavior Notes</FormLabel>
-                      <Controller
-                        name="behavior_notes"
-                        control={dogForm.control}
-                        defaultValue=""
-                        render={({ field }) => (
-                          <Textarea {...field} />
-                        )}
-                      />
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={dogForm.control}
-                  name="medical_notes"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Medical Notes</FormLabel>
-                      <Controller
-                        name="medical_notes"
-                        control={dogForm.control}
-                        defaultValue=""
-                        render={({ field }) => (
-                          <Textarea {...field} />
-                        )}
-                      />
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <DialogFooter>
-                  <Button type="button" variant="outline" onClick={closeAddDogModal}>
-                    Cancel
-                  </Button>
-                  <Button type="submit">Create Dog</Button>
-                </DialogFooter>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
+        {/* Add Dog Modal using EditDogModal component */}
+        {id && (
+          <EditDogModal 
+            clientId={id}
+            isNew={true}
+            onSuccess={() => {
+              closeAddDogModal();
+              refetch();
+            }}
+          />
+        )}
 
-        {/* Edit Dog Modal */}
-        <Dialog open={editDogOpen} onOpenChange={closeEditDogModal}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Edit Dog Profile</DialogTitle>
-              <DialogDescription>
-                Make changes to the dog's information here.
-              </DialogDescription>
-            </DialogHeader>
-            <Form {...dogForm}>
-              <form onSubmit={dogForm.handleSubmit(handleDogSubmit)} className="space-y-4">
-                <FormField
-                  control={dogForm.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Name</FormLabel>
-                      <Controller
-                        name="name"
-                        control={dogForm.control}
-                        defaultValue=""
-                        render={({ field }) => (
-                          <Input {...field} />
-                        )}
-                      />
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={dogForm.control}
-                  name="breed"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Breed</FormLabel>
-                      <Controller
-                        name="breed"
-                        control={dogForm.control}
-                        defaultValue=""
-                        render={({ field }) => (
-                          <Input {...field} />
-                        )}
-                      />
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={dogForm.control}
-                  name="age"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Age</FormLabel>
-                      <Controller
-                        name="age"
-                        control={dogForm.control}
-                        defaultValue={0}
-                        render={({ field }) => (
-                          <Input
-                            type="number"
-                            {...field}
-                            onChange={(e) => field.onChange(Number(e.target.value))}
-                          />
-                        )}
-                      />
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={dogForm.control}
-                  name="weight"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Weight</FormLabel>
-                      <Controller
-                        name="weight"
-                        control={dogForm.control}
-                        defaultValue={0}
-                        render={({ field }) => (
-                          <Input
-                            type="number"
-                            {...field}
-                            onChange={(e) => field.onChange(Number(e.target.value))}
-                          />
-                        )}
-                      />
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={dogForm.control}
-                  name="notes"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Notes</FormLabel>
-                      <Controller
-                        name="notes"
-                        control={dogForm.control}
-                        defaultValue=""
-                        render={({ field }) => (
-                          <Textarea {...field} />
-                        )}
-                      />
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={dogForm.control}
-                  name="behavior_notes"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Behavior Notes</FormLabel>
-                      <Controller
-                        name="behavior_notes"
-                        control={dogForm.control}
-                        defaultValue=""
-                        render={({ field }) => (
-                          <Textarea {...field} />
-                        )}
-                      />
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={dogForm.control}
-                  name="medical_notes"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Medical Notes</FormLabel>
-                      <Controller
-                        name="medical_notes"
-                        control={dogForm.control}
-                        defaultValue=""
-                        render={({ field }) => (
-                          <Textarea {...field} />
-                        )}
-                      />
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <DialogFooter>
-                  <Button type="button" variant="outline" onClick={closeEditDogModal}>
-                    Cancel
-                  </Button>
-                  <Button type="submit">Save changes</Button>
-                </DialogFooter>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
+        {/* Edit Dog Modal using EditDogModal component */}
+        {selectedDog && id && (
+          <EditDogModal
+            dog={selectedDog}
+            clientId={id}
+            isNew={false}
+            onSuccess={() => {
+              closeEditDogModal();
+              refetch();
+            }}
+          />
+        )}
       </div>
     </DashboardLayout>
   );

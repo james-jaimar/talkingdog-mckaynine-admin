@@ -12,7 +12,6 @@ import { useInvoices } from "@/hooks/useInvoices";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Invoice, InvoiceFormValues } from "@/types/invoice";
-import { Booking } from "@/components/class-handlers/types/booking";
 
 interface BookingToInvoiceProps {
   open: boolean;
@@ -21,10 +20,35 @@ interface BookingToInvoiceProps {
   onSuccess?: () => void;
 }
 
-interface BookingWithClass extends Booking {
-  classes?: {
+// Updated interface to match the actual structure returned from the database
+interface BookingWithClass {
+  id: string;
+  is_enrolled: boolean;
+  vaccination_verified: boolean;
+  proof_of_payment: string | null;
+  additional_notes: string | null;
+  info_eo: string | null;
+  uses_whatsapp: boolean;
+  social_media_consent: boolean;
+  info_pg: string | null;
+  class_schedule_id: string;
+  dog_id: string;
+  client_id: string;
+  status: string;
+  payment_status: string;
+  notes: string | null;
+  dogs?: {
+    id: string;
     name: string;
-    price: number;
+    breed: string;
+  };
+  class_schedules?: {
+    start_time: string;
+    classes?: {
+      id: string;
+      name: string;
+      price: number;
+    };
   };
 }
 
@@ -42,7 +66,7 @@ export function BookingToInvoice({ open, onOpenChange, clientId, onSuccess }: Bo
         .from('bookings')
         .select(`
           *,
-          dogs:dog_id (id, name),
+          dogs:dog_id (id, name, breed),
           class_schedules:class_schedule_id (
             start_time,
             classes:class_id (id, name, price)
@@ -53,7 +77,7 @@ export function BookingToInvoice({ open, onOpenChange, clientId, onSuccess }: Bo
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      return data as BookingWithClass[];
+      return data as unknown as BookingWithClass[];
     },
     enabled: !!clientId && open,
   });
