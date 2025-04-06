@@ -3,23 +3,51 @@ import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 
 /**
- * Generates a sequential invoice number with year and month prefix
+ * Generates a sequential invoice number with branch code and month prefix
  * with multiple fallback mechanisms for resilience
+ * Format: McD[Apr]0001 for Delta branch, McR[Apr]0001 for Randburg branch
  */
 export const generateInvoiceNumber = async (): Promise<string> => {
   try {
     // Get current date info for the prefix
     const now = new Date();
-    const yearMonth = format(now, "yyyyMM");
+    const monthAbbreviation = format(now, "MMM");
     
-    // Try to get the count of existing invoices for this month
+    // Get branch information to determine the prefix
+    let branchPrefix = "Mc"; // Default prefix if we can't determine branch
+    
+    try {
+      // Attempt to get the user's current branch
+      const { data: userProfiles } = await supabase.auth.getUser();
+      
+      if (userProfiles?.user) {
+        const { data: branchData } = await supabase
+          .from('branches')
+          .select('name')
+          .single();
+        
+        if (branchData?.name) {
+          // Set prefix based on branch name
+          if (branchData.name.toLowerCase().includes('delta')) {
+            branchPrefix = "McD";
+          } else if (branchData.name.toLowerCase().includes('randburg')) {
+            branchPrefix = "McR";
+          }
+        }
+      }
+    } catch (err) {
+      console.warn("Error fetching branch info, using default prefix:", err);
+      // Will use default prefix defined above
+    }
+    
+    // Try to get the count of existing invoices for this month and branch
     let count: number | null = null;
     
     try {
       const { data, error, count: resultCount } = await supabase
         .from('invoices')
         .select('id', { count: 'exact', head: true })
-        .like('invoice_number', `INV-${yearMonth}-%`);
+        .like('invoice_number', `${branchPrefix}[${monthAbbreviation}]%`);
         
       if (error) {
         console.warn("Error checking existing invoices, using fallback method:", error);
@@ -37,14 +65,14 @@ export const generateInvoiceNumber = async (): Promise<string> => {
       // Use current timestamp milliseconds as part of the number to ensure uniqueness
       const timestamp = now.getTime();
       const randomPart = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-      return `INV-${yearMonth}-T${timestamp.toString().slice(-4)}${randomPart}`;
+      return `${branchPrefix}[${monthAbbreviation}]T${timestamp.toString().slice(-4)}${randomPart}`;
     }
     
     // Generate the sequential number (current count + 1)
     const sequentialNumber = String(count + 1).padStart(4, '0');
     
-    // Format the invoice number as INV-YYYYMM-0001
-    const invoiceNumber = `INV-${yearMonth}-${sequentialNumber}`;
+    // Format the invoice number as McD[Apr]0001 or McR[Apr]0001
+    const invoiceNumber = `${branchPrefix}[${monthAbbreviation}]${sequentialNumber}`;
     
     return invoiceNumber;
   } catch (error) {
@@ -52,9 +80,9 @@ export const generateInvoiceNumber = async (): Promise<string> => {
     
     // Ultimate fallback - timestamp-based number with random component
     const now = new Date();
-    const yearMonth = format(now, "yyyyMM");
+    const monthAbbreviation = format(now, "MMM");
     const timestamp = now.getTime();
     const randomPart = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-    return `INV-${yearMonth}-ERR${timestamp.toString().slice(-3)}${randomPart}`;
+    return `Mc[${monthAbbreviation}]ERR${timestamp.toString().slice(-3)}${randomPart}`;
   }
 };

@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useInvoices } from "@/hooks/useInvoices";
 import { InvoiceStatus } from "@/types/invoice";
+import { format } from "date-fns";
 
 interface UseAddHandlerModalProps {
   classId: string;
@@ -75,13 +76,34 @@ export function useAddHandlerModal({
         invoiceNumber = await generateInvoiceNumber();
       } catch (error) {
         console.error("Error generating invoice number, using simple fallback:", error);
-        // Create a fallback invoice number based on timestamp and random value
+        
+        // Create a fallback invoice number based on timestamp, month and random value
         const now = new Date();
-        const year = now.getFullYear();
-        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const monthAbbreviation = format(now, "MMM");
         const timestamp = now.getTime();
         const random = Math.floor(Math.random() * 10000);
-        invoiceNumber = `INV-${year}${month}-FB${timestamp.toString().slice(-4)}${random}`;
+        
+        // Get branch info for prefix if possible
+        let branchPrefix = "Mc";
+        try {
+          const { data: branchData } = await supabase
+            .from('branches')
+            .select('name')
+            .limit(1)
+            .single();
+            
+          if (branchData?.name) {
+            if (branchData.name.toLowerCase().includes('delta')) {
+              branchPrefix = "McD";
+            } else if (branchData.name.toLowerCase().includes('randburg')) {
+              branchPrefix = "McR";
+            }
+          }
+        } catch (err) {
+          console.warn("Could not get branch info for invoice number fallback");
+        }
+        
+        invoiceNumber = `${branchPrefix}[${monthAbbreviation}]FB${timestamp.toString().slice(-4)}${random}`;
       }
       
       console.log("Generated invoice number:", invoiceNumber);
