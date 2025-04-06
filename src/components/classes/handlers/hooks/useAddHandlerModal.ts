@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -68,8 +69,21 @@ export function useAddHandlerModal({
     dogName: string
   ) => {
     try {
-      // Generate invoice number
-      const invoiceNumber = await generateInvoiceNumber();
+      // Generate invoice number, with fallback handling
+      let invoiceNumber;
+      try {
+        invoiceNumber = await generateInvoiceNumber();
+      } catch (error) {
+        console.error("Error generating sequential invoice number, using fallback:", error);
+        // Create a fallback invoice number based on timestamp
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const timestamp = now.getTime();
+        invoiceNumber = `INV-${year}${month}-${timestamp.toString().slice(-6)}`;
+      }
+      
+      console.log("Generated invoice number:", invoiceNumber);
       
       // Prepare invoice data
       const invoiceData = {
@@ -88,11 +102,67 @@ export function useAddHandlerModal({
         }],
       };
       
-      // Create the invoice
-      await createInvoice.mutateAsync(invoiceData);
-      
-      console.log("Invoice created successfully for handler:", handlerId);
-      return true;
+      // Attempt to create the invoice
+      try {
+        await createInvoice.mutateAsync(invoiceData);
+        console.log("Invoice created successfully for handler:", handlerId);
+        return true;
+      } catch (invoiceError) {
+        console.error("Error creating invoice through mutation:", invoiceError);
+        
+        // If the createInvoice mutation fails, try direct Supabase insertion as a fallback
+        try {
+          console.log("Attempting direct invoice creation as fallback");
+          
+          // Calculate totals
+          const subtotal = classPrice;
+          const tax_amount = subtotal * (15 / 100); // 15% tax rate
+          const total = subtotal + tax_amount;
+          
+          // Insert invoice directly
+          const { data: invoice, error: directError } = await supabase
+            .from('invoices')
+            .insert({
+              client_id: handlerId,
+              invoice_number: invoiceNumber,
+              status: "draft",
+              issued_date: new Date().toISOString(),
+              due_date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+              notes: `Invoice for ${className} training class for ${dogName}.`,
+              subtotal,
+              tax_rate: 15,
+              tax_amount,
+              total,
+              payment_received: false,
+              email_sent: false
+            })
+            .select('id')
+            .single();
+          
+          if (directError) throw directError;
+          
+          // Insert invoice item directly
+          const { error: itemError } = await supabase
+            .from('invoice_items')
+            .insert({
+              invoice_id: invoice.id,
+              description: `${className} training class for ${dogName}`,
+              quantity: 1,
+              unit_price: classPrice,
+              amount: classPrice,
+              booking_id: bookingId
+            });
+          
+          if (itemError) throw itemError;
+          
+          console.log("Invoice created via direct insertion");
+          return true;
+        } catch (directError) {
+          console.error("Direct invoice creation also failed:", directError);
+          // Both methods failed, throw the original error
+          throw invoiceError;
+        }
+      }
     } catch (error) {
       console.error("Error creating invoice:", error);
       return false;
@@ -180,7 +250,7 @@ export function useAddHandlerModal({
       const dogName = await fetchDogName(dogId);
       
       // Create an invoice for this booking
-      await createInvoiceForHandler(
+      const invoiceCreated = await createInvoiceForHandler(
         handlerId, 
         dogId, 
         booking.id, 
@@ -188,6 +258,11 @@ export function useAddHandlerModal({
         classDetails.price,
         dogName
       );
+      
+      if (!invoiceCreated) {
+        console.warn("Invoice could not be created, but booking was successful");
+        // Continue execution as booking was successful even if invoice creation failed
+      }
       
       // Invalidate both handlers data and class-handlers data
       await Promise.all([
@@ -200,7 +275,9 @@ export function useAddHandlerModal({
       
       toast({
         title: "Success",
-        description: "Handler added to class and invoice created.",
+        description: invoiceCreated 
+          ? "Handler added to class and invoice created."
+          : "Handler added to class, but invoice creation failed. Please create it manually.",
       });
       
       // Close modal

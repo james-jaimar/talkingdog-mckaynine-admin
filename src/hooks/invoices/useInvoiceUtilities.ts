@@ -11,19 +11,36 @@ export const generateInvoiceNumber = async (): Promise<string> => {
     const now = new Date();
     const yearMonth = format(now, "yyyyMM");
     
-    // Get the count of existing invoices for this month to determine the sequence
-    const { count, error } = await supabase
-      .from('invoices')
-      .select('id', { count: 'exact', head: true })
-      .like('invoice_number', `INV-${yearMonth}-%`);
-      
-    if (error) {
-      console.error("Error checking existing invoices:", error);
-      throw error;
+    // Try to get the count of existing invoices for this month
+    let count: number | null = null;
+    
+    try {
+      const { data, error, count: resultCount } = await supabase
+        .from('invoices')
+        .select('id', { count: 'exact', head: true })
+        .like('invoice_number', `INV-${yearMonth}-%`);
+        
+      if (error) {
+        console.warn("Permission error checking existing invoices, using fallback method:", error);
+        // Will use fallback below
+      } else {
+        count = resultCount;
+      }
+    } catch (err) {
+      console.warn("Error checking existing invoices, using fallback method:", err);
+      // Will use fallback below
+    }
+    
+    // If we couldn't get the count (e.g., due to permissions), use a timestamp-based approach
+    if (count === null) {
+      // Use current timestamp milliseconds as part of the number to ensure uniqueness
+      const timestamp = new Date().getTime();
+      const randomPart = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+      return `INV-${yearMonth}-T${timestamp.toString().slice(-4)}${randomPart}`;
     }
     
     // Generate the sequential number (current count + 1)
-    const sequentialNumber = String(count !== null ? count + 1 : 1).padStart(4, '0');
+    const sequentialNumber = String(count + 1).padStart(4, '0');
     
     // Format the invoice number as INV-YYYYMM-0001
     const invoiceNumber = `INV-${yearMonth}-${sequentialNumber}`;
@@ -31,6 +48,11 @@ export const generateInvoiceNumber = async (): Promise<string> => {
     return invoiceNumber;
   } catch (error) {
     console.error("Error generating invoice number:", error);
-    throw error;
+    
+    // Ultimate fallback - timestamp-based number
+    const now = new Date();
+    const yearMonth = format(now, "yyyyMM");
+    const timestamp = now.getTime();
+    return `INV-${yearMonth}-ERR${timestamp.toString().slice(-5)}`;
   }
 };
