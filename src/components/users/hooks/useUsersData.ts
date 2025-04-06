@@ -1,9 +1,7 @@
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import type { UserProfile } from "../types/userTypes";
 import { useFetchUsers } from "./useFetchUsers";
-import { useFetchTrainers } from "./useFetchTrainers";
-import { useTrainerLinking } from "./useTrainerLinking";
 import { useUserRoleManagement } from "./useUserRoleManagement";
 import { useAdminSetup } from "./useAdminSetup";
 import { useQueryClient } from "@tanstack/react-query";
@@ -22,18 +20,6 @@ export function useUsersData() {
     error, 
     refetch 
   } = useFetchUsers();
-  
-  // Fetch trainers data
-  const { 
-    data: trainers = [], 
-    isLoading: isLoadingTrainers 
-  } = useFetchTrainers();
-  
-  // Get trainer linking functionality
-  const { 
-    linkTrainerToUser, 
-    unlinkTrainerFromUser 
-  } = useTrainerLinking();
   
   // Get user role management functionality
   const { 
@@ -54,28 +40,11 @@ export function useUsersData() {
       // Invalidate the cache first to ensure fresh data
       queryClient.invalidateQueries({ queryKey: ['users-admin'] });
       await refetch();
-      // Note: Don't use users.length here as it might be stale
       console.log("Users data refetched successfully, found", (await refetch()).data?.length || 0, "users");
     } catch (error) {
       console.error("Error refetching users data:", error);
     }
   }, [queryClient, refetch]);
-
-  // Initial fetch on mount and set up a periodic refresh
-  useEffect(() => {
-    console.log("useUsersData hook mounted, fetching initial users data");
-    // Do an immediate fetch
-    refetchUsers();
-    
-    // Set up a periodic refresh
-    const intervalId = setInterval(() => {
-      console.log("Periodic refresh in useUsersData triggered");
-      refetchUsers();
-    }, 5000);
-    
-    // Cleanup on unmount
-    return () => clearInterval(intervalId);
-  }, [refetchUsers]);
 
   // Debug the users array
   console.log(`useUsersData hook - current users count: ${users.length}`);
@@ -97,10 +66,6 @@ export function useUsersData() {
     updateUserRole,
     isUpdating,
     setUserAsAdmin,
-    trainers,
-    isLoadingTrainers,
-    linkTrainerToUser,
-    unlinkTrainerFromUser,
     refetchUsers,
     adminSetupAttempted
   };

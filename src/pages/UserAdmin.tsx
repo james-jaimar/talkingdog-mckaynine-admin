@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { useAuth } from "@/context/auth";
 import { Helmet } from "react-helmet";
@@ -86,11 +86,11 @@ export default function UserAdmin() {
             users={users.map(profile => ({
               id: profile.id,
               email: profile.username || '',
-              username: profile.username || '', // Add username
+              username: profile.username || '',
               full_name: profile.full_name || '',
               role: profile.role || 'user',
               created_at: profile.created_at,
-              avatar_url: profile.avatar_url, // Add avatar_url
+              avatar_url: profile.avatar_url,
               isCurrentUser: profile.id === currentUser?.id
             }))} 
             onRefresh={handleRefresh} 

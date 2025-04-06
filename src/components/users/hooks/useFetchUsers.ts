@@ -14,18 +14,10 @@ export function useFetchUsers() {
         const { data: { user: currentUser } } = await supabase.auth.getUser();
         console.log("Current user ID:", currentUser?.id);
         
-        // Debug: Log the total number of profiles before any filtering
-        const { count: totalProfileCount } = await supabase
-          .from('profiles')
-          .select('*', { count: 'exact', head: true });
-          
-        console.log(`Total profile count from database: ${totalProfileCount || 0}`);
-        
         // Get all profiles from the profiles table - explicitly select all columns
         const { data: profiles, error: profilesError } = await supabase
           .from('profiles')
           .select('*')
-          // Don't use order here as we want ALL profiles
           .limit(100); // Add a reasonable limit
         
         if (profilesError) {
@@ -40,20 +32,8 @@ export function useFetchUsers() {
           return [];
         }
         
-        // Get trainers in a separate query
-        const { data: trainers, error: trainersError } = await supabase
-          .from('trainers')
-          .select('*');
-          
-        if (trainersError) {
-          console.error("Error fetching trainers:", trainersError);
-        }
-        
-        const trainersList = trainers || [];
-        
-        // Map profiles to user profile objects
+        // Map profiles to user profile objects without trying to fetch trainer data
         const userProfiles: UserProfile[] = profiles.map(profile => {
-          const linkedTrainer = trainersList.find(t => t.user_id === profile.id);
           const isCurrentUser = currentUser?.id === profile.id;
           
           return {
@@ -64,7 +44,6 @@ export function useFetchUsers() {
             role: profile.role || "user",
             created_at: profile.created_at,
             email: profile.username, // Email is stored in username field
-            trainer: linkedTrainer || null,
             isCurrentUser
           };
         });
