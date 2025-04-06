@@ -23,7 +23,7 @@ interface InvoiceFormProviderProps {
 export function InvoiceFormProvider({ 
   children, 
   onSubmit,
-  defaultTaxRate = 0 // Default set to 0%
+  defaultTaxRate = 0 // Ensuring default is 0%
 }: InvoiceFormProviderProps) {
   const methods = useForm<FormValues>({
     defaultValues: {

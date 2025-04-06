@@ -10,6 +10,7 @@ import { InvoiceNotes } from "@/components/invoices/custom-invoice/InvoiceNotes"
 import { InvoiceItemList } from "@/components/invoices/custom-invoice/InvoiceItemList";
 import { InvoiceTaxRate } from "@/components/invoices/custom-invoice/InvoiceTaxRate";
 import { InvoiceTotalSummary } from "@/components/invoices/custom-invoice/InvoiceTotalSummary";
+import { toast } from "sonner";
 
 interface CreateCustomInvoiceProps {
   open: boolean;
@@ -57,12 +58,15 @@ export function CreateCustomInvoice({
       // Create invoice
       await createInvoice.mutateAsync(invoiceData);
       
+      toast.success("Custom invoice created successfully");
+      
       // Close dialog and refresh data
       onOpenChange(false);
       onSuccess();
       
     } catch (error) {
       console.error("Error creating custom invoice:", error);
+      toast.error("Failed to create custom invoice");
     } finally {
       setIsSubmitting(false);
     }
