@@ -41,7 +41,7 @@ export function useInvoiceDetails(invoiceId: string | undefined) {
 
         console.log("Fetched invoice data:", invoice);
         
-        // Then get the invoice items with booking details
+        // Then get the invoice items directly without linking to users
         const { data: itemsData, error: itemsError } = await supabase
           .from('invoice_items')
           .select(`
@@ -49,6 +49,7 @@ export function useInvoiceDetails(invoiceId: string | undefined) {
             bookings:booking_id (
               id, 
               class_schedule_id,
+              dog_id,
               dogs:dog_id (
                 id, 
                 name,
@@ -77,7 +78,7 @@ export function useInvoiceDetails(invoiceId: string | undefined) {
           } as Invoice;
         }
 
-        console.log("Fetched invoice items:", itemsData);
+        console.log("Successfully fetched invoice items:", itemsData);
 
         // Process the items to improve the description with class and dog details
         const processedItems = itemsData?.map(item => {
