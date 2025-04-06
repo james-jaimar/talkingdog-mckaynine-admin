@@ -1,3 +1,4 @@
+
 import { ReactNode } from "react";
 import { useAuth } from "@/context/auth";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -8,17 +9,17 @@ interface RequireAuthProps {
 }
 
 const RequireAuth = ({ children }: RequireAuthProps) => {
-  const { user, loading } = useAuth();
+  const { user, isLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (!isLoading && !user) {
       navigate("/login", { replace: true, state: { from: location } });
     }
-  }, [user, loading, navigate, location]);
+  }, [user, isLoading, navigate, location]);
 
-  if (loading) {
+  if (isLoading) {
     return <div>Loading...</div>;
   }
 
@@ -26,11 +27,7 @@ const RequireAuth = ({ children }: RequireAuthProps) => {
     return null;
   }
 
-  return (
-    <RequireAuth>
-      {children}
-    </RequireAuth>
-  );
+  return <>{children}</>;
 };
 
 export default RequireAuth;

@@ -1,3 +1,4 @@
+
 import { useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -17,35 +18,44 @@ export default function CustomerInvoiceDetail() {
   const { data: invoice, isLoading } = useQuery({
     queryKey: ["invoice", id],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // First get the invoice data
+      const { data: invoiceData, error: invoiceError } = await supabase
         .from("invoices")
-        .select(
-          `
-          *,
-          client (
-            id,
-            first_name,
-            last_name,
-            email,
-            phone
-          ),
-          items (
-            id,
-            description,
-            quantity,
-            unit_price,
-            amount
-          )
-        `
-        )
+        .select("*")
         .eq("id", id)
         .single();
 
-      if (error) {
-        throw error;
+      if (invoiceError) {
+        throw invoiceError;
       }
 
-      return data;
+      // Get client information
+      const { data: clientData, error: clientError } = await supabase
+        .from("clients")
+        .select("id, first_name, last_name, email, phone, address, city, postal_code")
+        .eq("id", invoiceData.client_id)
+        .single();
+
+      if (clientError) {
+        throw clientError;
+      }
+
+      // Get invoice items
+      const { data: itemsData, error: itemsError } = await supabase
+        .from("invoice_items")
+        .select("*")
+        .eq("invoice_id", invoiceData.id);
+
+      if (itemsError) {
+        throw itemsError;
+      }
+
+      // Combine all data
+      return {
+        ...invoiceData,
+        client: clientData,
+        items: itemsData || []
+      };
     },
     enabled: !!id,
   });
