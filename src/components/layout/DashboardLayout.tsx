@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Home, Users, BookOpen, Calendar, GraduationCap, FileText, Menu, ExternalLink } from 'lucide-react';
@@ -16,79 +17,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-full min-h-screen bg-gray-50">
-      {/* Sidebar for desktop */}
-      <div 
-        className={`fixed inset-y-0 left-0 z-50 w-64 transform bg-white shadow-lg transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
-      >
-        <div className="flex h-16 items-center px-4 border-b">
-          <img 
-            src="/lovable-uploads/10dc7b2d-7c92-4408-8a71-edaf248918a0.png" 
-            alt="McKaynine" 
-            className="h-8"
-            onClick={() => navigate('/dashboard')} 
-          />
-        </div>
-        <div className="py-4">
-          <nav className="flex flex-col space-y-1 px-2">
-            <Button
-              variant="ghost"
-              className={`justify-start ${isActive('/dashboard') ? 'bg-gray-100' : ''}`}
-              onClick={() => navigate('/dashboard')}
-            >
-              <Home className="mr-2 h-4 w-4" />
-              Dashboard
-            </Button>
-            
-            <Button
-              variant="ghost"
-              className={`justify-start ${isActive('/handlers') ? 'bg-gray-100' : ''}`}
-              onClick={() => navigate('/handlers')}
-            >
-              <Users className="mr-2 h-4 w-4" />
-              Handlers
-            </Button>
-            
-            <Button
-              variant="ghost"
-              className={`justify-start ${isActive('/classes') ? 'bg-gray-100' : ''}`}
-              onClick={() => navigate('/classes')}
-            >
-              <BookOpen className="mr-2 h-4 w-4" />
-              Classes
-            </Button>
-            
-            <Button
-              variant="ghost"
-              className={`justify-start ${isActive('/class-schedules') ? 'bg-gray-100' : ''}`}
-              onClick={() => navigate('/class-schedules')}
-            >
-              <Calendar className="mr-2 h-4 w-4" />
-              Schedules
-            </Button>
-            
-            <Button
-              variant="ghost"
-              className={`justify-start ${isActive('/trainers') ? 'bg-gray-100' : ''}`}
-              onClick={() => navigate('/trainers')}
-            >
-              <GraduationCap className="mr-2 h-4 w-4" />
-              Trainers
-            </Button>
-            
-            <Button
-              variant="ghost"
-              className={`justify-start ${isActive('/invoices') ? 'bg-gray-100' : ''}`}
-              onClick={() => navigate('/invoices')}
-            >
-              <FileText className="mr-2 h-4 w-4" />
-              Invoices
-            </Button>
-          </nav>
-        </div>
-      </div>
-      
       {/* Mobile overlay */}
       <div
         className={`fixed inset-0 z-40 bg-black/50 transition-opacity duration-300 ease-in-out md:hidden ${

@@ -1,6 +1,5 @@
 
 import { Navigate } from "react-router-dom";
-import RequireAuth from "@/components/auth/RequireAuth";
 import Auth from "@/pages/Auth";
 import NotFound from "@/pages/NotFound";
 import { useAuth } from "@/context/auth";

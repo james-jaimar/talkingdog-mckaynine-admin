@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -33,61 +34,6 @@ export function CustomerDashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="flex h-full min-h-screen bg-gray-50">
-      {/* Sidebar for desktop */}
-      <div 
-        className={`fixed inset-y-0 left-0 z-50 w-64 transform bg-white shadow-lg transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
-      >
-        <div className="flex h-16 items-center px-4 border-b">
-          <img 
-            src="/lovable-uploads/10dc7b2d-7c92-4408-8a71-edaf248918a0.png" 
-            alt="McKaynine" 
-            className="h-8"
-            onClick={() => navigate('/customer/dashboard')} 
-          />
-        </div>
-        <div className="py-4">
-          <nav className="flex flex-col space-y-1 px-2">
-            <Button
-              variant="ghost"
-              className={`justify-start ${isActive('/customer/dashboard') ? 'bg-gray-100' : ''}`}
-              onClick={() => navigate('/customer/dashboard')}
-            >
-              <Home className="mr-2 h-4 w-4" />
-              Dashboard
-            </Button>
-            
-            <Button
-              variant="ghost"
-              className={`justify-start ${isActive('/customer/profile') ? 'bg-gray-100' : ''}`}
-              onClick={() => navigate('/customer/profile')}
-            >
-              <User className="mr-2 h-4 w-4" />
-              My Profile
-            </Button>
-            
-            <Button
-              variant="ghost"
-              className={`justify-start ${isActive('/customer/messages') ? 'bg-gray-100' : ''}`}
-              onClick={() => navigate('/customer/messages')}
-            >
-              <MessageSquare className="mr-2 h-4 w-4" />
-              Messages
-            </Button>
-
-            <Button
-              variant="ghost"
-              className={`justify-start ${isActive('/customer/invoices') ? 'bg-gray-100' : ''}`}
-              onClick={() => navigate('/customer/invoices')}
-            >
-              <FileText className="mr-2 h-4 w-4" />
-              Invoices
-            </Button>
-          </nav>
-        </div>
-      </div>
-      
       {/* Mobile overlay */}
       <div
         className={`fixed inset-0 z-40 bg-black/50 transition-opacity duration-300 md:hidden ${
