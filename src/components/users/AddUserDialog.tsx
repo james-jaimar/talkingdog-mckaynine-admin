@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { Loader2 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Select,
   SelectContent,
@@ -28,6 +29,7 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
   const [role, setRole] = useState("user");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient(); // Use the hook directly instead of accessing from window
 
   const handleAddUser = async () => {
     if (!email || !password) {
@@ -133,8 +135,7 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
       // Close dialog
       onOpenChange(false);
       
-      // Refresh user list using invalidation instead of direct refetch
-      const queryClient = window.queryClient; // Access the query client from the window object
+      // Invalidate queries to refresh user lists
       if (queryClient) {
         queryClient.invalidateQueries({ queryKey: ['users-admin'] });
         queryClient.invalidateQueries({ queryKey: ['users'] });
@@ -240,3 +241,4 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
     </Dialog>
   );
 }
+
