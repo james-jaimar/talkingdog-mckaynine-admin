@@ -2,6 +2,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Invoice } from "./types";
+import { toast } from "sonner";
 
 // Get all invoices with client information
 export function useInvoicesList() {
@@ -32,6 +33,10 @@ export function useInvoiceDetails(invoiceId: string | undefined) {
     queryKey: ['invoice', invoiceId],
     queryFn: async () => {
       try {
+        if (!invoiceId) {
+          throw new Error("Invoice ID is required");
+        }
+
         // First get the invoice data
         const { data: invoice, error: invoiceError } = await supabase
           .from('invoices')
@@ -44,38 +49,48 @@ export function useInvoiceDetails(invoiceId: string | undefined) {
 
         if (invoiceError) {
           console.error("Error fetching invoice:", invoiceError);
+          toast.error("Could not retrieve invoice details");
           throw invoiceError;
         }
 
         if (!invoice) {
+          toast.error("Invoice not found");
           throw new Error("Invoice not found");
         }
 
-        // Then get the invoice items
-        const { data: items, error: itemsError } = await supabase
-          .from('invoice_items')
-          .select(`
-            *,
-            bookings:booking_id (
-              id, 
-              class_schedule_id,
-              dogs:dog_id (
+        let items = [];
+        try {
+          // Then get the invoice items
+          const { data: itemsData, error: itemsError } = await supabase
+            .from('invoice_items')
+            .select(`
+              *,
+              bookings:booking_id (
                 id, 
-                name
+                class_schedule_id,
+                dogs:dog_id (
+                  id, 
+                  name
+                )
               )
-            )
-          `)
-          .eq('invoice_id', invoiceId)
-          .order('created_at', { ascending: true });
+            `)
+            .eq('invoice_id', invoiceId)
+            .order('created_at', { ascending: true });
 
-        if (itemsError) {
-          console.error("Error fetching invoice items:", itemsError);
-          throw itemsError;
+          if (itemsError) {
+            console.error("Error fetching invoice items:", itemsError);
+            // Don't throw here, just log the error and continue with empty items
+          } else {
+            items = itemsData || [];
+          }
+        } catch (itemsError) {
+          console.error("Exception in invoice items fetch:", itemsError);
+          // Continue with empty items
         }
 
         return {
           ...invoice,
-          items: items || []
+          items: items
         } as Invoice;
       } catch (error) {
         console.error("Error in useInvoiceDetails:", error);

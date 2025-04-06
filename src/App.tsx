@@ -23,6 +23,7 @@ import ClassHandlers from "@/pages/ClassHandlers";
 import HandlerDetail from "@/pages/HandlerDetail";
 import ClassDetail from "@/pages/ClassDetail";
 import InvoiceDetail from "@/pages/InvoiceDetail";
+import InvoiceEdit from "@/pages/InvoiceEdit";
 import { publicRoutes } from "@/routes/publicRoutes";
 import UnpaidHandlers from "@/pages/UnpaidHandlers";
 
@@ -31,6 +32,7 @@ import CustomerDashboard from "@/pages/CustomerDashboard";
 import CustomerProfile from "@/pages/CustomerProfile";
 import CustomerMessages from "@/pages/CustomerMessages";
 import CustomerInvoices from "@/pages/customer/CustomerInvoices";
+import CustomerInvoiceDetail from "@/pages/CustomerInvoiceDetail";
 
 function App() {
   return (
@@ -67,6 +69,7 @@ function App() {
               <Route path="/forms/:id" element={<Forms />} />
               <Route path="/invoices" element={<Invoices />} />
               <Route path="/invoices/:id" element={<InvoiceDetail />} />
+              <Route path="/invoices/:id/edit" element={<InvoiceEdit />} />
               <Route path="/unpaid-handlers" element={<UnpaidHandlers />} />
               
               {/* Customer routes */}
@@ -74,6 +77,7 @@ function App() {
               <Route path="/customer/profile" element={<CustomerProfile />} />
               <Route path="/customer/messages" element={<CustomerMessages />} />
               <Route path="/customer/invoices" element={<CustomerInvoices />} />
+              <Route path="/customer/invoices/:id" element={<CustomerInvoiceDetail />} />
             </Route>
             
             {/* Catch-all route for 404 */}

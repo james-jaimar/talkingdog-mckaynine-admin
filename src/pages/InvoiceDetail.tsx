@@ -1,7 +1,6 @@
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Helmet } from "react-helmet";
 import { Button } from "@/components/ui/button";
@@ -11,12 +10,13 @@ import { Edit, ArrowLeft, Loader2, Mail, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useInvoiceDetails } from "@/hooks/invoices/useInvoiceQueries";
+import { toast } from "sonner";
 
 export default function InvoiceDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  const { data: invoice, isLoading, error } = useInvoiceDetails(id);
+  const { data: invoice, isLoading, error, isError } = useInvoiceDetails(id);
 
   useEffect(() => {
     if (!id) {
@@ -25,7 +25,25 @@ export default function InvoiceDetail() {
   }, [id, navigate]);
 
   if (!id) {
-    return <div>Error: Invoice ID is required.</div>;
+    return (
+      <DashboardLayout>
+        <div className="container mx-auto py-6">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>Invoice ID is required.</AlertDescription>
+          </Alert>
+          <Button 
+            variant="outline" 
+            onClick={() => navigate('/invoices')} 
+            className="mt-4"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Invoices
+          </Button>
+        </div>
+      </DashboardLayout>
+    );
   }
 
   const canEdit = invoice?.status === 'draft' || invoice?.status === 'sent' || invoice?.status === 'overdue';
@@ -60,12 +78,12 @@ export default function InvoiceDetail() {
             <Loader2 className="mr-2 h-6 w-6 animate-spin" />
             <span>Loading invoice details...</span>
           </div>
-        ) : error ? (
+        ) : isError ? (
           <Alert variant="destructive" className="mb-6">
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>Error</AlertTitle>
             <AlertDescription>
-              Failed to load invoice details. Please try again later.
+              {error instanceof Error ? error.message : "Failed to load invoice details. Please try again later."}
             </AlertDescription>
           </Alert>
         ) : !invoice ? (
@@ -85,12 +103,18 @@ export default function InvoiceDetail() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <p className="text-sm font-medium">Client:</p>
-                      <p>{invoice.client?.first_name} {invoice.client?.last_name}</p>
-                      <p>{invoice.client?.email}</p>
-                      {invoice.client?.phone && <p>{invoice.client.phone}</p>}
-                      {invoice.client?.address && <p>{invoice.client.address}</p>}
-                      {invoice.client?.city && invoice.client?.postal_code && (
-                        <p>{invoice.client.city}, {invoice.client.postal_code}</p>
+                      {invoice.client ? (
+                        <>
+                          <p>{invoice.client.first_name} {invoice.client.last_name}</p>
+                          <p>{invoice.client.email}</p>
+                          {invoice.client.phone && <p>{invoice.client.phone}</p>}
+                          {invoice.client.address && <p>{invoice.client.address}</p>}
+                          {invoice.client.city && invoice.client.postal_code && (
+                            <p>{invoice.client.city}, {invoice.client.postal_code}</p>
+                          )}
+                        </>
+                      ) : (
+                        <p className="text-gray-500">Client information unavailable</p>
                       )}
                     </div>
                     <div>
