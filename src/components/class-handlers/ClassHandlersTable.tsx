@@ -73,7 +73,7 @@ export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
               <TableHead className="w-[200px]">Handler / Dog</TableHead>
               <TableHead className="text-center">Enrol</TableHead>
               <TableHead className="text-center">Vacc</TableHead>
-              <TableHead>POP</TableHead>
+              <TableHead>Payment</TableHead>
               <TableHead>Notes</TableHead>
               <TableHead>Info EO</TableHead>
               <TableHead className="text-center">WA</TableHead>

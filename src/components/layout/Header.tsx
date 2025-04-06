@@ -59,6 +59,7 @@ export function Header() {
   const handlerNavItems = [
     { name: "Profile", path: "/customer/profile", icon: null },
     { name: "Messages", path: "/customer/messages", icon: <MessageSquare className="inline-block mr-1 h-4 w-4" /> },
+    { name: "Invoices", path: "/customer/invoices", icon: <DollarSign className="inline-block mr-1 h-4 w-4" /> },
   ];
   
   // Trainer navigation (non-admin)
@@ -66,6 +67,7 @@ export function Header() {
     { name: "My Dashboard", path: "/trainer-dashboard", icon: <Clipboard className="inline-block mr-1 h-4 w-4" /> },
     { name: "Class Schedules", path: "/class-schedules", icon: null },
     { name: "Handlers", path: "/handlers", icon: null },
+    { name: "Invoices", path: "/invoices", icon: <DollarSign className="inline-block mr-1 h-4 w-4" /> },
   ];
   
   // Admin primary navigation

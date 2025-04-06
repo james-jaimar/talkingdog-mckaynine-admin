@@ -3,8 +3,12 @@ import { TableRow, TableCell } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Check, Save, UserMinus, Pencil } from "lucide-react";
+import { Check, Save, UserMinus, Pencil, FileText } from "lucide-react";
 import { Booking } from "./types/booking";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Badge } from "@/components/ui/badge";
+import { useMemo } from "react";
 
 interface BookingRowProps {
   booking: Booking;
@@ -25,6 +29,57 @@ export function BookingRow({
   saveChanges,
   removeHandler
 }: BookingRowProps) {
+  // Fetch invoice status for this booking
+  const { data: invoiceData, isLoading: isLoadingInvoice } = useQuery({
+    queryKey: ['booking-invoice', booking.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('invoice_items')
+        .select(`
+          invoice_id,
+          invoices:invoice_id (
+            id,
+            status,
+            payment_received,
+            invoice_number
+          )
+        `)
+        .eq('booking_id', booking.id)
+        .maybeSingle();
+
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Determine payment status display
+  const paymentStatus = useMemo(() => {
+    if (isLoadingInvoice) return { status: 'loading', display: 'Loading...' };
+    
+    if (!invoiceData) return { status: 'not-invoiced', display: 'Not Invoiced' };
+    
+    const invoice = invoiceData.invoices;
+    
+    if (invoice.payment_received) return { status: 'paid', display: 'Paid', badge: 'success' };
+    
+    if (invoice.status === 'cancelled') return { status: 'cancelled', display: 'Cancelled', badge: 'destructive' };
+    
+    if (invoice.status === 'sent') return { status: 'invoiced', display: 'Invoice Sent', badge: 'warning' };
+    
+    return { status: 'pending', display: 'Pending Payment', badge: 'secondary' };
+  }, [invoiceData, isLoadingInvoice]);
+
+  // Get badge variant based on payment status
+  const getBadgeVariant = (status: string) => {
+    switch (status) {
+      case 'paid': return 'success';
+      case 'cancelled': return 'destructive';
+      case 'invoiced': return 'warning';
+      case 'pending': return 'secondary';
+      default: return 'outline';
+    }
+  };
+
   return (
     <TableRow key={booking.id}>
       <TableCell className="font-medium">
@@ -65,14 +120,17 @@ export function BookingRow({
       </TableCell>
       
       <TableCell>
-        {isEditing ? (
-          <Input 
-            value={bookingData.proof_of_payment || ''} 
-            onChange={(e) => handleInputChange(booking.id, 'proof_of_payment', e.target.value)}
-            className="h-8 text-sm"
-          />
+        {isLoadingInvoice ? (
+          <div className="animate-pulse bg-gray-200 h-6 w-20 rounded"></div>
         ) : (
-          booking.proof_of_payment || '-'
+          <div className="flex items-center">
+            {invoiceData && (
+              <FileText className="h-4 w-4 mr-1.5 text-gray-500" />
+            )}
+            <Badge variant={getBadgeVariant(paymentStatus.status)} className="font-normal">
+              {paymentStatus.display}
+            </Badge>
+          </div>
         )}
       </TableCell>
       
