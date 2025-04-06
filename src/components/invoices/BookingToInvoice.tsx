@@ -7,11 +7,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertCircle } from "lucide-react";
 import { useInvoices } from "@/hooks/useInvoices";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Invoice, InvoiceFormValues } from "@/types/invoice";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 interface BookingToInvoiceProps {
   open: boolean;
@@ -58,9 +59,9 @@ export function BookingToInvoice({ open, onOpenChange, clientId, onSuccess }: Bo
   const [isProcessing, setIsProcessing] = useState(false);
   const { createInvoice, generateInvoiceNumber } = useInvoices();
   
-  // Fetch unpaid bookings for this client
-  const { data: bookings, isLoading: bookingsLoading } = useQuery({
-    queryKey: ['unpaid-bookings', clientId],
+  // Fetch all bookings for this client, not just unpaid ones
+  const { data: allBookings, isLoading: bookingsLoading } = useQuery({
+    queryKey: ['client-bookings', clientId, open],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('bookings')
@@ -73,7 +74,6 @@ export function BookingToInvoice({ open, onOpenChange, clientId, onSuccess }: Bo
           )
         `)
         .eq('client_id', clientId)
-        .is('proof_of_payment', null)
         .order('created_at', { ascending: false });
       
       if (error) throw error;
@@ -82,12 +82,20 @@ export function BookingToInvoice({ open, onOpenChange, clientId, onSuccess }: Bo
     enabled: !!clientId && open,
   });
 
+  // Filter to get unpaid bookings (those without proof_of_payment)
+  const unpaidBookings = allBookings?.filter(b => !b.proof_of_payment) || [];
+  
+  // Filter to get bookings that are already in classes (paid or not)
+  const enrolledBookings = allBookings?.filter(b => 
+    b.class_schedules?.classes?.name && b.is_enrolled
+  ) || [];
+
   // Select/deselect all bookings
   const toggleSelectAll = () => {
-    if (selectedBookings.length === bookings?.length) {
+    if (selectedBookings.length === unpaidBookings.length) {
       setSelectedBookings([]);
     } else {
-      setSelectedBookings(bookings?.map(b => b.id) || []);
+      setSelectedBookings(unpaidBookings.map(b => b.id) || []);
     }
   };
 
@@ -114,7 +122,7 @@ export function BookingToInvoice({ open, onOpenChange, clientId, onSuccess }: Bo
       const invoiceNumber = await generateInvoiceNumber();
       
       // Create items from selected bookings
-      const selectedBookingData = bookings?.filter(b => selectedBookings.includes(b.id)) || [];
+      const selectedBookingData = allBookings?.filter(b => selectedBookings.includes(b.id)) || [];
       const items = selectedBookingData.map(booking => {
         const className = booking.class_schedules?.classes?.name || 'Class';
         const price = booking.class_schedules?.classes?.price || 0;
@@ -163,6 +171,24 @@ export function BookingToInvoice({ open, onOpenChange, clientId, onSuccess }: Bo
         </DialogHeader>
 
         <div className="space-y-4">
+          {enrolledBookings.length > 0 && (
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Current Class Enrollments</AlertTitle>
+              <AlertDescription>
+                This handler is currently enrolled in the following classes:
+                <ul className="mt-2 list-disc pl-5">
+                  {enrolledBookings.map((booking) => (
+                    <li key={booking.id}>
+                      {booking.dogs?.name}: {booking.class_schedules?.classes?.name}
+                      {booking.proof_of_payment ? " (Paid)" : " (Unpaid)"}
+                    </li>
+                  ))}
+                </ul>
+              </AlertDescription>
+            </Alert>
+          )}
+
           <div className="flex justify-between items-center">
             <h3 className="text-sm font-medium">Select Bookings to Include</h3>
             <Select value={status} onValueChange={(value: "draft" | "sent") => setStatus(value)}>
@@ -182,9 +208,9 @@ export function BookingToInvoice({ open, onOpenChange, clientId, onSuccess }: Bo
                 <TableRow>
                   <TableHead className="w-12">
                     <Checkbox 
-                      checked={bookings?.length ? selectedBookings.length === bookings.length : false}
+                      checked={unpaidBookings.length ? selectedBookings.length === unpaidBookings.length : false}
                       onCheckedChange={toggleSelectAll}
-                      disabled={bookingsLoading || !bookings?.length}
+                      disabled={bookingsLoading || !unpaidBookings.length}
                     />
                   </TableHead>
                   <TableHead>Dog</TableHead>
@@ -200,8 +226,8 @@ export function BookingToInvoice({ open, onOpenChange, clientId, onSuccess }: Bo
                       <Loader2 className="h-5 w-5 animate-spin mx-auto" />
                     </TableCell>
                   </TableRow>
-                ) : bookings?.length ? (
-                  bookings.map(booking => (
+                ) : unpaidBookings.length ? (
+                  unpaidBookings.map(booking => (
                     <TableRow key={booking.id}>
                       <TableCell className="p-2">
                         <Checkbox 
@@ -235,10 +261,10 @@ export function BookingToInvoice({ open, onOpenChange, clientId, onSuccess }: Bo
 
           <div className="flex justify-between items-center pt-2">
             <div className="text-sm">
-              Selected: <span className="font-medium">{selectedBookings.length}</span> of <span className="font-medium">{bookings?.length || 0}</span>
+              Selected: <span className="font-medium">{selectedBookings.length}</span> of <span className="font-medium">{unpaidBookings.length || 0}</span>
             </div>
             <div className="text-sm font-medium">
-              Total: ZAR {bookings
+              Total: ZAR {allBookings
                 ?.filter(b => selectedBookings.includes(b.id))
                 .reduce((sum, b) => sum + (b.class_schedules?.classes?.price || 0), 0)
                 .toFixed(2) || '0.00'
