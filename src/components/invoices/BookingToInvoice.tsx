@@ -13,6 +13,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Invoice, InvoiceFormValues } from "@/types/invoice";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { formatCurrency } from "@/lib/formatters";
 
 interface BookingToInvoiceProps {
   open: boolean;
@@ -59,10 +60,12 @@ export function BookingToInvoice({ open, onOpenChange, clientId, onSuccess }: Bo
   const [isProcessing, setIsProcessing] = useState(false);
   const { createInvoice, generateInvoiceNumber } = useInvoices();
   
-  // Fetch all bookings for this client, not just unpaid ones
+  // Fetch all bookings for this client with improved class data query
   const { data: allBookings, isLoading: bookingsLoading } = useQuery({
     queryKey: ['client-bookings', clientId, open],
     queryFn: async () => {
+      console.log("Fetching bookings for client:", clientId);
+      
       const { data, error } = await supabase
         .from('bookings')
         .select(`
@@ -76,7 +79,12 @@ export function BookingToInvoice({ open, onOpenChange, clientId, onSuccess }: Bo
         .eq('client_id', clientId)
         .order('created_at', { ascending: false });
       
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching bookings:", error);
+        throw error;
+      }
+      
+      console.log("Fetched bookings:", data);
       return data as unknown as BookingWithClass[];
     },
     enabled: !!clientId && open,
@@ -89,6 +97,9 @@ export function BookingToInvoice({ open, onOpenChange, clientId, onSuccess }: Bo
   const enrolledBookings = allBookings?.filter(b => 
     b.class_schedules?.classes?.name && b.is_enrolled
   ) || [];
+  
+  console.log("Enrolled bookings:", enrolledBookings);
+  console.log("Unpaid bookings:", unpaidBookings);
 
   // Select/deselect all bookings
   const toggleSelectAll = () => {
@@ -127,6 +138,8 @@ export function BookingToInvoice({ open, onOpenChange, clientId, onSuccess }: Bo
         const className = booking.class_schedules?.classes?.name || 'Class';
         const price = booking.class_schedules?.classes?.price || 0;
         const dogName = booking.dogs?.name || 'Unknown Dog';
+        
+        console.log(`Creating invoice item for ${className} at price ${price}`);
         
         return {
           description: `${className} for ${dogName}`,
@@ -180,7 +193,10 @@ export function BookingToInvoice({ open, onOpenChange, clientId, onSuccess }: Bo
                 <ul className="mt-2 list-disc pl-5">
                   {enrolledBookings.map((booking) => (
                     <li key={booking.id}>
-                      {booking.dogs?.name}: {booking.class_schedules?.classes?.name}
+                      {booking.dogs?.name}: {booking.class_schedules?.classes?.name} - 
+                      {booking.class_schedules?.classes?.price 
+                        ? formatCurrency(booking.class_schedules.classes.price) 
+                        : 'Price not available'} 
                       {booking.proof_of_payment ? " (Paid)" : " (Unpaid)"}
                     </li>
                   ))}
@@ -244,7 +260,9 @@ export function BookingToInvoice({ open, onOpenChange, clientId, onSuccess }: Bo
                         }
                       </TableCell>
                       <TableCell className="text-right">
-                        ZAR {booking.class_schedules?.classes?.price?.toFixed(2) || '0.00'}
+                        {booking.class_schedules?.classes?.price 
+                          ? formatCurrency(booking.class_schedules.classes.price) 
+                          : 'N/A'}
                       </TableCell>
                     </TableRow>
                   ))
@@ -264,11 +282,11 @@ export function BookingToInvoice({ open, onOpenChange, clientId, onSuccess }: Bo
               Selected: <span className="font-medium">{selectedBookings.length}</span> of <span className="font-medium">{unpaidBookings.length || 0}</span>
             </div>
             <div className="text-sm font-medium">
-              Total: ZAR {allBookings
-                ?.filter(b => selectedBookings.includes(b.id))
-                .reduce((sum, b) => sum + (b.class_schedules?.classes?.price || 0), 0)
-                .toFixed(2) || '0.00'
-              }
+              Total: {formatCurrency(
+                allBookings
+                  ?.filter(b => selectedBookings.includes(b.id))
+                  .reduce((sum, b) => sum + (b.class_schedules?.classes?.price || 0), 0) || 0
+              )}
             </div>
           </div>
         </div>
