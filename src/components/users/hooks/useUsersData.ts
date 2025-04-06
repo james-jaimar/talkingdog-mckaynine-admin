@@ -1,72 +1,130 @@
 
-import { useState, useCallback } from "react";
-import type { UserProfile } from "../types/userTypes";
-import { useFetchUsers } from "./useFetchUsers";
-import { useUserRoleManagement } from "./useUserRoleManagement";
-import { useAdminSetup } from "./useAdminSetup";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/components/ui/use-toast";
 
-// Re-export the type for external use
-export type { UserProfile };
+export interface UserProfile {
+  id: string;
+  email: string;
+  username: string;
+  full_name: string;
+  role: string;
+  avatar_url: string | null;
+  created_at: string;
+  isCurrentUser?: boolean;
+}
 
 export function useUsersData() {
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const { toast } = useToast();
   const queryClient = useQueryClient();
   
-  // Fetch users data with proper error handling
+  // Fetch all users
   const { 
     data: users = [], 
     isLoading, 
     error, 
     refetch 
-  } = useFetchUsers();
-  
-  // Get user role management functionality
-  const { 
-    updateUserRole, 
-    isUpdating 
-  } = useUserRoleManagement();
-  
-  // Get admin setup functionality
-  const { 
-    adminSetupAttempted,
-    setUserAsAdmin 
-  } = useAdminSetup();
+  } = useQuery({
+    queryKey: ['admin-users'],
+    queryFn: async () => {
+      try {
+        // Get current user for marking in UI
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        
+        // Get all profiles
+        const { data: profiles, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .order('created_at', { ascending: false });
+        
+        if (error) throw error;
+        
+        if (!profiles || profiles.length === 0) {
+          return [];
+        }
+        
+        // Map to user profiles
+        return profiles.map(profile => ({
+          id: profile.id,
+          email: profile.username || '', // Email is stored in username field
+          username: profile.username || '',
+          full_name: profile.full_name || '',
+          role: profile.role || 'user',
+          avatar_url: profile.avatar_url,
+          created_at: profile.created_at || new Date().toISOString(),
+          isCurrentUser: profile.id === currentUser?.id
+        }));
+      } catch (error) {
+        console.error("Error fetching users:", error);
+        throw error;
+      }
+    },
+    refetchOnWindowFocus: false,
+  });
 
-  // Ensure refetch is wrapped with error handling and proper logging
-  const refetchUsers = useCallback(async () => {
-    try {
-      console.log("Manually refetching ALL users data...");
-      // Invalidate the cache first to ensure fresh data
-      queryClient.invalidateQueries({ queryKey: ['users-admin'] });
-      await refetch();
-      console.log("Users data refetched successfully, found", (await refetch()).data?.length || 0, "users");
-    } catch (error) {
-      console.error("Error refetching users data:", error);
-    }
-  }, [queryClient, refetch]);
+  // Update user role
+  const { mutate: updateUserRole, isPending: isUpdating } = useMutation({
+    mutationFn: async ({ userId, role }: { userId: string; role: string }) => {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ role })
+        .eq('id', userId);
+      
+      if (error) throw error;
+      
+      return { userId, role };
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Role updated",
+        description: `User role has been updated to ${data.role}`,
+      });
+      
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Update failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
 
-  // Debug the users array
-  console.log(`useUsersData hook - current users count: ${users.length}`);
-  if (users.length > 0) {
-    console.log("Current users in useUsersData:", users.map(u => ({
-      id: u.id.substring(0, 8), 
-      email: u.username,
-      role: u.role,
-      isCurrentUser: u.isCurrentUser
-    })));
-  }
+  // Reset user password
+  const { mutate: resetPassword, isPending: isResetting } = useMutation({
+    mutationFn: async ({ userId, newPassword }: { userId: string; newPassword: string }) => {
+      const { error } = await supabase.auth.admin.updateUserById(userId, {
+        password: newPassword,
+      });
+      
+      if (error) throw error;
+      
+      return { success: true };
+    },
+    onSuccess: () => {
+      toast({
+        title: "Password reset",
+        description: "User password has been reset successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Password reset failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
 
   return {
     users,
     isLoading,
     error,
-    selectedUserId,
-    setSelectedUserId,
+    refetch,
     updateUserRole,
     isUpdating,
-    setUserAsAdmin,
-    refetchUsers,
-    adminSetupAttempted
+    resetPassword,
+    isResetting
   };
 }
