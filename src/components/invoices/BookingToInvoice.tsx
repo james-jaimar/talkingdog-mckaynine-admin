@@ -2,18 +2,13 @@
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { toast } from "sonner";
-import { format } from "date-fns";
-import { Loader2, AlertCircle } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useInvoices } from "@/hooks/useInvoices";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { Invoice, InvoiceFormValues } from "@/types/invoice";
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { formatCurrency } from "@/lib/formatters";
+import { InvoiceFormValues } from "@/types/invoice";
+import { toast } from "sonner";
+import { BookingList } from "./booking-components/BookingList";
+import { EnrolledClassesSummary } from "./booking-components/EnrolledClassesSummary";
+import { useBookings } from "./booking-components/useBookings";
 
 interface BookingToInvoiceProps {
   open: boolean;
@@ -22,84 +17,19 @@ interface BookingToInvoiceProps {
   onSuccess?: () => void;
 }
 
-// Updated interface to match the actual structure returned from the database
-interface BookingWithClass {
-  id: string;
-  is_enrolled: boolean;
-  vaccination_verified: boolean;
-  proof_of_payment: string | null;
-  additional_notes: string | null;
-  info_eo: string | null;
-  uses_whatsapp: boolean;
-  social_media_consent: boolean;
-  info_pg: string | null;
-  class_schedule_id: string;
-  dog_id: string;
-  client_id: string;
-  status: string;
-  payment_status: string;
-  notes: string | null;
-  dogs?: {
-    id: string;
-    name: string;
-    breed: string;
-  };
-  class_schedules?: {
-    start_time: string;
-    classes?: {
-      id: string;
-      name: string;
-      price: number;
-    };
-  };
-}
-
 export function BookingToInvoice({ open, onOpenChange, clientId, onSuccess }: BookingToInvoiceProps) {
   const [selectedBookings, setSelectedBookings] = useState<string[]>([]);
   const [status, setStatus] = useState<"draft" | "sent">("draft");
   const [isProcessing, setIsProcessing] = useState(false);
   const { createInvoice, generateInvoiceNumber } = useInvoices();
   
-  // Fetch all bookings for this client with improved class data query
-  const { data: allBookings, isLoading: bookingsLoading } = useQuery({
-    queryKey: ['client-bookings', clientId, open],
-    queryFn: async () => {
-      console.log("Fetching bookings for client:", clientId);
-      
-      const { data, error } = await supabase
-        .from('bookings')
-        .select(`
-          *,
-          dogs:dog_id (id, name, breed),
-          class_schedules:class_schedule_id (
-            start_time,
-            classes:class_id (id, name, price)
-          )
-        `)
-        .eq('client_id', clientId)
-        .order('created_at', { ascending: false });
-      
-      if (error) {
-        console.error("Error fetching bookings:", error);
-        throw error;
-      }
-      
-      console.log("Fetched bookings:", data);
-      return data as unknown as BookingWithClass[];
-    },
-    enabled: !!clientId && open,
-  });
-
-  // Filter to get unpaid bookings (those without proof_of_payment)
-  const unpaidBookings = allBookings?.filter(b => !b.proof_of_payment) || [];
-  
-  // Filter to get bookings that are already in classes (paid or not)
-  const enrolledBookings = allBookings?.filter(b => 
-    b.class_schedules?.classes?.name && b.is_enrolled
-  ) || [];
-  
-  console.log("Enrolled bookings:", enrolledBookings);
-  console.log("Unpaid bookings:", unpaidBookings);
+  // Use the custom hook to fetch and process bookings
+  const { 
+    allBookings, 
+    unpaidBookings, 
+    enrolledBookings, 
+    isLoading: bookingsLoading 
+  } = useBookings(clientId, open);
 
   // Select/deselect all bookings
   const toggleSelectAll = () => {
@@ -117,6 +47,13 @@ export function BookingToInvoice({ open, onOpenChange, clientId, onSuccess }: Bo
     } else {
       setSelectedBookings([...selectedBookings, id]);
     }
+  };
+
+  // Calculate total from selected bookings
+  const calculateTotal = () => {
+    return allBookings
+      ?.filter(b => selectedBookings.includes(b.id))
+      .reduce((sum, b) => sum + (b.class_schedules?.classes?.price || 0), 0) || 0;
   };
 
   // Create invoice from selected bookings
@@ -184,111 +121,22 @@ export function BookingToInvoice({ open, onOpenChange, clientId, onSuccess }: Bo
         </DialogHeader>
 
         <div className="space-y-4">
-          {enrolledBookings.length > 0 && (
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Current Class Enrollments</AlertTitle>
-              <AlertDescription>
-                This handler is currently enrolled in the following classes:
-                <ul className="mt-2 list-disc pl-5">
-                  {enrolledBookings.map((booking) => (
-                    <li key={booking.id}>
-                      {booking.dogs?.name}: {booking.class_schedules?.classes?.name} - 
-                      {booking.class_schedules?.classes?.price 
-                        ? formatCurrency(booking.class_schedules.classes.price) 
-                        : 'Price not available'} 
-                      {booking.proof_of_payment ? " (Paid)" : " (Unpaid)"}
-                    </li>
-                  ))}
-                </ul>
-              </AlertDescription>
-            </Alert>
-          )}
+          {/* Summary of enrolled classes */}
+          <EnrolledClassesSummary enrolledBookings={enrolledBookings} />
 
-          <div className="flex justify-between items-center">
-            <h3 className="text-sm font-medium">Select Bookings to Include</h3>
-            <Select value={status} onValueChange={(value: "draft" | "sent") => setStatus(value)}>
-              <SelectTrigger className="w-32">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="draft">Draft</SelectItem>
-                <SelectItem value="sent">Mark as Sent</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="border rounded-md">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-12">
-                    <Checkbox 
-                      checked={unpaidBookings.length ? selectedBookings.length === unpaidBookings.length : false}
-                      onCheckedChange={toggleSelectAll}
-                      disabled={bookingsLoading || !unpaidBookings.length}
-                    />
-                  </TableHead>
-                  <TableHead>Dog</TableHead>
-                  <TableHead>Class</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead className="text-right">Price</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {bookingsLoading ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center">
-                      <Loader2 className="h-5 w-5 animate-spin mx-auto" />
-                    </TableCell>
-                  </TableRow>
-                ) : unpaidBookings.length ? (
-                  unpaidBookings.map(booking => (
-                    <TableRow key={booking.id}>
-                      <TableCell className="p-2">
-                        <Checkbox 
-                          checked={selectedBookings.includes(booking.id)}
-                          onCheckedChange={() => toggleBooking(booking.id)}
-                        />
-                      </TableCell>
-                      <TableCell>{booking.dogs?.name || 'N/A'}</TableCell>
-                      <TableCell>{booking.class_schedules?.classes?.name || 'N/A'}</TableCell>
-                      <TableCell>
-                        {booking.class_schedules?.start_time
-                          ? format(new Date(booking.class_schedules.start_time), 'PP')
-                          : 'N/A'
-                        }
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {booking.class_schedules?.classes?.price 
-                          ? formatCurrency(booking.class_schedules.classes.price) 
-                          : 'N/A'}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                      No unpaid bookings found for this client.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
-
-          <div className="flex justify-between items-center pt-2">
-            <div className="text-sm">
-              Selected: <span className="font-medium">{selectedBookings.length}</span> of <span className="font-medium">{unpaidBookings.length || 0}</span>
-            </div>
-            <div className="text-sm font-medium">
-              Total: {formatCurrency(
-                allBookings
-                  ?.filter(b => selectedBookings.includes(b.id))
-                  .reduce((sum, b) => sum + (b.class_schedules?.classes?.price || 0), 0) || 0
-              )}
-            </div>
-          </div>
+          {/* Booking list with selection and status filter */}
+          <BookingList
+            bookingsLoading={bookingsLoading}
+            unpaidBookings={unpaidBookings}
+            selectedBookings={selectedBookings}
+            toggleSelectAll={toggleSelectAll}
+            toggleBooking={toggleBooking}
+            status={status}
+            setStatus={setStatus}
+            selectedCount={selectedBookings.length}
+            totalCount={unpaidBookings.length}
+            totalAmount={calculateTotal()}
+          />
         </div>
 
         <DialogFooter>
