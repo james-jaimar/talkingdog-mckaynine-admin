@@ -3,7 +3,6 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Invoice } from "../types";
 import { toast } from "sonner";
-import { handleQueryError } from "./useQueryUtils";
 
 /**
  * Hook to fetch a single invoice by ID with all details
@@ -100,6 +99,11 @@ export function useInvoiceDetails(invoiceId: string | undefined) {
               enhancedItem.unit_price = classData.price;
               enhancedItem.amount = classData.price * item.quantity;
             }
+          }
+          
+          // Ensure amount is calculated if missing
+          if (!enhancedItem.amount && enhancedItem.unit_price) {
+            enhancedItem.amount = enhancedItem.quantity * enhancedItem.unit_price;
           }
           
           return enhancedItem;

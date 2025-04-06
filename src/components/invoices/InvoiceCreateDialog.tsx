@@ -54,7 +54,7 @@ export function InvoiceCreateDialog({ open, onOpenChange }: InvoiceCreateDialogP
       issued_date: new Date(),
       due_date: addDays(new Date(), 30),
       notes: "",
-      tax_rate: 0, // Updated to 0% as default
+      tax_rate: 0, // Default is set to 0%
       items: [
         { description: "", quantity: 1, unit_price: 0 }
       ]

@@ -94,7 +94,7 @@ export function BookingToInvoice({ open, onOpenChange, clientId, onSuccess }: Bo
         issued_date: new Date(),
         due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
         notes: `Invoice for training classes. Includes ${selectedBookings.length} booking(s).`,
-        tax_rate: 15, // Default tax rate
+        tax_rate: 0, // Set tax rate to 0%
         items,
       };
       
