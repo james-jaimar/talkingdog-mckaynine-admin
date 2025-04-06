@@ -1,3 +1,4 @@
+
 import {
   BrowserRouter as Router,
   Route,
@@ -8,7 +9,7 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { AuthProvider } from "@/context/auth";
 import { BranchProvider } from "@/context/BranchContext";
-import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import Dashboard from "@/pages/Dashboard";
 import Handlers from "@/pages/Handlers";
 import Classes from "@/pages/Classes";
@@ -25,13 +26,13 @@ import TrainerDetail from "@/pages/TrainerDetail";
 import ClassDetail from "@/pages/ClassDetail";
 import FormDetail from "@/pages/FormDetail";
 import InvoiceDetail from "@/pages/InvoiceDetail";
-import CustomerDashboard from "@/pages/customer/CustomerDashboard";
-import CustomerProfile from "@/pages/customer/CustomerProfile";
-import CustomerMessages from "@/pages/customer/CustomerMessages";
 import { publicRoutes } from "@/routes/publicRoutes";
 import UnpaidHandlers from "@/pages/UnpaidHandlers";
 
-// Import the new CustomerInvoices component
+// Import the CustomerInvoices component and other customer pages with correct paths
+import CustomerDashboard from "@/pages/CustomerDashboard";
+import CustomerProfile from "@/pages/CustomerProfile";
+import CustomerMessages from "@/pages/CustomerMessages";
 import CustomerInvoices from "@/pages/customer/CustomerInvoices";
 
 function App() {

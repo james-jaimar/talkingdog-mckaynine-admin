@@ -7,7 +7,7 @@ import { Check, Save, UserMinus, Pencil, FileText } from "lucide-react";
 import { Booking } from "./types/booking";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Badge } from "@/components/ui/badge";
+import { ExtendedBadge } from "@/components/ui/badge-variants";
 import { useMemo } from "react";
 
 interface BookingRowProps {
@@ -127,9 +127,9 @@ export function BookingRow({
             {invoiceData && (
               <FileText className="h-4 w-4 mr-1.5 text-gray-500" />
             )}
-            <Badge variant={getBadgeVariant(paymentStatus.status)} className="font-normal">
+            <ExtendedBadge variant={getBadgeVariant(paymentStatus.status) as any} className="font-normal">
               {paymentStatus.display}
-            </Badge>
+            </ExtendedBadge>
           </div>
         )}
       </TableCell>

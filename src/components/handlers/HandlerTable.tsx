@@ -8,7 +8,7 @@ import { TablePagination } from "@/components/ui/table-pagination";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Badge } from "@/components/ui/badge";
+import { ExtendedBadge } from "@/components/ui/badge-variants";
 
 export function HandlerTable({ 
   handlers, 
@@ -142,9 +142,9 @@ export function HandlerTable({
                           <FileText className="h-3.5 w-3.5 text-gray-500" />
                           <span className="text-sm">{invoiceStatus.invoiceCount}</span>
                           {invoiceStatus.hasUnpaidInvoices && (
-                            <Badge variant="warning" className="text-xs ml-1 px-1.5">
+                            <ExtendedBadge variant="warning" className="text-xs ml-1 px-1.5">
                               {invoiceStatus.unpaidCount} unpaid
-                            </Badge>
+                            </ExtendedBadge>
                           )}
                         </div>
                       ) : "—"}

@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useInvoices } from "@/hooks/useInvoices";
+import { InvoiceStatus } from "@/types/invoice";
 
 interface UseAddHandlerModalProps {
   classId: string;
@@ -75,7 +76,7 @@ export function useAddHandlerModal({
       const invoiceData = {
         client_id: handlerId,
         invoice_number: invoiceNumber,
-        status: "draft",
+        status: "draft" as InvoiceStatus,
         issued_date: new Date(),
         due_date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 days from now
         notes: `Invoice for ${className} training class for ${dogName}.`,
