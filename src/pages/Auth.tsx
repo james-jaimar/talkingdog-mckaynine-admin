@@ -11,7 +11,8 @@ import { Dog } from "lucide-react";
 
 export default function Auth() {
   const [activeTab, setActiveTab] = useState<string>("signin");
-  const { user, isLoading } = useAuth();
+  const [authLoading, setAuthLoading] = useState(false);
+  const { user, isLoading, login, signup } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const from = location.state?.from?.pathname || "/";
@@ -22,6 +23,32 @@ export default function Auth() {
       navigate(from, { replace: true });
     }
   }, [user, isLoading, navigate, from]);
+
+  // Handle sign in submission
+  const handleSignIn = async (email: string, password: string) => {
+    setAuthLoading(true);
+    try {
+      const result = await login(email, password);
+      setAuthLoading(false);
+      return result;
+    } catch (error) {
+      setAuthLoading(false);
+      return { success: false, error: "An unexpected error occurred" };
+    }
+  };
+
+  // Handle sign up submission
+  const handleSignUp = async (email: string, password: string, metadata?: any) => {
+    setAuthLoading(true);
+    try {
+      const result = await signup(email, password, metadata);
+      setAuthLoading(false);
+      return result;
+    } catch (error) {
+      setAuthLoading(false);
+      return { success: false, error: "An unexpected error occurred" };
+    }
+  };
 
   if (isLoading) {
     return (
@@ -60,10 +87,10 @@ export default function Auth() {
                 <TabsTrigger value="signup">Sign Up</TabsTrigger>
               </TabsList>
               <TabsContent value="signin" className="p-6">
-                <SignInForm />
+                <SignInForm isLoading={authLoading} onSubmit={handleSignIn} />
               </TabsContent>
               <TabsContent value="signup" className="p-6">
-                <SignUpForm />
+                <SignUpForm isLoading={authLoading} onSubmit={handleSignUp} />
               </TabsContent>
             </Tabs>
           </div>
