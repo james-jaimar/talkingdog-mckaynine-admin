@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -11,6 +10,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useInvoices } from "@/hooks/useInvoices";
 import { InvoiceStatus } from "@/types/invoice";
+import { formatCurrency } from "@/lib/formatters";
 
 interface CreateCustomInvoiceProps {
   open: boolean;
