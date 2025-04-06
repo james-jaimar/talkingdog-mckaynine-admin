@@ -7,9 +7,8 @@ import {
   TableHead,
   TableCell
 } from "@/components/ui/table";
-import { Invoice, InvoiceItem } from "@/hooks/invoices/types";
+import { InvoiceItem } from "@/hooks/invoices/types";
 import { formatCurrency } from "@/lib/formatters";
-import { Skeleton } from "@/components/ui/skeleton";
 
 interface InvoiceItemsTableProps {
   items: InvoiceItem[];

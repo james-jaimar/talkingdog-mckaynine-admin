@@ -8,7 +8,6 @@ export interface InvoiceItem {
   unit_price: number;
   amount?: number;
   booking_id?: string | null;
-  // Add the bookings property with its nested structure
   bookings?: {
     id: string;
     dog_id?: string;

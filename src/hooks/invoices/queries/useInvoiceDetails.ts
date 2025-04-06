@@ -3,7 +3,6 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Invoice, InvoiceItem } from "@/hooks/invoices/types";
 import { toast } from "sonner";
-import { handleQueryError } from "./useQueryUtils";
 
 /**
  * Hook to fetch a single invoice by ID with all details
@@ -69,7 +68,7 @@ export function useInvoiceDetails(invoiceId: string | undefined) {
         // Now for each item with a booking_id, try to fetch the booking details
         const enhancedItems: InvoiceItem[] = await Promise.all(
           itemsData.map(async (item) => {
-            // Explicitly create an InvoiceItem object
+            // Explicitly create an InvoiceItem object with optional bookings property
             const enhancedItem: InvoiceItem = {
               id: item.id,
               description: item.description,
@@ -80,54 +79,60 @@ export function useInvoiceDetails(invoiceId: string | undefined) {
             };
 
             if (item.booking_id) {
-              // Try to fetch booking details
-              const { data: booking, error: bookingError } = await supabase
-                .from('bookings')
-                .select(`
-                  id, 
-                  dog_id,
-                  class_schedule_id
-                `)
-                .eq('id', item.booking_id)
-                .single();
+              try {
+                // Try to fetch booking details
+                const { data: booking, error: bookingError } = await supabase
+                  .from('bookings')
+                  .select(`
+                    id, 
+                    dog_id,
+                    class_schedule_id
+                  `)
+                  .eq('id', item.booking_id)
+                  .single();
 
-              if (!bookingError && booking) {
-                // Initialize bookings property
-                enhancedItem.bookings = {
-                  id: booking.id,
-                  dog_id: booking.dog_id,
-                  class_schedule_id: booking.class_schedule_id
-                };
+                if (!bookingError && booking) {
+                  // Initialize bookings property
+                  enhancedItem.bookings = {
+                    id: booking.id,
+                    dog_id: booking.dog_id,
+                    class_schedule_id: booking.class_schedule_id
+                  };
 
-                // Try to fetch dog name separately
-                if (booking.dog_id) {
-                  const { data: dog } = await supabase
-                    .from('dogs')
-                    .select('name, breed')
-                    .eq('id', booking.dog_id)
-                    .single();
+                  // Try to fetch dog name separately
+                  if (booking.dog_id) {
+                    const { data: dog } = await supabase
+                      .from('dogs')
+                      .select('name, breed')
+                      .eq('id', booking.dog_id)
+                      .single();
 
-                  if (dog) {
-                    enhancedItem.bookings.dogs = dog;
+                    if (dog) {
+                      if (!enhancedItem.bookings) enhancedItem.bookings = { id: booking.id };
+                      enhancedItem.bookings.dogs = dog;
+                    }
+                  }
+
+                  // Try to fetch class details separately
+                  if (booking.class_schedule_id) {
+                    const { data: classSchedule } = await supabase
+                      .from('class_schedules')
+                      .select(`
+                        id,
+                        start_time,
+                        classes:class_id (id, name, description, price)
+                      `)
+                      .eq('id', booking.class_schedule_id)
+                      .single();
+
+                    if (classSchedule) {
+                      if (!enhancedItem.bookings) enhancedItem.bookings = { id: booking.id };
+                      enhancedItem.bookings.class_schedules = classSchedule;
+                    }
                   }
                 }
-
-                // Try to fetch class details separately
-                if (booking.class_schedule_id) {
-                  const { data: classSchedule } = await supabase
-                    .from('class_schedules')
-                    .select(`
-                      id,
-                      start_time,
-                      classes:class_id (id, name, description, price)
-                    `)
-                    .eq('id', booking.class_schedule_id)
-                    .single();
-
-                  if (classSchedule) {
-                    enhancedItem.bookings.class_schedules = classSchedule;
-                  }
-                }
+              } catch (error) {
+                console.error("Error fetching booking details:", error);
               }
             }
 
