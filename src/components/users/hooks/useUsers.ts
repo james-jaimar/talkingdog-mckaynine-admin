@@ -2,16 +2,10 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import { UserProfile } from "../types/userTypes";
 
-export type User = {
-  id: string;
-  email: string;
-  role: string;
-  full_name: string;
-  created_at: string;
-  isCurrentUser?: boolean;
-  username?: string;
-  avatar_url?: string | null;
+export type User = UserProfile & {
+  email: string; // Make email required for User type
 };
 
 export function useUsers() {
@@ -46,7 +40,7 @@ export function useUsers() {
       // Transform the data to ensure it matches our User type
       const formattedUsers: User[] = data.map(user => ({
         id: user.id,
-        email: user.username || '',  // Email is stored in username field
+        email: user.username || '',  // Email is stored in username field and always set
         username: user.username || '',
         role: user.role || 'user',
         full_name: user.full_name || '',

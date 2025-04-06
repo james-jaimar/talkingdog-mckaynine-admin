@@ -1,184 +1,109 @@
 
-import { useState, useEffect } from "react";
-import { useUsersData } from "./hooks/useUsersData";
-import {
-  Table,
-  TableBody,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-} from "@/components/ui/card";
-import { Loader2 } from "lucide-react";
-import { ResetPasswordDialog } from "./ResetPasswordDialog";
-import { AddUserDialog } from "./AddUserDialog";
+import { useState } from "react";
+import { Table, TableBody, TableHeader } from "@/components/ui/table";
 import { UserTableHeader } from "./components/UserTableHeader";
 import { UserTableRow } from "./components/UserTableRow";
 import { UserTableEmpty } from "./components/UserTableEmpty";
-import { UserRoleDialog } from "./components/UserRoleDialog";
-import { UserProfile } from "./types/userTypes";
+import { UserManageDialog } from "./UserManageDialog";
+import { UserPasswordResetDialog } from "./UserPasswordResetDialog";
+import { AddUserDialog } from "./AddUserDialog";
+import { useUsers, User } from "./hooks/useUsers";
 
 export function UserTable() {
-  // Get user data from the hook
-  const {
-    users,
-    isLoading,
-    error,
-    updateUserRole,
-    isUpdating,
-    trainers,
-    isLoadingTrainers,
-    linkTrainerToUser,
-    unlinkTrainerFromUser,
-    refetchUsers,
-    adminSetupAttempted
-  } = useUsersData();
-
-  // Local state
-  const [filter, setFilter] = useState("");
-  const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
-  const [resetPasswordOpen, setResetPasswordOpen] = useState(false);
-  const [userToResetPassword, setUserToResetPassword] = useState<UserProfile | null>(null);
+  const { users, isLoading, refetchUsers } = useUsers();
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [addUserDialogOpen, setAddUserDialogOpen] = useState(false);
+  const [addUserOpen, setAddUserOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [manageDialogOpen, setManageDialogOpen] = useState(false);
+  const [resetPasswordDialogOpen, setResetPasswordDialogOpen] = useState(false);
+  const [filter, setFilter] = useState("");
 
   // Filter users by name or email
   const filteredUsers = users.filter(
     (user) =>
       (user.full_name?.toLowerCase() || '').includes(filter.toLowerCase()) ||
-      (user.username?.toLowerCase() || '').includes(filter.toLowerCase())
+      (user.email?.toLowerCase() || '').includes(filter.toLowerCase())
   );
 
-  // Fetch users on component mount
-  useEffect(() => {
-    refetchUsers();
-  }, [refetchUsers]);
-
-  // Role change handler
-  const handleRoleChange = (role: string) => {
-    if (editingUser) {
-      updateUserRole({ userId: editingUser.id, role });
-      setEditingUser(null);
-    }
-  };
-
-  // Password reset handler
-  const handleResetPassword = (user: UserProfile) => {
-    setUserToResetPassword(user);
-    setResetPasswordOpen(true);
-  };
-
-  // Refresh handler
   const handleRefresh = async () => {
     setIsRefreshing(true);
     await refetchUsers();
     setIsRefreshing(false);
   };
 
-  // Loading state
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-mckaynine-600" />
-        <span className="ml-2">Loading users...</span>
-      </div>
-    );
-  }
+  const handleManageUser = (user: User) => {
+    setSelectedUser(user);
+    setManageDialogOpen(true);
+  };
 
-  // Error state
-  if (error) {
-    return (
-      <Card>
-        <CardHeader>
-          <div className="text-red-500 font-semibold">Error Loading Users</div>
-          <p className="text-sm text-muted-foreground">
-            There was a problem loading the user data.
-          </p>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground">
-            Error details: {error instanceof Error ? error.message : String(error)}
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
+  const handleResetPassword = (user: User) => {
+    setSelectedUser(user);
+    setResetPasswordDialogOpen(true);
+  };
 
   return (
-    <Card>
-      <CardHeader className="pb-0">
-        <UserTableHeader
-          onRefresh={handleRefresh}
-          isRefreshing={isRefreshing}
-          onAddUser={() => setAddUserDialogOpen(true)}
-          filter={filter}
-          onFilterChange={setFilter}
-        />
-      </CardHeader>
-      <CardContent>
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Trainer</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <UserTableEmpty
-                users={users}
-                filteredUsers={filteredUsers}
-                filter={filter}
-              />
-              {filteredUsers.map((user) => (
-                <UserTableRow
-                  key={user.id}
-                  user={user}
-                  isLoadingTrainers={isLoadingTrainers}
-                  trainers={trainers}
-                  onEditUser={setEditingUser}
-                  onResetPassword={handleResetPassword}
-                  onLinkTrainer={linkTrainerToUser}
-                  onUnlinkTrainer={unlinkTrainerFromUser}
-                />
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      </CardContent>
-
-      {/* User role dialog */}
-      <UserRoleDialog
-        user={editingUser}
-        open={!!editingUser}
-        onOpenChange={(open) => !open && setEditingUser(null)}
-        onRoleChange={handleRoleChange}
-        isUpdating={isUpdating}
+    <div className="bg-white rounded-lg shadow overflow-hidden">
+      <UserTableHeader 
+        onRefresh={handleRefresh}
+        isRefreshing={isRefreshing}
+        onAddUser={() => setAddUserOpen(true)}
+        filter={filter}
+        onFilterChange={setFilter}
       />
 
-      {/* Add User Dialog */}
-      <AddUserDialog 
-        open={addUserDialogOpen}
-        onOpenChange={setAddUserDialogOpen}
+      <div className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <tr>
+              <th className="px-4 py-3 text-left">Name</th>
+              <th className="px-4 py-3 text-left">Email</th>
+              <th className="px-4 py-3 text-left">Role</th>
+              <th className="px-4 py-3 text-left">Created</th>
+              <th className="px-4 py-3 text-right w-[80px]">Actions</th>
+            </tr>
+          </TableHeader>
+          <TableBody>
+            <UserTableEmpty
+              users={users}
+              filteredUsers={filteredUsers}
+              filter={filter}
+              isLoading={isLoading}
+            />
+
+            {!isLoading && filteredUsers.map((user) => (
+              <UserTableRow
+                key={user.id}
+                user={user}
+                onManageUser={handleManageUser}
+                onResetPassword={handleResetPassword}
+              />
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* Dialogs */}
+      {selectedUser && (
+        <>
+          <UserManageDialog 
+            user={selectedUser}
+            open={manageDialogOpen}
+            onOpenChange={setManageDialogOpen}
+            onUserUpdated={refetchUsers}
+          />
+          <UserPasswordResetDialog
+            user={selectedUser}
+            open={resetPasswordDialogOpen}
+            onOpenChange={setResetPasswordDialogOpen}
+          />
+        </>
+      )}
+      
+      <AddUserDialog
+        open={addUserOpen}
+        onOpenChange={setAddUserOpen}
         onUserAdded={refetchUsers}
       />
-
-      {/* Password Reset Dialog */}
-      {userToResetPassword && (
-        <ResetPasswordDialog 
-          user={userToResetPassword}
-          open={resetPasswordOpen}
-          onOpenChange={setResetPasswordOpen}
-        />
-      )}
-    </Card>
+    </div>
   );
 }
