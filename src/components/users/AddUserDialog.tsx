@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -29,7 +28,7 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
   const [role, setRole] = useState("user");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
-  const queryClient = useQueryClient(); // Use the hook directly instead of accessing from window
+  const queryClient = useQueryClient(); // Use the hook directly
 
   const handleAddUser = async () => {
     if (!email || !password) {
@@ -241,4 +240,3 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
     </Dialog>
   );
 }
-

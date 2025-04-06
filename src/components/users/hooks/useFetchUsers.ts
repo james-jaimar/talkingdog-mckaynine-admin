@@ -14,7 +14,14 @@ export function useFetchUsers() {
         const { data: { user: currentUser } } = await supabase.auth.getUser();
         console.log("Current user ID:", currentUser?.id);
         
-        // Get all profiles from the profiles table
+        // Debug: Log the total number of profiles before any filtering
+        const { count: totalProfileCount } = await supabase
+          .from('profiles')
+          .select('*', { count: 'exact', head: true });
+          
+        console.log(`Total profile count from database: ${totalProfileCount || 0}`);
+        
+        // Get all profiles from the profiles table - explicitly select all columns with no filters
         const { data: profiles, error: profilesError } = await supabase
           .from('profiles')
           .select('*');
@@ -68,7 +75,6 @@ export function useFetchUsers() {
         throw error;
       }
     },
-    // Don't cache data at all - always fetch fresh from the server
     staleTime: 0,
     gcTime: 0,
     refetchOnWindowFocus: true,

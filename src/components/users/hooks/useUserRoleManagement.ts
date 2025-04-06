@@ -49,19 +49,18 @@ export function useUserRoleManagement() {
         description: `User role has been updated to ${variables.role} successfully.`,
       });
       
-      // Invalidate ALL queries that might be affected
-      queryClient.invalidateQueries();
+      // Force full refresh of all user queries
+      queryClient.invalidateQueries({ queryKey: ['users-admin'] });
       
-      // Force refetch specific queries after a short delay to ensure consistency
+      // Ensure the changes are immediately visible
       setTimeout(() => {
         queryClient.refetchQueries({ queryKey: ['users-admin'] });
-        queryClient.refetchQueries({ queryKey: ['users'] });
       }, 300);
     },
     onError: (error) => {
       toast({
         title: "Update failed",
-        description: error.message || "Failed to update user role.",
+        description: error instanceof Error ? error.message : "Failed to update user role.",
         variant: "destructive",
       });
     },
