@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Invoice } from "../types";
 import { toast } from "sonner";
+import { handleQueryError } from "./useQueryUtils";
 
 /**
  * Hook to fetch a single invoice by ID with all details
@@ -41,29 +42,25 @@ export function useInvoiceDetails(invoiceId: string | undefined) {
 
         console.log("Fetched invoice data:", invoice);
         
-        // Then get the invoice items directly without linking to users
+        // Fetch invoice items directly with related booking information but without linking to users table
         const { data: itemsData, error: itemsError } = await supabase
           .from('invoice_items')
           .select(`
-            *,
+            id,
+            description,
+            quantity,
+            unit_price,
+            amount,
+            booking_id,
             bookings:booking_id (
               id, 
-              class_schedule_id,
               dog_id,
-              dogs:dog_id (
-                id, 
-                name,
-                breed
-              ),
+              class_schedule_id,
+              dogs:dog_id (id, name, breed),
               class_schedules:class_schedule_id (
                 id,
                 start_time,
-                classes:class_id (
-                  id,
-                  name,
-                  description,
-                  price
-                )
+                classes:class_id (id, name, description, price)
               )
             )
           `)
@@ -71,7 +68,7 @@ export function useInvoiceDetails(invoiceId: string | undefined) {
 
         if (itemsError) {
           console.error("Error fetching invoice items:", itemsError);
-          // Continue with empty items rather than failing completely
+          // Return invoice with empty items rather than failing completely
           return {
             ...invoice,
             items: []
@@ -80,22 +77,28 @@ export function useInvoiceDetails(invoiceId: string | undefined) {
 
         console.log("Successfully fetched invoice items:", itemsData);
 
-        // Process the items to improve the description with class and dog details
+        // Process the items to enhance descriptions with class and dog details
         const processedItems = itemsData?.map(item => {
           let enhancedItem = { ...item };
           
-          // If this item is linked to a booking with class details
-          if (item.bookings?.class_schedules?.classes) {
-            const classData = item.bookings.class_schedules.classes;
-            const dogName = item.bookings.dogs?.name;
-            
-            // If no description was provided, create one using the class data
+          // If this item is linked to a booking with class and dog details
+          const booking = item.bookings;
+          const classData = booking?.class_schedules?.classes;
+          const dogData = booking?.dogs;
+          
+          if (classData) {
+            // If no description was provided, create one using the class and dog data
             if (!item.description || item.description === 'Class booking') {
-              enhancedItem.description = `${classData.name} - ${dogName || 'Unknown dog'}`;
+              enhancedItem.description = classData.name;
+              
+              // Add dog name if available
+              if (dogData?.name) {
+                enhancedItem.description += ` - ${dogData.name}`;
+              }
             }
             
             // If price wasn't set correctly, use the class price
-            if (item.unit_price === 0 && classData.price) {
+            if ((item.unit_price === 0 || !item.unit_price) && classData.price) {
               enhancedItem.unit_price = classData.price;
               enhancedItem.amount = classData.price * item.quantity;
             }
