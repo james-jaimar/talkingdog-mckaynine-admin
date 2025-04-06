@@ -4,7 +4,7 @@ import { useBranch, Branch } from "@/context/BranchContext";
 import { BranchSelector } from "@/components/branches/BranchSelector";
 import { useAuth } from "@/context/auth";
 import { Button } from "@/components/ui/button";
-import { LogOut, User, Users, Clipboard, FileText, MessageSquare, Home } from "lucide-react";
+import { LogOut, User, Users, Clipboard, FileText, MessageSquare, Home, DollarSign } from "lucide-react";
 import { toast } from "sonner";
 
 export function Header() {
@@ -50,8 +50,45 @@ export function Header() {
     }
   };
 
+  // Organize navigation items into primary and secondary rows
+  const primaryNavItems = [
+    { name: "Dashboard", path: isHandler ? "/customer/dashboard" : "/", icon: <Home className="inline-block mr-1 h-4 w-4" /> },
+  ];
+  
+  // Handler navigation
+  const handlerNavItems = [
+    { name: "Profile", path: "/customer/profile", icon: null },
+    { name: "Messages", path: "/customer/messages", icon: <MessageSquare className="inline-block mr-1 h-4 w-4" /> },
+  ];
+  
+  // Trainer navigation (non-admin)
+  const trainerNavItems = [
+    { name: "My Dashboard", path: "/trainer-dashboard", icon: <Clipboard className="inline-block mr-1 h-4 w-4" /> },
+    { name: "Class Schedules", path: "/class-schedules", icon: null },
+    { name: "Handlers", path: "/handlers", icon: null },
+  ];
+  
+  // Admin primary navigation
+  const adminPrimaryNavItems = [
+    { name: "Dashboard", path: "/", icon: null },
+    { name: "Handlers", path: "/handlers", icon: null },
+    { name: "Classes", path: "/classes", icon: null },
+    { name: "Class Schedules", path: "/class-schedules", icon: null },
+    { name: "Trainers", path: "/trainers", icon: null },
+  ];
+  
+  // Admin secondary navigation
+  const adminSecondaryNavItems = [
+    { name: "Branches", path: "/branches", icon: null },
+    { name: "Unpaid Handlers", path: "/unpaid-handlers", icon: null },
+    { name: "Forms", path: "/forms", icon: <FileText className="inline-block mr-1 h-4 w-4" /> },
+    { name: "Invoices", path: "/invoices", icon: <DollarSign className="inline-block mr-1 h-4 w-4" /> },
+    { name: "User Admin", path: "/user-admin", icon: <Users className="inline-block mr-1 h-4 w-4" /> },
+  ];
+
   return (
     <header className="bg-mckaynine-600 text-white sticky top-0 z-50 shadow-md">
+      {/* Primary navigation row */}
       <div className="container mx-auto px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center">
@@ -60,72 +97,48 @@ export function Header() {
             </Link>
             
             {user && (
-              <nav className="flex space-x-4 overflow-x-auto">
+              <nav className="hidden md:flex space-x-4 overflow-x-auto">
                 {isHandler ? (
-                  // Navigation for handlers
+                  // Primary navigation for handlers
                   <>
-                    <Link to="/customer/dashboard" className="text-white hover:text-gray-200 px-2 py-1 rounded whitespace-nowrap">
-                      <Home className="inline-block mr-1 h-4 w-4" />
-                      Dashboard
-                    </Link>
-                    <Link to="/customer/profile" className="text-white hover:text-gray-200 px-2 py-1 rounded whitespace-nowrap">
-                      Profile
-                    </Link>
-                    <Link to="/customer/messages" className="text-white hover:text-gray-200 px-2 py-1 rounded whitespace-nowrap">
-                      <MessageSquare className="inline-block mr-1 h-4 w-4" />
-                      Messages
-                    </Link>
+                    {primaryNavItems.map(item => (
+                      <Link 
+                        key={item.path}
+                        to={item.path} 
+                        className="text-white hover:text-gray-200 px-2 py-1 rounded whitespace-nowrap"
+                      >
+                        {item.icon}
+                        {item.name}
+                      </Link>
+                    ))}
                   </>
                 ) : isTrainer && !isAdmin ? (
-                  // Navigation for trainers
+                  // Primary navigation for trainers
                   <>
-                    <Link to="/trainer-dashboard" className="text-white hover:text-gray-200 px-2 py-1 rounded whitespace-nowrap">
-                      <Clipboard className="inline-block mr-1 h-4 w-4" />
-                      My Dashboard
-                    </Link>
-                    <Link to="/class-schedules" className="text-white hover:text-gray-200 px-2 py-1 rounded whitespace-nowrap">
-                      Class Schedules
-                    </Link>
-                    <Link to="/handlers" className="text-white hover:text-gray-200 px-2 py-1 rounded whitespace-nowrap">
-                      Handlers
-                    </Link>
+                    {adminPrimaryNavItems.slice(0, 5).map(item => (
+                      <Link 
+                        key={item.path}
+                        to={item.path} 
+                        className="text-white hover:text-gray-200 px-2 py-1 rounded whitespace-nowrap"
+                      >
+                        {item.icon}
+                        {item.name}
+                      </Link>
+                    ))}
                   </>
                 ) : (
-                  // Navigation for admins
+                  // Primary navigation for admins
                   <>
-                    <Link to="/" className="text-white hover:text-gray-200 px-2 py-1 rounded whitespace-nowrap">
-                      Dashboard
-                    </Link>
-                    <Link to="/handlers" className="text-white hover:text-gray-200 px-2 py-1 rounded whitespace-nowrap">
-                      Handlers
-                    </Link>
-                    <Link to="/classes" className="text-white hover:text-gray-200 px-2 py-1 rounded whitespace-nowrap">
-                      Classes
-                    </Link>
-                    <Link to="/class-schedules" className="text-white hover:text-gray-200 px-2 py-1 rounded whitespace-nowrap">
-                      Class Schedules
-                    </Link>
-                    <Link to="/trainers" className="text-white hover:text-gray-200 px-2 py-1 rounded whitespace-nowrap">
-                      Trainers
-                    </Link>
-                    {isAdmin && (
-                      <>
-                        <Link to="/branches" className="text-white hover:text-gray-200 px-2 py-1 rounded whitespace-nowrap">
-                          Branches
-                        </Link>
-                        <Link to="/unpaid-handlers" className="text-white hover:text-gray-200 px-2 py-1 rounded whitespace-nowrap">
-                          Unpaid Handlers
-                        </Link>
-                        <Link to="/forms" className="text-white hover:text-gray-200 px-2 py-1 rounded whitespace-nowrap">
-                          <FileText className="inline-block mr-1 h-4 w-4" />
-                          Forms
-                        </Link>
-                        <Link to="/user-admin" className="text-white hover:text-gray-200 px-2 py-1 rounded whitespace-nowrap">
-                          <Users className="inline-block mr-1 h-4 w-4" />
-                          User Admin
-                        </Link>
-                      </>
-                    )}
+                    {adminPrimaryNavItems.map(item => (
+                      <Link 
+                        key={item.path}
+                        to={item.path} 
+                        className="text-white hover:text-gray-200 px-2 py-1 rounded whitespace-nowrap"
+                      >
+                        {item.icon}
+                        {item.name}
+                      </Link>
+                    ))}
                   </>
                 )}
               </nav>
@@ -159,6 +172,78 @@ export function Header() {
               </div>
             )}
           </div>
+        </div>
+      </div>
+      
+      {/* Secondary navigation row */}
+      {user && !isHandler && (
+        <div className="bg-mckaynine-700">
+          <div className="container mx-auto px-4 py-1">
+            <nav className="flex space-x-4 overflow-x-auto">
+              {isAdmin ? (
+                // Secondary navigation for admins
+                <>
+                  {adminSecondaryNavItems.map(item => (
+                    <Link 
+                      key={item.path}
+                      to={item.path} 
+                      className="text-white hover:text-gray-200 px-2 py-1 text-sm rounded whitespace-nowrap"
+                    >
+                      {item.icon}
+                      {item.name}
+                    </Link>
+                  ))}
+                </>
+              ) : isTrainer ? (
+                // Secondary navigation for trainers
+                <>
+                  <Link to="/invoices" className="text-white hover:text-gray-200 px-2 py-1 text-sm rounded whitespace-nowrap">
+                    <DollarSign className="inline-block mr-1 h-4 w-4" />
+                    Invoices
+                  </Link>
+                </>
+              ) : null}
+            </nav>
+          </div>
+        </div>
+      )}
+      
+      {/* Mobile navigation toggle button - only shown on small screens */}
+      <div className="md:hidden container mx-auto px-4 py-1">
+        <div className="flex items-center justify-between">
+          {user && (
+            <nav className="flex space-x-2 overflow-x-auto">
+              {isHandler ? (
+                // Mobile navigation for handlers
+                <>
+                  {handlerNavItems.map(item => (
+                    <Link 
+                      key={item.path}
+                      to={item.path} 
+                      className="text-white hover:text-gray-200 px-2 py-1 text-sm rounded whitespace-nowrap"
+                    >
+                      {item.icon}
+                      {item.name}
+                    </Link>
+                  ))}
+                </>
+              ) : isTrainer && !isAdmin ? (
+                // Mobile navigation for trainers
+                <>
+                  {trainerNavItems.map(item => (
+                    <Link 
+                      key={item.path}
+                      to={item.path} 
+                      className="text-white hover:text-gray-200 px-2 py-1 text-sm rounded whitespace-nowrap"
+                    >
+                      {item.icon}
+                      {item.name}
+                    </Link>
+                  ))}
+                </>
+              ) : null}
+            </nav>
+          )}
         </div>
       </div>
     </header>

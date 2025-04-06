@@ -1,18 +1,11 @@
 
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { Button } from "@/components/ui/button";
-import { Home, User, MessageSquare, Menu, ExternalLink, FileText } from "lucide-react";
-import { useIsMobile } from "@/hooks/useIsMobile";
-import { UserNav } from "@/components/layout/UserNav";
-import { useAuth } from "@/context/auth";
+import React, { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Header } from "@/components/layout/Header";
+import { useAuth } from "@/context/auth";
 
 export function CustomerDashboardLayout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
-  const location = useLocation();
-  const isMobile = useIsMobile();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const { user, isLoading } = useAuth();
 
   // Check if user is authenticated
