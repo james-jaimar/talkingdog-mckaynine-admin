@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Invoice, InvoiceItem } from "@/hooks/invoices/types";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { enhanceInvoiceItem } from "./utils/invoiceItemEnhancer";
 
 /**
  * Hook to fetch a single invoice by ID with all details
@@ -34,9 +35,14 @@ export function useInvoiceDetails(invoiceId: string | undefined) {
           throw error;
         }
 
+        if (!invoice) {
+          toast.error("Invoice not found");
+          throw new Error("Invoice not found");
+        }
+
         console.log("Invoice with client data:", invoice);
         
-        // Fetch invoice items
+        // Fetch invoice items with booking details in a single query
         const { data: items, error: itemsError } = await supabase
           .from('invoice_items')
           .select(`
@@ -68,9 +74,13 @@ export function useInvoiceDetails(invoiceId: string | undefined) {
         if (itemsError) {
           console.error("Error fetching invoice items:", itemsError);
           toast.error("Could not retrieve invoice items");
+          return {
+            ...invoice,
+            items: []
+          } as Invoice;
         }
         
-        console.log("Invoice items with booking data:", items);
+        console.log("Retrieved invoice items with booking data:", items);
 
         // If no items, create a default one based on the invoice total
         if (!items || items.length === 0) {

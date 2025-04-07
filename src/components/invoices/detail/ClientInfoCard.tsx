@@ -9,27 +9,39 @@ interface ClientInfoCardProps {
 }
 
 export function ClientInfoCard({ invoice, onGeneratePDF }: ClientInfoCardProps) {
+  // Debug logging for client data
+  console.log("ClientInfoCard rendering with client data:", invoice.client);
+  
   return (
     <div className="bg-white p-6 rounded-md shadow-sm">
       <h2 className="text-lg font-semibold mb-4">Client Information</h2>
       {invoice.client ? (
-        <>
-          <p className="font-medium">{invoice.client.first_name} {invoice.client.last_name}</p>
-          <p className="text-gray-500">{invoice.client.email}</p>
-          {invoice.client?.phone && (
+        <div>
+          <p className="font-medium">
+            {invoice.client.first_name} {invoice.client.last_name}
+          </p>
+          {invoice.client.email && (
+            <p className="text-gray-500">{invoice.client.email}</p>
+          )}
+          {invoice.client.phone && (
             <p className="text-gray-500">{invoice.client.phone}</p>
           )}
-          {invoice.client?.address && (
+          {invoice.client.address && (
             <p className="text-gray-500">{invoice.client.address}</p>
           )}
-          {invoice.client?.city && invoice.client?.postal_code && (
+          {invoice.client.city && invoice.client.postal_code && (
             <p className="text-gray-500">
               {invoice.client.city}, {invoice.client.postal_code}
             </p>
           )}
-        </>
+        </div>
       ) : (
-        <p className="text-gray-500">Client information unavailable</p>
+        <div>
+          <p className="text-gray-500 font-italic">Client information unavailable</p>
+          <p className="text-xs text-red-500 mt-1">
+            Client ID: {invoice.client_id || "Unknown"}
+          </p>
+        </div>
       )}
       
       <div className="mt-6">

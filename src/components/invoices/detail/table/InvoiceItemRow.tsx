@@ -9,6 +9,8 @@ interface InvoiceItemRowProps {
 }
 
 export function InvoiceItemRow({ item, index }: InvoiceItemRowProps) {
+  console.log(`Rendering invoice item row for item:`, item);
+  
   // Extract booking-related information if available
   const booking = item.bookings;
   
@@ -35,6 +37,17 @@ export function InvoiceItemRow({ item, index }: InvoiceItemRowProps) {
   
   // Build primary description
   const primaryDescription = className || displayDescription.split(" - ")[0] || 'Training services';
+  
+  // Debug logging
+  console.log(`Item ${index} details:`, {
+    id: item.id,
+    description: displayDescription,
+    booking_id: item.booking_id,
+    has_booking_data: !!booking,
+    dog_name: dogName,
+    class_name: className,
+    display_primary: primaryDescription
+  });
   
   return (
     <TableRow key={item.id || `item-${index}`}>

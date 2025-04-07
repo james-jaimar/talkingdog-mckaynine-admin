@@ -81,3 +81,29 @@ export async function fetchClassDetails(classId: string): Promise<any> {
   console.log("Class details retrieved:", classData);
   return classData;
 }
+
+/**
+ * Fetch client details by ID
+ */
+export async function fetchClientDetails(clientId: string): Promise<any> {
+  if (!clientId) {
+    console.log("No client ID provided to fetch client details");
+    return null;
+  }
+  
+  console.log(`Fetching client details for client ID: ${clientId}`);
+  
+  const { data: client, error } = await supabase
+    .from('clients')
+    .select('*')
+    .eq('id', clientId)
+    .maybeSingle();
+    
+  if (error) {
+    console.error("Error fetching client details:", error);
+    return null;
+  }
+  
+  console.log("Client details retrieved:", client);
+  return client;
+}

@@ -11,6 +11,9 @@ export function useInvoicesList() {
   return useQuery({
     queryKey: ['invoices'],
     queryFn: async () => {
+      console.log("Fetching all invoices with client data");
+      
+      // Get all invoices with client data in a single query
       const { data, error } = await supabase
         .from('invoices')
         .select(`
@@ -20,9 +23,11 @@ export function useInvoicesList() {
         .order('created_at', { ascending: false });
 
       if (error) {
+        console.error("Error fetching invoices:", error);
         return handleQueryError(error, "Error fetching invoices");
       }
       
+      console.log(`Retrieved ${data?.length || 0} invoices with client data`);
       return data as Invoice[];
     },
   });

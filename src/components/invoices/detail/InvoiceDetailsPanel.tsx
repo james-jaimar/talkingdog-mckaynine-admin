@@ -13,6 +13,7 @@ interface InvoiceDetailsPanelProps {
 export function InvoiceDetailsPanel({ invoice }: InvoiceDetailsPanelProps) {
   // Log invoice data for debugging purposes
   console.log("Rendering InvoiceDetailsPanel with invoice:", invoice);
+  console.log("Client data in invoice:", invoice.client);
   
   return (
     <Card>
