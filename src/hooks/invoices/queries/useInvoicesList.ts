@@ -1,7 +1,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Invoice } from "../types";
+import { Invoice, InvoiceItem } from "../types";
 import { handleQueryError } from "./useQueryUtils";
 
 /**
@@ -11,7 +11,7 @@ export function useInvoicesList() {
   return useQuery({
     queryKey: ['invoices'],
     queryFn: async () => {
-      console.log("Fetching all invoices with client and booking data");
+      console.log("Fetching all invoices with client data");
       
       try {
         // Get all invoices with client data only first (simpler query to avoid permission issues)
@@ -61,86 +61,98 @@ export function useInvoicesList() {
           
           // For each item that has a booking_id, get the booking details separately
           const enhancedItems = await Promise.all((items || []).map(async (item) => {
+            // Create a copy of the item with the correct type structure
+            let enhancedItem: InvoiceItem = { 
+              id: item.id,
+              description: item.description,
+              quantity: item.quantity, 
+              unit_price: item.unit_price,
+              amount: item.amount,
+              booking_id: item.booking_id
+            };
+            
             if (!item.booking_id) {
-              return item;
+              return enhancedItem;
             }
             
             // Get booking with dog and class info
-            const { data: booking, error: bookingError } = await supabase
-              .from('bookings')
-              .select(`
-                id,
-                dog_id,
-                class_schedule_id,
-                dogs!inner (
+            try {
+              const { data: booking, error: bookingError } = await supabase
+                .from('bookings')
+                .select(`
                   id,
-                  name,
-                  breed
-                ),
-                class_schedules!inner (
-                  id,
-                  start_time,
-                  class_id,
-                  classes!inner (
+                  dog_id,
+                  class_schedule_id,
+                  dogs (
                     id,
                     name,
-                    description,
-                    price
+                    breed
+                  ),
+                  class_schedules (
+                    id,
+                    start_time,
+                    class_id,
+                    classes (
+                      id,
+                      name,
+                      description,
+                      price
+                    )
                   )
-                )
-              `)
-              .eq('id', item.booking_id)
-              .maybeSingle();
-              
-            if (bookingError) {
-              console.error(`Error fetching booking details for item ${item.id}:`, bookingError);
-              return item;
-            }
-            
-            if (!booking) {
-              console.log(`No booking found for ID ${item.booking_id}`);
-              return item;
-            }
-            
-            // Update the item description based on class and dog if available
-            let enhancedItem = { ...item };
-            
-            if (booking.dogs && booking.class_schedules?.classes) {
-              const dogName = booking.dogs.name;
-              const className = booking.class_schedules.classes.name;
-              
-              // If the description is generic or missing, replace it with class and dog info
-              if (!item.description || 
-                  item.description === 'Training services' ||
-                  item.description === 'Class booking') {
-                enhancedItem.description = `${className} - ${dogName}`;
+                `)
+                .eq('id', item.booking_id)
+                .maybeSingle();
+                
+              if (bookingError) {
+                console.error(`Error fetching booking details for item ${item.id}:`, bookingError);
+                return enhancedItem;
               }
               
-              // Set price from class if not already set
-              if (!item.unit_price || item.unit_price === 0) {
-                enhancedItem.unit_price = booking.class_schedules.classes.price;
-                enhancedItem.amount = booking.class_schedules.classes.price * item.quantity;
+              if (!booking) {
+                console.log(`No booking found for ID ${item.booking_id}`);
+                return enhancedItem;
               }
               
               // Add booking details to the item for display
-              enhancedItem.bookings = {
-                id: booking.id,
-                dogs: {
-                  name: booking.dogs.name,
-                  breed: booking.dogs.breed || 'Unknown'
-                },
-                class_schedules: {
-                  id: booking.class_schedules.id,
-                  start_time: booking.class_schedules.start_time || new Date().toISOString(),
-                  class_id: booking.class_schedules.class_id,
-                  classes: {
-                    id: booking.class_schedules.classes.id,
-                    name: booking.class_schedules.classes.name,
-                    price: booking.class_schedules.classes.price || 0,
-                    description: booking.class_schedules.classes.description || ''
-                  }
+              if (booking.dogs && booking.class_schedules?.classes) {
+                const dogName = booking.dogs.name;
+                const className = booking.class_schedules.classes.name;
+                
+                // If the description is generic or missing, replace it with class and dog info
+                if (!enhancedItem.description || 
+                    enhancedItem.description === 'Training services' ||
+                    enhancedItem.description === 'Class booking') {
+                  enhancedItem.description = `${className} - ${dogName}`;
                 }
-              };
+                
+                // Set price from class if not already set
+                if (!enhancedItem.unit_price || enhancedItem.unit_price === 0) {
+                  enhancedItem.unit_price = booking.class_schedules.classes.price;
+                  enhancedItem.amount = booking.class_schedules.classes.price * item.quantity;
+                }
+                
+                // Now explicitly create the bookings property with the properly typed structure
+                enhancedItem.bookings = {
+                  id: booking.id,
+                  dogs: {
+                    name: booking.dogs.name,
+                    breed: booking.dogs.breed || 'Unknown'
+                  },
+                  class_schedules: {
+                    id: booking.class_schedules.id,
+                    start_time: booking.class_schedules.start_time || new Date().toISOString(),
+                    class_id: booking.class_schedules.class_id,
+                    classes: {
+                      id: booking.class_schedules.classes.id,
+                      name: booking.class_schedules.classes.name,
+                      price: booking.class_schedules.classes.price || 0,
+                      description: booking.class_schedules.classes.description || ''
+                    }
+                  }
+                };
+              }
+            } catch (err) {
+              console.error(`Error processing booking for item ${item.id}:`, err);
             }
             
             return enhancedItem;
@@ -172,7 +184,7 @@ export function useInvoicesList() {
         }));
         
         // Return processed invoices with proper type casting
-        return invoicesWithItems as unknown as Invoice[];
+        return invoicesWithItems as Invoice[];
       } catch (error) {
         console.error("Unexpected error in useInvoicesList:", error);
         throw error;
