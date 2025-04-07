@@ -101,7 +101,7 @@ export function useInvoiceDetails(invoiceId: string | undefined) {
                   if (booking.class_schedule_id) {
                     const { data: classSchedule } = await supabase
                       .from('class_schedules')
-                      .select('class_id')
+                      .select('class_id, start_time')
                       .eq('id', booking.class_schedule_id)
                       .maybeSingle();
                       
@@ -115,6 +115,7 @@ export function useInvoiceDetails(invoiceId: string | undefined) {
                       if (classData) {
                         enhancedItem.bookings.class_schedules = {
                           id: booking.class_schedule_id,
+                          start_time: classSchedule.start_time,
                           classes: {
                             id: classSchedule.class_id,
                             name: classData.name,
