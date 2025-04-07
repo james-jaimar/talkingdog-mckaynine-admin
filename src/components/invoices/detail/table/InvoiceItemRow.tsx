@@ -15,38 +15,34 @@ export function InvoiceItemRow({ item, index }: InvoiceItemRowProps) {
   const booking = item.bookings;
   
   // Get dog information
-  let dogName = booking?.dogs?.name;
+  const dogName = booking?.dogs?.name;
   
   // Get class information
-  let className = booking?.class_schedules?.classes?.name;
+  const className = booking?.class_schedules?.classes?.name;
   
   // Parse description for class name and dog name if no booking data
-  let displayDescription = item.description || 'Training services';
-  
-  // If we don't have a dog name or class name from booking, try to extract from description
-  if (!dogName || !className) {
-    if (displayDescription.includes(" - ")) {
-      const parts = displayDescription.split(" - ");
-      if (parts.length >= 2) {
-        if (!className) className = parts[0];
-        if (!dogName) dogName = parts[1];
-        console.log(`Parsed from description - Class: ${className}, Dog: ${dogName}`);
-      }
-    }
-  }
+  const displayDescription = item.description || 'Training services';
   
   // Build primary description
-  const primaryDescription = className || displayDescription.split(" - ")[0] || 'Training services';
+  let primaryDescription = displayDescription;
+  let secondaryDescription = null;
+
+  if (booking) {
+    primaryDescription = className || displayDescription;
+    secondaryDescription = dogName ? `Dog: ${dogName}` : null;
+  } else if (displayDescription.includes(" - ")) {
+    // If no booking but description has format "Class - Dog"
+    const parts = displayDescription.split(" - ");
+    primaryDescription = parts[0];
+    secondaryDescription = parts.length > 1 ? `Dog: ${parts[1]}` : null;
+  }
   
   // Debug logging
-  console.log(`Item ${index} details:`, {
-    id: item.id,
-    description: displayDescription,
-    booking_id: item.booking_id,
-    has_booking_data: !!booking,
-    dog_name: dogName,
-    class_name: className,
-    display_primary: primaryDescription
+  console.log(`Item ${index} display details:`, {
+    primaryDescription,
+    secondaryDescription,
+    booking_data: !!booking,
+    item_description: displayDescription
   });
   
   return (
@@ -54,9 +50,9 @@ export function InvoiceItemRow({ item, index }: InvoiceItemRowProps) {
       <TableCell className="py-4">
         <div>
           <p className="font-medium">{primaryDescription}</p>
-          {dogName && (
+          {secondaryDescription && (
             <p className="text-xs text-gray-500">
-              Dog: {dogName}
+              {secondaryDescription}
             </p>
           )}
         </div>

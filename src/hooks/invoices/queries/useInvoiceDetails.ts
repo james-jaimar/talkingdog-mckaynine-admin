@@ -3,7 +3,6 @@ import { useQuery } from "@tanstack/react-query";
 import { Invoice, InvoiceItem } from "@/hooks/invoices/types";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { enhanceInvoiceItem } from "./utils/invoiceItemEnhancer";
 
 /**
  * Hook to fetch a single invoice by ID with all details
@@ -19,19 +18,18 @@ export function useInvoiceDetails(invoiceId: string | undefined) {
 
         console.log("Fetching invoice details for:", invoiceId);
 
-        // Fetch invoice with client data directly in one query
+        // First, fetch the invoice with client data
         const { data: invoice, error } = await supabase
           .from('invoices')
           .select(`
             *,
-            clients:client_id (*)
+            clients (*)
           `)
           .eq('id', invoiceId)
           .single();
 
         if (error) {
           console.error("Error fetching invoice:", error);
-          toast.error("Could not retrieve invoice details");
           throw error;
         }
 
@@ -40,9 +38,15 @@ export function useInvoiceDetails(invoiceId: string | undefined) {
           throw new Error("Invoice not found");
         }
 
-        console.log("Invoice with client data:", invoice);
+        // Normalize client data structure
+        const normalizedInvoice = {
+          ...invoice,
+          client: invoice.clients
+        };
         
-        // Fetch invoice items with booking details in a single query
+        console.log("Invoice with normalized client data:", normalizedInvoice);
+        
+        // Fetch invoice items with booking details
         const { data: items, error: itemsError } = await supabase
           .from('invoice_items')
           .select(`
@@ -63,8 +67,8 @@ export function useInvoiceDetails(invoiceId: string | undefined) {
                 classes:class_id (
                   id,
                   name,
-                  price,
-                  description
+                  description,
+                  price
                 )
               )
             )
@@ -73,39 +77,37 @@ export function useInvoiceDetails(invoiceId: string | undefined) {
           
         if (itemsError) {
           console.error("Error fetching invoice items:", itemsError);
-          toast.error("Could not retrieve invoice items");
           return {
-            ...invoice,
+            ...normalizedInvoice,
             items: []
           } as Invoice;
         }
         
         console.log("Retrieved invoice items with booking data:", items);
 
-        // If no items, create a default one based on the invoice total
+        // Create default item if no items
         if (!items || items.length === 0) {
           console.log("No items found, creating default item");
           const defaultItem: InvoiceItem = {
             description: "Training services",
             quantity: 1,
-            unit_price: invoice.total,
-            amount: invoice.total
+            unit_price: normalizedInvoice.total,
+            amount: normalizedInvoice.total
           };
           
           return {
-            ...invoice,
+            ...normalizedInvoice,
             items: [defaultItem]
           } as Invoice;
         }
         
         // Return complete invoice with items
         const result = {
-          ...invoice,
+          ...normalizedInvoice,
           items: items
         } as Invoice;
         
         console.log("Final invoice data:", result);
-        
         return result;
       } catch (error) {
         console.error("Error in useInvoiceDetails:", error);

@@ -26,6 +26,9 @@ export function InvoiceDetailsPanel({ invoice }: InvoiceDetailsPanelProps) {
           <p className="text-sm text-muted-foreground">
             Issued on {format(new Date(invoice.issued_date), "dd/MM/yyyy")}
           </p>
+          <p className="text-sm text-muted-foreground">
+            Due on {format(new Date(invoice.due_date), "dd/MM/yyyy")}
+          </p>
         </div>
         
         {/* Client information */}
