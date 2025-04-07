@@ -74,7 +74,7 @@ export function InvoiceItemRow({ item, index }: InvoiceItemRowProps) {
                     <Info className="h-4 w-4 ml-2 text-amber-500" />
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p className="text-xs w-48">This item references booking ID {item.booking_id} but the booking data couldn't be loaded</p>
+                    <p className="text-xs w-48">This item references booking ID {item.booking_id} but the booking data couldn't be fully loaded</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>

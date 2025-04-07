@@ -13,123 +13,171 @@ export function useInvoicesList() {
     queryFn: async () => {
       console.log("Fetching all invoices with client and booking data");
       
-      // Get all invoices with client data and more complete booking info
-      const { data, error } = await supabase
-        .from('invoices')
-        .select(`
-          *,
-          clients (
-            id, 
-            first_name, 
-            last_name, 
-            email, 
-            phone, 
-            address, 
-            city, 
-            postal_code
-          ),
-          invoice_items (
-            id,
-            description,
-            quantity,
-            unit_price,
-            amount,
-            booking_id,
-            bookings:booking_id (
-              id,
-              dog_id,
-              class_schedule_id,
-              dogs (
+      try {
+        // Get all invoices with client data only first (simpler query to avoid permission issues)
+        const { data: invoicesData, error: invoicesError } = await supabase
+          .from('invoices')
+          .select(`
+            *,
+            clients (
+              id, 
+              first_name, 
+              last_name, 
+              email, 
+              phone, 
+              address, 
+              city, 
+              postal_code
+            )
+          `)
+          .order('created_at', { ascending: false });
+
+        if (invoicesError) {
+          console.error("Error fetching invoices basic data:", invoicesError);
+          return handleQueryError(invoicesError, "Error fetching invoices");
+        }
+        
+        console.log(`Retrieved ${invoicesData?.length || 0} invoices with client data`);
+        
+        if (!invoicesData || invoicesData.length === 0) {
+          return [];
+        }
+        
+        // Now fetch invoice items separately to avoid deep nesting that might cause permission issues
+        const invoicesWithItems = await Promise.all(invoicesData.map(async (invoice) => {
+          // Get invoice items for this invoice
+          const { data: items, error: itemsError } = await supabase
+            .from('invoice_items')
+            .select('*')
+            .eq('invoice_id', invoice.id);
+            
+          if (itemsError) {
+            console.error(`Error fetching items for invoice ${invoice.id}:`, itemsError);
+            return {
+              ...invoice,
+              items: []
+            };
+          }
+          
+          // For each item that has a booking_id, get the booking details separately
+          const enhancedItems = await Promise.all((items || []).map(async (item) => {
+            if (!item.booking_id) {
+              return item;
+            }
+            
+            // Get booking with dog and class info
+            const { data: booking, error: bookingError } = await supabase
+              .from('bookings')
+              .select(`
                 id,
-                name,
-                breed
-              ),
-              class_schedules (
-                id,
-                start_time,
-                class_id,
-                classes (
+                dog_id,
+                class_schedule_id,
+                dogs!inner (
                   id,
                   name,
-                  description
+                  breed
+                ),
+                class_schedules!inner (
+                  id,
+                  start_time,
+                  class_id,
+                  classes!inner (
+                    id,
+                    name,
+                    description,
+                    price
+                  )
                 )
-              )
-            )
-          )
-        `)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error("Error fetching invoices:", error);
-        return handleQueryError(error, "Error fetching invoices");
-      }
-      
-      console.log(`Retrieved ${data?.length || 0} invoices with client and item data`);
-      
-      // Transform the data to ensure client information is consistent
-      // and add class/dog information to the invoice summary
-      const transformedData = data?.map(invoice => {
-        // Get class and dog information from the first item if available
-        let classInfo = null;
-        let dogInfo = null;
-        
-        if (invoice.invoice_items && invoice.invoice_items.length > 0) {
-          // Look through all items for class and dog info
-          for (const item of invoice.invoice_items) {
+              `)
+              .eq('id', item.booking_id)
+              .maybeSingle();
+              
+            if (bookingError) {
+              console.error(`Error fetching booking details for item ${item.id}:`, bookingError);
+              return item;
+            }
+            
+            if (!booking) {
+              console.log(`No booking found for ID ${item.booking_id}`);
+              return item;
+            }
+            
+            // Update the item description based on class and dog if available
+            let enhancedItem = { ...item };
+            
+            if (booking.dogs && booking.class_schedules?.classes) {
+              const dogName = booking.dogs.name;
+              const className = booking.class_schedules.classes.name;
+              
+              // If the description is generic or missing, replace it with class and dog info
+              if (!item.description || 
+                  item.description === 'Training services' ||
+                  item.description === 'Class booking') {
+                enhancedItem.description = `${className} - ${dogName}`;
+              }
+              
+              // Set price from class if not already set
+              if (!item.unit_price || item.unit_price === 0) {
+                enhancedItem.unit_price = booking.class_schedules.classes.price;
+                enhancedItem.amount = booking.class_schedules.classes.price * item.quantity;
+              }
+              
+              // Add booking details to the item for display
+              enhancedItem.bookings = {
+                id: booking.id,
+                dogs: {
+                  name: booking.dogs.name,
+                  breed: booking.dogs.breed || 'Unknown'
+                },
+                class_schedules: {
+                  id: booking.class_schedules.id,
+                  start_time: booking.class_schedules.start_time || new Date().toISOString(),
+                  class_id: booking.class_schedules.class_id,
+                  classes: {
+                    id: booking.class_schedules.classes.id,
+                    name: booking.class_schedules.classes.name,
+                    price: booking.class_schedules.classes.price || 0,
+                    description: booking.class_schedules.classes.description || ''
+                  }
+                }
+              };
+            }
+            
+            return enhancedItem;
+          }));
+          
+          // Determine class and dog info from the items for the invoice summary
+          let classInfo = null;
+          let dogInfo = null;
+          
+          for (const item of enhancedItems) {
             if (item.bookings) {
-              // If we find an item with dog and class info, store it
-              if (item.bookings.dogs?.name) {
-                dogInfo = item.bookings.dogs?.name;
+              if (!dogInfo && item.bookings.dogs?.name) {
+                dogInfo = item.bookings.dogs.name;
               }
-              if (item.bookings.class_schedules?.classes?.name) {
-                classInfo = item.bookings.class_schedules?.classes?.name;
+              if (!classInfo && item.bookings.class_schedules?.classes?.name) {
+                classInfo = item.bookings.class_schedules.classes.name;
               }
-              // Once we have both pieces of info, we can stop looking
               if (dogInfo && classInfo) break;
             }
           }
-        }
+          
+          return {
+            ...invoice,
+            client: invoice.clients || null,
+            items: enhancedItems,
+            classInfo,
+            dogInfo
+          };
+        }));
         
-        console.log(`Invoice ${invoice.invoice_number} - Found class: ${classInfo}, dog: ${dogInfo}`);
-        
-        return {
-          ...invoice,
-          client: invoice.clients || null,
-          classInfo,
-          dogInfo,
-          // Keep only basic item info for list view
-          items: invoice.invoice_items?.map(item => ({
-            id: item.id,
-            description: item.description,
-            quantity: item.quantity,
-            unit_price: item.unit_price,
-            amount: item.amount,
-            booking_id: item.booking_id,
-            // Keep minimal booking information for the list view
-            bookings: item.bookings ? {
-              id: item.bookings.id,
-              dogs: item.bookings.dogs ? {
-                name: item.bookings.dogs.name,
-                breed: item.bookings.dogs.breed || 'Unknown' // Ensure breed is always present
-              } : undefined,
-              class_schedules: item.bookings.class_schedules ? {
-                id: item.bookings.class_schedules.id,
-                start_time: item.bookings.class_schedules.start_time || new Date().toISOString(), // Add the missing required field
-                class_id: item.bookings.class_schedules.class_id,
-                classes: item.bookings.class_schedules.classes ? {
-                  id: item.bookings.class_schedules.classes.id,
-                  name: item.bookings.class_schedules.classes.name,
-                  price: 0, // Default value to satisfy the type
-                  description: item.bookings.class_schedules.classes.description
-                } : undefined
-              } : undefined
-            } : null
-          }))
-        };
-      });
-      
-      // First cast to unknown, then to Invoice[] to satisfy TypeScript
-      return transformedData as unknown as Invoice[];
+        // Return processed invoices with proper type casting
+        return invoicesWithItems as unknown as Invoice[];
+      } catch (error) {
+        console.error("Unexpected error in useInvoicesList:", error);
+        throw error;
+      }
     },
+    staleTime: 1000 * 60 * 5, // 5 minutes
   });
 }
