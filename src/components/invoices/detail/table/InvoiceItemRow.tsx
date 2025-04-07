@@ -2,9 +2,8 @@
 import { TableCell, TableRow } from "@/components/ui/table";
 import { InvoiceItem } from "@/hooks/invoices/types";
 import { formatCurrency } from "@/lib/formatters";
-import { Tooltip } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Info } from "lucide-react";
-import { TooltipContent, TooltipTrigger, TooltipProvider } from "@radix-ui/react-tooltip";
 
 interface InvoiceItemRowProps {
   item: InvoiceItem;

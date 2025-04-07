@@ -1,3 +1,4 @@
+
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Invoice } from "../types";
@@ -40,14 +41,16 @@ export function useInvoicesList() {
               class_schedule_id,
               dogs (
                 id,
-                name
+                name,
+                breed
               ),
               class_schedules (
                 id,
                 class_id,
                 classes (
                   id,
-                  name
+                  name,
+                  description
                 )
               )
             )
@@ -104,13 +107,25 @@ export function useInvoicesList() {
             // Keep minimal booking information for the list view
             bookings: item.bookings ? {
               id: item.bookings.id,
-              dogs: item.bookings.dogs,
-              class_schedules: item.bookings.class_schedules
+              dogs: item.bookings.dogs ? {
+                name: item.bookings.dogs.name,
+                breed: item.bookings.dogs.breed || 'Unknown' // Ensure breed is always present
+              } : undefined,
+              class_schedules: item.bookings.class_schedules ? {
+                id: item.bookings.class_schedules.id,
+                classes: item.bookings.class_schedules.classes ? {
+                  id: item.bookings.class_schedules.classes.id,
+                  name: item.bookings.class_schedules.classes.name,
+                  price: 0, // Default value to satisfy the type
+                  description: item.bookings.class_schedules.classes.description
+                } : undefined
+              } : undefined
             } : null
           }))
         };
       });
       
+      // Type assertion after ensuring data conforms to expected structure
       return transformedData as Invoice[];
     },
   });
