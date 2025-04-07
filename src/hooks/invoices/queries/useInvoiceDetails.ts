@@ -41,7 +41,8 @@ export function useInvoiceDetails(invoiceId: string | undefined) {
 
         console.log("Fetched invoice data:", invoice);
         
-        // Fetch invoice items directly without linking to users table
+        // Fetch invoice items with direct relation to bookings
+        // Avoid joining with users table which causes permission issues
         const { data: itemsData, error: itemsError } = await supabase
           .from('invoice_items')
           .select(`
@@ -65,10 +66,11 @@ export function useInvoiceDetails(invoiceId: string | undefined) {
 
         console.log("Successfully fetched invoice items:", itemsData);
 
-        // Now for each item with a booking_id, try to fetch the booking details
+        // Now for each item with a booking_id, fetch booking details directly
+        // Avoid unnecessary joins that might require additional permissions
         const enhancedItems: InvoiceItem[] = await Promise.all(
           itemsData.map(async (item) => {
-            // Explicitly create an InvoiceItem object with optional bookings property
+            // Base item without bookings data
             const enhancedItem: InvoiceItem = {
               id: item.id,
               description: item.description,
@@ -80,16 +82,12 @@ export function useInvoiceDetails(invoiceId: string | undefined) {
 
             if (item.booking_id) {
               try {
-                // Try to fetch booking details
+                // Fetch basic booking info
                 const { data: booking, error: bookingError } = await supabase
                   .from('bookings')
-                  .select(`
-                    id, 
-                    dog_id,
-                    class_schedule_id
-                  `)
+                  .select('id, dog_id, class_schedule_id')
                   .eq('id', item.booking_id)
-                  .single();
+                  .maybeSingle();
 
                 if (!bookingError && booking) {
                   // Initialize bookings property
@@ -99,64 +97,83 @@ export function useInvoiceDetails(invoiceId: string | undefined) {
                     class_schedule_id: booking.class_schedule_id
                   };
 
-                  // Try to fetch dog name separately
+                  // Get dog information separately
                   if (booking.dog_id) {
-                    const { data: dog } = await supabase
+                    const { data: dog, error: dogError } = await supabase
                       .from('dogs')
                       .select('name, breed')
                       .eq('id', booking.dog_id)
-                      .single();
+                      .maybeSingle();
 
-                    if (dog) {
+                    if (!dogError && dog) {
                       if (!enhancedItem.bookings) enhancedItem.bookings = { id: booking.id };
                       enhancedItem.bookings.dogs = dog;
                     }
                   }
 
-                  // Try to fetch class details separately
+                  // Get class schedule information separately
                   if (booking.class_schedule_id) {
-                    const { data: classSchedule } = await supabase
+                    const { data: classSchedule, error: scheduleError } = await supabase
                       .from('class_schedules')
-                      .select(`
-                        id,
-                        start_time,
-                        classes:class_id (id, name, description, price)
-                      `)
+                      .select('id, start_time')
                       .eq('id', booking.class_schedule_id)
-                      .single();
+                      .maybeSingle();
 
-                    if (classSchedule) {
+                    if (!scheduleError && classSchedule) {
                       if (!enhancedItem.bookings) enhancedItem.bookings = { id: booking.id };
-                      enhancedItem.bookings.class_schedules = classSchedule;
+                      enhancedItem.bookings.class_schedules = { 
+                        id: classSchedule.id,
+                        start_time: classSchedule.start_time
+                      };
+                      
+                      // Get class details separately to avoid complex joins
+                      const { data: classData, error: classError } = await supabase
+                        .from('classes')
+                        .select('id, name, description, price')
+                        .eq('id', (await supabase
+                          .from('class_schedules')
+                          .select('class_id')
+                          .eq('id', booking.class_schedule_id)
+                          .single()).data?.class_id)
+                        .maybeSingle();
+
+                      if (!classError && classData) {
+                        if (!enhancedItem.bookings.class_schedules) {
+                          enhancedItem.bookings.class_schedules = { 
+                            id: classSchedule.id, 
+                            start_time: classSchedule.start_time
+                          };
+                        }
+                        enhancedItem.bookings.class_schedules.classes = classData;
+                      }
                     }
                   }
                 }
               } catch (error) {
                 console.error("Error fetching booking details:", error);
+                // Continue with basic item data even if enhanced booking details fail
               }
             }
 
             // If we have class data, use it to improve description and price
-            if (enhancedItem.bookings) {
-              const classData = enhancedItem.bookings.class_schedules?.classes;
+            if (enhancedItem.bookings?.class_schedules?.classes) {
+              const classData = enhancedItem.bookings.class_schedules.classes;
               const dogData = enhancedItem.bookings.dogs;
               
-              if (classData) {
-                // If no description was provided, create one using the class data
-                if (!enhancedItem.description || enhancedItem.description === 'Class booking') {
-                  enhancedItem.description = classData.name;
-                  
-                  // Add dog name if available
-                  if (dogData?.name) {
-                    enhancedItem.description += ` - ${dogData.name}`;
-                  }
-                }
+              // If no description was provided, create one using the class data
+              if (!enhancedItem.description || enhancedItem.description === 'Class booking') {
+                enhancedItem.description = classData.name;
                 
-                // If price wasn't set correctly, use the class price
-                if ((enhancedItem.unit_price === 0 || !enhancedItem.unit_price) && classData.price) {
-                  enhancedItem.unit_price = classData.price;
-                  enhancedItem.amount = classData.price * enhancedItem.quantity;
+                // Add dog name if available
+                if (dogData?.name) {
+                  enhancedItem.description += ` - ${dogData.name}`;
                 }
+              }
+              
+              // If price wasn't set correctly, use the class price
+              if ((enhancedItem.unit_price === 0 || !enhancedItem.unit_price) && classData.price) {
+                enhancedItem.unit_price = classData.price;
+                enhancedItem.amount = classData.price * enhancedItem.quantity;
               }
             }
             

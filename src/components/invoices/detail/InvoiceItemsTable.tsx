@@ -18,7 +18,7 @@ export function InvoiceItemsTable({ items }: InvoiceItemsTableProps) {
   // Check if there are any items to display
   if (!items || items.length === 0) {
     return <div className="py-4 text-center bg-gray-50 rounded-md">
-      <p className="text-gray-500">No items found on this invoice. There might be a permission issue accessing the data or the invoice items haven't been added yet.</p>
+      <p className="text-gray-500">No items found on this invoice. There might be a database permission issue or the invoice items haven't been added yet.</p>
     </div>;
   }
 
