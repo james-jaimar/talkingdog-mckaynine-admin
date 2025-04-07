@@ -19,10 +19,11 @@ export interface InvoiceItem {
     class_schedules?: {
       id: string;
       start_time: string;
+      class_id?: string;
       classes?: {
         id: string;
         name: string;
-        description: string;
+        description?: string;
         price: number;
       }
     }

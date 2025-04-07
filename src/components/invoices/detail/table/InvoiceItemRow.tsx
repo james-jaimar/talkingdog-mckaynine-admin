@@ -11,29 +11,29 @@ interface InvoiceItemRowProps {
 export function InvoiceItemRow({ item, index }: InvoiceItemRowProps) {
   // Extract booking-related information if available
   const booking = item.bookings;
-  const classData = booking?.class_schedules?.classes;
+  
+  // Get dog information
   let dogName = booking?.dogs?.name;
   
-  // Parse description for class name and dog name if it's included in the format "Class Name - Dog Name"
-  let displayDescription = item.description || 'Training services';
-  let className = classData?.name;
+  // Get class information
+  let className = booking?.class_schedules?.classes?.name;
   
-  // If the description includes a dog name in the format "Class - Dog"
-  if (displayDescription.includes(" - ") && !dogName) {
-    const parts = displayDescription.split(" - ");
-    if (parts.length >= 2) {
-      className = parts[0];
-      dogName = parts[1];
-      console.log(`Parsed from description - Class: ${className}, Dog: ${dogName}`);
+  // Parse description for class name and dog name if no booking data
+  let displayDescription = item.description || 'Training services';
+  
+  // If we don't have a dog name or class name from booking, try to extract from description
+  if (!dogName || !className) {
+    if (displayDescription.includes(" - ")) {
+      const parts = displayDescription.split(" - ");
+      if (parts.length >= 2) {
+        if (!className) className = parts[0];
+        if (!dogName) dogName = parts[1];
+        console.log(`Parsed from description - Class: ${className}, Dog: ${dogName}`);
+      }
     }
   }
   
-  // If class name wasn't found in the description but is available from booking data
-  if (!className && classData) {
-    className = classData.name;
-  }
-  
-  // Determine what to show as the primary description
+  // Build primary description
   const primaryDescription = className || displayDescription.split(" - ")[0] || 'Training services';
   
   return (

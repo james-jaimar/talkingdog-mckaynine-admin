@@ -1,13 +1,8 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { Invoice, InvoiceItem } from "@/hooks/invoices/types";
-import { 
-  fetchInvoiceWithClient, 
-  fetchInvoiceItems, 
-  createDefaultInvoiceItem,
-  enhanceInvoiceItem,
-  handleQueryError
-} from "./useQueryUtils";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 /**
  * Hook to fetch a single invoice by ID with all details
@@ -23,52 +18,88 @@ export function useInvoiceDetails(invoiceId: string | undefined) {
 
         console.log("Fetching invoice details for:", invoiceId);
 
-        // Fetch base invoice with client information
-        const invoice = await fetchInvoiceWithClient(invoiceId);
-        console.log("Base invoice data retrieved:", invoice);
+        // Fetch invoice with client data directly in one query
+        const { data: invoice, error } = await supabase
+          .from('invoices')
+          .select(`
+            *,
+            clients:client_id (*)
+          `)
+          .eq('id', invoiceId)
+          .single();
+
+        if (error) {
+          console.error("Error fetching invoice:", error);
+          toast.error("Could not retrieve invoice details");
+          throw error;
+        }
+
+        console.log("Invoice with client data:", invoice);
         
         // Fetch invoice items
-        const items = await fetchInvoiceItems(invoiceId);
-        console.log("Invoice items retrieved:", items);
-        
-        // Handle case with no items
-        if (!items || items.length === 0) {
-          console.warn("No items found for this invoice");
+        const { data: items, error: itemsError } = await supabase
+          .from('invoice_items')
+          .select(`
+            *,
+            bookings:booking_id (
+              id,
+              dog_id, 
+              class_schedule_id,
+              dogs:dog_id (
+                id,
+                name,
+                breed
+              ),
+              class_schedules:class_schedule_id (
+                id,
+                start_time,
+                class_id,
+                classes:class_id (
+                  id,
+                  name,
+                  price,
+                  description
+                )
+              )
+            )
+          `)
+          .eq('invoice_id', invoiceId);
           
-          // Create a default item based on the invoice total if no items exist
-          if (invoice.total > 0) {
-            const defaultItem = createDefaultInvoiceItem(invoice.total);
-            return {
-              ...invoice,
-              items: [defaultItem]
-            } as Invoice;
-          }
+        if (itemsError) {
+          console.error("Error fetching invoice items:", itemsError);
+          toast.error("Could not retrieve invoice items");
+        }
+        
+        console.log("Invoice items with booking data:", items);
+
+        // If no items, create a default one based on the invoice total
+        if (!items || items.length === 0) {
+          console.log("No items found, creating default item");
+          const defaultItem: InvoiceItem = {
+            description: "Training services",
+            quantity: 1,
+            unit_price: invoice.total,
+            amount: invoice.total
+          };
           
           return {
             ...invoice,
-            items: []
+            items: [defaultItem]
           } as Invoice;
         }
         
-        // Enhance each item with booking details
-        console.log("Enhancing invoice items with booking details...");
-        const enhancedItems: InvoiceItem[] = await Promise.all(
-          items.map(item => enhanceInvoiceItem(item))
-        );
-
-        console.log("Enhanced invoice items:", enhancedItems);
-
-        // Return the complete invoice with enhanced items
+        // Return complete invoice with items
         const result = {
           ...invoice,
-          items: enhancedItems
+          items: items
         } as Invoice;
         
-        console.log("Returning complete invoice with enhanced items:", result);
+        console.log("Final invoice data:", result);
         
         return result;
       } catch (error) {
-        return handleQueryError(error, "Error in useInvoiceDetails");
+        console.error("Error in useInvoiceDetails:", error);
+        throw error;
       }
     },
     enabled: !!invoiceId,

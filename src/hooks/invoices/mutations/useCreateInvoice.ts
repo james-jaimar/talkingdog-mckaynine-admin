@@ -82,6 +82,7 @@ export function useCreateInvoice() {
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       queryClient.invalidateQueries({ queryKey: ['invoice', data.id] }); 
       queryClient.invalidateQueries({ queryKey: ['client-invoices', data.client_id] }); 
+      queryClient.invalidateQueries({ queryKey: ['my-invoices'] }); 
       toast.success("Invoice created successfully");
     },
     onError: (error: any) => {

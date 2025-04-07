@@ -25,16 +25,23 @@ export async function fetchBookingDetails(bookingId: string): Promise<any> {
         name, 
         breed
       ),
-      class_schedules:class_schedule_id (
-        id, 
-        start_time,
-        class_id
-      ),
       clients:client_id (
         id,
         first_name,
         last_name,
-        email
+        email,
+        phone
+      ),
+      class_schedules:class_schedule_id (
+        id, 
+        start_time,
+        class_id,
+        classes:class_id (
+          id,
+          name,
+          price,
+          description
+        )
       )
     `)
     .eq('id', bookingId)

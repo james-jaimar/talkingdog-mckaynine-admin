@@ -49,12 +49,28 @@ export function useBookings(clientId: string, enabled: boolean) {
       const { data, error } = await supabase
         .from('bookings')
         .select(`
-          *,
+          id,
+          is_enrolled,
+          vaccination_verified, 
+          proof_of_payment,
+          additional_notes,
+          info_eo,
+          uses_whatsapp,
+          social_media_consent,
+          info_pg,
+          class_schedule_id,
+          dog_id,
+          client_id,
+          status,
+          payment_status,
+          notes,
           dogs:dog_id (id, name, breed),
           clients:client_id (id, first_name, last_name, email),
           class_schedules:class_schedule_id (
+            id,
             start_time,
-            classes:class_id (id, name, price)
+            class_id,
+            classes:class_id (id, name, price, description)
           )
         `)
         .eq('client_id', clientId)
