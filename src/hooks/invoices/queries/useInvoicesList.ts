@@ -46,6 +46,7 @@ export function useInvoicesList() {
               ),
               class_schedules (
                 id,
+                start_time,
                 class_id,
                 classes (
                   id,
@@ -113,6 +114,8 @@ export function useInvoicesList() {
               } : undefined,
               class_schedules: item.bookings.class_schedules ? {
                 id: item.bookings.class_schedules.id,
+                start_time: item.bookings.class_schedules.start_time || new Date().toISOString(), // Add the missing required field
+                class_id: item.bookings.class_schedules.class_id,
                 classes: item.bookings.class_schedules.classes ? {
                   id: item.bookings.class_schedules.classes.id,
                   name: item.bookings.class_schedules.classes.name,
@@ -125,8 +128,8 @@ export function useInvoicesList() {
         };
       });
       
-      // Type assertion after ensuring data conforms to expected structure
-      return transformedData as Invoice[];
+      // First cast to unknown, then to Invoice[] to satisfy TypeScript
+      return transformedData as unknown as Invoice[];
     },
   });
 }
