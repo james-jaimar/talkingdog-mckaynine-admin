@@ -12,7 +12,7 @@ export function useInvoicesList() {
     queryFn: async () => {
       console.log("Fetching all invoices with client and booking data");
       
-      // Get all invoices with client data in a single query with better joining
+      // Get all invoices with client data and more complete booking info
       const { data, error } = await supabase
         .from('invoices')
         .select(`
@@ -38,10 +38,17 @@ export function useInvoicesList() {
               id,
               dog_id,
               class_schedule_id,
-              dogs:dog_id (name),
-              class_schedules:class_schedule_id (
+              dogs (
                 id,
-                classes:class_id (name)
+                name
+              ),
+              class_schedules (
+                id,
+                class_id,
+                classes (
+                  id,
+                  name
+                )
               )
             )
           )
@@ -63,12 +70,23 @@ export function useInvoicesList() {
         let dogInfo = null;
         
         if (invoice.invoice_items && invoice.invoice_items.length > 0) {
-          const firstItem = invoice.invoice_items[0];
-          if (firstItem.bookings) {
-            dogInfo = firstItem.bookings.dogs?.name;
-            classInfo = firstItem.bookings.class_schedules?.classes?.name;
+          // Look through all items for class and dog info
+          for (const item of invoice.invoice_items) {
+            if (item.bookings) {
+              // If we find an item with dog and class info, store it
+              if (item.bookings.dogs?.name) {
+                dogInfo = item.bookings.dogs?.name;
+              }
+              if (item.bookings.class_schedules?.classes?.name) {
+                classInfo = item.bookings.class_schedules?.classes?.name;
+              }
+              // Once we have both pieces of info, we can stop looking
+              if (dogInfo && classInfo) break;
+            }
           }
         }
+        
+        console.log(`Invoice ${invoice.invoice_number} - Found class: ${classInfo}, dog: ${dogInfo}`);
         
         return {
           ...invoice,
@@ -81,7 +99,14 @@ export function useInvoicesList() {
             description: item.description,
             quantity: item.quantity,
             unit_price: item.unit_price,
-            amount: item.amount
+            amount: item.amount,
+            booking_id: item.booking_id,
+            // Keep minimal booking information for the list view
+            bookings: item.bookings ? {
+              id: item.bookings.id,
+              dogs: item.bookings.dogs,
+              class_schedules: item.bookings.class_schedules
+            } : null
           }))
         };
       });

@@ -2,6 +2,9 @@
 import { TableCell, TableRow } from "@/components/ui/table";
 import { InvoiceItem } from "@/hooks/invoices/types";
 import { formatCurrency } from "@/lib/formatters";
+import { Tooltip } from "@/components/ui/tooltip";
+import { Info } from "lucide-react";
+import { TooltipContent, TooltipTrigger, TooltipProvider } from "@radix-ui/react-tooltip";
 
 interface InvoiceItemRowProps {
   item: InvoiceItem;
@@ -9,65 +12,91 @@ interface InvoiceItemRowProps {
 }
 
 export function InvoiceItemRow({ item, index }: InvoiceItemRowProps) {
-  console.log(`Rendering invoice item row for item:`, item);
+  console.log(`Rendering invoice item row #${index}:`, item);
   
-  // Extract booking-related information
+  // Extract booking information if available
   const booking = item.bookings;
+  const hasBookingData = !!booking;
   
   // Get class information
   const classInfo = booking?.class_schedules?.classes;
   const className = classInfo?.name;
   
   // Get dog information
-  const dogName = booking?.dogs?.name;
+  const dogInfo = booking?.dogs;
+  const dogName = dogInfo?.name;
   
-  // Build display description
+  // Determine what to display
   let primaryDescription = item.description || 'Training services';
-  let classDescription = className || null;
-  let dogDescription = dogName ? `Dog: ${dogName}` : null;
+  let secondaryDescription = null;
+  let tertiaryDescription = null;
   
-  // If description contains class and dog info already (format: "Class - Dog")
-  if (item.description && item.description.includes(' - ')) {
+  // If we have booking info, use it to enhance the display
+  if (hasBookingData) {
+    // If there's both class and dog info, set it as primary description
+    if (className && dogName && (!item.description || item.description === 'Training services')) {
+      primaryDescription = `${className} - ${dogName}`;
+      console.log(`Built primary description from booking data: ${primaryDescription}`);
+    } 
+    // If description already contains info but we want to show dog details separately
+    else if (className && dogName) {
+      secondaryDescription = `Dog: ${dogName}`;
+      console.log(`Using existing description and adding dog info separately: ${secondaryDescription}`);
+    }
+    
+    // Add class description as tertiary info if available and different from name
+    if (classInfo?.description && classInfo.description !== className && classInfo.description.trim() !== '') {
+      tertiaryDescription = classInfo.description;
+      console.log(`Using class description as tertiary info: ${tertiaryDescription}`);
+    }
+  }
+  // If no booking but the description seems to contain class-dog info (format: "Class - Dog")
+  else if (item.description && item.description.includes(' - ')) {
     const parts = item.description.split(' - ');
     if (parts.length >= 2) {
       primaryDescription = parts[0];
-      dogDescription = `Dog: ${parts[1]}`;
-    }
-  } 
-  // If there's booking data but no structured description
-  else if (booking) {
-    if (className) {
-      // Use class name as primary if available
-      primaryDescription = className;
-      // Only set the description if we have the dog name
-      if (dogName) {
-        dogDescription = `Dog: ${dogName}`;
-      }
+      secondaryDescription = `Dog: ${parts[1]}`;
     }
   }
   
-  // Debug logging
-  console.log(`Item ${index} display details:`, {
-    primaryDescription,
-    classDescription,
-    dogDescription,
-    booking_data: !!booking,
-    has_class_info: !!classInfo
-  });
+  // Add details about the booking connection for debugging
+  const hasMissingBooking = !!item.booking_id && !hasBookingData;
   
   return (
     <TableRow>
       <TableCell className="py-4">
         <div>
-          <p className="font-medium">{primaryDescription}</p>
-          {dogDescription && (
+          <div className="flex items-center">
+            <p className="font-medium">{primaryDescription}</p>
+            {hasMissingBooking && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className="h-4 w-4 ml-2 text-amber-500" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="text-xs w-48">This item references booking ID {item.booking_id} but the booking data couldn't be loaded</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+          </div>
+          
+          {secondaryDescription && (
             <p className="text-xs text-gray-500">
-              {dogDescription}
+              {secondaryDescription}
             </p>
           )}
-          {classInfo && classInfo.description && primaryDescription !== classInfo.description && (
+          
+          {tertiaryDescription && (
             <p className="text-xs text-gray-500 mt-1 italic">
-              {classInfo.description}
+              {tertiaryDescription}
+            </p>
+          )}
+          
+          {item.booking_id && (
+            <p className="text-xs text-gray-400 mt-1">
+              Booking #{item.booking_id.substring(0, 8)}
             </p>
           )}
         </div>

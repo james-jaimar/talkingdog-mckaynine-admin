@@ -5,7 +5,8 @@ import { format } from "date-fns";
 import { InvoiceStatusBadge } from "./InvoiceStatusBadge";
 import { InvoiceItemsTable } from "./InvoiceItemsTable";
 import { InvoiceSummary } from "./InvoiceSummary";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, FileText } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface InvoiceDetailsPanelProps {
   invoice: Invoice;
@@ -14,20 +15,36 @@ interface InvoiceDetailsPanelProps {
 export function InvoiceDetailsPanel({ invoice }: InvoiceDetailsPanelProps) {
   // Log invoice data for debugging purposes
   console.log("Rendering InvoiceDetailsPanel with invoice:", invoice);
-  console.log("Client data in invoice:", invoice.client);
   
   // Check if any item has booking-related class information
+  const hasBookingItems = invoice.items?.some(item => item.booking_id);
+  
+  // Check if any item has complete booking data with class info
   const hasClassBookings = invoice.items?.some(item => 
     item.bookings?.class_schedules?.classes?.name
   );
   
-  // Debug log class booking status
-  console.log("Invoice has class bookings:", hasClassBookings);
+  // Check if invoice appears to be for a class booking based on notes or items
+  const isLikelyClassBooking = 
+    (invoice.notes?.toLowerCase().includes('booking') || 
+     invoice.notes?.toLowerCase().includes('class')) ||
+    hasBookingItems;
+  
+  // Debug log booking status
+  console.log("Invoice details:", {
+    hasBookingItems,
+    hasClassBookings,
+    isLikelyClassBooking,
+    itemsCount: invoice.items?.length || 0
+  });
   
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between border-b">
-        <CardTitle>Invoice Details</CardTitle>
+        <CardTitle className="flex items-center">
+          <FileText className="mr-2 h-5 w-5 text-muted-foreground" /> 
+          Invoice Details
+        </CardTitle>
         <InvoiceStatusBadge status={invoice.status} />
       </CardHeader>
       <CardContent className="pt-6">
@@ -51,21 +68,15 @@ export function InvoiceDetailsPanel({ invoice }: InvoiceDetailsPanelProps) {
         )}
         
         {/* Show class booking alert if this invoice is for classes but missing data */}
-        {invoice.notes?.toLowerCase().includes('booking') && 
-         !hasClassBookings && 
-         invoice.items && 
-         invoice.items.length > 0 && (
-          <div className="mb-4 p-3 bg-blue-50 rounded-md border border-blue-200 flex items-start">
-            <AlertCircle className="h-5 w-5 text-blue-500 mr-2 mt-0.5 flex-shrink-0" />
-            <div>
-              <p className="text-sm text-blue-700">
-                This invoice appears to be for class bookings, but full class details couldn't be retrieved.
-              </p>
-              <p className="text-xs text-blue-600 mt-1">
-                Invoice items will show the available information.
-              </p>
-            </div>
-          </div>
+        {isLikelyClassBooking && !hasClassBookings && hasBookingItems && (
+          <Alert className="mb-4 bg-blue-50 border-blue-200">
+            <AlertCircle className="h-4 w-4 text-blue-600" />
+            <AlertTitle className="text-blue-700">Class booking information</AlertTitle>
+            <AlertDescription className="text-blue-600 text-sm">
+              This invoice appears to be for class bookings, but some class details couldn't be fully retrieved.
+              Basic booking information is shown where available.
+            </AlertDescription>
+          </Alert>
         )}
         
         <InvoiceItemsTable items={invoice.items || []} />
@@ -75,7 +86,7 @@ export function InvoiceDetailsPanel({ invoice }: InvoiceDetailsPanelProps) {
         {invoice.notes && (
           <div className="mt-6">
             <h3 className="font-medium mb-2">Notes:</h3>
-            <p className="text-sm text-muted-foreground">{invoice.notes}</p>
+            <p className="text-sm text-muted-foreground whitespace-pre-wrap">{invoice.notes}</p>
           </div>
         )}
       </CardContent>
