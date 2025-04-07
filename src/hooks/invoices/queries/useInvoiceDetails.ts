@@ -58,6 +58,29 @@ export function useInvoiceDetails(invoiceId: string | undefined) {
 
         console.log("Fetched invoice items:", items);
         
+        if (!items || items.length === 0) {
+          console.warn("No items found for this invoice");
+          // Create a default item based on the invoice total if no items exist
+          if (invoice.total > 0) {
+            console.log("Creating a default item based on invoice total");
+            const defaultItem: InvoiceItem = {
+              description: "Training services",
+              quantity: 1,
+              unit_price: invoice.total,
+              amount: invoice.total
+            };
+            return {
+              ...invoice,
+              items: [defaultItem]
+            } as Invoice;
+          }
+          
+          return {
+            ...invoice,
+            items: []
+          } as Invoice;
+        }
+        
         // For each item, separately fetch booking details if available
         const enhancedItems: InvoiceItem[] = await Promise.all(
           items.map(async (item) => {
@@ -115,18 +138,18 @@ export function useInvoiceDetails(invoiceId: string | undefined) {
                       if (classData) {
                         enhancedItem.bookings.class_schedules = {
                           id: booking.class_schedule_id,
-                          start_time: classSchedule.start_time,
+                          start_time: classSchedule.start_time || new Date().toISOString(),
                           classes: {
                             id: classSchedule.class_id,
                             name: classData.name,
                             price: classData.price,
-                            description: classData.description || '' // Add description with fallback
+                            description: classData.description || classData.name || 'Training class' // Ensure description has a fallback
                           }
                         };
                         
                         // Use class name for description if none provided
                         if (!enhancedItem.description || enhancedItem.description === 'Class booking') {
-                          enhancedItem.description = classData.name;
+                          enhancedItem.description = classData.name || 'Training class';
                         }
                         
                         // Use class price if unit price is missing or zero
@@ -142,6 +165,15 @@ export function useInvoiceDetails(invoiceId: string | undefined) {
                 console.error("Error fetching booking details:", error);
                 // Continue with basic item data
               }
+            }
+            
+            // Ensure we have description and prices even if there's no booking
+            if (!enhancedItem.description || enhancedItem.description.trim() === '') {
+              enhancedItem.description = 'Training services';
+            }
+            
+            if (!enhancedItem.amount && enhancedItem.unit_price && enhancedItem.quantity) {
+              enhancedItem.amount = enhancedItem.unit_price * enhancedItem.quantity;
             }
             
             return enhancedItem;
