@@ -108,7 +108,7 @@ export function useInvoiceDetails(invoiceId: string | undefined) {
                     if (classSchedule && classSchedule.class_id) {
                       const { data: classData } = await supabase
                         .from('classes')
-                        .select('name, price')
+                        .select('name, price, description')
                         .eq('id', classSchedule.class_id)
                         .maybeSingle();
                         
@@ -118,7 +118,8 @@ export function useInvoiceDetails(invoiceId: string | undefined) {
                           classes: {
                             id: classSchedule.class_id,
                             name: classData.name,
-                            price: classData.price
+                            price: classData.price,
+                            description: classData.description || '' // Add description with fallback
                           }
                         };
                         
