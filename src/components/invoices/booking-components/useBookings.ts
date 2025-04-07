@@ -23,6 +23,12 @@ export interface BookingWithClass {
     name: string;
     breed: string;
   };
+  clients?: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+  };
   class_schedules?: {
     start_time: string;
     classes?: {
@@ -45,6 +51,7 @@ export function useBookings(clientId: string, enabled: boolean) {
         .select(`
           *,
           dogs:dog_id (id, name, breed),
+          clients:client_id (id, first_name, last_name, email),
           class_schedules:class_schedule_id (
             start_time,
             classes:class_id (id, name, price)

@@ -11,6 +11,9 @@ interface InvoiceDetailsPanelProps {
 }
 
 export function InvoiceDetailsPanel({ invoice }: InvoiceDetailsPanelProps) {
+  // Log invoice data for debugging purposes
+  console.log("Rendering InvoiceDetailsPanel with invoice:", invoice);
+  
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between border-b">
@@ -23,6 +26,16 @@ export function InvoiceDetailsPanel({ invoice }: InvoiceDetailsPanelProps) {
             Issued on {format(new Date(invoice.issued_date), "dd/MM/yyyy")}
           </p>
         </div>
+        
+        {/* Client information */}
+        {invoice.client && (
+          <div className="mb-6 p-3 bg-gray-50 rounded-md border">
+            <h3 className="text-sm font-medium mb-1">Bill To:</h3>
+            <p className="text-sm">{invoice.client.first_name} {invoice.client.last_name}</p>
+            <p className="text-sm text-gray-600">{invoice.client.email}</p>
+            {invoice.client.phone && <p className="text-sm text-gray-600">{invoice.client.phone}</p>}
+          </div>
+        )}
         
         <InvoiceItemsTable items={invoice.items || []} />
         

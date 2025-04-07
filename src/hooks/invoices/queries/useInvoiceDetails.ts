@@ -25,9 +25,11 @@ export function useInvoiceDetails(invoiceId: string | undefined) {
 
         // Fetch base invoice with client information
         const invoice = await fetchInvoiceWithClient(invoiceId);
+        console.log("Base invoice data retrieved:", invoice);
         
         // Fetch invoice items
         const items = await fetchInvoiceItems(invoiceId);
+        console.log("Invoice items retrieved:", items);
         
         // Handle case with no items
         if (!items || items.length === 0) {
@@ -49,6 +51,7 @@ export function useInvoiceDetails(invoiceId: string | undefined) {
         }
         
         // Enhance each item with booking details
+        console.log("Enhancing invoice items with booking details...");
         const enhancedItems: InvoiceItem[] = await Promise.all(
           items.map(item => enhanceInvoiceItem(item))
         );
@@ -56,10 +59,14 @@ export function useInvoiceDetails(invoiceId: string | undefined) {
         console.log("Enhanced invoice items:", enhancedItems);
 
         // Return the complete invoice with enhanced items
-        return {
+        const result = {
           ...invoice,
           items: enhancedItems
         } as Invoice;
+        
+        console.log("Returning complete invoice with enhanced items:", result);
+        
+        return result;
       } catch (error) {
         return handleQueryError(error, "Error in useInvoiceDetails");
       }

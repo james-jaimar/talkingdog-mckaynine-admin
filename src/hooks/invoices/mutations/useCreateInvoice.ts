@@ -56,6 +56,8 @@ export function useCreateInvoice() {
           booking_id: item.booking_id || null
         }));
 
+        console.log("Inserting invoice items:", itemsToInsert);
+
         const { error: itemsError } = await supabase
           .from('invoice_items')
           .insert(itemsToInsert);
@@ -65,6 +67,9 @@ export function useCreateInvoice() {
           throw itemsError;
         }
 
+        // Log success message
+        console.log("Invoice items inserted successfully");
+
         return invoice;
       } catch (error) {
         console.error("Error creating invoice:", error);
@@ -72,8 +77,11 @@ export function useCreateInvoice() {
       }
     },
     onSuccess: (data) => {
+      console.log("Invoice mutation completed successfully, invalidating queries");
+      
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       queryClient.invalidateQueries({ queryKey: ['invoice', data.id] }); 
+      queryClient.invalidateQueries({ queryKey: ['client-invoices', data.client_id] }); 
       toast.success("Invoice created successfully");
     },
     onError: (error: any) => {

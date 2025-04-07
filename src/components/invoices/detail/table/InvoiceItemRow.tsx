@@ -12,31 +12,38 @@ export function InvoiceItemRow({ item, index }: InvoiceItemRowProps) {
   // Extract booking-related information if available
   const booking = item.bookings;
   const classData = booking?.class_schedules?.classes;
-  const dogName = booking?.dogs?.name;
+  let dogName = booking?.dogs?.name;
   
-  // Parse description for dog name if it's included in the format "Class Name - Dog Name"
-  let displayDescription = item.description;
-  let displayDogName = dogName;
+  // Parse description for class name and dog name if it's included in the format "Class Name - Dog Name"
+  let displayDescription = item.description || 'Training services';
+  let className = classData?.name;
   
   // If the description includes a dog name in the format "Class - Dog"
-  if (item.description.includes(" - ") && !displayDogName) {
-    const parts = item.description.split(" - ");
+  if (displayDescription.includes(" - ") && !dogName) {
+    const parts = displayDescription.split(" - ");
     if (parts.length >= 2) {
-      displayDescription = parts[0];
-      displayDogName = parts[1];
+      className = parts[0];
+      dogName = parts[1];
+      console.log(`Parsed from description - Class: ${className}, Dog: ${dogName}`);
     }
   }
+  
+  // If class name wasn't found in the description but is available from booking data
+  if (!className && classData) {
+    className = classData.name;
+  }
+  
+  // Determine what to show as the primary description
+  const primaryDescription = className || displayDescription.split(" - ")[0] || 'Training services';
   
   return (
     <TableRow key={item.id || `item-${index}`}>
       <TableCell className="py-4">
         <div>
-          <p className="font-medium">{displayDescription}</p>
-          {(displayDogName || classData) && (
+          <p className="font-medium">{primaryDescription}</p>
+          {dogName && (
             <p className="text-xs text-gray-500">
-              {displayDogName && <span>Dog: {displayDogName} </span>}
-              {displayDogName && classData && <span>| </span>}
-              {classData && <span>Class: {classData.name}</span>}
+              Dog: {dogName}
             </p>
           )}
         </div>

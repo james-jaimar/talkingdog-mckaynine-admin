@@ -85,12 +85,16 @@ export function BookingToInvoiceProvider({
       
       // Create items from selected bookings
       const selectedBookingData = allBookings?.filter(b => selectedBookings.includes(b.id)) || [];
+      
+      // Log selected booking data for debugging
+      console.log("Creating invoice with selected bookings:", selectedBookingData);
+      
       const items = selectedBookingData.map(booking => {
-        const className = booking.class_schedules?.classes?.name || 'Class';
+        const className = booking.class_schedules?.classes?.name || 'Training Class';
         const price = booking.class_schedules?.classes?.price || 0;
         const dogName = booking.dogs?.name || 'Unknown Dog';
         
-        console.log(`Creating invoice item for ${className} at price ${price} for dog ${dogName}`);
+        console.log(`Creating invoice item for booking ${booking.id}: ${className} at price ${price} for dog ${dogName}`);
         
         return {
           description: `${className} - ${dogName}`,
@@ -111,6 +115,9 @@ export function BookingToInvoiceProvider({
         tax_rate: 0,
         items,
       };
+      
+      // Log complete invoice data before submission
+      console.log("Submitting invoice data:", invoice);
       
       // Create the invoice
       await createInvoice.mutateAsync(invoice);

@@ -18,6 +18,7 @@ export async function fetchBookingDetails(bookingId: string): Promise<any> {
     .select(`
       id,
       dog_id,
+      client_id,
       class_schedule_id,
       dogs:dog_id (
         id, 
@@ -28,6 +29,12 @@ export async function fetchBookingDetails(bookingId: string): Promise<any> {
         id, 
         start_time,
         class_id
+      ),
+      clients:client_id (
+        id,
+        first_name,
+        last_name,
+        email
       )
     `)
     .eq('id', bookingId)
