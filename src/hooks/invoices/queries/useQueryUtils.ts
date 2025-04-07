@@ -67,57 +67,67 @@ export function createDefaultInvoiceItem(total: number): InvoiceItem {
  * Fetch booking details for an invoice item
  */
 export async function fetchBookingDetails(bookingId: string): Promise<any> {
-  // Get booking
-  const { data: booking } = await supabase
+  if (!bookingId) {
+    console.log("No booking ID provided to fetch booking details");
+    return null;
+  }
+  
+  console.log(`Fetching booking details for booking ID: ${bookingId}`);
+  
+  // Get booking with expanded relationships for dog and class schedule
+  const { data: booking, error } = await supabase
     .from('bookings')
-    .select('dog_id, class_schedule_id')
+    .select(`
+      id,
+      dog_id,
+      class_schedule_id,
+      dogs:dog_id (
+        id, 
+        name, 
+        breed
+      ),
+      class_schedules:class_schedule_id (
+        id, 
+        start_time,
+        class_id
+      )
+    `)
     .eq('id', bookingId)
     .maybeSingle();
-    
+  
+  if (error) {
+    console.error("Error fetching booking details:", error);
+    return null;
+  }
+  
+  console.log("Booking details retrieved:", booking);
   return booking;
 }
 
 /**
- * Fetch dog details for a booking
+ * Fetch class details for a class schedule
  */
-export async function fetchDogDetails(dogId: string): Promise<any> {
-  if (!dogId) return null;
-  
-  const { data: dog } = await supabase
-    .from('dogs')
-    .select('name, breed')
-    .eq('id', dogId)
-    .maybeSingle();
-    
-  return dog;
-}
-
-/**
- * Fetch class schedule and class details
- */
-export async function fetchClassDetails(classScheduleId: string): Promise<{
-  classSchedule: any;
-  classData: any;
-}> {
-  if (!classScheduleId) return { classSchedule: null, classData: null };
-
-  const { data: classSchedule } = await supabase
-    .from('class_schedules')
-    .select('class_id, start_time')
-    .eq('id', classScheduleId)
-    .maybeSingle();
-    
-  if (!classSchedule || !classSchedule.class_id) {
-    return { classSchedule, classData: null };
+export async function fetchClassDetails(classId: string): Promise<any> {
+  if (!classId) {
+    console.log("No class ID provided to fetch class details");
+    return null;
   }
   
-  const { data: classData } = await supabase
+  console.log(`Fetching class details for class ID: ${classId}`);
+  
+  const { data: classData, error } = await supabase
     .from('classes')
-    .select('name, price, description')
-    .eq('id', classSchedule.class_id)
+    .select('id, name, price, description')
+    .eq('id', classId)
     .maybeSingle();
     
-  return { classSchedule, classData };
+  if (error) {
+    console.error("Error fetching class details:", error);
+    return null;
+  }
+  
+  console.log("Class details retrieved:", classData);
+  return classData;
 }
 
 /**
@@ -127,57 +137,64 @@ export async function enhanceInvoiceItem(item: InvoiceItem): Promise<InvoiceItem
   // Base item
   const enhancedItem: InvoiceItem = { ...item };
   
-  // If this item is linked to a booking, fetch related info separately
+  // If this item is linked to a booking, fetch related info
   if (item.booking_id) {
     try {
       const booking = await fetchBookingDetails(item.booking_id);
       
       if (booking) {
-        enhancedItem.bookings = { id: item.booking_id };
+        enhancedItem.bookings = { 
+          id: item.booking_id,
+          dog_id: booking.dog_id,
+          class_schedule_id: booking.class_schedule_id
+        };
         
-        // Get dog information
-        if (booking.dog_id) {
-          const dog = await fetchDogDetails(booking.dog_id);
-          
-          if (dog) {
-            enhancedItem.bookings.dogs = {
-              name: dog.name,
-              breed: dog.breed
-            };
-          }
+        // Include dog information if available
+        if (booking.dogs) {
+          enhancedItem.bookings.dogs = {
+            name: booking.dogs.name,
+            breed: booking.dogs.breed
+          };
         }
         
-        // Get class info
-        if (booking.class_schedule_id) {
-          const { classSchedule, classData } = await fetchClassDetails(booking.class_schedule_id);
+        // Include class schedule and class information if available
+        if (booking.class_schedules) {
+          const classSchedule = booking.class_schedules;
+          enhancedItem.bookings.class_schedules = {
+            id: classSchedule.id,
+            start_time: classSchedule.start_time || new Date().toISOString()
+          };
           
-          if (classData) {
-            enhancedItem.bookings.class_schedules = {
-              id: booking.class_schedule_id,
-              start_time: classSchedule.start_time || new Date().toISOString(),
-              classes: {
-                id: classSchedule.class_id,
+          // Fetch class details
+          if (classSchedule.class_id) {
+            const classData = await fetchClassDetails(classSchedule.class_id);
+            
+            if (classData) {
+              enhancedItem.bookings.class_schedules.classes = {
+                id: classData.id,
                 name: classData.name,
                 price: classData.price,
-                description: classData.description || classData.name || 'Training class' // Ensure description has a fallback
+                description: classData.description || classData.name || 'Training class'
+              };
+              
+              // Use class name as description if not provided
+              if (!enhancedItem.description || enhancedItem.description === 'Class booking' || enhancedItem.description === 'Training services') {
+                enhancedItem.description = classData.name;
+                console.log(`Updated item description to class name: ${classData.name}`);
               }
-            };
-            
-            // Use class name for description if none provided
-            if (!enhancedItem.description || enhancedItem.description === 'Class booking') {
-              enhancedItem.description = classData.name || 'Training class';
-            }
-            
-            // Use class price if unit price is missing or zero
-            if (!enhancedItem.unit_price || enhancedItem.unit_price === 0) {
-              enhancedItem.unit_price = classData.price;
-              enhancedItem.amount = classData.price * enhancedItem.quantity;
+              
+              // Use class price if unit price is missing or zero
+              if (!enhancedItem.unit_price || enhancedItem.unit_price === 0) {
+                enhancedItem.unit_price = classData.price;
+                enhancedItem.amount = classData.price * enhancedItem.quantity;
+                console.log(`Updated item price to class price: ${classData.price}`);
+              }
             }
           }
         }
       }
     } catch (error) {
-      console.error("Error fetching booking details:", error);
+      console.error("Error enhancing invoice item with booking details:", error);
       // Continue with basic item data
     }
   }

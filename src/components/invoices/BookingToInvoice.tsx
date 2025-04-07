@@ -79,7 +79,7 @@ export function BookingToInvoice({ open, onOpenChange, clientId, onSuccess }: Bo
         console.log(`Creating invoice item for ${className} at price ${price}`);
         
         return {
-          description: `${className} for ${dogName}`,
+          description: className,  // Use the actual class name as the description
           quantity: 1,
           unit_price: price,
           booking_id: booking.id,

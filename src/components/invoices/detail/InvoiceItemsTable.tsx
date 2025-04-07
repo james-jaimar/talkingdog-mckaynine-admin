@@ -9,7 +9,6 @@ import {
 } from "@/components/ui/table";
 import { InvoiceItem } from "@/hooks/invoices/types";
 import { formatCurrency } from "@/lib/formatters";
-import { Skeleton } from "@/components/ui/skeleton";
 import { AlertCircle } from "lucide-react";
 
 interface InvoiceItemsTableProps {
@@ -53,7 +52,7 @@ export function InvoiceItemsTable({ items }: InvoiceItemsTableProps) {
               <TableRow key={item.id || `item-${index}`}>
                 <TableCell className="py-4">
                   <div>
-                    <p className="font-medium">{item.description || "Class booking"}</p>
+                    <p className="font-medium">{item.description}</p>
                     {(booking || dogName || classData) && (
                       <p className="text-xs text-gray-500">
                         {dogName && <span>Dog: {dogName} </span>}
