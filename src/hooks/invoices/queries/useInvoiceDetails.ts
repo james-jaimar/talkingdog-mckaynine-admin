@@ -46,7 +46,7 @@ export function useInvoiceDetails(invoiceId: string | undefined) {
         
         console.log("Invoice basic data retrieved:", normalizedInvoice);
         
-        // Fetch invoice items separately (not using joins which can cause permission issues)
+        // Fetch invoice items separately
         const { data: items, error: itemsError } = await supabase
           .from('invoice_items')
           .select('*')
@@ -79,7 +79,7 @@ export function useInvoiceDetails(invoiceId: string | undefined) {
           // Create a properly typed invoice item
           let enhancedItem: InvoiceItem = { 
             id: item.id,
-            description: item.description,
+            description: item.description || "Training services",
             quantity: item.quantity, 
             unit_price: item.unit_price,
             amount: item.amount,
@@ -127,32 +127,31 @@ export function useInvoiceDetails(invoiceId: string | undefined) {
               console.log(`No booking found for ID ${item.booking_id}`);
               return enhancedItem;
             }
+
+            console.log(`Found booking for item ${item.id}:`, booking);
             
             // Now explicitly create the bookings property on the enhanced item
             if (booking.dogs && booking.class_schedules?.classes) {
               const dogName = booking.dogs.name;
               const className = booking.class_schedules.classes.name;
+              const classPrice = booking.class_schedules.classes.price;
               
-              // If the description is generic or missing, replace it with class and dog info
-              if (!item.description || 
-                  item.description === 'Training services' ||
-                  item.description === 'Class booking') {
-                enhancedItem.description = `${className} - ${dogName}`;
-                console.log(`Enhanced description for item: ${enhancedItem.description}`);
-              }
+              console.log(`Enhanced item with class: ${className} and dog: ${dogName}`);
+              
+              // Always set the description with class and dog info
+              enhancedItem.description = `${className} - ${dogName}`;
               
               // Set price from class if not already set
-              if (!item.unit_price || item.unit_price === 0) {
-                enhancedItem.unit_price = booking.class_schedules.classes.price;
-                enhancedItem.amount = booking.class_schedules.classes.price * item.quantity;
-                console.log(`Enhanced price from class: ${enhancedItem.unit_price}`);
+              if (!enhancedItem.unit_price || enhancedItem.unit_price === 0) {
+                enhancedItem.unit_price = classPrice;
+                enhancedItem.amount = classPrice * item.quantity;
               }
               
               // Add booking information to the item
               enhancedItem.bookings = {
                 id: booking.id,
                 dogs: {
-                  name: booking.dogs.name,
+                  name: dogName,
                   breed: booking.dogs.breed || 'Unknown'
                 },
                 class_schedules: {
@@ -161,8 +160,8 @@ export function useInvoiceDetails(invoiceId: string | undefined) {
                   class_id: booking.class_schedules.class_id,
                   classes: {
                     id: booking.class_schedules.classes.id,
-                    name: booking.class_schedules.classes.name,
-                    price: booking.class_schedules.classes.price || 0,
+                    name: className,
+                    price: classPrice || 0,
                     description: booking.class_schedules.classes.description || ''
                   }
                 }

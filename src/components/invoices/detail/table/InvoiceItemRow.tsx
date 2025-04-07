@@ -32,28 +32,22 @@ export function InvoiceItemRow({ item, index }: InvoiceItemRowProps) {
   
   // If we have booking info, use it to enhance the display
   if (hasBookingData) {
-    // If there's both class and dog info, set it as primary description
-    if (className && dogName && (!item.description || item.description === 'Training services')) {
+    // If there's both class and dog info, ensure it's the primary description
+    if (className && dogName) {
       primaryDescription = `${className} - ${dogName}`;
-      console.log(`Built primary description from booking data: ${primaryDescription}`);
+      console.log(`Using primary description from booking data: ${primaryDescription}`);
     } 
-    // If description already contains info but we want to show dog details separately
-    else if (className && dogName) {
-      secondaryDescription = `Dog: ${dogName}`;
-      console.log(`Using existing description and adding dog info separately: ${secondaryDescription}`);
-    }
     
     // Add class description as tertiary info if available and different from name
     if (classInfo?.description && classInfo.description !== className && classInfo.description.trim() !== '') {
       tertiaryDescription = classInfo.description;
       console.log(`Using class description as tertiary info: ${tertiaryDescription}`);
     }
-  }
+  } 
   // If no booking but the description seems to contain class-dog info (format: "Class - Dog")
   else if (item.description && item.description.includes(' - ')) {
     const parts = item.description.split(' - ');
     if (parts.length >= 2) {
-      primaryDescription = parts[0];
       secondaryDescription = `Dog: ${parts[1]}`;
     }
   }
