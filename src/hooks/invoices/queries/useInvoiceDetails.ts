@@ -1,8 +1,13 @@
 
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { Invoice, InvoiceItem } from "@/hooks/invoices/types";
-import { toast } from "sonner";
+import { 
+  fetchInvoiceWithClient, 
+  fetchInvoiceItems, 
+  createDefaultInvoiceItem,
+  enhanceInvoiceItem,
+  handleQueryError
+} from "./useQueryUtils";
 
 /**
  * Hook to fetch a single invoice by ID with all details
@@ -18,57 +23,19 @@ export function useInvoiceDetails(invoiceId: string | undefined) {
 
         console.log("Fetching invoice details for:", invoiceId);
 
-        // First get the invoice data with client information
-        const { data: invoice, error: invoiceError } = await supabase
-          .from('invoices')
-          .select(`
-            *,
-            clients:client_id (id, first_name, last_name, email, phone, address, city, postal_code)
-          `)
-          .eq('id', invoiceId)
-          .single();
-
-        if (invoiceError) {
-          console.error("Error fetching invoice:", invoiceError);
-          toast.error("Could not retrieve invoice details");
-          throw invoiceError;
-        }
-
-        if (!invoice) {
-          toast.error("Invoice not found");
-          throw new Error("Invoice not found");
-        }
-
-        console.log("Fetched invoice data:", invoice);
+        // Fetch base invoice with client information
+        const invoice = await fetchInvoiceWithClient(invoiceId);
         
-        // Fetch invoice items directly - no joins to avoid permission issues
-        const { data: items, error: itemsError } = await supabase
-          .from('invoice_items')
-          .select('*')
-          .eq('invoice_id', invoiceId);
-
-        if (itemsError) {
-          console.error("Error fetching invoice items:", itemsError);
-          toast.error("Could not retrieve invoice items");
-          return {
-            ...invoice,
-            items: []
-          } as Invoice;
-        }
-
-        console.log("Fetched invoice items:", items);
+        // Fetch invoice items
+        const items = await fetchInvoiceItems(invoiceId);
         
+        // Handle case with no items
         if (!items || items.length === 0) {
           console.warn("No items found for this invoice");
+          
           // Create a default item based on the invoice total if no items exist
           if (invoice.total > 0) {
-            console.log("Creating a default item based on invoice total");
-            const defaultItem: InvoiceItem = {
-              description: "Training services",
-              quantity: 1,
-              unit_price: invoice.total,
-              amount: invoice.total
-            };
+            const defaultItem = createDefaultInvoiceItem(invoice.total);
             return {
               ...invoice,
               items: [defaultItem]
@@ -81,114 +48,20 @@ export function useInvoiceDetails(invoiceId: string | undefined) {
           } as Invoice;
         }
         
-        // For each item, separately fetch booking details if available
+        // Enhance each item with booking details
         const enhancedItems: InvoiceItem[] = await Promise.all(
-          items.map(async (item) => {
-            // Base item
-            const enhancedItem: InvoiceItem = {
-              ...item
-            };
-            
-            // If this item is linked to a booking, fetch related info separately
-            if (item.booking_id) {
-              try {
-                // Get booking
-                const { data: booking } = await supabase
-                  .from('bookings')
-                  .select('dog_id, class_schedule_id')
-                  .eq('id', item.booking_id)
-                  .maybeSingle();
-                
-                if (booking) {
-                  enhancedItem.bookings = {
-                    id: item.booking_id
-                  };
-                  
-                  // Get dog name if available
-                  if (booking.dog_id) {
-                    const { data: dog } = await supabase
-                      .from('dogs')
-                      .select('name, breed')
-                      .eq('id', booking.dog_id)
-                      .maybeSingle();
-                      
-                    if (dog) {
-                      enhancedItem.bookings.dogs = {
-                        name: dog.name,
-                        breed: dog.breed
-                      };
-                    }
-                  }
-                  
-                  // Get class info if available
-                  if (booking.class_schedule_id) {
-                    const { data: classSchedule } = await supabase
-                      .from('class_schedules')
-                      .select('class_id, start_time')
-                      .eq('id', booking.class_schedule_id)
-                      .maybeSingle();
-                      
-                    if (classSchedule && classSchedule.class_id) {
-                      const { data: classData } = await supabase
-                        .from('classes')
-                        .select('name, price, description')
-                        .eq('id', classSchedule.class_id)
-                        .maybeSingle();
-                        
-                      if (classData) {
-                        enhancedItem.bookings.class_schedules = {
-                          id: booking.class_schedule_id,
-                          start_time: classSchedule.start_time || new Date().toISOString(),
-                          classes: {
-                            id: classSchedule.class_id,
-                            name: classData.name,
-                            price: classData.price,
-                            description: classData.description || classData.name || 'Training class' // Ensure description has a fallback
-                          }
-                        };
-                        
-                        // Use class name for description if none provided
-                        if (!enhancedItem.description || enhancedItem.description === 'Class booking') {
-                          enhancedItem.description = classData.name || 'Training class';
-                        }
-                        
-                        // Use class price if unit price is missing or zero
-                        if (!enhancedItem.unit_price || enhancedItem.unit_price === 0) {
-                          enhancedItem.unit_price = classData.price;
-                          enhancedItem.amount = classData.price * enhancedItem.quantity;
-                        }
-                      }
-                    }
-                  }
-                }
-              } catch (error) {
-                console.error("Error fetching booking details:", error);
-                // Continue with basic item data
-              }
-            }
-            
-            // Ensure we have description and prices even if there's no booking
-            if (!enhancedItem.description || enhancedItem.description.trim() === '') {
-              enhancedItem.description = 'Training services';
-            }
-            
-            if (!enhancedItem.amount && enhancedItem.unit_price && enhancedItem.quantity) {
-              enhancedItem.amount = enhancedItem.unit_price * enhancedItem.quantity;
-            }
-            
-            return enhancedItem;
-          })
+          items.map(item => enhanceInvoiceItem(item))
         );
 
         console.log("Enhanced invoice items:", enhancedItems);
 
+        // Return the complete invoice with enhanced items
         return {
           ...invoice,
           items: enhancedItems
         } as Invoice;
       } catch (error) {
-        console.error("Error in useInvoiceDetails:", error);
-        throw error;
+        return handleQueryError(error, "Error in useInvoiceDetails");
       }
     },
     enabled: !!invoiceId,
