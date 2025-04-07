@@ -9,6 +9,15 @@ export async function enhanceInvoiceItem(item: InvoiceItem): Promise<InvoiceItem
   // Base item
   const enhancedItem: InvoiceItem = { ...item };
   
+  // Check if the item description already contains dog name (in format "Class - Dog")
+  let embeddedDogName: string | null = null;
+  if (item.description && item.description.includes(' - ')) {
+    const parts = item.description.split(' - ');
+    if (parts.length >= 2) {
+      embeddedDogName = parts[1];
+    }
+  }
+  
   // If this item is linked to a booking, fetch related info
   if (item.booking_id) {
     try {
@@ -27,6 +36,12 @@ export async function enhanceInvoiceItem(item: InvoiceItem): Promise<InvoiceItem
             name: booking.dogs.name,
             breed: booking.dogs.breed
           };
+          
+          // If the description doesn't already include the dog name, update it
+          if (!embeddedDogName && !enhancedItem.description?.includes(booking.dogs.name)) {
+            enhancedItem.description = `${enhancedItem.description} - ${booking.dogs.name}`;
+            console.log(`Updated description to include dog name: ${enhancedItem.description}`);
+          }
         }
         
         // Include class schedule and class information if available
@@ -49,10 +64,16 @@ export async function enhanceInvoiceItem(item: InvoiceItem): Promise<InvoiceItem
                 description: classData.description || classData.name || 'Training class'
               };
               
-              // Use class name as description if not provided
-              if (!enhancedItem.description || enhancedItem.description === 'Class booking' || enhancedItem.description === 'Training services') {
-                enhancedItem.description = classData.name;
-                console.log(`Updated item description to class name: ${classData.name}`);
+              // Ensure description includes class name if not already present
+              if (!enhancedItem.description || 
+                  enhancedItem.description === 'Class booking' || 
+                  enhancedItem.description === 'Training services') {
+                if (enhancedItem.bookings.dogs?.name) {
+                  enhancedItem.description = `${classData.name} - ${enhancedItem.bookings.dogs.name}`;
+                } else {
+                  enhancedItem.description = classData.name;
+                }
+                console.log(`Updated item description to: ${enhancedItem.description}`);
               }
               
               // Use class price if unit price is missing or zero

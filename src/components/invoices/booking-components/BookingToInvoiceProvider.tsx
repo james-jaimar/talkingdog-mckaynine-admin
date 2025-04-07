@@ -1,15 +1,29 @@
 
-import { useState } from "react";
+import { useState, ReactNode } from "react";
 import { useInvoices } from "@/hooks/useInvoices";
 import { InvoiceFormValues } from "@/types/invoice";
 import { toast } from "sonner";
 import { useBookings } from "./useBookings";
 
 interface BookingToInvoiceProviderProps {
-  children: React.ReactNode;
+  children: (props: BookingToInvoiceContextProps) => ReactNode;
   clientId: string;
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
+}
+
+export interface BookingToInvoiceContextProps {
+  selectedBookings: string[];
+  status: "draft" | "sent";
+  setStatus: (status: "draft" | "sent") => void;
+  isProcessing: boolean;
+  bookingsLoading: boolean;
+  unpaidBookings: any[];
+  enrolledBookings: any[];
+  toggleSelectAll: () => void;
+  toggleBooking: (id: string) => void;
+  calculateTotal: () => number;
+  handleCreateInvoice: () => Promise<void>;
 }
 
 export function BookingToInvoiceProvider({ 
@@ -76,10 +90,10 @@ export function BookingToInvoiceProvider({
         const price = booking.class_schedules?.classes?.price || 0;
         const dogName = booking.dogs?.name || 'Unknown Dog';
         
-        console.log(`Creating invoice item for ${className} at price ${price}`);
+        console.log(`Creating invoice item for ${className} at price ${price} for dog ${dogName}`);
         
         return {
-          description: className,
+          description: `${className} - ${dogName}`,
           quantity: 1,
           unit_price: price,
           booking_id: booking.id,
@@ -113,7 +127,7 @@ export function BookingToInvoiceProvider({
     }
   };
 
-  const providerValue = {
+  const providerValue: BookingToInvoiceContextProps = {
     selectedBookings,
     status,
     setStatus,
@@ -129,9 +143,7 @@ export function BookingToInvoiceProvider({
 
   return (
     <>
-      {children({
-        ...providerValue,
-      })}
+      {children(providerValue)}
     </>
   );
 }

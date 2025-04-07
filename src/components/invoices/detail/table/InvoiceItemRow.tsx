@@ -14,15 +14,28 @@ export function InvoiceItemRow({ item, index }: InvoiceItemRowProps) {
   const classData = booking?.class_schedules?.classes;
   const dogName = booking?.dogs?.name;
   
+  // Parse description for dog name if it's included in the format "Class Name - Dog Name"
+  let displayDescription = item.description;
+  let displayDogName = dogName;
+  
+  // If the description includes a dog name in the format "Class - Dog"
+  if (item.description.includes(" - ") && !displayDogName) {
+    const parts = item.description.split(" - ");
+    if (parts.length >= 2) {
+      displayDescription = parts[0];
+      displayDogName = parts[1];
+    }
+  }
+  
   return (
     <TableRow key={item.id || `item-${index}`}>
       <TableCell className="py-4">
         <div>
-          <p className="font-medium">{item.description}</p>
-          {(booking || dogName || classData) && (
+          <p className="font-medium">{displayDescription}</p>
+          {(displayDogName || classData) && (
             <p className="text-xs text-gray-500">
-              {dogName && <span>Dog: {dogName} </span>}
-              {dogName && classData && <span>| </span>}
+              {displayDogName && <span>Dog: {displayDogName} </span>}
+              {displayDogName && classData && <span>| </span>}
               {classData && <span>Class: {classData.name}</span>}
             </p>
           )}
