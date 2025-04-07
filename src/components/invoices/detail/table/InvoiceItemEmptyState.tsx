@@ -9,8 +9,11 @@ export function InvoiceItemEmptyState() {
         <p className="font-medium text-amber-700">No items found on this invoice</p>
       </div>
       <p className="text-sm text-amber-600">
-        This invoice doesn't have any line items. If you created this invoice from a class booking,
-        there might be an issue with the data connection. Try refreshing or check the invoice creation process.
+        This invoice doesn't have any line items. If this invoice was created from class bookings,
+        there might be an issue with the data connection between your bookings and this invoice.
+      </p>
+      <p className="text-sm text-amber-600 mt-2">
+        Try refreshing the page or check the booking status to ensure it's properly linked to this invoice.
       </p>
     </div>
   );

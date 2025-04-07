@@ -46,14 +46,15 @@ export function useInvoiceDetails(invoiceId: string | undefined) {
         
         console.log("Invoice with normalized client data:", normalizedInvoice);
         
-        // Fetch invoice items with booking details
+        // Fetch invoice items with expanded booking details and related class information
         const { data: items, error: itemsError } = await supabase
           .from('invoice_items')
           .select(`
             *,
             bookings:booking_id (
               id,
-              dog_id, 
+              dog_id,
+              client_id, 
               class_schedule_id,
               dogs:dog_id (
                 id,
@@ -100,14 +101,41 @@ export function useInvoiceDetails(invoiceId: string | undefined) {
             items: [defaultItem]
           } as Invoice;
         }
+
+        // Process and transform each invoice item to ensure class info is available
+        const processedItems = items.map(item => {
+          let enhancedItem = { ...item };
+          
+          // If this item has booking info but is missing a description, enhance it
+          if (item.bookings) {
+            const booking = item.bookings;
+            const dogName = booking.dogs?.name;
+            const className = booking.class_schedules?.classes?.name;
+            
+            // If we have class and dog information but no description
+            if (className && dogName && (!item.description || item.description === 'Training services')) {
+              enhancedItem.description = `${className} - ${dogName}`;
+              console.log(`Enhanced description for item: ${enhancedItem.description}`);
+            }
+            
+            // If we have a price from the class but no unit price set
+            if (booking.class_schedules?.classes?.price && (!item.unit_price || item.unit_price === 0)) {
+              enhancedItem.unit_price = booking.class_schedules.classes.price;
+              enhancedItem.amount = enhancedItem.unit_price * item.quantity;
+              console.log(`Enhanced price from class: ${enhancedItem.unit_price}`);
+            }
+          }
+          
+          return enhancedItem;
+        });
         
-        // Return complete invoice with items
+        // Return complete invoice with processed items
         const result = {
           ...normalizedInvoice,
-          items: items
+          items: processedItems
         } as Invoice;
         
-        console.log("Final invoice data:", result);
+        console.log("Final invoice data with enhanced items:", result);
         return result;
       } catch (error) {
         console.error("Error in useInvoiceDetails:", error);

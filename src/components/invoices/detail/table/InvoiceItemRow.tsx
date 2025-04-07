@@ -11,48 +11,63 @@ interface InvoiceItemRowProps {
 export function InvoiceItemRow({ item, index }: InvoiceItemRowProps) {
   console.log(`Rendering invoice item row for item:`, item);
   
-  // Extract booking-related information if available
+  // Extract booking-related information
   const booking = item.bookings;
+  
+  // Get class information
+  const classInfo = booking?.class_schedules?.classes;
+  const className = classInfo?.name;
   
   // Get dog information
   const dogName = booking?.dogs?.name;
   
-  // Get class information
-  const className = booking?.class_schedules?.classes?.name;
+  // Build display description
+  let primaryDescription = item.description || 'Training services';
+  let classDescription = className || null;
+  let dogDescription = dogName ? `Dog: ${dogName}` : null;
   
-  // Parse description for class name and dog name if no booking data
-  const displayDescription = item.description || 'Training services';
-  
-  // Build primary description
-  let primaryDescription = displayDescription;
-  let secondaryDescription = null;
-
-  if (booking) {
-    primaryDescription = className || displayDescription;
-    secondaryDescription = dogName ? `Dog: ${dogName}` : null;
-  } else if (displayDescription.includes(" - ")) {
-    // If no booking but description has format "Class - Dog"
-    const parts = displayDescription.split(" - ");
-    primaryDescription = parts[0];
-    secondaryDescription = parts.length > 1 ? `Dog: ${parts[1]}` : null;
+  // If description contains class and dog info already (format: "Class - Dog")
+  if (item.description && item.description.includes(' - ')) {
+    const parts = item.description.split(' - ');
+    if (parts.length >= 2) {
+      primaryDescription = parts[0];
+      dogDescription = `Dog: ${parts[1]}`;
+    }
+  } 
+  // If there's booking data but no structured description
+  else if (booking) {
+    if (className) {
+      // Use class name as primary if available
+      primaryDescription = className;
+      // Only set the description if we have the dog name
+      if (dogName) {
+        dogDescription = `Dog: ${dogName}`;
+      }
+    }
   }
   
   // Debug logging
   console.log(`Item ${index} display details:`, {
     primaryDescription,
-    secondaryDescription,
+    classDescription,
+    dogDescription,
     booking_data: !!booking,
-    item_description: displayDescription
+    has_class_info: !!classInfo
   });
   
   return (
-    <TableRow key={item.id || `item-${index}`}>
+    <TableRow>
       <TableCell className="py-4">
         <div>
           <p className="font-medium">{primaryDescription}</p>
-          {secondaryDescription && (
+          {dogDescription && (
             <p className="text-xs text-gray-500">
-              {secondaryDescription}
+              {dogDescription}
+            </p>
+          )}
+          {classInfo && classInfo.description && primaryDescription !== classInfo.description && (
+            <p className="text-xs text-gray-500 mt-1 italic">
+              {classInfo.description}
             </p>
           )}
         </div>
