@@ -81,16 +81,16 @@ export const generateInvoiceNumber = async (): Promise<string> => {
       const invoicePrefix = `${branchPrefix}${monthAbbreviation}`;
       console.log("Querying invoices with prefix:", invoicePrefix);
       
-      // Fix: Simplified query approach to avoid TypeScript recursion issues
-      const { count: invoiceCount, error } = await supabase
+      // Fix: Using a simple query to avoid TypeScript recursion issues
+      const { data, error } = await supabase
         .from('invoices')
-        .select('*', { count: 'exact', head: true })
+        .select('id')
         .ilike('invoice_number', `${invoicePrefix}%`);
         
       if (error) {
         console.error("Error checking existing invoices:", error);
-      } else if (invoiceCount !== null) {
-        count = invoiceCount;
+      } else if (data) {
+        count = data.length;
         console.log(`Invoice: Found ${count} existing invoices with prefix ${invoicePrefix}`);
       }
     } catch (err) {
