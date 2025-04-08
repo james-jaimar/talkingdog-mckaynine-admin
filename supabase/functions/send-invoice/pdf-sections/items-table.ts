@@ -31,7 +31,7 @@ export function addInvoiceItemsTable(doc: jsPDF, invoice: Invoice, startY: numbe
       ]) || [['No items found for this invoice', '', '', '']],
       styles: {
         fontSize: 9,
-        cellPadding: 5,
+        cellPadding: 4,
         lineWidth: 0.5,
         overflow: 'linebreak'
       },
@@ -57,7 +57,7 @@ export function addInvoiceItemsTable(doc: jsPDF, invoice: Invoice, startY: numbe
     return (doc as any).lastAutoTable.finalY;
   } catch (error) {
     console.error("Error adding invoice items table:", error);
-    // If table generation fails, return the startY plus some space to continue with the PDF
+    // Fall back to manual table if autoTable fails
     return startY + 40;
   }
 }
