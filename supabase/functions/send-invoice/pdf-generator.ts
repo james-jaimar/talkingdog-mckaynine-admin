@@ -8,7 +8,7 @@ import {
   addInvoiceSummary, 
   addInvoiceFooter 
 } from "./pdf-helpers.ts";
-import { addInvoiceItemsTable } from "./pdf-sections/items-table.ts";
+import { addInvoiceItemsTable } from "./items-table.ts";
 
 /**
  * Generates a PDF for the given invoice

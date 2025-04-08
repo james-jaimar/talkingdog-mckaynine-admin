@@ -23,8 +23,8 @@ const handler = async (req: Request): Promise<Response> => {
       const pdfBuffer = await generatePDF(invoice);
       console.log("PDF generation completed successfully");
       
-      // Send invoice email
-      console.log(`Sending email to ${email} using custom SMTP configuration...`);
+      // Send invoice email using Supabase's built-in email service
+      console.log(`Sending email to ${email} using Supabase email service...`);
       
       try {
         await sendInvoiceEmail(invoice, email, pdfBuffer);
