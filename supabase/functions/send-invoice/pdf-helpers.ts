@@ -20,35 +20,34 @@ export function formatDate(dateString: string): string {
   }).format(date);
 }
 
-// Add paid stamp to PDF
+// Add paid stamp to PDF - uses standard jsPDF methods
 export function addPaidStamp(doc: jsPDF, pageWidth: number) {
-  // Use proper casting to access advanced jsPDF methods
-  const docWithContext = doc as unknown as {
-    setGlobalAlpha: (alpha: number) => void;
-    saveGraphicsState: () => void;
-    restoreGraphicsState: () => void;
-    translate: (x: number, y: number) => void;
-    rotate: (angle: number) => void;
-  };
-  
-  // Set transparency
-  docWithContext.setGlobalAlpha(0.3);
-  
   // Set appearance for the "PAID" stamp
   doc.setFillColor(39, 174, 96); // Green color
   doc.setTextColor(255, 255, 255); // White text
   doc.setFont("helvetica", "bold");
   doc.setFontSize(72);
   
-  // Rotate and position the "PAID" text as a stamp
-  docWithContext.saveGraphicsState();
-  docWithContext.translate(pageWidth / 2, 120);
-  docWithContext.rotate(-30);
-  doc.text("PAID", 0, 0, { align: 'center' });
-  docWithContext.restoreGraphicsState();
+  // Calculate position for the center of the page
+  const stampX = pageWidth / 2;
+  const stampY = 120;
+  
+  // Save current graphics state
+  doc.saveGraphicsState();
+  
+  // Set transparency using the standard opacity method
+  doc.setGState(new (doc as any).GState({ opacity: 0.3 }));
+  
+  // Add rotated "PAID" text as a stamp
+  doc.text("PAID", stampX, stampY, { 
+    align: 'center',
+    angle: -30
+  });
+  
+  // Restore graphics state to reset opacity
+  doc.restoreGraphicsState();
   
   // Reset styles for the rest of the document
-  docWithContext.setGlobalAlpha(1);
   doc.setTextColor(0, 0, 0);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(12);
@@ -112,7 +111,7 @@ export function addInvoiceItemsTable(doc: jsPDF, invoice: any, startY: number) {
       item.description,
       item.quantity.toString(),
       formatCurrency(item.unit_price),
-      formatCurrency(item.amount)
+      formatCurrency(item.amount || (item.quantity * item.unit_price))
     ]) || [['No items found for this invoice', '', '', '']],
     styles: {
       fontSize: 9,
@@ -138,12 +137,19 @@ export function addInvoiceItemsTable(doc: jsPDF, invoice: any, startY: number) {
 export function addInvoiceSummary(doc: jsPDF, invoice: any, startY: number, pageWidth: number) {
   const finalY = startY + 10;
   
+  // Draw a line
+  doc.setDrawColor(200, 200, 200);
+  doc.line(pageWidth - 90, finalY, pageWidth - 14, finalY);
+  
   // Subtotal, Tax, Total
   doc.text("Subtotal:", pageWidth - 90, finalY + 8);
   doc.text(formatCurrency(invoice.subtotal), pageWidth - 25, finalY + 8, { align: "right" });
   
   doc.text(`Tax (${invoice.tax_rate}%):`, pageWidth - 90, finalY + 15);
   doc.text(formatCurrency(invoice.tax_amount), pageWidth - 25, finalY + 15, { align: "right" });
+  
+  // Draw another line
+  doc.line(pageWidth - 90, finalY + 18, pageWidth - 14, finalY + 18);
   
   doc.setFont("helvetica", "bold");
   doc.text("Total:", pageWidth - 90, finalY + 25);

@@ -11,39 +11,62 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
+    console.log("Invoice function started");
+    
     // Get request data
     const { invoice, email } = await req.json() as InvoiceRequest;
     
-    // Generate PDF
-    console.log("Generating PDF for invoice:", invoice.invoice_number);
-    const pdfBuffer = await generatePDF(invoice);
-    
-    // Send invoice email
-    console.log(`Sending email to ${email}...`);
-    
     try {
-      const result = await sendInvoiceEmail(invoice, email, pdfBuffer);
-      console.log("Email sent successfully!");
+      // Generate PDF
+      console.log("Generating PDF for invoice:", invoice.invoice_number);
+      const pdfBuffer = await generatePDF(invoice);
+      console.log("PDF generation completed successfully");
       
-      return new Response(
-        JSON.stringify({ success: true, message: "Invoice sent successfully" }),
-        {
-          status: 200,
-          headers: {
-            ...corsHeaders,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-    } catch (emailError) {
-      console.error("Error in email sending:", emailError);
+      // Send invoice email
+      console.log(`Sending email to ${email}...`);
       
-      // Return detailed email error information
+      try {
+        await sendInvoiceEmail(invoice, email, pdfBuffer);
+        console.log("Email sent successfully!");
+        
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            message: "Invoice sent successfully" 
+          }),
+          {
+            status: 200,
+            headers: {
+              ...corsHeaders,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+      } catch (emailError) {
+        console.error("Email sending error:", emailError);
+        
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: `Email sending failed: ${emailError.message}`,
+            details: emailError instanceof Error ? emailError.message : String(emailError)
+          }),
+          {
+            status: 500,
+            headers: {
+              ...corsHeaders,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+      }
+    } catch (pdfError) {
+      console.error("PDF generation error:", pdfError);
+      
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: `Email sending failed: ${emailError.message}`,
-          details: emailError
+          error: `PDF generation failed: ${pdfError.message}`
         }),
         {
           status: 500,
@@ -55,16 +78,13 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
   } catch (error) {
-    console.error("Error in invoice function:", error.message);
-    if (error instanceof Error && error.stack) {
-      console.error("Stack trace:", error.stack);
-    }
+    console.error("General request error:", error);
     
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: error.message,
-        type: error.constructor.name
+        error: `Request processing failed: ${error.message}`,
+        type: error.constructor?.name || 'Unknown'
       }),
       {
         status: 500,
@@ -77,4 +97,5 @@ const handler = async (req: Request): Promise<Response> => {
   }
 };
 
+console.log("Invoice email function initialized");
 serve(handler);

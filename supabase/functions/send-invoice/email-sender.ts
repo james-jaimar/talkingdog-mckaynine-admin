@@ -1,6 +1,6 @@
 
 import { Invoice } from "./types.ts";
-import { formatCurrency, formatDate } from "./utils.ts";
+import { formatCurrency, formatDate } from "./pdf-helpers.ts";
 
 /**
  * Sends an invoice via email with the PDF attachment
@@ -21,56 +21,61 @@ export async function sendInvoiceEmail(invoice: Invoice, email: string, pdfBuffe
     const emailSubject = `Invoice ${invoice.invoice_number} from McKaynine Training Centre`;
     const emailMessage = createEmailMessage(invoice, `${invoice.client.first_name} ${invoice.client.last_name}`);
     
-    // Convert PDF buffer to base64
-    const pdfBase64 = btoa(
-      String.fromCharCode(...new Uint8Array(pdfBuffer))
-    );
-    
-    // Get sender email from environment or use default
-    const fromEmail = Deno.env.get("FROM_EMAIL") || "noreply@mckaynine.co.za";
-    
-    console.log(`Using project ref: ${projectRef}`);
-    console.log(`Sending email from: ${fromEmail}`);
-    console.log(`Preparing email to: ${email}`);
-    
-    // Prepare email payload for Supabase Email service
-    const payload = {
-      from: fromEmail,
-      to: email,
-      subject: emailSubject,
-      html: formatEmailHtml(emailMessage),
-      attachments: [{
-        name: `Invoice-${invoice.invoice_number}.pdf`,
-        content: pdfBase64,
-        type: "application/pdf"
-      }]
-    };
-    
-    console.log("Sending email via Supabase Email API...");
-    
-    // Make the API request to Supabase Email API
-    const response = await fetch(`https://${projectRef}.supabase.co/functions/v1/send-email`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify(payload),
-    });
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`Email API error response status: ${response.status}`);
-      console.error(`Email API error response body: ${errorText}`);
-      throw new Error(`Failed to send email: ${response.status} - ${errorText}`);
+    try {
+      // Convert PDF buffer to base64
+      const pdfBase64 = btoa(
+        String.fromCharCode(...new Uint8Array(pdfBuffer))
+      );
+      
+      // Get sender email from environment or use default
+      const fromEmail = Deno.env.get("FROM_EMAIL") || "noreply@mckaynine.co.za";
+      
+      console.log(`Using project ref: ${projectRef}`);
+      console.log(`Sending email from: ${fromEmail}`);
+      console.log(`Preparing email to: ${email}`);
+      
+      // Prepare email payload for Supabase Email service
+      const payload = {
+        from: fromEmail,
+        to: email,
+        subject: emailSubject,
+        html: formatEmailHtml(emailMessage),
+        attachments: [{
+          name: `Invoice-${invoice.invoice_number}.pdf`,
+          content: pdfBase64,
+          type: "application/pdf"
+        }]
+      };
+      
+      console.log("Sending email via Supabase Email API...");
+      
+      // Make the API request to Supabase Email API
+      const response = await fetch(`https://${projectRef}.supabase.co/functions/v1/send-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify(payload),
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Email API error response status: ${response.status}`);
+        console.error(`Email API error response body: ${errorText}`);
+        throw new Error(`Failed to send email: ${response.status} - ${errorText}`);
+      }
+      
+      const result = await response.json();
+      console.log("Email API response:", result);
+      
+      return true;
+    } catch (error) {
+      console.error("Error during email sending process:", error);
+      throw error;
     }
-    
-    const result = await response.json();
-    console.log("Email sent successfully:", result);
-    
-    return true;
   } catch (error) {
-    console.error("Error sending email:", error.message);
+    console.error("Error in sendInvoiceEmail:", error.message);
     if (error instanceof Error) {
       console.error("Error stack:", error.stack);
     }

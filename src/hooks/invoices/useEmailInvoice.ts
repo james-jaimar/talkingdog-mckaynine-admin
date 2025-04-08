@@ -51,7 +51,15 @@ export function useEmailInvoice() {
     },
     onError: (error: Error) => {
       console.error("Failed to send invoice email:", error);
-      toast.error(`Failed to send invoice: ${error.message}`);
+      
+      // Show a more user-friendly error message
+      if (error.message.includes("PDF generation failed")) {
+        toast.error("Failed to generate invoice PDF. Please try again later or contact support.");
+      } else if (error.message.includes("Email sending failed")) {
+        toast.error("Failed to send email. Please check the recipient's email address or try again later.");
+      } else {
+        toast.error(`Failed to send invoice: ${error.message}`);
+      }
     },
   });
 }
