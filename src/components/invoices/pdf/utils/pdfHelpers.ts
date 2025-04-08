@@ -18,8 +18,8 @@ export const addPaidStamp = (doc: jsPDF, pageWidth: number) => {
     const stampX = pageWidth / 2;
     const stampY = 120;
     
-    // Create a new graphics state object
-    const gState = new doc.GState({opacity: 0.3});
+    // Create graphics state for opacity - Fix: don't use 'new' keyword
+    const gState = doc.GState({opacity: 0.3});
     
     // Save current graphics state
     doc.saveGraphicsState();
