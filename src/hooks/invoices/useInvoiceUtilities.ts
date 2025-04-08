@@ -48,26 +48,21 @@ export const generateInvoiceNumber = async (): Promise<string> => {
         const { data: authData } = await supabase.auth.getUser();
         
         if (authData?.user) {
-          // Avoid using .single() which can trigger complex type inference
-          try {
-            const { data, error } = await supabase
-              .from('branches')
-              .select('name')
-              .eq('is_default', true)
-              .limit(1);
-              
-            if (!error && data && data.length > 0) {
-              branchName = data[0].name.toLowerCase();
-              console.log("Invoice: Using default branch:", data[0].name);
-              
-              if (branchName.includes('delta')) {
-                branchPrefix = "McD";
-              } else if (branchName.includes('randburg')) {
-                branchPrefix = "McR";
-              }
+          // Completely avoid complex type inference by using simpler query pattern
+          const response = await supabase
+            .rpc('get_default_branch_name');
+            
+          if (response.data) {
+            branchName = response.data.toLowerCase();
+            console.log("Invoice: Using default branch:", response.data);
+            
+            if (branchName.includes('delta')) {
+              branchPrefix = "McD";
+            } else if (branchName.includes('randburg')) {
+              branchPrefix = "McR";
             }
-          } catch (branchErr) {
-            console.warn("Error fetching default branch:", branchErr);
+          } else {
+            console.warn("No default branch found, using default prefix");
           }
         }
       }
@@ -87,17 +82,12 @@ export const generateInvoiceNumber = async (): Promise<string> => {
     try {
       console.log("Querying invoices with prefix:", invoicePrefix);
       
-      // Simplify the query to just get all invoice numbers without complex filtering
-      const { data, error } = await supabase
-        .from('invoices')
-        .select('invoice_number');
+      // Get all invoice numbers as plain text to avoid complex type inference
+      const response = await supabase
+        .rpc('count_invoices_with_prefix', { prefix: invoicePrefix });
       
-      if (!error && data) {
-        // Filter and count client-side to avoid complex server-side queries
-        const matchingInvoices = data.filter(inv => 
-          inv.invoice_number && inv.invoice_number.startsWith(invoicePrefix)
-        );
-        count = matchingInvoices.length;
+      if (response.data !== null) {
+        count = response.data;
         console.log(`Found ${count} invoices with prefix ${invoicePrefix}`);
       }
     } catch (err) {
