@@ -22,7 +22,7 @@ export const generateInvoicePDF = async (invoice: Invoice) => {
     const logoAdded = addLogoToPdf(doc, pageWidth);
     
     // Set the starting Y position based on whether the logo was added
-    const startY = logoAdded ? 90 : 40; // Use 90 to account for logo and address text
+    const startY = logoAdded ? 70 : 40; // Reduced from 90 to account for removed text
     
     // Add invoice header (invoice number, status, dates)
     const headerEndY = addInvoiceHeader(doc, invoice, startY, pageWidth);
@@ -39,7 +39,7 @@ export const generateInvoicePDF = async (invoice: Invoice) => {
     const tableEndY = addInvoiceItemsTable(doc, invoice, clientInfoEndY);
     
     // Check if we need to add a new page for summary if table is too long
-    const needsExtraSpace = tableEndY > (pageHeight - 120);
+    const needsExtraSpace = tableEndY > (pageHeight - 100); // Reduced from 120 to fit more on first page
     
     let summaryStartY = tableEndY;
     
@@ -52,7 +52,7 @@ export const generateInvoicePDF = async (invoice: Invoice) => {
     const summaryEndY = addInvoiceSummary(doc, invoice, summaryStartY, pageWidth);
     
     // Check current page height before adding footer
-    if (summaryEndY > (pageHeight - 80)) {
+    if (summaryEndY > (pageHeight - 70)) { // Reduced from 80 to fit more on first page
       doc.addPage();
       // Add footer (notes, banking details, thank you message)
       addInvoiceFooter(doc, invoice, 40, pageWidth, pageHeight);

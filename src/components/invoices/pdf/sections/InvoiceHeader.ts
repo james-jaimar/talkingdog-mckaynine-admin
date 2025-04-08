@@ -19,5 +19,5 @@ export const addInvoiceHeader = (doc: jsPDF, invoice: Invoice, startY: number, p
   doc.text(`Issued Date: ${formatDate(invoice.issued_date)}`, pageWidth - 14, startY + 10, { align: 'right' });
   doc.text(`Due Date: ${formatDate(invoice.due_date)}`, pageWidth - 14, startY + 17, { align: 'right' });
   
-  return startY + 30;
+  return startY + 25; // Reduced from 30 to tighten spacing
 };

@@ -22,11 +22,11 @@ export const addInvoiceFooter = (doc: jsPDF, invoice: Invoice, startY: number, p
       doc.text(line, 14, currentY + 7 + (index * 5));
     });
     
-    currentY += 7 + (splitNotes.length * 5) + 10; // Adjust based on number of note lines
+    currentY += 7 + (splitNotes.length * 5) + 5; // Reduced from 10 to tighten spacing
   }
 
   // Banking details in the footer - always at bottom of page
-  const footerY = pageHeight - 40; // Position from bottom of page
+  const footerY = pageHeight - 30; // Moved up from 40 to tighten spacing
   
   doc.setDrawColor(200, 200, 200);
   doc.setLineWidth(0.5);

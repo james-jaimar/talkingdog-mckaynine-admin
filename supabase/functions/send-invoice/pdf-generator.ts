@@ -24,7 +24,7 @@ export async function generatePDF(invoice: Invoice): Promise<ArrayBuffer> {
     const logoAdded = addLogoToPdf(doc, pageWidth);
     
     // Set the starting Y position based on whether the logo was added
-    const startY = logoAdded ? 65 : 40;
+    const startY = logoAdded ? 70 : 40;  // Adjusted from 65 to match client-side
     
     // Add invoice header
     const headerEndY = addInvoiceHeader(doc, invoice, startY, pageWidth);
@@ -42,7 +42,7 @@ export async function generatePDF(invoice: Invoice): Promise<ArrayBuffer> {
     const tableEndY = addInvoiceItemsTable(doc, invoice, clientInfoEndY);
     
     // Check if we need to add a new page for summary if table is too long
-    const needsExtraSpace = tableEndY > (pageHeight - 120);
+    const needsExtraSpace = tableEndY > (pageHeight - 100);  // Adjusted from 120 to match client-side
     
     let summaryStartY = tableEndY;
     
@@ -55,7 +55,7 @@ export async function generatePDF(invoice: Invoice): Promise<ArrayBuffer> {
     const summaryEndY = addInvoiceSummary(doc, invoice, summaryStartY, pageWidth);
     
     // Check current page height before adding footer
-    if (summaryEndY > (pageHeight - 80)) {
+    if (summaryEndY > (pageHeight - 70)) {  // Adjusted from 80 to match client-side
       doc.addPage();
       // Add footer on new page
       addInvoiceFooter(doc, invoice, 40, pageWidth, pageHeight);
@@ -89,16 +89,6 @@ function addLogoToPdf(doc: jsPDF, pageWidth: number): boolean {
     
     // Add the logo image
     doc.addImage(logoBase64, "PNG", xPosition, 10, imgWidth, imgHeight);
-    
-    // Add company address and details
-    doc.setFontSize(9);
-    doc.setTextColor(100, 100, 100);
-    
-    // Address lines centered below logo
-    doc.text("Delta Park Branch", pageWidth / 2, 68, { align: 'center' });
-    doc.text("Camp Delta (SA Boyscouts), Delta Park Entrance, Craighall Road, Delta Park", pageWidth / 2, 73, { align: 'center' });
-    doc.text("Tel: 082 502-6160", pageWidth / 2, 78, { align: 'center' });
-    doc.text("www.mckaynine.co.za", pageWidth / 2, 83, { align: 'center' });
     
     // Reset text color to black for the rest of the document
     doc.setTextColor(0, 0, 0);

@@ -18,16 +18,6 @@ export const addLogoToPdf = (doc: jsPDF, pageWidth: number) => {
     doc.addImage(logoPath, "PNG", xPosition, 10, imgWidth, imgHeight);
     console.log("Logo added successfully from:", logoPath);
     
-    // Add company address and details
-    doc.setFontSize(9);
-    doc.setTextColor(100, 100, 100);
-    
-    // Address lines centered below logo
-    doc.text("Delta Park Branch", pageWidth / 2, 68, { align: 'center' });
-    doc.text("Camp Delta (SA Boyscouts), Delta Park Entrance, Craighall Road, Delta Park", pageWidth / 2, 73, { align: 'center' });
-    doc.text("Tel: 082 502-6160", pageWidth / 2, 78, { align: 'center' });
-    doc.text("www.mckaynine.co.za", pageWidth / 2, 83, { align: 'center' });
-    
     // Reset text color to black for the rest of the document
     doc.setTextColor(0, 0, 0);
     
@@ -44,7 +34,7 @@ export const addLogoToPdf = (doc: jsPDF, pageWidth: number) => {
 };
 
 /**
- * Helper to calculate dynamic start position based on content
+ * Helper to calculate dynamic position based on content
  */
 export const calculateDynamicPosition = (doc: jsPDF, basePosition: number, itemsCount: number): number => {
   // Add more space if there are many items
