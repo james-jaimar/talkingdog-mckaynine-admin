@@ -2,7 +2,7 @@
 import { jsPDF } from "npm:jspdf@2.5.1";
 import autoTable from "npm:jspdf-autotable@3.8.2";
 import { Invoice } from "../types.ts";
-import { formatCurrency } from "../pdf-helpers.ts";
+import { formatCurrency } from "../utils.ts";
 
 /**
  * Adds the invoice items table to the PDF
@@ -31,19 +31,23 @@ export function addInvoiceItemsTable(doc: jsPDF, invoice: Invoice, startY: numbe
       ]) || [['No items found for this invoice', '', '', '']],
       styles: {
         fontSize: 9,
-        cellPadding: 3,
+        cellPadding: 5,
       },
       headStyles: {
-        fillColor: [80, 80, 80],
+        fillColor: [70, 70, 70],
         textColor: [255, 255, 255],
         fontStyle: 'bold'
       },
       columnStyles: {
         0: { cellWidth: 'auto' },
-        1: { halign: 'right', cellWidth: 25 },
-        2: { halign: 'right', cellWidth: 35 },
-        3: { halign: 'right', cellWidth: 35 }
+        1: { halign: 'center', cellWidth: 30 },
+        2: { halign: 'right', cellWidth: 40 },
+        3: { halign: 'right', cellWidth: 40 }
       },
+      alternateRowStyles: {
+        fillColor: [245, 245, 245]
+      },
+      margin: { left: 14, right: 14 },
     });
     
     console.log("Table added successfully");

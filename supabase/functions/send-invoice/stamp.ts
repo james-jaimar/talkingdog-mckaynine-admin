@@ -18,14 +18,14 @@ export function addPaidStamp(doc: jsPDF, pageWidth: number): void {
     const stampX = pageWidth / 2;
     const stampY = 120;
     
-    // Create a graphics state for opacity
-    const gState = (doc as any).GState({opacity: 0.3});
+    // Create a graphics state for opacity - using proper method for jsPDF in Deno
+    const gState = new doc.GState({opacity: 0.3});
     
     // Save current graphics state
     doc.saveGraphicsState();
     
     // Set transparency using the correct opacity method for jsPDF
-    (doc as any).setGState(gState);
+    doc.setGState(gState);
     
     // Add rotated "PAID" text as a stamp
     doc.text("PAID", stampX, stampY, { 
