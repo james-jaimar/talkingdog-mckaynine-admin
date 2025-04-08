@@ -12,10 +12,10 @@ export const generateInvoicePDF = async (invoice: Invoice) => {
   // Add McKaynine logo
   const logoPath = "/lovable-uploads/bb90b920-3e7c-4462-a0f1-d47b855c07b7.png";
   try {
-    // Add the image centered at the top of the page
-    // Size: 160x45mm converted to PDF units (approximately)
-    const imgWidth = 160 * 0.352778; // Convert mm to PDF units
-    const imgHeight = 45 * 0.352778;
+    // Set logo to 75% of page width
+    const imgWidth = pageWidth * 0.75;
+    // Calculate height proportionally (assuming original aspect ratio)
+    const imgHeight = imgWidth * (45/160); // Maintain aspect ratio
     const xPosition = (pageWidth - imgWidth) / 2;
     
     doc.addImage(logoPath, "PNG", xPosition, 10, imgWidth, imgHeight);
