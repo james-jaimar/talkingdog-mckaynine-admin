@@ -4,7 +4,7 @@ import {
   DialogContent,
 } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useAddHandlerModal } from "./hooks/useAddHandlerModal";
+import { useAddHandlerModal } from "./hooks/add-handler-modal"; // Updated import path
 import { ModalHeader } from "./modal/ModalHeader";
 import { HandlerSelectionTab } from "./modal/HandlerSelectionTab";
 

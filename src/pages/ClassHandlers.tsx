@@ -1,4 +1,3 @@
-
 import { useParams } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { ClassHandlersTable } from "@/components/class-handlers/ClassHandlersTable";
@@ -64,7 +63,6 @@ export default function ClassHandlers() {
     );
   }
 
-  // Create a display time string from schedule data if available
   const timeDisplay = scheduleData ? 
     `${new Date(scheduleData.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - 
      ${new Date(scheduleData.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 
