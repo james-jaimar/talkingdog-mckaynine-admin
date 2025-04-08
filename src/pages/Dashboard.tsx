@@ -17,6 +17,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const { user, isLoading: authLoading } = useAuth();
   const queryClient = useQueryClient();
+  const enhancedSupabase = supabase as EnhancedSupabaseClient;
   
   // Add a console log to debug auth state
   console.log("Dashboard - Auth state:", { user: !!user, isLoading: authLoading });
@@ -49,9 +50,7 @@ export default function Dashboard() {
         ]);
         
         // Now get only bookings that don't have proof_of_payment AND don't have a paid invoice
-        const { data: unpaidCount, error: unpaidError } = await (supabase as EnhancedSupabaseClient).rpc(
-          'count_unpaid_bookings'
-        );
+        const { data: unpaidCount, error: unpaidError } = await enhancedSupabase.rpc('count_unpaid_bookings');
         
         if (unpaidError) {
           console.error("Dashboard - Error counting unpaid bookings:", unpaidError);
