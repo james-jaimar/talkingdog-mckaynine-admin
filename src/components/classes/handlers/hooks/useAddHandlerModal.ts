@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -125,75 +124,14 @@ export function useAddHandlerModal({
         }],
       };
       
-      // Attempt to create the invoice through the mutation
+      // Create the invoice through the mutation without fallback
       try {
         await createInvoice.mutateAsync(invoiceData);
         console.log("Invoice created successfully for handler:", handlerId);
         return true;
       } catch (invoiceError) {
-        console.error("Error creating invoice through mutation:", invoiceError);
-        
-        // If the createInvoice mutation fails, try direct Supabase insertion as a fallback
-        try {
-          console.log("Attempting direct invoice creation as fallback");
-          
-          // Calculate totals
-          const subtotal = classPrice;
-          const tax_amount = 0; // No tax
-          const total = subtotal + tax_amount;
-          
-          // Insert invoice directly
-          const { data: invoice, error: directError } = await supabase
-            .from('invoices')
-            .insert({
-              client_id: handlerId,
-              invoice_number: invoiceNumber,
-              status: "draft",
-              issued_date: new Date().toISOString(),
-              due_date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
-              notes: `Invoice for ${className} training class for ${dogName}.`,
-              subtotal,
-              tax_rate: 0,
-              tax_amount,
-              total,
-              payment_received: false,
-              email_sent: false
-            })
-            .select('id')
-            .single();
-          
-          if (directError) {
-            console.error("Direct invoice creation error:", directError);
-            // We'll continue even if the invoice creation fails
-            // The booking will still be created, just without an invoice
-            return false;
-          }
-          
-          // Insert invoice item if invoice was created
-          if (invoice) {
-            const { error: itemError } = await supabase
-              .from('invoice_items')
-              .insert({
-                invoice_id: invoice.id,
-                description: `${className} training class for ${dogName}`,
-                quantity: 1,
-                unit_price: classPrice,
-                amount: classPrice,
-                booking_id: bookingId
-              });
-            
-            if (itemError) {
-              console.error("Error creating invoice item:", itemError);
-            }
-          }
-          
-          console.log("Invoice created via direct insertion");
-          return true;
-        } catch (directError) {
-          console.error("All invoice creation methods failed:", directError);
-          // Both methods failed, but we don't want to block the booking
-          return false;
-        }
+        console.error("Error creating invoice:", invoiceError);
+        return false;
       }
     } catch (error) {
       console.error("Error in invoice creation process:", error);
@@ -281,7 +219,7 @@ export function useAddHandlerModal({
       // Get dog name for the invoice
       const dogName = await fetchDogName(dogId);
       
-      // Create an invoice for this booking, but don't block if it fails
+      // Create an invoice for this booking
       const invoiceCreated = await createInvoiceForHandler(
         handlerId, 
         dogId, 
