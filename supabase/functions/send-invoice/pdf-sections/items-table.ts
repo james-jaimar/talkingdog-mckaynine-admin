@@ -12,11 +12,8 @@ export function addInvoiceItemsTable(doc: jsPDF, invoice: Invoice, startY: numbe
     console.log("Adding invoice items table...");
     console.log("Items count:", invoice.items?.length || 0);
     
-    // Add autoTable to jsPDF document
-    const docWithTable = doc as any;
-    
     // Create table with invoice items
-    autoTable(docWithTable, {
+    autoTable(doc, {
       startY: startY,
       head: [
         [
@@ -50,7 +47,7 @@ export function addInvoiceItemsTable(doc: jsPDF, invoice: Invoice, startY: numbe
     });
     
     console.log("Table added successfully");
-    return docWithTable.lastAutoTable.finalY;
+    return (doc as any).lastAutoTable.finalY;
   } catch (error) {
     console.error("Error adding invoice items table:", error);
     // If table generation fails, return the startY plus some space to continue with the PDF

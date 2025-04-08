@@ -1,6 +1,6 @@
 import { Invoice } from "./types.ts";
 import { formatCurrency, formatDate } from "./pdf-helpers.ts";
-import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 
 /**
  * Sends an invoice via email with the PDF attachment
@@ -11,63 +11,55 @@ export async function sendInvoiceEmail(invoice: Invoice, email: string, pdfBuffe
   console.log("Invoice status in email sender:", invoice.status);
   
   try {
-    // Get SMTP configuration from environment variables
-    const host = Deno.env.get("SMTP_HOST");
-    const port = parseInt(Deno.env.get("SMTP_PORT") || "587", 10);
-    const username = Deno.env.get("SMTP_USERNAME");
-    const password = Deno.env.get("SMTP_PASSWORD");
-    const fromEmail = Deno.env.get("FROM_EMAIL") || "noreply@mckaynine.co.za";
+    // Get Supabase URL and service role key from environment
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     
-    if (!host || !username || !password) {
-      throw new Error("Missing SMTP configuration. Please set SMTP_HOST, SMTP_USERNAME, and SMTP_PASSWORD environment variables.");
+    if (!supabaseUrl || !serviceRoleKey) {
+      throw new Error("Missing Supabase URL or service role key");
     }
     
-    console.log(`Using SMTP server: ${host}:${port}`);
-    console.log(`SMTP authentication: ${username}`);
+    console.log("Creating Supabase admin client");
+    const supabase = createClient(supabaseUrl, serviceRoleKey);
     
-    // Configure SMTP client
-    const client = new SMTPClient({
-      connection: {
-        hostname: host,
-        port: port,
-        tls: port === 465, // Use TLS if port is 465
-        auth: {
-          username: username,
-          password: password,
-        },
-      },
-    });
+    // Get FROM_EMAIL environment variable or use default
+    const fromEmail = Deno.env.get("FROM_EMAIL") || "noreply@mckaynine.co.za";
+    console.log(`Using from email: ${fromEmail}`);
 
     // Create email message based on invoice status
     const emailSubject = `Invoice ${invoice.invoice_number} from McKaynine Training Centre`;
     const emailMessage = createEmailMessage(invoice, `${invoice.client.first_name} ${invoice.client.last_name}`);
     const htmlMessage = formatEmailHtml(emailMessage);
     
-    // Convert PDF buffer to a format that can be attached
+    // Convert PDF buffer to base64 for the attachment
     const pdfBase64 = btoa(String.fromCharCode(...new Uint8Array(pdfBuffer)));
     
-    console.log(`Sending email via SMTP from: ${fromEmail} to: ${email}`);
+    console.log(`Sending email via Supabase from: ${fromEmail} to: ${email}`);
     
-    // Send email with PDF attachment
-    const sendResult = await client.send({
-      from: fromEmail,
-      to: email,
+    // Send email using Supabase's email service
+    const { error } = await supabase.auth.admin.sendRawEmail({
+      email,
       subject: emailSubject,
-      content: "Your invoice is attached",
       html: htmlMessage,
+      data: {
+        from: fromEmail
+      },
       attachments: [
         {
-          filename: `Invoice-${invoice.invoice_number}.pdf`,
           content: pdfBase64,
-          encoding: "base64",
-          contentType: "application/pdf",
-        },
-      ],
+          filename: `Invoice-${invoice.invoice_number}.pdf`,
+          type: "application/pdf",
+          disposition: "attachment"
+        }
+      ]
     });
     
-    console.log("Email sent successfully, closing connection");
-    await client.close();
+    if (error) {
+      console.error("Supabase email error:", error);
+      throw new Error(`Supabase email error: ${error.message}`);
+    }
     
+    console.log("Email sent successfully");
     return true;
   } catch (error) {
     console.error("Error in sendInvoiceEmail:", error.message);
