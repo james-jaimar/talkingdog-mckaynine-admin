@@ -16,25 +16,30 @@ export const addClientInfo = (doc: jsPDF, invoice: Invoice, startY: number) => {
   doc.setFontSize(10);
   
   if (invoice.client) {
+    let currentY = startY + 7;
+    const lineHeight = 7;
+    
     // Client name
     const clientName = `${invoice.client.first_name} ${invoice.client.last_name}`;
-    doc.text(clientName, 14, startY + 7);
+    doc.text(clientName, 14, currentY);
+    currentY += lineHeight;
     
     // Client email
     if (invoice.client.email) {
-      doc.text(invoice.client.email, 14, startY + 14);
+      doc.text(invoice.client.email, 14, currentY);
+      currentY += lineHeight;
     }
     
     // Client phone
     if (invoice.client.phone) {
-      doc.text(invoice.client.phone, 14, startY + 21);
+      doc.text(invoice.client.phone, 14, currentY);
+      currentY += lineHeight;
     }
     
     // Client address (if available)
-    let addressY = startY + 28;
     if (invoice.client.address) {
-      doc.text(invoice.client.address, 14, addressY);
-      addressY += 7;
+      doc.text(invoice.client.address, 14, currentY);
+      currentY += lineHeight;
     }
 
     if (invoice.client.city || invoice.client.postal_code) {
@@ -43,13 +48,13 @@ export const addClientInfo = (doc: jsPDF, invoice: Invoice, startY: number) => {
         .join(", ");
         
       if (cityZip) {
-        doc.text(cityZip, 14, addressY);
-        addressY += 7;
+        doc.text(cityZip, 14, currentY);
+        currentY += lineHeight;
       }
     }
 
     // Return the next Y position based on how many lines of address were added
-    return addressY + 5;
+    return currentY + 5;
   }
 
   // If no client info, add placeholder

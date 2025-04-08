@@ -11,6 +11,21 @@ export const addInvoiceItemsTable = (doc: jsPDF, invoice: Invoice, startY: numbe
   try {
     console.log("Adding invoice items to PDF table");
     
+    // Define consistent column widths
+    const tableColumns = [
+      { header: 'Description', dataKey: 'description' },
+      { header: 'Quantity', dataKey: 'quantity' },
+      { header: 'Unit Price', dataKey: 'unit_price' },
+      { header: 'Amount', dataKey: 'amount' }
+    ];
+    
+    const tableRows = invoice.items?.map(item => ({
+      description: item.description,
+      quantity: item.quantity.toString(),
+      unit_price: formatCurrency(item.unit_price),
+      amount: formatCurrency(item.amount || item.quantity * item.unit_price)
+    })) || [{ description: 'No items found for this invoice', quantity: '', unit_price: '', amount: '' }];
+    
     autoTable(doc, {
       startY: startY + 5, // Add some spacing before the table
       head: [
@@ -21,21 +36,23 @@ export const addInvoiceItemsTable = (doc: jsPDF, invoice: Invoice, startY: numbe
           'Amount'
         ]
       ],
-      body: invoice.items?.map(item => [
-        item.description,
-        item.quantity.toString(),
-        formatCurrency(item.unit_price),
-        formatCurrency(item.amount || item.quantity * item.unit_price)
-      ]) || [['No items found for this invoice', '', '', '']],
+      body: tableRows.map(row => [
+        row.description,
+        row.quantity,
+        row.unit_price,
+        row.amount
+      ]),
       styles: {
         fontSize: 9,
         cellPadding: 5, // Increased padding for better readability
         lineWidth: 0.5,
+        overflow: 'linebreak', // Handle overflow with line breaks
       },
       headStyles: {
-        fillColor: [80, 80, 80],
+        fillColor: [70, 70, 70],
         textColor: [255, 255, 255],
-        fontStyle: 'bold'
+        fontStyle: 'bold',
+        halign: 'left'
       },
       columnStyles: {
         0: { cellWidth: 'auto' }, // Description takes available space
@@ -46,11 +63,23 @@ export const addInvoiceItemsTable = (doc: jsPDF, invoice: Invoice, startY: numbe
       alternateRowStyles: {
         fillColor: [245, 245, 245] // Light gray for alternate rows
       },
+      margin: { left: 14, right: 14 },
       didParseCell: function(data) {
         // Ensure description text wraps properly
         if (data.column.index === 0) {
           data.cell.styles.cellWidth = 'auto';
         }
+      },
+      willDrawCell: function(data) {
+        // Add dynamic styling for cells if needed
+        if (data.section === 'head') {
+          // Custom header styling
+          doc.setFillColor(70, 70, 70);
+        }
+      },
+      didDrawPage: function(data) {
+        // Handle page breaks if needed
+        console.log("Page break occurred in table");
       }
     });
 

@@ -31,18 +31,37 @@ export function addInvoiceItemsTable(doc: jsPDF, invoice: Invoice, startY: numbe
       ]) || [['No items found for this invoice', '', '', '']],
       styles: {
         fontSize: 9,
-        cellPadding: 3,
+        cellPadding: 5,
+        lineWidth: 0.5,
+        overflow: 'linebreak', // Handle text overflow with line breaks
       },
       headStyles: {
-        fillColor: [80, 80, 80],
+        fillColor: [70, 70, 70],
         textColor: [255, 255, 255],
-        fontStyle: 'bold'
+        fontStyle: 'bold',
+        halign: 'left'
       },
       columnStyles: {
-        0: { cellWidth: 'auto' },
-        1: { halign: 'right', cellWidth: 25 },
-        2: { halign: 'right', cellWidth: 35 },
-        3: { halign: 'right', cellWidth: 35 }
+        0: { cellWidth: 'auto' }, // Description takes available space
+        1: { halign: 'center', cellWidth: 30 }, // Center-align quantity
+        2: { halign: 'right', cellWidth: 40 }, // Right-align price
+        3: { halign: 'right', cellWidth: 40 } // Right-align amount
+      },
+      alternateRowStyles: {
+        fillColor: [245, 245, 245] // Light gray for alternate rows
+      },
+      margin: { left: 14, right: 14 },
+      didParseCell: function(data) {
+        // Ensure description text wraps properly
+        if (data.column.index === 0) {
+          data.cell.styles.cellWidth = 'auto';
+        }
+      },
+      willDrawCell: function(data) {
+        // Add dynamic styling for cells if needed
+        if (data.section === 'head') {
+          doc.setFillColor(70, 70, 70);
+        }
       },
     });
     
@@ -64,7 +83,7 @@ export function addInvoiceItemsTable(doc: jsPDF, invoice: Invoice, startY: numbe
     ];
     
     // Table header
-    doc.setFillColor(80, 80, 80);
+    doc.setFillColor(70, 70, 70);
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(9);
     doc.setFont("helvetica", "bold");
@@ -97,11 +116,54 @@ export function addInvoiceItemsTable(doc: jsPDF, invoice: Invoice, startY: numbe
       currentY += rowHeight;
     } else {
       invoice.items.forEach((item) => {
-        doc.text(item.description || 'Unknown item', currentX - colWidths[2] - colWidths[1] - colWidths[0] + 3, currentY + 5);
+        // Handle long descriptions with text wrapping
+        const description = item.description || 'Unknown item';
+        const descLines = [];
+        let tempDesc = description;
+        const maxWidth = colWidths[0] - 6; // Subtract some padding
+        
+        while (tempDesc.length > 0) {
+          let i = 0;
+          if (doc.getStringUnitWidth(tempDesc) * 9 <= maxWidth) {
+            descLines.push(tempDesc);
+            break;
+          }
+          
+          // Find breaking point
+          while (i < tempDesc.length) {
+            if (doc.getStringUnitWidth(tempDesc.substring(0, i)) * 9 > maxWidth) {
+              // Find last space before this point
+              let lastSpace = tempDesc.substring(0, i).lastIndexOf(' ');
+              if (lastSpace <= 0) lastSpace = i; // If no space found, break at current position
+              
+              descLines.push(tempDesc.substring(0, lastSpace));
+              tempDesc = tempDesc.substring(lastSpace + 1);
+              break;
+            }
+            i++;
+          }
+          
+          if (i >= tempDesc.length) {
+            descLines.push(tempDesc);
+            break;
+          }
+        }
+        
+        // Calculate dynamic row height based on description length
+        const itemRowHeight = Math.max(rowHeight, descLines.length * rowHeight);
+        
+        // Print description lines
+        descLines.forEach((line, idx) => {
+          doc.text(line, currentX - colWidths[2] - colWidths[1] - colWidths[0] + 3, currentY + 5 + (idx * 5));
+        });
+        
+        // Print other columns
         doc.text(item.quantity?.toString() || '1', currentX - colWidths[2] - colWidths[1] - 3, currentY + 5, { align: 'right' });
         doc.text(formatCurrency(item.unit_price || 0), currentX - colWidths[2] - 3, currentY + 5, { align: 'right' });
         doc.text(formatCurrency(item.amount || (item.quantity * item.unit_price) || 0), currentX - 3, currentY + 5, { align: 'right' });
-        currentY += rowHeight;
+        
+        // Move to next row
+        currentY += Math.max(rowHeight, descLines.length * 5 + 3);
       });
     }
     

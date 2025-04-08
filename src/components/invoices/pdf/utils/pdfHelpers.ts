@@ -56,9 +56,9 @@ export const addLogoToPdf = (doc: jsPDF, pageWidth: number) => {
     // Use the McKaynine logo
     const logoPath = "/lovable-uploads/bb90b920-3e7c-4462-a0f1-d47b855c07b7.png";
     
-    // Set logo dimensions and position
-    const imgWidth = 100; // Fixed width
-    const imgHeight = 28; // Fixed height to keep aspect ratio
+    // Set logo dimensions - 75% of page width
+    const imgWidth = pageWidth * 0.75; // 75% of page width
+    const imgHeight = 45; // Adjusted height 
     const xPosition = (pageWidth - imgWidth) / 2; // Center horizontally
     
     // Add the logo image - use an absolute path for better reliability
@@ -75,3 +75,13 @@ export const addLogoToPdf = (doc: jsPDF, pageWidth: number) => {
     return false;
   }
 };
+
+/**
+ * Helper to calculate dynamic start position based on content
+ */
+export const calculateDynamicPosition = (doc: jsPDF, basePosition: number, itemsCount: number): number => {
+  // Add more space if there are many items
+  const extraSpace = Math.max(0, itemsCount - 5) * 5;
+  return basePosition + extraSpace;
+};
+

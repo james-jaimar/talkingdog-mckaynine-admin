@@ -11,14 +11,26 @@ export const addInvoiceFooter = (doc: jsPDF, invoice: Invoice, startY: number, p
   // Notes at the bottom if present
   if (invoice.notes) {
     doc.setFontSize(11);
+    doc.setFont(undefined, "bold");
     doc.text("Notes:", 14, currentY);
     doc.setFontSize(9);
-    doc.text(invoice.notes, 14, currentY + 7);
-    currentY += 25;
+    doc.setFont(undefined, "normal");
+    
+    // For longer notes, handle wrapping
+    const splitNotes = doc.splitTextToLines(invoice.notes, pageWidth - 28);
+    splitNotes.forEach((line, index) => {
+      doc.text(line, 14, currentY + 7 + (index * 5));
+    });
+    
+    currentY += 7 + (splitNotes.length * 5) + 10; // Adjust based on number of note lines
   }
 
-  // Banking details in the footer
+  // Banking details in the footer - always at bottom of page
   const footerY = pageHeight - 40; // Position from bottom of page
+  
+  doc.setDrawColor(200, 200, 200);
+  doc.setLineWidth(0.5);
+  doc.line(14, footerY - 10, pageWidth - 14, footerY - 10);
   
   doc.setFontSize(10);
   doc.setFont(undefined, "bold");
