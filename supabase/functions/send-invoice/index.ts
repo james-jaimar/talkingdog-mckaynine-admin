@@ -66,7 +66,8 @@ const handler = async (req: Request): Promise<Response> => {
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: `PDF generation failed: ${pdfError.message}`
+          error: `PDF generation failed: ${pdfError.message}`,
+          stack: pdfError instanceof Error ? pdfError.stack : undefined
         }),
         {
           status: 500,
@@ -84,7 +85,8 @@ const handler = async (req: Request): Promise<Response> => {
       JSON.stringify({ 
         success: false, 
         error: `Request processing failed: ${error.message}`,
-        type: error.constructor?.name || 'Unknown'
+        type: error.constructor?.name || 'Unknown',
+        stack: error instanceof Error ? error.stack : undefined
       }),
       {
         status: 500,

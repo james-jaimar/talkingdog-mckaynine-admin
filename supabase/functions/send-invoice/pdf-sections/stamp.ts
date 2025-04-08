@@ -19,6 +19,7 @@ export function addPaidStamp(doc: jsPDF, pageWidth: number): void {
   doc.saveGraphicsState();
   
   // Set transparency using the standard opacity method
+  // This is the correct method supported by jsPDF
   doc.setGState(new (doc as any).GState({ opacity: 0.3 }));
   
   // Add rotated "PAID" text as a stamp
