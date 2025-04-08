@@ -1,12 +1,36 @@
 
 import { jsPDF } from "npm:jspdf@2.5.1";
+import { Invoice } from "../types.ts";
 
 /**
- * Adds the invoice footer including banking details and thank you message
+ * Adds the invoice footer including notes and banking details
  */
-export function addInvoiceFooter(doc: jsPDF, pageWidth: number, pageHeight: number): void {
-  // Banking details in the footer
-  const footerY = pageHeight - 40;
+export function addInvoiceFooter(doc: jsPDF, invoice: Invoice, startY: number, pageWidth: number, pageHeight: number): number {
+  let currentY = startY;
+  
+  // Notes at the bottom if present
+  if (invoice.notes) {
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "bold");
+    doc.text("Notes:", 14, currentY);
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    
+    // For longer notes, handle wrapping
+    const splitNotes = doc.splitTextToSize(invoice.notes, pageWidth - 28);
+    splitNotes.forEach((line: string, index: number) => {
+      doc.text(line, 14, currentY + 7 + (index * 5));
+    });
+    
+    currentY += 7 + (splitNotes.length * 5) + 10; // Adjust based on number of note lines
+  }
+
+  // Banking details in the footer - always at bottom of page
+  const footerY = pageHeight - 40; // Position from bottom of page
+  
+  doc.setDrawColor(200, 200, 200);
+  doc.setLineWidth(0.5);
+  doc.line(14, footerY - 10, pageWidth - 14, footerY - 10);
   
   doc.setFontSize(10);
   doc.setFont("helvetica", "bold");
@@ -25,4 +49,6 @@ export function addInvoiceFooter(doc: jsPDF, pageWidth: number, pageHeight: numb
   doc.setFontSize(8);
   doc.setTextColor(120, 120, 120);
   doc.text("Thank you for your business!", pageWidth / 2, pageHeight - 15, { align: "center" });
+  
+  return currentY;
 }
