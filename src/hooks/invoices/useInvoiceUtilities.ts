@@ -80,14 +80,13 @@ export const generateInvoiceNumber = async (): Promise<string> => {
     try {
       console.log("Querying invoices with prefix:", invoicePrefix);
       
-      // Completely refactored query approach to avoid TypeScript issues
-      // Just get invoice numbers as strings and handle filtering/counting in JS
+      // Simple query that avoids TypeScript issues - get all invoice numbers as strings
       const { data: invoiceData } = await supabase
         .from('invoices')
         .select('invoice_number');
       
-      if (invoiceData && invoiceData.length > 0) {
-        // Process the data entirely client-side to avoid complex TypeScript
+      // Filter and count matches client-side to avoid complex TypeScript queries
+      if (invoiceData) {
         const matchingInvoices = invoiceData.filter(invoice => 
           invoice.invoice_number && 
           invoice.invoice_number.startsWith(invoicePrefix)
@@ -98,24 +97,23 @@ export const generateInvoiceNumber = async (): Promise<string> => {
     } catch (err) {
       console.error("Error counting invoices:", err);
       
-      // Fallback to a simple count query if filtering fails
+      // Simple fallback approach
       try {
-        const { count: totalCount } = await supabase
+        // Use a basic count query as fallback
+        const { count: totalCount, error } = await supabase
           .from('invoices')
           .select('*', { count: 'exact', head: true });
-        
-        // Just use total count as a base if we can't filter
-        if (totalCount !== null) {
+          
+        if (!error && totalCount !== null) {
           count = Math.min(totalCount, 25); // Cap at 25 to be safe
           console.log(`Using total invoice count as fallback: ${count}`);
         } else {
-          count = Math.floor(Math.random() * 10) + 1; // Random number between 1-10
+          count = Math.floor(Math.random() * 10) + 1;
           console.log(`Using random count as fallback: ${count}`);
         }
       } catch (fallbackErr) {
         console.error("Even fallback query failed:", fallbackErr);
-        // Final fallback is to use a timestamp-based number
-        count = Math.floor(Math.random() * 5) + 1; // Random number between 1-5
+        count = Math.floor(Math.random() * 5) + 1;
       }
     }
     
