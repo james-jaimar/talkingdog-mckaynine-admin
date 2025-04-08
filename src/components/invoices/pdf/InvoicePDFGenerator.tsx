@@ -7,6 +7,7 @@ import { addClientInfo } from "./sections/ClientInfo";
 import { addInvoiceItemsTable } from "./sections/InvoiceItems";
 import { addInvoiceSummary } from "./sections/InvoiceSummary";
 import { addInvoiceFooter } from "./sections/InvoiceFooter";
+import { splitTextToFitPage } from "./utils/formatters";
 
 export const generateInvoicePDF = async (invoice: Invoice) => {
   try {
@@ -75,46 +76,5 @@ export const generateInvoicePDF = async (invoice: Invoice) => {
   }
 };
 
-// Extension method for jsPDF to handle text wrapping
-if (typeof jsPDF !== 'undefined') {
-  jsPDF.prototype.splitTextToLines = function(text, maxWidth) {
-    const fontSize = this.getFontSize();
-    const lines = [];
-    
-    // Split the text by newlines first
-    const paragraphs = text.split(/\r\n|\r|\n/);
-    
-    for (let i = 0; i < paragraphs.length; i++) {
-      let paragraph = paragraphs[i];
-      let textWidth = this.getStringUnitWidth(paragraph) * fontSize / this.internal.scaleFactor;
-      
-      if (textWidth <= maxWidth) {
-        lines.push(paragraph);
-      } else {
-        let words = paragraph.split(' ');
-        let line = '';
-        
-        for (let j = 0; j < words.length; j++) {
-          let testLine = line + words[j] + ' ';
-          let testWidth = this.getStringUnitWidth(testLine) * fontSize / this.internal.scaleFactor;
-          
-          if (testWidth > maxWidth && line !== '') {
-            lines.push(line);
-            line = words[j] + ' ';
-          } else {
-            line = testLine;
-          }
-        }
-        
-        if (line.trim() !== '') {
-          lines.push(line.trim());
-        }
-      }
-    }
-    
-    return lines;
-  };
-}
-
 // Export the helper function for use in other components
-export { splitTextToLines } from "./utils/formatters";
+export { splitTextToFitPage } from "./utils/formatters";

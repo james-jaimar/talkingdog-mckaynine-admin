@@ -17,7 +17,7 @@ export const addInvoiceFooter = (doc: jsPDF, invoice: Invoice, startY: number, p
     doc.setFont(undefined, "normal");
     
     // For longer notes, handle wrapping
-    const splitNotes = doc.splitTextToLines(invoice.notes, pageWidth - 28);
+    const splitNotes = doc.splitTextToSize(invoice.notes, pageWidth - 28);
     splitNotes.forEach((line, index) => {
       doc.text(line, 14, currentY + 7 + (index * 5));
     });
