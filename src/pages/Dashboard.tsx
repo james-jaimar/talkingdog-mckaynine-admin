@@ -1,6 +1,7 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { EnhancedSupabaseClient } from "@/integrations/supabase/custom-types";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { RecentBookings } from "@/components/dashboard/RecentBookings";
@@ -48,9 +49,14 @@ export default function Dashboard() {
         ]);
         
         // Now get only bookings that don't have proof_of_payment AND don't have a paid invoice
-        const { count: unpaidCount } = await supabase.rpc(
+        const { data: unpaidCount, error: unpaidError } = await (supabase as EnhancedSupabaseClient).rpc(
           'count_unpaid_bookings'
         );
+        
+        if (unpaidError) {
+          console.error("Dashboard - Error counting unpaid bookings:", unpaidError);
+          throw unpaidError;
+        }
         
         console.log("Dashboard stats:", { clientCount, dogCount, bookingCount, branchCount, unpaidCount });
         

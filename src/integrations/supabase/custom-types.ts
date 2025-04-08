@@ -56,6 +56,7 @@ export interface CustomSupabaseRPC {
   get_invoice_items_with_details: (params: { p_invoice_id: string }) => Promise<{ data: InvoiceItemWithDetails[]; error: null | Error }>;
   count_invoices_with_prefix: (params: { prefix: string }) => Promise<{ data: number; error: null | Error }>;
   get_default_branch_name: (params?: {}) => Promise<{ data: string; error: null | Error }>;
+  count_unpaid_bookings: (params?: {}) => Promise<{ data: number; error: null | Error }>;
 }
 
 // Define enhanced client type that includes our custom RPC functions
