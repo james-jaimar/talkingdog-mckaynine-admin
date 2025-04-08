@@ -80,18 +80,16 @@ export const generateInvoiceNumber = async (): Promise<string> => {
     try {
       console.log("Querying invoices with prefix:", invoicePrefix);
       
-      // Use a more direct approach without complex type inference
-      // Only select the invoice_number field to reduce type complexity
+      // Use a simplified query to avoid TypeScript type complexity
       const { data: invoiceNumbers } = await supabase
         .from('invoices')
         .select('invoice_number');
       
-      // Simple client-side filtering to avoid complex TypeScript inference
+      // Process the data client-side to avoid complex type inference
       if (invoiceNumbers) {
-        // Type assertion to help TypeScript understand the structure
-        const matchingInvoices = invoiceNumbers.filter(invoice => 
-          invoice.invoice_number && 
-          invoice.invoice_number.startsWith(invoicePrefix)
+        const matchingInvoices = invoiceNumbers.filter(item => 
+          item.invoice_number && 
+          item.invoice_number.startsWith(invoicePrefix)
         );
         count = matchingInvoices.length;
         console.log(`Found ${count} invoices with prefix ${invoicePrefix}`);
@@ -101,7 +99,7 @@ export const generateInvoiceNumber = async (): Promise<string> => {
       
       // Simplified fallback approach
       try {
-        // Use count query as fallback without complex filtering
+        // Basic count without complex filtering
         const { count: totalCount } = await supabase
           .from('invoices')
           .select('*', { count: 'exact', head: true });
