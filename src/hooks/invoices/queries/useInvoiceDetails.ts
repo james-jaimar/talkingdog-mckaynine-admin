@@ -46,19 +46,32 @@ export function useInvoiceDetails(invoiceId: string | undefined) {
         
         console.log("Invoice basic data retrieved:", normalizedInvoice);
         
-        // Fetch invoice items separately
-        const { data: items, error: itemsError } = await supabase
-          .from('invoice_items')
-          .select('*')
-          .eq('invoice_id', invoiceId);
+        // Use our new secure function to fetch invoice items with booking details
+        const { data: enhancedItems, error: enhancedItemsError } = await supabase
+          .rpc('get_invoice_items_with_details', { p_invoice_id: invoiceId });
           
-        if (itemsError) {
-          console.error("Error fetching invoice items:", itemsError);
-          console.log("Continuing with empty items array");
+        if (enhancedItemsError) {
+          console.error("Error fetching enhanced invoice items:", enhancedItemsError);
+          console.log("Falling back to empty items array");
+          
+          // Fallback to a default item if there's an error
+          const defaultItem: InvoiceItem = {
+            id: "default-item",
+            description: "Training services",
+            quantity: 1,
+            unit_price: normalizedInvoice.total,
+            amount: normalizedInvoice.total
+          };
+          
+          return {
+            ...normalizedInvoice,
+            items: [defaultItem]
+          } as Invoice;
         }
         
-        // If no items, create a default one
-        if (!items || items.length === 0) {
+        console.log("Enhanced items retrieved from secure function:", enhancedItems);
+        
+        if (!enhancedItems || enhancedItems.length === 0) {
           console.log("No items found, creating default item");
           const defaultItem: InvoiceItem = {
             id: "default-item",
@@ -74,105 +87,58 @@ export function useInvoiceDetails(invoiceId: string | undefined) {
           } as Invoice;
         }
         
-        // Process each item to fetch booking information
-        const processedItems = await Promise.all(items.map(async (item) => {
-          // Create a properly typed invoice item
-          let enhancedItem: InvoiceItem = { 
+        // Process the enhanced items to match our expected InvoiceItem structure
+        const processedItems = enhancedItems.map(item => {
+          const processedItem: InvoiceItem = {
             id: item.id,
+            invoice_id: item.invoice_id,
             description: item.description || "Training services",
-            quantity: item.quantity, 
+            quantity: item.quantity,
             unit_price: item.unit_price,
             amount: item.amount,
-            booking_id: item.booking_id
+            booking_id: item.booking_id,
+            created_at: item.created_at,
+            updated_at: item.updated_at
           };
           
-          if (!item.booking_id) {
-            return enhancedItem;
+          // Add booking data if available
+          if (item.booking_details) {
+            const bookingDetails = item.booking_details;
+            
+            // Create the bookings property with properly structured data
+            processedItem.bookings = {
+              id: bookingDetails.id,
+              
+              // Add dog information
+              dogs: bookingDetails.dog ? {
+                name: bookingDetails.dog.name,
+                breed: bookingDetails.dog.breed || 'Unknown'
+              } : undefined,
+              
+              // Add class schedule information
+              class_schedules: bookingDetails.class_schedule ? {
+                id: bookingDetails.class_schedule.id,
+                start_time: bookingDetails.class_schedule.start_time || new Date().toISOString(),
+                
+                // Add class information
+                classes: bookingDetails.class_schedule.class ? {
+                  id: bookingDetails.class_schedule.class.id,
+                  name: bookingDetails.class_schedule.class.name,
+                  price: bookingDetails.class_schedule.class.price || 0,
+                  description: bookingDetails.class_schedule.class.description || ''
+                } : undefined
+              } : undefined
+            };
+            
+            // Update item description with class and dog info if available
+            if (bookingDetails.class_schedule?.class?.name && bookingDetails.dog?.name) {
+              processedItem.description = `${bookingDetails.class_schedule.class.name} - ${bookingDetails.dog.name}`;
+              console.log(`Updated description for item ${item.id}: ${processedItem.description}`);
+            }
           }
           
-          // Fetch booking details separately
-          try {
-            const { data: booking, error: bookingError } = await supabase
-              .from('bookings')
-              .select(`
-                id,
-                dog_id,
-                class_schedule_id,
-                dogs (
-                  id,
-                  name,
-                  breed
-                ),
-                class_schedules (
-                  id,
-                  start_time,
-                  class_id,
-                  classes (
-                    id,
-                    name,
-                    description,
-                    price
-                  )
-                )
-              `)
-              .eq('id', item.booking_id)
-              .maybeSingle();
-              
-            if (bookingError) {
-              console.error(`Error fetching booking for item ${item.id}:`, bookingError);
-              return enhancedItem;
-            }
-            
-            if (!booking) {
-              console.log(`No booking found for ID ${item.booking_id}`);
-              return enhancedItem;
-            }
-
-            console.log(`Found booking for item ${item.id}:`, booking);
-            
-            // Now explicitly create the bookings property on the enhanced item
-            if (booking.dogs && booking.class_schedules?.classes) {
-              const dogName = booking.dogs.name;
-              const className = booking.class_schedules.classes.name;
-              const classPrice = booking.class_schedules.classes.price;
-              
-              console.log(`Enhanced item with class: ${className} and dog: ${dogName}`);
-              
-              // Always set the description with class and dog info
-              enhancedItem.description = `${className} - ${dogName}`;
-              
-              // Set price from class if not already set
-              if (!enhancedItem.unit_price || enhancedItem.unit_price === 0) {
-                enhancedItem.unit_price = classPrice;
-                enhancedItem.amount = classPrice * item.quantity;
-              }
-              
-              // Add booking information to the item
-              enhancedItem.bookings = {
-                id: booking.id,
-                dogs: {
-                  name: dogName,
-                  breed: booking.dogs.breed || 'Unknown'
-                },
-                class_schedules: {
-                  id: booking.class_schedules.id,
-                  start_time: booking.class_schedules.start_time || new Date().toISOString(),
-                  class_id: booking.class_schedules.class_id,
-                  classes: {
-                    id: booking.class_schedules.classes.id,
-                    name: className,
-                    price: classPrice || 0,
-                    description: booking.class_schedules.classes.description || ''
-                  }
-                }
-              };
-            }
-          } catch (err) {
-            console.error(`Error processing booking for item ${item.id}:`, err);
-          }
-          
-          return enhancedItem;
-        }));
+          return processedItem;
+        });
         
         // Return complete invoice with processed items
         const result = {

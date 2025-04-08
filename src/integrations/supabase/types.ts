@@ -862,6 +862,21 @@ export type Database = {
         Args: { required_role: string }
         Returns: boolean
       }
+      get_invoice_items_with_details: {
+        Args: { p_invoice_id: string }
+        Returns: {
+          id: string
+          invoice_id: string
+          description: string
+          quantity: number
+          unit_price: number
+          amount: number
+          booking_id: string
+          booking_details: Json
+          created_at: string
+          updated_at: string
+        }[]
+      }
       get_unread_message_count: {
         Args: { p_client_id: string }
         Returns: number
