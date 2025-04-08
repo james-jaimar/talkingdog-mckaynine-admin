@@ -35,7 +35,7 @@ const handler = async (req: Request): Promise<Response> => {
       }
     );
   } catch (error) {
-    console.error("Error sending invoice:", error);
+    console.error("Error sending invoice:", error.message);
     return new Response(
       JSON.stringify({ success: false, error: error.message }),
       {
