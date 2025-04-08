@@ -28,7 +28,7 @@ export const generateInvoiceNumber = async (): Promise<string> => {
           .from('branches')
           .select('name')
           .eq('id', branchId)
-          .single();
+          .maybeSingle();
           
         if (!error && branchData) {
           branchName = branchData.name.toLowerCase();
@@ -47,6 +47,7 @@ export const generateInvoiceNumber = async (): Promise<string> => {
         const { data: userProfiles } = await supabase.auth.getUser();
         
         if (userProfiles?.user) {
+          // Fixed: Use maybeSingle instead of single to avoid potential errors
           const { data: defaultBranch } = await supabase
             .from('branches')
             .select('name')
@@ -76,9 +77,10 @@ export const generateInvoiceNumber = async (): Promise<string> => {
     let count: number | null = null;
     
     try {
-      const { data, error, count: resultCount } = await supabase
+      // Fixed: Simplified query to avoid excessive type instantiation
+      const { count: resultCount, error } = await supabase
         .from('invoices')
-        .select('id', { count: 'exact', head: true })
+        .select('*', { count: 'exact', head: true })
         .like('invoice_number', `${branchPrefix}${monthAbbreviation}%`);
         
       if (error) {
