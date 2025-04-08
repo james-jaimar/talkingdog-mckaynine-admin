@@ -1,80 +1,74 @@
-
 import { Invoice } from "./types.ts";
 import { formatCurrency, formatDate } from "./pdf-helpers.ts";
+import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 
 /**
  * Sends an invoice via email with the PDF attachment
- * using Supabase's email service
+ * using Supabase's configured SMTP settings
  */
 export async function sendInvoiceEmail(invoice: Invoice, email: string, pdfBuffer: ArrayBuffer): Promise<boolean> {
   console.log(`Preparing to send invoice ${invoice.invoice_number} to ${email}`);
   console.log("Invoice status in email sender:", invoice.status);
   
   try {
-    const apiKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    const projectRef = Deno.env.get("SUPABASE_PROJECT_REF") || "vsgsagbpfclbuyqrepvf";
+    // Get SMTP configuration from environment variables
+    const host = Deno.env.get("SMTP_HOST");
+    const port = parseInt(Deno.env.get("SMTP_PORT") || "587", 10);
+    const username = Deno.env.get("SMTP_USERNAME");
+    const password = Deno.env.get("SMTP_PASSWORD");
+    const fromEmail = Deno.env.get("FROM_EMAIL") || "noreply@mckaynine.co.za";
     
-    if (!apiKey) {
-      throw new Error("Missing SUPABASE_SERVICE_ROLE_KEY. Please set this environment variable.");
+    if (!host || !username || !password) {
+      throw new Error("Missing SMTP configuration. Please set SMTP_HOST, SMTP_USERNAME, and SMTP_PASSWORD environment variables.");
     }
     
+    console.log(`Using SMTP server: ${host}:${port}`);
+    console.log(`SMTP authentication: ${username}`);
+    
+    // Configure SMTP client
+    const client = new SMTPClient({
+      connection: {
+        hostname: host,
+        port: port,
+        tls: port === 465, // Use TLS if port is 465
+        auth: {
+          username: username,
+          password: password,
+        },
+      },
+    });
+
     // Create email message based on invoice status
     const emailSubject = `Invoice ${invoice.invoice_number} from McKaynine Training Centre`;
     const emailMessage = createEmailMessage(invoice, `${invoice.client.first_name} ${invoice.client.last_name}`);
+    const htmlMessage = formatEmailHtml(emailMessage);
     
-    try {
-      // Convert PDF buffer to base64
-      const pdfBase64 = btoa(
-        String.fromCharCode(...new Uint8Array(pdfBuffer))
-      );
-      
-      // Get sender email from environment or use default
-      const fromEmail = Deno.env.get("FROM_EMAIL") || "noreply@mckaynine.co.za";
-      
-      console.log(`Using project ref: ${projectRef}`);
-      console.log(`Sending email from: ${fromEmail}`);
-      console.log(`Preparing email to: ${email}`);
-      
-      // Prepare email payload for Supabase Email service
-      const payload = {
-        from: fromEmail,
-        to: email,
-        subject: emailSubject,
-        html: formatEmailHtml(emailMessage),
-        attachments: [{
-          name: `Invoice-${invoice.invoice_number}.pdf`,
+    // Convert PDF buffer to a format that can be attached
+    const pdfBase64 = btoa(String.fromCharCode(...new Uint8Array(pdfBuffer)));
+    
+    console.log(`Sending email via SMTP from: ${fromEmail} to: ${email}`);
+    
+    // Send email with PDF attachment
+    const sendResult = await client.send({
+      from: fromEmail,
+      to: email,
+      subject: emailSubject,
+      content: "Your invoice is attached",
+      html: htmlMessage,
+      attachments: [
+        {
+          filename: `Invoice-${invoice.invoice_number}.pdf`,
           content: pdfBase64,
-          type: "application/pdf"
-        }]
-      };
-      
-      console.log("Sending email via Supabase Email API...");
-      
-      // Make the API request to Supabase Email API
-      const response = await fetch(`https://${projectRef}.supabase.co/functions/v1/send-email`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
+          encoding: "base64",
+          contentType: "application/pdf",
         },
-        body: JSON.stringify(payload),
-      });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`Email API error response status: ${response.status}`);
-        console.error(`Email API error response body: ${errorText}`);
-        throw new Error(`Failed to send email: ${response.status} - ${errorText}`);
-      }
-      
-      const result = await response.json();
-      console.log("Email API response:", result);
-      
-      return true;
-    } catch (error) {
-      console.error("Error during email sending process:", error);
-      throw error;
-    }
+      ],
+    });
+    
+    console.log("Email sent successfully, closing connection");
+    await client.close();
+    
+    return true;
   } catch (error) {
     console.error("Error in sendInvoiceEmail:", error.message);
     if (error instanceof Error) {
