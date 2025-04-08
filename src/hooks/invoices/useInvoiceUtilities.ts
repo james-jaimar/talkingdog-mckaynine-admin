@@ -81,19 +81,22 @@ export const generateInvoiceNumber = async (): Promise<string> => {
       const invoicePrefix = `${branchPrefix}${monthAbbreviation}`;
       console.log("Querying invoices with prefix:", invoicePrefix);
       
-      // Fix: Completely refactor this query to avoid TypeScript recursive type issues
-      // Simply get the count directly as a scalar value to avoid complex types
-      const { count: invoiceCount, error } = await supabase
+      // Fix: Use a completely different query approach to avoid TypeScript recursive type issues
+      // Just get all invoices and filter client-side to count matches
+      const { data, error } = await supabase
         .from('invoices')
-        .select('*', { count: 'exact', head: true })
-        .eq('invoice_number', invoicePrefix)
-        .or(`invoice_number.like.${invoicePrefix}%`);
+        .select('invoice_number');
         
       if (error) {
         console.error("Error checking existing invoices:", error);
-      } else if (invoiceCount !== null) {
-        count = invoiceCount;
-        console.log(`Invoice: Found ${count} existing invoices with prefix ${invoicePrefix}`);
+      } else if (data) {
+        // Filter and count invoice numbers that start with our prefix
+        const matchingInvoices = data.filter(invoice => 
+          invoice.invoice_number && 
+          invoice.invoice_number.startsWith(invoicePrefix)
+        );
+        count = matchingInvoices.length;
+        console.log(`Invoice: Found ${count} matching invoices out of ${data.length} total`);
       }
     } catch (err) {
       console.error("Error counting invoices:", err);
