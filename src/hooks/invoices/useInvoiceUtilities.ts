@@ -23,16 +23,16 @@ export const generateInvoiceNumber = async (): Promise<string> => {
       const branchId = localStorage.getItem('currentBranchId');
       
       if (branchId) {
-        // Fetch the branch name from Supabase
-        const { data: branchData, error } = await supabase
+        // Fetch the branch name from Supabase using a simple query
+        const { data, error } = await supabase
           .from('branches')
           .select('name')
           .eq('id', branchId)
-          .maybeSingle();
+          .single();
           
-        if (!error && branchData) {
-          branchName = branchData.name.toLowerCase();
-          console.log("Invoice: Using branch from localStorage:", branchData.name);
+        if (!error && data) {
+          branchName = data.name.toLowerCase();
+          console.log("Invoice: Using branch from localStorage:", data.name);
           
           if (branchName.includes('delta')) {
             branchPrefix = "McD";
@@ -44,15 +44,16 @@ export const generateInvoiceNumber = async (): Promise<string> => {
       
       // If we couldn't get from localStorage, try querying directly
       if (!branchName) {
-        const { data: userProfiles } = await supabase.auth.getUser();
+        // Get auth user first
+        const { data: authData } = await supabase.auth.getUser();
         
-        if (userProfiles?.user) {
-          // Fixed: Use maybeSingle instead of single to avoid potential errors
+        if (authData?.user) {
+          // Get default branch with a simple query
           const { data: defaultBranch } = await supabase
             .from('branches')
             .select('name')
             .eq('is_default', true)
-            .maybeSingle();
+            .single();
             
           if (defaultBranch?.name) {
             branchName = defaultBranch.name.toLowerCase();
@@ -73,23 +74,25 @@ export const generateInvoiceNumber = async (): Promise<string> => {
       // Will use default prefix defined above
     }
     
-    // Try to get the count of existing invoices for this month and branch
-    let count = 0;
+    // Generate the prefix for the invoice number
     const invoicePrefix = `${branchPrefix}${monthAbbreviation}`;
+    
+    // Try to count matching invoices with the same prefix
+    let count = 0;
     
     try {
       console.log("Querying invoices with prefix:", invoicePrefix);
       
-      // Simplified query to avoid TypeScript recursion issues
-      const { data: invoices } = await supabase
+      // Use a minimal select to avoid TypeScript complexity
+      const { data } = await supabase
         .from('invoices')
         .select('invoice_number');
       
-      if (invoices && Array.isArray(invoices)) {
-        // Manual filtering on the client side to avoid complex query filters
-        const matchingInvoices = invoices.filter(invoice => 
+      // Filter matching invoices on the client side
+      if (data && Array.isArray(data)) {
+        const matchingInvoices = data.filter(invoice => 
           invoice.invoice_number && 
-          typeof invoice.invoice_number === 'string' &&
+          typeof invoice.invoice_number === 'string' && 
           invoice.invoice_number.startsWith(invoicePrefix)
         );
         count = matchingInvoices.length;
@@ -98,21 +101,18 @@ export const generateInvoiceNumber = async (): Promise<string> => {
     } catch (err) {
       console.error("Error counting invoices:", err);
       
-      // Simplified fallback approach
+      // Simple fallback: get a total count instead
       try {
-        // Simple count query without complex filtering
-        const { count: totalCount, error } = await supabase
+        const { count: totalCount } = await supabase
           .from('invoices')
           .select('*', { count: 'exact', head: true });
           
-        if (error) {
-          throw error;
-        }
-        
         if (totalCount !== null) {
-          count = Math.min(totalCount, 25); // Cap at 25 to be safe
+          // Cap at a reasonable number to be safe
+          count = Math.min(totalCount, 25);
           console.log(`Using total invoice count as fallback: ${count}`);
         } else {
+          // Final fallback: use a small random number
           count = Math.floor(Math.random() * 10) + 1;
           console.log(`Using random count as fallback: ${count}`);
         }
