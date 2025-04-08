@@ -38,10 +38,11 @@ const handler = async (req: Request): Promise<Response> => {
     
     // Prepare the email payload for Resend
     const emailPayload: any = {
-      from: "McKaynine Training Centre <noreply@mckaynine.co.za>",
+      from: "McKaynine Training Centre <onboarding@resend.dev>", // Using Resend's verified domain
       to: [emailData.to],
       subject: emailData.subject,
       html: emailData.html,
+      reply_to: "noreply@mckaynine.co.za", // Add reply-to with the custom domain
     };
 
     // Add attachments if provided

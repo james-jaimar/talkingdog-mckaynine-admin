@@ -63,7 +63,9 @@ export function useEmailInvoice() {
       console.error("Failed to send invoice email:", error);
       
       // Show a more user-friendly error message
-      if (error.message.includes("PDF generation failed")) {
+      if (error.message.includes("domain is not verified")) {
+        toast.error("Email domain not verified in Resend. Please verify your domain or update the sender email address.");
+      } else if (error.message.includes("PDF generation failed")) {
         toast.error("Failed to generate invoice PDF. Please try again later or contact support.");
       } else if (error.message.includes("Email sending failed")) {
         toast.error("Failed to send email. Please check the recipient's email address and that the Resend API is configured.");
