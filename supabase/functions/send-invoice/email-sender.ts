@@ -33,24 +33,8 @@ export async function sendInvoiceEmail(invoice: Invoice, email: string, pdfBuffe
     
     console.log(`Sending email via Supabase to: ${email}`);
     
-    // Using Supabase's built-in email service
-    const { error } = await supabase.auth.admin.createUser({
-      email: email,
-      email_confirm: true,
-      user_metadata: {
-        invoice_email: true
-      },
-      app_metadata: {
-        provider: "email"
-      }
-    });
-    
-    if (error) {
-      console.log("User might already exist, continuing with email send");
-    }
-    
-    // Send email through Supabase
-    const { data, error: emailError } = await supabase.functions.invoke('send-email-internal', {
+    // Send email through Supabase internal email function
+    const { error: emailError } = await supabase.functions.invoke('send-email-internal', {
       body: {
         to: email,
         subject: emailSubject,

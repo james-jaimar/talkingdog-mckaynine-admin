@@ -51,6 +51,7 @@ export async function generatePDF(invoice: Invoice): Promise<ArrayBuffer> {
     const clientInfoEndY = addClientInfo(doc, invoice, headerEndY);
     
     // Add invoice items table
+    console.log("Items count:", invoice.items?.length || 0);
     const tableEndY = addInvoiceItemsTable(doc, invoice, clientInfoEndY);
     
     // Add invoice summary
