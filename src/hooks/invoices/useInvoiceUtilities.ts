@@ -23,17 +23,16 @@ export const generateInvoiceNumber = async (): Promise<string> => {
       const branchId = localStorage.getItem('currentBranchId');
       
       if (branchId) {
-        // Simplified query to avoid type recursion issues
-        const { data } = await supabase
+        // Use raw query with explicit return type to avoid complex type inference
+        const { data, error } = await supabase
           .from('branches')
           .select('name')
           .eq('id', branchId)
-          .limit(1)
-          .single();
+          .limit(1);
           
-        if (data?.name) {
-          branchName = data.name.toLowerCase();
-          console.log("Invoice: Using branch from localStorage:", data.name);
+        if (!error && data && data.length > 0) {
+          branchName = data[0].name.toLowerCase();
+          console.log("Invoice: Using branch from localStorage:", data[0].name);
           
           if (branchName.includes('delta')) {
             branchPrefix = "McD";
@@ -49,18 +48,17 @@ export const generateInvoiceNumber = async (): Promise<string> => {
         const { data: authData } = await supabase.auth.getUser();
         
         if (authData?.user) {
-          // Simplified query to avoid type recursion issues
+          // Avoid using .single() which can trigger complex type inference
           try {
-            const { data } = await supabase
+            const { data, error } = await supabase
               .from('branches')
               .select('name')
               .eq('is_default', true)
-              .limit(1)
-              .single();
+              .limit(1);
               
-            if (data?.name) {
-              branchName = data.name.toLowerCase();
-              console.log("Invoice: Using default branch:", data.name);
+            if (!error && data && data.length > 0) {
+              branchName = data[0].name.toLowerCase();
+              console.log("Invoice: Using default branch:", data[0].name);
               
               if (branchName.includes('delta')) {
                 branchPrefix = "McD";
@@ -89,15 +87,14 @@ export const generateInvoiceNumber = async (): Promise<string> => {
     try {
       console.log("Querying invoices with prefix:", invoicePrefix);
       
-      // Use a minimal select with explicit string type to avoid TypeScript complexity
-      // This is the key fix to avoid type instantiation issues
-      const { data: invoiceNumbers, error } = await supabase
+      // Simplify the query to just get all invoice numbers without complex filtering
+      const { data, error } = await supabase
         .from('invoices')
         .select('invoice_number');
       
-      if (!error && invoiceNumbers) {
-        // Filter and count client-side instead of using complex server-side queries
-        const matchingInvoices = invoiceNumbers.filter(inv => 
+      if (!error && data) {
+        // Filter and count client-side to avoid complex server-side queries
+        const matchingInvoices = data.filter(inv => 
           inv.invoice_number && inv.invoice_number.startsWith(invoicePrefix)
         );
         count = matchingInvoices.length;
