@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -5,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useInvoices } from "@/hooks/useInvoices";
 import { InvoiceStatus } from "@/types/invoice";
 import { format } from "date-fns";
+import { useBranch } from "@/context/BranchContext";
 
 interface UseAddHandlerModalProps {
   classId: string;
@@ -22,6 +24,7 @@ export function useAddHandlerModal({
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { createInvoice, generateInvoiceNumber } = useInvoices();
+  const { currentBranch } = useBranch();
 
   // Get actual schedule IDs for this class to ensure we're using the correct one
   const fetchScheduleId = async (): Promise<string | null> => {
@@ -85,17 +88,25 @@ export function useAddHandlerModal({
         // Get branch info for prefix if possible
         let branchPrefix = "Mc";
         try {
-          const { data: branchData } = await supabase
-            .from('branches')
-            .select('name')
-            .limit(1)
-            .single();
-            
-          if (branchData?.name) {
-            if (branchData.name.toLowerCase().includes('delta')) {
+          if (currentBranch?.name) {
+            if (currentBranch.name.toLowerCase().includes('delta')) {
               branchPrefix = "McD";
-            } else if (branchData.name.toLowerCase().includes('randburg')) {
+            } else if (currentBranch.name.toLowerCase().includes('randburg')) {
               branchPrefix = "McR";
+            }
+          } else {
+            const { data: branchData } = await supabase
+              .from('branches')
+              .select('name')
+              .limit(1)
+              .single();
+              
+            if (branchData?.name) {
+              if (branchData.name.toLowerCase().includes('delta')) {
+                branchPrefix = "McD";
+              } else if (branchData.name.toLowerCase().includes('randburg')) {
+                branchPrefix = "McR";
+              }
             }
           }
         } catch (err) {
