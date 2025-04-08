@@ -15,7 +15,8 @@ import {
 import { 
   useMarkInvoiceAsPaid, 
   useMarkInvoiceAsSent, 
-  useCancelInvoice 
+  useCancelInvoice,
+  useEmailInvoice 
 } from './invoices/useInvoiceStatus';
 
 import { generateInvoiceNumber } from './invoices/useInvoiceUtilities';
@@ -30,6 +31,7 @@ export function useInvoices() {
   const markAsPaid = useMarkInvoiceAsPaid();
   const markAsSent = useMarkInvoiceAsSent();
   const cancelInvoice = useCancelInvoice();
+  const emailInvoice = useEmailInvoice();
 
   return {
     invoices,
@@ -43,6 +45,7 @@ export function useInvoices() {
     cancelInvoice,
     useClientInvoices,
     useMyInvoices,
-    generateInvoiceNumber
+    generateInvoiceNumber,
+    emailInvoice
   };
 }

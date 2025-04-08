@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Invoice } from "@/types/invoice";
@@ -30,6 +31,9 @@ import { Loader2, Search, MoreHorizontal, Eye, Edit, Trash, Mail, CheckCircle, B
 import { useInvoices } from "@/hooks/useInvoices";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { formatCurrency } from "@/lib/formatters";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 
 interface InvoicesListProps {
   invoices: Invoice[];
@@ -40,8 +44,11 @@ export function InvoicesList({ invoices, isLoading }: InvoicesListProps) {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
-  const { deleteInvoice, markAsPaid, markAsSent, cancelInvoice } = useInvoices();
+  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [emailRecipient, setEmailRecipient] = useState("");
+  const { deleteInvoice, markAsPaid, markAsSent, cancelInvoice, emailInvoice } = useInvoices();
 
   const filteredInvoices = invoices.filter(
     invoice => 
@@ -86,6 +93,29 @@ export function InvoicesList({ invoices, isLoading }: InvoicesListProps) {
 
   const handleCancelInvoice = (id: string) => {
     cancelInvoice.mutate(id);
+  };
+
+  const handleEmailInvoice = (invoice: Invoice) => {
+    setSelectedInvoice(invoice);
+    setEmailRecipient(invoice.client?.email || "");
+    setEmailDialogOpen(true);
+  };
+
+  const confirmSendEmail = () => {
+    if (!selectedInvoice || !emailRecipient.trim()) {
+      toast.error("Email address is required");
+      return;
+    }
+
+    setEmailDialogOpen(false);
+    
+    // Small delay before sending email
+    setTimeout(() => {
+      emailInvoice.mutate({
+        invoice: selectedInvoice,
+        email: emailRecipient
+      });
+    }, 100);
   };
 
   const getStatusBadge = (status: string) => {
@@ -190,6 +220,11 @@ export function InvoicesList({ invoices, isLoading }: InvoicesListProps) {
                               View
                             </DropdownMenuItem>
                             
+                            <DropdownMenuItem onClick={() => handleEmailInvoice(invoice)}>
+                              <Mail className="mr-2 h-4 w-4" />
+                              Send by Email
+                            </DropdownMenuItem>
+                            
                             {invoice.status !== 'paid' && invoice.status !== 'cancelled' && (
                               <DropdownMenuItem onClick={() => handleEditInvoice(invoice.id)}>
                                 <Edit className="mr-2 h-4 w-4" />
@@ -255,6 +290,37 @@ export function InvoicesList({ invoices, isLoading }: InvoicesListProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Send Invoice by Email</DialogTitle>
+            <DialogDescription>
+              Send invoice #{selectedInvoice?.invoice_number} to the recipient's email address.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-right">
+                Email Address
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                value={emailRecipient}
+                onChange={(e) => setEmailRecipient(e.target.value)}
+                placeholder="recipient@example.com"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEmailDialogOpen(false)}>Cancel</Button>
+            <Button type="submit" onClick={confirmSendEmail}>
+              Send Invoice
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

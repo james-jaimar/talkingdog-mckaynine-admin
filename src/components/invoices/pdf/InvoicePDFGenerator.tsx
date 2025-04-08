@@ -26,6 +26,28 @@ export const generateInvoicePDF = async (invoice: Invoice) => {
     doc.text("McKaynine Training Centre", pageWidth / 2, 20, { align: 'center' });
   }
   
+  // Add "PAID" stamp for paid invoices
+  if (invoice.status === 'paid') {
+    doc.setGlobalAlpha(0.3); // Set transparency
+    doc.setFillColor(39, 174, 96); // Green color
+    doc.setTextColor(255, 255, 255); // White text
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(72);
+    
+    // Rotate and position the "PAID" text as a stamp
+    doc.saveGraphicsState();
+    doc.translate(pageWidth / 2, 120);
+    doc.rotate(-30);
+    doc.text("PAID", 0, 0, { align: 'center' });
+    doc.restoreGraphicsState();
+    
+    // Reset styles for the rest of the document
+    doc.setGlobalAlpha(1);
+    doc.setTextColor(0, 0, 0);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(12);
+  }
+  
   // Add invoice number and status (positioned below the logo)
   const startY = 65; // Position after the logo
   
