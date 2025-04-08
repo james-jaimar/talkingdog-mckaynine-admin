@@ -86,3 +86,6 @@ verify_jwt = true
 
 [functions.send-email-internal]
 verify_jwt = false
+
+[functions.send-with-resend]
+verify_jwt = false

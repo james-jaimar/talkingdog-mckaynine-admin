@@ -66,7 +66,9 @@ export function useEmailInvoice() {
       if (error.message.includes("PDF generation failed")) {
         toast.error("Failed to generate invoice PDF. Please try again later or contact support.");
       } else if (error.message.includes("Email sending failed")) {
-        toast.error("Failed to send email. Please check the recipient's email address and that the send-email-internal function is deployed.");
+        toast.error("Failed to send email. Please check the recipient's email address and that the Resend API is configured.");
+      } else if (error.message.includes("RESEND_API_KEY")) {
+        toast.error("Missing Resend API Key. Please configure the RESEND_API_KEY in your Supabase project.");
       } else {
         toast.error(`Failed to send invoice: ${error.message}`);
       }

@@ -4,14 +4,14 @@ import { formatCurrency, formatDate } from "./utils.ts";
 
 /**
  * Sends an invoice via email with the PDF attachment
- * using Supabase's edge functions
+ * using Resend for email delivery
  */
 export async function sendInvoiceEmail(invoice: Invoice, email: string, pdfBuffer: ArrayBuffer): Promise<boolean> {
   console.log(`Preparing to send invoice ${invoice.invoice_number} to ${email}`);
   console.log("Invoice status in email sender:", invoice.status);
   
   try {
-    // Get email configuration from env
+    // Get Supabase configuration from env
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     
@@ -27,13 +27,13 @@ export async function sendInvoiceEmail(invoice: Invoice, email: string, pdfBuffe
     const emailMessage = createEmailMessage(invoice, `${invoice.client.first_name} ${invoice.client.last_name}`);
     const htmlMessage = formatEmailHtml(emailMessage);
     
-    console.log("Using send-email-internal edge function to send invoice");
+    console.log("Using send-with-resend function to deliver email");
     
-    // Prepare the request to the send-email-internal edge function
-    const emailFunctionUrl = `${supabaseUrl}/functions/v1/send-email-internal`;
+    // Prepare the request to the send-with-resend edge function
+    const resendFunctionUrl = `${supabaseUrl}/functions/v1/send-with-resend`;
     
-    // Send the email using our own edge function
-    const response = await fetch(emailFunctionUrl, {
+    // Send the email using the Resend edge function
+    const response = await fetch(resendFunctionUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -56,12 +56,12 @@ export async function sendInvoiceEmail(invoice: Invoice, email: string, pdfBuffe
     
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("Error response from email service:", response.status, errorText);
+      console.error("Error response from Resend email service:", response.status, errorText);
       throw new Error(`Failed to send email: ${response.status} - ${errorText}`);
     }
     
     const result = await response.json();
-    console.log("Email sent successfully:", result);
+    console.log("Email sent successfully via Resend:", result);
     return true;
   } catch (error) {
     console.error("Error in sendInvoiceEmail:", error.message);
