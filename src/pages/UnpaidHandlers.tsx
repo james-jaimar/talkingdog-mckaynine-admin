@@ -6,7 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Helmet } from "react-helmet";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertCircle, ExternalLink } from "lucide-react";
-import { Booking } from "@/components/class-handlers/types/booking";
 import { Button } from "@/components/ui/button";
 import { useNavigate, Link } from "react-router-dom";
 import { useState } from "react";
@@ -52,7 +51,7 @@ export default function UnpaidHandlers() {
         const filteredBookings = [];
         for (const booking of unpaidBookings || []) {
           // Check if booking has a paid invoice
-          const { data: invoiceItem } = await supabase
+          const { data: invoiceItem, error: invoiceError } = await supabase
             .from('invoice_items')
             .select(`
               invoice_id,
@@ -64,6 +63,11 @@ export default function UnpaidHandlers() {
             `)
             .eq('booking_id', booking.id)
             .maybeSingle();
+          
+          if (invoiceError) {
+            console.error(`Error checking invoice for booking ${booking.id}:`, invoiceError);
+            continue;
+          }
           
           // Only include booking if it has no invoice or invoice is not paid
           if (!invoiceItem || (invoiceItem && !invoiceItem.invoices.payment_received)) {

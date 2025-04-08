@@ -38,10 +38,10 @@ export default function Dashboard() {
       try {
         // First get counts for standard metrics
         const [
-          { count: clientCount }, 
-          { count: dogCount }, 
-          { count: bookingCount }, 
-          { count: branchCount }
+          { count: clientCount, error: clientError }, 
+          { count: dogCount, error: dogError }, 
+          { count: bookingCount, error: bookingError }, 
+          { count: branchCount, error: branchError }
         ] = await Promise.all([
           supabase.from('clients').select('*', { count: 'exact', head: true }),
           supabase.from('dogs').select('*', { count: 'exact', head: true }),
@@ -49,12 +49,26 @@ export default function Dashboard() {
           supabase.from('branches').select('*', { count: 'exact', head: true })
         ]);
         
-        // Now get only bookings that don't have proof_of_payment AND don't have a paid invoice
-        const { data: unpaidCount, error: unpaidError } = await enhancedSupabase.rpc('count_unpaid_bookings');
+        // Check for errors in any of the count queries
+        if (clientError) throw clientError;
+        if (dogError) throw dogError;
+        if (bookingError) throw bookingError;
+        if (branchError) throw branchError;
         
-        if (unpaidError) {
+        // Now get only bookings that don't have proof_of_payment AND don't have a paid invoice
+        let unpaidCount = 0;
+        try {
+          const { data, error: unpaidError } = await enhancedSupabase.rpc('count_unpaid_bookings');
+          
+          if (unpaidError) {
+            console.error("Dashboard - Error counting unpaid bookings:", unpaidError);
+            // Still continue with the stats we have, just set unpaidCount to 0
+          } else {
+            unpaidCount = data || 0;
+          }
+        } catch (unpaidError) {
           console.error("Dashboard - Error counting unpaid bookings:", unpaidError);
-          throw unpaidError;
+          // Still continue with the stats we have, just set unpaidCount to 0
         }
         
         console.log("Dashboard stats:", { clientCount, dogCount, bookingCount, branchCount, unpaidCount });
