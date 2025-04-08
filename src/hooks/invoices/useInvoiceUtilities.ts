@@ -48,13 +48,14 @@ export const generateInvoiceNumber = async (): Promise<string> => {
         const { data: authData } = await supabase.auth.getUser();
         
         if (authData?.user) {
-          // Completely avoid complex type inference by using simpler query pattern
-          const response = await supabase
+          // Use the new RPC function for getting the default branch name
+          const { data: branchData, error: branchError } = await supabase
             .rpc('get_default_branch_name');
             
-          if (response.data) {
-            branchName = response.data.toLowerCase();
-            console.log("Invoice: Using default branch:", response.data);
+          if (!branchError && branchData) {
+            // The function returns text, so we can safely use toLowerCase
+            branchName = String(branchData).toLowerCase();
+            console.log("Invoice: Using default branch:", branchData);
             
             if (branchName.includes('delta')) {
               branchPrefix = "McD";
@@ -82,12 +83,12 @@ export const generateInvoiceNumber = async (): Promise<string> => {
     try {
       console.log("Querying invoices with prefix:", invoicePrefix);
       
-      // Get all invoice numbers as plain text to avoid complex type inference
-      const response = await supabase
+      // Use the new RPC function for counting invoices with a prefix
+      const { data: invoiceCount, error: countError } = await supabase
         .rpc('count_invoices_with_prefix', { prefix: invoicePrefix });
       
-      if (response.data !== null) {
-        count = response.data;
+      if (!countError && typeof invoiceCount === 'number') {
+        count = invoiceCount;
         console.log(`Found ${count} invoices with prefix ${invoicePrefix}`);
       }
     } catch (err) {

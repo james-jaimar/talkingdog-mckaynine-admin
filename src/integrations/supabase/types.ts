@@ -862,6 +862,14 @@ export type Database = {
         Args: { required_role: string }
         Returns: boolean
       }
+      count_invoices_with_prefix: {
+        Args: { prefix: string }
+        Returns: number
+      }
+      get_default_branch_name: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       get_invoice_items_with_details: {
         Args: { p_invoice_id: string }
         Returns: {
