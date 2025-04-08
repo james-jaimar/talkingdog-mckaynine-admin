@@ -6,7 +6,7 @@ import { Helmet } from "react-helmet";
 import { useNavigate } from "react-router-dom";
 import { useInvoiceDetails } from "@/hooks/invoices/useInvoiceQueries";
 import { toast } from "sonner";
-import { generateInvoicePDF } from "@/components/invoices/pdf/InvoicePDFGenerator";
+import { generateInvoicePDF } from "@/components/invoices/pdf";
 import { InvoiceDetailHeader } from "@/components/invoices/detail/InvoiceDetailHeader";
 import { InvoiceLoadingState } from "@/components/invoices/detail/InvoiceLoadingState";
 import { InvoiceNotFound } from "@/components/invoices/detail/InvoiceNotFound";

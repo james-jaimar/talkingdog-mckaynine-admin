@@ -1,0 +1,2 @@
+
+export { generateInvoicePDF } from './InvoicePDFGenerator';

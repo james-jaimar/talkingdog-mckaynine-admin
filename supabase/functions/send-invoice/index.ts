@@ -2,7 +2,16 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { SmtpClient } from "https://deno.land/x/smtp@v0.7.0/mod.ts";
 import { jsPDF } from "npm:jspdf@2.5.1";
-import autoTable from "npm:jspdf-autotable@3.8.2";
+import {
+  formatCurrency, 
+  formatDate, 
+  addPaidStamp,
+  addInvoiceHeader,
+  addClientInfo,
+  addInvoiceItemsTable,
+  addInvoiceSummary,
+  addInvoiceFooter
+} from "./pdf-helpers.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -40,28 +49,11 @@ interface InvoiceRequest {
   email: string;
 }
 
-// Helper function to format currency
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('en-ZA', {
-    style: 'currency',
-    currency: 'ZAR'
-  }).format(amount);
-}
-
-// Helper function to format date
-function formatDate(dateString: string): string {
-  const date = new Date(dateString);
-  return new Intl.DateTimeFormat('en-ZA', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric'
-  }).format(date);
-}
-
 // Function to generate PDF
 async function generatePDF(invoice: InvoiceRequest["invoice"]): Promise<ArrayBuffer> {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.width;
+  const pageHeight = doc.internal.pageSize.height;
   
   // Add title
   doc.setFontSize(20);
@@ -69,123 +61,25 @@ async function generatePDF(invoice: InvoiceRequest["invoice"]): Promise<ArrayBuf
   
   // Add "PAID" stamp for paid invoices
   if (invoice.status === 'paid') {
-    // Use proper casting to access advanced jsPDF methods
-    const docWithContext = doc as unknown as {
-      setGlobalAlpha: (alpha: number) => void;
-      saveGraphicsState: () => void;
-      restoreGraphicsState: () => void;
-      translate: (x: number, y: number) => void;
-      rotate: (angle: number) => void;
-    };
-    
-    // Set transparency
-    docWithContext.setGlobalAlpha(0.3);
-    
-    // Set appearance for the "PAID" stamp
-    doc.setFillColor(39, 174, 96); // Green color
-    doc.setTextColor(255, 255, 255); // White text
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(72);
-    
-    // Rotate and position the "PAID" text as a stamp
-    docWithContext.saveGraphicsState();
-    docWithContext.translate(pageWidth / 2, 120);
-    docWithContext.rotate(-30);
-    doc.text("PAID", 0, 0, { align: 'center' });
-    docWithContext.restoreGraphicsState();
-    
-    // Reset styles for the rest of the document
-    docWithContext.setGlobalAlpha(1);
-    doc.setTextColor(0, 0, 0);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(12);
+    addPaidStamp(doc, pageWidth);
   }
   
   const startY = 40;
   
-  doc.setFontSize(15);
-  doc.text(`INVOICE: ${invoice.invoice_number}`, 14, startY);
+  // Add invoice header
+  const headerEndY = addInvoiceHeader(doc, invoice, startY, pageWidth);
   
-  // Add status
-  doc.setFontSize(12);
-  doc.text(`Status: ${invoice.status.toUpperCase()}`, pageWidth - 60, startY);
-
-  // Invoice details
-  doc.setFontSize(10);
-  doc.text(`Issued Date: ${formatDate(invoice.issued_date)}`, pageWidth - 80, startY + 10);
-  doc.text(`Due Date: ${formatDate(invoice.due_date)}`, pageWidth - 80, startY + 15);
+  // Add client info
+  const clientInfoEndY = addClientInfo(doc, invoice, headerEndY);
   
-  // Client info
-  doc.setFontSize(12);
-  doc.text("Bill To:", 14, startY + 25);
+  // Add invoice items table
+  const tableEndY = addInvoiceItemsTable(doc, invoice, clientInfoEndY);
   
-  if (invoice.client) {
-    doc.setFontSize(10);
-    doc.text(`${invoice.client.first_name} ${invoice.client.last_name}`, 14, startY + 32);
-    doc.text(`${invoice.client.email}`, 14, startY + 37);
-    
-    if (invoice.client.phone) {
-      doc.text(`${invoice.client.phone}`, 14, startY + 42);
-    }
-  }
-
-  // Invoice items table
-  autoTable(doc, {
-    startY: startY + 55,
-    head: [
-      [
-        'Description',
-        'Quantity',
-        'Unit Price',
-        'Amount'
-      ]
-    ],
-    body: invoice.items?.map(item => [
-      item.description,
-      item.quantity.toString(),
-      formatCurrency(item.unit_price),
-      formatCurrency(item.amount)
-    ]) || [['No items found for this invoice', '', '', '']],
-    styles: {
-      fontSize: 9,
-      cellPadding: 3,
-    },
-    headStyles: {
-      fillColor: [80, 80, 80],
-      textColor: [255, 255, 255],
-      fontStyle: 'bold'
-    },
-    columnStyles: {
-      0: { cellWidth: 'auto' },
-      1: { halign: 'right', cellWidth: 25 },
-      2: { halign: 'right', cellWidth: 35 },
-      3: { halign: 'right', cellWidth: 35 }
-    },
-  });
-
-  // Add summary
-  const finalY = (doc as any).lastAutoTable.finalY + 10;
+  // Add invoice summary
+  addInvoiceSummary(doc, invoice, tableEndY, pageWidth);
   
-  // Subtotal, Tax, Total
-  doc.text("Subtotal:", pageWidth - 90, finalY + 8);
-  doc.text(formatCurrency(invoice.subtotal), pageWidth - 25, finalY + 8, { align: "right" });
-  
-  doc.text(`Tax (${invoice.tax_rate}%):`, pageWidth - 90, finalY + 15);
-  doc.text(formatCurrency(invoice.tax_amount), pageWidth - 25, finalY + 15, { align: "right" });
-  
-  doc.setFont("helvetica", "bold");
-  doc.text("Total:", pageWidth - 90, finalY + 25);
-  doc.text(formatCurrency(invoice.total), pageWidth - 25, finalY + 25, { align: "right" });
-  doc.setFont("helvetica", "normal");
-  
-  // Banking details in the footer
-  const footerY = doc.internal.pageSize.height - 40;
-  doc.setFontSize(10);
-  doc.text("BANKING DETAILS: Adrienne Hawkins. FNB, Sandton City (26095400). Account Number: 6212 7520 189", pageWidth / 2, footerY, { align: 'center' });
-  doc.text("Please use your name as reference.", pageWidth / 2, footerY + 6, { align: 'center' });
-  
-  // Thank you message
-  doc.text("Thank you for your business!", pageWidth / 2, doc.internal.pageSize.height - 15, { align: "center" });
+  // Add footer
+  addInvoiceFooter(doc, pageWidth, pageHeight);
 
   return doc.output('arraybuffer');
 }
