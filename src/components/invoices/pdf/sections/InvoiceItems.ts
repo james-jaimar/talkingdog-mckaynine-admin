@@ -11,23 +11,9 @@ export const addInvoiceItemsTable = (doc: jsPDF, invoice: Invoice, startY: numbe
   try {
     console.log("Adding invoice items to PDF table");
     
-    // Define consistent column widths
-    const tableColumns = [
-      { header: 'Description', dataKey: 'description' },
-      { header: 'Quantity', dataKey: 'quantity' },
-      { header: 'Unit Price', dataKey: 'unit_price' },
-      { header: 'Amount', dataKey: 'amount' }
-    ];
-    
-    const tableRows = invoice.items?.map(item => ({
-      description: item.description,
-      quantity: item.quantity.toString(),
-      unit_price: formatCurrency(item.unit_price),
-      amount: formatCurrency(item.amount || item.quantity * item.unit_price)
-    })) || [{ description: 'No items found for this invoice', quantity: '', unit_price: '', amount: '' }];
-    
+    // Use autoTable for proper formatting
     autoTable(doc, {
-      startY: startY + 5, // Add some spacing before the table
+      startY: startY,
       head: [
         [
           'Description',
@@ -36,17 +22,17 @@ export const addInvoiceItemsTable = (doc: jsPDF, invoice: Invoice, startY: numbe
           'Amount'
         ]
       ],
-      body: tableRows.map(row => [
-        row.description,
-        row.quantity,
-        row.unit_price,
-        row.amount
-      ]),
+      body: invoice.items?.map(item => [
+        item.description,
+        item.quantity?.toString() || '1',
+        formatCurrency(item.unit_price || 0),
+        formatCurrency(item.amount || (item.quantity * item.unit_price) || 0)
+      ]) || [['No items found for this invoice', '', '', '']],
       styles: {
         fontSize: 9,
-        cellPadding: 5, // Increased padding for better readability
+        cellPadding: 5,
         lineWidth: 0.5,
-        overflow: 'linebreak', // Handle overflow with line breaks
+        overflow: 'linebreak'
       },
       headStyles: {
         fillColor: [70, 70, 70],
@@ -55,39 +41,22 @@ export const addInvoiceItemsTable = (doc: jsPDF, invoice: Invoice, startY: numbe
         halign: 'left'
       },
       columnStyles: {
-        0: { cellWidth: 'auto' }, // Description takes available space
-        1: { halign: 'center', cellWidth: 30 }, // Center-align quantity
-        2: { halign: 'right', cellWidth: 40 }, // Right-align price
-        3: { halign: 'right', cellWidth: 40 } // Right-align amount
+        0: { cellWidth: 'auto' },
+        1: { halign: 'center', cellWidth: 30 },
+        2: { halign: 'right', cellWidth: 40 },
+        3: { halign: 'right', cellWidth: 40 }
       },
       alternateRowStyles: {
-        fillColor: [245, 245, 245] // Light gray for alternate rows
+        fillColor: [245, 245, 245]
       },
-      margin: { left: 14, right: 14 },
-      didParseCell: function(data) {
-        // Ensure description text wraps properly
-        if (data.column.index === 0) {
-          data.cell.styles.cellWidth = 'auto';
-        }
-      },
-      willDrawCell: function(data) {
-        // Add dynamic styling for cells if needed
-        if (data.section === 'head') {
-          // Custom header styling
-          doc.setFillColor(70, 70, 70);
-        }
-      },
-      didDrawPage: function(data) {
-        // Handle page breaks if needed
-        console.log("Page break occurred in table");
-      }
+      margin: { left: 14, right: 14 }
     });
-
+    
     // Return the final Y position after the table
-    return (doc as any).lastAutoTable.finalY + 5; // Add some spacing after the table
+    return (doc as any).lastAutoTable.finalY;
   } catch (error) {
     console.error("Error creating invoice items table:", error);
     // Return a reasonable position if table creation fails
-    return startY + 100;
+    return startY + 40;
   }
 };

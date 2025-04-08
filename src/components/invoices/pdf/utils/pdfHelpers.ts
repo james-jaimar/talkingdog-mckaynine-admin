@@ -6,17 +6,31 @@ import { jsPDF } from "jspdf";
  */
 export const addLogoToPdf = (doc: jsPDF, pageWidth: number) => {
   try {
-    // Use the McKaynine logo
+    // Use the McKaynine logo with paws on both sides
     const logoPath = "/lovable-uploads/bb90b920-3e7c-4462-a0f1-d47b855c07b7.png";
     
-    // Set logo dimensions - 75% of page width
-    const imgWidth = pageWidth * 0.75; // 75% of page width
-    const imgHeight = 45; // Adjusted height 
+    // Set logo dimensions for proper display
+    const imgWidth = 170;
+    const imgHeight = 55;
     const xPosition = (pageWidth - imgWidth) / 2; // Center horizontally
     
-    // Add the logo image - use an absolute path for better reliability
+    // Add the logo image
     doc.addImage(logoPath, "PNG", xPosition, 10, imgWidth, imgHeight);
     console.log("Logo added successfully from:", logoPath);
+    
+    // Add company address and details
+    doc.setFontSize(9);
+    doc.setTextColor(100, 100, 100);
+    
+    // Address lines centered below logo
+    doc.text("Delta Park Branch", pageWidth / 2, 68, { align: 'center' });
+    doc.text("Camp Delta (SA Boyscouts), Delta Park Entrance, Craighall Road, Delta Park", pageWidth / 2, 73, { align: 'center' });
+    doc.text("Tel: 082 502-6160", pageWidth / 2, 78, { align: 'center' });
+    doc.text("www.mckaynine.co.za", pageWidth / 2, 83, { align: 'center' });
+    
+    // Reset text color to black for the rest of the document
+    doc.setTextColor(0, 0, 0);
+    
     return true;
   } catch (logoError) {
     console.error("Error adding logo to PDF:", logoError);

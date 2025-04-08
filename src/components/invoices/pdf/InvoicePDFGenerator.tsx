@@ -22,10 +22,15 @@ export const generateInvoicePDF = async (invoice: Invoice) => {
     const logoAdded = addLogoToPdf(doc, pageWidth);
     
     // Set the starting Y position based on whether the logo was added
-    const startY = logoAdded ? 65 : 40;
+    const startY = logoAdded ? 90 : 40; // Use 90 to account for logo and address text
     
     // Add invoice header (invoice number, status, dates)
     const headerEndY = addInvoiceHeader(doc, invoice, startY, pageWidth);
+    
+    // Add horizontal separator line after header
+    doc.setDrawColor(200, 200, 200);
+    doc.setLineWidth(0.5);
+    doc.line(14, headerEndY - 5, pageWidth - 14, headerEndY - 5);
     
     // Add client information
     const clientInfoEndY = addClientInfo(doc, invoice, headerEndY);
