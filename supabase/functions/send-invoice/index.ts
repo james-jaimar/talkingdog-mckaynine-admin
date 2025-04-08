@@ -23,8 +23,8 @@ const handler = async (req: Request): Promise<Response> => {
       const pdfBuffer = await generatePDF(invoice);
       console.log("PDF generation completed successfully");
       
-      // Send invoice email using Supabase's built-in email service
-      console.log(`Sending email to ${email} using Supabase email service...`);
+      // Send invoice email
+      console.log(`Sending email to ${email}...`);
       
       try {
         await sendInvoiceEmail(invoice, email, pdfBuffer);
@@ -44,7 +44,7 @@ const handler = async (req: Request): Promise<Response> => {
           }
         );
       } catch (emailError) {
-        console.error("Email sending error details:", emailError);
+        console.error("Email sending error:", emailError);
         if (emailError instanceof Error) {
           console.error("Email error stack:", emailError.stack);
         }
@@ -53,7 +53,8 @@ const handler = async (req: Request): Promise<Response> => {
           JSON.stringify({ 
             success: false, 
             error: `Email sending failed: ${emailError.message}`,
-            details: emailError instanceof Error ? emailError.message : String(emailError)
+            details: emailError instanceof Error ? emailError.message : String(emailError),
+            stack: emailError instanceof Error ? emailError.stack : undefined
           }),
           {
             status: 500,
@@ -65,7 +66,7 @@ const handler = async (req: Request): Promise<Response> => {
         );
       }
     } catch (pdfError) {
-      console.error("PDF generation error details:", pdfError);
+      console.error("PDF generation error:", pdfError);
       if (pdfError instanceof Error) {
         console.error("PDF error stack:", pdfError.stack);
       }

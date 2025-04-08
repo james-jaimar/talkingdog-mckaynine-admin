@@ -1,4 +1,3 @@
-
 import { Invoice } from "./types.ts";
 import { formatCurrency, formatDate } from "./pdf-helpers.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
@@ -33,8 +32,8 @@ export async function sendInvoiceEmail(invoice: Invoice, email: string, pdfBuffe
     
     console.log(`Sending email via Supabase to: ${email}`);
     
-    // Send email through Supabase internal email function
-    const { error: emailError } = await supabase.functions.invoke('send-email-internal', {
+    // Send email directly using the SMTP function
+    const { data, error } = await supabase.functions.invoke('send-with-smtp', {
       body: {
         to: email,
         subject: emailSubject,
@@ -50,12 +49,17 @@ export async function sendInvoiceEmail(invoice: Invoice, email: string, pdfBuffe
       }
     });
     
-    if (emailError) {
-      console.error("Error sending email through Supabase:", emailError);
-      throw new Error(`Failed to send email: ${emailError.message}`);
+    if (error) {
+      console.error("Error sending email directly through SMTP:", error);
+      throw new Error(`Failed to send email: ${error.message}`);
     }
     
-    console.log("Email sent successfully through Supabase");
+    if (!data || data.success === false) {
+      console.error("SMTP function returned error:", data?.error || "Unknown error");
+      throw new Error(data?.error || "Failed to send email through SMTP");
+    }
+    
+    console.log("Email sent successfully through SMTP");
     return true;
   } catch (error) {
     console.error("Error in sendInvoiceEmail:", error.message);
