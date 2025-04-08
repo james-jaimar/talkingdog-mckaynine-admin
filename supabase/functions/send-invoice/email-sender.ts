@@ -26,10 +26,14 @@ export async function sendInvoiceEmail(invoice: Invoice, email: string, pdfBuffe
       String.fromCharCode(...new Uint8Array(pdfBuffer))
     );
     
-    // Prepare the email request
+    // Get sender email from environment or use default
     const fromEmail = Deno.env.get("FROM_EMAIL") || "noreply@mckaynine.co.za";
     
-    // Prepare email payload for Supabase
+    console.log(`Using project ref: ${projectRef}`);
+    console.log(`Sending email from: ${fromEmail}`);
+    console.log(`Preparing email to: ${email}`);
+    
+    // Prepare email payload for Supabase Email service
     const payload = {
       from: fromEmail,
       to: email,
@@ -42,7 +46,7 @@ export async function sendInvoiceEmail(invoice: Invoice, email: string, pdfBuffe
       }]
     };
     
-    console.log(`Sending email via Supabase Email API...`);
+    console.log("Sending email via Supabase Email API...");
     
     // Make the API request to Supabase Email API
     const response = await fetch(`https://${projectRef}.supabase.co/functions/v1/send-email`, {
@@ -56,7 +60,8 @@ export async function sendInvoiceEmail(invoice: Invoice, email: string, pdfBuffe
     
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`Email API error: ${response.status} - ${errorText}`);
+      console.error(`Email API error response status: ${response.status}`);
+      console.error(`Email API error response body: ${errorText}`);
       throw new Error(`Failed to send email: ${response.status} - ${errorText}`);
     }
     
@@ -65,7 +70,10 @@ export async function sendInvoiceEmail(invoice: Invoice, email: string, pdfBuffe
     
     return true;
   } catch (error) {
-    console.error("Error sending email:", error);
+    console.error("Error sending email:", error.message);
+    if (error instanceof Error) {
+      console.error("Error stack:", error.stack);
+    }
     throw error;
   }
 }

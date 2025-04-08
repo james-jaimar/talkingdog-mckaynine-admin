@@ -20,24 +20,52 @@ const handler = async (req: Request): Promise<Response> => {
     
     // Send invoice email
     console.log(`Sending email to ${email}...`);
-    const result = await sendInvoiceEmail(invoice, email, pdfBuffer);
-
-    console.log("Email sent successfully!");
+    
+    try {
+      const result = await sendInvoiceEmail(invoice, email, pdfBuffer);
+      console.log("Email sent successfully!");
+      
+      return new Response(
+        JSON.stringify({ success: true, message: "Invoice sent successfully" }),
+        {
+          status: 200,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+    } catch (emailError) {
+      console.error("Error in email sending:", emailError);
+      
+      // Return detailed email error information
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: `Email sending failed: ${emailError.message}`,
+          details: emailError
+        }),
+        {
+          status: 500,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+    }
+  } catch (error) {
+    console.error("Error in invoice function:", error.message);
+    if (error instanceof Error && error.stack) {
+      console.error("Stack trace:", error.stack);
+    }
     
     return new Response(
-      JSON.stringify({ success: true, message: "Invoice sent successfully" }),
-      {
-        status: 200,
-        headers: {
-          ...corsHeaders,
-          "Content-Type": "application/json",
-        },
-      }
-    );
-  } catch (error) {
-    console.error("Error sending invoice:", error.message);
-    return new Response(
-      JSON.stringify({ success: false, error: error.message }),
+      JSON.stringify({ 
+        success: false, 
+        error: error.message,
+        type: error.constructor.name
+      }),
       {
         status: 500,
         headers: {

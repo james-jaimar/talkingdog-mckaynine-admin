@@ -14,7 +14,15 @@ export function useEmailInvoice() {
           body: { invoice, email }
         });
 
-        if (error) throw new Error(error.message);
+        if (error) {
+          console.error("Supabase function error:", error);
+          throw new Error(`Function error: ${error.message}`);
+        }
+        
+        if (!data || data.success === false) {
+          console.error("Function returned error:", data?.error || "Unknown error");
+          throw new Error(data?.error || "Unknown error sending invoice");
+        }
         
         // If function succeeds, update the invoice as sent
         if (data.success && invoice.status === 'draft') {
@@ -26,7 +34,10 @@ export function useEmailInvoice() {
             })
             .eq('id', invoice.id);
             
-          if (updateError) throw updateError;
+          if (updateError) {
+            console.error("Error updating invoice status:", updateError);
+            throw updateError;
+          }
         }
 
         return data;
