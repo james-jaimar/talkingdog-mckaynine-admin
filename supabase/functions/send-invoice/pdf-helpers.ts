@@ -20,7 +20,7 @@ export function formatDate(dateString: string): string {
   }).format(date);
 }
 
-// Add paid stamp to PDF - uses standard jsPDF methods
+// Add paid stamp to PDF - ensure consistent method with client implementation
 export function addPaidStamp(doc: jsPDF, pageWidth: number) {
   // Set appearance for the "PAID" stamp
   doc.setFillColor(39, 174, 96); // Green color

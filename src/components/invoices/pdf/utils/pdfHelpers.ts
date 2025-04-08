@@ -14,7 +14,7 @@ export const addPaidStamp = (doc: jsPDF, pageWidth: number) => {
   // Save current graphics state
   doc.saveGraphicsState();
   
-  // Set transparency using the standard opacity method supported by jsPDF
+  // Set transparency using the standard opacity method
   doc.setGState(new (doc as any).GState({ opacity: 0.3 }));
   
   // Calculate position for the center of the page
