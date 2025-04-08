@@ -54,6 +54,8 @@ export interface CustomSupabaseRPC {
   check_user_role: (params: { required_role: string }) => Promise<{ data: boolean; error: null | Error }>;
   is_trainer: (params: { user_id: string }) => Promise<{ data: boolean; error: null | Error }>;
   get_invoice_items_with_details: (params: { p_invoice_id: string }) => Promise<{ data: InvoiceItemWithDetails[]; error: null | Error }>;
+  count_invoices_with_prefix: (params: { prefix: string }) => Promise<{ data: number; error: null | Error }>;
+  get_default_branch_name: (params?: {}) => Promise<{ data: string; error: null | Error }>;
 }
 
 // Define enhanced client type that includes our custom RPC functions
