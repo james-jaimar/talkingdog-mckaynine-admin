@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { ExtendedBadge } from "@/components/ui/badge-variants";
 import { Branch } from "@/context/BranchContext";
+import { useEffect } from "react";
 
 export function BranchSelector() {
   // Define a type-safe default state that matches the BranchContextType structure
@@ -29,6 +30,13 @@ export function BranchSelector() {
   }
   
   const { branches, currentBranch, setCurrentBranch, isLoading } = branchInfo;
+  
+  // Log the current branch for debugging
+  useEffect(() => {
+    if (currentBranch) {
+      console.log("Current branch selected:", currentBranch.name, currentBranch.id);
+    }
+  }, [currentBranch]);
 
   if (isLoading) {
     return (
@@ -47,18 +55,21 @@ export function BranchSelector() {
       </ExtendedBadge>
     );
   }
+  
+  const handleBranchChange = (value: string) => {
+    const branch = branches.find(b => b.id === value);
+    if (branch) {
+      console.log("Switching branch to:", branch.name, branch.id);
+      setCurrentBranch(branch);
+    }
+  };
 
   return (
     <div className="flex items-center gap-2">
       <GitBranch className="w-4 h-4 text-muted-foreground" />
       <Select
         value={currentBranch?.id || ""}
-        onValueChange={(value) => {
-          const branch = branches.find(b => b.id === value);
-          if (branch) {
-            setCurrentBranch(branch);
-          }
-        }}
+        onValueChange={handleBranchChange}
       >
         <SelectTrigger className="w-[180px] bg-background border-input text-foreground">
           <SelectValue placeholder="Select branch" />

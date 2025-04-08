@@ -1,6 +1,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
+import { useBranch } from "@/context/BranchContext";
 
 /**
  * Generates a sequential invoice number with branch code and month prefix
@@ -11,30 +12,61 @@ export const generateInvoiceNumber = async (): Promise<string> => {
   try {
     // Get current date info for the prefix
     const now = new Date();
-    const monthAbbreviation = format(now, "MMM");
+    const monthAbbreviation = format(now, "MMM").toUpperCase();
     
     // Get branch information to determine the prefix
     let branchPrefix = "Mc"; // Default prefix if we can't determine branch
+    let branchName = "";
     
     try {
-      // Attempt to get the user's current branch
-      const { data: userProfiles } = await supabase.auth.getUser();
+      // Try to get the current branch from localStorage first (most reliable)
+      const branchId = localStorage.getItem('currentBranchId');
       
-      if (userProfiles?.user) {
-        const { data: branchData } = await supabase
+      if (branchId) {
+        // Fetch the branch name from Supabase
+        const { data: branchData, error } = await supabase
           .from('branches')
           .select('name')
+          .eq('id', branchId)
           .single();
-        
-        if (branchData?.name) {
-          // Set prefix based on branch name
-          if (branchData.name.toLowerCase().includes('delta')) {
+          
+        if (!error && branchData) {
+          branchName = branchData.name.toLowerCase();
+          console.log("Invoice: Using branch from localStorage:", branchData.name);
+          
+          if (branchName.includes('delta')) {
             branchPrefix = "McD";
-          } else if (branchData.name.toLowerCase().includes('randburg')) {
+          } else if (branchName.includes('randburg')) {
             branchPrefix = "McR";
           }
         }
       }
+      
+      // If we couldn't get from localStorage, try querying directly
+      if (!branchName) {
+        const { data: userProfiles } = await supabase.auth.getUser();
+        
+        if (userProfiles?.user) {
+          const { data: defaultBranch } = await supabase
+            .from('branches')
+            .select('name')
+            .eq('is_default', true)
+            .maybeSingle();
+            
+          if (defaultBranch?.name) {
+            branchName = defaultBranch.name.toLowerCase();
+            console.log("Invoice: Using default branch:", defaultBranch.name);
+            
+            if (branchName.includes('delta')) {
+              branchPrefix = "McD";
+            } else if (branchName.includes('randburg')) {
+              branchPrefix = "McR";
+            }
+          }
+        }
+      }
+      
+      console.log("Invoice: Using branch prefix:", branchPrefix);
     } catch (err) {
       console.warn("Error fetching branch info, using default prefix:", err);
       // Will use default prefix defined above
@@ -54,6 +86,7 @@ export const generateInvoiceNumber = async (): Promise<string> => {
         // Will use fallback below
       } else {
         count = resultCount;
+        console.log(`Invoice: Found ${count} existing invoices with prefix ${branchPrefix}${monthAbbreviation}`);
       }
     } catch (err) {
       console.warn("Error checking existing invoices, using fallback method:", err);
@@ -74,13 +107,14 @@ export const generateInvoiceNumber = async (): Promise<string> => {
     // Format the invoice number as McDAPR0001 or McRAPR0001
     const invoiceNumber = `${branchPrefix}${monthAbbreviation}${sequentialNumber}`;
     
+    console.log("Generated invoice number:", invoiceNumber);
     return invoiceNumber;
   } catch (error) {
     console.error("Error generating invoice number:", error);
     
     // Ultimate fallback - timestamp-based number with random component
     const now = new Date();
-    const monthAbbreviation = format(now, "MMM");
+    const monthAbbreviation = format(now, "MMM").toUpperCase();
     const timestamp = now.getTime();
     const randomPart = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
     return `Mc${monthAbbreviation}ERR${timestamp.toString().slice(-3)}${randomPart}`;

@@ -17,6 +17,7 @@ import { useClientsData } from "@/hooks/useClientsData";
 import { CalendarIcon, Plus, Trash2, Loader2 } from "lucide-react";
 import { format, addDays } from "date-fns";
 import { cn } from "@/lib/utils";
+import { useBranch } from "@/context/BranchContext";
 
 interface InvoiceCreateDialogProps {
   open: boolean;
@@ -44,6 +45,14 @@ export function InvoiceCreateDialog({ open, onOpenChange }: InvoiceCreateDialogP
   const { generateInvoiceNumber, createInvoice } = useInvoices();
   const { clients, isLoading: clientsLoading } = useClientsData();
   const [isGeneratingNumber, setIsGeneratingNumber] = useState(false);
+  const { currentBranch } = useBranch();
+  
+  // For debugging
+  useEffect(() => {
+    if (open && currentBranch) {
+      console.log("InvoiceCreateDialog opened with branch:", currentBranch.name);
+    }
+  }, [open, currentBranch]);
   
   const form = useForm<InvoiceFormValues>({
     resolver: zodResolver(invoiceSchema),
@@ -72,6 +81,7 @@ export function InvoiceCreateDialog({ open, onOpenChange }: InvoiceCreateDialogP
       const fetchInvoiceNumber = async () => {
         setIsGeneratingNumber(true);
         try {
+          console.log("Requesting invoice number generation with branch:", currentBranch?.name);
           const number = await generateInvoiceNumber();
           form.setValue("invoice_number", number);
         } catch (error) {
@@ -83,7 +93,7 @@ export function InvoiceCreateDialog({ open, onOpenChange }: InvoiceCreateDialogP
       
       fetchInvoiceNumber();
     }
-  }, [open, form, generateInvoiceNumber]);
+  }, [open, form, generateInvoiceNumber, currentBranch]);
   
   // Calculate total
   const calculateSubtotal = () => {

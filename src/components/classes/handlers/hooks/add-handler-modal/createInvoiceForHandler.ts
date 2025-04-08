@@ -30,6 +30,8 @@ export const createInvoiceForHandler = async ({
   currentBranch
 }: CreateInvoiceProps): Promise<boolean> => {
   try {
+    console.log("Creating invoice with branch context:", currentBranch?.name);
+    
     // Generate invoice number, with improved fallback handling
     let invoiceNumber;
     try {
@@ -39,7 +41,7 @@ export const createInvoiceForHandler = async ({
       
       // Create a fallback invoice number based on timestamp, month and random value
       const now = new Date();
-      const monthAbbreviation = format(now, "MMM");
+      const monthAbbreviation = format(now, "MMM").toUpperCase();
       const timestamp = now.getTime();
       const random = Math.floor(Math.random() * 10000);
       
@@ -49,21 +51,43 @@ export const createInvoiceForHandler = async ({
         if (currentBranch?.name) {
           if (currentBranch.name.toLowerCase().includes('delta')) {
             branchPrefix = "McD";
+            console.log("Using Delta branch prefix in fallback");
           } else if (currentBranch.name.toLowerCase().includes('randburg')) {
             branchPrefix = "McR";
+            console.log("Using Randburg branch prefix in fallback");
           }
         } else {
-          const { data: branchData } = await supabase
-            .from('branches')
-            .select('name')
-            .limit(1)
-            .maybeSingle();
-            
-          if (branchData?.name) {
-            if (branchData.name.toLowerCase().includes('delta')) {
-              branchPrefix = "McD";
-            } else if (branchData.name.toLowerCase().includes('randburg')) {
-              branchPrefix = "McR";
+          // If no current branch context is available, try to get from localStorage
+          const branchId = localStorage.getItem('currentBranchId');
+          if (branchId) {
+            const { data: branchData } = await supabase
+              .from('branches')
+              .select('name')
+              .eq('id', branchId)
+              .maybeSingle();
+              
+            if (branchData?.name) {
+              if (branchData.name.toLowerCase().includes('delta')) {
+                branchPrefix = "McD";
+              } else if (branchData.name.toLowerCase().includes('randburg')) {
+                branchPrefix = "McR";
+              }
+              console.log("Using branch from localStorage in fallback:", branchData.name);
+            }
+          } else {
+            const { data: branchData } = await supabase
+              .from('branches')
+              .select('name')
+              .limit(1)
+              .maybeSingle();
+              
+            if (branchData?.name) {
+              if (branchData.name.toLowerCase().includes('delta')) {
+                branchPrefix = "McD";
+              } else if (branchData.name.toLowerCase().includes('randburg')) {
+                branchPrefix = "McR";
+              }
+              console.log("Using first branch in fallback:", branchData.name);
             }
           }
         }

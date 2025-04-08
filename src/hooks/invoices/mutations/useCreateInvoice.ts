@@ -15,6 +15,7 @@ export function useCreateInvoice() {
     mutationFn: async (values: InvoiceFormValues) => {
       try {
         console.log("Creating invoice with values:", values);
+        console.log("Using invoice number:", values.invoice_number);
         
         // Calculate totals
         const subtotal = values.items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
