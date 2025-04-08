@@ -80,16 +80,17 @@ export const generateInvoiceNumber = async (): Promise<string> => {
     try {
       console.log("Querying invoices with prefix:", invoicePrefix);
       
-      // Use a simplified query to avoid TypeScript type complexity
-      const { data: invoiceNumbers } = await supabase
+      // Simplified query to avoid TypeScript recursion issues
+      const { data: invoices } = await supabase
         .from('invoices')
         .select('invoice_number');
       
-      // Process the data client-side to avoid complex type inference
-      if (invoiceNumbers) {
-        const matchingInvoices = invoiceNumbers.filter(item => 
-          item.invoice_number && 
-          item.invoice_number.startsWith(invoicePrefix)
+      if (invoices && Array.isArray(invoices)) {
+        // Manual filtering on the client side to avoid complex query filters
+        const matchingInvoices = invoices.filter(invoice => 
+          invoice.invoice_number && 
+          typeof invoice.invoice_number === 'string' &&
+          invoice.invoice_number.startsWith(invoicePrefix)
         );
         count = matchingInvoices.length;
         console.log(`Found ${count} invoices with prefix ${invoicePrefix}`);
@@ -99,11 +100,15 @@ export const generateInvoiceNumber = async (): Promise<string> => {
       
       // Simplified fallback approach
       try {
-        // Basic count without complex filtering
-        const { count: totalCount } = await supabase
+        // Simple count query without complex filtering
+        const { count: totalCount, error } = await supabase
           .from('invoices')
           .select('*', { count: 'exact', head: true });
           
+        if (error) {
+          throw error;
+        }
+        
         if (totalCount !== null) {
           count = Math.min(totalCount, 25); // Cap at 25 to be safe
           console.log(`Using total invoice count as fallback: ${count}`);
