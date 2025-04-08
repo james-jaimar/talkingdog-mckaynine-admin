@@ -19,6 +19,7 @@ const handler = async (req: Request): Promise<Response> => {
     try {
       // Generate PDF
       console.log("Generating PDF for invoice:", invoice.invoice_number);
+      console.log("Invoice status before PDF generation:", invoice.status);
       const pdfBuffer = await generatePDF(invoice);
       console.log("PDF generation completed successfully");
       
@@ -43,7 +44,10 @@ const handler = async (req: Request): Promise<Response> => {
           }
         );
       } catch (emailError) {
-        console.error("Email sending error:", emailError);
+        console.error("Email sending error details:", emailError);
+        if (emailError instanceof Error) {
+          console.error("Email error stack:", emailError.stack);
+        }
         
         return new Response(
           JSON.stringify({ 
@@ -61,7 +65,10 @@ const handler = async (req: Request): Promise<Response> => {
         );
       }
     } catch (pdfError) {
-      console.error("PDF generation error:", pdfError);
+      console.error("PDF generation error details:", pdfError);
+      if (pdfError instanceof Error) {
+        console.error("PDF error stack:", pdfError.stack);
+      }
       
       return new Response(
         JSON.stringify({ 
@@ -80,6 +87,9 @@ const handler = async (req: Request): Promise<Response> => {
     }
   } catch (error) {
     console.error("General request error:", error);
+    if (error instanceof Error) {
+      console.error("Error stack:", error.stack);
+    }
     
     return new Response(
       JSON.stringify({ 

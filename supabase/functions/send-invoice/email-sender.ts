@@ -8,7 +8,7 @@ import { formatCurrency, formatDate } from "./pdf-helpers.ts";
  */
 export async function sendInvoiceEmail(invoice: Invoice, email: string, pdfBuffer: ArrayBuffer): Promise<boolean> {
   console.log(`Preparing to send invoice ${invoice.invoice_number} to ${email}`);
-  console.log("Invoice status:", invoice.status);
+  console.log("Invoice status in email sender:", invoice.status);
   
   try {
     const apiKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");

@@ -11,12 +11,15 @@ export function useEmailInvoice() {
         console.log(`Sending invoice ${invoice.invoice_number} to ${email}...`);
         console.log("Invoice status:", invoice.status);
         
+        // Make sure invoice status is lowercase for consistency
+        const normalizedInvoice = {
+          ...invoice,
+          status: invoice.status ? invoice.status.toLowerCase() : 'draft'
+        };
+        
         const { data, error } = await supabase.functions.invoke('send-invoice', {
           body: { 
-            invoice: {
-              ...invoice,
-              status: invoice.status.toLowerCase() // Ensure consistent lowercase for status
-            }, 
+            invoice: normalizedInvoice, 
             email 
           }
         });
@@ -63,7 +66,7 @@ export function useEmailInvoice() {
       if (error.message.includes("PDF generation failed")) {
         toast.error("Failed to generate invoice PDF. Please try again later or contact support.");
       } else if (error.message.includes("Email sending failed")) {
-        toast.error("Failed to send email. Please check the recipient's email address or try again later.");
+        toast.error("Failed to send email. Please check the recipient's email address and that the send-email function is deployed.");
       } else {
         toast.error(`Failed to send invoice: ${error.message}`);
       }

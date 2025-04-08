@@ -16,6 +16,7 @@ import {
 export async function generatePDF(invoice: Invoice): Promise<ArrayBuffer> {
   try {
     console.log("Starting PDF generation...");
+    console.log("Invoice status:", invoice.status);
     
     // Create a new PDF document
     const doc = new jsPDF();
@@ -26,13 +27,19 @@ export async function generatePDF(invoice: Invoice): Promise<ArrayBuffer> {
     doc.setFontSize(20);
     doc.text("McKaynine Training Centre", pageWidth / 2, 20, { align: 'center' });
     
-    // Add "PAID" stamp for paid invoices
-    console.log("Invoice status in PDF generation:", invoice.status);
-    if (invoice.status && invoice.status.toLowerCase() === 'paid') {
-      console.log("Invoice is PAID, adding stamp");
-      // Import the stamp function directly to ensure it's called
-      const { addPaidStamp } = await import("./pdf-sections/stamp.ts");
-      addPaidStamp(doc, pageWidth);
+    // Add "PAID" stamp for paid invoices - normalize status to lowercase for comparison
+    const status = invoice.status ? invoice.status.toLowerCase() : '';
+    console.log("Normalized invoice status for stamp check:", status);
+    
+    if (status === 'paid') {
+      console.log("Invoice is marked as PAID, adding stamp");
+      try {
+        addPaidStamp(doc, pageWidth);
+        console.log("PAID stamp added successfully");
+      } catch (stampError) {
+        console.error("Error adding PAID stamp:", stampError);
+        // Continue without the stamp rather than failing the entire PDF generation
+      }
     }
     
     const startY = 40;
