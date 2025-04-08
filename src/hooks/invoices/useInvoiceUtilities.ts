@@ -81,37 +81,36 @@ export const generateInvoiceNumber = async (): Promise<string> => {
       const invoicePrefix = `${branchPrefix}${monthAbbreviation}`;
       console.log("Querying invoices with prefix:", invoicePrefix);
       
-      // Fix: Use a direct query approach to avoid TypeScript recursion issues
-      const { data, error } = await supabase
+      // Fix: Simplified query approach to avoid TypeScript recursion issues
+      const { count: invoiceCount, error } = await supabase
         .from('invoices')
-        .select('id')
-        .like('invoice_number', `${invoicePrefix}%`);
+        .select('*', { count: 'exact', head: true })
+        .ilike('invoice_number', `${invoicePrefix}%`);
         
       if (error) {
         console.error("Error checking existing invoices:", error);
-      } else if (data) {
-        count = data.length;
+      } else if (invoiceCount !== null) {
+        count = invoiceCount;
         console.log(`Invoice: Found ${count} existing invoices with prefix ${invoicePrefix}`);
       }
     } catch (err) {
       console.error("Error counting invoices:", err);
       
       try {
-        // Fallback to an even simpler query approach
+        // Fallback to a simpler query that just gets all invoices and counts them client-side
         const { data, error } = await supabase
           .from('invoices')
-          .select('id');
+          .select('invoice_number');
           
         if (!error && data) {
-          // Filter manually in JavaScript
           const invoicePrefix = `${branchPrefix}${monthAbbreviation}`;
-          const filteredData = data.filter(invoice => 
-            // We don't have access to invoice_number here, so we can't filter
-            // This is just to handle the count safely
-            true
+          // Count only invoices with matching prefix
+          const matchingInvoices = data.filter(invoice => 
+            invoice.invoice_number && 
+            invoice.invoice_number.startsWith(invoicePrefix)
           );
-          count = filteredData.length;
-          console.log(`Invoice fallback: Using total invoice count as ${count}`);
+          count = matchingInvoices.length;
+          console.log(`Invoice fallback: Found ${count} matching invoices out of ${data.length} total`);
         }
       } catch (fallbackErr) {
         console.error("Even fallback query failed:", fallbackErr);
