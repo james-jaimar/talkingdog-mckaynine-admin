@@ -1,4 +1,3 @@
-
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -9,10 +8,14 @@ import { AlertCircle, ExternalLink } from "lucide-react";
 import { Booking } from "@/components/class-handlers/types/booking";
 import { Button } from "@/components/ui/button";
 import { useNavigate, Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function UnpaidHandlers() {
   const navigate = useNavigate();
+  const [filteredBookings, setFilteredBookings] = useState<any[]>([]);
   
+  // Fetch all bookings with missing proof of payment
   const { data: bookings, isLoading } = useQuery({
     queryKey: ['unpaid-bookings'],
     queryFn: async () => {
@@ -52,6 +55,58 @@ export default function UnpaidHandlers() {
     }
   });
 
+  // Fetch invoice payment status for each booking
+  useEffect(() => {
+    const checkInvoiceStatus = async () => {
+      if (!bookings || bookings.length === 0) return;
+      
+      // Create an array to store the filtered bookings
+      const unpaidBookings = [];
+      
+      // Check each booking for invoice status
+      for (const booking of bookings) {
+        try {
+          // Check if there's an invoice item with this booking ID
+          const { data: invoiceItem, error: itemError } = await supabase
+            .from('invoice_items')
+            .select(`
+              invoice_id,
+              invoices:invoice_id (
+                id,
+                status,
+                payment_received
+              )
+            `)
+            .eq('booking_id', booking.id)
+            .maybeSingle();
+
+          // If there's an error fetching invoice data, keep the booking in the list
+          if (itemError) {
+            console.warn(`Error checking invoice for booking ${booking.id}:`, itemError);
+            unpaidBookings.push(booking);
+            continue;
+          }
+
+          // If there's no invoice for this booking, or if the invoice exists but is not paid
+          if (!invoiceItem || 
+              (invoiceItem && (!invoiceItem.invoices.payment_received && invoiceItem.invoices.status !== 'cancelled'))) {
+            unpaidBookings.push(booking);
+          } else {
+            console.log(`Booking ${booking.id} has a paid or cancelled invoice - excluding from list`);
+          }
+        } catch (err) {
+          console.error(`Error processing booking ${booking.id}:`, err);
+          unpaidBookings.push(booking);
+        }
+      }
+
+      setFilteredBookings(unpaidBookings);
+      console.log(`Filtered to ${unpaidBookings.length} truly unpaid bookings`);
+    };
+
+    checkInvoiceStatus();
+  }, [bookings]);
+
   return (
     <DashboardLayout>
       <Helmet>
@@ -74,8 +129,13 @@ export default function UnpaidHandlers() {
           </CardHeader>
           <CardContent>
             {isLoading ? (
-              <div className="text-center p-6">Loading unpaid handlers...</div>
-            ) : bookings && bookings.length > 0 ? (
+              <div className="text-center p-6">
+                <Skeleton className="h-6 w-48 mx-auto mb-2" />
+                <Skeleton className="h-24 w-full mx-auto" />
+              </div>
+            ) : !filteredBookings ? (
+              <div className="text-center p-6">Checking payment status...</div>
+            ) : filteredBookings.length > 0 ? (
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -88,7 +148,7 @@ export default function UnpaidHandlers() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {bookings.map((booking: any) => (
+                  {filteredBookings.map((booking: any) => (
                     <TableRow key={booking.id}>
                       <TableCell className="font-medium">
                         {booking.clients?.first_name} {booking.clients?.last_name}
