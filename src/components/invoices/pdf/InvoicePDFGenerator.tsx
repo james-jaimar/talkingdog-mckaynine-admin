@@ -18,8 +18,10 @@ export const generateInvoicePDF = async (invoice: Invoice) => {
   // Add McKaynine logo
   const logoAdded = addLogoToPdf(doc, pageWidth);
   
-  // Add "PAID" stamp for paid invoices
+  // Add "PAID" stamp for paid invoices - ensure we check status correctly
+  console.log("Invoice status for PDF generation:", invoice.status);
   if (invoice.status === 'paid') {
+    console.log("Adding PAID stamp to client-side PDF");
     addPaidStamp(doc, pageWidth);
   }
   

@@ -11,15 +11,15 @@ export const addPaidStamp = (doc: jsPDF, pageWidth: number) => {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(72);
   
-  // Save current graphics state
-  doc.saveGraphicsState();
-  
-  // Set transparency using the standard opacity method
-  doc.setGState(new (doc as any).GState({ opacity: 0.3 }));
-  
   // Calculate position for the center of the page
   const stampX = pageWidth / 2;
   const stampY = 120;
+  
+  // Save current graphics state
+  doc.saveGraphicsState();
+  
+  // Set transparency using the proper method for jsPDF
+  doc.setGState(new (doc as any).GState({ opacity: 0.3 }));
   
   // Add rotated "PAID" text as a stamp
   doc.text("PAID", stampX, stampY, { 

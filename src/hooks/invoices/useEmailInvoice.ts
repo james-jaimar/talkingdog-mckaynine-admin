@@ -9,6 +9,7 @@ export function useEmailInvoice() {
     mutationFn: async ({ invoice, email }: { invoice: Invoice; email: string }) => {
       try {
         console.log(`Sending invoice ${invoice.invoice_number} to ${email}...`);
+        console.log("Invoice status:", invoice.status);
         
         const { data, error } = await supabase.functions.invoke('send-invoice', {
           body: { invoice, email }

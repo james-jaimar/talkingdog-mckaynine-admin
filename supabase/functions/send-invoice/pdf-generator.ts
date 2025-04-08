@@ -26,9 +26,10 @@ export async function generatePDF(invoice: Invoice): Promise<ArrayBuffer> {
     doc.setFontSize(20);
     doc.text("McKaynine Training Centre", pageWidth / 2, 20, { align: 'center' });
     
-    // Add "PAID" stamp for paid invoices
+    // Add "PAID" stamp for paid invoices - ensure we check status correctly
+    console.log("Invoice status:", invoice.status);
     if (invoice.status === 'paid') {
-      console.log("Adding PAID stamp");
+      console.log("Adding PAID stamp to invoice");
       addPaidStamp(doc, pageWidth);
     }
     
