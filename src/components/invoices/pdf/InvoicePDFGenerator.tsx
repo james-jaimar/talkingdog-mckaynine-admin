@@ -8,58 +8,66 @@ export const generateInvoicePDF = async (invoice: Invoice) => {
   // Create a new PDF document
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.width;
-
-  // Add title
-  doc.setFontSize(20);
-  doc.text("Invoice", 14, 20);
-
-  // Add invoice number
+  
+  // Add McKaynine logo
+  const logoPath = "/lovable-uploads/bb90b920-3e7c-4462-a0f1-d47b855c07b7.png";
+  try {
+    // Add the image centered at the top of the page
+    // Size: 160x45mm converted to PDF units (approximately)
+    const imgWidth = 160 * 0.352778; // Convert mm to PDF units
+    const imgHeight = 45 * 0.352778;
+    const xPosition = (pageWidth - imgWidth) / 2;
+    
+    doc.addImage(logoPath, "PNG", xPosition, 10, imgWidth, imgHeight);
+  } catch (error) {
+    console.error("Error adding logo:", error);
+    // If logo fails to load, add a text title instead
+    doc.setFontSize(20);
+    doc.text("McKaynine Training Centre", pageWidth / 2, 20, { align: 'center' });
+  }
+  
+  // Add invoice number and status (positioned below the logo)
+  const startY = 65; // Position after the logo
+  
   doc.setFontSize(15);
-  doc.text(`${invoice.invoice_number}`, 14, 30);
+  doc.text(`INVOICE: ${invoice.invoice_number}`, 14, startY);
   
   // Add status
   doc.setFontSize(12);
-  doc.text(`Status: ${invoice.status.toUpperCase()}`, pageWidth - 60, 30);
+  doc.text(`Status: ${invoice.status.toUpperCase()}`, pageWidth - 60, startY);
 
-  // Company info (left side)
-  doc.setFontSize(10);
-  doc.text("McKaynine Training Centre", 14, 45);
-  doc.text("123 Main Street", 14, 50);
-  doc.text("Cape Town, South Africa", 14, 55);
-  doc.text("admin@mckaynine.com", 14, 60);
-  
   // Invoice details (right side)
   doc.setFontSize(10);
-  doc.text(`Issued Date: ${formatDate(invoice.issued_date)}`, pageWidth - 80, 45);
-  doc.text(`Due Date: ${formatDate(invoice.due_date)}`, pageWidth - 80, 50);
+  doc.text(`Issued Date: ${formatDate(invoice.issued_date)}`, pageWidth - 80, startY + 10);
+  doc.text(`Due Date: ${formatDate(invoice.due_date)}`, pageWidth - 80, startY + 15);
   
   // Client info
   doc.setFontSize(12);
-  doc.text("Bill To:", 14, 75);
+  doc.text("Bill To:", 14, startY + 25);
   
   if (invoice.client) {
     doc.setFontSize(10);
-    doc.text(`${invoice.client.first_name} ${invoice.client.last_name}`, 14, 82);
-    doc.text(`${invoice.client.email}`, 14, 87);
+    doc.text(`${invoice.client.first_name} ${invoice.client.last_name}`, 14, startY + 32);
+    doc.text(`${invoice.client.email}`, 14, startY + 37);
     
     if (invoice.client.phone) {
-      doc.text(`${invoice.client.phone}`, 14, 92);
+      doc.text(`${invoice.client.phone}`, 14, startY + 42);
     }
 
     if (invoice.client.address) {
-      doc.text(`${invoice.client.address}`, 14, 97);
+      doc.text(`${invoice.client.address}`, 14, startY + 47);
     }
 
     if (invoice.client.city && invoice.client.postal_code) {
-      doc.text(`${invoice.client.city}, ${invoice.client.postal_code}`, 14, 102);
+      doc.text(`${invoice.client.city}, ${invoice.client.postal_code}`, 14, startY + 52);
     }
   } else {
-    doc.text("Client information unavailable", 14, 82);
+    doc.text("Client information unavailable", 14, startY + 32);
   }
 
   // Invoice items table
   autoTable(doc, {
-    startY: 115,
+    startY: startY + 65,
     head: [
       [
         'Description',
@@ -122,7 +130,23 @@ export const generateInvoicePDF = async (invoice: Invoice) => {
     doc.text(invoice.notes, 14, finalY + 47);
   }
 
-  // Footer
+  // Banking details in the footer
+  const footerY = doc.internal.pageSize.height - 40; // Position from bottom of page
+  
+  doc.setFontSize(10);
+  doc.setFont(undefined, "bold");
+  doc.text("BANKING DETAILS:", pageWidth / 2, footerY, { align: 'center' });
+  doc.setFont(undefined, "normal");
+  doc.setFontSize(9);
+  doc.text(
+    "Adrienne Hawkins. FNB, Sandton City (26095400). Account Number: 6212 7520 189",
+    pageWidth / 2, 
+    footerY + 6, 
+    { align: 'center' }
+  );
+  doc.text("Please use your name as reference.", pageWidth / 2, footerY + 12, { align: 'center' });
+  
+  // Thank you message
   doc.setFontSize(8);
   doc.setTextColor(120, 120, 120);
   doc.text("Thank you for your business!", pageWidth / 2, doc.internal.pageSize.height - 15, { align: "center" });
