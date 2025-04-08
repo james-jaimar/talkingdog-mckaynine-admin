@@ -34,22 +34,23 @@ export default function Dashboard() {
     queryFn: async () => {
       console.log("Dashboard - Fetching stats");
       try {
-        // Match the exact same unpaid check as in UnpaidHandlers page
+        // First get counts for standard metrics
         const [
           { count: clientCount }, 
           { count: dogCount }, 
           { count: bookingCount }, 
-          { count: branchCount },
-          { count: unpaidCount }
+          { count: branchCount }
         ] = await Promise.all([
           supabase.from('clients').select('*', { count: 'exact', head: true }),
           supabase.from('dogs').select('*', { count: 'exact', head: true }),
           supabase.from('bookings').select('*', { count: 'exact', head: true }),
-          supabase.from('branches').select('*', { count: 'exact', head: true }),
-          supabase.from('bookings')
-            .select('*', { count: 'exact', head: true })
-            .or('proof_of_payment.is.null,proof_of_payment.eq.')  // Count both NULL and empty string values
+          supabase.from('branches').select('*', { count: 'exact', head: true })
         ]);
+        
+        // Now get only bookings that don't have proof_of_payment AND don't have a paid invoice
+        const { count: unpaidCount } = await supabase.rpc(
+          'count_unpaid_bookings'
+        );
         
         console.log("Dashboard stats:", { clientCount, dogCount, bookingCount, branchCount, unpaidCount });
         
