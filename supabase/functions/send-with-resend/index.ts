@@ -38,11 +38,11 @@ const handler = async (req: Request): Promise<Response> => {
     
     // Prepare the email payload for Resend
     const emailPayload: any = {
-      from: "McKaynine Training Centre <admin@talkingdog.co.za>", // Updated sender email
+      from: "McKaynine Training Centre <admin@admin.talkingdog.co.za>", // Using verified subdomain
       to: [emailData.to],
       subject: emailData.subject,
       html: emailData.html,
-      reply_to: "admin@talkingdog.co.za", // Updated reply-to address
+      reply_to: "admin@talkingdog.co.za", // Keep this reply-to address
     };
 
     // Add attachments if provided
