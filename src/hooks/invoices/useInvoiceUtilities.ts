@@ -23,14 +23,15 @@ export const generateInvoiceNumber = async (): Promise<string> => {
       const branchId = localStorage.getItem('currentBranchId');
       
       if (branchId) {
-        // Fetch the branch name from Supabase using a simple query
-        const { data, error } = await supabase
+        // Simplified query to avoid type recursion issues
+        const { data } = await supabase
           .from('branches')
           .select('name')
           .eq('id', branchId)
+          .limit(1)
           .single();
           
-        if (!error && data) {
+        if (data?.name) {
           branchName = data.name.toLowerCase();
           console.log("Invoice: Using branch from localStorage:", data.name);
           
@@ -48,22 +49,27 @@ export const generateInvoiceNumber = async (): Promise<string> => {
         const { data: authData } = await supabase.auth.getUser();
         
         if (authData?.user) {
-          // Get default branch with a simple query
-          const { data: defaultBranch } = await supabase
-            .from('branches')
-            .select('name')
-            .eq('is_default', true)
-            .single();
-            
-          if (defaultBranch?.name) {
-            branchName = defaultBranch.name.toLowerCase();
-            console.log("Invoice: Using default branch:", defaultBranch.name);
-            
-            if (branchName.includes('delta')) {
-              branchPrefix = "McD";
-            } else if (branchName.includes('randburg')) {
-              branchPrefix = "McR";
+          // Simplified query to avoid type recursion issues
+          try {
+            const { data } = await supabase
+              .from('branches')
+              .select('name')
+              .eq('is_default', true)
+              .limit(1)
+              .single();
+              
+            if (data?.name) {
+              branchName = data.name.toLowerCase();
+              console.log("Invoice: Using default branch:", data.name);
+              
+              if (branchName.includes('delta')) {
+                branchPrefix = "McD";
+              } else if (branchName.includes('randburg')) {
+                branchPrefix = "McR";
+              }
             }
+          } catch (branchErr) {
+            console.warn("Error fetching default branch:", branchErr);
           }
         }
       }
@@ -83,17 +89,16 @@ export const generateInvoiceNumber = async (): Promise<string> => {
     try {
       console.log("Querying invoices with prefix:", invoicePrefix);
       
-      // Use a minimal select to avoid TypeScript complexity
-      const { data } = await supabase
+      // Use a minimal select with explicit string type to avoid TypeScript complexity
+      // This is the key fix to avoid type instantiation issues
+      const { data: invoiceNumbers, error } = await supabase
         .from('invoices')
         .select('invoice_number');
       
-      // Filter matching invoices on the client side
-      if (data && Array.isArray(data)) {
-        const matchingInvoices = data.filter(invoice => 
-          invoice.invoice_number && 
-          typeof invoice.invoice_number === 'string' && 
-          invoice.invoice_number.startsWith(invoicePrefix)
+      if (!error && invoiceNumbers) {
+        // Filter and count client-side instead of using complex server-side queries
+        const matchingInvoices = invoiceNumbers.filter(inv => 
+          inv.invoice_number && inv.invoice_number.startsWith(invoicePrefix)
         );
         count = matchingInvoices.length;
         console.log(`Found ${count} invoices with prefix ${invoicePrefix}`);
@@ -103,6 +108,7 @@ export const generateInvoiceNumber = async (): Promise<string> => {
       
       // Simple fallback: get a total count instead
       try {
+        // Simple count without filtering to avoid type issues
         const { count: totalCount } = await supabase
           .from('invoices')
           .select('*', { count: 'exact', head: true });
