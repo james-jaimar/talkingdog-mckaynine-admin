@@ -66,7 +66,7 @@ export function useEmailInvoice() {
       if (error.message.includes("PDF generation failed")) {
         toast.error("Failed to generate invoice PDF. Please try again later or contact support.");
       } else if (error.message.includes("Email sending failed")) {
-        toast.error("Failed to send email. Please check the recipient's email address and that email is configured properly in Supabase.");
+        toast.error("Failed to send email. Please check the recipient's email address and that the send-email-internal function is deployed.");
       } else {
         toast.error(`Failed to send invoice: ${error.message}`);
       }

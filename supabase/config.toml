@@ -83,3 +83,6 @@ port = 54321
 
 [functions.send-invoice]
 verify_jwt = true
+
+[functions.send-email-internal]
+verify_jwt = false

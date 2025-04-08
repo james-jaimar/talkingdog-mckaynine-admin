@@ -1,10 +1,10 @@
 
 import { Invoice } from "./types.ts";
-import { formatCurrency, formatDate } from "./pdf-helpers.ts";
+import { formatCurrency, formatDate } from "./utils.ts";
 
 /**
  * Sends an invoice via email with the PDF attachment
- * using Supabase's built-in email service
+ * using Supabase's edge functions
  */
 export async function sendInvoiceEmail(invoice: Invoice, email: string, pdfBuffer: ArrayBuffer): Promise<boolean> {
   console.log(`Preparing to send invoice ${invoice.invoice_number} to ${email}`);
@@ -27,31 +27,28 @@ export async function sendInvoiceEmail(invoice: Invoice, email: string, pdfBuffe
     const emailMessage = createEmailMessage(invoice, `${invoice.client.first_name} ${invoice.client.last_name}`);
     const htmlMessage = formatEmailHtml(emailMessage);
     
-    // Prepare the request to Supabase's built-in email service
-    const emailUrl = `${supabaseUrl}/rest/v1/rpc/send_email`;
+    console.log("Using send-email-internal edge function to send invoice");
     
-    console.log("Sending email using Supabase's built-in email service");
-    console.log(`Email URL: ${emailUrl}`);
+    // Prepare the request to the send-email-internal edge function
+    const emailFunctionUrl = `${supabaseUrl}/functions/v1/send-email-internal`;
     
-    // Send the email using Supabase's built-in email service
-    const response = await fetch(emailUrl, {
+    // Send the email using our own edge function
+    const response = await fetch(emailFunctionUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${supabaseServiceKey}`,
-        'apikey': supabaseServiceKey
+        'Authorization': `Bearer ${supabaseServiceKey}`
       },
       body: JSON.stringify({
         to: email,
         subject: emailSubject,
         html: htmlMessage,
-        cc: null,
-        bcc: null,
         attachments: [
           {
             filename: `Invoice-${invoice.invoice_number}.pdf`,
             content: pdfBase64,
-            type: "application/pdf"
+            encoding: "base64",
+            contentType: "application/pdf"
           }
         ]
       })
@@ -59,12 +56,12 @@ export async function sendInvoiceEmail(invoice: Invoice, email: string, pdfBuffe
     
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("Error response from Supabase email service:", response.status, errorText);
+      console.error("Error response from email service:", response.status, errorText);
       throw new Error(`Failed to send email: ${response.status} - ${errorText}`);
     }
     
     const result = await response.json();
-    console.log("Email sent successfully through Supabase email:", result);
+    console.log("Email sent successfully:", result);
     return true;
   } catch (error) {
     console.error("Error in sendInvoiceEmail:", error.message);
