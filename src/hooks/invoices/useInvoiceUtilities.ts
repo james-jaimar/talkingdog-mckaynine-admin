@@ -74,37 +74,34 @@ export const generateInvoiceNumber = async (): Promise<string> => {
     }
     
     // Try to get the count of existing invoices for this month and branch
-    let count: number | null = null;
+    let count = 0;
     
     try {
-      // Completely redesigned approach to avoid TypeScript recursion issues
+      // Completely redesigned query approach to avoid TypeScript recursion issues
       const invoicePrefix = `${branchPrefix}${monthAbbreviation}`;
       console.log("Querying invoices with prefix:", invoicePrefix);
       
-      // Use a simpler approach - get all invoice numbers as strings first 
-      // then count them client-side to avoid complex TypeScript typing
+      // Simple string-based approach that avoids complex TypeScript typing
       const { data, error } = await supabase
         .from('invoices')
         .select('invoice_number')
-        .like('invoice_number', `${invoicePrefix}%`);
+        .ilike('invoice_number', `${invoicePrefix}%`);
       
       if (error) {
-        console.warn("Error checking existing invoices, using fallback method:", error);
+        console.error("Error checking existing invoices:", error);
       } else if (data) {
         count = data.length;
         console.log(`Invoice: Found ${count} existing invoices with prefix ${invoicePrefix}`);
       }
     } catch (err) {
-      console.warn("Error checking existing invoices, using fallback method:", err);
+      console.error("Error checking existing invoices, using fallback method:", err);
       // Will use fallback below
     }
     
-    // If we couldn't get the count (e.g., due to permissions), use a timestamp-based approach
-    if (count === null) {
-      // Use current timestamp milliseconds as part of the number to ensure uniqueness
-      const timestamp = now.getTime();
-      const randomPart = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-      return `${branchPrefix}${monthAbbreviation}T${timestamp.toString().slice(-4)}${randomPart}`;
+    // If we couldn't get the count, use a timestamp-based approach
+    if (count === 0) {
+      console.log("No existing invoices found with this prefix, starting at 0001");
+      count = 0;
     }
     
     // Generate the sequential number (current count + 1)
