@@ -5,10 +5,10 @@ import {
   addPaidStamp, 
   addInvoiceHeader, 
   addClientInfo, 
-  addInvoiceItemsTable, 
   addInvoiceSummary, 
   addInvoiceFooter 
 } from "./pdf-helpers.ts";
+import { addInvoiceItemsTable } from "./pdf-sections/items-table.ts";
 
 /**
  * Generates a PDF for the given invoice
