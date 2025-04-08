@@ -26,10 +26,12 @@ export async function generatePDF(invoice: Invoice): Promise<ArrayBuffer> {
     doc.setFontSize(20);
     doc.text("McKaynine Training Centre", pageWidth / 2, 20, { align: 'center' });
     
-    // Add "PAID" stamp for paid invoices - ensure we check status correctly
-    console.log("Invoice status:", invoice.status);
-    if (invoice.status === 'paid') {
-      console.log("Adding PAID stamp to invoice");
+    // Add "PAID" stamp for paid invoices
+    console.log("Invoice status in PDF generation:", invoice.status);
+    if (invoice.status && invoice.status.toLowerCase() === 'paid') {
+      console.log("Invoice is PAID, adding stamp");
+      // Import the stamp function directly to ensure it's called
+      const { addPaidStamp } = await import("./pdf-sections/stamp.ts");
       addPaidStamp(doc, pageWidth);
     }
     

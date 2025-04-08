@@ -1,6 +1,6 @@
-
 import { jsPDF } from "npm:jspdf@2.5.1";
 import autoTable from "npm:jspdf-autotable@3.8.2";
+import { addPaidStamp as importedAddPaidStamp } from "./pdf-sections/stamp.ts";
 
 // Helper function to format currency
 export function formatCurrency(amount: number): string {
@@ -20,38 +20,8 @@ export function formatDate(dateString: string): string {
   }).format(date);
 }
 
-// Add paid stamp to PDF 
-export function addPaidStamp(doc: jsPDF, pageWidth: number) {
-  // Set appearance for the "PAID" stamp
-  doc.setFillColor(39, 174, 96); // Green color
-  doc.setTextColor(255, 255, 255); // White text
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(72);
-  
-  // Calculate position for the center of the page
-  const stampX = pageWidth / 2;
-  const stampY = 120;
-  
-  // Save current graphics state
-  doc.saveGraphicsState();
-  
-  // Set transparency using the proper method for jsPDF
-  doc.setGState(new (doc as any).GState({ opacity: 0.3 }));
-  
-  // Add rotated "PAID" text as a stamp
-  doc.text("PAID", stampX, stampY, { 
-    align: 'center',
-    angle: -30
-  });
-  
-  // Restore graphics state to reset opacity
-  doc.restoreGraphicsState();
-  
-  // Reset styles for the rest of the document
-  doc.setTextColor(0, 0, 0);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(12);
-}
+// Re-export the paid stamp function
+export const addPaidStamp = importedAddPaidStamp;
 
 // Add invoice header
 export function addInvoiceHeader(doc: jsPDF, invoice: any, startY: number, pageWidth: number) {

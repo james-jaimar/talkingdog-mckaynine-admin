@@ -8,6 +8,7 @@ import { formatCurrency, formatDate } from "./pdf-helpers.ts";
  */
 export async function sendInvoiceEmail(invoice: Invoice, email: string, pdfBuffer: ArrayBuffer): Promise<boolean> {
   console.log(`Preparing to send invoice ${invoice.invoice_number} to ${email}`);
+  console.log("Invoice status:", invoice.status);
   
   try {
     const apiKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -89,7 +90,7 @@ export async function sendInvoiceEmail(invoice: Invoice, email: string, pdfBuffe
 function createEmailMessage(invoice: Invoice, clientName: string): string {
   let emailMessage = `Dear ${clientName},\n\nPlease find attached your invoice #${invoice.invoice_number} for the amount of ${formatCurrency(invoice.total)}.\n\n`;
   
-  if (invoice.status === 'paid') {
+  if (invoice.status && invoice.status.toLowerCase() === 'paid') {
     emailMessage += "We're pleased to confirm that this invoice has been paid. Thank you for your business!\n\n";
   } else {
     emailMessage += `This invoice is due on ${formatDate(invoice.due_date)}.\n\n`;

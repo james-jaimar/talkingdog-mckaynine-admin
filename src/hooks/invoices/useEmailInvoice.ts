@@ -12,7 +12,13 @@ export function useEmailInvoice() {
         console.log("Invoice status:", invoice.status);
         
         const { data, error } = await supabase.functions.invoke('send-invoice', {
-          body: { invoice, email }
+          body: { 
+            invoice: {
+              ...invoice,
+              status: invoice.status.toLowerCase() // Ensure consistent lowercase for status
+            }, 
+            email 
+          }
         });
 
         if (error) {

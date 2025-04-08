@@ -5,35 +5,47 @@ import { jsPDF } from "jspdf";
  * Adds a PAID stamp to the invoice PDF
  */
 export const addPaidStamp = (doc: jsPDF, pageWidth: number) => {
-  // Set appearance for the "PAID" stamp
-  doc.setFillColor(39, 174, 96); // Green color
-  doc.setTextColor(255, 255, 255); // White text
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(72);
-  
-  // Calculate position for the center of the page
-  const stampX = pageWidth / 2;
-  const stampY = 120;
-  
-  // Save current graphics state
-  doc.saveGraphicsState();
-  
-  // Set transparency using the proper method for jsPDF
-  doc.setGState(new (doc as any).GState({ opacity: 0.3 }));
-  
-  // Add rotated "PAID" text as a stamp
-  doc.text("PAID", stampX, stampY, { 
-    align: 'center',
-    angle: -30
-  });
-  
-  // Restore graphics state to reset opacity
-  doc.restoreGraphicsState();
-  
-  // Reset styles for the rest of the document
-  doc.setTextColor(0, 0, 0);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(12);
+  try {
+    console.log("Adding PAID stamp to client-side PDF");
+    
+    // Set appearance for the "PAID" stamp
+    doc.setFillColor(39, 174, 96); // Green color
+    doc.setTextColor(255, 255, 255); // White text
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(72);
+    
+    // Calculate position for the center of the page
+    const stampX = pageWidth / 2;
+    const stampY = 120;
+    
+    // Create a new graphics state object
+    const gState = new doc.GState({opacity: 0.3});
+    
+    // Save current graphics state
+    doc.saveGraphicsState();
+    
+    // Set transparency using the proper method for jsPDF
+    doc.setGState(gState);
+    
+    // Add rotated "PAID" text as a stamp
+    doc.text("PAID", stampX, stampY, { 
+      align: 'center',
+      angle: -30
+    });
+    
+    // Restore graphics state to reset opacity
+    doc.restoreGraphicsState();
+    
+    // Reset styles for the rest of the document
+    doc.setTextColor(0, 0, 0);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(12);
+    
+    console.log("PAID stamp added successfully to client PDF");
+  } catch (error) {
+    console.error("Error adding PAID stamp:", error);
+    // Continue without stamp rather than failing the entire PDF generation
+  }
 };
 
 /**
