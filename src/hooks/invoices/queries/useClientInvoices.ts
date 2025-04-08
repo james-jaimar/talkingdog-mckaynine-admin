@@ -57,7 +57,7 @@ export function useClientInvoices(clientId: string | undefined) {
             }
             
             // Process the enhanced items to match our expected InvoiceItem structure
-            const processedItems = (enhancedItems || []).map((item: InvoiceItemWithDetails) => {
+            const processedItems = (enhancedItems || []).map((item: any) => {
               const processedItem: InvoiceItem = {
                 id: item.id,
                 invoice_id: item.invoice_id,
