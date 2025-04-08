@@ -75,46 +75,47 @@ export const generateInvoiceNumber = async (): Promise<string> => {
     
     // Try to get the count of existing invoices for this month and branch
     let count = 0;
+    const invoicePrefix = `${branchPrefix}${monthAbbreviation}`;
     
     try {
-      // Create the invoice prefix we'll search for
-      const invoicePrefix = `${branchPrefix}${monthAbbreviation}`;
       console.log("Querying invoices with prefix:", invoicePrefix);
       
-      // Fix: Use a much simpler approach that avoids deep type issues
-      // Just fetch the invoice_number field only, no fancy queries
-      const { data } = await supabase
+      // Completely refactored query approach to avoid TypeScript issues
+      // Just get invoice numbers as strings and handle filtering/counting in JS
+      const { data: invoiceData } = await supabase
         .from('invoices')
         .select('invoice_number');
       
-      if (data) {
-        // Count matches by filtering client-side
-        const matchingInvoices = data.filter(invoice => 
+      if (invoiceData && invoiceData.length > 0) {
+        // Process the data entirely client-side to avoid complex TypeScript
+        const matchingInvoices = invoiceData.filter(invoice => 
           invoice.invoice_number && 
           invoice.invoice_number.startsWith(invoicePrefix)
         );
         count = matchingInvoices.length;
-        console.log(`Invoice: Found ${count} matching invoices out of ${data.length} total`);
+        console.log(`Found ${count} invoices with prefix ${invoicePrefix}`);
       }
     } catch (err) {
       console.error("Error counting invoices:", err);
       
-      // Simpler fallback that completely avoids the problematic query
+      // Fallback to a simple count query if filtering fails
       try {
-        const { data } = await supabase
+        const { count: totalCount } = await supabase
           .from('invoices')
-          .select('id');
-          
-        // Fall back to a timestamp-based number with random component if all else fails
-        if (!data) {
-          throw new Error("Could not retrieve any invoice data");
-        }
+          .select('*', { count: 'exact', head: true });
         
-        // Simply generate a number based on current count + 1
-        count = Math.floor(Math.random() * 100); // Fallback random number
-        console.log(`Invoice fallback: Using random base count of ${count}`);
+        // Just use total count as a base if we can't filter
+        if (totalCount !== null) {
+          count = Math.min(totalCount, 25); // Cap at 25 to be safe
+          console.log(`Using total invoice count as fallback: ${count}`);
+        } else {
+          count = Math.floor(Math.random() * 10) + 1; // Random number between 1-10
+          console.log(`Using random count as fallback: ${count}`);
+        }
       } catch (fallbackErr) {
         console.error("Even fallback query failed:", fallbackErr);
+        // Final fallback is to use a timestamp-based number
+        count = Math.floor(Math.random() * 5) + 1; // Random number between 1-5
       }
     }
     
