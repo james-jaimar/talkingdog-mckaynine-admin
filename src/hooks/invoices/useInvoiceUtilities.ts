@@ -81,22 +81,36 @@ export const generateInvoiceNumber = async (): Promise<string> => {
       const invoicePrefix = `${branchPrefix}${monthAbbreviation}`;
       console.log("Querying invoices with prefix:", invoicePrefix);
       
-      // Use a direct string-based approach to avoid TypeScript recursion issues
-      // Instead of a complex query structure, just fetch the invoice numbers and count them
+      // Fix: Use raw SQL to avoid TypeScript recursion issues
+      // This completely bypasses the complex type inference that was causing problems
       const { data, error } = await supabase
-        .from('invoices')
-        .select('id')
-        .ilike('invoice_number', `${invoicePrefix}%`);
+        .rpc('count_invoices_with_prefix', { 
+          prefix_pattern: `${invoicePrefix}%` 
+        });
       
       if (error) {
         console.error("Error checking existing invoices:", error);
-      } else if (data) {
-        count = data.length;
+      } else if (data !== null) {
+        count = data;
         console.log(`Invoice: Found ${count} existing invoices with prefix ${invoicePrefix}`);
       }
     } catch (err) {
-      console.error("Error checking existing invoices, using fallback approach:", err);
-      // Will use fallback below
+      console.error("Error counting invoices, falling back to simple query:", err);
+      
+      try {
+        // Fallback to a simpler query approach that's less likely to have type issues
+        const { data, error } = await supabase
+          .from('invoices')
+          .select('id')
+          .like('invoice_number', `${branchPrefix}${monthAbbreviation}%`);
+          
+        if (!error && data) {
+          count = data.length;
+          console.log(`Invoice fallback: Found ${count} existing invoices`);
+        }
+      } catch (fallbackErr) {
+        console.error("Even fallback query failed:", fallbackErr);
+      }
     }
     
     // Generate the sequential number (current count + 1)
