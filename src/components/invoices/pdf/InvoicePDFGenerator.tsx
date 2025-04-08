@@ -1,7 +1,7 @@
 
 import { jsPDF } from "jspdf";
 import { Invoice } from "@/hooks/invoices/types";
-import { addPaidStamp, addLogoToPdf, calculateDynamicPosition } from "./utils/pdfHelpers";
+import { addLogoToPdf, calculateDynamicPosition } from "./utils/pdfHelpers";
 import { addInvoiceHeader } from "./sections/InvoiceHeader";
 import { addClientInfo } from "./sections/ClientInfo";
 import { addInvoiceItemsTable } from "./sections/InvoiceItems";
@@ -18,15 +18,8 @@ export const generateInvoicePDF = async (invoice: Invoice) => {
     const pageWidth = doc.internal.pageSize.width;
     const pageHeight = doc.internal.pageSize.height;
     
-    // Add McKaynine logo (75% of page width)
+    // Add McKaynine logo 
     const logoAdded = addLogoToPdf(doc, pageWidth);
-    
-    // Add "PAID" stamp for paid invoices - ensure we check status correctly
-    console.log("Invoice status for PDF generation:", invoice.status);
-    if (invoice.status && invoice.status.toLowerCase() === 'paid') {
-      console.log("Adding PAID stamp to client-side PDF");
-      addPaidStamp(doc, pageWidth);
-    }
     
     // Set the starting Y position based on whether the logo was added
     const startY = logoAdded ? 65 : 40;
@@ -41,7 +34,6 @@ export const generateInvoicePDF = async (invoice: Invoice) => {
     const tableEndY = addInvoiceItemsTable(doc, invoice, clientInfoEndY);
     
     // Check if we need to add a new page for summary if table is too long
-    const itemsCount = invoice.items?.length || 0;
     const needsExtraSpace = tableEndY > (pageHeight - 120);
     
     let summaryStartY = tableEndY;

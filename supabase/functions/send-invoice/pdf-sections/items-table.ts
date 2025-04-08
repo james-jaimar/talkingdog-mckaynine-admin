@@ -12,7 +12,7 @@ export function addInvoiceItemsTable(doc: jsPDF, invoice: Invoice, startY: numbe
     console.log("Adding invoice items table...");
     console.log("Items count:", invoice.items?.length || 0);
     
-    // Create table with invoice items
+    // Use autoTable for better formatting and layout
     autoTable(doc, {
       startY: startY,
       head: [
@@ -32,11 +32,14 @@ export function addInvoiceItemsTable(doc: jsPDF, invoice: Invoice, startY: numbe
       styles: {
         fontSize: 9,
         cellPadding: 5,
+        lineWidth: 0.5,
+        overflow: 'linebreak'
       },
       headStyles: {
         fillColor: [70, 70, 70],
         textColor: [255, 255, 255],
-        fontStyle: 'bold'
+        fontStyle: 'bold',
+        halign: 'left'
       },
       columnStyles: {
         0: { cellWidth: 'auto' },
@@ -47,7 +50,7 @@ export function addInvoiceItemsTable(doc: jsPDF, invoice: Invoice, startY: numbe
       alternateRowStyles: {
         fillColor: [245, 245, 245]
       },
-      margin: { left: 14, right: 14 },
+      margin: { left: 14, right: 14 }
     });
     
     console.log("Table added successfully");
