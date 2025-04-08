@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Invoice, InvoiceItem } from "../types";
 import { handleQueryError } from "./useQueryUtils";
+import { InvoiceItemWithDetails } from "@/integrations/supabase/custom-types";
 
 /**
  * Hook to fetch invoices for a specific client with complete details
@@ -56,7 +57,7 @@ export function useClientInvoices(clientId: string | undefined) {
             }
             
             // Process the enhanced items to match our expected InvoiceItem structure
-            const processedItems = (enhancedItems || []).map(item => {
+            const processedItems = (enhancedItems || []).map((item: InvoiceItemWithDetails) => {
               const processedItem: InvoiceItem = {
                 id: item.id,
                 invoice_id: item.invoice_id,

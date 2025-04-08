@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Invoice, InvoiceItem } from "@/hooks/invoices/types";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { InvoiceItemWithDetails } from "@/integrations/supabase/custom-types";
 
 /**
  * Hook to fetch a single invoice by ID with all details
@@ -88,10 +89,9 @@ export function useInvoiceDetails(invoiceId: string | undefined) {
         }
         
         // Process the enhanced items to match our expected InvoiceItem structure
-        const processedItems = enhancedItems.map(item => {
+        const processedItems = enhancedItems.map((item: InvoiceItemWithDetails) => {
           const processedItem: InvoiceItem = {
             id: item.id,
-            invoice_id: item.invoice_id,
             description: item.description || "Training services",
             quantity: item.quantity,
             unit_price: item.unit_price,

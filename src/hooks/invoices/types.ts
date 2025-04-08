@@ -3,11 +3,14 @@ export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled';
 
 export interface InvoiceItem {
   id?: string;
+  invoice_id?: string;
   description: string;
   quantity: number;
   unit_price: number;
   amount?: number;
   booking_id?: string | null;
+  created_at?: string;
+  updated_at?: string;
   bookings?: {
     id: string;
     dog_id?: string;
