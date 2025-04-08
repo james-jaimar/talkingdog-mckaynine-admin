@@ -1,5 +1,6 @@
 
 import { jsPDF } from "npm:jspdf@2.5.1";
+import autoTable from "npm:jspdf-autotable@3.8.2";
 import { Invoice } from "./types.ts";
 import { formatCurrency } from "./pdf-helpers.ts";
 
@@ -11,7 +12,45 @@ export function addInvoiceItemsTable(doc: jsPDF, invoice: Invoice, startY: numbe
     console.log("Adding invoice items table...");
     console.log("Items count:", invoice.items?.length || 0);
     
-    // Manual implementation of table since autoTable is causing issues
+    // Use autoTable for better formatting and layout
+    autoTable(doc, {
+      startY: startY,
+      head: [
+        [
+          'Description',
+          'Quantity',
+          'Unit Price',
+          'Amount'
+        ]
+      ],
+      body: invoice.items?.map(item => [
+        item.description,
+        item.quantity?.toString() || '1',
+        formatCurrency(item.unit_price || 0),
+        formatCurrency(item.amount || (item.quantity * item.unit_price) || 0)
+      ]) || [['No items found for this invoice', '', '', '']],
+      styles: {
+        fontSize: 9,
+        cellPadding: 3,
+      },
+      headStyles: {
+        fillColor: [80, 80, 80],
+        textColor: [255, 255, 255],
+        fontStyle: 'bold'
+      },
+      columnStyles: {
+        0: { cellWidth: 'auto' },
+        1: { halign: 'right', cellWidth: 25 },
+        2: { halign: 'right', cellWidth: 35 },
+        3: { halign: 'right', cellWidth: 35 }
+      },
+    });
+    
+    console.log("Table added successfully");
+    return (doc as any).lastAutoTable.finalY;
+  } catch (error) {
+    console.error("Error adding invoice items table:", error);
+    // Fall back to manual table if autoTable fails
     const pageWidth = doc.internal.pageSize.width;
     const margin = 14;
     const tableWidth = pageWidth - (margin * 2);
@@ -46,11 +85,10 @@ export function addInvoiceItemsTable(doc: jsPDF, invoice: Invoice, startY: numbe
     currentX += colWidths[2];
     doc.text('Amount', currentX, startY + 6, { align: 'right' });
     
-    // Reset styles for rows
+    // Reset text color for rows
     doc.setTextColor(0, 0, 0);
     doc.setFont("helvetica", "normal");
     
-    // Table rows
     let currentY = startY + 10;
     const rowHeight = 8;
     
@@ -59,50 +97,14 @@ export function addInvoiceItemsTable(doc: jsPDF, invoice: Invoice, startY: numbe
       currentY += rowHeight;
     } else {
       invoice.items.forEach((item) => {
-        // Item background (alternating)
-        if ((currentY - startY) % 20 === 10) {
-          doc.setFillColor(245, 245, 245);
-          doc.rect(margin, currentY, tableWidth, rowHeight, "F");
-        }
-        
-        // Item text
-        currentX = margin + 3;
-        doc.text(item.description || 'Unknown item', currentX, currentY + 5);
-        
-        currentX = margin + colWidths[0] + colWidths[1] - 3;
-        doc.text(item.quantity?.toString() || '1', currentX, currentY + 5, { align: 'right' });
-        
-        currentX = margin + colWidths[0] + colWidths[1] + colWidths[2] - 3;
-        doc.text(formatCurrency(item.unit_price || 0), currentX, currentY + 5, { align: 'right' });
-        
-        currentX = margin + tableWidth - 3;
-        doc.text(formatCurrency(item.amount || (item.quantity * item.unit_price) || 0), currentX, currentY + 5, { align: 'right' });
-        
+        doc.text(item.description || 'Unknown item', currentX - colWidths[2] - colWidths[1] - colWidths[0] + 3, currentY + 5);
+        doc.text(item.quantity?.toString() || '1', currentX - colWidths[2] - colWidths[1] - 3, currentY + 5, { align: 'right' });
+        doc.text(formatCurrency(item.unit_price || 0), currentX - colWidths[2] - 3, currentY + 5, { align: 'right' });
+        doc.text(formatCurrency(item.amount || (item.quantity * item.unit_price) || 0), currentX - 3, currentY + 5, { align: 'right' });
         currentY += rowHeight;
       });
     }
     
-    // Draw table borders
-    doc.setDrawColor(200, 200, 200);
-    doc.line(margin, startY, margin, currentY); // Left border
-    doc.line(margin + tableWidth, startY, margin + tableWidth, currentY); // Right border
-    doc.line(margin, currentY, margin + tableWidth, currentY); // Bottom border
-    
-    // Column dividers
-    let dividerX = margin + colWidths[0];
-    doc.line(dividerX, startY, dividerX, currentY);
-    
-    dividerX += colWidths[1];
-    doc.line(dividerX, startY, dividerX, currentY);
-    
-    dividerX += colWidths[2];
-    doc.line(dividerX, startY, dividerX, currentY);
-    
-    console.log("Table added successfully");
-    return currentY;
-  } catch (error) {
-    console.error("Error adding invoice items table:", error);
-    // If table generation fails, return the startY plus some space to continue with the PDF
-    return startY + 40;
+    return currentY + 10;
   }
 }

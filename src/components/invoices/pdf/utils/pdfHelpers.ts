@@ -52,21 +52,26 @@ export const addPaidStamp = (doc: jsPDF, pageWidth: number) => {
  * Adds a logo to the PDF document
  */
 export const addLogoToPdf = (doc: jsPDF, pageWidth: number) => {
-  const logoPath = "/lovable-uploads/bb90b920-3e7c-4462-a0f1-d47b855c07b7.png";
   try {
-    // Set logo to 75% of page width
-    const imgWidth = pageWidth * 0.75;
-    // Calculate height proportionally (assuming original aspect ratio)
-    const imgHeight = imgWidth * (45/160); // Maintain aspect ratio
-    const xPosition = (pageWidth - imgWidth) / 2;
+    // Use the McKaynine logo
+    const logoPath = "/lovable-uploads/bb90b920-3e7c-4462-a0f1-d47b855c07b7.png";
     
+    // Set logo dimensions and position
+    const imgWidth = 100; // Fixed width
+    const imgHeight = 28; // Fixed height to keep aspect ratio
+    const xPosition = (pageWidth - imgWidth) / 2; // Center horizontally
+    
+    // Add the logo image - use an absolute path for better reliability
     doc.addImage(logoPath, "PNG", xPosition, 10, imgWidth, imgHeight);
+    console.log("Logo added successfully from:", logoPath);
     return true;
-  } catch (error) {
-    console.error("Error adding logo:", error);
-    // If logo fails to load, add a text title instead
+  } catch (logoError) {
+    console.error("Error adding logo to PDF:", logoError);
+    
+    // Fall back to text title if logo fails
     doc.setFontSize(20);
     doc.text("McKaynine Training Centre", pageWidth / 2, 20, { align: 'center' });
+    console.log("Fallback to text title");
     return false;
   }
 };
