@@ -1,6 +1,6 @@
+
 import { Invoice } from "./types.ts";
 import { formatCurrency, formatDate } from "./pdf-helpers.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 
 /**
  * Sends an invoice via email with the PDF attachment
@@ -11,7 +11,7 @@ export async function sendInvoiceEmail(invoice: Invoice, email: string, pdfBuffe
   console.log("Invoice status in email sender:", invoice.status);
   
   try {
-    // Get email configuration
+    // Get email configuration from env
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     
@@ -19,47 +19,52 @@ export async function sendInvoiceEmail(invoice: Invoice, email: string, pdfBuffe
       throw new Error("Missing Supabase configuration. Please set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY environment variables.");
     }
     
-    // Initialize Supabase client with service role key for admin access
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    // Convert PDF buffer to base64 for attachment
+    const pdfBase64 = btoa(String.fromCharCode(...new Uint8Array(pdfBuffer)));
     
     // Create email message based on invoice status
     const emailSubject = `Invoice ${invoice.invoice_number} from McKaynine Training Centre`;
     const emailMessage = createEmailMessage(invoice, `${invoice.client.first_name} ${invoice.client.last_name}`);
     const htmlMessage = formatEmailHtml(emailMessage);
     
-    // Convert PDF buffer to base64 for attachment
-    const pdfBase64 = btoa(String.fromCharCode(...new Uint8Array(pdfBuffer)));
+    // Prepare the request to Supabase's built-in email service
+    const emailUrl = `${supabaseUrl}/rest/v1/rpc/send_email`;
     
-    console.log(`Sending email via Supabase to: ${email}`);
+    console.log("Sending email using Supabase's built-in email service");
+    console.log(`Email URL: ${emailUrl}`);
     
-    // Send email directly using the SMTP function
-    const { data, error } = await supabase.functions.invoke('send-with-smtp', {
-      body: {
+    // Send the email using Supabase's built-in email service
+    const response = await fetch(emailUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseServiceKey}`,
+        'apikey': supabaseServiceKey
+      },
+      body: JSON.stringify({
         to: email,
         subject: emailSubject,
         html: htmlMessage,
+        cc: null,
+        bcc: null,
         attachments: [
           {
             filename: `Invoice-${invoice.invoice_number}.pdf`,
             content: pdfBase64,
-            encoding: "base64",
-            contentType: "application/pdf",
+            type: "application/pdf"
           }
         ]
-      }
+      })
     });
     
-    if (error) {
-      console.error("Error sending email directly through SMTP:", error);
-      throw new Error(`Failed to send email: ${error.message}`);
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Error response from Supabase email service:", response.status, errorText);
+      throw new Error(`Failed to send email: ${response.status} - ${errorText}`);
     }
     
-    if (!data || data.success === false) {
-      console.error("SMTP function returned error:", data?.error || "Unknown error");
-      throw new Error(data?.error || "Failed to send email through SMTP");
-    }
-    
-    console.log("Email sent successfully through SMTP");
+    const result = await response.json();
+    console.log("Email sent successfully through Supabase email:", result);
     return true;
   } catch (error) {
     console.error("Error in sendInvoiceEmail:", error.message);
