@@ -81,11 +81,12 @@ export const generateInvoiceNumber = async (): Promise<string> => {
       const invoicePrefix = `${branchPrefix}${monthAbbreviation}`;
       console.log("Querying invoices with prefix:", invoicePrefix);
       
-      // Get all invoice numbers that match our prefix pattern
+      // Use a simpler approach - get all invoice numbers as strings first 
+      // then count them client-side to avoid complex TypeScript typing
       const { data, error } = await supabase
         .from('invoices')
         .select('invoice_number')
-        .filter('invoice_number', 'like', `${invoicePrefix}%`);
+        .like('invoice_number', `${invoicePrefix}%`);
       
       if (error) {
         console.warn("Error checking existing invoices, using fallback method:", error);
