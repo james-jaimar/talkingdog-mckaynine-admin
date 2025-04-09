@@ -8,10 +8,11 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  TableFooter,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
-import { Loader2 } from "lucide-react";
+import { Loader2, Calculator } from "lucide-react";
 import { formatCurrency } from "@/lib/formatters";
 import { InvoiceTableActions } from "./InvoiceTableActions";
 
@@ -45,6 +46,24 @@ export function InvoicesTable({
         return null;
     }
   };
+
+  // Calculate totals for table footer
+  const calculateInvoiceTotals = () => {
+    const totalAmount = invoices.reduce((sum, invoice) => sum + invoice.total, 0);
+    const paidAmount = invoices.reduce((sum, invoice) => 
+      invoice.status === 'paid' ? sum + invoice.total : sum, 0);
+    const outstandingAmount = invoices.reduce((sum, invoice) => 
+      (invoice.status === 'sent' || invoice.status === 'overdue') ? sum + invoice.total : sum, 0);
+    
+    return {
+      totalAmount,
+      paidAmount,
+      outstandingAmount,
+      invoiceCount: invoices.length
+    };
+  };
+  
+  const totals = calculateInvoiceTotals();
   
   return (
     <div className="rounded-md border">
@@ -102,6 +121,38 @@ export function InvoicesTable({
             ))
           )}
         </TableBody>
+        
+        {!isLoading && invoices.length > 0 && (
+          <TableFooter className="bg-muted/50">
+            <TableRow className="border-t-2 border-primary/20">
+              <TableCell colSpan={2} className="font-medium">
+                <div className="flex items-center">
+                  <Calculator className="h-4 w-4 mr-2 text-muted-foreground" />
+                  Summary ({totals.invoiceCount} invoices)
+                </div>
+              </TableCell>
+              <TableCell colSpan={2}></TableCell>
+              <TableCell>
+                <div className="space-y-1">
+                  <div className="text-xs text-muted-foreground">Paid</div>
+                  <div className="font-medium text-green-600">{formatCurrency(totals.paidAmount)}</div>
+                </div>
+              </TableCell>
+              <TableCell>
+                <div className="space-y-1">
+                  <div className="text-xs text-muted-foreground">Total</div>
+                  <div className="font-medium">{formatCurrency(totals.totalAmount)}</div>
+                </div>
+              </TableCell>
+              <TableCell className="text-right">
+                <div className="space-y-1">
+                  <div className="text-xs text-muted-foreground">Outstanding</div>
+                  <div className="font-medium text-amber-600">{formatCurrency(totals.outstandingAmount)}</div>
+                </div>
+              </TableCell>
+            </TableRow>
+          </TableFooter>
+        )}
       </Table>
     </div>
   );
