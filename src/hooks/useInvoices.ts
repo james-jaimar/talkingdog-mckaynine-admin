@@ -1,20 +1,63 @@
 
-// I need to expand on this file, but since I don't have full access to its current content,
-// I'll just update the portion that integrates the emailInvoice mutation
-
 import { useEmailInvoice } from "./invoices/useEmailInvoice";
-import { useInvoiceStatus } from "./invoices/useInvoiceStatus";
-import { useInvoiceMutations } from "./invoices/useInvoiceMutations";
-import { useInvoiceQueries } from "./invoices/useInvoiceQueries";
+import { useMarkInvoiceAsPaid, useMarkInvoiceAsSent, useCancelInvoice } from "./invoices/status";
+import { useCreateInvoice, useUpdateInvoice, useDeleteInvoice } from "./invoices/mutations";
+import { useInvoicesList, useInvoiceDetails, useClientInvoices, useMyInvoices } from "./invoices/queries";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 
 export function useInvoices() {
-  // Import various hooks for invoice operations
-  const { useInvoicesList, useInvoiceDetails, useClientInvoices, useMyInvoices } = useInvoiceQueries();
-  const { useCreateInvoice, useUpdateInvoice, useDeleteInvoice } = useInvoiceMutations();
-  const { useMarkInvoiceAsPaid, useMarkInvoiceAsSent, useCancelInvoice } = useInvoiceStatus();
-  const emailInvoice = useEmailInvoice();
+  // Generate invoice number function
+  const generateInvoiceNumber = async () => {
+    try {
+      // Fetch the latest invoice to determine the next invoice number
+      const { data: latestInvoice, error } = await supabase
+        .from('invoices')
+        .select('invoice_number')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
 
-  // Get hooks for invoice operations
+      if (error && error.code !== 'PGRST116') { // PGRST116 is the "no rows returned" error
+        console.error("Error fetching latest invoice:", error);
+        throw error;
+      }
+
+      // Current date elements for the invoice number prefix
+      const now = new Date();
+      const year = now.getFullYear().toString().slice(-2);
+      const month = (now.getMonth() + 1).toString().padStart(2, '0');
+      
+      // Base prefix for the invoice number
+      const prefix = `INV-${year}${month}-`;
+      
+      if (!latestInvoice) {
+        // If no invoices exist, start with INV-YYMM-0001
+        return `${prefix}0001`;
+      }
+      
+      // Extract the numeric portion if it follows our format
+      const latestNumber = latestInvoice.invoice_number;
+      
+      // If it follows our expected format with a number at the end
+      if (latestNumber && latestNumber.startsWith(`INV-${year}${month}-`)) {
+        const numericPart = latestNumber.substring(prefix.length);
+        if (/^\d+$/.test(numericPart)) {
+          // Increment and pad to 4 digits
+          const nextNumber = (parseInt(numericPart, 10) + 1).toString().padStart(4, '0');
+          return `${prefix}${nextNumber}`;
+        }
+      }
+      
+      // If we couldn't parse the existing format, start a new sequence for this month
+      return `${prefix}0001`;
+    } catch (error) {
+      console.error("Error generating invoice number:", error);
+      throw error;
+    }
+  };
+
+  // Import various hooks for invoice operations
   const invoicesList = useInvoicesList();
   const createInvoice = useCreateInvoice();
   const updateInvoice = useUpdateInvoice();
@@ -22,6 +65,7 @@ export function useInvoices() {
   const markAsPaid = useMarkInvoiceAsPaid();
   const markAsSent = useMarkInvoiceAsSent();
   const cancelInvoice = useCancelInvoice();
+  const emailInvoice = useEmailInvoice();
 
   return {
     // Query hooks
@@ -47,5 +91,8 @@ export function useInvoices() {
     markAsSent,
     cancelInvoice,
     emailInvoice,
+    
+    // Utilities
+    generateInvoiceNumber,
   };
 }

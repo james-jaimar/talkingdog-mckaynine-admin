@@ -1,6 +1,12 @@
 
-// Re-export all query hooks from their respective files
-export { useInvoicesList } from './queries/useInvoicesList';
-export { useInvoiceDetails } from './queries/useInvoiceDetails';
-export { useClientInvoices } from './queries/useClientInvoices';
-export { useMyInvoices } from './queries/useMyInvoices';
+import { useInvoicesList } from './queries/useInvoicesList';
+import { useInvoiceDetails } from './queries/useInvoiceDetails';
+import { useClientInvoices } from './queries/useClientInvoices';
+import { useMyInvoices } from './queries/useMyInvoices';
+
+export { 
+  useInvoicesList,
+  useInvoiceDetails,
+  useClientInvoices,
+  useMyInvoices
+};
