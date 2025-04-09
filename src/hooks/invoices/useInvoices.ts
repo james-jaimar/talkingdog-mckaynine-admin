@@ -1,9 +1,10 @@
-import { useEmailInvoice } from "./invoices/useEmailInvoice";
-import { useMarkInvoiceAsPaid, useMarkInvoiceAsSent, useCancelInvoice } from "./invoices/status";
-import { useCreateInvoice, useUpdateInvoice, useDeleteInvoice } from "./invoices/mutations";
-import { useInvoicesList, useInvoiceDetails, useClientInvoices, useMyInvoices } from "./invoices/queries";
+
+import { useEmailInvoice } from "./useEmailInvoice";
+import { useMarkInvoiceAsPaid, useMarkInvoiceAsSent, useCancelInvoice } from "./status";
+import { useCreateInvoice, useUpdateInvoice, useDeleteInvoice } from "./mutations";
+import { useInvoicesList, useInvoiceDetails, useClientInvoices, useMyInvoices } from "./queries";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 
 export function useInvoices() {
   const queryClient = useQueryClient();

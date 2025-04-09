@@ -2,7 +2,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Invoice } from "../invoices/types";
+import { Invoice } from "./types";
 import { getInvoiceAsBase64 } from "@/components/invoices/pdf/InvoicePDFGenerator";
 
 export function useEmailInvoice() {
