@@ -58,14 +58,20 @@ export function UsersTable({
               </TableCell>
             </TableRow>
           ) : (
-            filteredUsers.map(user => (
-              <UserRow 
-                key={user.id}
-                user={user}
-                onEditRole={onEditRole}
-                onResetPassword={onResetPassword}
-              />
-            ))
+            <>
+              {console.log(`About to render ${filteredUsers.length} user rows`)}
+              {filteredUsers.map(user => {
+                console.log(`Rendering user row for: ${user.id}, ${user.email}`);
+                return (
+                  <UserRow 
+                    key={user.id}
+                    user={user}
+                    onEditRole={onEditRole}
+                    onResetPassword={onResetPassword}
+                  />
+                );
+              })}
+            </>
           )}
         </TableBody>
       </Table>

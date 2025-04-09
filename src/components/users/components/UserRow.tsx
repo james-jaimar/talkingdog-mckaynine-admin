@@ -31,7 +31,7 @@ export function UserRow({ user, onEditRole, onResetPassword }: UserRowProps) {
   console.log(`Rendering UserRow for: ${user.id}, name: ${user.full_name}, email: ${user.email}, role: ${user.role}`);
 
   return (
-    <TableRow>
+    <TableRow key={user.id}>
       <TableCell>
         <div className="font-medium">{user.full_name || 'Unnamed User'}</div>
         <div className="text-sm text-muted-foreground">{user.email}</div>

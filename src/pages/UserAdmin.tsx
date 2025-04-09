@@ -50,6 +50,9 @@ export default function UserAdmin() {
       </Helmet>
       
       <div className="container mx-auto py-6">
+        <h1 className="text-2xl font-bold mb-4">User Administration</h1>
+        <p className="text-gray-500 mb-6">Manage user accounts and permissions.</p>
+        
         <AdminUsersList />
       </div>
     </DashboardLayout>

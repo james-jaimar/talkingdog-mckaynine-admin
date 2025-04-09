@@ -36,15 +36,13 @@ export function AdminUsersList() {
   // Filter users by name or email
   const filteredUsers = users.filter(
     user => (
-      user.full_name?.toLowerCase().includes(filterText.toLowerCase()) || 
-      user.email?.toLowerCase().includes(filterText.toLowerCase())
+      (user.full_name?.toLowerCase() || '').includes(filterText.toLowerCase()) || 
+      (user.email?.toLowerCase() || '').includes(filterText.toLowerCase())
     )
   );
   
   // Debug logs
-  console.log("AdminUsersList - Query error:", error);
-  console.log("AdminUsersList - Loading state:", isLoading);
-  console.log("AdminUsersList - Raw users from hook:", users);
+  console.log("AdminUsersList - Users fetched:", users);
   console.log(`AdminUsersList - Total users: ${users.length}`);
   console.log("AdminUsersList - Filtered users:", filteredUsers);
   console.log(`AdminUsersList - Filtered count: ${filteredUsers.length}`);

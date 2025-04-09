@@ -8,13 +8,13 @@ export function useFetchUsers() {
     queryKey: ['users-admin'],
     queryFn: async () => {
       try {
+        console.log("Starting user fetch operation");
+        
         // Get current user for marking in the UI
         const { data: { user: currentUser } } = await supabase.auth.getUser();
-        
         console.log("Current user ID:", currentUser?.id);
         
         // Get all profiles from the profiles table with explicit ordering
-        // IMPORTANT: Using * to ensure we get all fields
         const { data: profiles, error: profilesError } = await supabase
           .from('profiles')
           .select('*')
@@ -25,9 +25,8 @@ export function useFetchUsers() {
           throw profilesError;
         }
         
-        // Log the raw profiles data for debugging
-        console.log("Raw profiles data from database:", profiles);
-        console.log(`Found ${profiles?.length || 0} profiles in database`);
+        // For debugging: Log all fetched profiles
+        console.log(`Fetched ${profiles?.length || 0} profiles from database:`, profiles);
         
         if (!profiles || profiles.length === 0) {
           console.log("No profiles found in database");
@@ -37,8 +36,7 @@ export function useFetchUsers() {
         // Map profiles to user profile objects, marking the current user
         const userProfiles: UserProfile[] = profiles.map(profile => {
           const isCurrentUser = currentUser?.id === profile.id;
-          
-          console.log(`Processing profile ${profile.id}, username: ${profile.username}, isCurrentUser: ${isCurrentUser}`);
+          console.log(`Processing profile: ${profile.id}, email: ${profile.username}, role: ${profile.role}, isCurrentUser: ${isCurrentUser}`);
           
           return {
             id: profile.id,
@@ -52,8 +50,8 @@ export function useFetchUsers() {
           };
         });
         
-        console.log("Processed and mapped user profiles:", userProfiles);
-        console.log(`Total user profiles after mapping: ${userProfiles.length}`);
+        console.log(`Successfully processed ${userProfiles.length} user profiles`);
+        console.table(userProfiles); // Log as table for better visibility
         
         return userProfiles;
       } catch (error) {
