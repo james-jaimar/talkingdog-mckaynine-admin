@@ -10,7 +10,7 @@ import { Dog, Users, Calendar, MapPin, AlertCircle } from "lucide-react";
 import { Helmet } from "react-helmet";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/auth";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { toast } from "sonner";
 
 export default function Dashboard() {
@@ -55,51 +55,41 @@ export default function Dashboard() {
         if (bookingError) throw bookingError;
         if (branchError) throw branchError;
         
-        // Now fetch unpaid bookings directly since RPC function may not be available
+        // Now fetch unpaid bookings with a more efficient JOIN query
         let unpaidCount = 0;
         try {
-          // Query bookings that don't have proof of payment
-          const { data: unpaidBookings, error: unpaidError } = await supabase
+          // Use a single efficient query with left join to get bookings without proof of payment
+          // that don't have associated paid invoices
+          const { data, error } = await supabase
             .from('bookings')
             .select(`
               id,
-              proof_of_payment
+              invoice_items:invoice_items(
+                invoice_id,
+                invoices:invoice_id(
+                  payment_received
+                )
+              )
             `)
             .or('proof_of_payment.is.null,proof_of_payment.eq.');
           
-          if (unpaidError) {
-            console.error("Dashboard - Error fetching unpaid bookings:", unpaidError);
-          } else {
-            // For each booking without proof of payment, check if it has a paid invoice
-            const filteredBookings = [];
-            for (const booking of unpaidBookings || []) {
-              // Check if booking has a paid invoice
-              const { data: invoiceItem, error: invoiceError } = await supabase
-                .from('invoice_items')
-                .select(`
-                  invoice_id,
-                  invoices:invoice_id (
-                    id,
-                    status,
-                    payment_received
-                  )
-                `)
-                .eq('booking_id', booking.id)
-                .maybeSingle();
-              
-              if (invoiceError) {
-                console.error(`Error checking invoice for booking ${booking.id}:`, invoiceError);
-                continue;
+          if (error) {
+            console.error("Dashboard - Error fetching unpaid bookings:", error);
+          } else if (data) {
+            // Filter bookings that have no invoice items or no paid invoices
+            unpaidCount = data.filter(booking => {
+              // If booking has no invoice items, it's unpaid
+              if (!booking.invoice_items || booking.invoice_items.length === 0) {
+                return true;
               }
               
-              // Only include booking if it has no invoice or invoice is not paid
-              if (!invoiceItem || (invoiceItem && !invoiceItem.invoices.payment_received)) {
-                filteredBookings.push(booking);
-              }
-            }
+              // If booking has any invoice items, check if all invoices are unpaid
+              return booking.invoice_items.every(item => 
+                !item.invoices || !item.invoices.payment_received
+              );
+            }).length;
             
-            unpaidCount = filteredBookings.length;
-            console.log(`Dashboard - Found ${unpaidCount} truly unpaid bookings`);
+            console.log(`Dashboard - Found ${unpaidCount} unpaid bookings`);
           }
         } catch (unpaidError) {
           console.error("Dashboard - Error counting unpaid bookings:", unpaidError);

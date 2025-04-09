@@ -8,7 +8,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { AlertCircle, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate, Link } from "react-router-dom";
-import { useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 
@@ -19,11 +18,11 @@ export default function UnpaidHandlers() {
   const { data: bookings, isLoading } = useQuery({
     queryKey: ['unpaid-bookings'],
     queryFn: async () => {
-      console.log("Fetching unpaid bookings");
+      console.log("Fetching unpaid bookings with optimized query");
       
       try {
-        // Fetch bookings that either have no proof of payment or empty string
-        const { data: unpaidBookings, error } = await supabase
+        // Use a single efficient query with join to get all the data we need
+        const { data, error } = await supabase
           .from('bookings')
           .select(`
             id,
@@ -35,6 +34,13 @@ export default function UnpaidHandlers() {
               id,
               start_time,
               classes(id, name)
+            ),
+            invoice_items(
+              invoice_id,
+              invoices:invoice_id(
+                id,
+                payment_received
+              )
             )
           `)
           .or('proof_of_payment.is.null,proof_of_payment.eq.')  // Match both NULL and empty string values
@@ -45,40 +51,21 @@ export default function UnpaidHandlers() {
           throw error;
         }
         
-        console.log(`Found ${unpaidBookings?.length || 0} bookings without proof of payment`);
-        
-        // Filter out bookings that have a paid invoice
-        const filteredBookings = [];
-        for (const booking of unpaidBookings || []) {
-          // Check if booking has a paid invoice
-          const { data: invoiceItem, error: invoiceError } = await supabase
-            .from('invoice_items')
-            .select(`
-              invoice_id,
-              invoices:invoice_id (
-                id,
-                status,
-                payment_received
-              )
-            `)
-            .eq('booking_id', booking.id)
-            .maybeSingle();
-          
-          if (invoiceError) {
-            console.error(`Error checking invoice for booking ${booking.id}:`, invoiceError);
-            continue;
+        // Filter bookings that have no invoice or no paid invoice
+        const unpaidBookings = data.filter(booking => {
+          // If booking has no invoice items, it's unpaid
+          if (!booking.invoice_items || booking.invoice_items.length === 0) {
+            return true;
           }
           
-          // Only include booking if it has no invoice or invoice is not paid
-          if (!invoiceItem || (invoiceItem && !invoiceItem.invoices.payment_received)) {
-            filteredBookings.push(booking);
-          } else {
-            console.log(`Excluding booking ${booking.id} - has a paid invoice`);
-          }
-        }
+          // Check if all related invoices are unpaid
+          return booking.invoice_items.every(item => 
+            !item.invoices || !item.invoices.payment_received
+          );
+        });
         
-        console.log(`Filtered to ${filteredBookings.length} truly unpaid bookings`);
-        return filteredBookings;
+        console.log(`Found ${unpaidBookings.length} truly unpaid bookings out of ${data.length} bookings without proof of payment`);
+        return unpaidBookings;
       } catch (error) {
         console.error("Error in unpaid bookings query:", error);
         toast.error("Failed to load unpaid bookings");

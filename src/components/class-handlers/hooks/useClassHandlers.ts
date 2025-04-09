@@ -22,6 +22,7 @@ export function useClassHandlers(classId: string) {
       
       const scheduleIdList = scheduleIds.map(s => s.id);
       
+      // Optimized query that fetches booking data and related invoice data in a single call
       const { data, error } = await supabase
         .from('bookings')
         .select(`
@@ -38,7 +39,14 @@ export function useClassHandlers(classId: string) {
           status,
           payment_status,
           dogs:dog_id(id, name, breed),
-          clients:client_id(id, first_name, last_name, email, phone)
+          clients:client_id(id, first_name, last_name, email, phone),
+          invoice_items(
+            invoice_id,
+            invoices:invoice_id(
+              id, 
+              payment_received
+            )
+          )
         `)
         .in('class_schedule_id', scheduleIdList);
       
@@ -46,14 +54,31 @@ export function useClassHandlers(classId: string) {
       
       console.log("Found bookings:", data?.length || 0);
       
-      // Check for bookings with missing proof_of_payment and log them in detail
-      const unpaidBookings = data?.filter(b => !b.proof_of_payment || b.proof_of_payment === '');
-      console.log(`Bookings missing proof_of_payment: ${unpaidBookings?.length || 0}`);
-      unpaidBookings?.forEach(booking => {
-        console.log(`Unpaid booking: ${booking.id} - ${booking.clients?.first_name} ${booking.clients?.last_name} - ${booking.dogs?.name}`);
+      // Process bookings to determine payment status
+      const processedBookings = data?.map(booking => {
+        // Check if any associated invoice is paid
+        const hasPaidInvoice = booking.invoice_items?.some(item => 
+          item.invoices && item.invoices.payment_received
+        );
+        
+        // Flag bookings as unpaid if they have no proof of payment and no paid invoice
+        const isUnpaid = (!booking.proof_of_payment || booking.proof_of_payment === '') && !hasPaidInvoice;
+        
+        if (isUnpaid) {
+          console.log(`Unpaid booking: ${booking.id} - ${booking.clients?.first_name} ${booking.clients?.last_name} - ${booking.dogs?.name}`);
+        }
+        
+        // Clean up the structure by removing the invoice_items array which is no longer needed
+        const { invoice_items, ...bookingData } = booking;
+        
+        // Return the booking with the computed payment status
+        return {
+          ...bookingData,
+          computed_payment_status: isUnpaid ? 'unpaid' : 'paid'
+        } as Booking;
       });
       
-      return data as Booking[];
+      return processedBookings as Booking[];
     },
     // More frequent refetching (every 5 seconds)
     refetchInterval: 5000,
