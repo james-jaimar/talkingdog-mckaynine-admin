@@ -1,6 +1,5 @@
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { generatePDF } from "./pdf-generator.ts";
 import { sendInvoiceEmail } from "./email-sender.ts";
 import { InvoiceRequest, corsHeaders } from "./types.ts";
 
@@ -14,19 +13,37 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("Invoice function started");
     
     // Get request data
-    const { invoice, email } = await req.json() as InvoiceRequest;
+    const { invoice, email, pdfBase64 } = await req.json() as InvoiceRequest & { pdfBase64: string };
+    
+    if (!pdfBase64) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: "Missing PDF data" 
+        }),
+        {
+          status: 400,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+    }
     
     try {
-      // Generate PDF
-      console.log("Generating PDF for invoice:", invoice.invoice_number);
-      console.log("Invoice status before PDF generation:", invoice.status);
-      const pdfBuffer = await generatePDF(invoice);
-      console.log("PDF generation completed successfully");
-      
-      // Send invoice email
       console.log(`Sending email to ${email}...`);
       
       try {
+        // Convert base64 string to ArrayBuffer
+        const binaryString = atob(pdfBase64);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        const pdfBuffer = bytes.buffer;
+        
+        // Send email with the PDF attachment
         await sendInvoiceEmail(invoice, email, pdfBuffer);
         console.log("Email sent successfully!");
         
@@ -65,17 +82,17 @@ const handler = async (req: Request): Promise<Response> => {
           }
         );
       }
-    } catch (pdfError) {
-      console.error("PDF generation error:", pdfError);
-      if (pdfError instanceof Error) {
-        console.error("PDF error stack:", pdfError.stack);
+    } catch (error) {
+      console.error("General processing error:", error);
+      if (error instanceof Error) {
+        console.error("Processing error stack:", error.stack);
       }
       
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: `PDF generation failed: ${pdfError.message}`,
-          stack: pdfError instanceof Error ? pdfError.stack : undefined
+          error: `Processing failed: ${error.message}`,
+          stack: error instanceof Error ? error.stack : undefined
         }),
         {
           status: 500,

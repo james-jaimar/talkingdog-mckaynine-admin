@@ -3,6 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Invoice } from "../invoices/types";
+import { getInvoiceAsBase64 } from "@/components/invoices/pdf/InvoicePDFGenerator";
 
 export function useEmailInvoice() {
   return useMutation({
@@ -11,16 +12,23 @@ export function useEmailInvoice() {
         console.log(`Sending invoice ${invoice.invoice_number} to ${email}...`);
         console.log("Invoice status:", invoice.status);
         
+        // Generate PDF using the client-side PDF generator
+        console.log("Generating PDF for email attachment...");
+        const pdfBase64 = await getInvoiceAsBase64(invoice);
+        console.log("PDF generation completed successfully");
+        
         // Make sure invoice status is lowercase for consistency
         const normalizedInvoice = {
           ...invoice,
           status: invoice.status ? invoice.status.toLowerCase() : 'draft'
         };
         
+        // Send the invoice email with the PDF attachment
         const { data, error } = await supabase.functions.invoke('send-invoice', {
           body: { 
             invoice: normalizedInvoice, 
-            email 
+            email,
+            pdfBase64
           }
         });
 

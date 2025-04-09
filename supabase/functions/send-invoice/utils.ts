@@ -1,6 +1,6 @@
 
 /**
- * Format a number as currency (ZAR)
+ * Helper function to format currency
  */
 export function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('en-ZA', {
@@ -10,7 +10,7 @@ export function formatCurrency(amount: number): string {
 }
 
 /**
- * Format a date string
+ * Helper function to format date
  */
 export function formatDate(dateString: string): string {
   const date = new Date(dateString);
