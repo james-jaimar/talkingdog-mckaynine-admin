@@ -9,7 +9,7 @@ import {
   CardHeader,
 } from "@/components/ui/card";
 
-// Import the new component files
+// Import the components
 import { UserTableActions } from "./components/UserTableActions";
 import { UserFilterBar } from "./components/UserFilterBar";
 import { UsersTable } from "./components/UsersTable";
@@ -18,6 +18,7 @@ import { UserResetPasswordDialog } from "./components/UserResetPasswordDialog";
 import { AddUserDialog } from "./AddUserDialog";
 
 export function AdminUsersList() {
+  // Use the enhanced useFetchUsers hook
   const { data: users = [], isLoading, refetch } = useFetchUsers();
   const { toast } = useToast();
   
@@ -39,6 +40,9 @@ export function AdminUsersList() {
       user.email?.toLowerCase().includes(filterText.toLowerCase())
     )
   );
+  
+  console.log("AdminUsersList - All users:", users);
+  console.log("AdminUsersList - Filtered users:", filteredUsers);
   
   // Handle refresh
   const handleRefresh = async () => {

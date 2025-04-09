@@ -28,7 +28,6 @@ export default function UserAdmin() {
     return (
       <DashboardLayout>
         <div className="container mx-auto py-6">
-          <h1 className="text-2xl font-bold mb-6">User Administration</h1>
           <div className="flex items-center justify-center h-64">
             <Loader2 className="h-8 w-8 animate-spin text-mckaynine-600" />
             <span className="ml-2">Checking permissions...</span>
@@ -49,7 +48,6 @@ export default function UserAdmin() {
       </Helmet>
       
       <div className="container mx-auto py-6">
-        <h1 className="text-2xl font-bold mb-6">User Administration</h1>
         <AdminUsersList />
       </div>
     </DashboardLayout>

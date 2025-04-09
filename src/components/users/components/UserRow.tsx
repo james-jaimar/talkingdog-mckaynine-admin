@@ -27,6 +27,8 @@ export function UserRow({ user, onEditRole, onResetPassword }: UserRowProps) {
     }
   };
 
+  console.log("Rendering UserRow for:", user);
+
   return (
     <TableRow>
       <TableCell>

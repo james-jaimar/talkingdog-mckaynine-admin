@@ -8,10 +8,10 @@ export function useFetchUsers() {
     queryKey: ['users-admin'],
     queryFn: async () => {
       try {
-        console.log("Fetching ALL user profiles from profiles table");
-        
         // Get current user for marking in the UI
         const { data: { user: currentUser } } = await supabase.auth.getUser();
+        
+        // Log current user ID for debugging
         console.log("Current user ID:", currentUser?.id);
         
         // Get all profiles from the profiles table with explicit ordering
@@ -25,10 +25,11 @@ export function useFetchUsers() {
           throw profilesError;
         }
         
-        console.log(`Found ${profiles?.length || 0} total profiles in database:`, profiles);
+        // Log the retrieved profiles for debugging
+        console.log(`Found ${profiles?.length || 0} profiles in database:`, profiles);
         
         if (!profiles || profiles.length === 0) {
-          console.warn("No profiles found in the database");
+          console.log("No profiles found in database");
           return [];
         }
         
