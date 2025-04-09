@@ -8,60 +8,45 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { format } from "date-fns";
-import { Search, RefreshCw, Key, UserCog } from "lucide-react";
+import { Search, RefreshCw, UserPlus } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { UserProfile } from "./types/userTypes";
+import { AddUserDialog } from "./AddUserDialog";
 import { UserManageDialog } from "./UserManageDialog";
 import { UserPasswordResetDialog } from "./UserPasswordResetDialog";
-import { AddUserDialog } from "./AddUserDialog";
-import { User } from "./hooks/useUsers";
 
 interface UserAdminTableProps {
-  users: User[];
+  users: UserProfile[];
   onRefresh: () => void;
   currentUserId: string;
 }
 
 export default function UserAdminTable({ users, onRefresh, currentUserId }: UserAdminTableProps) {
   const [filter, setFilter] = useState("");
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [isPasswordResetOpen, setIsPasswordResetOpen] = useState(false);
-  const [isManageDialogOpen, setIsManageDialogOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [addUserDialogOpen, setAddUserDialogOpen] = useState(false);
+  const [addUserOpen, setAddUserOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
+  const [manageDialogOpen, setManageDialogOpen] = useState(false);
+  const [resetPasswordOpen, setResetPasswordOpen] = useState(false);
+
+  console.log("UserAdminTable - Received users:", users);
 
   // Filter users by name or email
-  const filteredUsers = users.filter(
-    (user) =>
-      (user.full_name?.toLowerCase() || '').includes(filter.toLowerCase()) ||
-      (user.email?.toLowerCase() || '').includes(filter.toLowerCase())
+  const filteredUsers = users.filter(user => 
+    (user.full_name?.toLowerCase() || '').includes(filter.toLowerCase()) ||
+    (user.email?.toLowerCase() || '').includes(filter.toLowerCase())
   );
 
-  // Handle refresh with loading state
+  console.log("UserAdminTable - Filtered users:", filteredUsers);
+
+  // Handle refresh
   const handleRefresh = async () => {
     setIsRefreshing(true);
     await onRefresh();
-    setTimeout(() => setIsRefreshing(false), 500); // Ensure spinner shows for at least 500ms
-  };
-
-  // Open password reset dialog
-  const handleResetPassword = (user: User) => {
-    setSelectedUser(user);
-    setIsPasswordResetOpen(true);
-  };
-
-  // Open manage user dialog
-  const handleManageUser = (user: User) => {
-    setSelectedUser(user);
-    setIsManageDialogOpen(true);
+    setTimeout(() => setIsRefreshing(false), 500);
   };
 
   // Get role badge style
@@ -75,13 +60,17 @@ export default function UserAdminTable({ users, onRefresh, currentUserId }: User
   };
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <div>
-          <CardTitle>Users ({users.length})</CardTitle>
-          <CardDescription>
-            Manage user accounts and access roles.
-          </CardDescription>
+    <div>
+      <div className="flex justify-between items-center mb-4">
+        <div className="relative w-full max-w-sm">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="search"
+            placeholder="Search users..."
+            className="pl-8 w-full"
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+          />
         </div>
         <div className="flex space-x-2">
           <Button 
@@ -95,116 +84,105 @@ export default function UserAdminTable({ users, onRefresh, currentUserId }: User
           </Button>
           <Button 
             size="sm" 
-            onClick={() => setAddUserDialogOpen(true)}
+            onClick={() => setAddUserOpen(true)}
           >
+            <UserPlus className="h-4 w-4 mr-1" />
             Add User
           </Button>
         </div>
-      </CardHeader>
-      <CardContent>
-        <div className="relative mb-4">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            type="search"
-            placeholder="Search users..."
-            className="pl-8"
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-          />
-        </div>
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
+      </div>
+
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name / Email</TableHead>
+              <TableHead>Role</TableHead>
+              <TableHead>Created</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredUsers.length === 0 ? (
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                  {users.length === 0 ? "No users found." : "No users match your search."}
+                </TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredUsers.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                    {users.length === 0 ? "No users found." : "No users match your search."}
+            ) : (
+              filteredUsers.map((user) => (
+                <TableRow key={user.id}>
+                  <TableCell>
+                    <div className="font-medium">{user.full_name || 'Unnamed User'}</div>
+                    <div className="text-sm text-muted-foreground">{user.email}</div>
+                    {user.id === currentUserId && (
+                      <span className="text-xs bg-gray-100 text-gray-800 px-2 py-0.5 rounded-full">
+                        You
+                      </span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <Badge className={getRoleBadgeClass(user.role)}>
+                      {user.role || "user"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {user.created_at ? format(new Date(user.created_at), "PPP") : "—"}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => {
+                          setSelectedUser(user);
+                          setResetPasswordOpen(true);
+                        }}
+                      >
+                        Reset Password
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => {
+                          setSelectedUser(user);
+                          setManageDialogOpen(true);
+                        }}
+                      >
+                        Edit Role
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
-              ) : (
-                filteredUsers.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell>
-                      {user.full_name || "—"}
-                      {user.id === currentUserId && (
-                        <span className="ml-2 text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded">
-                          You
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell>{user.email}</TableCell>
-                    <TableCell>
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${getRoleBadgeClass(user.role)}`}>
-                        {user.role || "user"}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      {user.created_at 
-                        ? format(new Date(user.created_at), "PPP") 
-                        : "—"}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => handleResetPassword(user)}
-                        >
-                          <Key className="h-4 w-4 mr-1" />
-                          Reset
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => handleManageUser(user)}
-                        >
-                          <UserCog className="h-4 w-4 mr-1" />
-                          Manage
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      </CardContent>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
 
-      {/* User Management Dialogs */}
+      {/* Dialogs */}
       <AddUserDialog 
-        open={addUserDialogOpen}
-        onOpenChange={setAddUserDialogOpen}
+        open={addUserOpen}
+        onOpenChange={setAddUserOpen}
         onUserAdded={onRefresh}
       />
 
-      {/* Password Reset Dialog */}
       {selectedUser && (
-        <UserPasswordResetDialog 
-          user={selectedUser}
-          open={isPasswordResetOpen}
-          onOpenChange={setIsPasswordResetOpen}
-        />
+        <>
+          <UserManageDialog 
+            user={selectedUser}
+            open={manageDialogOpen}
+            onOpenChange={setManageDialogOpen}
+            onUserUpdated={onRefresh}
+          />
+          
+          <UserPasswordResetDialog 
+            user={selectedUser}
+            open={resetPasswordOpen}
+            onOpenChange={setResetPasswordOpen}
+          />
+        </>
       )}
-
-      {/* Manage User Dialog */}
-      {selectedUser && (
-        <UserManageDialog 
-          user={selectedUser}
-          open={isManageDialogOpen}
-          onOpenChange={setIsManageDialogOpen}
-          onUserUpdated={onRefresh}
-        />
-      )}
-    </Card>
+    </div>
   );
 }
