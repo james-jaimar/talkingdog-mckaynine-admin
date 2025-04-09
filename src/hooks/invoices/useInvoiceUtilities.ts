@@ -5,25 +5,26 @@ import { useBranch } from "@/context/BranchContext";
 
 /**
  * Generates a sequential invoice number with branch code and month prefix
- * with multiple fallback mechanisms for resilience
- * Format: McDAPR0001 for Delta branch, McRAPR0001 for Randburg branch
+ * Format: INV-McD-2504-0001 for Delta branch in April 2025
  */
 export const generateInvoiceNumber = async (): Promise<string> => {
   try {
     // Get current date info for the prefix
     const now = new Date();
-    const monthAbbreviation = format(now, "MMM").toUpperCase();
+    const year = now.getFullYear().toString().slice(-2); // Get last 2 digits of year
+    const month = (now.getMonth() + 1).toString().padStart(2, '0'); // Month as 2 digits
+    const yearMonth = `${year}${month}`; // Combined as YYMM format
     
     // Get branch information to determine the prefix
     let branchPrefix = "Mc"; // Default prefix if we can't determine branch
-    let branchName = "";
+    let branchCode = ""; // First letter of branch name
     
     try {
       // Try to get the current branch from localStorage first (most reliable)
       const branchId = localStorage.getItem('currentBranchId');
       
       if (branchId) {
-        // Use raw query with explicit return type to avoid complex type inference
+        // Use query with explicit return type
         const { data, error } = await supabase
           .from('branches')
           .select('name')
@@ -31,51 +32,66 @@ export const generateInvoiceNumber = async (): Promise<string> => {
           .limit(1);
           
         if (!error && data && data.length > 0) {
-          branchName = data[0].name.toLowerCase();
-          console.log("Invoice: Using branch from localStorage:", data[0].name);
+          const branchName = data[0].name;
+          console.log("Invoice: Using branch from localStorage:", branchName);
           
-          if (branchName.includes('delta')) {
-            branchPrefix = "McD";
-          } else if (branchName.includes('randburg')) {
-            branchPrefix = "McR";
+          // Get first letter of branch name
+          if (branchName && branchName.length > 0) {
+            branchCode = branchName.charAt(0).toUpperCase();
+          }
+          
+          // Use the first letter for branch code
+          if (branchName.toLowerCase().includes('delta')) {
+            branchCode = "D";
+          } else if (branchName.toLowerCase().includes('randburg')) {
+            branchCode = "R";
           }
         }
       }
       
       // If we couldn't get from localStorage, try querying directly
-      if (!branchName) {
+      if (!branchCode) {
         // Get auth user first
         const { data: authData } = await supabase.auth.getUser();
         
         if (authData?.user) {
-          // Use the new RPC function for getting the default branch name
+          // Use the RPC function for getting the default branch name
           const { data: branchData, error: branchError } = await supabase
             .rpc('get_default_branch_name');
             
           if (!branchError && branchData) {
-            // The function returns text, so we can safely use toLowerCase
-            branchName = String(branchData).toLowerCase();
-            console.log("Invoice: Using default branch:", branchData);
+            const branchName = String(branchData);
+            console.log("Invoice: Using default branch:", branchName);
             
-            if (branchName.includes('delta')) {
-              branchPrefix = "McD";
-            } else if (branchName.includes('randburg')) {
-              branchPrefix = "McR";
+            // Get first letter of branch name
+            if (branchName && branchName.length > 0) {
+              branchCode = branchName.charAt(0).toUpperCase();
             }
-          } else {
-            console.warn("No default branch found, using default prefix");
+            
+            // Special handling for known branches
+            if (branchName.toLowerCase().includes('delta')) {
+              branchCode = "D";
+            } else if (branchName.toLowerCase().includes('randburg')) {
+              branchCode = "R";
+            }
           }
         }
       }
       
-      console.log("Invoice: Using branch prefix:", branchPrefix);
+      // If we still don't have a branch code, use X as fallback
+      if (!branchCode) {
+        branchCode = "X";
+      }
+      
+      console.log("Invoice: Using branch code:", branchCode);
     } catch (err) {
-      console.warn("Error fetching branch info, using default prefix:", err);
-      // Will use default prefix defined above
+      console.warn("Error fetching branch info, using default branch code:", err);
+      branchCode = "X"; // Fallback branch code
     }
     
     // Generate the prefix for the invoice number
-    const invoicePrefix = `${branchPrefix}${monthAbbreviation}`;
+    // Format: INV-McD-2504-####
+    const invoicePrefix = `INV-Mc${branchCode}-${yearMonth}-`;
     
     // Try to count matching invoices with the same prefix
     let count = 0;
@@ -83,12 +99,14 @@ export const generateInvoiceNumber = async (): Promise<string> => {
     try {
       console.log("Querying invoices with prefix:", invoicePrefix);
       
-      // Use the new RPC function for counting invoices with a prefix
-      const { data: invoiceCount, error: countError } = await supabase
-        .rpc('count_invoices_with_prefix', { prefix: invoicePrefix });
+      // Use RPC function or direct query to count invoices with prefix
+      const { data: invoices, error } = await supabase
+        .from('invoices')
+        .select('invoice_number')
+        .ilike('invoice_number', `${invoicePrefix}%`);
       
-      if (!countError && typeof invoiceCount === 'number') {
-        count = invoiceCount;
+      if (!error && invoices) {
+        count = invoices.length;
         console.log(`Found ${count} invoices with prefix ${invoicePrefix}`);
       }
     } catch (err) {
@@ -96,15 +114,15 @@ export const generateInvoiceNumber = async (): Promise<string> => {
       
       // Simple fallback: get a total count instead
       try {
-        // Simple count without filtering to avoid type issues
+        // Simple count without filtering
         const { count: totalCount } = await supabase
           .from('invoices')
           .select('*', { count: 'exact', head: true });
           
         if (totalCount !== null) {
           // Cap at a reasonable number to be safe
-          count = Math.min(totalCount, 25);
-          console.log(`Using total invoice count as fallback: ${count}`);
+          count = Math.min(totalCount % 100, 25);
+          console.log(`Using modulo of total invoice count as fallback: ${count}`);
         } else {
           // Final fallback: use a small random number
           count = Math.floor(Math.random() * 10) + 1;
@@ -119,8 +137,8 @@ export const generateInvoiceNumber = async (): Promise<string> => {
     // Generate the sequential number (current count + 1)
     const sequentialNumber = String(count + 1).padStart(4, '0');
     
-    // Format the invoice number as McDAPR0001 or McRAPR0001
-    const invoiceNumber = `${branchPrefix}${monthAbbreviation}${sequentialNumber}`;
+    // Format the invoice number as INV-McD-2504-0001
+    const invoiceNumber = `${invoicePrefix}${sequentialNumber}`;
     
     console.log("Generated invoice number:", invoiceNumber);
     return invoiceNumber;
@@ -129,9 +147,10 @@ export const generateInvoiceNumber = async (): Promise<string> => {
     
     // Ultimate fallback - timestamp-based number with random component
     const now = new Date();
-    const monthAbbreviation = format(now, "MMM").toUpperCase();
-    const timestamp = now.getTime();
-    const randomPart = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-    return `Mc${monthAbbreviation}ERR${timestamp.toString().slice(-3)}${randomPart}`;
+    const year = now.getFullYear().toString().slice(-2);
+    const month = (now.getMonth() + 1).toString().padStart(2, '0');
+    const timestamp = now.getTime().toString().slice(-4);
+    const randomPart = Math.floor(Math.random() * 100).toString().padStart(3, '0');
+    return `INV-McX-${year}${month}-ERR${randomPart}`;
   }
 };

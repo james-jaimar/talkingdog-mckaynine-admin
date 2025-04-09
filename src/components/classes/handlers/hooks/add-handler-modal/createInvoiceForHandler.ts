@@ -39,22 +39,26 @@ export const createInvoiceForHandler = async ({
     } catch (error) {
       console.error("Error generating invoice number, using simple fallback:", error);
       
-      // Create a fallback invoice number based on timestamp, month and random value
+      // Create a fallback invoice number based on the new format
       const now = new Date();
-      const monthAbbreviation = format(now, "MMM").toUpperCase();
-      const timestamp = now.getTime();
-      const random = Math.floor(Math.random() * 10000);
+      const year = now.getFullYear().toString().slice(-2);
+      const month = (now.getMonth() + 1).toString().padStart(2, '0');
+      const timestamp = now.getTime().toString().slice(-4);
+      const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
       
       // Get branch info for prefix if possible
-      let branchPrefix = "Mc";
+      let branchCode = "X"; // Default fallback branch code
       try {
         if (currentBranch?.name) {
           if (currentBranch.name.toLowerCase().includes('delta')) {
-            branchPrefix = "McD";
-            console.log("Using Delta branch prefix in fallback");
+            branchCode = "D";
+            console.log("Using Delta branch code in fallback");
           } else if (currentBranch.name.toLowerCase().includes('randburg')) {
-            branchPrefix = "McR";
-            console.log("Using Randburg branch prefix in fallback");
+            branchCode = "R";
+            console.log("Using Randburg branch code in fallback");
+          } else {
+            // Just use the first letter of branch name
+            branchCode = currentBranch.name.charAt(0).toUpperCase();
           }
         } else {
           // If no current branch context is available, try to get from localStorage
@@ -68,9 +72,11 @@ export const createInvoiceForHandler = async ({
               
             if (branchData?.name) {
               if (branchData.name.toLowerCase().includes('delta')) {
-                branchPrefix = "McD";
+                branchCode = "D";
               } else if (branchData.name.toLowerCase().includes('randburg')) {
-                branchPrefix = "McR";
+                branchCode = "R";
+              } else {
+                branchCode = branchData.name.charAt(0).toUpperCase();
               }
               console.log("Using branch from localStorage in fallback:", branchData.name);
             }
@@ -83,9 +89,11 @@ export const createInvoiceForHandler = async ({
               
             if (branchData?.name) {
               if (branchData.name.toLowerCase().includes('delta')) {
-                branchPrefix = "McD";
+                branchCode = "D";
               } else if (branchData.name.toLowerCase().includes('randburg')) {
-                branchPrefix = "McR";
+                branchCode = "R";
+              } else {
+                branchCode = branchData.name.charAt(0).toUpperCase();
               }
               console.log("Using first branch in fallback:", branchData.name);
             }
@@ -95,7 +103,8 @@ export const createInvoiceForHandler = async ({
         console.warn("Could not get branch info for invoice number fallback");
       }
       
-      invoiceNumber = `${branchPrefix}${monthAbbreviation}FB${timestamp.toString().slice(-4)}${random}`;
+      // Format: INV-McD-2504-FB123
+      invoiceNumber = `INV-Mc${branchCode}-${year}${month}-FB${random}`;
     }
     
     console.log("Generated invoice number:", invoiceNumber);
