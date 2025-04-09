@@ -74,7 +74,7 @@ export async function generatePDF(invoice: Invoice): Promise<ArrayBuffer> {
 }
 
 /**
- * Adds a logo to the PDF document
+ * Adds a logo to the PDF document - UPDATED to match client-side implementation
  */
 function addLogoToPdf(doc: jsPDF, pageWidth: number): boolean {
   try {
