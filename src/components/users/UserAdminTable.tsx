@@ -1,18 +1,10 @@
 
-import { useState, useEffect } from "react";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { useState } from "react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { format } from "date-fns";
 import { Search, RefreshCw, UserPlus } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { format } from "date-fns";
 import { UserProfile } from "./types/userTypes";
 import { AddUserDialog } from "./AddUserDialog";
 import { UserManageDialog } from "./UserManageDialog";
@@ -32,24 +24,6 @@ export default function UserAdminTable({ users, onRefresh, currentUserId }: User
   const [manageDialogOpen, setManageDialogOpen] = useState(false);
   const [resetPasswordOpen, setResetPasswordOpen] = useState(false);
 
-  // For debugging
-  useEffect(() => {
-    console.log("UserAdminTable - Component mounted or users changed");
-    console.log("UserAdminTable - Received users array:", users);
-    console.log(`UserAdminTable - Users array length: ${users.length}`);
-    console.log("UserAdminTable - First few users:", users.slice(0, 3));
-    console.log("UserAdminTable - Users array is array?", Array.isArray(users));
-    
-    // Check if users have all required properties
-    if (users.length > 0) {
-      const firstUser = users[0];
-      console.log("UserAdminTable - Sample user object:", firstUser);
-      console.log("UserAdminTable - User has id?", Boolean(firstUser.id));
-      console.log("UserAdminTable - User has email?", Boolean(firstUser.email));
-      console.log("UserAdminTable - User has role?", Boolean(firstUser.role));
-    }
-  }, [users]);
-
   // Filter users by name or email
   const filteredUsers = users.filter(user => {
     const nameMatch = (user.full_name?.toLowerCase() || '').includes(filter.toLowerCase());
@@ -59,7 +33,7 @@ export default function UserAdminTable({ users, onRefresh, currentUserId }: User
 
   console.log("UserAdminTable - Filtered users:", filteredUsers.length);
 
-  // Handle refresh
+  // Handle refresh with debounce
   const handleRefresh = async () => {
     setIsRefreshing(true);
     console.log("UserAdminTable - Refreshing user data...");
@@ -79,9 +53,9 @@ export default function UserAdminTable({ users, onRefresh, currentUserId }: User
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-4">
-        {/* Search and action buttons */}
-        <div className="relative w-full max-w-sm">
+      <div className="flex flex-wrap gap-4 mb-4">
+        {/* Search */}
+        <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             type="search"
@@ -91,7 +65,8 @@ export default function UserAdminTable({ users, onRefresh, currentUserId }: User
             onChange={(e) => setFilter(e.target.value)}
           />
         </div>
-        <div className="flex space-x-2">
+        
+        <div className="flex gap-2">
           <Button 
             variant="outline" 
             size="sm" 
@@ -101,6 +76,7 @@ export default function UserAdminTable({ users, onRefresh, currentUserId }: User
             <RefreshCw className={`h-4 w-4 mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
+          
           <Button 
             size="sm" 
             onClick={() => setAddUserOpen(true)}
@@ -111,57 +87,57 @@ export default function UserAdminTable({ users, onRefresh, currentUserId }: User
         </div>
       </div>
 
-      {/* Debug information */}
+      {/* Debug information for user visibility issues */}
       {users.length === 1 && (
         <div className="p-2 mb-2 bg-yellow-50 border border-yellow-200 rounded text-sm">
           <p>Debug: Only 1 user found in database ({users[0]?.email})</p>
         </div>
       )}
 
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name / Email</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Created</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+      {/* Users table */}
+      <div className="border rounded-md overflow-hidden">
+        <table className="w-full">
+          <thead>
+            <tr className="bg-gray-50 border-b">
+              <th className="text-left px-4 py-3">User</th>
+              <th className="text-left px-4 py-3">Role</th>
+              <th className="text-left px-4 py-3">Created</th>
+              <th className="text-right px-4 py-3">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
             {filteredUsers.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+              <tr>
+                <td colSpan={4} className="text-center py-8 text-gray-500">
                   {users.length === 0 ? "No users found." : "No users match your search."}
-                </TableCell>
-              </TableRow>
+                </td>
+              </tr>
             ) : (
               filteredUsers.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell>
+                <tr key={user.id} className="border-b">
+                  <td className="px-4 py-3">
                     <div className="font-medium">{user.full_name || 'Unnamed User'}</div>
-                    <div className="text-sm text-muted-foreground">{user.email}</div>
+                    <div className="text-sm text-gray-500">{user.email}</div>
                     {user.id === currentUserId && (
                       <span className="text-xs bg-gray-100 text-gray-800 px-2 py-0.5 rounded-full">
                         You
                       </span>
                     )}
-                  </TableCell>
-                  <TableCell>
-                    <Badge className={getRoleBadgeClass(user.role)}>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={`px-2 py-1 text-xs rounded-full ${getRoleBadgeClass(user.role)}`}>
                       {user.role || "user"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
                     {user.created_at ? format(new Date(user.created_at), "PPP") : "—"}
-                  </TableCell>
-                  <TableCell className="text-right">
+                  </td>
+                  <td className="px-4 py-3 text-right">
                     <div className="flex justify-end gap-2">
                       <Button 
                         variant="outline" 
                         size="sm"
                         onClick={() => {
-                          console.log("Reset password clicked for user:", user.id);
                           setSelectedUser(user);
                           setResetPasswordOpen(true);
                         }}
@@ -172,7 +148,6 @@ export default function UserAdminTable({ users, onRefresh, currentUserId }: User
                         variant="outline" 
                         size="sm"
                         onClick={() => {
-                          console.log("Edit role clicked for user:", user.id);
                           setSelectedUser(user);
                           setManageDialogOpen(true);
                         }}
@@ -180,12 +155,12 @@ export default function UserAdminTable({ users, onRefresh, currentUserId }: User
                         Edit Role
                       </Button>
                     </div>
-                  </TableCell>
-                </TableRow>
+                  </td>
+                </tr>
               ))
             )}
-          </TableBody>
-        </Table>
+          </tbody>
+        </table>
       </div>
 
       {/* Dialogs */}
