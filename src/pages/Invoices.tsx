@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Helmet } from "react-helmet";
 import { useInvoices } from "@/hooks/useInvoices";
@@ -9,11 +9,27 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, FileText, Filter } from "lucide-react";
 import { InvoiceStatus } from "@/types/invoice";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function Invoices() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<InvoiceStatus | 'all'>('all');
-  const { invoices, isLoading } = useInvoices();
+  const { invoices, isLoading, refreshAllInvoiceQueries } = useInvoices();
+  const queryClient = useQueryClient();
+
+  // Auto-refresh data when component mounts
+  useEffect(() => {
+    console.log("Invoices page: Refreshing data");
+    refreshAllInvoiceQueries();
+  }, [refreshAllInvoiceQueries]);
+
+  // Refresh data when create dialog closes (in case an invoice was created)
+  useEffect(() => {
+    if (!createDialogOpen) {
+      console.log("Create dialog closed, refreshing data");
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+    }
+  }, [createDialogOpen, queryClient]);
 
   const filteredInvoices = invoices?.filter(invoice => 
     statusFilter === 'all' || invoice.status === statusFilter
@@ -63,7 +79,13 @@ export default function Invoices() {
         
         <InvoiceCreateDialog 
           open={createDialogOpen} 
-          onOpenChange={setCreateDialogOpen} 
+          onOpenChange={(open) => {
+            setCreateDialogOpen(open);
+            if (!open) {
+              // Refresh data when dialog closes
+              refreshAllInvoiceQueries();
+            }
+          }} 
         />
       </div>
     </DashboardLayout>

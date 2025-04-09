@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Invoice } from "@/types/invoice";
 import {
@@ -33,6 +33,7 @@ import { formatCurrency } from "@/lib/formatters";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface InvoicesListProps {
   invoices: Invoice[];
@@ -49,6 +50,12 @@ export function InvoicesList({ invoices, isLoading }: InvoicesListProps) {
   const [emailRecipient, setEmailRecipient] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { deleteInvoice, markAsPaid, markAsSent, cancelInvoice, emailInvoice } = useInvoices();
+  const queryClient = useQueryClient();
+
+  // Add effect to refresh data when component mounts
+  useEffect(() => {
+    queryClient.invalidateQueries({ queryKey: ['invoices'] });
+  }, [queryClient]);
 
   const filteredInvoices = invoices.filter(
     invoice => 

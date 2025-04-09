@@ -11,24 +11,37 @@ export function useMarkInvoiceAsSent() {
 
   return useMutation({
     mutationFn: async (invoiceId: string) => {
-      const { error } = await supabase
+      const { error, data } = await supabase
         .from('invoices')
         .update({
           status: 'sent',
           email_sent: true
         })
-        .eq('id', invoiceId);
+        .eq('id', invoiceId)
+        .select('client_id')
+        .single();
 
       if (error) throw error;
 
-      return { id: invoiceId };
+      return { id: invoiceId, client_id: data?.client_id };
     },
-    onSuccess: (_, invoiceId) => {
-      // Invalidate all invoice queries to ensure UI updates
-      queryClient.invalidateQueries({ queryKey: ['invoices'] });
-      queryClient.invalidateQueries({ queryKey: ['invoice', invoiceId] });
-      queryClient.invalidateQueries({ queryKey: ['client-invoices'] });
-      queryClient.invalidateQueries({ queryKey: ['my-invoices'] });
+    onSuccess: (data) => {
+      // Invalidate all invoice queries to ensure UI updates with refetch
+      queryClient.invalidateQueries({ queryKey: ['invoices'], refetchType: 'all' });
+      queryClient.invalidateQueries({ queryKey: ['invoice', data.id], refetchType: 'all' });
+      
+      // If we have the client_id, invalidate client-specific queries
+      if (data.client_id) {
+        queryClient.invalidateQueries({ 
+          queryKey: ['client-invoices', data.client_id], 
+          refetchType: 'all' 
+        });
+      }
+      
+      queryClient.invalidateQueries({ queryKey: ['my-invoices'], refetchType: 'all' });
+      
+      // Force refetch the invoices list
+      queryClient.refetchQueries({ queryKey: ['invoices'] });
       
       toast.success("Invoice marked as sent");
     },

@@ -80,10 +80,15 @@ export function useCreateInvoice() {
     onSuccess: (data) => {
       console.log("Invoice mutation completed successfully, invalidating queries");
       
-      queryClient.invalidateQueries({ queryKey: ['invoices'] });
-      queryClient.invalidateQueries({ queryKey: ['invoice', data.id] }); 
-      queryClient.invalidateQueries({ queryKey: ['client-invoices', data.client_id] }); 
-      queryClient.invalidateQueries({ queryKey: ['my-invoices'] }); 
+      // Immediately invalidate all relevant queries with refetch
+      queryClient.invalidateQueries({ queryKey: ['invoices'], refetchType: 'all' });
+      queryClient.invalidateQueries({ queryKey: ['invoice', data.id], refetchType: 'all' }); 
+      queryClient.invalidateQueries({ queryKey: ['client-invoices', data.client_id], refetchType: 'all' }); 
+      queryClient.invalidateQueries({ queryKey: ['my-invoices'], refetchType: 'all' });
+      
+      // Force an immediate refetch of the invoices list
+      queryClient.refetchQueries({ queryKey: ['invoices'], type: 'all' });
+      
       toast.success("Invoice created successfully");
     },
     onError: (error: any) => {

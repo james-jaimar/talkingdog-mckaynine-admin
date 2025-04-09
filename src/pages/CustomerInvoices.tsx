@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { CustomerDashboardLayout } from "@/components/layout/CustomerDashboardLayout";
 import { Helmet } from "react-helmet";
 import { useInvoices } from "@/hooks/useInvoices";
@@ -12,12 +12,21 @@ import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { Search, Eye, Loader2, Download } from "lucide-react";
 import { formatCurrency } from "@/lib/formatters";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function CustomerInvoices() {
   const navigate = useNavigate();
   const { useMyInvoices } = useInvoices();
-  const { data: invoices, isLoading } = useMyInvoices();
+  const { data: invoices, isLoading, refetch } = useMyInvoices();
   const [searchTerm, setSearchTerm] = useState("");
+  const queryClient = useQueryClient();
+  
+  // Auto-refresh data when component mounts or when navigating to this page
+  useEffect(() => {
+    console.log("CustomerInvoices: Refreshing invoice data");
+    queryClient.invalidateQueries({ queryKey: ['my-invoices'], refetchType: 'all' });
+    refetch();
+  }, [queryClient, refetch]);
   
   const filteredInvoices = invoices?.filter(invoice => 
     invoice.invoice_number.toLowerCase().includes(searchTerm.toLowerCase())
