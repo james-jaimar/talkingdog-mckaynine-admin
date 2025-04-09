@@ -7,13 +7,15 @@ import { InvoicesList } from "@/components/invoices/InvoicesList";
 import { InvoiceCreateDialog } from "@/components/invoices/InvoiceCreateDialog";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, FileText, Filter } from "lucide-react";
+import { Plus, Filter } from "lucide-react";
 import { InvoiceStatus } from "@/types/invoice";
 import { useQueryClient } from "@tanstack/react-query";
+import { startOfMonth, endOfMonth, subMonths, format } from "date-fns";
 
 export default function Invoices() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<InvoiceStatus | 'all'>('all');
+  const [monthFilter, setMonthFilter] = useState<string>("current"); // Default to current month
   const { invoices, isLoading, refreshAllInvoiceQueries } = useInvoices();
   const queryClient = useQueryClient();
 
@@ -31,9 +33,47 @@ export default function Invoices() {
     }
   }, [createDialogOpen, queryClient]);
 
-  const filteredInvoices = invoices?.filter(invoice => 
-    statusFilter === 'all' || invoice.status === statusFilter
-  ) || [];
+  // Get date ranges for month filtering
+  const getCurrentMonthRange = () => {
+    const now = new Date();
+    return {
+      start: startOfMonth(now),
+      end: endOfMonth(now),
+      label: format(now, "MMMM yyyy")
+    };
+  };
+
+  const getPreviousMonthRange = (monthsBack: number) => {
+    const date = subMonths(new Date(), monthsBack);
+    return {
+      start: startOfMonth(date),
+      end: endOfMonth(date),
+      label: format(date, "MMMM yyyy")
+    };
+  };
+
+  const monthRanges = {
+    "current": getCurrentMonthRange(),
+    "prev1": getPreviousMonthRange(1),
+    "prev2": getPreviousMonthRange(2),
+    "prev3": getPreviousMonthRange(3),
+    "all": { start: new Date(0), end: new Date(8640000000000000), label: "All Time" }
+  };
+
+  // Filter invoices by status and month
+  const filteredInvoices = invoices?.filter(invoice => {
+    const statusMatch = statusFilter === 'all' || invoice.status === statusFilter;
+    
+    if (monthFilter === "all") {
+      return statusMatch;
+    }
+    
+    const invoiceDate = new Date(invoice.issued_date);
+    const range = monthRanges[monthFilter as keyof typeof monthRanges];
+    const dateMatch = invoiceDate >= range.start && invoiceDate <= range.end;
+    
+    return statusMatch && dateMatch;
+  }) || [];
 
   return (
     <DashboardLayout>
@@ -50,6 +90,28 @@ export default function Invoices() {
           </Button>
         </div>
 
+        {/* Month tabs */}
+        <Tabs defaultValue="current" className="mb-4" onValueChange={setMonthFilter}>
+          <div className="flex items-center justify-between">
+            <TabsList className="grid grid-cols-5 w-full max-w-md">
+              <TabsTrigger value="current">
+                {format(new Date(), "MMM yyyy")}
+              </TabsTrigger>
+              <TabsTrigger value="prev1">
+                {format(subMonths(new Date(), 1), "MMM yyyy")}
+              </TabsTrigger>
+              <TabsTrigger value="prev2">
+                {format(subMonths(new Date(), 2), "MMM yyyy")}
+              </TabsTrigger>
+              <TabsTrigger value="prev3">
+                {format(subMonths(new Date(), 3), "MMM yyyy")}
+              </TabsTrigger>
+              <TabsTrigger value="all">All</TabsTrigger>
+            </TabsList>
+          </div>
+        </Tabs>
+
+        {/* Status tabs */}
         <Tabs defaultValue="all" className="mb-6">
           <div className="flex items-center justify-between">
             <TabsList>
@@ -75,7 +137,11 @@ export default function Invoices() {
           </div>
         </Tabs>
         
-        <InvoicesList invoices={filteredInvoices} isLoading={isLoading} />
+        <InvoicesList 
+          invoices={filteredInvoices} 
+          isLoading={isLoading} 
+          currentMonthLabel={monthRanges[monthFilter as keyof typeof monthRanges].label}
+        />
         
         <InvoiceCreateDialog 
           open={createDialogOpen} 

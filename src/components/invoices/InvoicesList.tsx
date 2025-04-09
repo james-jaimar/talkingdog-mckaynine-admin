@@ -38,9 +38,10 @@ import { useQueryClient } from "@tanstack/react-query";
 interface InvoicesListProps {
   invoices: Invoice[];
   isLoading: boolean;
+  currentMonthLabel?: string;
 }
 
-export function InvoicesList({ invoices, isLoading }: InvoicesListProps) {
+export function InvoicesList({ invoices, isLoading, currentMonthLabel = "All Invoices" }: InvoicesListProps) {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -148,7 +149,7 @@ export function InvoicesList({ invoices, isLoading }: InvoicesListProps) {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle>Invoices</CardTitle>
+            <CardTitle>Invoices {currentMonthLabel && `- ${currentMonthLabel}`}</CardTitle>
             <CardDescription>
               Manage client invoices and payments
             </CardDescription>
@@ -194,7 +195,7 @@ export function InvoicesList({ invoices, isLoading }: InvoicesListProps) {
                 ) : filteredInvoices.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                      {searchTerm ? "No invoices match your search." : "No invoices found."}
+                      {searchTerm ? "No invoices match your search." : `No invoices found for ${currentMonthLabel}.`}
                     </TableCell>
                   </TableRow>
                 ) : (
