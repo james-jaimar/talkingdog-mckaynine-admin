@@ -2,6 +2,7 @@
 import { TabsContent } from "@/components/ui/tabs";
 import { SearchHandlers } from "./SearchHandlers";
 import { ExistingHandlersList } from "../ExistingHandlersList";
+import { useState } from "react";
 
 interface HandlerSelectionTabProps {
   searchQuery: string;
@@ -18,6 +19,9 @@ export function HandlerSelectionTab({
   classId,
   isProcessing
 }: HandlerSelectionTabProps) {
+  // Track selected handler for displaying dogs
+  const [selectedHandlerId, setSelectedHandlerId] = useState<string | null>(null);
+  
   return (
     <TabsContent value="existing" className="space-y-4">
       <SearchHandlers
@@ -30,6 +34,8 @@ export function HandlerSelectionTab({
         onSelect={onSelect}
         classId={classId}
         isProcessing={isProcessing}
+        selectedHandlerId={selectedHandlerId}
+        setSelectedHandlerId={setSelectedHandlerId}
       />
     </TabsContent>
   );

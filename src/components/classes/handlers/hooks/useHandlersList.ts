@@ -4,7 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 export function useHandlersList(classId: string, searchQuery: string) {
-  const [expandedHandlers, setExpandedHandlers] = useState<string[]>([]);
   const [processingDogId, setProcessingDogId] = useState<string | null>(null);
 
   // Fetch schedule IDs for the class
@@ -98,28 +97,13 @@ export function useHandlersList(classId: string, searchQuery: string) {
     staleTime: 30000, // 30 seconds
   });
 
-  // Reset expanded handlers when the search query changes
-  useEffect(() => {
-    setExpandedHandlers([]);
-  }, [searchQuery]);
-
-  const toggleHandler = (handlerId: string) => {
-    setExpandedHandlers(prev => 
-      prev.includes(handlerId) 
-        ? prev.filter(id => id !== handlerId) 
-        : [...prev, handlerId]
-    );
-  };
-
   return {
     handlers,
-    expandedHandlers,
     scheduleIds,
     isLoadingSchedules,
     isLoading,
     error,
     refetch,
-    toggleHandler,
     processingDogId,
     setProcessingDogId
   };

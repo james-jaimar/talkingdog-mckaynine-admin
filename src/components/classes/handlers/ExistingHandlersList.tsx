@@ -8,7 +8,7 @@ import {
   NoSchedules 
 } from "./HandlerListEmptyStates";
 import { HandlersTable } from "./HandlersTable";
-import { HandlerDogsList } from "./HandlerDogsList";
+import { DogSelectionSheet } from "./DogSelectionSheet";
 import { useHandlersList } from "./hooks/useHandlersList";
 
 interface ExistingHandlersListProps {
@@ -16,23 +16,25 @@ interface ExistingHandlersListProps {
   onSelect: (handlerId: string, dogId: string) => void;
   classId: string;
   isProcessing: boolean;
+  selectedHandlerId: string | null;
+  setSelectedHandlerId: (id: string | null) => void;
 }
 
 export function ExistingHandlersList({ 
   searchQuery, 
   onSelect, 
   classId, 
-  isProcessing 
+  isProcessing,
+  selectedHandlerId,
+  setSelectedHandlerId
 }: ExistingHandlersListProps) {
   const { 
     handlers,
-    expandedHandlers,
     scheduleIds,
     isLoadingSchedules,
     isLoading,
     error,
     refetch,
-    toggleHandler,
     processingDogId,
     setProcessingDogId
   } = useHandlersList(classId, searchQuery);
@@ -49,6 +51,11 @@ export function ExistingHandlersList({
       setProcessingDogId(null);
     }
   }, [isProcessing]);
+
+  // Get the selected handler data
+  const selectedHandler = selectedHandlerId 
+    ? handlers.find(handler => handler.id === selectedHandlerId)
+    : null;
 
   if (isLoadingSchedules) {
     return <LoadingSchedules />;
@@ -71,28 +78,23 @@ export function ExistingHandlersList({
   }
 
   return (
-    <div className="border rounded-md">
-      <HandlersTable
-        handlers={handlers}
-        expandedHandlers={expandedHandlers}
-        toggleHandler={toggleHandler}
-      />
+    <>
+      <div className="border rounded-md">
+        <HandlersTable
+          handlers={handlers}
+          onShowDogs={setSelectedHandlerId}
+        />
+      </div>
 
-      {/* Show dogs for expanded handlers */}
-      {handlers.map(handler => {
-        if (!expandedHandlers.includes(handler.id)) return null;
-        
-        return (
-          <HandlerDogsList
-            key={`dogs-${handler.id}`}
-            handlerId={handler.id}
-            handler={handler}
-            onSelect={handleSelect}
-            isProcessing={isProcessing}
-            processingDogId={processingDogId}
-          />
-        );
-      })}
-    </div>
+      {/* Dogs selection sheet */}
+      <DogSelectionSheet
+        handler={selectedHandler}
+        open={!!selectedHandlerId}
+        onClose={() => setSelectedHandlerId(null)}
+        onSelect={handleSelect}
+        isProcessing={isProcessing}
+        processingDogId={processingDogId}
+      />
+    </>
   );
 }

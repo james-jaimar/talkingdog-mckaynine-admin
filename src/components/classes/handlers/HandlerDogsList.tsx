@@ -14,6 +14,8 @@ interface HandlerDogsListProps {
   processingDogId: string | null;
 }
 
+// Note: This component is kept for compatibility but is no longer used in the main flow
+// It's been replaced by DogSelectionSheet
 export function HandlerDogsList({ 
   handlerId, 
   handler, 
