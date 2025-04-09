@@ -26,6 +26,10 @@ export function UsersTable({
   onEditRole,
   onResetPassword,
 }: UsersTableProps) {
+  console.log("UsersTable - Received users:", users);
+  console.log("UsersTable - Filtered users:", filteredUsers);
+  console.log(`UsersTable - User count: ${users.length}, Filtered count: ${filteredUsers.length}`);
+
   return (
     <div className="rounded-md border">
       <Table>

@@ -24,6 +24,8 @@ export default function UserAdmin() {
     }
   }, [authLoading, isAdmin, navigate, toast]);
 
+  console.log("UserAdmin Page - Auth state:", { isAdmin, isLoading: authLoading });
+
   if (authLoading) {
     return (
       <DashboardLayout>

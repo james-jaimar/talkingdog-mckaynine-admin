@@ -19,7 +19,7 @@ import { AddUserDialog } from "./AddUserDialog";
 
 export function AdminUsersList() {
   // Use the enhanced useFetchUsers hook
-  const { data: users = [], isLoading, refetch } = useFetchUsers();
+  const { data: users = [], isLoading, refetch, error } = useFetchUsers();
   const { toast } = useToast();
   
   // State management
@@ -41,8 +41,13 @@ export function AdminUsersList() {
     )
   );
   
-  console.log("AdminUsersList - All users:", users);
+  // Debug logs
+  console.log("AdminUsersList - Query error:", error);
+  console.log("AdminUsersList - Loading state:", isLoading);
+  console.log("AdminUsersList - Raw users from hook:", users);
+  console.log(`AdminUsersList - Total users: ${users.length}`);
   console.log("AdminUsersList - Filtered users:", filteredUsers);
+  console.log(`AdminUsersList - Filtered count: ${filteredUsers.length}`);
   
   // Handle refresh
   const handleRefresh = async () => {
@@ -53,6 +58,7 @@ export function AdminUsersList() {
   
   // Open role dialog
   const handleEditRole = (userId: string, currentRole: string) => {
+    console.log(`Editing role for user ID: ${userId}, current role: ${currentRole}`);
     setSelectedUserId(userId);
     setRoleDialogOpen(true);
   };
@@ -61,6 +67,7 @@ export function AdminUsersList() {
   const handleSaveRole = async (newRole: string) => {
     if (selectedUserId) {
       try {
+        console.log(`Updating role to ${newRole} for user ID: ${selectedUserId}`);
         const { error } = await supabase
           .from('profiles')
           .update({ role: newRole })
@@ -88,6 +95,7 @@ export function AdminUsersList() {
   
   // Open password reset dialog
   const handleResetPassword = (userId: string) => {
+    console.log(`Resetting password for user ID: ${userId}`);
     setSelectedUserId(userId);
     setPasswordDialogOpen(true);
   };
@@ -96,6 +104,7 @@ export function AdminUsersList() {
   const handleSavePassword = async (newPassword: string) => {
     if (selectedUserId) {
       try {
+        console.log(`Attempting to reset password for user ID: ${selectedUserId}`);
         // Reset user password using admin API
         const { error } = await supabase.auth.admin.updateUserById(selectedUserId, {
           password: newPassword,

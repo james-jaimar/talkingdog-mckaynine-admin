@@ -27,7 +27,8 @@ export function UserRow({ user, onEditRole, onResetPassword }: UserRowProps) {
     }
   };
 
-  console.log("Rendering UserRow for:", user);
+  // Debug log to trace which users are being rendered
+  console.log(`Rendering UserRow for: ${user.id}, name: ${user.full_name}, email: ${user.email}, role: ${user.role}`);
 
   return (
     <TableRow>
