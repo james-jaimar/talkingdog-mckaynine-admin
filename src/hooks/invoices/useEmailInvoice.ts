@@ -1,11 +1,13 @@
 
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Invoice } from "../invoices/types";
 import { getInvoiceAsBase64 } from "@/components/invoices/pdf/InvoicePDFGenerator";
 
 export function useEmailInvoice() {
+  const queryClient = useQueryClient();
+  
   return useMutation({
     mutationFn: async ({ invoice, email }: { invoice: Invoice; email: string }) => {
       try {
@@ -64,8 +66,12 @@ export function useEmailInvoice() {
         throw error;
       }
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       toast.success("Invoice email sent successfully");
+      
+      // Invalidate relevant queries to ensure UI updates
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['invoice', variables.invoice.id] });
     },
     onError: (error: Error) => {
       console.error("Failed to send invoice email:", error);

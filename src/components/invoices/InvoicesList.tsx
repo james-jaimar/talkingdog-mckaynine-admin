@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Invoice } from "@/types/invoice";
@@ -48,6 +47,7 @@ export function InvoicesList({ invoices, isLoading }: InvoicesListProps) {
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [emailRecipient, setEmailRecipient] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { deleteInvoice, markAsPaid, markAsSent, cancelInvoice, emailInvoice } = useInvoices();
 
   const filteredInvoices = invoices.filter(
@@ -71,28 +71,23 @@ export function InvoicesList({ invoices, isLoading }: InvoicesListProps) {
     setDeleteDialogOpen(true);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (selectedInvoiceId) {
-      // First close the dialog to prevent UI issues
       setDeleteDialogOpen(false);
-      
-      // Small delay before triggering the delete mutation
-      setTimeout(() => {
-        deleteInvoice.mutate(selectedInvoiceId);
-      }, 100);
+      await deleteInvoice.mutateAsync(selectedInvoiceId);
     }
   };
 
-  const handleMarkAsPaid = (id: string) => {
-    markAsPaid.mutate(id);
+  const handleMarkAsPaid = async (id: string) => {
+    await markAsPaid.mutateAsync(id);
   };
 
-  const handleMarkAsSent = (id: string) => {
-    markAsSent.mutate(id);
+  const handleMarkAsSent = async (id: string) => {
+    await markAsSent.mutateAsync(id);
   };
 
-  const handleCancelInvoice = (id: string) => {
-    cancelInvoice.mutate(id);
+  const handleCancelInvoice = async (id: string) => {
+    await cancelInvoice.mutateAsync(id);
   };
 
   const handleEmailInvoice = (invoice: Invoice) => {
@@ -101,21 +96,27 @@ export function InvoicesList({ invoices, isLoading }: InvoicesListProps) {
     setEmailDialogOpen(true);
   };
 
-  const confirmSendEmail = () => {
+  const confirmSendEmail = async () => {
     if (!selectedInvoice || !emailRecipient.trim()) {
       toast.error("Email address is required");
       return;
     }
 
-    setEmailDialogOpen(false);
+    setIsSubmitting(true);
     
-    // Small delay before sending email
-    setTimeout(() => {
-      emailInvoice.mutate({
+    try {
+      await emailInvoice.mutateAsync({
         invoice: selectedInvoice,
         email: emailRecipient
       });
-    }, 100);
+      
+      setEmailDialogOpen(false);
+    } catch (error) {
+      console.error("Email sending failed:", error);
+      // Error is already handled in the mutation
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -291,7 +292,7 @@ export function InvoicesList({ invoices, isLoading }: InvoicesListProps) {
         </AlertDialogContent>
       </AlertDialog>
 
-      <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
+      <Dialog open={emailDialogOpen} onOpenChange={(open) => !isSubmitting && setEmailDialogOpen(open)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Send Invoice by Email</DialogTitle>
@@ -310,13 +311,14 @@ export function InvoicesList({ invoices, isLoading }: InvoicesListProps) {
                 value={emailRecipient}
                 onChange={(e) => setEmailRecipient(e.target.value)}
                 placeholder="recipient@example.com"
+                disabled={isSubmitting}
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEmailDialogOpen(false)}>Cancel</Button>
-            <Button type="submit" onClick={confirmSendEmail}>
-              Send Invoice
+            <Button variant="outline" onClick={() => setEmailDialogOpen(false)} disabled={isSubmitting}>Cancel</Button>
+            <Button type="submit" onClick={confirmSendEmail} disabled={isSubmitting}>
+              {isSubmitting ? 'Sending...' : 'Send Invoice'}
             </Button>
           </DialogFooter>
         </DialogContent>

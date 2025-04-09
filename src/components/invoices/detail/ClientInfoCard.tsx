@@ -21,6 +21,7 @@ interface ClientInfoCardProps {
 export function ClientInfoCard({ invoice, onGeneratePDF }: ClientInfoCardProps) {
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [emailRecipient, setEmailRecipient] = useState(invoice.client?.email || "");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { emailInvoice } = useInvoices();
 
   const handleEmailInvoice = () => {
@@ -28,21 +29,27 @@ export function ClientInfoCard({ invoice, onGeneratePDF }: ClientInfoCardProps) 
     setEmailDialogOpen(true);
   };
 
-  const confirmSendEmail = () => {
+  const confirmSendEmail = async () => {
     if (!emailRecipient.trim()) {
       toast.error("Email address is required");
       return;
     }
 
-    setEmailDialogOpen(false);
+    setIsSubmitting(true);
     
-    // Small delay before sending email
-    setTimeout(() => {
-      emailInvoice.mutate({
+    try {
+      await emailInvoice.mutateAsync({
         invoice,
         email: emailRecipient
       });
-    }, 100);
+      
+      setEmailDialogOpen(false);
+    } catch (error) {
+      console.error("Email sending failed:", error);
+      // Error is already handled in the mutation
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -114,7 +121,7 @@ export function ClientInfoCard({ invoice, onGeneratePDF }: ClientInfoCardProps) 
         </CardFooter>
       </Card>
 
-      <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
+      <Dialog open={emailDialogOpen} onOpenChange={(open) => !isSubmitting && setEmailDialogOpen(open)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Send Invoice by Email</DialogTitle>
@@ -133,13 +140,14 @@ export function ClientInfoCard({ invoice, onGeneratePDF }: ClientInfoCardProps) 
                 value={emailRecipient}
                 onChange={(e) => setEmailRecipient(e.target.value)}
                 placeholder="recipient@example.com"
+                disabled={isSubmitting}
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEmailDialogOpen(false)}>Cancel</Button>
-            <Button type="submit" onClick={confirmSendEmail}>
-              Send Invoice
+            <Button variant="outline" onClick={() => setEmailDialogOpen(false)} disabled={isSubmitting}>Cancel</Button>
+            <Button type="submit" onClick={confirmSendEmail} disabled={isSubmitting}>
+              {isSubmitting ? 'Sending...' : 'Send Invoice'}
             </Button>
           </DialogFooter>
         </DialogContent>

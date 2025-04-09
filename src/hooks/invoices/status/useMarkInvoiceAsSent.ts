@@ -24,8 +24,12 @@ export function useMarkInvoiceAsSent() {
       return { id: invoiceId };
     },
     onSuccess: (_, invoiceId) => {
+      // Invalidate all invoice queries to ensure UI updates
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       queryClient.invalidateQueries({ queryKey: ['invoice', invoiceId] });
+      queryClient.invalidateQueries({ queryKey: ['client-invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['my-invoices'] });
+      
       toast.success("Invoice marked as sent");
     },
     onError: (error: Error) => {
