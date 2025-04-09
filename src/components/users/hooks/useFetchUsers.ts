@@ -14,7 +14,7 @@ export function useFetchUsers() {
         const { data: { user: currentUser } } = await supabase.auth.getUser();
         console.log("Current user ID:", currentUser?.id);
         
-        // Get all profiles from the profiles table with explicit pagination
+        // Get all profiles from the profiles table with explicit ordering
         const { data: profiles, error: profilesError } = await supabase
           .from('profiles')
           .select('*')
@@ -25,14 +25,14 @@ export function useFetchUsers() {
           throw profilesError;
         }
         
-        console.log(`Found ${profiles?.length || 0} total profiles in database (RAW):`, profiles);
+        console.log(`Found ${profiles?.length || 0} total profiles in database:`, profiles);
         
         if (!profiles || profiles.length === 0) {
           console.warn("No profiles found in the database");
           return [];
         }
         
-        // Map profiles to user profile objects
+        // Map profiles to user profile objects, marking the current user
         const userProfiles: UserProfile[] = profiles.map(profile => {
           const isCurrentUser = currentUser?.id === profile.id;
           
