@@ -7,18 +7,27 @@ export function useFetchUsers() {
   return useQuery({
     queryKey: ['admin-users'],
     queryFn: async () => {
-      console.log("Fetching users from profiles table");
+      console.log("Fetching users from profiles table - START");
       
       try {
         // Get current user for marking in the UI
         const { data: { user: currentUser } } = await supabase.auth.getUser();
         console.log("Current user ID:", currentUser?.id);
         
-        // Get all users from the profiles table
-        const { data: profiles, error } = await supabase
+        console.log("About to execute Supabase query to profiles table");
+        
+        // Debug the request being made
+        const profilesQuery = supabase
           .from('profiles')
           .select('*')
           .order('created_at', { ascending: false });
+        
+        console.log("Query being executed:", profilesQuery);
+        
+        // Get all users from the profiles table
+        const { data: profiles, error, status, statusText, count } = await profilesQuery;
+        
+        console.log("Query response:", { status, statusText, count, error });
           
         if (error) {
           console.error("Error fetching profiles:", error);
@@ -28,9 +37,18 @@ export function useFetchUsers() {
         console.log("Raw profiles data:", profiles);
         console.log(`Successfully fetched ${profiles?.length || 0} user profiles`);
         
+        // If we only got one profile, let's double check if that's expected
+        if (profiles?.length === 1) {
+          console.log("Only one profile was returned. Let's check if that's expected:");
+          
+          // Test a simpler query to see if there are actually more profiles
+          const countCheck = await supabase.from('profiles').select('id', { count: 'exact' });
+          console.log("Total profiles count check:", countCheck);
+        }
+        
         // Map to UserProfile objects
         const userProfiles: UserProfile[] = (profiles || []).map(profile => {
-          const result = {
+          return {
             id: profile.id,
             username: profile.username || "",
             full_name: profile.full_name || "",
@@ -40,12 +58,11 @@ export function useFetchUsers() {
             email: profile.username, // Email is stored in username field
             isCurrentUser: currentUser?.id === profile.id
           };
-          
-          return result;
         });
         
         console.log("Processed user profiles:", userProfiles);
         console.log(`Total processed profiles: ${userProfiles.length}`);
+        console.log("Fetching users from profiles table - END");
         
         return userProfiles;
       } catch (error) {

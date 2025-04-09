@@ -34,21 +34,35 @@ export default function UserAdminTable({ users, onRefresh, currentUserId }: User
 
   // For debugging
   useEffect(() => {
-    console.log("UserAdminTable - Received users:", users.length);
+    console.log("UserAdminTable - Component mounted or users changed");
+    console.log("UserAdminTable - Received users array:", users);
+    console.log(`UserAdminTable - Users array length: ${users.length}`);
     console.log("UserAdminTable - First few users:", users.slice(0, 3));
+    console.log("UserAdminTable - Users array is array?", Array.isArray(users));
+    
+    // Check if users have all required properties
+    if (users.length > 0) {
+      const firstUser = users[0];
+      console.log("UserAdminTable - Sample user object:", firstUser);
+      console.log("UserAdminTable - User has id?", Boolean(firstUser.id));
+      console.log("UserAdminTable - User has email?", Boolean(firstUser.email));
+      console.log("UserAdminTable - User has role?", Boolean(firstUser.role));
+    }
   }, [users]);
 
   // Filter users by name or email
-  const filteredUsers = users.filter(user => 
-    (user.full_name?.toLowerCase() || '').includes(filter.toLowerCase()) ||
-    (user.email?.toLowerCase() || '').includes(filter.toLowerCase())
-  );
+  const filteredUsers = users.filter(user => {
+    const nameMatch = (user.full_name?.toLowerCase() || '').includes(filter.toLowerCase());
+    const emailMatch = (user.email?.toLowerCase() || '').includes(filter.toLowerCase());
+    return nameMatch || emailMatch;
+  });
 
   console.log("UserAdminTable - Filtered users:", filteredUsers.length);
 
   // Handle refresh
   const handleRefresh = async () => {
     setIsRefreshing(true);
+    console.log("UserAdminTable - Refreshing user data...");
     await onRefresh();
     setTimeout(() => setIsRefreshing(false), 500);
   };
@@ -66,6 +80,7 @@ export default function UserAdminTable({ users, onRefresh, currentUserId }: User
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
+        {/* Search and action buttons */}
         <div className="relative w-full max-w-sm">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
@@ -95,6 +110,13 @@ export default function UserAdminTable({ users, onRefresh, currentUserId }: User
           </Button>
         </div>
       </div>
+
+      {/* Debug information */}
+      {users.length === 1 && (
+        <div className="p-2 mb-2 bg-yellow-50 border border-yellow-200 rounded text-sm">
+          <p>Debug: Only 1 user found in database ({users[0]?.email})</p>
+        </div>
+      )}
 
       <div className="rounded-md border">
         <Table>
@@ -139,6 +161,7 @@ export default function UserAdminTable({ users, onRefresh, currentUserId }: User
                         variant="outline" 
                         size="sm"
                         onClick={() => {
+                          console.log("Reset password clicked for user:", user.id);
                           setSelectedUser(user);
                           setResetPasswordOpen(true);
                         }}
@@ -149,6 +172,7 @@ export default function UserAdminTable({ users, onRefresh, currentUserId }: User
                         variant="outline" 
                         size="sm"
                         onClick={() => {
+                          console.log("Edit role clicked for user:", user.id);
                           setSelectedUser(user);
                           setManageDialogOpen(true);
                         }}
