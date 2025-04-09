@@ -14,11 +14,11 @@ export function useFetchUsers() {
         const { data: { user: currentUser } } = await supabase.auth.getUser();
         console.log("Current user ID:", currentUser?.id);
         
-        // Get all profiles from the profiles table - explicitly select all columns
+        // Get all profiles from the profiles table with explicit pagination
         const { data: profiles, error: profilesError } = await supabase
           .from('profiles')
           .select('*')
-          .limit(100); // Add a reasonable limit
+          .order('created_at', { ascending: false });
         
         if (profilesError) {
           console.error("Error fetching profiles:", profilesError);
@@ -32,7 +32,7 @@ export function useFetchUsers() {
           return [];
         }
         
-        // Map profiles to user profile objects without trying to fetch trainer data
+        // Map profiles to user profile objects
         const userProfiles: UserProfile[] = profiles.map(profile => {
           const isCurrentUser = currentUser?.id === profile.id;
           
@@ -56,8 +56,6 @@ export function useFetchUsers() {
         throw error;
       }
     },
-    staleTime: 0, // Don't cache data
-    gcTime: 0,    // Don't keep old data
     refetchOnWindowFocus: true,
   });
 }

@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { useUsersData } from "./hooks/useUsersData";
+import { useFetchUsers } from "./hooks/useFetchUsers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ResetPasswordDialog } from "./ResetPasswordDialog";
@@ -43,9 +43,12 @@ import {
 import { format } from "date-fns";
 import { Search, RefreshCw, MoreHorizontal, Key, User, UserPlus, Loader2 } from "lucide-react";
 import { AddUserDialog } from "./AddUserDialog";
+import { useToast } from "@/components/ui/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 export function AdminUsersList() {
-  const { users, isLoading, refetch, updateUserRole, isUpdating, resetPassword } = useUsersData();
+  const { data: users = [], isLoading, refetch } = useFetchUsers();
+  const { toast } = useToast();
   
   // State management
   const [filterText, setFilterText] = useState("");
@@ -56,6 +59,8 @@ export function AdminUsersList() {
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
   const [newRole, setNewRole] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
   
   // Get selected user
   const selectedUser = users.find(user => user.id === selectedUserId);
@@ -72,7 +77,7 @@ export function AdminUsersList() {
   const handleRefresh = async () => {
     setIsRefreshing(true);
     await refetch();
-    setTimeout(() => setIsRefreshing(false), 300);
+    setTimeout(() => setIsRefreshing(false), 500);
   };
   
   // Open role dialog
@@ -83,10 +88,34 @@ export function AdminUsersList() {
   };
   
   // Save role
-  const handleSaveRole = () => {
+  const handleSaveRole = async () => {
     if (selectedUserId && newRole) {
-      updateUserRole({ userId: selectedUserId, role: newRole });
-      setRoleDialogOpen(false);
+      try {
+        setIsUpdating(true);
+        const { error } = await supabase
+          .from('profiles')
+          .update({ role: newRole })
+          .eq('id', selectedUserId);
+        
+        if (error) throw error;
+        
+        toast({
+          title: "Role updated",
+          description: `User role has been updated to ${newRole}`,
+        });
+        
+        refetch();
+        setRoleDialogOpen(false);
+      } catch (error: any) {
+        toast({
+          title: "Update failed",
+          description: error.message || "Failed to update role",
+          variant: "destructive",
+        });
+        console.error("Error updating role:", error);
+      } finally {
+        setIsUpdating(false);
+      }
     }
   };
   
@@ -98,10 +127,34 @@ export function AdminUsersList() {
   };
   
   // Save password
-  const handleSavePassword = () => {
+  const handleSavePassword = async () => {
     if (selectedUserId && newPassword) {
-      resetPassword({ userId: selectedUserId, newPassword });
-      setPasswordDialogOpen(false);
+      try {
+        setIsResetting(true);
+        
+        // Reset user password using admin API
+        const { error } = await supabase.auth.admin.updateUserById(selectedUserId, {
+          password: newPassword,
+        });
+        
+        if (error) throw error;
+        
+        toast({
+          title: "Password reset",
+          description: "User password has been reset successfully",
+        });
+        
+        setPasswordDialogOpen(false);
+      } catch (error: any) {
+        toast({
+          title: "Password reset failed",
+          description: error.message || "Failed to reset password",
+          variant: "destructive",
+        });
+        console.error("Error resetting password:", error);
+      } finally {
+        setIsResetting(false);
+      }
     }
   };
   
@@ -291,11 +344,18 @@ export function AdminUsersList() {
           </div>
           
           <DialogFooter>
-            <Button variant="outline" onClick={() => setPasswordDialogOpen(false)}>
+            <Button variant="outline" onClick={() => setPasswordDialogOpen(false)} disabled={isResetting}>
               Cancel
             </Button>
-            <Button onClick={handleSavePassword}>
-              Reset Password
+            <Button onClick={handleSavePassword} disabled={isResetting || !newPassword.trim()}>
+              {isResetting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Resetting...
+                </>
+              ) : (
+                "Reset Password"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
