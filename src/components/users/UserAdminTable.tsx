@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Table,
   TableBody,
@@ -32,7 +32,11 @@ export default function UserAdminTable({ users, onRefresh, currentUserId }: User
   const [manageDialogOpen, setManageDialogOpen] = useState(false);
   const [resetPasswordOpen, setResetPasswordOpen] = useState(false);
 
-  console.log("UserAdminTable - Received users:", users);
+  // For debugging
+  useEffect(() => {
+    console.log("UserAdminTable - Received users:", users.length);
+    console.log("UserAdminTable - First few users:", users.slice(0, 3));
+  }, [users]);
 
   // Filter users by name or email
   const filteredUsers = users.filter(user => 
@@ -40,7 +44,7 @@ export default function UserAdminTable({ users, onRefresh, currentUserId }: User
     (user.email?.toLowerCase() || '').includes(filter.toLowerCase())
   );
 
-  console.log("UserAdminTable - Filtered users:", filteredUsers);
+  console.log("UserAdminTable - Filtered users:", filteredUsers.length);
 
   // Handle refresh
   const handleRefresh = async () => {

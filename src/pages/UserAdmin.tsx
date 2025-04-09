@@ -23,11 +23,16 @@ export default function UserAdmin() {
   const { toast } = useToast();
   
   // Fetch users data
-  const { data: users = [], isLoading: usersLoading, refetch } = useFetchUsers();
+  const { 
+    data: users = [], 
+    isLoading: usersLoading, 
+    error, 
+    refetch 
+  } = useFetchUsers();
   
   console.log("UserAdmin - Current user:", user?.id);
   console.log("UserAdmin - Fetched users count:", users.length);
-  console.log("UserAdmin - Users data:", users);
+  console.log("UserAdmin - First few users:", users.slice(0, 3));
   
   // Access check - redirect non-admins
   useEffect(() => {
@@ -49,6 +54,26 @@ export default function UserAdmin() {
           <div className="flex items-center justify-center h-64">
             <Loader2 className="h-8 w-8 animate-spin text-mckaynine-600" />
             <span className="ml-2">Loading user data...</span>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+  
+  // Error state
+  if (error) {
+    return (
+      <DashboardLayout>
+        <div className="container mx-auto py-6">
+          <div className="bg-red-50 border border-red-200 rounded-md p-4 text-center">
+            <h2 className="text-xl font-medium text-red-800 mb-2">Error Loading Users</h2>
+            <p className="text-red-700">{(error as Error).message}</p>
+            <button 
+              onClick={() => refetch()} 
+              className="mt-4 px-4 py-2 bg-red-100 hover:bg-red-200 text-red-800 rounded-md"
+            >
+              Try Again
+            </button>
           </div>
         </div>
       </DashboardLayout>
