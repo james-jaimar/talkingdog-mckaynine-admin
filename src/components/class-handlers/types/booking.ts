@@ -10,8 +10,8 @@ export interface Booking {
   social_media_consent: boolean;
   info_pg: string | null;
   class_schedule_id: string;
-  dog_id: string;
-  client_id: string;
+  dog_id?: string;  // Make these optional
+  client_id?: string; // Make these optional
   status: string;
   payment_status: string;
   dogs?: {
@@ -26,4 +26,5 @@ export interface Booking {
     email: string;
     phone: string | null;
   };
+  computed_payment_status?: string; // Add this property
 }

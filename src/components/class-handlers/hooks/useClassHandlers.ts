@@ -38,6 +38,8 @@ export function useClassHandlers(classId: string) {
           class_schedule_id,
           status,
           payment_status,
+          dog_id,
+          client_id,
           dogs:dog_id(id, name, breed),
           clients:client_id(id, first_name, last_name, email, phone),
           invoice_items(
@@ -78,7 +80,7 @@ export function useClassHandlers(classId: string) {
         } as Booking;
       });
       
-      return processedBookings as Booking[];
+      return processedBookings || [];
     },
     // More frequent refetching (every 5 seconds)
     refetchInterval: 5000,
