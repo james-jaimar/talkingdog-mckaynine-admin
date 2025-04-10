@@ -16,6 +16,7 @@ import { useFetchUsers } from "@/components/users/hooks/useFetchUsers";
 import { Button } from "@/components/ui/button";
 import UserAdminTable from "@/components/users/UserAdminTable";
 import { supabase } from "@/integrations/supabase/client";
+import { useIsMobile } from "@/hooks/useIsMobile";
 
 export default function UserAdmin() {
   const { user, isAdmin, isLoading: authLoading } = useAuth();
@@ -24,6 +25,7 @@ export default function UserAdmin() {
   const [diagnosticUsers, setDiagnosticUsers] = useState<any[]>([]);
   const [isDiagnosticLoading, setIsDiagnosticLoading] = useState(false);
   const [showDebugInfo, setShowDebugInfo] = useState(false);
+  const isMobile = useIsMobile();
   
   // Fetch users data
   const { 
@@ -124,15 +126,16 @@ export default function UserAdmin() {
         <title>User Administration - McKaynine Training Centre</title>
       </Helmet>
       
-      <div className="container mx-auto py-6">
-        <div className="flex flex-wrap justify-between items-center mb-6">
+      <div className="container mx-auto py-6 px-4 sm:px-6">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
           <h1 className="text-2xl font-bold">User Administration</h1>
           
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button
               variant="outline"
               onClick={() => refetch()}
               disabled={isLoading}
+              size={isMobile ? "sm" : "default"}
             >
               <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
               Refresh Users
@@ -142,24 +145,26 @@ export default function UserAdmin() {
               variant="secondary" 
               onClick={runDiagnostic}
               disabled={isDiagnosticLoading}
+              size={isMobile ? "sm" : "default"}
             >
               <Info className="h-4 w-4 mr-2" />
-              Run Diagnostic
+              {isMobile ? "Diagnostic" : "Run Diagnostic"}
             </Button>
             
             <Button
               variant="outline"
               onClick={() => setShowDebugInfo(!showDebugInfo)}
+              size={isMobile ? "sm" : "default"}
             >
               <Bug className="h-4 w-4 mr-2" />
-              {showDebugInfo ? "Hide Debug" : "Show Debug"}
+              {showDebugInfo ? (isMobile ? "Hide" : "Hide Debug") : (isMobile ? "Debug" : "Show Debug")}
             </Button>
           </div>
         </div>
         
         {/* Debug information panel */}
         {showDebugInfo && (
-          <div className="mb-6 p-4 border border-indigo-200 bg-indigo-50 rounded-md">
+          <div className="mb-6 p-4 border border-indigo-200 bg-indigo-50 rounded-md overflow-auto">
             <h3 className="font-medium text-indigo-900 mb-2">Debug Information</h3>
             <ul className="text-xs space-y-1 text-indigo-800">
               <li><strong>Current User ID:</strong> {user?.id || 'Not logged in'}</li>
@@ -174,7 +179,7 @@ export default function UserAdmin() {
         {users.length <= 1 && (
           <div className="mb-6 p-4 border border-yellow-300 bg-yellow-50 rounded-md">
             <div className="flex items-start gap-2">
-              <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5" />
+              <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5 flex-shrink-0" />
               <div>
                 <h3 className="font-medium text-yellow-800">Limited User Data</h3>
                 <p className="text-sm text-yellow-700">
@@ -188,14 +193,14 @@ export default function UserAdmin() {
         {diagnosticUsers.length > 0 && (
           <div className="mb-6 p-4 border border-blue-300 bg-blue-50 rounded-md">
             <div className="flex items-start gap-2">
-              <Info className="h-5 w-5 text-blue-600 mt-0.5" />
+              <Info className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
               <div>
                 <h3 className="font-medium text-blue-800">Diagnostic Results</h3>
                 <p className="text-sm text-blue-700">
                   Edge function returned {diagnosticUsers.length} users. Hook returned {users.length} users.
                 </p>
                 <div className="mt-2 text-xs text-blue-600 bg-blue-100 p-2 rounded overflow-auto max-h-32">
-                  <pre>{JSON.stringify(diagnosticUsers.slice(0, 5).map(u => ({id: u.id, email: u.username, role: u.role})), null, 2)}</pre>
+                  <pre className="whitespace-pre-wrap">{JSON.stringify(diagnosticUsers.slice(0, 5).map(u => ({id: u.id, email: u.username, role: u.role})), null, 2)}</pre>
                 </div>
               </div>
             </div>
@@ -206,7 +211,7 @@ export default function UserAdmin() {
           <CardHeader>
             <CardTitle>Users ({users.length})</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-0 sm:p-6">
             {isLoading ? (
               <div className="flex items-center justify-center h-64">
                 <Loader2 className="h-8 w-8 animate-spin text-mckaynine-600" />

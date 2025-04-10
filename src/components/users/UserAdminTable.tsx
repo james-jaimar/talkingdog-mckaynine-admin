@@ -3,12 +3,19 @@ import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, RefreshCw, UserPlus } from "lucide-react";
+import { Search, RefreshCw, UserPlus, MoreHorizontal } from "lucide-react";
 import { format } from "date-fns";
 import { UserProfile } from "./types/userTypes";
 import { AddUserDialog } from "./AddUserDialog";
 import { UserManageDialog } from "./UserManageDialog";
 import { UserPasswordResetDialog } from "./UserPasswordResetDialog";
+import { useIsMobile } from "@/hooks/useIsMobile";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu";
 
 interface UserAdminTableProps {
   users: UserProfile[];
@@ -23,6 +30,7 @@ export default function UserAdminTable({ users, onRefresh, currentUserId }: User
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
   const [manageDialogOpen, setManageDialogOpen] = useState(false);
   const [resetPasswordOpen, setResetPasswordOpen] = useState(false);
+  const isMobile = useIsMobile();
 
   // Filter users by name or email
   const filteredUsers = users.filter(user => {
@@ -53,7 +61,7 @@ export default function UserAdminTable({ users, onRefresh, currentUserId }: User
 
   return (
     <div>
-      <div className="flex flex-wrap gap-4 mb-4">
+      <div className="flex flex-col sm:flex-row gap-4 mb-4 p-4 sm:p-0">
         {/* Search */}
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -66,7 +74,7 @@ export default function UserAdminTable({ users, onRefresh, currentUserId }: User
           />
         </div>
         
-        <div className="flex gap-2">
+        <div className="flex gap-2 justify-end">
           <Button 
             variant="outline" 
             size="sm" 
@@ -89,78 +97,119 @@ export default function UserAdminTable({ users, onRefresh, currentUserId }: User
 
       {/* Debug information for user visibility issues */}
       {users.length === 1 && (
-        <div className="p-2 mb-2 bg-yellow-50 border border-yellow-200 rounded text-sm">
+        <div className="p-2 mb-2 bg-yellow-50 border border-yellow-200 rounded text-sm mx-4 sm:mx-0">
           <p>Debug: Only 1 user found in database ({users[0]?.email})</p>
         </div>
       )}
 
       {/* Users table */}
       <div className="border rounded-md overflow-hidden">
-        <table className="w-full">
-          <thead>
-            <tr className="bg-gray-50 border-b">
-              <th className="text-left px-4 py-3">User</th>
-              <th className="text-left px-4 py-3">Role</th>
-              <th className="text-left px-4 py-3">Created</th>
-              <th className="text-right px-4 py-3">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredUsers.length === 0 ? (
-              <tr>
-                <td colSpan={4} className="text-center py-8 text-gray-500">
-                  {users.length === 0 ? "No users found." : "No users match your search."}
-                </td>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="bg-gray-50 border-b">
+                <th className="text-left px-4 py-3">User</th>
+                {!isMobile && <th className="text-left px-4 py-3">Role</th>}
+                {!isMobile && <th className="text-left px-4 py-3">Created</th>}
+                <th className="text-right px-4 py-3">Actions</th>
               </tr>
-            ) : (
-              filteredUsers.map((user) => (
-                <tr key={user.id} className="border-b">
-                  <td className="px-4 py-3">
-                    <div className="font-medium">{user.full_name || 'Unnamed User'}</div>
-                    <div className="text-sm text-gray-500">{user.email}</div>
-                    {user.id === currentUserId && (
-                      <span className="text-xs bg-gray-100 text-gray-800 px-2 py-0.5 rounded-full">
-                        You
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-1 text-xs rounded-full ${getRoleBadgeClass(user.role)}`}>
-                      {user.role || "user"}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    {user.created_at ? format(new Date(user.created_at), "PPP") : "—"}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => {
-                          setSelectedUser(user);
-                          setResetPasswordOpen(true);
-                        }}
-                      >
-                        Reset Password
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => {
-                          setSelectedUser(user);
-                          setManageDialogOpen(true);
-                        }}
-                      >
-                        Edit Role
-                      </Button>
-                    </div>
+            </thead>
+            <tbody>
+              {filteredUsers.length === 0 ? (
+                <tr>
+                  <td colSpan={isMobile ? 2 : 4} className="text-center py-8 text-gray-500">
+                    {users.length === 0 ? "No users found." : "No users match your search."}
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : (
+                filteredUsers.map((user) => (
+                  <tr key={user.id} className="border-b">
+                    <td className="px-4 py-3">
+                      <div className="font-medium">{user.full_name || 'Unnamed User'}</div>
+                      <div className="text-sm text-gray-500">{user.email}</div>
+                      {user.id === currentUserId && (
+                        <span className="text-xs bg-gray-100 text-gray-800 px-2 py-0.5 rounded-full">
+                          You
+                        </span>
+                      )}
+                      {isMobile && (
+                        <div className="mt-1">
+                          <span className={`px-2 py-1 text-xs rounded-full inline-block ${getRoleBadgeClass(user.role)}`}>
+                            {user.role || "user"}
+                          </span>
+                        </div>
+                      )}
+                    </td>
+                    {!isMobile && (
+                      <td className="px-4 py-3">
+                        <span className={`px-2 py-1 text-xs rounded-full ${getRoleBadgeClass(user.role)}`}>
+                          {user.role || "user"}
+                        </span>
+                      </td>
+                    )}
+                    {!isMobile && (
+                      <td className="px-4 py-3">
+                        {user.created_at ? format(new Date(user.created_at), "PPP") : "—"}
+                      </td>
+                    )}
+                    <td className="px-4 py-3 text-right">
+                      {isMobile ? (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="bg-white">
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setSelectedUser(user);
+                                setResetPasswordOpen(true);
+                              }}
+                            >
+                              Reset Password
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setSelectedUser(user);
+                                setManageDialogOpen(true);
+                              }}
+                            >
+                              Edit Role
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      ) : (
+                        <div className="flex justify-end gap-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => {
+                              setSelectedUser(user);
+                              setResetPasswordOpen(true);
+                            }}
+                          >
+                            Reset Password
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => {
+                              setSelectedUser(user);
+                              setManageDialogOpen(true);
+                            }}
+                          >
+                            Edit Role
+                          </Button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Dialogs */}

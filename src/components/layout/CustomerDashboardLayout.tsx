@@ -33,7 +33,7 @@ export function CustomerDashboardLayout({ children }: { children: React.ReactNod
       <div className="flex flex-1">
         {/* Content Area */}
         <main className="flex-1 overflow-x-hidden">
-          <div className="container mx-auto px-4 py-6 md:px-6">
+          <div className="container mx-auto px-4 py-4 md:px-6 md:py-6">
             {children}
           </div>
         </main>

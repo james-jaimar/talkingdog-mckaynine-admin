@@ -1,15 +1,19 @@
 
+import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useBranch, Branch } from "@/context/BranchContext";
 import { BranchSelector } from "@/components/branches/BranchSelector";
 import { useAuth } from "@/context/auth";
 import { Button } from "@/components/ui/button";
-import { LogOut, User, Users, Clipboard, FileText, MessageSquare, Home, DollarSign } from "lucide-react";
+import { LogOut, User, Users, Clipboard, FileText, MessageSquare, Home, DollarSign, Menu, X } from "lucide-react";
 import { toast } from "sonner";
+import { useIsMobile } from "@/hooks/useIsMobile";
 
 export function Header() {
   const { user, logout, isAdmin, isTrainer, isHandler, role, trainerProfile } = useAuth();
   const location = useLocation();
+  const isMobile = useIsMobile();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
   // Determine if we're on a customer page
   const isCustomerPage = location.pathname.startsWith('/customer');
@@ -48,6 +52,12 @@ export function Header() {
       console.error("Unexpected error during logout:", error);
       toast.error("An unexpected error occurred during logout");
     }
+    // Close mobile menu if open
+    setMobileMenuOpen(false);
+  };
+
+  const toggleMobileMenu = () => {
+    setMobileMenuOpen(!mobileMenuOpen);
   };
 
   // Organize navigation items into primary and secondary rows
@@ -98,7 +108,7 @@ export function Header() {
               McKaynine
             </Link>
             
-            {user && (
+            {user && !isMobile && (
               <nav className="hidden md:flex space-x-4 overflow-x-auto">
                 {isHandler ? (
                   // Primary navigation for handlers
@@ -148,20 +158,22 @@ export function Header() {
           </div>
           
           <div className="flex items-center space-x-4">
-            {showBranchSelector && currentBranch && (
+            {showBranchSelector && currentBranch && !isMobile && (
               <BranchSelector />
             )}
             
             {user && (
               <div className="flex items-center gap-2">
-                <span className="hidden md:inline-flex items-center">
-                  <User className="inline-block mr-1 h-4 w-4" />
-                  {user.email}
-                  {isAdmin && <span className="ml-1 text-xs bg-blue-600 px-1.5 py-0.5 rounded">Admin</span>}
-                  {isTrainer && !isAdmin && <span className="ml-1 text-xs bg-green-600 px-1.5 py-0.5 rounded">Trainer</span>}
-                  {isHandler && <span className="ml-1 text-xs bg-amber-600 px-1.5 py-0.5 rounded">Handler</span>}
-                  {trainerProfile && <span className="ml-1 text-xs">{trainerProfile.first_name}</span>}
-                </span>
+                {!isMobile && (
+                  <span className="hidden md:inline-flex items-center">
+                    <User className="inline-block mr-1 h-4 w-4" />
+                    {user.email}
+                    {isAdmin && <span className="ml-1 text-xs bg-blue-600 px-1.5 py-0.5 rounded">Admin</span>}
+                    {isTrainer && !isAdmin && <span className="ml-1 text-xs bg-green-600 px-1.5 py-0.5 rounded">Trainer</span>}
+                    {isHandler && <span className="ml-1 text-xs bg-amber-600 px-1.5 py-0.5 rounded">Handler</span>}
+                    {trainerProfile && <span className="ml-1 text-xs">{trainerProfile.first_name}</span>}
+                  </span>
+                )}
                 <Button 
                   variant="destructive" 
                   size="sm" 
@@ -171,14 +183,24 @@ export function Header() {
                   <LogOut className="h-4 w-4 md:mr-1" />
                   <span className="hidden md:inline">Logout</span>
                 </Button>
+                {isMobile && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={toggleMobileMenu}
+                    className="ml-2 text-white"
+                  >
+                    {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+                  </Button>
+                )}
               </div>
             )}
           </div>
         </div>
       </div>
       
-      {/* Secondary navigation row */}
-      {user && !isHandler && (
+      {/* Secondary navigation row - only visible on desktop */}
+      {user && !isHandler && !isMobile && (
         <div className="bg-mckaynine-700">
           <div className="container mx-auto px-4 py-1">
             <nav className="flex space-x-4 overflow-x-auto">
@@ -210,44 +232,69 @@ export function Header() {
         </div>
       )}
       
-      {/* Mobile navigation toggle button - only shown on small screens */}
-      <div className="md:hidden container mx-auto px-4 py-1">
-        <div className="flex items-center justify-between">
-          {user && (
-            <nav className="flex space-x-2 overflow-x-auto">
+      {/* Mobile menu - only shown when toggled */}
+      {isMobile && mobileMenuOpen && user && (
+        <div className="bg-mckaynine-700 py-2">
+          <div className="container mx-auto px-4">
+            {/* Display branch selector on mobile if needed */}
+            {showBranchSelector && currentBranch && (
+              <div className="mb-3 pt-2 border-t border-mckaynine-500">
+                <BranchSelector />
+              </div>
+            )}
+          
+            {/* Mobile navigation items */}
+            <nav className="flex flex-col space-y-2">
               {isHandler ? (
-                // Mobile navigation for handlers
+                // Navigation for handlers
                 <>
-                  {handlerNavItems.map(item => (
+                  {[...primaryNavItems, ...handlerNavItems].map(item => (
                     <Link 
                       key={item.path}
                       to={item.path} 
-                      className="text-white hover:text-gray-200 px-2 py-1 text-sm rounded whitespace-nowrap"
+                      className="text-white hover:text-gray-200 px-2 py-2 rounded flex items-center"
+                      onClick={() => setMobileMenuOpen(false)}
                     >
-                      {item.icon}
-                      {item.name}
+                      {item.icon && <span className="mr-2">{item.icon}</span>}
+                      <span>{item.name}</span>
                     </Link>
                   ))}
                 </>
               ) : isTrainer && !isAdmin ? (
-                // Mobile navigation for trainers
+                // Navigation for trainers
                 <>
-                  {trainerNavItems.map(item => (
+                  {[...adminPrimaryNavItems.slice(0, 5), ...trainerNavItems].map(item => (
                     <Link 
                       key={item.path}
                       to={item.path} 
-                      className="text-white hover:text-gray-200 px-2 py-1 text-sm rounded whitespace-nowrap"
+                      className="text-white hover:text-gray-200 px-2 py-2 rounded flex items-center"
+                      onClick={() => setMobileMenuOpen(false)}
                     >
-                      {item.icon}
-                      {item.name}
+                      {item.icon && <span className="mr-2">{item.icon}</span>}
+                      <span>{item.name}</span>
                     </Link>
                   ))}
                 </>
-              ) : null}
+              ) : (
+                // Navigation for admins
+                <>
+                  {[...adminPrimaryNavItems, ...adminSecondaryNavItems].map(item => (
+                    <Link 
+                      key={item.path}
+                      to={item.path} 
+                      className="text-white hover:text-gray-200 px-2 py-2 rounded flex items-center"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      {item.icon && <span className="mr-2">{item.icon}</span>}
+                      <span>{item.name}</span>
+                    </Link>
+                  ))}
+                </>
+              )}
             </nav>
-          )}
+          </div>
         </div>
-      </div>
+      )}
     </header>
   );
 }
