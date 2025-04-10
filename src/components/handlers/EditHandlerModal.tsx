@@ -5,7 +5,7 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/u
 import { Edit } from "lucide-react";
 import { useState } from "react";
 import { EditHandlerForm } from "./EditHandlerForm";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/useIsMobile";
 
 interface EditHandlerModalProps {
   handler: {
