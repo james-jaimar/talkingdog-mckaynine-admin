@@ -5,7 +5,7 @@ import { useAuth } from "@/context/auth";
 import { Helmet } from "react-helmet";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
-import { Loader2, AlertTriangle, RefreshCw, Info } from "lucide-react";
+import { Loader2, AlertTriangle, RefreshCw, Info, Bug } from "lucide-react";
 import { 
   Card,
   CardContent,
@@ -23,6 +23,7 @@ export default function UserAdmin() {
   const { toast } = useToast();
   const [diagnosticUsers, setDiagnosticUsers] = useState<any[]>([]);
   const [isDiagnosticLoading, setIsDiagnosticLoading] = useState(false);
+  const [showDebugInfo, setShowDebugInfo] = useState(false);
   
   // Fetch users data
   const { 
@@ -54,31 +55,33 @@ export default function UserAdmin() {
     return null;
   }
 
-  // Run diagnostic
+  // Run diagnostic with direct fetch to compare results
   const runDiagnostic = async () => {
     setIsDiagnosticLoading(true);
     try {
+      // Log authentication details
       const { data: { session } } = await supabase.auth.getSession();
-      console.log("Diagnostic: Current session", !!session);
+      console.log("Diagnostic: Current user ID:", session?.user?.id);
+      console.log("Diagnostic: User is admin:", isAdmin);
       
-      // Try direct query to check results
-      const { data: profiles, error } = await supabase
-        .from('profiles')
-        .select('*');
+      // Try direct query with service function
+      const { data, error } = await supabase.functions.invoke("get-users", {
+        method: "GET"
+      });
       
       if (error) {
-        console.error("Diagnostic: Error fetching profiles directly", error);
+        console.error("Diagnostic: Error invoking edge function:", error);
         toast({
           variant: "destructive",
-          title: "Diagnostic Error",
+          title: "Edge Function Error",
           description: error.message,
         });
-      } else {
-        console.log("Diagnostic: Direct profiles query results", profiles);
-        setDiagnosticUsers(profiles || []);
+      } else if (data) {
+        console.log("Diagnostic: Edge function returned", data.length, "users");
+        setDiagnosticUsers(data || []);
         toast({
           title: "Diagnostic Results",
-          description: `Direct query found ${profiles?.length || 0} users`,
+          description: `Edge function found ${data.length || 0} users`,
         });
       }
     } catch (error) {
@@ -143,8 +146,30 @@ export default function UserAdmin() {
               <Info className="h-4 w-4 mr-2" />
               Run Diagnostic
             </Button>
+            
+            <Button
+              variant="outline"
+              onClick={() => setShowDebugInfo(!showDebugInfo)}
+            >
+              <Bug className="h-4 w-4 mr-2" />
+              {showDebugInfo ? "Hide Debug" : "Show Debug"}
+            </Button>
           </div>
         </div>
+        
+        {/* Debug information panel */}
+        {showDebugInfo && (
+          <div className="mb-6 p-4 border border-indigo-200 bg-indigo-50 rounded-md">
+            <h3 className="font-medium text-indigo-900 mb-2">Debug Information</h3>
+            <ul className="text-xs space-y-1 text-indigo-800">
+              <li><strong>Current User ID:</strong> {user?.id || 'Not logged in'}</li>
+              <li><strong>Admin Status:</strong> {isAdmin ? 'Yes' : 'No'}</li>
+              <li><strong>Edge Function:</strong> get-users (Configured: Yes)</li>
+              <li><strong>Users from Hook:</strong> {users.length}</li>
+              <li><strong>Diagnostic Users:</strong> {diagnosticUsers.length}</li>
+            </ul>
+          </div>
+        )}
         
         {users.length <= 1 && (
           <div className="mb-6 p-4 border border-yellow-300 bg-yellow-50 rounded-md">
@@ -153,7 +178,7 @@ export default function UserAdmin() {
               <div>
                 <h3 className="font-medium text-yellow-800">Limited User Data</h3>
                 <p className="text-sm text-yellow-700">
-                  Only {users.length} user(s) were retrieved from the database. This might indicate a permission issue.
+                  Only {users.length} user(s) were retrieved. This might indicate a permission or configuration issue.
                 </p>
               </div>
             </div>
@@ -167,10 +192,10 @@ export default function UserAdmin() {
               <div>
                 <h3 className="font-medium text-blue-800">Diagnostic Results</h3>
                 <p className="text-sm text-blue-700">
-                  Direct database query found {diagnosticUsers.length} users. Hook returned {users.length} users.
+                  Edge function returned {diagnosticUsers.length} users. Hook returned {users.length} users.
                 </p>
                 <div className="mt-2 text-xs text-blue-600 bg-blue-100 p-2 rounded overflow-auto max-h-32">
-                  <pre>{JSON.stringify(diagnosticUsers.map(u => ({id: u.id, email: u.username})), null, 2)}</pre>
+                  <pre>{JSON.stringify(diagnosticUsers.slice(0, 5).map(u => ({id: u.id, email: u.username, role: u.role})), null, 2)}</pre>
                 </div>
               </div>
             </div>

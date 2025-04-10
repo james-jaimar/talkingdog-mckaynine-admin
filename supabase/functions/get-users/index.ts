@@ -5,6 +5,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.33.1";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Content-Type": "application/json",
 };
 
 serve(async (req) => {
@@ -29,7 +30,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ error: "No authorization header" }),
         { 
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          headers: corsHeaders,
           status: 401 
         }
       );
@@ -41,9 +42,9 @@ serve(async (req) => {
     
     if (userError || !user) {
       return new Response(
-        JSON.stringify({ error: "Invalid token" }),
+        JSON.stringify({ error: "Invalid token", details: userError?.message }),
         { 
-          headers: { ...corsHeaders, "Content-Type": "application/json" }, 
+          headers: corsHeaders, 
           status: 401 
         }
       );
@@ -60,11 +61,13 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ error: "Unauthorized - Admin access required" }),
         { 
-          headers: { ...corsHeaders, "Content-Type": "application/json" }, 
+          headers: corsHeaders, 
           status: 403 
         }
       );
     }
+
+    console.log("Admin access confirmed for user:", user.id);
 
     // Fetch all profiles
     const { data: profiles, error } = await supabaseAdmin
@@ -73,24 +76,21 @@ serve(async (req) => {
       .order("created_at", { ascending: false });
 
     if (error) {
+      console.error("Error fetching profiles:", error);
       throw error;
     }
 
+    console.log(`Successfully fetched ${profiles?.length || 0} profiles`);
+
     return new Response(
       JSON.stringify(profiles),
-      { 
-        headers: { ...corsHeaders, "Content-Type": "application/json" }, 
-        status: 200 
-      }
+      { headers: corsHeaders, status: 200 }
     );
   } catch (error) {
     console.error("Error fetching users:", error);
     return new Response(
       JSON.stringify({ error: error.message }),
-      { 
-        headers: { ...corsHeaders, "Content-Type": "application/json" }, 
-        status: 500 
-      }
+      { headers: corsHeaders, status: 500 }
     );
   }
 });

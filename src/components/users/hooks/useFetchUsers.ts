@@ -9,11 +9,11 @@ export function useFetchUsers() {
     queryFn: async () => {
       console.log("Fetching all users via edge function...");
       
-      // Get current user for marking in the UI
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      console.log("Current user ID:", currentUser?.id);
-      
       try {
+        // Get current user for marking in the UI
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        console.log("Current user ID:", currentUser?.id);
+        
         // Get current session for auth token
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
@@ -21,30 +21,30 @@ export function useFetchUsers() {
         }
 
         // Call the edge function to get all users
-        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-users`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json'
-          }
+        const { data, error } = await supabase.functions.invoke("get-users", {
+          method: 'GET'
         });
         
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(`Failed to fetch users: ${response.statusText} - ${errorData.error || ''}`);
+        if (error) {
+          console.error("Edge function error:", error);
+          throw new Error(`Failed to fetch users: ${error.message}`);
         }
         
-        const profiles = await response.json();
-        console.log("Raw profiles data retrieved:", profiles?.length || 0, "records");
-        console.log("First few profiles:", profiles?.slice(0, 5));
+        if (!data || !Array.isArray(data)) {
+          console.error("Invalid response format:", data);
+          throw new Error("Invalid response format from get-users function");
+        }
         
-        if (!profiles || profiles.length === 0) {
-          console.warn("No profiles were returned from database");
+        console.log("Raw profiles data retrieved:", data.length, "records");
+        console.log("First few profiles:", data.slice(0, 3));
+        
+        if (data.length === 0) {
+          console.warn("No profiles were returned from the edge function");
           return [];
         }
         
-        // Map profiles to UserProfile objects with email derived from username field
-        const userProfiles: UserProfile[] = profiles.map(profile => ({
+        // Map profiles to UserProfile objects
+        const userProfiles: UserProfile[] = data.map(profile => ({
           id: profile.id,
           username: profile.username || "",
           full_name: profile.full_name || "",
