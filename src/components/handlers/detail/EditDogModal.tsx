@@ -36,11 +36,11 @@ export function EditDogModal({ dog, clientId, onSuccess, isNew = false }: EditDo
   if (isMobile) {
     return (
       <>
-        <Button variant="outline" onClick={() => setOpen(true)}>
+        <Button variant="outline" onClick={() => setOpen(true)} className="w-full sm:w-auto">
           {buttonText}
         </Button>
         <Drawer open={open} onOpenChange={setOpen}>
-          <DrawerContent>
+          <DrawerContent className="max-h-[90vh] overflow-auto">
             <DrawerHeader>
               <DrawerTitle>{title}</DrawerTitle>
             </DrawerHeader>
@@ -67,7 +67,7 @@ export function EditDogModal({ dog, clientId, onSuccess, isNew = false }: EditDo
         {buttonText}
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-auto">
           <DialogHeader>
             <DialogTitle>{title}</DialogTitle>
           </DialogHeader>

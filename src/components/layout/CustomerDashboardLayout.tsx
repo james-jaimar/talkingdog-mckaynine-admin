@@ -25,15 +25,15 @@ export function CustomerDashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="flex flex-col h-full min-h-screen bg-gray-50">
+    <div className="flex flex-col min-h-screen bg-gray-50">
       {/* Header */}
       <Header />
       
       {/* Main Content */}
-      <div className="flex flex-1">
+      <div className="flex flex-1 w-full">
         {/* Content Area */}
-        <main className="flex-1 overflow-x-hidden">
-          <div className="container mx-auto px-4 py-4 md:px-6 md:py-6">
+        <main className="flex-1 w-full overflow-x-hidden">
+          <div className="container mx-auto px-3 py-3 sm:px-4 sm:py-4 md:px-6 md:py-6">
             {children}
           </div>
         </main>

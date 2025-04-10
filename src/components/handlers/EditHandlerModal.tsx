@@ -30,12 +30,12 @@ export function EditHandlerModal({ handler, onSuccess }: EditHandlerModalProps) 
   if (isMobile) {
     return (
       <>
-        <Button variant="outline" onClick={() => setOpen(true)}>
+        <Button variant="outline" onClick={() => setOpen(true)} className="w-full sm:w-auto">
           <Edit className="h-4 w-4 mr-2" />
           Edit Handler
         </Button>
         <Drawer open={open} onOpenChange={setOpen}>
-          <DrawerContent>
+          <DrawerContent className="max-h-[90vh] overflow-auto">
             <DrawerHeader>
               <DrawerTitle>Edit Handler</DrawerTitle>
             </DrawerHeader>
@@ -61,7 +61,7 @@ export function EditHandlerModal({ handler, onSuccess }: EditHandlerModalProps) 
         Edit Handler
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-auto">
           <DialogHeader>
             <DialogTitle>Edit Handler</DialogTitle>
           </DialogHeader>

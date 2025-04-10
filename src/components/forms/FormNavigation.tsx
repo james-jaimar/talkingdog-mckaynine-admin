@@ -34,28 +34,28 @@ export function FormNavigation({
   };
 
   return (
-    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 no-print bg-white p-4 rounded-lg border shadow-sm">
-      <div className="flex flex-col md:flex-row md:items-center gap-4">
-        <Button variant="outline" size="sm" asChild className="w-fit">
+    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 mb-4 md:mb-6 no-print bg-white p-3 md:p-4 rounded-lg border shadow-sm">
+      <div className="flex flex-col md:flex-row md:items-center gap-3 md:gap-4 w-full md:w-auto">
+        <Button variant="outline" size={isMobile ? "sm" : "sm"} asChild className="w-fit">
           <Link to={backPath}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             {isMobile ? "Back" : backLabel}
           </Link>
         </Button>
         <div>
-          <h1 className="text-2xl font-bold text-mckaynine-800">{title}</h1>
-          {subtitle && <p className="text-muted-foreground">{subtitle}</p>}
+          <h1 className="text-xl md:text-2xl font-bold text-mckaynine-800">{title}</h1>
+          {subtitle && <p className="text-muted-foreground text-sm md:text-base">{subtitle}</p>}
         </div>
       </div>
       
-      <div className="space-x-2">
+      <div className="flex gap-2 mt-3 md:mt-0 w-full md:w-auto justify-end">
         {onSave && (
-          <Button variant="mckaynine" size="sm" onClick={onSave} disabled={isSubmitting}>
+          <Button variant="mckaynine" size="sm" onClick={onSave} disabled={isSubmitting} className="flex-1 md:flex-grow-0">
             <Save className="mr-2 h-4 w-4" />
             {isMobile ? "Save" : "Save Form"}
           </Button>
         )}
-        <Button variant="outline" size="sm" onClick={handlePrint}>
+        <Button variant="outline" size="sm" onClick={handlePrint} className="flex-1 md:flex-grow-0">
           <Printer className="mr-2 h-4 w-4" />
           {isMobile ? "Print" : "Print Form"}
         </Button>

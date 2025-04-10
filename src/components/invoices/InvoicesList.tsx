@@ -13,6 +13,7 @@ import { InvoicesTable } from "./table/InvoicesTable";
 import { SearchInvoices } from "./SearchInvoices";
 import { DeleteInvoiceDialog } from "./dialogs/DeleteInvoiceDialog";
 import { EmailInvoiceDialog } from "./dialogs/EmailInvoiceDialog";
+import { useIsMobile } from "@/hooks/useIsMobile";
 
 interface InvoicesListProps {
   invoices: Invoice[];
@@ -26,6 +27,7 @@ export function InvoicesList({
   currentMonthLabel = "All Invoices" 
 }: InvoicesListProps) {
   const queryClient = useQueryClient();
+  const isMobile = useIsMobile();
   const [searchTerm, setSearchTerm] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
@@ -60,27 +62,31 @@ export function InvoicesList({
   return (
     <>
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4">
           <div>
-            <CardTitle>Invoices {currentMonthLabel && `- ${currentMonthLabel}`}</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-lg sm:text-xl">
+              Invoices {currentMonthLabel && `- ${currentMonthLabel}`}
+            </CardTitle>
+            <CardDescription className="text-xs sm:text-sm">
               Manage client invoices and payments
             </CardDescription>
           </div>
         </CardHeader>
 
-        <CardContent>
+        <CardContent className="p-3 sm:p-4">
           <SearchInvoices 
             searchTerm={searchTerm} 
             onSearchChange={setSearchTerm} 
           />
 
-          <InvoicesTable 
-            invoices={filteredInvoices}
-            isLoading={isLoading}
-            searchTerm={searchTerm}
-            currentMonthLabel={currentMonthLabel}
-          />
+          <div className={`mt-3 ${isMobile ? 'overflow-auto -mx-3 px-3' : ''}`}>
+            <InvoicesTable 
+              invoices={filteredInvoices}
+              isLoading={isLoading}
+              searchTerm={searchTerm}
+              currentMonthLabel={currentMonthLabel}
+            />
+          </div>
         </CardContent>
       </Card>
 

@@ -1,27 +1,28 @@
 
-import * as React from "react"
+import { useState, useEffect } from "react";
 
-const MOBILE_BREAKPOINT = 768
+// Mobile breakpoint consistent with Tailwind's md breakpoint
+const MOBILE_BREAKPOINT = 768;
 
 export function useIsMobile() {
-  const [isMobile, setIsMobile] = React.useState<boolean>(false)
-
+  // Default to false and update after first render to avoid hydration mismatch
+  const [isMobile, setIsMobile] = React.useState<boolean>(false);
+  
   React.useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
-    }
-    
     // Set initial value
-    handleResize()
+    setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
     
-    // Add event listener with the named function
-    window.addEventListener("resize", handleResize)
+    // Handler to call on window resize
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
+    };
     
-    // Cleanup
-    return () => {
-      window.removeEventListener("resize", handleResize)
-    }
-  }, [])
-
-  return isMobile
+    // Add event listener
+    window.addEventListener("resize", handleResize);
+    
+    // Clean up
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+  
+  return isMobile;
 }

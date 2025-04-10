@@ -21,12 +21,14 @@ export default function CustomerDashboard() {
         <title>Customer Dashboard - McKaynine Training Centre</title>
       </Helmet>
       
-      <div className="py-4 md:py-6">
-        <h1 className="text-xl md:text-2xl font-bold mb-2">Welcome, {isLoading ? "Loading..." : clientData?.first_name || "Handler"}</h1>
-        <p className="text-gray-600 mb-4 md:mb-6">Manage your dogs, classes, and training progress</p>
+      <div className="py-3 sm:py-4 md:py-6">
+        <h1 className="text-xl md:text-2xl font-bold mb-1 md:mb-2">
+          Welcome, {isLoading ? "Loading..." : clientData?.first_name || "Handler"}
+        </h1>
+        <p className="text-gray-600 text-sm md:text-base mb-3 md:mb-6">Manage your dogs, classes, and training progress</p>
         
         {/* Responsive grid for main cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-6 md:mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6 mb-3 md:mb-8">
           <DogsSummaryCard clientData={clientData} isLoading={isLoading} />
           <UpcomingClassesCard clientData={clientData} isLoading={isLoading} />
           <MessagesCard unreadMessageCount={unreadMessageCount} />

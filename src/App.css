@@ -19,6 +19,35 @@
   filter: drop-shadow(0 0 2em #61dafbaa);
 }
 
+/* Mobile optimizations */
+@media (max-width: 640px) {
+  .container {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+  
+  input, select, textarea {
+    font-size: 16px !important; /* Prevent zoom on iOS */
+  }
+}
+
+/* Ensure tap targets are large enough */
+@media (max-width: 640px) {
+  button, 
+  .button,
+  a.button,
+  input[type="button"],
+  input[type="submit"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* Fix overflow issues */
+.overflow-x-auto {
+  -webkit-overflow-scrolling: touch;
+}
+
 @keyframes logo-spin {
   from {
     transform: rotate(0deg);
@@ -40,4 +69,30 @@
 
 .read-the-docs {
   color: #888;
+}
+
+/* Improved viewport management for mobile */
+@media screen and (max-width: 640px) {
+  body {
+    overflow-x: hidden;
+  }
+  
+  /* Prevent horizontal overflow */
+  #root {
+    overflow-x: hidden;
+    width: 100vw;
+  }
+}
+
+/* Ensure modals and drawers display properly */
+.drawer-content, .dialog-content {
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+/* Improve touch feedback */
+@media (hover: none) {
+  button:active, a:active {
+    opacity: 0.7;
+  }
 }

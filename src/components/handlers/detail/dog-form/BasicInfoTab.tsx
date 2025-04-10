@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Control } from "react-hook-form";
 import { z } from "zod";
+import { useIsMobile } from "@/hooks/useIsMobile";
 
 // Using the same schema types from the parent form
 type FormSchema = z.infer<typeof import("./dogFormSchema").formSchema>;
@@ -13,6 +14,8 @@ interface BasicInfoTabProps {
 }
 
 export function BasicInfoTab({ control }: BasicInfoTabProps) {
+  const isMobile = useIsMobile();
+
   return (
     <div className="space-y-4">
       <FormField
@@ -22,7 +25,7 @@ export function BasicInfoTab({ control }: BasicInfoTabProps) {
           <FormItem>
             <FormLabel>Dog's Name</FormLabel>
             <FormControl>
-              <Input {...field} />
+              <Input {...field} className="w-full" />
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -36,7 +39,7 @@ export function BasicInfoTab({ control }: BasicInfoTabProps) {
           <FormItem>
             <FormLabel>Breed</FormLabel>
             <FormControl>
-              <Input {...field} />
+              <Input {...field} className="w-full" />
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -51,7 +54,7 @@ export function BasicInfoTab({ control }: BasicInfoTabProps) {
             <FormItem>
               <FormLabel>Date of Birth</FormLabel>
               <FormControl>
-                <Input {...field} type="date" />
+                <Input {...field} type="date" className="w-full" />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -65,7 +68,7 @@ export function BasicInfoTab({ control }: BasicInfoTabProps) {
             <FormItem>
               <FormLabel>Age (years)</FormLabel>
               <FormControl>
-                <Input {...field} type="number" />
+                <Input {...field} type="number" className="w-full" />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -80,7 +83,7 @@ export function BasicInfoTab({ control }: BasicInfoTabProps) {
           <FormItem>
             <FormLabel>Weight (lbs)</FormLabel>
             <FormControl>
-              <Input {...field} type="number" />
+              <Input {...field} type="number" className="w-full" />
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -96,8 +99,9 @@ export function BasicInfoTab({ control }: BasicInfoTabProps) {
             <FormControl>
               <Textarea 
                 {...field} 
-                rows={4}
+                rows={isMobile ? 3 : 4}
                 placeholder="General notes about the dog" 
+                className="w-full"
               />
             </FormControl>
             <FormMessage />
