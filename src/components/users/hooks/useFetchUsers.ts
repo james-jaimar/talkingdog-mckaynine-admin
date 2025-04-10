@@ -7,24 +7,34 @@ export function useFetchUsers() {
   return useQuery({
     queryKey: ['admin-users-list'],
     queryFn: async () => {
-      console.log("Fetching all users with service role");
+      console.log("Fetching all users via edge function...");
       
       // Get current user for marking in the UI
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       console.log("Current user ID:", currentUser?.id);
       
       try {
-        // Use the more reliable from() method with explicit SELECT
-        const { data: profiles, error } = await supabase
-          .from('profiles')
-          .select('id, username, full_name, avatar_url, role, created_at')
-          .order('created_at', { ascending: false });
+        // Get current session for auth token
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          throw new Error("No active session");
+        }
+
+        // Call the edge function to get all users
+        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-users`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json'
+          }
+        });
         
-        if (error) {
-          console.error("Error fetching users:", error);
-          throw new Error(`Failed to fetch users: ${error.message}`);
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(`Failed to fetch users: ${response.statusText} - ${errorData.error || ''}`);
         }
         
+        const profiles = await response.json();
         console.log("Raw profiles data retrieved:", profiles?.length || 0, "records");
         console.log("First few profiles:", profiles?.slice(0, 5));
         

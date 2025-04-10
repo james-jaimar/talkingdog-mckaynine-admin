@@ -5,7 +5,7 @@ import { useAuth } from "@/context/auth";
 import { Helmet } from "react-helmet";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
-import { Loader2, AlertTriangle, RefreshCw } from "lucide-react";
+import { Loader2, AlertTriangle, RefreshCw, Info } from "lucide-react";
 import { 
   Card,
   CardContent,
@@ -15,11 +15,14 @@ import {
 import { useFetchUsers } from "@/components/users/hooks/useFetchUsers";
 import { Button } from "@/components/ui/button";
 import UserAdminTable from "@/components/users/UserAdminTable";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function UserAdmin() {
   const { user, isAdmin, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [diagnosticUsers, setDiagnosticUsers] = useState<any[]>([]);
+  const [isDiagnosticLoading, setIsDiagnosticLoading] = useState(false);
   
   // Fetch users data
   const { 
@@ -50,6 +53,45 @@ export default function UserAdmin() {
     navigate("/dashboard");
     return null;
   }
+
+  // Run diagnostic
+  const runDiagnostic = async () => {
+    setIsDiagnosticLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      console.log("Diagnostic: Current session", !!session);
+      
+      // Try direct query to check results
+      const { data: profiles, error } = await supabase
+        .from('profiles')
+        .select('*');
+      
+      if (error) {
+        console.error("Diagnostic: Error fetching profiles directly", error);
+        toast({
+          variant: "destructive",
+          title: "Diagnostic Error",
+          description: error.message,
+        });
+      } else {
+        console.log("Diagnostic: Direct profiles query results", profiles);
+        setDiagnosticUsers(profiles || []);
+        toast({
+          title: "Diagnostic Results",
+          description: `Direct query found ${profiles?.length || 0} users`,
+        });
+      }
+    } catch (error) {
+      console.error("Diagnostic failed:", error);
+      toast({
+        variant: "destructive",
+        title: "Diagnostic Failed",
+        description: error.message,
+      });
+    } finally {
+      setIsDiagnosticLoading(false);
+    }
+  };
 
   // Error state
   if (error) {
@@ -83,14 +125,25 @@ export default function UserAdmin() {
         <div className="flex flex-wrap justify-between items-center mb-6">
           <h1 className="text-2xl font-bold">User Administration</h1>
           
-          <Button
-            variant="outline"
-            onClick={() => refetch()}
-            disabled={isLoading}
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-            Refresh Users
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => refetch()}
+              disabled={isLoading}
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+              Refresh Users
+            </Button>
+            
+            <Button 
+              variant="secondary" 
+              onClick={runDiagnostic}
+              disabled={isDiagnosticLoading}
+            >
+              <Info className="h-4 w-4 mr-2" />
+              Run Diagnostic
+            </Button>
+          </div>
         </div>
         
         {users.length <= 1 && (
@@ -102,6 +155,23 @@ export default function UserAdmin() {
                 <p className="text-sm text-yellow-700">
                   Only {users.length} user(s) were retrieved from the database. This might indicate a permission issue.
                 </p>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {diagnosticUsers.length > 0 && (
+          <div className="mb-6 p-4 border border-blue-300 bg-blue-50 rounded-md">
+            <div className="flex items-start gap-2">
+              <Info className="h-5 w-5 text-blue-600 mt-0.5" />
+              <div>
+                <h3 className="font-medium text-blue-800">Diagnostic Results</h3>
+                <p className="text-sm text-blue-700">
+                  Direct database query found {diagnosticUsers.length} users. Hook returned {users.length} users.
+                </p>
+                <div className="mt-2 text-xs text-blue-600 bg-blue-100 p-2 rounded overflow-auto max-h-32">
+                  <pre>{JSON.stringify(diagnosticUsers.map(u => ({id: u.id, email: u.username})), null, 2)}</pre>
+                </div>
               </div>
             </div>
           </div>
