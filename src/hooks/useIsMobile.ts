@@ -6,9 +6,9 @@ const MOBILE_BREAKPOINT = 768;
 
 export function useIsMobile() {
   // Default to false and update after first render to avoid hydration mismatch
-  const [isMobile, setIsMobile] = React.useState<boolean>(false);
+  const [isMobile, setIsMobile] = useState<boolean>(false);
   
-  React.useEffect(() => {
+  useEffect(() => {
     // Set initial value
     setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
     
