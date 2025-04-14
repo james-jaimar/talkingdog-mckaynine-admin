@@ -57,8 +57,13 @@ export function useScheduleSubmit({
         lastEndDateTime.setDate(lastEndDateTime.getDate() + 1);
       }
 
-      // Transform 'none' value to null for trainer_id
-      const trainer_id = data.trainerId === 'none' ? null : data.trainerId;
+      // Instead of using null for trainer_id when "none" is selected,
+      // we'll use a special UUID string to represent "no trainer"
+      // This works around the not-null constraint in the database
+      const DEFAULT_TRAINER_ID = "00000000-0000-0000-0000-000000000000";
+      
+      // Transform 'none' value to the default trainer ID value
+      const trainer_id = data.trainerId === 'none' ? DEFAULT_TRAINER_ID : data.trainerId;
       
       // Create schedule data object
       const scheduleData = {
