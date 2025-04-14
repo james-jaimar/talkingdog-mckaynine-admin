@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { EditTrainerModal } from "./EditTrainerModal";
@@ -30,7 +29,7 @@ export function TrainersTable() {
           branches:branch_id (
             name
           ),
-          profiles:user_id (
+          profiles (
             username,
             role
           )
