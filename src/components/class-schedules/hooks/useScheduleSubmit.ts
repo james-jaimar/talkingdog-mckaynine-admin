@@ -1,137 +1,118 @@
 
 import { useState } from "react";
-import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { useQueryClient } from "@tanstack/react-query";
-import { ClassScheduleFormValues } from "../schemas/classScheduleFormSchema";
+import { useToast } from "@/components/ui/use-toast";
 import { ClassSchedule } from "../types/classSchedule";
-import { useClassScheduleDateUtils } from "./useClassScheduleDateUtils";
+import { ClassScheduleFormValues } from "../schemas/classScheduleFormSchema";
 
-interface ScheduleSubmitProps {
+interface UseScheduleSubmitProps {
   classId: string;
   schedule: ClassSchedule | null;
   onSuccess: () => void;
 }
 
-export function useScheduleSubmit({ classId, schedule, onSuccess }: ScheduleSubmitProps) {
+export function useScheduleSubmit({ 
+  classId, 
+  schedule, 
+  onSuccess 
+}: UseScheduleSubmitProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const { combineDateTime } = useClassScheduleDateUtils();
-  
-  const onSubmit = async (values: ClassScheduleFormValues) => {
+
+  const onSubmit = async (data: ClassScheduleFormValues) => {
     setIsSubmitting(true);
-    console.log("Form values submitted:", values);
-    
+
     try {
-      // Ensure dates are selected
-      if (!values.selectedDates || values.selectedDates.length === 0) {
-        throw new Error("Please select at least one class date");
+      console.log("Submitting schedule data:", data);
+      
+      // Check if we have selected dates
+      if (!data.selectedDates || data.selectedDates.length === 0) {
+        throw new Error("Please select at least one date");
       }
       
-      // Use the first and last selected dates for start and end
-      const sortedDates = [...values.selectedDates].sort((a, b) => a.getTime() - b.getTime());
+      // Sort dates to find first and last for start_time and end_time
+      const sortedDates = [...data.selectedDates].sort((a, b) => a.getTime() - b.getTime());
       const firstDate = sortedDates[0];
       const lastDate = sortedDates[sortedDates.length - 1];
       
-      // Combine date and time into ISO strings
-      const startDateTime = combineDateTime(firstDate, values.startTime);
-      const endDateTime = combineDateTime(
-        values.selectedDates.length > 1 ? lastDate : firstDate, 
-        values.endTime
-      );
+      // Set hours and minutes from time strings
+      const [startHour, startMinute] = data.startTime.split(":").map(Number);
+      const [endHour, endMinute] = data.endTime.split(":").map(Number);
       
-      // Validate end time is after start time for same-day events
-      if (firstDate.toDateString() === lastDate.toDateString() && 
-          endDateTime <= startDateTime) {
-        throw new Error("End time must be after start time");
+      const startDateTime = new Date(firstDate);
+      startDateTime.setHours(startHour, startMinute, 0, 0);
+      
+      const endDateTime = new Date(firstDate); // Use same day for end time
+      endDateTime.setHours(endHour, endMinute, 0, 0);
+      
+      // If end time is earlier than start time, assume it's for the next day
+      if (endDateTime < startDateTime) {
+        endDateTime.setDate(endDateTime.getDate() + 1);
       }
       
-      // Convert selected dates to ISO strings for storage
-      // Ensure proper date formatting for Supabase
-      const selectedDatesISO = values.selectedDates.map(date => {
-        // Create a new date to avoid timezone issues
-        const d = new Date(date);
-        return d.toISOString();
-      });
+      // Calculate end date by adding the same time difference to the last date
+      const lastEndDateTime = new Date(lastDate);
+      lastEndDateTime.setHours(endHour, endMinute, 0, 0);
+      if (lastEndDateTime < lastDate) {
+        lastEndDateTime.setDate(lastEndDateTime.getDate() + 1);
+      }
+
+      // Transform 'none' value to null for trainer_id
+      const trainer_id = data.trainerId === 'none' ? null : data.trainerId;
       
-      console.log("Selected dates (ISO):", selectedDatesISO);
-      console.log("Start datetime:", startDateTime.toISOString());
-      console.log("End datetime:", endDateTime.toISOString());
-      
+      // Create schedule data object
       const scheduleData = {
         class_id: classId,
-        trainer_id: values.trainerId || null, // Allow null trainer
+        trainer_id: trainer_id,
         start_time: startDateTime.toISOString(),
         end_time: endDateTime.toISOString(),
-        recurring: values.isRecurring,
-        recurrence_pattern: values.referenceTitle,
-        selected_dates: selectedDatesISO,
+        recurring: data.isRecurring,
+        recurrence_pattern: data.referenceTitle,
+        selected_dates: data.selectedDates.map(date => date.toISOString()),
       };
-      
-      console.log("Submitting schedule data:", scheduleData);
-      
-      let response;
-      
+
       if (schedule) {
         // Update existing schedule
-        response = await supabase
+        const { error } = await supabase
           .from("class_schedules")
           .update(scheduleData)
           .eq("id", schedule.id);
-        
-        if (response.error) throw response.error;
+          
+        if (error) throw error;
         
         toast({
-          title: "Schedule updated successfully",
-          description: `The schedule has been updated.`,
+          title: "Schedule updated",
+          description: "The class schedule has been successfully updated.",
         });
       } else {
         // Create new schedule
-        response = await supabase
+        const { error } = await supabase
           .from("class_schedules")
           .insert(scheduleData);
-        
-        if (response.error) throw response.error;
+          
+        if (error) throw error;
         
         toast({
-          title: "Schedule created successfully",
-          description: `The schedule has been added.`,
+          title: "Schedule created",
+          description: "The class schedule has been successfully created.",
         });
       }
-      
-      queryClient.invalidateQueries({ queryKey: ["class-schedules", classId] });
+
       onSuccess();
     } catch (error) {
-      console.error("Error saving schedule:", error);
-      
-      // Improved error handling with better messages
-      let errorMessage = "An unexpected error occurred";
-      
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      } else if (typeof error === 'object' && error !== null) {
-        // Handle Supabase error objects
-        errorMessage = JSON.stringify(error);
-        
-        // Extract message from Supabase error object if possible
-        if ('message' in error) {
-          errorMessage = String(error.message);
-        }
-      }
-      
+      console.error("Error submitting schedule:", error);
       toast({
-        title: "Failed to save schedule",
-        description: errorMessage,
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to save schedule. Please try again.",
         variant: "destructive",
       });
     } finally {
       setIsSubmitting(false);
     }
   };
-  
+
   return {
     isSubmitting,
-    onSubmit
+    onSubmit,
   };
 }
