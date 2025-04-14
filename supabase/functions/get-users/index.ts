@@ -18,6 +18,16 @@ serve(async (req) => {
   }
 
   try {
+    // Get request body which may contain app_id
+    let app_id = null;
+    try {
+      const body = await req.json();
+      app_id = body?.app_id || null;
+    } catch (e) {
+      // If parsing fails, proceed without app_id filter
+      console.error("Failed to parse request body:", e);
+    }
+
     // Create a Supabase client with the service role key (has admin privileges)
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") || "",
@@ -69,11 +79,20 @@ serve(async (req) => {
 
     console.log("Admin access confirmed for user:", user.id);
 
-    // Fetch all profiles
-    const { data: profiles, error } = await supabaseAdmin
+    // Build query to fetch profiles
+    let query = supabaseAdmin
       .from("profiles")
       .select("*")
       .order("created_at", { ascending: false });
+    
+    // Filter by app_id if provided
+    if (app_id) {
+      console.log("Filtering profiles by app_id:", app_id);
+      query = query.eq("app_id", app_id);
+    }
+
+    // Execute the query
+    const { data: profiles, error } = await query;
 
     if (error) {
       console.error("Error fetching profiles:", error);

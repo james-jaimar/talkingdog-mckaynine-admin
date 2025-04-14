@@ -2,12 +2,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { UserProfile } from "../types/userTypes";
+import { APP_ID } from "@/constants/app";
 
 export function useFetchUsers() {
   return useQuery({
     queryKey: ['admin-users-list'],
     queryFn: async () => {
-      console.log("Fetching all users via edge function...");
+      console.log("Fetching users filtered by app_id:", APP_ID);
       
       try {
         // Get current user for marking in the UI
@@ -22,7 +23,8 @@ export function useFetchUsers() {
 
         // Call the edge function to get all users
         const { data, error } = await supabase.functions.invoke("get-users", {
-          method: 'GET'
+          method: 'GET',
+          body: { app_id: APP_ID } // Pass app_id in the request body
         });
         
         if (error) {
@@ -52,7 +54,8 @@ export function useFetchUsers() {
           role: profile.role || "user",
           created_at: profile.created_at,
           email: profile.username || "", // Email is stored in username field
-          isCurrentUser: currentUser?.id === profile.id
+          isCurrentUser: currentUser?.id === profile.id,
+          app_id: profile.app_id
         }));
         
         console.log("Processed user profiles:", userProfiles.length);

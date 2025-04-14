@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { useAuth } from "@/context/auth";
@@ -120,6 +119,10 @@ export default function UserAdmin() {
     );
   }
 
+  // Add the APP_ID import
+  const { APP_ID } = require('@/constants/app');
+
+  // Update the debug information panel to show APP_ID
   return (
     <DashboardLayout>
       <Helmet>
@@ -169,6 +172,7 @@ export default function UserAdmin() {
             <ul className="text-xs space-y-1 text-indigo-800">
               <li><strong>Current User ID:</strong> {user?.id || 'Not logged in'}</li>
               <li><strong>Admin Status:</strong> {isAdmin ? 'Yes' : 'No'}</li>
+              <li><strong>App ID:</strong> {APP_ID}</li>
               <li><strong>Edge Function:</strong> get-users (Configured: Yes)</li>
               <li><strong>Users from Hook:</strong> {users.length}</li>
               <li><strong>Diagnostic Users:</strong> {diagnosticUsers.length}</li>

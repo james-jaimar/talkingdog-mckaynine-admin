@@ -37,10 +37,16 @@ export function UserManageDialog({
     try {
       setIsUpdating(true);
       
+      // Import the APP_ID
+      const { APP_ID } = await import('@/constants/app');
+      
       // Update the user's role in the database
       const { error } = await supabase
         .from('profiles')
-        .update({ role })
+        .update({ 
+          role,
+          app_id: APP_ID // Ensure app_id is always set when updating
+        })
         .eq('id', user.id);
       
       if (error) throw error;

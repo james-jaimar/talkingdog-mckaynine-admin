@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { UserProfile } from "../types/userTypes";
+import { APP_ID } from "@/constants/app";
 
 // Extend UserProfile to ensure email is required
 export type User = UserProfile & {
@@ -23,7 +24,7 @@ export function useUsers() {
       // Get current user for marking in the UI
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       
-      // Query profiles table to get user data
+      // Query profiles table to get user data, filtered by app_id
       const { data, error } = await supabase
         .from('profiles')
         .select(`
@@ -32,8 +33,10 @@ export function useUsers() {
           role,
           full_name,
           created_at,
-          avatar_url
+          avatar_url,
+          app_id
         `)
+        .eq('app_id', APP_ID)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -47,6 +50,7 @@ export function useUsers() {
         full_name: user.full_name || '',
         created_at: user.created_at || new Date().toISOString(),
         avatar_url: user.avatar_url,
+        app_id: user.app_id,
         isCurrentUser: user.id === currentUser?.id // Add the isCurrentUser flag
       }));
       

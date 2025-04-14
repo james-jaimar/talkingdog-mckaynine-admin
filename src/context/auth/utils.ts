@@ -1,5 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
+import { APP_ID } from "@/constants/app";
 
 // Fetch the user profile from Supabase
 export const fetchUserProfile = async (userId: string | undefined) => {
@@ -10,7 +11,7 @@ export const fetchUserProfile = async (userId: string | undefined) => {
     
     const { data, error } = await supabase
       .from('profiles')
-      .select('role')
+      .select('role, app_id')
       .eq('id', userId)
       .single();
     
@@ -28,11 +29,18 @@ export const fetchUserProfile = async (userId: string | undefined) => {
   }
 };
 
-// Handle special admin user and preserve handler role
+// Handle special admin user and preserve handler role, also ensure app_id is set
 export const ensureAdminRole = async (userId: string, email: string | undefined, currentRole: string | null) => {
   // Most important: If the user has a handler role, preserve it
   if (currentRole === 'handler') {
     console.log("User has handler role, preserving it");
+    
+    // Ensure app_id is set
+    await supabase
+      .from('profiles')
+      .update({ app_id: APP_ID })
+      .eq('id', userId);
+      
     return 'handler';
   }
   
@@ -43,7 +51,10 @@ export const ensureAdminRole = async (userId: string, email: string | undefined,
     // Update role to admin for this special user
     const { error: updateError } = await supabase
       .from('profiles')
-      .update({ role: 'admin' })
+      .update({ 
+        role: 'admin',
+        app_id: APP_ID // Set app_id for this application
+      })
       .eq('id', userId);
     
     if (updateError) {
@@ -55,6 +66,12 @@ export const ensureAdminRole = async (userId: string, email: string | undefined,
     }
   }
   
-  // For all other cases, return the current role
+  // For all other cases, ensure app_id is set
+  await supabase
+    .from('profiles')
+    .update({ app_id: APP_ID })
+    .eq('id', userId);
+  
+  // Return the current role
   return currentRole;
 };

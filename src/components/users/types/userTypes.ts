@@ -1,11 +1,12 @@
 
 export interface UserProfile {
   id: string;
+  email: string;
   username: string;
   full_name: string;
-  avatar_url?: string | null;
   role: string;
+  avatar_url: string | null;
   created_at: string;
-  email: string;
-  isCurrentUser: boolean;
+  isCurrentUser?: boolean;
+  app_id?: string;
 }

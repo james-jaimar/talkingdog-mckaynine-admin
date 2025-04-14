@@ -84,7 +84,10 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
       const userId = data.user?.id;
       if (!userId) throw new Error("User creation failed - no user ID returned");
       
-      // Update profile with role
+      // Import the APP_ID
+      const { APP_ID } = await import('@/constants/app');
+      
+      // Update profile with role and app_id
       const { error: profileError } = await supabase
         .from('profiles')
         .upsert({
@@ -92,6 +95,7 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
           username: values.email,
           full_name: values.fullName || "",
           role: values.role,
+          app_id: APP_ID, // Set the app_id for this application
           updated_at: new Date().toISOString()
         });
       
