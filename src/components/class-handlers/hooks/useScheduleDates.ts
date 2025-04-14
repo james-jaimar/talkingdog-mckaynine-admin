@@ -29,61 +29,65 @@ export function useScheduleDates(classId: string) {
           console.log("No schedule found for class:", classId);
           return [];
         }
-          
-        // Extract dates from schedule
-        const { start_date, end_date, days_of_week } = scheduleData;
         
-        // Validate dates
-        if (!start_date || !end_date || !days_of_week) {
-          console.error("Invalid schedule data:", scheduleData);
-          return [];
+        // Check if we have selected_dates directly in the schedule
+        if (scheduleData.selected_dates && Array.isArray(scheduleData.selected_dates) && scheduleData.selected_dates.length > 0) {
+          console.log("Using selected_dates from schedule:", scheduleData.selected_dates.length);
+          return scheduleData.selected_dates;
         }
         
-        // Parse days of week
-        let daysArray: number[] = [];
+        // If no selected_dates, check if we have recurring pattern information
+        if (!scheduleData.recurring || !scheduleData.recurrence_pattern) {
+          console.log("No recurring pattern found in schedule");
+          // If no recurring pattern, use the start_time as the only class date
+          return scheduleData.start_time ? [scheduleData.start_time] : [];
+        }
+        
+        // For recurring classes, parse the recurrence pattern
         try {
-          if (typeof days_of_week === 'string') {
-            daysArray = JSON.parse(days_of_week);
-          } else if (Array.isArray(days_of_week)) {
-            daysArray = days_of_week;
+          const recurrencePattern = JSON.parse(scheduleData.recurrence_pattern);
+          
+          if (!recurrencePattern || 
+              !recurrencePattern.startDate || 
+              !recurrencePattern.endDate || 
+              !recurrencePattern.daysOfWeek ||
+              !Array.isArray(recurrencePattern.daysOfWeek)) {
+            console.error("Invalid recurrence pattern format:", recurrencePattern);
+            return [scheduleData.start_time]; // Fallback to start_time
           }
+          
+          // Generate dates based on recurrence pattern
+          const dates: string[] = [];
+          const startDate = new Date(recurrencePattern.startDate);
+          const endDate = new Date(recurrencePattern.endDate);
+          const daysOfWeek = recurrencePattern.daysOfWeek;
+          
+          // Safety check for invalid dates
+          if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+            console.error("Invalid date range in recurrence pattern:", { startDate: recurrencePattern.startDate, endDate: recurrencePattern.endDate });
+            return [scheduleData.start_time]; // Fallback to start_time
+          }
+          
+          let currentDate = new Date(startDate);
+          
+          while (currentDate <= endDate) {
+            const dayOfWeek = currentDate.getDay();
+            
+            // Check if the current day is in the daysOfWeek array (0 = Sunday, 1 = Monday, etc.)
+            if (daysOfWeek.includes(dayOfWeek)) {
+              dates.push(currentDate.toISOString());
+            }
+            
+            // Move to next day
+            currentDate = new Date(currentDate);
+            currentDate.setDate(currentDate.getDate() + 1);
+          }
+          
+          return dates;
         } catch (e) {
-          console.error("Error parsing days of week:", e);
-          return [];
+          console.error("Error parsing recurrence pattern:", e);
+          return [scheduleData.start_time]; // Fallback to start_time
         }
-        
-        if (!Array.isArray(daysArray) || daysArray.length === 0) {
-          console.error("Invalid days of week format:", days_of_week);
-          return [];
-        }
-        
-        // Generate dates
-        const dates: string[] = [];
-        const startDate = new Date(start_date);
-        const endDate = new Date(end_date);
-        
-        // Safety check for invalid dates
-        if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-          console.error("Invalid date range:", { start_date, end_date });
-          return [];
-        }
-        
-        let currentDate = new Date(startDate);
-        
-        while (currentDate <= endDate) {
-          const dayOfWeek = currentDate.getDay();
-          
-          // Check if the current day is in the days_of_week array (0 = Sunday, 1 = Monday, etc.)
-          if (daysArray.includes(dayOfWeek)) {
-            dates.push(currentDate.toISOString());
-          }
-          
-          // Move to next day
-          currentDate = new Date(currentDate);
-          currentDate.setDate(currentDate.getDate() + 1);
-        }
-        
-        return dates;
       } catch (error) {
         console.error("Error in useScheduleDates:", error);
         throw error;
