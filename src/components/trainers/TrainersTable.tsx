@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { EditTrainerModal } from "./EditTrainerModal";
@@ -22,16 +23,14 @@ export function TrainersTable() {
   const { data: trainers, isLoading, refetch } = useQuery({
     queryKey: ['trainers', currentBranch?.id],
     queryFn: async () => {
+      console.log("Fetching trainers for branch:", currentBranch?.id || "all");
+      
       let query = supabase
         .from('trainers')
         .select(`
           *,
           branches:branch_id (
             name
-          ),
-          profiles (
-            username,
-            role
           )
         `);
       
@@ -40,25 +39,51 @@ export function TrainersTable() {
         query = query.eq('branch_id', currentBranch.id);
       }
       
-      const { data, error } = await query;
+      const { data: trainersData, error: trainersError } = await query;
       
-      if (error) throw error;
+      if (trainersError) {
+        console.error("Error fetching trainers:", trainersError);
+        throw trainersError;
+      }
       
-      // Transform data to handle potential join errors and null values
-      return (data || []).map(trainer => {
-        // Check if profiles is an object but actually contains error info
-        const hasProfileError = typeof trainer.profiles === 'object' && 
-                               !Array.isArray(trainer.profiles) && 
-                               // Use hasOwnProperty to check if the error property exists
-                               Object.prototype.hasOwnProperty.call(trainer.profiles, 'error');
-        
-        return {
-          ...trainer,
-          branches: trainer.branches || null,
-          // Set profiles to null if it has an error
-          profiles: hasProfileError ? null : trainer.profiles
-        };
-      }) as unknown as (Trainer & { 
+      // Separately fetch profile information for each trainer with a user_id
+      const trainerProfiles = await Promise.all(
+        (trainersData || []).map(async (trainer) => {
+          if (!trainer.user_id) {
+            // Return trainer with null profiles if no user_id
+            return {
+              ...trainer,
+              branches: trainer.branches || null,
+              profiles: null
+            };
+          }
+          
+          // Fetch profile for this trainer's user_id
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('username, role')
+            .eq('id', trainer.user_id)
+            .single();
+          
+          if (profileError) {
+            console.error(`Error fetching profile for trainer ${trainer.id}:`, profileError);
+            return {
+              ...trainer,
+              branches: trainer.branches || null,
+              profiles: null
+            };
+          }
+          
+          return {
+            ...trainer,
+            branches: trainer.branches || null,
+            profiles: profileData
+          };
+        })
+      );
+      
+      console.log("Fetched trainers with profiles:", trainerProfiles);
+      return trainerProfiles as unknown as (Trainer & { 
         branches: { name: string } | null;
         profiles: { username: string; role: string } | null;
       })[];
