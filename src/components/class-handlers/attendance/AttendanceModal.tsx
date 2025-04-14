@@ -52,9 +52,11 @@ export function AttendanceModal({
         description: `Attendance for ${booking.dogs?.name} has been updated successfully.`,
       });
       
+      // Immediate update of the UI
       onAttendanceUpdated();
       onOpenChange(false);
     } catch (error) {
+      console.error("Error saving attendance:", error);
       toast({
         title: "Error",
         description: "Failed to update attendance. Please try again.",

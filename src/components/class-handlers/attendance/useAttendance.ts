@@ -34,6 +34,9 @@ export function useAttendance(classId: string) {
       
       const classScheduleId = bookingData.class_schedule_id;
       
+      // Format the date properly to ensure consistency
+      const formattedDate = new Date(classDate).toISOString();
+      
       if (attendanceId) {
         // Update existing attendance record
         const { error } = await supabase
@@ -53,7 +56,7 @@ export function useAttendance(classId: string) {
           .insert({
             booking_id: bookingId,
             class_schedule_id: classScheduleId,
-            class_date: classDate,
+            class_date: formattedDate,
             attendance_status: status,
             notes
           });

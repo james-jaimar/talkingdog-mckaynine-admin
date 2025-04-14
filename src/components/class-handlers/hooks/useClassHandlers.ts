@@ -52,7 +52,8 @@ export function useClassHandlers(classId: string) {
           attendances:class_attendance(
             id,
             class_date,
-            attendance_status
+            attendance_status,
+            notes
           )
         `)
         .in('class_schedule_id', scheduleIdList);

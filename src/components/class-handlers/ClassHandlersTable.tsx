@@ -44,6 +44,15 @@ export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
   useEffect(() => {
     // Immediate refetch on mount
     refetch();
+    
+    // Set up a periodic refresh
+    const refreshInterval = setInterval(() => {
+      refetch();
+    }, 5000); // Refresh every 5 seconds
+    
+    return () => {
+      clearInterval(refreshInterval);
+    };
   }, [refetch]);
 
   const handleRemove = (bookingId: string) => {
@@ -63,6 +72,13 @@ export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
     setSelectedBooking(booking);
     setSelectedDate(date);
     setAttendanceModalOpen(true);
+  };
+
+  // Function to handle attendance updates and refresh data
+  const handleAttendanceUpdated = () => {
+    // Immediately refresh the data
+    queryClient.invalidateQueries({ queryKey: ['class-handlers', classId] });
+    refetch();
   };
 
   // Function to get the attendance status for a booking and date
@@ -187,9 +203,7 @@ export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
           booking={selectedBooking}
           classDate={selectedDate}
           classId={classId}
-          onAttendanceUpdated={() => {
-            queryClient.invalidateQueries({ queryKey: ['class-handlers', classId] });
-          }}
+          onAttendanceUpdated={handleAttendanceUpdated}
         />
       )}
     </>
