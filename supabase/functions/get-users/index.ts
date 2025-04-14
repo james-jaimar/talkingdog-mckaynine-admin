@@ -22,17 +22,10 @@ serve(async (req: Request) => {
   if (corsResponse) return corsResponse;
 
   try {
-    // Get request body
-    let body;
-    try {
-      body = await req.json();
-    } catch (e) {
-      body = {};
-    }
-
-    // Get app_id from request body
-    const app_id = body?.app_id;
-    console.log("Received app_id:", app_id);
+    // Get app_id from URL parameters
+    const url = new URL(req.url);
+    const app_id = url.searchParams.get('app_id');
+    console.log("Received app_id from query params:", app_id);
 
     // Create a Supabase client with the Admin key
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
