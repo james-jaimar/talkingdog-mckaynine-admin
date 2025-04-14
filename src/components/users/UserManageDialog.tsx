@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { APP_ID } from "@/constants/app";
 
 interface UserManageDialogProps {
   user: User;
@@ -36,9 +37,6 @@ export function UserManageDialog({
   const handleUpdateUser = async () => {
     try {
       setIsUpdating(true);
-      
-      // Import the APP_ID
-      const { APP_ID } = await import('@/constants/app');
       
       // Update the user's role in the database
       const { error } = await supabase

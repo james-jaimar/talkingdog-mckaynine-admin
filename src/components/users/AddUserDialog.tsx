@@ -32,6 +32,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
+import { APP_ID } from "@/constants/app";
 
 // Form validation schema
 const formSchema = z.object({
@@ -83,9 +84,6 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
       
       const userId = data.user?.id;
       if (!userId) throw new Error("User creation failed - no user ID returned");
-      
-      // Import the APP_ID
-      const { APP_ID } = await import('@/constants/app');
       
       // Update profile with role and app_id
       const { error: profileError } = await supabase

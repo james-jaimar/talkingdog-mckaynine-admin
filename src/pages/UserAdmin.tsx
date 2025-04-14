@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { useAuth } from "@/context/auth";
@@ -16,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import UserAdminTable from "@/components/users/UserAdminTable";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsMobile } from "@/hooks/useIsMobile";
+import { APP_ID } from "@/constants/app"; // Import APP_ID directly instead of using require
 
 export default function UserAdmin() {
   const { user, isAdmin, isLoading: authLoading } = useAuth();
@@ -67,7 +69,8 @@ export default function UserAdmin() {
       
       // Try direct query with service function
       const { data, error } = await supabase.functions.invoke("get-users", {
-        method: "GET"
+        method: "GET",
+        body: { app_id: APP_ID } // Pass app_id in the request body
       });
       
       if (error) {
@@ -118,9 +121,6 @@ export default function UserAdmin() {
       </DashboardLayout>
     );
   }
-
-  // Add the APP_ID import
-  const { APP_ID } = require('@/constants/app');
 
   // Update the debug information panel to show APP_ID
   return (

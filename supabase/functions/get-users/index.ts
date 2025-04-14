@@ -1,115 +1,105 @@
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.33.1";
+// Follow Deno Edge Function API vs Node.js API
+// See: https://deno.land/manual@v1.36.0/runtime/workers
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Content-Type": "application/json",
-};
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
 
-serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === "OPTIONS") {
-    return new Response(null, {
-      headers: corsHeaders,
-      status: 204,
-    });
+// Handle CORS preflight requests
+function handleCORS(req: Request) {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders })
   }
+}
+
+serve(async (req: Request) => {
+  // Handle CORS
+  const corsResponse = handleCORS(req);
+  if (corsResponse) return corsResponse;
 
   try {
-    // Get request body which may contain app_id
-    let app_id = null;
+    // Get request body
+    let body;
     try {
-      const body = await req.json();
-      app_id = body?.app_id || null;
+      body = await req.json();
     } catch (e) {
-      // If parsing fails, proceed without app_id filter
-      console.error("Failed to parse request body:", e);
+      body = {};
     }
 
-    // Create a Supabase client with the service role key (has admin privileges)
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL") || "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || ""
-    );
+    // Get app_id from request body
+    const app_id = body?.app_id;
+    console.log("Received app_id:", app_id);
 
-    // Check authorization - only allow admins to access this endpoint
-    const authHeader = req.headers.get("Authorization");
+    // Create a Supabase client with the Admin key
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Get auth header to verify user
+    const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(
-        JSON.stringify({ error: "No authorization header" }),
-        { 
-          headers: corsHeaders,
-          status: 401 
-        }
+        JSON.stringify({ error: 'No authorization header' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
       );
     }
 
-    // Get the requesting user
-    const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
-    
-    if (userError || !user) {
+    // Get admin status
+    const { data: { user }, error: authError } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
+    if (authError || !user) {
       return new Response(
-        JSON.stringify({ error: "Invalid token", details: userError?.message }),
-        { 
-          headers: corsHeaders, 
-          status: 401 
-        }
+        JSON.stringify({ error: 'Not authenticated' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
       );
     }
 
-    // Check if the user is an admin
-    const { data: profile, error: profileError } = await supabaseAdmin
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
+    // Check if user is admin
+    const { data: userProfile, error: profileError } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
       .single();
-    
-    if (profileError || !profile || profile.role !== "admin") {
+
+    if (profileError || userProfile.role !== 'admin') {
       return new Response(
-        JSON.stringify({ error: "Unauthorized - Admin access required" }),
-        { 
-          headers: corsHeaders, 
-          status: 403 
-        }
+        JSON.stringify({ error: 'Not authorized - admin role required' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 403 }
       );
     }
 
-    console.log("Admin access confirmed for user:", user.id);
-
-    // Build query to fetch profiles
-    let query = supabaseAdmin
-      .from("profiles")
-      .select("*")
-      .order("created_at", { ascending: false });
+    // Now fetch all user profiles, filtered by app_id if provided
+    let query = supabase.from('profiles').select('*');
     
-    // Filter by app_id if provided
     if (app_id) {
+      query = query.eq('app_id', app_id);
       console.log("Filtering profiles by app_id:", app_id);
-      query = query.eq("app_id", app_id);
     }
 
-    // Execute the query
     const { data: profiles, error } = await query;
 
     if (error) {
       console.error("Error fetching profiles:", error);
-      throw error;
+      return new Response(
+        JSON.stringify({ error: error.message }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      );
     }
 
-    console.log(`Successfully fetched ${profiles?.length || 0} profiles`);
-
+    console.log(`Fetched ${profiles?.length || 0} profiles`);
+    
     return new Response(
       JSON.stringify(profiles),
-      { headers: corsHeaders, status: 200 }
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
-    console.error("Error fetching users:", error);
+    console.error("Edge function error:", error.message);
     return new Response(
       JSON.stringify({ error: error.message }),
-      { headers: corsHeaders, status: 500 }
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     );
   }
 });
