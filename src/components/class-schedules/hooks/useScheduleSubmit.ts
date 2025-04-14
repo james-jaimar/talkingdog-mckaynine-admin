@@ -61,7 +61,7 @@ export function useScheduleSubmit({ classId, schedule, onSuccess }: ScheduleSubm
       
       const scheduleData = {
         class_id: classId,
-        trainer_id: values.trainerId,
+        trainer_id: values.trainerId || null, // Allow null trainer
         start_time: startDateTime.toISOString(),
         end_time: endDateTime.toISOString(),
         recurring: values.isRecurring,

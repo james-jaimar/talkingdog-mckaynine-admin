@@ -55,6 +55,7 @@ export function ClassScheduleFormFields({
                 </SelectTrigger>
               </FormControl>
               <SelectContent>
+                <SelectItem value="">No Trainer</SelectItem>
                 {trainers.map((trainer) => (
                   <SelectItem key={trainer.value} value={trainer.value}>
                     {trainer.label}
