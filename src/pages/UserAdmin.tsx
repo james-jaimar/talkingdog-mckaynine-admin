@@ -4,7 +4,7 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { useAuth } from "@/context/auth";
 import { Helmet } from "react-helmet";
 import { useNavigate } from "react-router-dom";
-import { Loader2, AlertTriangle, RefreshCw, Bug, Info } from "lucide-react";
+import { Loader2, AlertTriangle, RefreshCw, Bug } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useFetchUsers } from "@/components/users/hooks/useFetchUsers";
 import { Button } from "@/components/ui/button";
@@ -131,7 +131,7 @@ export default function UserAdmin() {
             ) : (
               <UserAdminTable 
                 users={users} 
-                onRefresh={() => refetch()}
+                onRefresh={refetch}
                 currentUserId={user?.id || ''}
               />
             )}

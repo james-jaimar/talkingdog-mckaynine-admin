@@ -8,9 +8,23 @@ import { UserManageDialog } from "./UserManageDialog";
 import { UserPasswordResetDialog } from "./UserPasswordResetDialog";
 import { AddUserDialog } from "./AddUserDialog";
 import { useUsers } from "./hooks/useUsers";
+import { QueryObserverResult } from "@tanstack/react-query";
+import { UserProfile } from "./types/userTypes";
 
-export default function UserAdminTable() {
-  const { users, isLoading, refetchUsers } = useUsers();
+interface UserAdminTableProps {
+  users?: UserProfile[];
+  onRefresh?: () => Promise<QueryObserverResult<UserProfile[], Error>>;
+  currentUserId?: string;
+}
+
+export default function UserAdminTable({ users: externalUsers, onRefresh: externalRefetch, currentUserId }: UserAdminTableProps = {}) {
+  // If external users are provided, use them; otherwise, fetch using the hook
+  const { users: hookUsers, isLoading: hookLoading, refetchUsers: hookRefetch } = useUsers();
+  
+  const users = externalUsers || hookUsers;
+  const isLoading = externalUsers ? false : hookLoading;
+  const refetchUsers = externalRefetch || hookRefetch;
+  
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [addUserOpen, setAddUserOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any | null>(null);
