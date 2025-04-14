@@ -12,7 +12,10 @@ import { useRemoveHandler } from "./hooks/useRemoveHandler";
 import { RemoveHandlerDialog } from "./RemoveHandlerDialog";
 import { AttendanceStatusCell } from "./attendance/AttendanceStatusCell";
 import { ClassHandlersTableHeader } from "./table/ClassHandlersTableHeader";
-import { Loader2 } from "lucide-react";
+import { Loader2, Users, CalendarRange } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { BatchAttendanceModal } from "./attendance/BatchAttendanceModal";
+import { useIsMobile } from "@/hooks/useIsMobile";
 
 interface ClassHandlersTableProps {
   classId: string;
@@ -21,6 +24,8 @@ interface ClassHandlersTableProps {
 export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
   const queryClient = useQueryClient();
   const [initialLoadAttempted, setInitialLoadAttempted] = useState<boolean>(false);
+  const [batchAttendanceOpen, setBatchAttendanceOpen] = useState(false);
+  const isMobile = useIsMobile();
   
   // Use our custom hooks
   const { data: handlers, isLoading: isLoadingHandlers, refetch, error } = useClassHandlers(classId);
@@ -99,6 +104,12 @@ export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
     );
   };
 
+  // Handle batch attendance updated
+  const handleBatchAttendanceUpdated = () => {
+    refetch();
+    setBatchAttendanceOpen(false);
+  };
+
   // If there's an error loading, show error state
   if (error) {
     return (
@@ -139,7 +150,19 @@ export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
 
   return (
     <>
-      <div className="overflow-x-auto">
+      <div className="mb-4 flex justify-end">
+        <Button 
+          onClick={() => setBatchAttendanceOpen(true)}
+          className="flex items-center gap-2"
+          variant="outline"
+        >
+          <CalendarRange className="h-4 w-4" />
+          <span className="hidden sm:inline">Batch Attendance</span>
+          <span className="sm:hidden">Attendance</span>
+        </Button>
+      </div>
+      
+      <div className={`overflow-x-auto ${isMobile ? "hidden sm:block" : ""}`}>
         <Table>
           <ClassHandlersTableHeader scheduleDates={sortedDates} />
           <TableBody>
@@ -168,6 +191,40 @@ export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
         </Table>
       </div>
 
+      {/* Mobile view simplified list */}
+      <div className="sm:hidden">
+        <div className="text-sm font-medium text-center mb-3 text-gray-500">
+          Use the Batch Attendance button above for easier mobile attendance tracking
+        </div>
+        {handlers.map(booking => {
+          const handler = booking.clients;
+          const dog = booking.dogs;
+          
+          return (
+            <div key={booking.id} className="border rounded-md p-3 mb-2">
+              <div className="font-medium">{handler?.first_name} {handler?.last_name}</div>
+              <div className="text-sm text-gray-500">{dog?.name} ({dog?.breed})</div>
+              <div className="flex justify-between items-center mt-2">
+                <div className="text-xs">
+                  {booking.computed_payment_status === 'paid' ? (
+                    <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full">Paid</span>
+                  ) : (
+                    <span className="px-2 py-1 bg-red-100 text-red-800 rounded-full">Unpaid</span>
+                  )}
+                </div>
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  onClick={() => startEditing(booking)}
+                >
+                  Edit
+                </Button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
       {/* Remove Handler Dialog */}
       <RemoveHandlerDialog
         open={openRemoveDialog}
@@ -176,7 +233,7 @@ export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
         isLoading={isRemoving}
       />
 
-      {/* Attendance Modal */}
+      {/* Individual Attendance Modal */}
       {selectedBooking && selectedDate && (
         <AttendanceModal
           open={attendanceModalOpen}
@@ -188,6 +245,16 @@ export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
           isUpdating={isUpdating}
         />
       )}
+      
+      {/* Batch Attendance Modal */}
+      <BatchAttendanceModal
+        open={batchAttendanceOpen}
+        onOpenChange={setBatchAttendanceOpen}
+        bookings={handlers}
+        scheduleDates={sortedDates}
+        classId={classId}
+        onAttendanceUpdated={handleBatchAttendanceUpdated}
+      />
     </>
   );
 }

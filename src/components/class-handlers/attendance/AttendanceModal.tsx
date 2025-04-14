@@ -18,7 +18,7 @@ interface AttendanceModalProps {
   classDate: string;
   classId: string;
   onAttendanceUpdated: () => void;
-  isUpdating?: boolean; // Added the isUpdating prop as an optional boolean
+  isUpdating?: boolean;
 }
 
 export function AttendanceModal({
@@ -28,7 +28,7 @@ export function AttendanceModal({
   classDate,
   classId,
   onAttendanceUpdated,
-  isUpdating = false // Added with default value of false
+  isUpdating = false
 }: AttendanceModalProps) {
   // Safely parse dates for comparison
   const safeParseDate = (dateString: string) => {
@@ -46,7 +46,7 @@ export function AttendanceModal({
   );
   
   const [status, setStatus] = useState(existingAttendance?.attendance_status || "not_marked");
-  const [notes, setNotes] = useState(existingAttendance?.notes || "");
+  const [notes, setNotes] = useState(""); // Notes are kept in UI but not stored in the database
   const { toast } = useToast();
   const { updateAttendance, isSubmitting } = useAttendance(classId);
   const queryClient = useQueryClient();
@@ -57,7 +57,7 @@ export function AttendanceModal({
         bookingId: booking.id,
         classDate,
         status,
-        notes,
+        notes, // Passed but not used in database
         attendanceId: existingAttendance?.id
       });
       
@@ -89,7 +89,7 @@ export function AttendanceModal({
   useEffect(() => {
     if (open) {
       setStatus(existingAttendance?.attendance_status || "not_marked");
-      setNotes(existingAttendance?.notes || '');
+      setNotes("");
     }
   }, [open, existingAttendance]);
 
@@ -170,14 +170,16 @@ export function AttendanceModal({
           </RadioGroup>
           
           <div className="space-y-2">
-            <Label htmlFor="notes">Notes</Label>
+            <Label htmlFor="notes">Notes (Not stored in database)</Label>
             <Textarea 
               id="notes" 
               value={notes} 
               onChange={(e) => setNotes(e.target.value)} 
               placeholder="Add any notes about this attendance..."
               className="min-h-[80px]"
+              disabled
             />
+            <p className="text-xs text-muted-foreground">Note: The notes feature is currently disabled as the database does not support this field.</p>
           </div>
         </div>
         
