@@ -39,7 +39,9 @@ export function AddClassScheduleForm({
     }
   }, [classData, startTime, form]);
   
-  // Auto-update start and end dates based on selected dates
+  // Comment out the conflicting code that references removed fields
+  // We don't need to explicitly set start/end dates anymore as we're using selectedDates
+  /*
   useEffect(() => {
     if (selectedDates.length > 0) {
       // Sort dates to find first and last
@@ -52,6 +54,7 @@ export function AddClassScheduleForm({
       form.setValue("endDate", lastDate);
     }
   }, [selectedDates, form]);
+  */
 
   return (
     <Form {...form}>

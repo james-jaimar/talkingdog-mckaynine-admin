@@ -32,12 +32,9 @@ export function useClassScheduleForm(
     
     defaultValues = {
       trainerId: schedule.trainer_id,
-      startDate: startDate,
       startTime: format(startDate, "HH:mm"),
-      endDate: endDate,
       endTime: format(endDate, "HH:mm"),
       isRecurring: schedule.recurring || false,
-      recurrencePattern: schedule.recurrence_pattern || "",
       referenceTitle: schedule.recurrence_pattern || "Class " + format(startDate, "MMMM/yyyy"),
       selectedDates: selectedDates.length > 0 ? selectedDates : [startDate],
     };
@@ -54,12 +51,9 @@ export function useClassScheduleForm(
     
     defaultValues = {
       trainerId: "",
-      startDate: nextHour,
       startTime: format(nextHour, "HH:mm"),
-      endDate: nextHour,
       endTime: format(endTime, "HH:mm"),
       isRecurring: false,
-      recurrencePattern: "",
       referenceTitle: "Class " + format(nextHour, "MMMM/yyyy"),
       selectedDates: [nextHour],
     };
