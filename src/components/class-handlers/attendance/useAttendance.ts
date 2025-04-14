@@ -36,8 +36,9 @@ export function useAttendance(classId: string) {
       
       const classScheduleId = bookingData.class_schedule_id;
       
-      // Format the date properly to ensure consistency
-      const formattedDate = new Date(classDate).toISOString();
+      // Ensure we're using Date objects correctly - create a fresh instance and get ISO string
+      const dateObj = new Date(classDate);
+      const formattedDate = dateObj.toISOString();
       
       let result;
       

@@ -1,25 +1,17 @@
 
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody } from "@/components/ui/table";
 import { BookingRow } from "./BookingRow";
 import { useClassHandlers } from "./hooks/useClassHandlers";
 import { useScheduleDates } from "./hooks/useScheduleDates";
 import { useHandlerForm } from "./hooks/useHandlerForm";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Check, X, CalendarDays } from "lucide-react";
+import { useEffect } from "react";
 import { AttendanceModal } from "./attendance/AttendanceModal";
-import { 
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { useToast } from "@/hooks/use-toast";
+import { useAttendanceModal } from "./hooks/useAttendanceModal";
+import { useRemoveHandler } from "./hooks/useRemoveHandler";
+import { RemoveHandlerDialog } from "./RemoveHandlerDialog";
+import { AttendanceStatusCell } from "./attendance/AttendanceStatusCell";
+import { ClassHandlersTableHeader } from "./table/ClassHandlersTableHeader";
 
 interface ClassHandlersTableProps {
   classId: string;
@@ -27,21 +19,29 @@ interface ClassHandlersTableProps {
 
 export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
   const queryClient = useQueryClient();
-  const { toast } = useToast();
   
   // Use our custom hooks
   const { data: handlers, isLoading: isLoadingHandlers, refetch } = useClassHandlers(classId);
   const { data: scheduleDates, isLoading: isLoadingDates } = useScheduleDates(classId);
   const { editingBookingId, formData, handleInputChange, startEditing, saveChanges, removeHandler } = useHandlerForm();
   
-  // State for the remove confirmation dialog
-  const [openRemoveDialog, setOpenRemoveDialog] = useState(false);
-  const [bookingToRemove, setBookingToRemove] = useState<string | null>(null);
+  // Use the new hooks
+  const { 
+    openRemoveDialog, 
+    setOpenRemoveDialog, 
+    bookingToRemove,
+    setBookingToRemove, 
+    handleRemove 
+  } = useRemoveHandler();
   
-  // State for attendance modal
-  const [attendanceModalOpen, setAttendanceModalOpen] = useState(false);
-  const [selectedBooking, setSelectedBooking] = useState<any>(null);
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const {
+    attendanceModalOpen,
+    setAttendanceModalOpen,
+    selectedBooking,
+    selectedDate,
+    handleOpenAttendanceModal,
+    handleAttendanceUpdated
+  } = useAttendanceModal(classId);
 
   // Ensure the component refetches when it mounts and periodically
   useEffect(() => {
@@ -58,11 +58,6 @@ export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
     };
   }, [refetch]);
 
-  const handleRemove = (bookingId: string) => {
-    setBookingToRemove(bookingId);
-    setOpenRemoveDialog(true);
-  };
-
   const confirmRemove = async () => {
     if (bookingToRemove) {
       await removeHandler(bookingToRemove, classId);
@@ -71,54 +66,14 @@ export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
     }
   };
 
-  const handleOpenAttendanceModal = (booking: any, date: string) => {
-    setSelectedBooking(booking);
-    setSelectedDate(date);
-    setAttendanceModalOpen(true);
-  };
-
-  // Function to handle attendance updates and refresh data
-  const handleAttendanceUpdated = () => {
-    // Show success message
-    toast({
-      title: "Attendance updated",
-      description: "Class attendance has been successfully recorded.",
-    });
-    
-    // Immediately refresh the data
-    queryClient.invalidateQueries({ queryKey: ['class-handlers', classId] });
-    refetch();
-  };
-
-  // Function to get the attendance status for a booking and date
-  const getAttendanceStatus = (booking: any, date: string) => {
-    if (!booking.attendances) return null;
-    
-    // Convert both dates to date string for comparison (ignoring time)
-    const dateToCheck = new Date(date).toDateString();
-    const attendance = booking.attendances.find(
-      (a: any) => new Date(a.class_date).toDateString() === dateToCheck
-    );
-    
-    return attendance ? attendance.attendance_status : 'not_marked';
-  };
-
-  // Function to render attendance status cell
+  // Render attendance status cell
   const renderAttendanceStatus = (booking: any, date: string) => {
-    const status = getAttendanceStatus(booking, date);
-    
     return (
-      <Button 
-        variant="ghost" 
-        size="sm" 
-        className="h-8 w-8 p-0" 
-        onClick={() => handleOpenAttendanceModal(booking, date)}
-      >
-        {status === 'present' && <Check className="h-4 w-4 text-green-600" />}
-        {status === 'absent' && <X className="h-4 w-4 text-red-600" />}
-        {status === 'excused' && <Check className="h-4 w-4 text-amber-500" />}
-        {(status === 'not_marked' || !status) && <CalendarDays className="h-4 w-4 text-gray-400" />}
-      </Button>
+      <AttendanceStatusCell
+        booking={booking}
+        date={date}
+        onOpenAttendanceModal={handleOpenAttendanceModal}
+      />
     );
   };
 
@@ -142,28 +97,7 @@ export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
     <>
       <div className="overflow-x-auto">
         <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[200px]">Handler / Dog</TableHead>
-              <TableHead className="text-center">Enrol</TableHead>
-              <TableHead className="text-center">Vacc</TableHead>
-              <TableHead>Payment</TableHead>
-              {/* Attendance date columns */}
-              {sortedDates && sortedDates.map((date) => (
-                <TableHead key={date} className="text-center w-14">
-                  <div className="flex flex-col items-center text-xs">
-                    <span>{new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
-                  </div>
-                </TableHead>
-              ))}
-              <TableHead>Notes</TableHead>
-              <TableHead>Info EO</TableHead>
-              <TableHead className="text-center">WA</TableHead>
-              <TableHead className="text-center">Social</TableHead>
-              <TableHead>Info PG</TableHead>
-              <TableHead className="w-[150px]">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
+          <ClassHandlersTableHeader scheduleDates={sortedDates} />
           <TableBody>
             {handlers.map(booking => {
               const isEditing = editingBookingId === booking.id;
@@ -190,23 +124,12 @@ export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
         </Table>
       </div>
 
-      <AlertDialog open={openRemoveDialog} onOpenChange={setOpenRemoveDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to remove this handler from the class?
-              This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmRemove} className="bg-red-600 hover:bg-red-700">
-              Remove
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Remove Handler Dialog */}
+      <RemoveHandlerDialog
+        open={openRemoveDialog}
+        onOpenChange={setOpenRemoveDialog}
+        onConfirm={confirmRemove}
+      />
 
       {/* Attendance Modal */}
       {selectedBooking && selectedDate && (
