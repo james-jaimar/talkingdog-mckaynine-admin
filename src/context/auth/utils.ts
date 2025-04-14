@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { APP_ID } from "@/constants/app";
 
@@ -29,8 +28,28 @@ export const fetchUserProfile = async (userId: string | undefined) => {
   }
 };
 
-// Handle special admin user and preserve handler role, also ensure app_id is set
 export const ensureAdminRole = async (userId: string, email: string | undefined, currentRole: string | null) => {
+  // Special handling for Ady Hawkins - combine roles if needed
+  if (email === "ady@talkingdog.co.za") {
+    console.log("Special role management for branch owner/trainer");
+    
+    // Ensure both admin and trainer roles are set
+    const { error } = await supabase
+      .from('profiles')
+      .update({ 
+        role: 'admin,trainer', // Use comma-separated roles
+        app_id: APP_ID 
+      })
+      .eq('id', userId);
+    
+    if (error) {
+      console.error("Error updating Ady's roles:", error);
+      return currentRole;
+    }
+    
+    return 'admin'; // Default to admin for routing purposes
+  }
+  
   // Most important: If the user has a handler role, preserve it
   if (currentRole === 'handler') {
     console.log("User has handler role, preserving it");
@@ -74,4 +93,9 @@ export const ensureAdminRole = async (userId: string, email: string | undefined,
   
   // Return the current role
   return currentRole;
+};
+
+// New utility to check if a user has a specific role
+export const userHasRole = (userRoles: string, roleToCheck: string) => {
+  return userRoles.split(',').includes(roleToCheck);
 };

@@ -1,4 +1,3 @@
-
 import { useState, useMemo } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 
@@ -14,9 +13,20 @@ export const useAuthState = () => {
   const [trainerProfile, setTrainerProfile] = useState(null);
 
   // Derived states - simple role checks
-  const isAdmin = useMemo(() => role === 'admin', [role]);
-  const isTrainer = useMemo(() => role === 'trainer' || role === 'admin', [role]);
-  const isHandler = useMemo(() => role === 'handler', [role]);
+  const isAdmin = useMemo(() => {
+    if (!role) return false;
+    return role.split(',').includes('admin');
+  }, [role]);
+
+  const isTrainer = useMemo(() => {
+    if (!role) return false;
+    return role.split(',').includes('trainer') || role.split(',').includes('admin');
+  }, [role]);
+
+  const isHandler = useMemo(() => {
+    if (!role) return false;
+    return role.split(',').includes('handler');
+  }, [role]);
 
   return {
     // Core state
@@ -37,3 +47,4 @@ export const useAuthState = () => {
     isHandler
   };
 };
+

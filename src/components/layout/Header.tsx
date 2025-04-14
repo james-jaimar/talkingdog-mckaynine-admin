@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useBranch, Branch } from "@/context/BranchContext";
@@ -168,10 +167,18 @@ export function Header() {
                   <span className="hidden md:inline-flex items-center">
                     <User className="inline-block mr-1 h-4 w-4" />
                     {user.email}
-                    {isAdmin && <span className="ml-1 text-xs bg-blue-600 px-1.5 py-0.5 rounded">Admin</span>}
-                    {isTrainer && !isAdmin && <span className="ml-1 text-xs bg-green-600 px-1.5 py-0.5 rounded">Trainer</span>}
-                    {isHandler && <span className="ml-1 text-xs bg-amber-600 px-1.5 py-0.5 rounded">Handler</span>}
-                    {trainerProfile && <span className="ml-1 text-xs">{trainerProfile.first_name}</span>}
+                    {role && role.split(',').map(userRole => (
+                      <span 
+                        key={userRole} 
+                        className={`ml-1 text-xs px-1.5 py-0.5 rounded ${
+                          userRole === 'admin' ? 'bg-blue-600' :
+                          userRole === 'trainer' ? 'bg-green-600' :
+                          userRole === 'handler' ? 'bg-amber-600' : 'bg-gray-600'
+                        }`}
+                      >
+                        {userRole}
+                      </span>
+                    ))}
                   </span>
                 )}
                 <Button 
