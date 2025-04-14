@@ -58,6 +58,7 @@ export function SchedulesTableContent({
           </TableCell>
           <TableCell>
             <TableActionMenu 
+              schedule={schedule}
               onEdit={() => onEdit(schedule)} 
               onDelete={() => onDelete(schedule.id)} 
             />
