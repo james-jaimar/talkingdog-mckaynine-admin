@@ -22,10 +22,9 @@ export function useFetchUsers() {
         }
 
         // Call the edge function to get all users
-        // Use query parameters instead of body for GET request
-        const { data, error } = await supabase.functions.invoke("get-users", {
+        // The proper way to pass query parameters is through URL construction
+        const { data, error } = await supabase.functions.invoke(`get-users?app_id=${encodeURIComponent(APP_ID)}`, {
           method: 'GET',
-          queryParams: { app_id: APP_ID }
         });
         
         if (error) {
