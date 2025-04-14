@@ -9,12 +9,12 @@ interface UserFilterBarProps {
 
 export function UserFilterBar({ filterText, onFilterChange }: UserFilterBarProps) {
   return (
-    <div className="relative mb-4">
-      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+    <div className="relative flex-1 min-w-[200px]">
+      <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
       <Input
         type="search"
         placeholder="Search users..."
-        className="pl-9"
+        className="pl-8 w-full"
         value={filterText}
         onChange={(e) => onFilterChange(e.target.value)}
       />
