@@ -5,7 +5,7 @@ import { useClassHandlers } from "./hooks/useClassHandlers";
 import { useScheduleDates } from "./hooks/useScheduleDates";
 import { useHandlerForm } from "./hooks/useHandlerForm";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import { AttendanceModal } from "./attendance/AttendanceModal";
 import { useAttendanceModal } from "./hooks/useAttendanceModal";
 import { useRemoveHandler } from "./hooks/useRemoveHandler";
@@ -20,9 +20,10 @@ interface ClassHandlersTableProps {
 
 export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
   const queryClient = useQueryClient();
+  const [initialLoadAttempted, setInitialLoadAttempted] = useState<boolean>(false);
   
   // Use our custom hooks
-  const { data: handlers, isLoading: isLoadingHandlers, refetch } = useClassHandlers(classId);
+  const { data: handlers, isLoading: isLoadingHandlers, refetch, error } = useClassHandlers(classId);
   const { data: scheduleDates, isLoading: isLoadingDates } = useScheduleDates(classId);
   const { editingBookingId, formData, handleInputChange, startEditing, saveChanges, removeHandler } = useHandlerForm();
   
@@ -47,14 +48,24 @@ export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
     handleAttendanceUpdated
   } = useAttendanceModal(classId);
 
-  // Ensure the component refetches when it mounts and periodically
+  // Track if we've attempted the initial load
+  useEffect(() => {
+    if (!initialLoadAttempted) {
+      refetch().finally(() => setInitialLoadAttempted(true));
+      setInitialLoadAttempted(true);
+    }
+  }, [refetch, initialLoadAttempted]);
+
+  // Ensure the component refetches when it mounts
   useEffect(() => {
     // Immediate refetch on mount
     refetch();
     
     // Set up a periodic refresh
     const refreshInterval = setInterval(() => {
-      refetch();
+      refetch().catch(err => {
+        console.error("Error refreshing class handlers:", err);
+      });
     }, 10000); // Refresh every 10 seconds
     
     return () => {
@@ -67,6 +78,8 @@ export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
       setIsRemoving(true);
       try {
         await removeHandler(bookingToRemove, classId);
+      } catch (error) {
+        console.error("Error removing handler:", error);
       } finally {
         setIsRemoving(false);
         setBookingToRemove(null);
@@ -85,6 +98,23 @@ export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
       />
     );
   };
+
+  // If there's an error loading, show error state
+  if (error) {
+    return (
+      <div className="text-center p-6">
+        <div className="text-red-600 mb-4">
+          Error loading class handlers: {error instanceof Error ? error.message : 'Unknown error'}
+        </div>
+        <button 
+          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+          onClick={() => refetch()}
+        >
+          Try Again
+        </button>
+      </div>
+    );
+  }
 
   if (isLoadingHandlers || isLoadingDates) {
     return (

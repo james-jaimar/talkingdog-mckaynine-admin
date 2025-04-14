@@ -1,17 +1,16 @@
+
 import { useParams } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { ClassHandlersTable } from "@/components/class-handlers/ClassHandlersTable";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { ArrowLeft, Loader2, Plus } from "lucide-react";
 import { useState, useEffect } from "react";
 import { AddHandlerToClassModal } from "@/components/classes/handlers/AddHandlerToClassModal";
 import { Helmet } from "react-helmet";
-import { Link } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
 import { FormNavigation } from "@/components/forms/FormNavigation";
 import { useClassData } from "@/components/class-schedules/hooks/useClassData";
+import { Link } from "react-router-dom";
 
 export default function ClassHandlers() {
   const { id } = useParams<{ id: string }>();
@@ -23,8 +22,17 @@ export default function ClassHandlers() {
   const { 
     classData, 
     scheduleData,
-    isLoading 
+    isLoading,
+    error
   } = useClassData({ classId });
+  
+  // Track whether the component has mounted
+  const [hasMounted, setHasMounted] = useState(false);
+
+  useEffect(() => {
+    setHasMounted(true);
+    return () => setHasMounted(false);
+  }, []);
 
   const handleAddHandlerSuccess = () => {
     // Explicitly refresh the handlers data for this class
@@ -35,22 +43,48 @@ export default function ClassHandlers() {
     setIsAddHandlerModalOpen(false);
   };
 
-  // Auto-refresh the data periodically when on the handlers page
-  useEffect(() => {
-    if (!classId) return;
-    
-    // Auto-refresh every 3 seconds while on this page
-    const refreshInterval = setInterval(() => {
-      queryClient.invalidateQueries({ queryKey: ['class-handlers', classId] });
-    }, 3000);
-    
-    return () => clearInterval(refreshInterval);
-  }, [classId, queryClient]);
-
-  if (isLoading) {
+  // Error handling
+  if (!classId) {
     return (
       <DashboardLayout>
-        <div className="py-10 text-center">Loading class details...</div>
+        <div className="py-10 text-center">
+          <h2 className="text-xl font-bold mb-4">Missing Class ID</h2>
+          <p className="mb-6">A class ID is required to view its handlers.</p>
+          <Link to="/classes">
+            <Button>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Return to Classes
+            </Button>
+          </Link>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <DashboardLayout>
+        <div className="py-10 text-center">
+          <h2 className="text-xl font-bold text-red-600 mb-4">Error Loading Class</h2>
+          <p className="mb-6">{error instanceof Error ? error.message : 'An unknown error occurred'}</p>
+          <Link to="/classes">
+            <Button>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Return to Classes
+            </Button>
+          </Link>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (isLoading || !hasMounted) {
+    return (
+      <DashboardLayout>
+        <div className="py-10 text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p>Loading class details...</p>
+        </div>
       </DashboardLayout>
     );
   }
@@ -58,7 +92,16 @@ export default function ClassHandlers() {
   if (!classData) {
     return (
       <DashboardLayout>
-        <div className="py-10 text-center">Class not found</div>
+        <div className="py-10 text-center">
+          <h2 className="text-xl font-bold mb-4">Class Not Found</h2>
+          <p className="mb-6">The requested class could not be found.</p>
+          <Link to="/classes">
+            <Button>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Return to Classes
+            </Button>
+          </Link>
+        </div>
       </DashboardLayout>
     );
   }
@@ -92,17 +135,15 @@ export default function ClassHandlers() {
           </Button>
         </div>
         
-        {classId && <ClassHandlersTable classId={classId} />}
+        <ClassHandlersTable classId={classId} />
         
-        {classId && (
-          <AddHandlerToClassModal
-            open={isAddHandlerModalOpen}
-            onOpenChange={setIsAddHandlerModalOpen}
-            classId={classId}
-            classData={classData}
-            onSuccess={handleAddHandlerSuccess}
-          />
-        )}
+        <AddHandlerToClassModal
+          open={isAddHandlerModalOpen}
+          onOpenChange={setIsAddHandlerModalOpen}
+          classId={classId}
+          classData={classData}
+          onSuccess={handleAddHandlerSuccess}
+        />
       </div>
     </DashboardLayout>
   );

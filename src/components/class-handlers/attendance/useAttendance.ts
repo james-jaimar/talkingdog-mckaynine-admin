@@ -25,6 +25,18 @@ export function useAttendance(classId: string) {
     setIsSubmitting(true);
     
     try {
+      // Validate inputs
+      if (!bookingId) throw new Error("Missing booking ID");
+      if (!classDate) throw new Error("Missing class date");
+      if (!status) throw new Error("Missing attendance status");
+      
+      console.log("Updating attendance:", {
+        bookingId,
+        classDate,
+        status,
+        attendanceId: attendanceId || "new record"
+      });
+      
       // First, get the class schedule id from the booking
       const { data: bookingData, error: bookingError } = await supabase
         .from('bookings')
@@ -32,18 +44,40 @@ export function useAttendance(classId: string) {
         .eq('id', bookingId)
         .single();
         
-      if (bookingError) throw bookingError;
+      if (bookingError) {
+        console.error("Error fetching booking:", bookingError);
+        throw bookingError;
+      }
+      
+      if (!bookingData || !bookingData.class_schedule_id) {
+        throw new Error("Invalid booking data - missing schedule ID");
+      }
       
       const classScheduleId = bookingData.class_schedule_id;
       
       // Ensure we're using Date objects correctly - create a fresh instance and get ISO string
-      const dateObj = new Date(classDate);
-      const formattedDate = dateObj.toISOString();
+      let formattedDate: string;
+      try {
+        // Try to create a date object
+        const dateObj = new Date(classDate);
+        
+        // Check if the date is valid
+        if (isNaN(dateObj.getTime())) {
+          throw new Error("Invalid date");
+        }
+        
+        formattedDate = dateObj.toISOString();
+      } catch (e) {
+        console.error("Error formatting date:", e);
+        // Fallback to the original string if we can't parse it
+        formattedDate = classDate;
+      }
       
       let result;
       
       if (attendanceId) {
         // Update existing attendance record
+        console.log("Updating existing attendance record:", attendanceId);
         result = await supabase
           .from('class_attendance')
           .update({
@@ -54,6 +88,7 @@ export function useAttendance(classId: string) {
           .eq('id', attendanceId);
       } else {
         // Create new attendance record
+        console.log("Creating new attendance record");
         result = await supabase
           .from('class_attendance')
           .insert({
@@ -71,6 +106,7 @@ export function useAttendance(classId: string) {
         throw result.error;
       }
       
+      console.log("Attendance updated successfully");
       return true;
     } catch (error) {
       console.error("Error updating attendance:", error);

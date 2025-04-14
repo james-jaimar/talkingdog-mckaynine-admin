@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Loader2, Check, X, AlertTriangle } from "lucide-react";
@@ -7,7 +7,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { useAttendance } from "./useAttendance";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -30,9 +30,19 @@ export function AttendanceModal({
   onAttendanceUpdated,
   isUpdating = false // Added with default value of false
 }: AttendanceModalProps) {
+  // Safely parse dates for comparison
+  const safeParseDate = (dateString: string) => {
+    try {
+      return new Date(dateString).toDateString();
+    } catch (e) {
+      console.error("Error parsing date:", dateString, e);
+      return "";
+    }
+  };
+  
   // Find existing attendance record if any
-  const existingAttendance = booking.attendances?.find(
-    (a: any) => new Date(a.class_date).toDateString() === new Date(classDate).toDateString()
+  const existingAttendance = booking?.attendances?.find(
+    (a: any) => safeParseDate(a.class_date) === safeParseDate(classDate)
   );
   
   const [status, setStatus] = useState(existingAttendance?.attendance_status || "not_marked");
@@ -56,7 +66,7 @@ export function AttendanceModal({
       
       toast({
         title: "Attendance updated",
-        description: `Attendance for ${booking.dogs?.name} has been updated successfully.`,
+        description: `Attendance for ${booking.dogs?.name || 'dog'} has been updated successfully.`,
         variant: "default"
       });
       
@@ -76,24 +86,42 @@ export function AttendanceModal({
   };
 
   // Reset form when modal opens with new data
-  const resetForm = () => {
-    if (existingAttendance) {
-      setStatus(existingAttendance.attendance_status);
-      setNotes(existingAttendance.notes || '');
-    } else {
-      setStatus("not_marked");
-      setNotes("");
+  useEffect(() => {
+    if (open) {
+      setStatus(existingAttendance?.attendance_status || "not_marked");
+      setNotes(existingAttendance?.notes || '');
+    }
+  }, [open, existingAttendance]);
+
+  // Format date safely
+  const getFormattedDate = () => {
+    try {
+      // Try to parse the date in different formats
+      let dateObj;
+      try {
+        // First try ISO format
+        dateObj = parseISO(classDate);
+      } catch (e) {
+        // If that fails, try direct Date constructor
+        dateObj = new Date(classDate);
+      }
+      
+      // If we have a valid date, format it
+      if (!isNaN(dateObj.getTime())) {
+        return format(dateObj, "EEEE, MMMM d, yyyy");
+      }
+      
+      // Fallback to the raw string if parsing failed
+      return classDate;
+    } catch (e) {
+      console.error("Date formatting error:", e);
+      return classDate; // Return the original string if formatting fails
     }
   };
-
-  // Use this instead of useEffect to avoid stale state
-  if (open && !isSubmitting) {
-    resetForm();
-  }
-
-  const formattedDate = format(new Date(classDate), "EEEE, MMMM d, yyyy");
-  const handlerName = `${booking.clients?.first_name || ''} ${booking.clients?.last_name || ''}`.trim();
-  const dogName = booking.dogs?.name || '';
+  
+  const formattedDate = getFormattedDate();
+  const handlerName = `${booking?.clients?.first_name || ''} ${booking?.clients?.last_name || ''}`.trim() || 'Unknown Handler';
+  const dogName = booking?.dogs?.name || 'Unknown Dog';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
