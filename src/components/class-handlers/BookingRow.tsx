@@ -16,6 +16,8 @@ interface BookingRowProps {
   startEditing: (booking: Booking) => void;
   saveChanges: (bookingId: string) => void;
   removeHandler: (bookingId: string) => void;
+  scheduleDates?: string[];
+  renderAttendanceStatus?: (booking: any, date: string) => React.ReactNode;
 }
 
 export function BookingRow({
@@ -25,7 +27,9 @@ export function BookingRow({
   handleInputChange,
   startEditing,
   saveChanges,
-  removeHandler
+  removeHandler,
+  scheduleDates = [],
+  renderAttendanceStatus
 }: BookingRowProps) {
   // Use the extracted hook for invoice status
   const { data: invoiceData, isLoading: isLoadingInvoice } = useInvoiceStatus(booking.id);
@@ -58,6 +62,13 @@ export function BookingRow({
           isLoadingInvoice={isLoadingInvoice} 
         />
       </TableCell>
+
+      {/* Attendance date columns */}
+      {scheduleDates.map((date) => (
+        <TableCell key={date} className="text-center p-1">
+          {renderAttendanceStatus && renderAttendanceStatus(booking, date)}
+        </TableCell>
+      ))}
       
       <TableCell>
         <EditableCell

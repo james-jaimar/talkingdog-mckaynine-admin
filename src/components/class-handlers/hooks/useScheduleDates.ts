@@ -1,8 +1,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { format } from "date-fns";
-import { ScheduleDate } from "../types/attendance";
+import { format, parseISO, isValid } from "date-fns";
 
 export function useScheduleDates(classId: string) {
   return useQuery({
@@ -17,17 +16,35 @@ export function useScheduleDates(classId: string) {
       
       // Extract unique dates from all schedules
       const dates = new Set<string>();
+      
       data.forEach(schedule => {
-        dates.add(format(new Date(schedule.start_time), 'yyyy-MM-dd'));
+        // Add the primary start date
+        try {
+          const dateObj = parseISO(schedule.start_time);
+          if (isValid(dateObj)) {
+            dates.add(schedule.start_time);
+          }
+        } catch (e) {
+          console.error("Error parsing date:", schedule.start_time);
+        }
         
-        if (schedule.selected_dates) {
+        // Add any selected dates from recurring schedules
+        if (schedule.selected_dates && Array.isArray(schedule.selected_dates)) {
           schedule.selected_dates.forEach((date: string) => {
-            dates.add(format(new Date(date), 'yyyy-MM-dd'));
+            try {
+              const dateObj = parseISO(date);
+              if (isValid(dateObj)) {
+                dates.add(date);
+              }
+            } catch (e) {
+              console.error("Error parsing selected date:", date);
+            }
           });
         }
       });
       
       return Array.from(dates).sort();
-    }
+    },
+    staleTime: 60000, // 1 minute
   });
 }

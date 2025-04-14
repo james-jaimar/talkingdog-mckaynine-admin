@@ -22,7 +22,7 @@ export function useClassHandlers(classId: string) {
       
       const scheduleIdList = scheduleIds.map(s => s.id);
       
-      // Optimized query that fetches booking data and related invoice data in a single call
+      // Optimized query that fetches booking data, related invoice data, and attendance in a single call
       const { data, error } = await supabase
         .from('bookings')
         .select(`
@@ -48,6 +48,11 @@ export function useClassHandlers(classId: string) {
               id, 
               payment_received
             )
+          ),
+          attendances:class_attendance(
+            id,
+            class_date,
+            attendance_status
           )
         `)
         .in('class_schedule_id', scheduleIdList);
