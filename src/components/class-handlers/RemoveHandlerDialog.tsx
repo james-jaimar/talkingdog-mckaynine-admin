@@ -10,17 +10,20 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Loader2 } from "lucide-react";
 
 interface RemoveHandlerDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onConfirm: () => Promise<void>;
+  isLoading?: boolean;
 }
 
 export function RemoveHandlerDialog({ 
   open, 
   onOpenChange, 
-  onConfirm 
+  onConfirm,
+  isLoading = false
 }: RemoveHandlerDialogProps) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
@@ -33,9 +36,20 @@ export function RemoveHandlerDialog({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm} className="bg-red-600 hover:bg-red-700">
-            Remove
+          <AlertDialogCancel disabled={isLoading}>Cancel</AlertDialogCancel>
+          <AlertDialogAction 
+            onClick={onConfirm} 
+            className="bg-red-600 hover:bg-red-700"
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Removing...
+              </>
+            ) : (
+              'Remove'
+            )}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

@@ -8,6 +8,7 @@ export function useAttendanceModal(classId: string) {
   const [attendanceModalOpen, setAttendanceModalOpen] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -26,7 +27,13 @@ export function useAttendanceModal(classId: string) {
     });
     
     // Immediately refresh the data
-    queryClient.invalidateQueries({ queryKey: ['class-handlers', classId] });
+    setIsUpdating(true);
+    
+    queryClient.invalidateQueries({ queryKey: ['class-handlers', classId] })
+      .finally(() => {
+        setIsUpdating(false);
+        setAttendanceModalOpen(false);
+      });
   };
 
   return {
@@ -34,6 +41,7 @@ export function useAttendanceModal(classId: string) {
     setAttendanceModalOpen,
     selectedBooking,
     selectedDate,
+    isUpdating,
     handleOpenAttendanceModal,
     handleAttendanceUpdated
   };

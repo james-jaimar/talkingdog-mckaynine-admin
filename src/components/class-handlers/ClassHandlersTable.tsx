@@ -12,6 +12,7 @@ import { useRemoveHandler } from "./hooks/useRemoveHandler";
 import { RemoveHandlerDialog } from "./RemoveHandlerDialog";
 import { AttendanceStatusCell } from "./attendance/AttendanceStatusCell";
 import { ClassHandlersTableHeader } from "./table/ClassHandlersTableHeader";
+import { Loader2 } from "lucide-react";
 
 interface ClassHandlersTableProps {
   classId: string;
@@ -25,12 +26,14 @@ export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
   const { data: scheduleDates, isLoading: isLoadingDates } = useScheduleDates(classId);
   const { editingBookingId, formData, handleInputChange, startEditing, saveChanges, removeHandler } = useHandlerForm();
   
-  // Use the new hooks
+  // Use the enhanced hooks
   const { 
     openRemoveDialog, 
     setOpenRemoveDialog, 
     bookingToRemove,
-    setBookingToRemove, 
+    setBookingToRemove,
+    isRemoving,
+    setIsRemoving,
     handleRemove 
   } = useRemoveHandler();
   
@@ -39,6 +42,7 @@ export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
     setAttendanceModalOpen,
     selectedBooking,
     selectedDate,
+    isUpdating,
     handleOpenAttendanceModal,
     handleAttendanceUpdated
   } = useAttendanceModal(classId);
@@ -60,9 +64,14 @@ export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
 
   const confirmRemove = async () => {
     if (bookingToRemove) {
-      await removeHandler(bookingToRemove, classId);
-      setBookingToRemove(null);
-      setOpenRemoveDialog(false);
+      setIsRemoving(true);
+      try {
+        await removeHandler(bookingToRemove, classId);
+      } finally {
+        setIsRemoving(false);
+        setBookingToRemove(null);
+        setOpenRemoveDialog(false);
+      }
     }
   };
 
@@ -78,7 +87,12 @@ export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
   };
 
   if (isLoadingHandlers || isLoadingDates) {
-    return <div className="text-center p-6">Loading class handlers...</div>;
+    return (
+      <div className="text-center p-6">
+        <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-mckaynine-600" />
+        <p>Loading class handlers...</p>
+      </div>
+    );
   }
 
   if (!handlers || handlers.length === 0) {
@@ -129,6 +143,7 @@ export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
         open={openRemoveDialog}
         onOpenChange={setOpenRemoveDialog}
         onConfirm={confirmRemove}
+        isLoading={isRemoving}
       />
 
       {/* Attendance Modal */}
@@ -140,6 +155,7 @@ export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
           classDate={selectedDate}
           classId={classId}
           onAttendanceUpdated={handleAttendanceUpdated}
+          isUpdating={isUpdating}
         />
       )}
     </>
