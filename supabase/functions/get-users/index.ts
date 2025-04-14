@@ -44,8 +44,9 @@ serve(async (req: Request) => {
     // Get admin status
     const { data: { user }, error: authError } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
     if (authError || !user) {
+      console.error("Authentication error:", authError);
       return new Response(
-        JSON.stringify({ error: 'Not authenticated' }),
+        JSON.stringify({ error: 'Not authenticated', details: authError?.message }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
       );
     }
@@ -57,7 +58,17 @@ serve(async (req: Request) => {
       .eq('id', user.id)
       .single();
 
-    if (profileError || userProfile.role !== 'admin') {
+    if (profileError) {
+      console.error("Error fetching user profile:", profileError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to fetch user profile', details: profileError.message }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      );
+    }
+
+    // Check if user has the admin role (now could be comma-separated)
+    const roles = userProfile?.role?.split(',') || [];
+    if (!roles.includes('admin')) {
       return new Response(
         JSON.stringify({ error: 'Not authorized - admin role required' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 403 }
