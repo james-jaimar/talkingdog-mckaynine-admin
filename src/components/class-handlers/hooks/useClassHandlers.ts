@@ -9,12 +9,16 @@ export function useClassHandlers(classId: string) {
     queryFn: async () => {
       console.log("Fetching handlers for class:", classId);
       
+      // Get all schedule IDs for this class
       const { data: scheduleIds, error: scheduleError } = await supabase
         .from('class_schedules')
         .select('id')
         .eq('class_id', classId);
       
-      if (scheduleError) throw scheduleError;
+      if (scheduleError) {
+        console.error("Error fetching schedule IDs:", scheduleError);
+        throw scheduleError;
+      }
       
       console.log("Found schedule IDs:", scheduleIds);
       
@@ -58,7 +62,10 @@ export function useClassHandlers(classId: string) {
         `)
         .in('class_schedule_id', scheduleIdList);
       
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching bookings:", error);
+        throw error;
+      }
       
       console.log("Found bookings:", data?.length || 0);
       
@@ -72,17 +79,17 @@ export function useClassHandlers(classId: string) {
         // Flag bookings as unpaid if they have no proof of payment and no paid invoice
         const isUnpaid = (!booking.proof_of_payment || booking.proof_of_payment === '') && !hasPaidInvoice;
         
-        if (isUnpaid) {
-          console.log(`Unpaid booking: ${booking.id} - ${booking.clients?.first_name} ${booking.clients?.last_name} - ${booking.dogs?.name}`);
-        }
-        
         // Clean up the structure by removing the invoice_items array which is no longer needed
         const { invoice_items, ...bookingData } = booking;
+        
+        // Process attendance data to ensure it's properly formatted
+        const attendances = booking.attendances || [];
         
         // Return the booking with the computed payment status
         return {
           ...bookingData,
-          computed_payment_status: isUnpaid ? 'unpaid' : 'paid'
+          computed_payment_status: isUnpaid ? 'unpaid' : 'paid',
+          attendances
         } as Booking;
       });
       
@@ -94,5 +101,7 @@ export function useClassHandlers(classId: string) {
     refetchOnWindowFocus: true,
     // Stale time of 0 means it will always refetch when needed
     staleTime: 0,
+    // Important: don't cache fails
+    retry: 2,
   });
 }

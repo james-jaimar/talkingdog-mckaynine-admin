@@ -1,6 +1,7 @@
 
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface UpdateAttendanceParams {
   bookingId: string;
@@ -12,6 +13,7 @@ interface UpdateAttendanceParams {
 
 export function useAttendance(classId: string) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { toast } = useToast();
 
   const updateAttendance = async ({
     bookingId,
@@ -37,9 +39,11 @@ export function useAttendance(classId: string) {
       // Format the date properly to ensure consistency
       const formattedDate = new Date(classDate).toISOString();
       
+      let result;
+      
       if (attendanceId) {
         // Update existing attendance record
-        const { error } = await supabase
+        result = await supabase
           .from('class_attendance')
           .update({
             attendance_status: status,
@@ -47,11 +51,9 @@ export function useAttendance(classId: string) {
             updated_at: new Date().toISOString()
           })
           .eq('id', attendanceId);
-          
-        if (error) throw error;
       } else {
         // Create new attendance record
-        const { error } = await supabase
+        result = await supabase
           .from('class_attendance')
           .insert({
             booking_id: bookingId,
@@ -60,8 +62,12 @@ export function useAttendance(classId: string) {
             attendance_status: status,
             notes
           });
-          
-        if (error) throw error;
+      }
+      
+      // Check for errors in the result
+      if (result.error) {
+        console.error("Error in Supabase operation:", result.error);
+        throw result.error;
       }
       
       return true;

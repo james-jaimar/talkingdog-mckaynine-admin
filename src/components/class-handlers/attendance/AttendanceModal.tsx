@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { useAttendance } from "./useAttendance";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface AttendanceModalProps {
   open: boolean;
@@ -36,6 +37,7 @@ export function AttendanceModal({
   const [notes, setNotes] = useState(existingAttendance?.notes || "");
   const { toast } = useToast();
   const { updateAttendance, isSubmitting } = useAttendance(classId);
+  const queryClient = useQueryClient();
 
   const handleSave = async () => {
     try {
@@ -47,13 +49,19 @@ export function AttendanceModal({
         attendanceId: existingAttendance?.id
       });
       
+      // Invalidate relevant queries to trigger refetch
+      queryClient.invalidateQueries({ queryKey: ['class-handlers', classId] });
+      
       toast({
         title: "Attendance updated",
         description: `Attendance for ${booking.dogs?.name} has been updated successfully.`,
+        variant: "default"
       });
       
-      // Immediate update of the UI
+      // Call the callback to notify parent components
       onAttendanceUpdated();
+      
+      // Close the modal
       onOpenChange(false);
     } catch (error) {
       console.error("Error saving attendance:", error);
@@ -64,6 +72,22 @@ export function AttendanceModal({
       });
     }
   };
+
+  // Reset form when modal opens with new data
+  const resetForm = () => {
+    if (existingAttendance) {
+      setStatus(existingAttendance.attendance_status);
+      setNotes(existingAttendance.notes || '');
+    } else {
+      setStatus("not_marked");
+      setNotes("");
+    }
+  };
+
+  // Use this instead of useEffect to avoid stale state
+  if (open && !isSubmitting) {
+    resetForm();
+  }
 
   const formattedDate = format(new Date(classDate), "EEEE, MMMM d, yyyy");
   const handlerName = `${booking.clients?.first_name || ''} ${booking.clients?.last_name || ''}`.trim();

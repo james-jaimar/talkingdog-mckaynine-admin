@@ -19,6 +19,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
 
 interface ClassHandlersTableProps {
   classId: string;
@@ -26,6 +27,8 @@ interface ClassHandlersTableProps {
 
 export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
+  
   // Use our custom hooks
   const { data: handlers, isLoading: isLoadingHandlers, refetch } = useClassHandlers(classId);
   const { data: scheduleDates, isLoading: isLoadingDates } = useScheduleDates(classId);
@@ -40,7 +43,7 @@ export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
-  // Ensure the component refetches when it mounts
+  // Ensure the component refetches when it mounts and periodically
   useEffect(() => {
     // Immediate refetch on mount
     refetch();
@@ -48,7 +51,7 @@ export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
     // Set up a periodic refresh
     const refreshInterval = setInterval(() => {
       refetch();
-    }, 5000); // Refresh every 5 seconds
+    }, 10000); // Refresh every 10 seconds
     
     return () => {
       clearInterval(refreshInterval);
@@ -76,6 +79,12 @@ export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
 
   // Function to handle attendance updates and refresh data
   const handleAttendanceUpdated = () => {
+    // Show success message
+    toast({
+      title: "Attendance updated",
+      description: "Class attendance has been successfully recorded.",
+    });
+    
     // Immediately refresh the data
     queryClient.invalidateQueries({ queryKey: ['class-handlers', classId] });
     refetch();
@@ -84,9 +93,13 @@ export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
   // Function to get the attendance status for a booking and date
   const getAttendanceStatus = (booking: any, date: string) => {
     if (!booking.attendances) return null;
+    
+    // Convert both dates to date string for comparison (ignoring time)
+    const dateToCheck = new Date(date).toDateString();
     const attendance = booking.attendances.find(
-      (a: any) => new Date(a.class_date).toDateString() === new Date(date).toDateString()
+      (a: any) => new Date(a.class_date).toDateString() === dateToCheck
     );
+    
     return attendance ? attendance.attendance_status : 'not_marked';
   };
 
