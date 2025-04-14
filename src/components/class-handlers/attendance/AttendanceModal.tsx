@@ -18,6 +18,7 @@ interface AttendanceModalProps {
   classDate: string;
   classId: string;
   onAttendanceUpdated: () => void;
+  isUpdating?: boolean; // Added the isUpdating prop as an optional boolean
 }
 
 export function AttendanceModal({
@@ -26,7 +27,8 @@ export function AttendanceModal({
   booking,
   classDate,
   classId,
-  onAttendanceUpdated
+  onAttendanceUpdated,
+  isUpdating = false // Added with default value of false
 }: AttendanceModalProps) {
   // Find existing attendance record if any
   const existingAttendance = booking.attendances?.find(
@@ -155,15 +157,15 @@ export function AttendanceModal({
           <Button 
             variant="outline" 
             onClick={() => onOpenChange(false)}
-            disabled={isSubmitting}
+            disabled={isSubmitting || isUpdating}
           >
             Cancel
           </Button>
           <Button 
             onClick={handleSave}
-            disabled={isSubmitting}
+            disabled={isSubmitting || isUpdating}
           >
-            {isSubmitting ? (
+            {isSubmitting || isUpdating ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Saving...
