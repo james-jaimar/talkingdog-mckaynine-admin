@@ -7,7 +7,7 @@ interface UpdateAttendanceParams {
   bookingId: string;
   classDate: string;
   status: string;
-  notes?: string;
+  notes?: string; // Keep this for backward compatibility with UI
   attendanceId?: string;
 }
 
@@ -19,7 +19,7 @@ export function useAttendance(classId: string) {
     bookingId,
     classDate,
     status,
-    notes,
+    notes, // Accept notes but don't use it since the column doesn't exist
     attendanceId
   }: UpdateAttendanceParams) => {
     setIsSubmitting(true);
@@ -77,17 +77,18 @@ export function useAttendance(classId: string) {
       
       if (attendanceId) {
         // Update existing attendance record
+        // FIXED: Removed notes field from update
         console.log("Updating existing attendance record:", attendanceId);
         result = await supabase
           .from('class_attendance')
           .update({
             attendance_status: status,
-            notes,
             updated_at: new Date().toISOString()
           })
           .eq('id', attendanceId);
       } else {
         // Create new attendance record
+        // FIXED: Removed notes field from insert
         console.log("Creating new attendance record");
         result = await supabase
           .from('class_attendance')
@@ -95,8 +96,7 @@ export function useAttendance(classId: string) {
             booking_id: bookingId,
             class_schedule_id: classScheduleId,
             class_date: formattedDate,
-            attendance_status: status,
-            notes
+            attendance_status: status
           });
       }
       

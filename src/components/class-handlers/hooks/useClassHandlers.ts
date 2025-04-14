@@ -37,6 +37,7 @@ export function useClassHandlers(classId: string) {
         const scheduleIdList = scheduleIds.map(s => s.id);
         
         // Optimized query that fetches booking data, related invoice data, and attendance in a single call
+        // FIXED: Removed 'notes' from attendance selection since it doesn't exist in the class_attendance table
         const { data, error } = await supabase
           .from('bookings')
           .select(`
@@ -66,8 +67,7 @@ export function useClassHandlers(classId: string) {
             attendances:class_attendance(
               id,
               class_date,
-              attendance_status,
-              notes
+              attendance_status
             )
           `)
           .in('class_schedule_id', scheduleIdList);
