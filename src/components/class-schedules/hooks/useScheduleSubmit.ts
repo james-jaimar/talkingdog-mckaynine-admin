@@ -67,26 +67,23 @@ export function useScheduleSubmit({
         selected_dates: data.selectedDates.map(date => date.toISOString()),
       };
 
-      // Only include trainer_id if it's not "none"
+      // Handle trainer_id based on selection
+      // Only add trainer_id to the data if it's not 'none'
       if (data.trainerId !== 'none') {
         scheduleData.trainer_id = data.trainerId;
+      } else {
+        // Set trainer_id to null when 'none' is selected
+        scheduleData.trainer_id = null;
       }
 
       console.log("Processed schedule data:", scheduleData);
 
       if (schedule) {
-        // Update existing schedule
-        const updateQuery = supabase
+        // Update existing schedule - use a single update operation
+        const { error } = await supabase
           .from("class_schedules")
           .update(scheduleData)
           .eq("id", schedule.id);
-          
-        // If changing to "no trainer", we need to set the trainer_id to null explicitly
-        if (data.trainerId === 'none') {
-          updateQuery.update({ trainer_id: null });
-        }
-          
-        const { error } = await updateQuery;
           
         if (error) {
           console.error("Supabase update error:", error);
