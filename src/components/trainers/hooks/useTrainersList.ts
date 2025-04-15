@@ -14,7 +14,7 @@ export function useTrainersList() {
         const { data: trainersProfiles, error: profilesError } = await supabase
           .from('profiles')
           .select('*')
-          .filter('role', 'ilike', '%trainer%');
+          .or('role.eq.trainer,role.ilike.%trainer%');
         
         if (profilesError) {
           console.error("Error fetching trainers from profiles:", profilesError);
@@ -40,10 +40,11 @@ export function useTrainersList() {
           
           // Check if 'trainer' exists as a standalone role or as part of a comma-separated list
           const roles = profile.role.split(',').map(r => r.trim().toLowerCase());
-          return roles.includes('trainer');
+          return roles.some(r => r === 'trainer' || r.includes('trainer'));
         }) || [];
         
         console.log("Filtered trainers from profiles:", filteredProfileTrainers.length);
+        console.log("Filtered trainer roles:", filteredProfileTrainers.map(t => t.role));
 
         // Transform profile trainers to match our Trainer interface
         const profileTrainers: Trainer[] = filteredProfileTrainers.map(profile => {

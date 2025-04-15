@@ -70,6 +70,8 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
     setIsSubmitting(true);
     
     try {
+      console.log("Creating user with role:", values.role);
+      
       // Create user with Supabase Auth
       const { error: signUpError, data } = await supabase.auth.signUp({
         email: values.email,
@@ -95,14 +97,16 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
           username: values.email,
           full_name: values.fullName || "",
           role: values.role,
-          app_id: APP_ID, // Set the app_id for this application
+          app_id: APP_ID,
           updated_at: new Date().toISOString()
         });
       
       if (profileError) throw profileError;
       
+      console.log("Profile updated successfully with role:", values.role);
+      
       // If role is trainer, also create an entry in the trainers table
-      if (values.role === 'trainer') {
+      if (values.role === 'trainer' || values.role.includes('trainer')) {
         console.log("Adding user to trainers table");
         
         // Parse the name for first and last name
@@ -141,6 +145,7 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
       
       // Refresh data
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-users-list'] });
       queryClient.invalidateQueries({ queryKey: ['trainers-list'] });
       onUserAdded();
       
