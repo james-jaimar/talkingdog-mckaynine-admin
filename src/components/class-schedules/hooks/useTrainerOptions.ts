@@ -9,6 +9,9 @@ export type TrainerOption = {
   value: string;
 };
 
+// The ID of our special "No Trainer" record
+const NO_TRAINER_ID = 'ba95153f-699c-4cc1-afe5-762bf30033d4';
+
 export function useTrainerOptions() {
   const [trainers, setTrainers] = useState<TrainerOption[]>([]);
   const [isLoadingTrainers, setIsLoadingTrainers] = useState(true);
@@ -22,6 +25,7 @@ export function useTrainerOptions() {
         const { data, error } = await supabase
           .from("trainers")
           .select("id, first_name, last_name")
+          .neq('id', NO_TRAINER_ID) // Filter out our special "No Trainer" record
           .order("last_name, first_name");
         
         if (error) {

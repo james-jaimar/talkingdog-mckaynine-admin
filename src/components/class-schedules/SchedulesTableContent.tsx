@@ -10,6 +10,9 @@ interface SchedulesTableContentProps {
   onDelete: (id: string) => void;
 }
 
+// ID of our special "No Trainer" record
+const NO_TRAINER_ID = 'ba95153f-699c-4cc1-afe5-762bf30033d4';
+
 export function SchedulesTableContent({ 
   schedules, 
   onEdit, 
@@ -22,10 +25,16 @@ export function SchedulesTableContent({
 
   // Helper to determine if a trainer is assigned
   const getTrainerDisplay = (schedule: ClassSchedule) => {
+    // Check if this is our special "No Trainer" record
+    if (schedule.trainer_id === NO_TRAINER_ID) {
+      return "No Trainer";
+    }
+    
     // Check if trainer exists and has both first and last name
     if (schedule.trainer && schedule.trainer.first_name && schedule.trainer.last_name) {
       return `${schedule.trainer.first_name} ${schedule.trainer.last_name}`;
     }
+    
     return "No Trainer";
   };
 
