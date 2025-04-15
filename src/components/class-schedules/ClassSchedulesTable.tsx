@@ -91,6 +91,12 @@ export function ClassSchedulesTable({ classId }: ClassSchedulesTableProps) {
     setIsEditModalOpen(true);
   };
 
+  const handleEditSuccess = () => {
+    refetch();
+    setScheduleToEdit(null);
+    setIsEditModalOpen(false);
+  };
+
   if (!user || !session) {
     return (
       <ScheduleTableAlert 
@@ -152,10 +158,7 @@ export function ClassSchedulesTable({ classId }: ClassSchedulesTableProps) {
           onOpenChange={setIsEditModalOpen} 
           classId={classId}
           schedule={scheduleToEdit}
-          onSuccess={() => {
-            refetch();
-            setScheduleToEdit(null);
-          }}
+          onSuccess={handleEditSuccess}
         />
       )}
     </div>

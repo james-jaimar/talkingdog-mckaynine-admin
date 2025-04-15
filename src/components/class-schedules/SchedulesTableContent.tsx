@@ -20,6 +20,15 @@ export function SchedulesTableContent({
     return format(new Date(date), 'PPP p');
   };
 
+  // Helper to determine if a trainer is assigned
+  const getTrainerDisplay = (schedule: ClassSchedule) => {
+    // Check if trainer exists and has both first and last name
+    if (schedule.trainer && schedule.trainer.first_name && schedule.trainer.last_name) {
+      return `${schedule.trainer.first_name} ${schedule.trainer.last_name}`;
+    }
+    return "No Trainer";
+  };
+
   if (schedules.length === 0) {
     return (
       <TableRow>
@@ -41,9 +50,7 @@ export function SchedulesTableContent({
             {formatScheduleDate(schedule.end_time)}
           </TableCell>
           <TableCell>
-            {schedule.trainer 
-              ? `${schedule.trainer.first_name} ${schedule.trainer.last_name}` 
-              : "No Trainer"}
+            {getTrainerDisplay(schedule)}
           </TableCell>
           <TableCell>
             {schedule.recurring ? "Yes" : "No"}

@@ -68,34 +68,32 @@ export function useScheduleSubmit({
       };
 
       // Handle trainer_id based on selection
-      if (data.trainerId !== 'none') {
+      if (data.trainerId === 'none') {
+        // If user selects "No Trainer", first try to find any existing trainer to use as a reference
+        const { data: trainers, error: trainerError } = await supabase
+          .from("trainers")
+          .select("id")
+          .limit(1);
+          
+        if (trainerError) {
+          console.error("Error fetching trainers:", trainerError);
+          throw trainerError;
+        }
+        
+        if (trainers && trainers.length > 0) {
+          // Set trainer_id to null in the update data, but we need to use a valid trainer
+          // to satisfy database constraints
+          scheduleData.trainer_id = trainers[0].id;
+        } else {
+          throw new Error("No trainers found in the system. Please add at least one trainer.");
+        }
+      } else {
         scheduleData.trainer_id = data.trainerId;
       }
 
       console.log("Processed schedule data:", scheduleData);
 
       if (schedule) {
-        // For update operations, we need to first check if trainer_id is being set to 'none'
-        if (data.trainerId === 'none') {
-          // First fetch all trainers to find one to use
-          const { data: trainers, error: trainerError } = await supabase
-            .from("trainers")
-            .select("id")
-            .limit(1);
-            
-          if (trainerError) {
-            console.error("Error fetching trainers:", trainerError);
-            throw trainerError;
-          }
-          
-          if (trainers && trainers.length > 0) {
-            // Use the first trainer as a fallback
-            scheduleData.trainer_id = trainers[0].id;
-          } else {
-            throw new Error("No trainers found in the system. Please add at least one trainer.");
-          }
-        }
-        
         // Update existing schedule
         const { error } = await supabase
           .from("class_schedules")
@@ -112,27 +110,6 @@ export function useScheduleSubmit({
           description: "The class schedule has been successfully updated.",
         });
       } else {
-        // For new schedules, we also need to handle the 'none' trainer case
-        if (data.trainerId === 'none') {
-          // First fetch all trainers to find one to use
-          const { data: trainers, error: trainerError } = await supabase
-            .from("trainers")
-            .select("id")
-            .limit(1);
-            
-          if (trainerError) {
-            console.error("Error fetching trainers:", trainerError);
-            throw trainerError;
-          }
-          
-          if (trainers && trainers.length > 0) {
-            // Use the first trainer as a fallback
-            scheduleData.trainer_id = trainers[0].id;
-          } else {
-            throw new Error("No trainers found in the system. Please add at least one trainer.");
-          }
-        }
-        
         // Create new schedule
         const { error } = await supabase
           .from("class_schedules")
