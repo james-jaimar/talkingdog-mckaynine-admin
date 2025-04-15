@@ -5,10 +5,6 @@ import { useToast } from "@/components/ui/use-toast";
 import { ClassSchedule } from "../types/classSchedule";
 import { ClassScheduleFormValues } from "../schemas/classScheduleFormSchema";
 
-// Use a default trainer ID for "no trainer" option
-// This is a UUID that will represent "No Trainer" in the database
-const NO_TRAINER_UUID = "00000000-0000-0000-0000-000000000000";
-
 interface UseScheduleSubmitProps {
   classId: string;
   schedule: ClassSchedule | null;
@@ -61,7 +57,7 @@ export function useScheduleSubmit({
         lastEndDateTime.setDate(lastEndDateTime.getDate() + 1);
       }
 
-      // Create schedule data object, handling "none" for trainer_id
+      // Create schedule data object
       const scheduleData: any = {
         class_id: classId,
         start_time: startDateTime.toISOString(),
@@ -72,12 +68,34 @@ export function useScheduleSubmit({
       };
 
       // Handle trainer_id based on selection
-      // Use NO_TRAINER_UUID instead of null for "none" option
-      scheduleData.trainer_id = data.trainerId === 'none' ? NO_TRAINER_UUID : data.trainerId;
+      if (data.trainerId !== 'none') {
+        scheduleData.trainer_id = data.trainerId;
+      }
 
       console.log("Processed schedule data:", scheduleData);
 
       if (schedule) {
+        // For update operations, we need to first check if trainer_id is being set to 'none'
+        if (data.trainerId === 'none') {
+          // First fetch all trainers to find one to use
+          const { data: trainers, error: trainerError } = await supabase
+            .from("trainers")
+            .select("id")
+            .limit(1);
+            
+          if (trainerError) {
+            console.error("Error fetching trainers:", trainerError);
+            throw trainerError;
+          }
+          
+          if (trainers && trainers.length > 0) {
+            // Use the first trainer as a fallback
+            scheduleData.trainer_id = trainers[0].id;
+          } else {
+            throw new Error("No trainers found in the system. Please add at least one trainer.");
+          }
+        }
+        
         // Update existing schedule
         const { error } = await supabase
           .from("class_schedules")
@@ -94,6 +112,27 @@ export function useScheduleSubmit({
           description: "The class schedule has been successfully updated.",
         });
       } else {
+        // For new schedules, we also need to handle the 'none' trainer case
+        if (data.trainerId === 'none') {
+          // First fetch all trainers to find one to use
+          const { data: trainers, error: trainerError } = await supabase
+            .from("trainers")
+            .select("id")
+            .limit(1);
+            
+          if (trainerError) {
+            console.error("Error fetching trainers:", trainerError);
+            throw trainerError;
+          }
+          
+          if (trainers && trainers.length > 0) {
+            // Use the first trainer as a fallback
+            scheduleData.trainer_id = trainers[0].id;
+          } else {
+            throw new Error("No trainers found in the system. Please add at least one trainer.");
+          }
+        }
+        
         // Create new schedule
         const { error } = await supabase
           .from("class_schedules")
