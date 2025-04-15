@@ -47,13 +47,27 @@ export function Header() {
 
   return (
     <header className="bg-mckaynine-600 text-white sticky top-0 z-50 shadow-md">
-      {/* Top Row: Logo and User Section */}
+      {/* Main Row: Logo, Navigation, Branch Selector, and User Info */}
       <div className="border-b border-mckaynine-700">
         <div className="container mx-auto px-4 py-2">
           <div className="flex items-center justify-between">
-            <Link to={isHandler ? "/customer/dashboard" : "/"} className="text-white font-bold text-xl">
-              McKaynine
-            </Link>
+            <div className="flex items-center gap-6">
+              <Link to={isHandler ? "/customer/dashboard" : "/"} className="text-white font-bold text-xl">
+                McKaynine
+              </Link>
+              
+              {user && !isMobile && (
+                <div className="hidden md:block">
+                  {isAdmin ? (
+                    <AdminNavigation isMobile={false} />
+                  ) : isTrainer && !isAdmin ? (
+                    <TrainerNavigation isMobile={false} />
+                  ) : isHandler && (
+                    <HandlerNavigation isMobile={false} />
+                  )}
+                </div>
+              )}
+            </div>
             
             <div className="flex items-center space-x-4">
               {showBranchSelector && currentBranch && !isMobile && (
@@ -66,7 +80,7 @@ export function Header() {
                     email={user.email} 
                     role={role} 
                     isMobile={isMobile}
-                    onLogout={handleLogout}
+                    onLogout={null}  // We'll handle logout in the second row
                   />
                   {isMobile && (
                     <Button
@@ -85,17 +99,20 @@ export function Header() {
         </div>
       </div>
 
-      {/* Bottom Row: Navigation */}
-      {user && !mobileMenuOpen && (
-        <div className="hidden md:block bg-mckaynine-600">
+      {/* Secondary Row: Logout Button */}
+      {user && !isMobile && (
+        <div className="hidden md:block bg-mckaynine-700">
           <div className="container mx-auto px-4 py-1">
-            {isAdmin ? (
-              <AdminNavigation isMobile={false} />
-            ) : isTrainer && !isAdmin ? (
-              <TrainerNavigation isMobile={false} />
-            ) : isHandler && (
-              <HandlerNavigation isMobile={false} />
-            )}
+            <div className="flex justify-end">
+              <Button 
+                variant="destructive" 
+                size="sm" 
+                onClick={handleLogout}
+                className="text-white hover:bg-red-700"
+              >
+                Logout
+              </Button>
+            </div>
           </div>
         </div>
       )}
@@ -117,6 +134,17 @@ export function Header() {
             ) : isHandler && (
               <HandlerNavigation isMobile={true} onMobileClose={() => setMobileMenuOpen(false)} />
             )}
+            
+            <div className="mt-4 pt-4 border-t border-mckaynine-500">
+              <Button 
+                variant="destructive" 
+                size="sm" 
+                onClick={handleLogout}
+                className="w-full text-white hover:bg-red-700"
+              >
+                Logout
+              </Button>
+            </div>
           </div>
         </div>
       )}

@@ -1,12 +1,12 @@
 
-import { User, LogOut } from "lucide-react";
+import { User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface UserSectionProps {
   email?: string;
   role?: string;
   isMobile: boolean;
-  onLogout: () => void;
+  onLogout: (() => void) | null;
 }
 
 export const UserSection = ({ email, role, isMobile, onLogout }: UserSectionProps) => {
@@ -30,15 +30,16 @@ export const UserSection = ({ email, role, isMobile, onLogout }: UserSectionProp
           ))}
         </span>
       )}
-      <Button 
-        variant="destructive" 
-        size="sm" 
-        onClick={onLogout}
-        className="text-white hover:bg-red-700"
-      >
-        <LogOut className="h-4 w-4 md:mr-1" />
-        <span className="hidden md:inline">Logout</span>
-      </Button>
+      {onLogout && (
+        <Button 
+          variant="destructive" 
+          size="sm" 
+          onClick={onLogout}
+          className="text-white hover:bg-red-700"
+        >
+          <span className="hidden md:inline">Logout</span>
+        </Button>
+      )}
     </div>
   );
 };
