@@ -1,8 +1,9 @@
+
 import { Link } from "react-router-dom";
 import { Helmet } from "react-helmet";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/auth";
-import { CurrencyRand } from "lucide-react";
+import { Currency } from "lucide-react";
 
 export default function Home() {
   const { user } = useAuth();
@@ -35,7 +36,7 @@ export default function Home() {
           <div className="text-center mb-8">
             <div className="flex justify-center mb-4">
               <div className="bg-mckaynine-100 rounded-full w-20 h-20 flex items-center justify-center">
-                <CurrencyRand className="h-12 w-12 text-mckaynine-600" />
+                <Currency className="h-12 w-12 text-mckaynine-600" />
               </div>
             </div>
             <h2 className="text-3xl font-bold text-gray-900 mb-2">
@@ -68,3 +69,5 @@ export default function Home() {
     </div>
   );
 }
+
+export default Home;
