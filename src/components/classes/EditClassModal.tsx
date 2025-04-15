@@ -63,10 +63,9 @@ export function EditClassModal({ open, onOpenChange, classData, onSuccess }: Edi
         .update({
           name: values.name,
           level: values.level,
-          duration: parseInt(values.duration, 10),
-          price: parseFloat(values.price),
-          capacity: parseInt(values.capacity, 10),
-          description: values.description,
+          duration: parseInt(String(values.duration), 10),
+          price: parseFloat(String(values.price)),
+          capacity: parseInt(String(values.capacity), 10),
           branch_id: currentBranch.id,
           updated_at: new Date().toISOString(),
         })
@@ -163,7 +162,7 @@ export function EditClassModal({ open, onOpenChange, classData, onSuccess }: Edi
           <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button type="submit" disabled={isSubmitting}>
+          <Button type="submit" disabled={isSubmitting} onClick={form.handleSubmit(onSubmit)}>
             {isSubmitting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
