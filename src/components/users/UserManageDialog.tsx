@@ -4,8 +4,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/components/ui/use-toast";
 import { Loader2 } from "lucide-react";
 import { User } from "./hooks/useUsers";
 import {
@@ -16,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { APP_ID } from "@/constants/app";
+import { useUserRoleManagement } from "./hooks/useUserRoleManagement";
 
 interface UserManageDialogProps {
   user: User;
@@ -31,29 +30,12 @@ export function UserManageDialog({
   onUserUpdated 
 }: UserManageDialogProps) {
   const [role, setRole] = useState(user.role);
-  const [isUpdating, setIsUpdating] = useState(false);
-  const { toast } = useToast();
+  const { updateUserRole, isUpdating } = useUserRoleManagement();
 
   const handleUpdateUser = async () => {
     try {
-      setIsUpdating(true);
-      
-      // Update the user's role in the database
-      const { error } = await supabase
-        .from('profiles')
-        .update({ 
-          role,
-          app_id: APP_ID // Ensure app_id is always set when updating
-        })
-        .eq('id', user.id);
-      
-      if (error) throw error;
-      
-      // Show success message
-      toast({
-        title: "User updated",
-        description: `Role for ${user.full_name || user.email} has been updated to ${role}.`,
-      });
+      // Use the refactored updateUserRole mutation
+      await updateUserRole({ userId: user.id, role });
       
       // Close dialog
       onOpenChange(false);
@@ -61,15 +43,8 @@ export function UserManageDialog({
       // Refresh user list
       onUserUpdated();
       
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error updating user:", error);
-      toast({
-        title: "Failed to update user",
-        description: error.message || "An unexpected error occurred.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsUpdating(false);
     }
   };
 

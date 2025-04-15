@@ -1,7 +1,6 @@
 
 import { useState } from "react";
 import { useFetchUsers } from "./hooks/useFetchUsers";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import {
   Card,
@@ -16,11 +15,13 @@ import { UsersTable } from "./components/UsersTable";
 import { UserRoleDialog } from "./components/UserRoleDialog";
 import { UserResetPasswordDialog } from "./components/UserResetPasswordDialog";
 import { AddUserDialog } from "./AddUserDialog";
+import { useUserRoleManagement } from "./hooks/useUserRoleManagement";
 
 export function AdminUsersList() {
   // Use the enhanced useFetchUsers hook
   const { data: users = [], isLoading, refetch, error } = useFetchUsers();
   const { toast } = useToast();
+  const { updateUserRole } = useUserRoleManagement();
   
   // State management
   const [filterText, setFilterText] = useState("");
@@ -41,12 +42,6 @@ export function AdminUsersList() {
     )
   );
   
-  // Debug logs
-  console.log("AdminUsersList - Users fetched:", users);
-  console.log(`AdminUsersList - Total users: ${users.length}`);
-  console.log("AdminUsersList - Filtered users:", filteredUsers);
-  console.log(`AdminUsersList - Filtered count: ${filteredUsers.length}`);
-  
   // Handle refresh
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -61,33 +56,19 @@ export function AdminUsersList() {
     setRoleDialogOpen(true);
   };
   
-  // Save role
+  // Save role using our improved hook
   const handleSaveRole = async (newRole: string) => {
-    if (selectedUserId) {
-      try {
-        console.log(`Updating role to ${newRole} for user ID: ${selectedUserId}`);
-        const { error } = await supabase
-          .from('profiles')
-          .update({ role: newRole })
-          .eq('id', selectedUserId);
-        
-        if (error) throw error;
-        
-        toast({
-          title: "Role updated",
-          description: `User role has been updated to ${newRole}`,
-        });
-        
-        refetch();
-        setRoleDialogOpen(false);
-      } catch (error: any) {
-        toast({
-          title: "Update failed",
-          description: error.message || "Failed to update role",
-          variant: "destructive",
-        });
-        console.error("Error updating role:", error);
-      }
+    if (!selectedUserId) return;
+    
+    try {
+      await updateUserRole({
+        userId: selectedUserId,
+        role: newRole
+      });
+      
+      setRoleDialogOpen(false);
+    } catch (error) {
+      console.error("Error in handleSaveRole:", error);
     }
   };
   
@@ -100,30 +81,30 @@ export function AdminUsersList() {
   
   // Save password
   const handleSavePassword = async (newPassword: string) => {
-    if (selectedUserId) {
-      try {
-        console.log(`Attempting to reset password for user ID: ${selectedUserId}`);
-        // Reset user password using admin API
-        const { error } = await supabase.auth.admin.updateUserById(selectedUserId, {
-          password: newPassword,
-        });
-        
-        if (error) throw error;
-        
-        toast({
-          title: "Password reset",
-          description: "User password has been reset successfully",
-        });
-        
-        setPasswordDialogOpen(false);
-      } catch (error: any) {
-        toast({
-          title: "Password reset failed",
-          description: error.message || "Failed to reset password",
-          variant: "destructive",
-        });
-        console.error("Error resetting password:", error);
-      }
+    if (!selectedUserId) return;
+    
+    try {
+      console.log(`Attempting to reset password for user ID: ${selectedUserId}`);
+      // Reset user password using admin API
+      const { error } = await supabase.auth.admin.updateUserById(selectedUserId, {
+        password: newPassword,
+      });
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Password reset",
+        description: "User password has been reset successfully",
+      });
+      
+      setPasswordDialogOpen(false);
+    } catch (error: any) {
+      toast({
+        title: "Password reset failed",
+        description: error.message || "Failed to reset password",
+        variant: "destructive",
+      });
+      console.error("Error resetting password:", error);
     }
   };
   

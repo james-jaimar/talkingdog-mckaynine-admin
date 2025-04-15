@@ -72,7 +72,7 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
     try {
       console.log("Creating user with role:", values.role);
       
-      // Create user with Supabase Auth
+      // Step 1: Create user with Supabase Auth
       const { error: signUpError, data } = await supabase.auth.signUp({
         email: values.email,
         password: values.password,
@@ -89,7 +89,7 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
       
       console.log("User created successfully with ID:", userId);
       
-      // Update profile with role and app_id
+      // Step 2: Update profile with role and app_id
       const { error: profileError } = await supabase
         .from('profiles')
         .upsert({
@@ -105,44 +105,10 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
       
       console.log("Profile updated successfully with role:", values.role);
       
-      // If role is trainer, also create an entry in the trainers table
+      // Step 3: Handle trainer role specific logic
       const isTrainerRole = values.role === 'trainer' || values.role.includes('trainer');
       if (isTrainerRole) {
-        console.log("Adding user to trainers table");
-        
-        // Parse the name for first and last name
-        const fullName = values.fullName || '';
-        const nameParts = fullName.split(' ');
-        const firstName = nameParts[0] || '';
-        const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
-        
-        // Check if this user already exists in the trainers table
-        const { data: existingTrainer } = await supabase
-          .from('trainers')
-          .select('id')
-          .eq('user_id', userId);
-        
-        // Only create a new trainer record if one doesn't exist
-        if (!existingTrainer || existingTrainer.length === 0) {
-          const { error: trainerError } = await supabase
-            .from('trainers')
-            .insert({
-              user_id: userId,
-              email: values.email,
-              first_name: firstName,
-              last_name: lastName,
-              specialties: []
-            });
-          
-          if (trainerError) {
-            console.error("Error adding user to trainers table:", trainerError);
-            throw trainerError;
-          }
-          
-          console.log("User successfully added to trainers table");
-        } else {
-          console.log("Trainer record already exists for user, skipping creation");
-        }
+        await createTrainerRecord(userId, values.email, values.fullName || "");
       }
       
       // Handle success
@@ -151,14 +117,12 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
         description: `${values.email} has been added with role: ${values.role}`,
       });
       
-      // Reset form
+      // Reset form and close dialog
       form.reset();
       onOpenChange(false);
       
       // Refresh data
-      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
-      queryClient.invalidateQueries({ queryKey: ['admin-users-list'] });
-      queryClient.invalidateQueries({ queryKey: ['trainers-list'] });
+      invalidateAndRefetchQueries();
       onUserAdded();
       
     } catch (error: any) {
@@ -167,10 +131,68 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
         description: error.message || "An unexpected error occurred",
         variant: "destructive",
       });
+      console.error("Error adding user:", error);
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  // Helper function to create trainer record
+  async function createTrainerRecord(userId: string, email: string, fullName: string) {
+    try {
+      console.log("Adding user to trainers table");
+      
+      // Parse the name for first and last name
+      const nameParts = fullName.split(' ');
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+      
+      // Check if this user already exists in the trainers table
+      const { data: existingTrainer } = await supabase
+        .from('trainers')
+        .select('id')
+        .eq('user_id', userId);
+      
+      // Only create a new trainer record if one doesn't exist
+      if (!existingTrainer || existingTrainer.length === 0) {
+        const { error: trainerError } = await supabase
+          .from('trainers')
+          .insert({
+            user_id: userId,
+            email: email,
+            first_name: firstName,
+            last_name: lastName,
+            specialties: []
+          });
+        
+        if (trainerError) {
+          console.error("Error adding user to trainers table:", trainerError);
+          throw trainerError;
+        }
+        
+        console.log("User successfully added to trainers table");
+      } else {
+        console.log("Trainer record already exists for user, skipping creation");
+      }
+    } catch (error) {
+      console.error("Error creating trainer record:", error);
+      throw error;
+    }
+  }
+  
+  // Helper function to invalidate and refetch queries
+  function invalidateAndRefetchQueries() {
+    const queriesToInvalidate = [
+      'admin-users', 
+      'admin-users-list', 
+      'trainers-list'
+    ];
+    
+    queriesToInvalidate.forEach(query => {
+      queryClient.invalidateQueries({ queryKey: [query] });
+      setTimeout(() => queryClient.refetchQueries({ queryKey: [query] }), 300);
+    });
+  }
   
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

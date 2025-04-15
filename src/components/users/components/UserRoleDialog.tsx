@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import {
   Dialog,
@@ -18,28 +17,42 @@ import {
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { UserProfile } from "../types/userTypes";
+import { useUserRoleManagement } from "../hooks/useUserRoleManagement";
 
 interface UserRoleDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   selectedUser: UserProfile | null;
-  onSaveRole: (role: string) => Promise<void>;
+  onSaveRole?: (role: string) => Promise<void>;
 }
 
 export function UserRoleDialog({ 
   open, 
   onOpenChange, 
-  selectedUser, 
+  selectedUser,
   onSaveRole 
 }: UserRoleDialogProps) {
   const [newRole, setNewRole] = useState(selectedUser?.role || "");
-  const [isUpdating, setIsUpdating] = useState(false);
+  const { updateUserRole, isUpdating } = useUserRoleManagement();
 
   const handleSave = async () => {
-    if (newRole) {
-      setIsUpdating(true);
-      await onSaveRole(newRole);
-      setIsUpdating(false);
+    if (!selectedUser || !newRole) return;
+    
+    try {
+      // If a custom onSaveRole handler is provided, use it
+      if (onSaveRole) {
+        await onSaveRole(newRole);
+      } else {
+        // Otherwise use the default role management hook
+        await updateUserRole({
+          userId: selectedUser.id,
+          role: newRole
+        });
+      }
+      
+      onOpenChange(false);
+    } catch (error) {
+      console.error("Error updating role:", error);
     }
   };
 
@@ -49,7 +62,7 @@ export function UserRoleDialog({
         <DialogHeader>
           <DialogTitle>Change User Role</DialogTitle>
           <DialogDescription>
-            {selectedUser && `Update role for ${selectedUser.full_name || selectedUser.email}`}
+            {selectedUser && `Update role for ${selectedUser.full_name || selectedUser.email || selectedUser.username}`}
           </DialogDescription>
         </DialogHeader>
         
