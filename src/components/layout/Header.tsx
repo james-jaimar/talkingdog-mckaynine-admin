@@ -1,21 +1,23 @@
+
 import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
-import { useBranch, Branch } from "@/context/BranchContext";
+import { useLocation } from "react-router-dom";
+import { useBranch } from "@/context/BranchContext";
 import { BranchSelector } from "@/components/branches/BranchSelector";
 import { useAuth } from "@/context/auth";
 import { Button } from "@/components/ui/button";
-import { LogOut, User, Users, Clipboard, FileText, MessageSquare, Home, DollarSign, Menu, X, GitBranch } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/useIsMobile";
+import { AdminNavigation } from "./header/AdminNavigation";
+import { TrainerNavigation } from "./header/TrainerNavigation";
+import { HandlerNavigation } from "./header/HandlerNavigation";
+import { UserSection } from "./header/UserSection";
 
 export function Header() {
-  const { user, logout, isAdmin, isTrainer, isHandler, role, trainerProfile } = useAuth();
+  const { user, logout, isAdmin, isTrainer, isHandler, role } = useAuth();
   const location = useLocation();
   const isMobile = useIsMobile();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  
-  // Determine if we're on a customer page
-  const isCustomerPage = location.pathname.startsWith('/customer');
   
   // Safely use useBranch hook with proper typing
   let branchInfo = { currentBranch: null as Branch | null };
@@ -26,19 +28,8 @@ export function Header() {
   }
   
   const { currentBranch } = branchInfo;
-
-  // Only show branch selector for admin and trainer roles
   const showBranchSelector = user && (isAdmin || isTrainer);
-  
-  // Reduced debugging output - only log once during render
-  if (user && process.env.NODE_ENV === 'development') {
-    console.log(
-      "Header - User info:", 
-      { email: user?.email, role, isAdmin, isTrainer, isHandler, trainerProfile }
-    );
-  }
 
-  // Handle logout with proper error handling
   const handleLogout = async () => {
     try {
       const result = await logout();
@@ -51,56 +42,11 @@ export function Header() {
       console.error("Unexpected error during logout:", error);
       toast.error("An unexpected error occurred during logout");
     }
-    // Close mobile menu if open
     setMobileMenuOpen(false);
   };
 
-  const toggleMobileMenu = () => {
-    setMobileMenuOpen(!mobileMenuOpen);
-  };
-
-  // Organize navigation items into primary and secondary rows
-  const primaryNavItems = [
-    { name: "Dashboard", path: isHandler ? "/customer/dashboard" : "/", icon: <Home className="inline-block mr-1 h-4 w-4" /> },
-  ];
-  
-  // Handler navigation
-  const handlerNavItems = [
-    { name: "Profile", path: "/customer/profile", icon: null },
-    { name: "Messages", path: "/customer/messages", icon: <MessageSquare className="inline-block mr-1 h-4 w-4" /> },
-    { name: "Invoices", path: "/customer/invoices", icon: <DollarSign className="inline-block mr-1 h-4 w-4" /> },
-  ];
-  
-  // Trainer navigation (non-admin)
-  const trainerNavItems = [
-    { name: "My Dashboard", path: "/trainer-dashboard", icon: <Clipboard className="inline-block mr-1 h-4 w-4" /> },
-    { name: "Class Schedules", path: "/class-schedules", icon: null },
-    { name: "Handlers", path: "/handlers", icon: null },
-    { name: "Invoices", path: "/invoices", icon: <DollarSign className="inline-block mr-1 h-4 w-4" /> },
-  ];
-  
-  // Admin primary navigation
-  const adminPrimaryNavItems = [
-    { name: "Dashboard", path: "/", icon: null },
-    { name: "Handlers", path: "/handlers", icon: null },
-    { name: "Classes", path: "/classes", icon: null },
-    { name: "Class Schedules", path: "/class-schedules", icon: null },
-    { name: "Trainers", path: "/trainers", icon: null },
-  ];
-  
-  // Admin secondary navigation
-  const adminSecondaryNavItems = [
-    { name: "Branches", path: "/branches", icon: null },
-    { name: "Branch Management", path: "/branch-management", icon: <GitBranch className="inline-block mr-1 h-4 w-4" /> },
-    { name: "Unpaid Handlers", path: "/unpaid-handlers", icon: null },
-    { name: "Forms", path: "/forms", icon: <FileText className="inline-block mr-1 h-4 w-4" /> },
-    { name: "Invoices", path: "/invoices", icon: <DollarSign className="inline-block mr-1 h-4 w-4" /> },
-    { name: "User Admin", path: "/user-admin", icon: <Users className="inline-block mr-1 h-4 w-4" /> },
-  ];
-
   return (
     <header className="bg-mckaynine-600 text-white sticky top-0 z-50 shadow-md">
-      {/* Primary navigation row */}
       <div className="container mx-auto px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center">
@@ -108,52 +54,14 @@ export function Header() {
               McKaynine
             </Link>
             
-            {user && !isMobile && (
-              <nav className="hidden md:flex space-x-4 overflow-x-auto">
-                {isHandler ? (
-                  // Primary navigation for handlers
-                  <>
-                    {primaryNavItems.map(item => (
-                      <Link 
-                        key={item.path}
-                        to={item.path} 
-                        className="text-white hover:text-gray-200 px-2 py-1 rounded whitespace-nowrap"
-                      >
-                        {item.icon}
-                        {item.name}
-                      </Link>
-                    ))}
-                  </>
-                ) : isTrainer && !isAdmin ? (
-                  // Primary navigation for trainers
-                  <>
-                    {adminPrimaryNavItems.slice(0, 5).map(item => (
-                      <Link 
-                        key={item.path}
-                        to={item.path} 
-                        className="text-white hover:text-gray-200 px-2 py-1 rounded whitespace-nowrap"
-                      >
-                        {item.icon}
-                        {item.name}
-                      </Link>
-                    ))}
-                  </>
-                ) : (
-                  // Primary navigation for admins
-                  <>
-                    {adminPrimaryNavItems.map(item => (
-                      <Link 
-                        key={item.path}
-                        to={item.path} 
-                        className="text-white hover:text-gray-200 px-2 py-1 rounded whitespace-nowrap"
-                      >
-                        {item.icon}
-                        {item.name}
-                      </Link>
-                    ))}
-                  </>
-                )}
-              </nav>
+            {user && (
+              isAdmin ? (
+                <AdminNavigation isMobile={false} />
+              ) : isTrainer && !isAdmin ? (
+                <TrainerNavigation isMobile={false} />
+              ) : isHandler && (
+                <HandlerNavigation isMobile={false} />
+              )
             )}
           </div>
           
@@ -164,38 +72,17 @@ export function Header() {
             
             {user && (
               <div className="flex items-center gap-2">
-                {!isMobile && (
-                  <span className="hidden md:inline-flex items-center">
-                    <User className="inline-block mr-1 h-4 w-4" />
-                    {user.email}
-                    {role && role.split(',').map(userRole => (
-                      <span 
-                        key={userRole} 
-                        className={`ml-1 text-xs px-1.5 py-0.5 rounded ${
-                          userRole === 'admin' ? 'bg-blue-600' :
-                          userRole === 'trainer' ? 'bg-green-600' :
-                          userRole === 'handler' ? 'bg-amber-600' : 'bg-gray-600'
-                        }`}
-                      >
-                        {userRole}
-                      </span>
-                    ))}
-                  </span>
-                )}
-                <Button 
-                  variant="destructive" 
-                  size="sm" 
-                  onClick={handleLogout}
-                  className="text-white hover:bg-red-700"
-                >
-                  <LogOut className="h-4 w-4 md:mr-1" />
-                  <span className="hidden md:inline">Logout</span>
-                </Button>
+                <UserSection 
+                  email={user.email} 
+                  role={role} 
+                  isMobile={isMobile}
+                  onLogout={handleLogout}
+                />
                 {isMobile && (
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={toggleMobileMenu}
+                    onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                     className="ml-2 text-white"
                   >
                     {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -207,99 +94,22 @@ export function Header() {
         </div>
       </div>
       
-      {/* Secondary navigation row - only visible on desktop */}
-      {user && !isHandler && !isMobile && (
-        <div className="bg-mckaynine-700">
-          <div className="container mx-auto px-4 py-1">
-            <nav className="flex space-x-4 overflow-x-auto">
-              {isAdmin ? (
-                // Secondary navigation for admins
-                <>
-                  {adminSecondaryNavItems.map(item => (
-                    <Link 
-                      key={item.path}
-                      to={item.path} 
-                      className="text-white hover:text-gray-200 px-2 py-1 text-sm rounded whitespace-nowrap"
-                    >
-                      {item.icon}
-                      {item.name}
-                    </Link>
-                  ))}
-                </>
-              ) : isTrainer ? (
-                // Secondary navigation for trainers
-                <>
-                  <Link to="/invoices" className="text-white hover:text-gray-200 px-2 py-1 text-sm rounded whitespace-nowrap">
-                    <DollarSign className="inline-block mr-1 h-4 w-4" />
-                    Invoices
-                  </Link>
-                </>
-              ) : null}
-            </nav>
-          </div>
-        </div>
-      )}
-      
-      {/* Mobile menu - only shown when toggled */}
       {isMobile && mobileMenuOpen && user && (
         <div className="bg-mckaynine-700 py-2">
           <div className="container mx-auto px-4">
-            {/* Display branch selector on mobile if needed */}
             {showBranchSelector && currentBranch && (
               <div className="mb-3 pt-2 border-t border-mckaynine-500">
                 <BranchSelector />
               </div>
             )}
-          
-            {/* Mobile navigation items */}
-            <nav className="flex flex-col space-y-2">
-              {isHandler ? (
-                // Navigation for handlers
-                <>
-                  {[...primaryNavItems, ...handlerNavItems].map(item => (
-                    <Link 
-                      key={item.path}
-                      to={item.path} 
-                      className="text-white hover:text-gray-200 px-2 py-2 rounded flex items-center"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      {item.icon && <span className="mr-2">{item.icon}</span>}
-                      <span>{item.name}</span>
-                    </Link>
-                  ))}
-                </>
-              ) : isTrainer && !isAdmin ? (
-                // Navigation for trainers
-                <>
-                  {[...adminPrimaryNavItems.slice(0, 5), ...trainerNavItems].map(item => (
-                    <Link 
-                      key={item.path}
-                      to={item.path} 
-                      className="text-white hover:text-gray-200 px-2 py-2 rounded flex items-center"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      {item.icon && <span className="mr-2">{item.icon}</span>}
-                      <span>{item.name}</span>
-                    </Link>
-                  ))}
-                </>
-              ) : (
-                // Navigation for admins
-                <>
-                  {[...adminPrimaryNavItems, ...adminSecondaryNavItems].map(item => (
-                    <Link 
-                      key={item.path}
-                      to={item.path} 
-                      className="text-white hover:text-gray-200 px-2 py-2 rounded flex items-center"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      {item.icon && <span className="mr-2">{item.icon}</span>}
-                      <span>{item.name}</span>
-                    </Link>
-                  ))}
-                </>
-              )}
-            </nav>
+            
+            {isAdmin ? (
+              <AdminNavigation isMobile={true} onMobileClose={() => setMobileMenuOpen(false)} />
+            ) : isTrainer && !isAdmin ? (
+              <TrainerNavigation isMobile={true} onMobileClose={() => setMobileMenuOpen(false)} />
+            ) : isHandler && (
+              <HandlerNavigation isMobile={true} onMobileClose={() => setMobileMenuOpen(false)} />
+            )}
           </div>
         </div>
       )}
