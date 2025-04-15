@@ -11,6 +11,9 @@ export const formSchema = z.object({
   }),
   phone: z.string().optional(),
   
+  // Branch selection
+  branch_id: z.string().optional(),
+  
   // Dog basic info
   dogName: z.string().min(1, {
     message: "Dog name is required.",

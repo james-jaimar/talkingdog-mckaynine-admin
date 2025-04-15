@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import {
   Dialog,
@@ -17,6 +18,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { classFormSchema, ClassFormValues } from "./schemas/classFormSchema";
 import { useBranch } from "@/context/BranchContext";
+import { supabase } from "@/integrations/supabase/client";
 
 interface EditClassModalProps {
   open: boolean;
