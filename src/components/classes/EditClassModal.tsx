@@ -38,10 +38,11 @@ export function EditClassModal({ open, onOpenChange, classData, onSuccess }: Edi
     defaultValues: {
       name: classData?.name || "",
       level: classData?.level || "",
-      duration: classData?.duration ? String(classData.duration) : "",
-      price: classData?.price ? String(classData.price) : "",
-      capacity: classData?.capacity ? String(classData.capacity) : "8",
+      duration: classData?.duration ? Number(classData.duration) : 0,
+      price: classData?.price ? Number(classData.price) : 0,
+      capacity: classData?.capacity ? Number(classData.capacity) : 8,
       description: classData?.description || "",
+      branchId: currentBranch?.id || "",
     },
   });
 
@@ -63,9 +64,10 @@ export function EditClassModal({ open, onOpenChange, classData, onSuccess }: Edi
         .update({
           name: values.name,
           level: values.level,
-          duration: parseInt(String(values.duration), 10),
-          price: parseFloat(String(values.price)),
-          capacity: parseInt(String(values.capacity), 10),
+          duration: values.duration,
+          price: values.price,
+          capacity: values.capacity,
+          description: values.description,
           branch_id: currentBranch.id,
           updated_at: new Date().toISOString(),
         })
