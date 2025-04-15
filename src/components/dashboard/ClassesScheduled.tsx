@@ -5,20 +5,31 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useIsMobile } from '@/hooks/useIsMobile';
 
-export function ClassesScheduled() {
+interface ClassesScheduledProps {
+  branchId?: string;
+}
+
+export function ClassesScheduled({ branchId }: ClassesScheduledProps) {
   const isMobile = useIsMobile();
+  
   const { data: classes, isLoading } = useQuery({
-    queryKey: ['upcoming-classes'],
+    queryKey: ['upcoming-classes', branchId],
     queryFn: async () => {
+      // Don't fetch data if no branch is selected
+      if (!branchId) return [];
+      
       const today = new Date();
+      
+      // Build the query with branch filter
       const { data, error } = await supabase
         .from('class_schedules')
         .select(`
           id,
           start_time,
-          classes(
+          classes!inner(
             name,
-            level
+            level,
+            branch_id
           ),
           trainers(
             first_name,
@@ -26,13 +37,15 @@ export function ClassesScheduled() {
             avatar_url
           )
         `)
+        .eq('classes.branch_id', branchId)
         .gte('start_time', today.toISOString())
         .order('start_time', { ascending: true })
         .limit(5);
       
       if (error) throw error;
       return data;
-    }
+    },
+    enabled: !!branchId // Only run query when branchId is available
   });
 
   const getInitials = (firstName: string, lastName: string) => {
@@ -54,7 +67,9 @@ export function ClassesScheduled() {
         <CardTitle className="text-lg sm:text-xl">Upcoming Classes</CardTitle>
       </CardHeader>
       <CardContent>
-        {isLoading ? (
+        {!branchId ? (
+          <div className="text-center py-4 text-gray-500">Please select a branch</div>
+        ) : isLoading ? (
           <div className="flex justify-center p-4">Loading classes...</div>
         ) : classes && classes.length > 0 ? (
           <div className="space-y-3">

@@ -5,30 +5,42 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
-export function RecentBookings() {
+interface RecentBookingsProps {
+  branchId?: string;
+}
+
+export function RecentBookings({ branchId }: RecentBookingsProps) {
   const { data: bookings, isLoading } = useQuery({
-    queryKey: ['recent-bookings'],
+    queryKey: ['recent-bookings', branchId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // Don't fetch data if no branch is selected
+      if (!branchId) return [];
+      
+      // Build the query with branch filter
+      let query = supabase
         .from('bookings')
         .select(`
           id,
           status,
           payment_status,
           created_at,
-          clients(first_name, last_name),
+          clients!inner(first_name, last_name, branch_id),
           dogs(name),
           class_schedules(
             start_time,
             classes(name)
           )
         `)
+        .eq('clients.branch_id', branchId)
         .order('created_at', { ascending: false })
         .limit(5);
       
+      const { data, error } = await query;
+      
       if (error) throw error;
       return data;
-    }
+    },
+    enabled: !!branchId // Only run query when branchId is available
   });
 
   const getStatusColor = (status: string) => {
@@ -55,7 +67,9 @@ export function RecentBookings() {
         <CardTitle>Recent Bookings</CardTitle>
       </CardHeader>
       <CardContent>
-        {isLoading ? (
+        {!branchId ? (
+          <div className="text-center py-4 text-gray-500">Please select a branch</div>
+        ) : isLoading ? (
           <div className="flex justify-center p-4">Loading bookings...</div>
         ) : bookings && bookings.length > 0 ? (
           <Table>
