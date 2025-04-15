@@ -19,7 +19,11 @@ export const AdminNavigation = ({ isMobile, onMobileClose }: AdminNavigationProp
           className="text-white hover:text-gray-200 px-2 py-2 rounded flex items-center"
           onClick={onMobileClose}
         >
-          {item.icon && <span className="mr-2">{item.icon}</span>}
+          {item.icon && (
+            <item.icon 
+              className="inline-block mr-2 h-4 w-4" 
+            />
+          )}
           <span>{item.name}</span>
         </Link>
       ))}
@@ -33,8 +37,12 @@ export const AdminNavigation = ({ isMobile, onMobileClose }: AdminNavigationProp
             to={item.path} 
             className="text-white hover:text-gray-200 px-2 py-1 rounded whitespace-nowrap"
           >
-            {item.icon}
-            {item.name}
+            {item.icon && (
+              <item.icon 
+                className="inline-block mr-1 h-4 w-4" 
+              />
+            )}
+            <span>{item.name}</span>
           </Link>
         ))}
       </nav>
@@ -47,8 +55,12 @@ export const AdminNavigation = ({ isMobile, onMobileClose }: AdminNavigationProp
                 to={item.path} 
                 className="text-white hover:text-gray-200 px-2 py-1 text-sm rounded whitespace-nowrap"
               >
-                {item.icon}
-                {item.name}
+                {item.icon && (
+                  <item.icon 
+                    className="inline-block mr-1 h-4 w-4"
+                  />
+                )}
+                <span>{item.name}</span>
               </Link>
             ))}
           </nav>

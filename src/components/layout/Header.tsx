@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useBranch } from "@/context/BranchContext";
 import { BranchSelector } from "@/components/branches/BranchSelector";
 import { useAuth } from "@/context/auth";
@@ -12,6 +12,7 @@ import { AdminNavigation } from "./header/AdminNavigation";
 import { TrainerNavigation } from "./header/TrainerNavigation";
 import { HandlerNavigation } from "./header/HandlerNavigation";
 import { UserSection } from "./header/UserSection";
+import { Branch } from "@/context/BranchContext"; // Import Branch type
 
 export function Header() {
   const { user, logout, isAdmin, isTrainer, isHandler, role } = useAuth();
