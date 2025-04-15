@@ -19,7 +19,7 @@ export function useUserRoleManagement() {
       // First, check if user exists to provide better error messages
       const { data: userExists, error: userCheckError } = await supabase
         .from('profiles')
-        .select('id, role, username')
+        .select('id, role, username, full_name')
         .eq('id', userId)
         .single();
       
@@ -45,7 +45,9 @@ export function useUserRoleManagement() {
         console.log("Profile role updated successfully to:", role);
         
         // Step 2: Handle trainer-specific logic
-        if (role === 'trainer' || role.includes('trainer')) {
+        const isTrainerRole = role === 'trainer' || role.includes('trainer');
+        
+        if (isTrainerRole) {
           console.log("Processing trainer role assignment");
           
           // Check if this user already exists in the trainers table
@@ -58,19 +60,8 @@ export function useUserRoleManagement() {
             console.error("Error checking trainer existence:", trainerCheckError);
           }
           
-          // Get user details for creating trainer entry
-          const { data: userData } = await supabase
-            .from('profiles')
-            .select('username, full_name')
-            .eq('id', userId)
-            .single();
-            
-          if (!userData) {
-            throw new Error("Failed to fetch user data for trainer creation");
-          }
-          
           // Parse name parts
-          const fullName = userData?.full_name || '';
+          const fullName = userExists?.full_name || '';
           const nameParts = fullName.split(' ');
           const firstName = nameParts[0] || '';
           const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
@@ -83,7 +74,7 @@ export function useUserRoleManagement() {
               .from('trainers')
               .insert({
                 user_id: userId,
-                email: userData.username || '',
+                email: userExists.username || '',
                 first_name: firstName,
                 last_name: lastName,
                 specialties: [],

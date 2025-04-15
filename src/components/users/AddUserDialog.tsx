@@ -106,7 +106,8 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
       console.log("Profile updated successfully with role:", values.role);
       
       // If role is trainer, also create an entry in the trainers table
-      if (values.role === 'trainer' || values.role.includes('trainer')) {
+      const isTrainerRole = values.role === 'trainer' || values.role.includes('trainer');
+      if (isTrainerRole) {
         console.log("Adding user to trainers table");
         
         // Parse the name for first and last name
@@ -115,22 +116,33 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
         const firstName = nameParts[0] || '';
         const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
         
-        const { error: trainerError } = await supabase
+        // Check if this user already exists in the trainers table
+        const { data: existingTrainer } = await supabase
           .from('trainers')
-          .insert({
-            user_id: userId,
-            email: values.email,
-            first_name: firstName,
-            last_name: lastName,
-            specialties: []
-          });
+          .select('id')
+          .eq('user_id', userId);
         
-        if (trainerError) {
-          console.error("Error adding user to trainers table:", trainerError);
-          throw trainerError;
+        // Only create a new trainer record if one doesn't exist
+        if (!existingTrainer || existingTrainer.length === 0) {
+          const { error: trainerError } = await supabase
+            .from('trainers')
+            .insert({
+              user_id: userId,
+              email: values.email,
+              first_name: firstName,
+              last_name: lastName,
+              specialties: []
+            });
+          
+          if (trainerError) {
+            console.error("Error adding user to trainers table:", trainerError);
+            throw trainerError;
+          }
+          
+          console.log("User successfully added to trainers table");
+        } else {
+          console.log("Trainer record already exists for user, skipping creation");
         }
-        
-        console.log("User successfully added to trainers table");
       }
       
       // Handle success
