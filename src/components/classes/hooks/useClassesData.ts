@@ -2,7 +2,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useBranch } from "@/context/BranchContext";
-import { useAuth } from "@/context/auth"; // Fixed import path
+import { useAuth } from "@/context/auth"; 
 
 // Define the type for activeClasses to match what we get from the query
 interface ActiveClass {
@@ -20,10 +20,12 @@ export function useClassesData() {
   const { data: activeClasses = [], isLoading, error } = useQuery({
     queryKey: ['active-classes', currentBranch?.id, user?.id],
     queryFn: async () => {
-      if (!currentBranch) return [];
+      if (!currentBranch) {
+        console.warn("No branch selected, cannot fetch active classes");
+        return [];
+      }
       
       console.log("Fetching active classes with branch ID:", currentBranch.id);
-      console.log("Current user ID:", user?.id);
       
       const { data, error } = await supabase
         .from('classes')
@@ -35,23 +37,19 @@ export function useClassesData() {
         `)
         .eq('branch_id', currentBranch.id)
         // Only get classes that have schedules
-        .not('class_schedules', 'is', null)
-        .order('name');
+        .not('class_schedules', 'is', null);
       
       if (error) {
         console.error("Error fetching active classes:", error);
         throw error;
       }
       
-      console.log("Active classes data:", data);
-      return data as ActiveClass[];
+      console.log(`Fetched ${data?.length || 0} active classes for branch: ${currentBranch.name}`);
+      return (data || []) as ActiveClass[];
     },
     enabled: !!currentBranch && !!user && !!session,
+    staleTime: 30000, // 30 seconds
   });
-
-  if (error) {
-    console.error("Error in useClassesData:", error);
-  }
 
   return {
     activeClasses,

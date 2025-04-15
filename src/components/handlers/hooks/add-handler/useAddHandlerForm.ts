@@ -24,6 +24,7 @@ export function useAddHandlerForm(onSuccess: () => void) {
       name: "",
       email: "",
       phone: "",
+      branch_id: currentBranch?.id || "", // Set default branch to current branch
       dogName: "",
       breed: "",
       dogDob: "",
@@ -60,6 +61,13 @@ export function useAddHandlerForm(onSuccess: () => void) {
     },
   });
 
+  // Update branch_id field when currentBranch changes
+  useState(() => {
+    if (currentBranch?.id) {
+      form.setValue('branch_id', currentBranch.id);
+    }
+  });
+
   async function onSubmit(data: FormValues) {
     setIsSubmitting(true);
     setErrorMessage(null);
@@ -79,17 +87,19 @@ export function useAddHandlerForm(onSuccess: () => void) {
 
     try {
       // Check if the currentBranch exists
-      if (!currentBranch?.id) {
+      const branchId = data.branch_id || currentBranch?.id;
+      if (!branchId) {
         setErrorMessage("No branch selected. Please select a branch to add a handler.");
         toast({
           title: "Missing Branch",
           description: "No branch selected. Please select a branch to add a handler.",
           variant: "destructive",
         });
+        setIsSubmitting(false);
         return;
       }
 
-      await submitHandler(data, currentBranch.id);
+      await submitHandler(data, branchId);
       
       toast({
         title: "Handler added successfully",
@@ -97,7 +107,10 @@ export function useAddHandlerForm(onSuccess: () => void) {
       });
 
       // Reset form
-      form.reset();
+      form.reset({
+        ...form.formState.defaultValues,
+        branch_id: currentBranch?.id || "" // Keep current branch
+      });
       
       console.log("Calling onSuccess to close modal");
       // Close the modal

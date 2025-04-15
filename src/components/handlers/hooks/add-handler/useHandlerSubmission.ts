@@ -14,7 +14,13 @@ export function useHandlerSubmission(queryClient: QueryClient, toast: any) {
   const { updateClientNotes } = useClientNotesUpdate();
   
   const submitHandler = async (data: FormValues, branchId: string) => {
-    // Create client
+    if (!branchId) {
+      throw new Error("Branch ID is required to create a handler");
+    }
+    
+    console.log("Creating handler with branch ID:", branchId);
+    
+    // Create client with branch_id
     const clientData = await createClient(data, branchId).catch(error => {
       console.error("Client creation error caught:", error);
       // Convert error to more user-friendly message
@@ -39,21 +45,11 @@ export function useHandlerSubmission(queryClient: QueryClient, toast: any) {
 
     console.log("Handler creation complete, refreshing data");
     
-    // Force immediate data refresh - make multiple attempts in case of network issues
-    try {
-      await queryClient.invalidateQueries({ queryKey: ["handlers"] });
-      // Additional invalidations that might be needed
-      await queryClient.invalidateQueries({ queryKey: ["class-handlers"] });
-      await queryClient.invalidateQueries({ queryKey: ["dogs"] });
-    } catch (refreshError) {
-      console.error("Error refreshing data:", refreshError);
-      // Still show success but warn about potential stale data
-      toast({
-        title: "Handler added successfully",
-        description: "The handler was added but the list might not reflect changes immediately. Try refreshing the page.",
-        variant: "default",
-      });
-    }
+    // Force immediate data refresh
+    await queryClient.invalidateQueries({ queryKey: ["handlers", branchId] });
+    // Additional invalidations that might be needed
+    await queryClient.invalidateQueries({ queryKey: ["class-handlers"] });
+    await queryClient.invalidateQueries({ queryKey: ["dogs"] });
   };
   
   return { submitHandler };

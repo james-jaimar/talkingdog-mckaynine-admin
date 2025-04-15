@@ -6,35 +6,50 @@ import { useBranch } from "@/context/BranchContext";
 export function useClassesTableData(filter?: string) {
   const { currentBranch } = useBranch();
 
-  const { data: classes, isLoading, refetch } = useQuery({
+  const { data: classes = [], isLoading, refetch } = useQuery({
     queryKey: ['classes', currentBranch?.id],
     queryFn: async () => {
-      let query = supabase
-        .from('classes')
-        .select(`
-          *,
-          branches:branch_id (
-            name
-          ),
-          class_schedules:class_schedules (
-            id,
-            bookings:bookings (
-              id
+      try {
+        console.log(`Fetching classes for branch: ${currentBranch?.name || 'none'}`);
+        
+        if (!currentBranch) {
+          console.warn("No branch selected, cannot fetch classes");
+          return [];
+        }
+        
+        let query = supabase
+          .from('classes')
+          .select(`
+            *,
+            branches:branch_id (
+              name
+            ),
+            class_schedules:class_schedules (
+              id,
+              bookings:bookings (
+                id
+              )
             )
-          )
-        `);
-      
-      // Filter by branch if one is selected
-      if (currentBranch) {
-        query = query.eq('branch_id', currentBranch.id);
+          `)
+          .eq('branch_id', currentBranch.id)
+          .order('name');
+        
+        const { data, error } = await query;
+        
+        if (error) {
+          console.error("Error fetching classes:", error);
+          throw error;
+        }
+        
+        console.log(`Fetched ${data?.length || 0} classes for branch: ${currentBranch.name}`);
+        return data || [];
+      } catch (error) {
+        console.error("Error in classes query:", error);
+        return [];
       }
-      
-      const { data, error } = await query;
-      
-      if (error) throw error;
-      return data as any[];
     },
-    enabled: !!currentBranch // Only run query when a branch is selected
+    enabled: !!currentBranch, // Only run query when a branch is selected
+    staleTime: 30000, // 30 seconds
   });
 
   // Get user's saved order
@@ -42,11 +57,12 @@ export function useClassesTableData(filter?: string) {
     queryKey: ['class-tab-order', currentBranch?.id],
     queryFn: async () => {
       try {
-        const { data, error } = await (supabase
-          .from('class_tab_order') as any)
+        if (!currentBranch) return null;
+        
+        const { data, error } = await supabase
+          .from('class_tab_order')
           .select('*')
-          .eq('user_id', 'current-user-id')
-          .eq('branch_id', currentBranch?.id || null)
+          .eq('branch_id', currentBranch.id)
           .maybeSingle();
         
         if (error && error.code !== 'PGRST116') {
@@ -65,7 +81,7 @@ export function useClassesTableData(filter?: string) {
 
   // Order classes based on saved order or alphabetically
   const getOrderedClasses = () => {
-    if (!classes) return [];
+    if (!classes || classes.length === 0) return [];
     
     if (savedOrder && savedOrder.class_ids && savedOrder.class_ids.length > 0) {
       // First include ordered classes, then any others not in the order
@@ -83,18 +99,16 @@ export function useClassesTableData(filter?: string) {
     return [...classes].sort((a, b) => a.name.localeCompare(b.name));
   };
 
-  let orderedClasses = getOrderedClasses();
+  const orderedClasses = getOrderedClasses();
 
   // Apply filter if provided
-  if (filter) {
-    orderedClasses = orderedClasses.filter(classItem => 
-      classItem.id === filter
-    );
-  }
+  const filteredClasses = filter 
+    ? orderedClasses.filter(classItem => classItem.id === filter)
+    : orderedClasses;
 
   return {
     classes,
-    orderedClasses,
+    orderedClasses: filteredClasses,
     isLoading,
     refetch
   };

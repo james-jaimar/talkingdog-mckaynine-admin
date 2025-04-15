@@ -4,6 +4,7 @@ import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/comp
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { type FormValues } from "./handlerFormSchema";
+import { useBranch } from "@/context/BranchContext";
 
 interface Branch {
   id: string;
@@ -15,7 +16,10 @@ interface ContactInfoFieldsProps {
   branches?: Branch[];
 }
 
-export function ContactInfoFields({ control, branches }: ContactInfoFieldsProps) {
+export function ContactInfoFields({ control }: ContactInfoFieldsProps) {
+  // Use the branch context to get available branches
+  const { branches = [] } = useBranch();
+  
   return (
     <div className="space-y-4">
       <FormField
@@ -61,9 +65,8 @@ export function ContactInfoFields({ control, branches }: ContactInfoFieldsProps)
                   <SelectValue placeholder="Select a branch" />
                 </SelectTrigger>
               </FormControl>
-              <SelectContent>
-                <SelectItem value="none">No Branch</SelectItem>
-                {branches?.map((branch) => (
+              <SelectContent className="z-50 bg-background">
+                {branches.map((branch) => (
                   <SelectItem key={branch.id} value={branch.id}>
                     {branch.name}
                   </SelectItem>

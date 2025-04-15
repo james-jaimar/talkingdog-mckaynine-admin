@@ -11,15 +11,13 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { ExtendedBadge } from "@/components/ui/badge-variants";
-import { Branch } from "@/context/BranchContext";
-import { useEffect } from "react";
 
 export function BranchSelector() {
   // Define a type-safe default state that matches the BranchContextType structure
   let branchInfo = { 
-    branches: [] as Branch[], 
-    currentBranch: null as Branch | null, 
-    setCurrentBranch: (branch: Branch | null) => {}, 
+    branches: [] as { id: string; name: string }[], 
+    currentBranch: null as { id: string; name: string } | null, 
+    setCurrentBranch: (branch: { id: string; name: string } | null) => {}, 
     isLoading: true 
   };
   
@@ -30,13 +28,6 @@ export function BranchSelector() {
   }
   
   const { branches, currentBranch, setCurrentBranch, isLoading } = branchInfo;
-  
-  // Log the current branch for debugging
-  useEffect(() => {
-    if (currentBranch) {
-      console.log("Current branch selected:", currentBranch.name, currentBranch.id);
-    }
-  }, [currentBranch]);
 
   if (isLoading) {
     return (
@@ -74,7 +65,7 @@ export function BranchSelector() {
         <SelectTrigger className="w-[180px] bg-background border-input text-foreground">
           <SelectValue placeholder="Select branch" />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className="z-50 bg-background border-input">
           {branches.map((branch) => (
             <SelectItem key={branch.id} value={branch.id}>
               {branch.name}

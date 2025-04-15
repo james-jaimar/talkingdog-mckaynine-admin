@@ -1,7 +1,8 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/components/ui/use-toast";
 
 export interface Branch {
   id: string;
@@ -19,6 +20,7 @@ const BranchContext = createContext<BranchContextType | undefined>(undefined);
 
 export function BranchProvider({ children }: { children: React.ReactNode }) {
   const [currentBranch, setCurrentBranchState] = useState<Branch | null>(null);
+  const queryClient = useQueryClient();
   
   const { data: branches, isLoading } = useQuery({
     queryKey: ['branches-basic'],
@@ -35,10 +37,11 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
       
       console.log("Fetched branches:", data);
       return data as Branch[];
-    }
+    },
+    staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
-  // Wrapped setCurrentBranch to ensure localStorage is updated
+  // Enhanced setCurrentBranch to update localStorage and invalidate queries
   const setCurrentBranch = useCallback((branch: Branch | null) => {
     console.log("Setting current branch to:", branch?.name);
     setCurrentBranchState(branch);
@@ -46,8 +49,21 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
     if (branch) {
       localStorage.setItem('currentBranchId', branch.id);
       console.log("Saved branch ID to localStorage:", branch.id);
+      
+      // Invalidate all branch-dependent queries when branch changes
+      queryClient.invalidateQueries({ queryKey: ['handlers'] });
+      queryClient.invalidateQueries({ queryKey: ['classes'] });
+      queryClient.invalidateQueries({ queryKey: ['active-classes'] });
+      queryClient.invalidateQueries({ queryKey: ['trainers'] });
+      queryClient.invalidateQueries({ queryKey: ['class-handlers'] });
+      queryClient.invalidateQueries({ queryKey: ['schedules'] });
+      
+      toast({
+        title: "Branch Changed",
+        description: `Now viewing data for ${branch.name}`,
+      });
     }
-  }, []);
+  }, [queryClient]);
 
   // Set first branch as default when branches load if none is selected
   useEffect(() => {

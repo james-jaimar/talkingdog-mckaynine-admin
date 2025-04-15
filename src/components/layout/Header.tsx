@@ -4,7 +4,7 @@ import { useBranch, Branch } from "@/context/BranchContext";
 import { BranchSelector } from "@/components/branches/BranchSelector";
 import { useAuth } from "@/context/auth";
 import { Button } from "@/components/ui/button";
-import { LogOut, User, Users, Clipboard, FileText, MessageSquare, Home, DollarSign, Menu, X } from "lucide-react";
+import { LogOut, User, Users, Clipboard, FileText, MessageSquare, Home, DollarSign, Menu, X, GitBranch } from "lucide-react";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/useIsMobile";
 
@@ -91,6 +91,7 @@ export function Header() {
   // Admin secondary navigation
   const adminSecondaryNavItems = [
     { name: "Branches", path: "/branches", icon: null },
+    { name: "Branch Management", path: "/branch-management", icon: <GitBranch className="inline-block mr-1 h-4 w-4" /> },
     { name: "Unpaid Handlers", path: "/unpaid-handlers", icon: null },
     { name: "Forms", path: "/forms", icon: <FileText className="inline-block mr-1 h-4 w-4" /> },
     { name: "Invoices", path: "/invoices", icon: <DollarSign className="inline-block mr-1 h-4 w-4" /> },

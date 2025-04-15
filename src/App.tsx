@@ -1,91 +1,61 @@
-
-import {
-  BrowserRouter as Router,
-  Route,
-  Routes,
-  Navigate,
-} from "react-router-dom";
-import { ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
-import { AuthProvider } from "@/context/auth";
-import { BranchProvider } from "@/context/BranchContext";
+import { lazy, Suspense } from "react";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { Loading } from "@/components/Loading";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
-import Dashboard from "@/pages/Dashboard";
-import Handlers from "@/pages/Handlers";
-import Classes from "@/pages/Classes";
-import ClassSchedules from "@/pages/ClassSchedules";
-import Trainers from "@/pages/Trainers";
-import Branches from "@/pages/Branches";
-import UserAdmin from "@/pages/UserAdmin";
-import Forms from "@/pages/Forms";
-import Invoices from "@/pages/Invoices";
-import ClassHandlers from "@/pages/ClassHandlers";
-import HandlerDetail from "@/pages/HandlerDetail";
-import ClassDetail from "@/pages/ClassDetail";
-import InvoiceDetail from "@/pages/InvoiceDetail";
-import InvoiceEdit from "@/pages/InvoiceEdit";
-import { publicRoutes } from "@/routes/publicRoutes";
-import UnpaidHandlers from "@/pages/UnpaidHandlers";
 
-// Import the CustomerInvoices component and other customer pages with correct paths
-import CustomerDashboard from "@/pages/CustomerDashboard";
-import CustomerProfile from "@/pages/CustomerProfile";
-import CustomerMessages from "@/pages/CustomerMessages";
-import CustomerInvoices from "@/pages/customer/CustomerInvoices";
-import CustomerInvoiceDetail from "@/pages/CustomerInvoiceDetail";
+// Lazy load pages
+const LoginPage = lazy(() => import("@/pages/Login"));
+const DashboardPage = lazy(() => import("@/pages/Dashboard"));
+const RegisterPage = lazy(() => import("@/pages/Register"));
+const ResetPasswordPage = lazy(() => import("@/pages/ResetPassword"));
+const UpdatePasswordPage = lazy(() => import("@/pages/UpdatePassword"));
+const ClassSchedulesPage = lazy(() => import("@/pages/ClassSchedules"));
+const HandlerSchedulePage = lazy(() => import("@/pages/HandlerSchedule"));
+const HandlersPage = lazy(() => import("@/pages/Handlers"));
+const ClassesPage = lazy(() => import("@/pages/Classes"));
+const ClassHandlersPage = lazy(() => import("@/pages/ClassHandlers"));
+const RegisterHandlerPage = lazy(() => import("@/pages/RegisterHandler"));
+const HomeLayoutPage = lazy(() => import("@/pages/HomeLayout"));
+const BranchesPage = lazy(() => import("@/pages/Branches"));
+const TrainersPage = lazy(() => import("@/pages/Trainers"));
+const InvoicesPage = lazy(() => import("@/pages/Invoices"));
+const InvoiceDetailPage = lazy(() => import("@/pages/InvoiceDetail"));
+const CreateInvoicePage = lazy(() => import("@/pages/CreateInvoice"));
+const FormsPage = lazy(() => import("@/pages/Forms"));
+const UserAdminPage = lazy(() => import("@/pages/UserAdmin"));
+const CalendarPage = lazy(() => import("@/pages/Calendar"));
+const BranchManagement = lazy(() => import("@/pages/BranchManagement"));
 
 function App() {
   return (
-    <AuthProvider>
-      <BranchProvider>
-        <Router>
-          <ToastContainer position="bottom-right" autoClose={5000} hideProgressBar={false} newestOnTop closeOnClick rtl={false} pauseOnFocusLoss draggable pauseOnHover />
-          <Routes>
-            {/* Public routes */}
-            {publicRoutes.map((route, index) => (
-              <Route
-                key={index}
-                path={route.path}
-                element={route.element}
-                errorElement={route.errorElement}
-              />
-            ))}
-
-            {/* Protected routes */}
-            <Route element={<ProtectedRoute />}>
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/handlers" element={<Handlers />} />
-              <Route path="/handlers/:id" element={<HandlerDetail />} />
-              <Route path="/classes" element={<Classes />} />
-              <Route path="/classes/:id" element={<ClassDetail />} />
-              <Route path="/class-schedules" element={<ClassSchedules />} />
-              <Route path="/class-schedules/:id" element={<ClassSchedules />} />
-              <Route path="/classes/:id/handlers" element={<ClassHandlers />} />
-              <Route path="/trainers" element={<Trainers />} />
-              <Route path="/trainers/:id" element={<Trainers />} />
-              <Route path="/branches" element={<Branches />} />
-              <Route path="/user-admin" element={<UserAdmin />} />
-              <Route path="/forms" element={<Forms />} />
-              <Route path="/forms/:id" element={<Forms />} />
-              <Route path="/invoices" element={<Invoices />} />
-              <Route path="/invoices/:id" element={<InvoiceDetail />} />
-              <Route path="/invoices/:id/edit" element={<InvoiceEdit />} />
-              <Route path="/unpaid-handlers" element={<UnpaidHandlers />} />
-              
-              {/* Customer routes */}
-              <Route path="/customer/dashboard" element={<CustomerDashboard />} />
-              <Route path="/customer/profile" element={<CustomerProfile />} />
-              <Route path="/customer/messages" element={<CustomerMessages />} />
-              <Route path="/customer/invoices" element={<CustomerInvoices />} />
-              <Route path="/customer/invoices/:id" element={<CustomerInvoiceDetail />} />
-            </Route>
-            
-            {/* Catch-all route for 404 */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </Router>
-      </BranchProvider>
-    </AuthProvider>
+    <Router>
+      <Suspense fallback={<Loading />}>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/update-password" element={<UpdatePasswordPage />} />
+          <Route path="/" element={<ProtectedRoute element={<DashboardPage />} />} />
+          <Route path="/class-schedules" element={<ProtectedRoute element={<ClassSchedulesPage />} />} />
+          <Route path="/class/:classId/handlers" element={<ProtectedRoute element={<ClassHandlersPage />} />} />
+          <Route path="/classes/:id/schedules" element={<ProtectedRoute element={<ClassSchedulesPage />} />} />
+          <Route path="/class/:classId/schedules" element={<ProtectedRoute element={<ClassSchedulesPage />} />} />
+          <Route path="/handlers" element={<ProtectedRoute element={<HandlersPage />} />} />
+          <Route path="/classes" element={<ProtectedRoute element={<ClassesPage />} />} />
+          <Route path="/register-handler" element={<ProtectedRoute element={<RegisterHandlerPage />} />} />
+          <Route path="/home-layout" element={<ProtectedRoute element={<HomeLayoutPage />} />} />
+          <Route path="/branches" element={<ProtectedRoute element={<BranchesPage />} requiredRole="admin" />} />
+          <Route path="/trainers" element={<ProtectedRoute element={<TrainersPage />} requiredRole="admin" />} />
+          <Route path="/invoices" element={<ProtectedRoute element={<InvoicesPage />} />} />
+          <Route path="/invoices/:id" element={<ProtectedRoute element={<InvoiceDetailPage />} />} />
+          <Route path="/create-invoice" element={<ProtectedRoute element={<CreateInvoicePage />} />} />
+          <Route path="/forms" element={<ProtectedRoute element={<FormsPage />} requiredRole="admin" />} />
+          <Route path="/user-admin" element={<ProtectedRoute element={<UserAdminPage />} requiredRole="admin" />} />
+          <Route path="/calendar" element={<ProtectedRoute element={<CalendarPage />} />} />
+          <Route path="/branch-management" element={<ProtectedRoute element={<BranchManagement />} requiredRole="admin" />} />
+        </Routes>
+      </Suspense>
+    </Router>
   );
 }
 

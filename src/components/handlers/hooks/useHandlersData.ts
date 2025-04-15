@@ -1,3 +1,4 @@
+
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
@@ -45,7 +46,7 @@ export function useHandlersData() {
   const itemsPerPage = 50;
   const { currentBranch } = useBranch();
 
-  // Optimized fetching strategy to prevent constant refetching
+  // Enhanced query with proper branch filtering
   const { data: handlers = [], isLoading, refetch } = useQuery({
     queryKey: ['handlers', currentBranch?.id],
     queryFn: async () => {
@@ -97,7 +98,7 @@ export function useHandlersData() {
           throw error;
         }
         
-        console.log(`Fetched ${data?.length || 0} handlers`);
+        console.log(`Fetched ${data?.length || 0} handlers for branch: ${currentBranch?.name || 'all'}`);
         return (data || []) as Handler[];
       } catch (error) {
         console.error("Error in handlers query:", error);
@@ -105,13 +106,7 @@ export function useHandlersData() {
       }
     },
     enabled: !!currentBranch, // Only run query when a branch is selected
-    // Disable automatic refetching to prevent constant requests
-    refetchInterval: false,
     refetchOnWindowFocus: false,
-    // Keep data fresh for 1 minute before considering it stale
-    staleTime: 60000,
-    // Cache successful results for 5 minutes
-    gcTime: 300000,
   });
 
   // Filter handlers by search query
