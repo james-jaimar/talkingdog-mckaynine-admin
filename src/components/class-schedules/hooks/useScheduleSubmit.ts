@@ -57,18 +57,9 @@ export function useScheduleSubmit({
         lastEndDateTime.setDate(lastEndDateTime.getDate() + 1);
       }
 
-      // Instead of using null for trainer_id when "none" is selected,
-      // we'll use a special UUID string to represent "no trainer"
-      // This works around the not-null constraint in the database
-      const DEFAULT_TRAINER_ID = "00000000-0000-0000-0000-000000000000";
-      
-      // Transform 'none' value to the default trainer ID value
-      const trainer_id = data.trainerId === 'none' ? DEFAULT_TRAINER_ID : data.trainerId;
-      
-      // Create schedule data object
-      const scheduleData = {
+      // Create schedule data object, handling "none" for trainer_id
+      const scheduleData: any = {
         class_id: classId,
-        trainer_id: trainer_id,
         start_time: startDateTime.toISOString(),
         end_time: endDateTime.toISOString(),
         recurring: data.isRecurring,
@@ -76,14 +67,26 @@ export function useScheduleSubmit({
         selected_dates: data.selectedDates.map(date => date.toISOString()),
       };
 
+      // Only include trainer_id if it's not "none"
+      if (data.trainerId !== 'none') {
+        scheduleData.trainer_id = data.trainerId;
+      }
+
       console.log("Processed schedule data:", scheduleData);
 
       if (schedule) {
         // Update existing schedule
-        const { error } = await supabase
+        const updateQuery = supabase
           .from("class_schedules")
           .update(scheduleData)
           .eq("id", schedule.id);
+          
+        // If changing to "no trainer", we need to set the trainer_id to null explicitly
+        if (data.trainerId === 'none') {
+          updateQuery.update({ trainer_id: null });
+        }
+          
+        const { error } = await updateQuery;
           
         if (error) {
           console.error("Supabase update error:", error);

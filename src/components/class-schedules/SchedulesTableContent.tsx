@@ -20,9 +20,6 @@ export function SchedulesTableContent({
     return format(new Date(date), 'PPP p');
   };
 
-  // Special UUID to identify "No Trainer" selection
-  const DEFAULT_TRAINER_ID = "00000000-0000-0000-0000-000000000000";
-
   if (schedules.length === 0) {
     return (
       <TableRow>
@@ -44,7 +41,7 @@ export function SchedulesTableContent({
             {formatScheduleDate(schedule.end_time)}
           </TableCell>
           <TableCell>
-            {schedule.trainer_id === DEFAULT_TRAINER_ID 
+            {schedule.trainer_id === null 
               ? "No Trainer" 
               : schedule.trainer 
                 ? `${schedule.trainer.first_name} ${schedule.trainer.last_name}` 
