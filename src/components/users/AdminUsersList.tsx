@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useFetchUsers } from "./hooks/useFetchUsers";
 import { useToast } from "@/components/ui/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Card,
   CardContent,
