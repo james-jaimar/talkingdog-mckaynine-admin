@@ -4,6 +4,9 @@ import { TableCell, TableRow } from "@/components/ui/table";
 import { format } from "date-fns";
 import { TableActionMenu } from "./TableActionMenu";
 
+// Use the same constant as in useScheduleSubmit.ts
+const NO_TRAINER_UUID = "00000000-0000-0000-0000-000000000000";
+
 interface SchedulesTableContentProps {
   schedules: ClassSchedule[];
   onEdit: (schedule: ClassSchedule) => void;
@@ -41,7 +44,7 @@ export function SchedulesTableContent({
             {formatScheduleDate(schedule.end_time)}
           </TableCell>
           <TableCell>
-            {schedule.trainer_id === null 
+            {schedule.trainer_id === NO_TRAINER_UUID 
               ? "No Trainer" 
               : schedule.trainer 
                 ? `${schedule.trainer.first_name} ${schedule.trainer.last_name}` 

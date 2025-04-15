@@ -9,6 +9,9 @@ import { useTrainerOptions } from "./useTrainerOptions";
 import { useScheduleSubmit } from "./useScheduleSubmit";
 import { useClassScheduleDateUtils } from "./useClassScheduleDateUtils";
 
+// Use the same constant as in useScheduleSubmit.ts
+const NO_TRAINER_UUID = "00000000-0000-0000-0000-000000000000";
+
 export function useClassScheduleForm(
   classId: string, 
   schedule: ClassSchedule | null, 
@@ -30,8 +33,8 @@ export function useClassScheduleForm(
       ? schedule.selected_dates.map(dateStr => new Date(dateStr))
       : [];
     
-    // If trainer_id is null or undefined, use 'none' for the form
-    const trainerIdValue = schedule.trainer_id === null ? 'none' : schedule.trainer_id;
+    // If trainer_id is NO_TRAINER_UUID or null, use 'none' for the form
+    const trainerIdValue = schedule.trainer_id === NO_TRAINER_UUID ? 'none' : schedule.trainer_id;
     
     defaultValues = {
       trainerId: trainerIdValue,

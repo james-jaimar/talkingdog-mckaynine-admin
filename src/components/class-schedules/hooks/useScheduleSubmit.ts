@@ -5,6 +5,10 @@ import { useToast } from "@/components/ui/use-toast";
 import { ClassSchedule } from "../types/classSchedule";
 import { ClassScheduleFormValues } from "../schemas/classScheduleFormSchema";
 
+// Use a default trainer ID for "no trainer" option
+// This is a UUID that will represent "No Trainer" in the database
+const NO_TRAINER_UUID = "00000000-0000-0000-0000-000000000000";
+
 interface UseScheduleSubmitProps {
   classId: string;
   schedule: ClassSchedule | null;
@@ -68,18 +72,13 @@ export function useScheduleSubmit({
       };
 
       // Handle trainer_id based on selection
-      // Only add trainer_id to the data if it's not 'none'
-      if (data.trainerId !== 'none') {
-        scheduleData.trainer_id = data.trainerId;
-      } else {
-        // Set trainer_id to null when 'none' is selected
-        scheduleData.trainer_id = null;
-      }
+      // Use NO_TRAINER_UUID instead of null for "none" option
+      scheduleData.trainer_id = data.trainerId === 'none' ? NO_TRAINER_UUID : data.trainerId;
 
       console.log("Processed schedule data:", scheduleData);
 
       if (schedule) {
-        // Update existing schedule - use a single update operation
+        // Update existing schedule
         const { error } = await supabase
           .from("class_schedules")
           .update(scheduleData)
