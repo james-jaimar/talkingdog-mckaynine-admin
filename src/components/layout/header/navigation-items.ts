@@ -5,20 +5,20 @@ import {
 } from "lucide-react";
 
 export const primaryNavItems = [
-  { name: "Dashboard", path: "/customer/dashboard", icon: <Home className="inline-block mr-1 h-4 w-4" /> },
+  { name: "Dashboard", path: "/customer/dashboard", icon: Home },
 ];
 
 export const handlerNavItems = [
   { name: "Profile", path: "/customer/profile", icon: null },
-  { name: "Messages", path: "/customer/messages", icon: <MessageSquare className="inline-block mr-1 h-4 w-4" /> },
-  { name: "Invoices", path: "/customer/invoices", icon: <DollarSign className="inline-block mr-1 h-4 w-4" /> },
+  { name: "Messages", path: "/customer/messages", icon: MessageSquare },
+  { name: "Invoices", path: "/customer/invoices", icon: DollarSign },
 ];
 
 export const trainerNavItems = [
-  { name: "My Dashboard", path: "/trainer-dashboard", icon: <Clipboard className="inline-block mr-1 h-4 w-4" /> },
+  { name: "My Dashboard", path: "/trainer-dashboard", icon: Clipboard },
   { name: "Class Schedules", path: "/class-schedules", icon: null },
   { name: "Handlers", path: "/handlers", icon: null },
-  { name: "Invoices", path: "/invoices", icon: <DollarSign className="inline-block mr-1 h-4 w-4" /> },
+  { name: "Invoices", path: "/invoices", icon: DollarSign },
 ];
 
 export const adminPrimaryNavItems = [
@@ -31,9 +31,9 @@ export const adminPrimaryNavItems = [
 
 export const adminSecondaryNavItems = [
   { name: "Branches", path: "/branches", icon: null },
-  { name: "Branch Management", path: "/branch-management", icon: <GitBranch className="inline-block mr-1 h-4 w-4" /> },
+  { name: "Branch Management", path: "/branch-management", icon: GitBranch },
   { name: "Unpaid Handlers", path: "/unpaid-handlers", icon: null },
-  { name: "Forms", path: "/forms", icon: <FileText className="inline-block mr-1 h-4 w-4" /> },
-  { name: "Invoices", path: "/invoices", icon: <DollarSign className="inline-block mr-1 h-4 w-4" /> },
-  { name: "User Admin", path: "/user-admin", icon: <Users className="inline-block mr-1 h-4 w-4" /> },
+  { name: "Forms", path: "/forms", icon: FileText },
+  { name: "Invoices", path: "/invoices", icon: DollarSign },
+  { name: "User Admin", path: "/user-admin", icon: Users },
 ];
