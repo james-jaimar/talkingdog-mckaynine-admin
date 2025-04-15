@@ -6,10 +6,21 @@ import { useTrainersList } from "./hooks/useTrainersList";
 import { Loader2 } from "lucide-react";
 
 export function TrainersTable() {
-  const { data: trainers, isLoading } = useTrainersList();
+  const { data: trainers, isLoading, error } = useTrainersList();
   
   if (isLoading) {
-    return <div className="text-center p-6">Loading trainers...</div>;
+    return <div className="text-center p-6">
+      <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
+      <p>Loading trainers...</p>
+    </div>;
+  }
+  
+  if (error) {
+    return (
+      <div className="text-center p-8 border rounded-md bg-red-50">
+        <p className="text-red-600">Error loading trainers: {error.message}</p>
+      </div>
+    );
   }
   
   if (!trainers || trainers.length === 0) {
