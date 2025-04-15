@@ -12,7 +12,7 @@ import { AdminNavigation } from "./header/AdminNavigation";
 import { TrainerNavigation } from "./header/TrainerNavigation";
 import { HandlerNavigation } from "./header/HandlerNavigation";
 import { UserSection } from "./header/UserSection";
-import { Branch } from "@/context/BranchContext"; // Import Branch type
+import { Branch } from "@/context/BranchContext";
 
 export function Header() {
   const { user, logout, isAdmin, isTrainer, isHandler, role } = useAuth();
@@ -20,7 +20,6 @@ export function Header() {
   const isMobile = useIsMobile();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
-  // Safely use useBranch hook with proper typing
   let branchInfo = { currentBranch: null as Branch | null };
   try {
     branchInfo = useBranch();
@@ -48,53 +47,60 @@ export function Header() {
 
   return (
     <header className="bg-mckaynine-600 text-white sticky top-0 z-50 shadow-md">
-      <div className="container mx-auto px-4 py-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <Link to={isHandler ? "/customer/dashboard" : "/"} className="text-white font-bold text-xl mr-4">
+      {/* Top Row: Logo and User Section */}
+      <div className="border-b border-mckaynine-700">
+        <div className="container mx-auto px-4 py-2">
+          <div className="flex items-center justify-between">
+            <Link to={isHandler ? "/customer/dashboard" : "/"} className="text-white font-bold text-xl">
               McKaynine
             </Link>
             
-            {user && (
-              isAdmin ? (
-                <AdminNavigation isMobile={false} />
-              ) : isTrainer && !isAdmin ? (
-                <TrainerNavigation isMobile={false} />
-              ) : isHandler && (
-                <HandlerNavigation isMobile={false} />
-              )
-            )}
-          </div>
-          
-          <div className="flex items-center space-x-4">
-            {showBranchSelector && currentBranch && !isMobile && (
-              <BranchSelector />
-            )}
-            
-            {user && (
-              <div className="flex items-center gap-2">
-                <UserSection 
-                  email={user.email} 
-                  role={role} 
-                  isMobile={isMobile}
-                  onLogout={handleLogout}
-                />
-                {isMobile && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                    className="ml-2 text-white"
-                  >
-                    {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-                  </Button>
-                )}
-              </div>
-            )}
+            <div className="flex items-center space-x-4">
+              {showBranchSelector && currentBranch && !isMobile && (
+                <BranchSelector />
+              )}
+              
+              {user && (
+                <div className="flex items-center gap-2">
+                  <UserSection 
+                    email={user.email} 
+                    role={role} 
+                    isMobile={isMobile}
+                    onLogout={handleLogout}
+                  />
+                  {isMobile && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                      className="ml-2 text-white"
+                    >
+                      {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Bottom Row: Navigation */}
+      {user && !mobileMenuOpen && (
+        <div className="hidden md:block bg-mckaynine-600">
+          <div className="container mx-auto px-4 py-1">
+            {isAdmin ? (
+              <AdminNavigation isMobile={false} />
+            ) : isTrainer && !isAdmin ? (
+              <TrainerNavigation isMobile={false} />
+            ) : isHandler && (
+              <HandlerNavigation isMobile={false} />
+            )}
+          </div>
+        </div>
+      )}
       
+      {/* Mobile Menu */}
       {isMobile && mobileMenuOpen && user && (
         <div className="bg-mckaynine-700 py-2">
           <div className="container mx-auto px-4">
