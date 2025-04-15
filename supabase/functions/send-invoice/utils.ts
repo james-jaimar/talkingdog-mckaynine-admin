@@ -1,3 +1,4 @@
+
 /**
  * Helper function to format currency
  */

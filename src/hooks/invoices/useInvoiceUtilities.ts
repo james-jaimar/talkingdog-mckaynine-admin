@@ -6,6 +6,7 @@ import { useBranch } from "@/context/BranchContext";
 /**
  * Generates a sequential invoice number with branch code and month prefix
  * Format: INV-McD-2504-0001 for Delta branch in April 2025
+ * Format: INV-McR-2504-0001 for Randburg branch in April 2025
  */
 export const generateInvoiceNumber = async (): Promise<string> => {
   try {
@@ -35,16 +36,17 @@ export const generateInvoiceNumber = async (): Promise<string> => {
           const branchName = data[0].name;
           console.log("Invoice: Using branch from localStorage:", branchName);
           
-          // Get first letter of branch name
-          if (branchName && branchName.length > 0) {
-            branchCode = branchName.charAt(0).toUpperCase();
-          }
-          
-          // Use the first letter for branch code
+          // Use explicit branch code for known branches
           if (branchName.toLowerCase().includes('delta')) {
             branchCode = "D";
+            console.log("Using Delta branch code");
           } else if (branchName.toLowerCase().includes('randburg')) {
             branchCode = "R";
+            console.log("Using Randburg branch code");
+          } else {
+            // Get first letter of branch name for other branches
+            branchCode = branchName.charAt(0).toUpperCase();
+            console.log("Using first letter branch code:", branchCode);
           }
         }
       }
@@ -63,16 +65,17 @@ export const generateInvoiceNumber = async (): Promise<string> => {
             const branchName = String(branchData);
             console.log("Invoice: Using default branch:", branchName);
             
-            // Get first letter of branch name
-            if (branchName && branchName.length > 0) {
-              branchCode = branchName.charAt(0).toUpperCase();
-            }
-            
-            // Special handling for known branches
+            // Explicit handling for known branches
             if (branchName.toLowerCase().includes('delta')) {
               branchCode = "D";
+              console.log("Using Delta branch code from default");
             } else if (branchName.toLowerCase().includes('randburg')) {
               branchCode = "R";
+              console.log("Using Randburg branch code from default");
+            } else {
+              // Get first letter of branch name
+              branchCode = branchName.charAt(0).toUpperCase();
+              console.log("Using first letter branch code from default:", branchCode);
             }
           }
         }
@@ -81,63 +84,52 @@ export const generateInvoiceNumber = async (): Promise<string> => {
       // If we still don't have a branch code, use X as fallback
       if (!branchCode) {
         branchCode = "X";
+        console.log("Using fallback branch code X");
       }
-      
-      console.log("Invoice: Using branch code:", branchCode);
     } catch (err) {
       console.warn("Error fetching branch info, using default branch code:", err);
       branchCode = "X"; // Fallback branch code
     }
     
     // Generate the prefix for the invoice number
-    // Format: INV-McD-2504-####
+    // Format: INV-McD-2504-#### for Delta
+    // Format: INV-McR-2504-#### for Randburg
     const invoicePrefix = `INV-Mc${branchCode}-${yearMonth}-`;
     
-    // Try to count matching invoices with the same prefix
-    let count = 0;
+    // Get count of invoices with the same prefix
+    let nextSequentialNumber = 1;
     
     try {
       console.log("Querying invoices with prefix:", invoicePrefix);
       
-      // Use RPC function or direct query to count invoices with prefix
-      const { data: invoices, error } = await supabase
-        .from('invoices')
-        .select('invoice_number')
-        .ilike('invoice_number', `${invoicePrefix}%`);
+      // Use built-in RPC function for counting invoices with prefix
+      const { data: count, error: countError } = await supabase
+        .rpc('count_invoices_with_prefix', { prefix: invoicePrefix });
       
-      if (!error && invoices) {
-        count = invoices.length;
-        console.log(`Found ${count} invoices with prefix ${invoicePrefix}`);
+      if (!countError && count !== null) {
+        nextSequentialNumber = count + 1;
+        console.log(`Found ${count} existing invoices with prefix ${invoicePrefix}`);
+      } else {
+        // Fallback: direct query to count invoices
+        const { data: invoices, error: queryError } = await supabase
+          .from('invoices')
+          .select('invoice_number')
+          .ilike('invoice_number', `${invoicePrefix}%`);
+        
+        if (!queryError && invoices) {
+          nextSequentialNumber = invoices.length + 1;
+          console.log(`Direct query found ${invoices.length} invoices with prefix ${invoicePrefix}`);
+        }
       }
     } catch (err) {
       console.error("Error counting invoices:", err);
-      
-      // Simple fallback: get a total count instead
-      try {
-        // Simple count without filtering
-        const { count: totalCount } = await supabase
-          .from('invoices')
-          .select('*', { count: 'exact', head: true });
-          
-        if (totalCount !== null) {
-          // Cap at a reasonable number to be safe
-          count = Math.min(totalCount % 100, 25);
-          console.log(`Using modulo of total invoice count as fallback: ${count}`);
-        } else {
-          // Final fallback: use a small random number
-          count = Math.floor(Math.random() * 10) + 1;
-          console.log(`Using random count as fallback: ${count}`);
-        }
-      } catch (fallbackErr) {
-        console.error("Even fallback query failed:", fallbackErr);
-        count = Math.floor(Math.random() * 5) + 1;
-      }
+      nextSequentialNumber = 1; // Default to 1 if we can't count
     }
     
-    // Generate the sequential number (current count + 1)
-    const sequentialNumber = String(count + 1).padStart(4, '0');
+    // Format the sequential number with leading zeros
+    const sequentialNumber = String(nextSequentialNumber).padStart(4, '0');
     
-    // Format the invoice number as INV-McD-2504-0001
+    // Format the final invoice number
     const invoiceNumber = `${invoicePrefix}${sequentialNumber}`;
     
     console.log("Generated invoice number:", invoiceNumber);
@@ -145,12 +137,11 @@ export const generateInvoiceNumber = async (): Promise<string> => {
   } catch (error) {
     console.error("Error generating invoice number:", error);
     
-    // Ultimate fallback - timestamp-based number with random component
+    // Ultimate fallback - timestamp-based number
     const now = new Date();
     const year = now.getFullYear().toString().slice(-2);
     const month = (now.getMonth() + 1).toString().padStart(2, '0');
     const timestamp = now.getTime().toString().slice(-4);
-    const randomPart = Math.floor(Math.random() * 100).toString().padStart(3, '0');
-    return `INV-McX-${year}${month}-ERR${randomPart}`;
+    return `INV-McX-${year}${month}-${timestamp}`;
   }
 };

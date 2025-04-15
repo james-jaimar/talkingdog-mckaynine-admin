@@ -1,3 +1,4 @@
+
 /**
  * Format a number as currency (ZAR by default)
  */
@@ -29,5 +30,9 @@ export const formatPercent = (value: number): string => {
  */
 export const formatDate = (date: Date | string): string => {
   const d = typeof date === 'string' ? new Date(date) : date;
-  return d.toLocaleDateString();
+  return d.toLocaleDateString('en-ZA', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  });
 };

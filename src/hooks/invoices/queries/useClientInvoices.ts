@@ -20,7 +20,7 @@ export function useClientInvoices(clientId?: string) {
       }
 
       try {
-        console.log(`Fetching invoices for client ${clientId} in branch ${currentBranch?.name}`);
+        console.log(`Fetching invoices for client ${clientId} in branch ${currentBranch?.name || 'unknown'}`);
         
         // First, verify that the client belongs to the current branch
         if (branchId) {
@@ -54,6 +54,7 @@ export function useClientInvoices(clientId?: string) {
           throw error;
         }
         
+        console.log(`Retrieved ${data?.length || 0} invoices for client ${clientId}`);
         return data as Invoice[];
       } catch (error) {
         return handleQueryError(error, "Error fetching client invoices");

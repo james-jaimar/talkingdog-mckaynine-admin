@@ -38,12 +38,11 @@ export const createInvoiceForHandler = async ({
     } catch (error) {
       console.error("Error generating invoice number, using simple fallback:", error);
       
-      // Create a fallback invoice number based on the new format
+      // Create a fallback invoice number based on the format
       const now = new Date();
       const year = now.getFullYear().toString().slice(-2);
       const month = (now.getMonth() + 1).toString().padStart(2, '0');
       const timestamp = now.getTime().toString().slice(-4);
-      const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
       
       // Get branch info for prefix if possible
       let branchCode = "X"; // Default fallback branch code
@@ -79,31 +78,14 @@ export const createInvoiceForHandler = async ({
               }
               console.log("Using branch from localStorage in fallback:", branchData.name);
             }
-          } else {
-            const { data: branchData } = await supabase
-              .from('branches')
-              .select('name')
-              .limit(1)
-              .maybeSingle();
-              
-            if (branchData?.name) {
-              if (branchData.name.toLowerCase().includes('delta')) {
-                branchCode = "D";
-              } else if (branchData.name.toLowerCase().includes('randburg')) {
-                branchCode = "R";
-              } else {
-                branchCode = branchData.name.charAt(0).toUpperCase();
-              }
-              console.log("Using first branch in fallback:", branchData.name);
-            }
           }
         }
       } catch (err) {
         console.warn("Could not get branch info for invoice number fallback");
       }
       
-      // Format: INV-McD-2504-FB123
-      invoiceNumber = `INV-Mc${branchCode}-${year}${month}-FB${random}`;
+      // Format: INV-McR-2504-0001 or INV-McD-2504-0001
+      invoiceNumber = `INV-Mc${branchCode}-${year}${month}-${timestamp.padStart(4, '0')}`;
     }
     
     console.log("Generated invoice number:", invoiceNumber);
@@ -125,7 +107,7 @@ export const createInvoiceForHandler = async ({
       }],
     };
     
-    // Create the invoice through the mutation without fallback
+    // Create the invoice through the mutation
     try {
       await createInvoice.mutateAsync(invoiceData);
       console.log("Invoice created successfully for handler:", handlerId);
