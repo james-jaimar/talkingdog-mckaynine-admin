@@ -1,4 +1,3 @@
-
 /**
  * Helper function to format currency
  */
@@ -6,7 +5,7 @@ export function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('en-ZA', {
     style: 'currency',
     currency: 'ZAR'
-  }).format(amount);
+  }).format(amount).replace('R', 'R '); // Ensure space after R
 }
 
 /**

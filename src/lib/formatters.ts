@@ -1,4 +1,3 @@
-
 /**
  * Format a number as currency (ZAR by default)
  */
@@ -8,7 +7,7 @@ export const formatCurrency = (value: number, currency = 'ZAR', locale = 'en-ZA'
     currency: currency,
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(value);
+  }).format(value).replace('R', 'R '); // Ensure space after R
 };
 
 /**
