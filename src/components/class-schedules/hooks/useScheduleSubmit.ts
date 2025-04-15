@@ -22,6 +22,9 @@ export function useScheduleSubmit({
   const NO_TRAINER_ID = 'ba95153f-699c-4cc1-afe5-762bf30033d4';
 
   const onSubmit = async (data: ClassScheduleFormValues) => {
+    // Prevent multiple submissions
+    if (isSubmitting) return;
+    
     setIsSubmitting(true);
 
     try {
@@ -73,16 +76,18 @@ export function useScheduleSubmit({
 
       console.log("Processed schedule data:", scheduleData);
 
+      let result;
+      
       if (schedule) {
         // Update existing schedule
-        const { error } = await supabase
+        result = await supabase
           .from("class_schedules")
           .update(scheduleData)
           .eq("id", schedule.id);
           
-        if (error) {
-          console.error("Supabase update error:", error);
-          throw error;
+        if (result.error) {
+          console.error("Supabase update error:", result.error);
+          throw result.error;
         }
         
         toast({
@@ -91,13 +96,13 @@ export function useScheduleSubmit({
         });
       } else {
         // Create new schedule
-        const { error } = await supabase
+        result = await supabase
           .from("class_schedules")
           .insert(scheduleData);
           
-        if (error) {
-          console.error("Supabase insert error:", error);
-          throw error;
+        if (result.error) {
+          console.error("Supabase insert error:", result.error);
+          throw result.error;
         }
         
         toast({
@@ -106,7 +111,11 @@ export function useScheduleSubmit({
         });
       }
 
-      onSuccess();
+      // Wait a moment before triggering success callback
+      setTimeout(() => {
+        onSuccess();
+      }, 100);
+      
     } catch (error) {
       console.error("Error submitting schedule:", error);
       toast({
@@ -124,4 +133,3 @@ export function useScheduleSubmit({
     onSubmit,
   };
 }
-

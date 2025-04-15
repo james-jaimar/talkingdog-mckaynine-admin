@@ -87,14 +87,19 @@ export function ClassSchedulesTable({ classId }: ClassSchedulesTableProps) {
   };
 
   const handleEditSchedule = (schedule: ClassSchedule) => {
+    // Set the schedule to edit first
     setScheduleToEdit(schedule);
-    setIsEditModalOpen(true);
+    // Then open the modal
+    setTimeout(() => {
+      setIsEditModalOpen(true);
+    }, 10);
   };
 
   const handleEditSuccess = () => {
+    // Refresh data
     refetch();
+    // Clear the edit state
     setScheduleToEdit(null);
-    setIsEditModalOpen(false);
   };
 
   if (!user || !session) {
@@ -155,7 +160,15 @@ export function ClassSchedulesTable({ classId }: ClassSchedulesTableProps) {
       {scheduleToEdit && (
         <EditClassScheduleModal 
           open={isEditModalOpen} 
-          onOpenChange={setIsEditModalOpen} 
+          onOpenChange={(open) => {
+            setIsEditModalOpen(open);
+            // If modal is closing, clear the schedule to edit after a short delay
+            if (!open) {
+              setTimeout(() => {
+                setScheduleToEdit(null);
+              }, 100);
+            }
+          }} 
           classId={classId}
           schedule={scheduleToEdit}
           onSuccess={handleEditSuccess}
