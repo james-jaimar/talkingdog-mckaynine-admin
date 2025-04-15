@@ -11,6 +11,7 @@ import ClassDetail from "@/pages/ClassDetail";
 import ClassHandlers from "@/pages/ClassHandlers";
 import TrainerDashboard from "@/pages/TrainerDashboard";
 import PuppyClassForm from "@/pages/PuppyClassForm";
+import BranchManagement from "@/pages/BranchManagement";
 
 export const trainerRoutes = [
   {
@@ -82,6 +83,14 @@ export const trainerRoutes = [
     element: (
       <ProtectedRoute requiredRole="trainer">
         <ClassSchedules />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/branch-management",
+    element: (
+      <ProtectedRoute requiredRole="trainer">
+        <BranchManagement />
       </ProtectedRoute>
     ),
   },

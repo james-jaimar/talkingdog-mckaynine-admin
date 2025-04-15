@@ -9,6 +9,7 @@ import Forms from "@/pages/Forms";
 import Invoices from "@/pages/Invoices";
 import InvoiceDetail from "@/pages/InvoiceDetail";
 import InvoiceEdit from "@/pages/InvoiceEdit";
+import BranchManagement from "@/pages/BranchManagement";
 
 export const adminRoutes = [
   {
@@ -32,6 +33,14 @@ export const adminRoutes = [
     element: (
       <ProtectedRoute requiredRole="admin">
         <Branches />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/branch-management",
+    element: (
+      <ProtectedRoute requiredRole="admin">
+        <BranchManagement />
       </ProtectedRoute>
     ),
   },

@@ -60,6 +60,10 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       queryClient.invalidateQueries({ queryKey: ['recent-bookings'] });
       queryClient.invalidateQueries({ queryKey: ['upcoming-classes'] });
+      // Invalidate invoice queries
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['client-invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['invoice-details'] });
       
       toast({
         title: "Branch Changed",

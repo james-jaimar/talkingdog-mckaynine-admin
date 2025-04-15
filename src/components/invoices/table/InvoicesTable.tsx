@@ -12,9 +12,10 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
-import { Loader2, Calculator } from "lucide-react";
+import { Loader2, Calculator, GitBranch } from "lucide-react";
 import { formatCurrency } from "@/lib/formatters";
 import { InvoiceTableActions } from "./InvoiceTableActions";
+import { useBranch } from "@/context/BranchContext";
 
 interface InvoicesTableProps {
   invoices: Invoice[];
@@ -29,6 +30,7 @@ export function InvoicesTable({
   searchTerm, 
   currentMonthLabel = "All Invoices" 
 }: InvoicesTableProps) {
+  const { currentBranch } = useBranch();
   
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -86,14 +88,20 @@ export function InvoicesTable({
               <TableCell colSpan={7} className="h-24 text-center">
                 <div className="flex justify-center items-center">
                   <Loader2 className="h-6 w-6 animate-spin text-gray-500 mr-2" />
-                  <span>Loading invoices...</span>
+                  <span>Loading invoices{currentBranch ? ` for ${currentBranch.name}...` : '...'}</span>
                 </div>
               </TableCell>
             </TableRow>
           ) : invoices.length === 0 ? (
             <TableRow>
               <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                {searchTerm ? "No invoices match your search." : `No invoices found for ${currentMonthLabel}.`}
+                {searchTerm ? (
+                  "No invoices match your search."
+                ) : currentBranch ? (
+                  `No invoices found for ${currentBranch.name}.`
+                ) : (
+                  "No invoices found."
+                )}
               </TableCell>
             </TableRow>
           ) : (
@@ -129,6 +137,12 @@ export function InvoicesTable({
                 <div className="flex items-center">
                   <Calculator className="h-4 w-4 mr-2 text-muted-foreground" />
                   Summary ({totals.invoiceCount} invoices)
+                  {currentBranch && (
+                    <span className="inline-flex items-center ml-2 text-xs text-muted-foreground">
+                      <GitBranch className="h-3 w-3 mr-1" />
+                      {currentBranch.name}
+                    </span>
+                  )}
                 </div>
               </TableCell>
               <TableCell colSpan={2}></TableCell>

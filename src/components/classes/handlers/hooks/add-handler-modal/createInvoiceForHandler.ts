@@ -3,7 +3,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { InvoiceStatus } from "@/types/invoice";
 import { UseMutationResult } from "@tanstack/react-query";
-import { useBranch } from "@/context/BranchContext";
 
 export interface CreateInvoiceProps {
   handlerId: string;

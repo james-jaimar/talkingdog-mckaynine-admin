@@ -14,6 +14,9 @@ import { SearchInvoices } from "./SearchInvoices";
 import { DeleteInvoiceDialog } from "./dialogs/DeleteInvoiceDialog";
 import { EmailInvoiceDialog } from "./dialogs/EmailInvoiceDialog";
 import { useIsMobile } from "@/hooks/useIsMobile";
+import { useBranch } from "@/context/BranchContext";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { GitBranch } from "lucide-react";
 
 interface InvoicesListProps {
   invoices: Invoice[];
@@ -28,16 +31,19 @@ export function InvoicesList({
 }: InvoicesListProps) {
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
+  const { currentBranch } = useBranch();
   const [searchTerm, setSearchTerm] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
 
-  // Add effect to refresh data when component mounts
+  // Add effect to refresh data when component mounts or branch changes
   useEffect(() => {
-    queryClient.invalidateQueries({ queryKey: ['invoices'] });
-  }, [queryClient]);
+    if (currentBranch) {
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+    }
+  }, [queryClient, currentBranch]);
 
   // Filter invoices by search term
   const filteredInvoices = invoices.filter(
@@ -66,6 +72,7 @@ export function InvoicesList({
           <div>
             <CardTitle className="text-lg sm:text-xl">
               Invoices {currentMonthLabel && `- ${currentMonthLabel}`}
+              {currentBranch && <span className="text-sm font-normal ml-2 text-muted-foreground">({currentBranch.name})</span>}
             </CardTitle>
             <CardDescription className="text-xs sm:text-sm">
               Manage client invoices and payments
@@ -74,19 +81,30 @@ export function InvoicesList({
         </CardHeader>
 
         <CardContent className="p-3 sm:p-4">
-          <SearchInvoices 
-            searchTerm={searchTerm} 
-            onSearchChange={setSearchTerm} 
-          />
+          {!currentBranch ? (
+            <Alert className="mb-4 bg-amber-50 text-amber-800 border-amber-200">
+              <GitBranch className="h-4 w-4" />
+              <AlertDescription>
+                Please select a branch to view invoices
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <>
+              <SearchInvoices 
+                searchTerm={searchTerm} 
+                onSearchChange={setSearchTerm} 
+              />
 
-          <div className={`mt-3 ${isMobile ? 'overflow-auto -mx-3 px-3' : ''}`}>
-            <InvoicesTable 
-              invoices={filteredInvoices}
-              isLoading={isLoading}
-              searchTerm={searchTerm}
-              currentMonthLabel={currentMonthLabel}
-            />
-          </div>
+              <div className={`mt-3 ${isMobile ? 'overflow-auto -mx-3 px-3' : ''}`}>
+                <InvoicesTable 
+                  invoices={filteredInvoices}
+                  isLoading={isLoading}
+                  searchTerm={searchTerm}
+                  currentMonthLabel={currentMonthLabel}
+                />
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 

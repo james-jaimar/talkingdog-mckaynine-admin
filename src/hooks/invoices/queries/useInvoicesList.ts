@@ -3,24 +3,30 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Invoice, InvoiceItem } from "../types";
 import { handleQueryError } from "./useQueryUtils";
+import { useBranch } from "@/context/BranchContext";
 
 /**
  * Hook to fetch all invoices with client information
  */
 export function useInvoicesList() {
+  // Access current branch for filtering
+  const { currentBranch } = useBranch();
+  const branchId = currentBranch?.id;
+  
   return useQuery({
-    queryKey: ['invoices'],
+    queryKey: ['invoices', branchId], // Include branchId in the query key for proper cache invalidation
     queryFn: async () => {
-      console.log("Fetching all invoices with client data");
+      console.log("Fetching invoices filtered by branch:", currentBranch?.name);
       
       try {
-        // First, fetch invoices with client data
+        // First, fetch invoices with client data, filtered by branch
         const { data: invoicesData, error: invoicesError } = await supabase
           .from('invoices')
           .select(`
             *,
-            clients (*)
+            clients!inner (*, branch_id)
           `)
+          .eq('clients.branch_id', branchId)
           .order('created_at', { ascending: false });
 
         if (invoicesError) {
@@ -28,7 +34,7 @@ export function useInvoicesList() {
           return handleQueryError(invoicesError, "Error fetching invoices");
         }
         
-        console.log(`Retrieved ${invoicesData?.length || 0} invoices with client data`);
+        console.log(`Retrieved ${invoicesData?.length || 0} invoices for branch ${currentBranch?.name}`);
         
         if (!invoicesData || invoicesData.length === 0) {
           return [];
@@ -174,7 +180,7 @@ export function useInvoicesList() {
           }
         }));
 
-        console.log("Final processed invoices:", invoicesWithItems);
+        console.log("Final processed invoices for branch:", invoicesWithItems);
         
         // Return as Invoice array with type assertion to satisfy TypeScript
         return invoicesWithItems as Invoice[];
@@ -185,5 +191,6 @@ export function useInvoicesList() {
       }
     },
     staleTime: 1000 * 60 * 5, // 5 minutes
+    enabled: !!branchId, // Only run query when branch is selected
   });
 }
