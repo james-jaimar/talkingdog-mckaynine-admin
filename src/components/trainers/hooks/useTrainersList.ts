@@ -1,4 +1,3 @@
-
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Trainer } from "../types/trainer";
@@ -8,34 +7,46 @@ export function useTrainersList() {
     queryKey: ['trainers-list'],
     queryFn: async () => {
       try {
-        console.log("Fetching trainers from profiles table");
+        console.log("Fetching trainers from both profiles and trainers tables");
         
-        // Perform a direct SQL query using Supabase to find profiles with 'trainer' in their role
-        // This handles both exact 'trainer' matches and composite roles like 'admin,trainer'
-        const { data: trainersProfiles, error: trainersError } = await supabase
+        // STEP 1: Get trainers from profiles table (users with trainer role)
+        const { data: trainersProfiles, error: profilesError } = await supabase
           .from('profiles')
           .select('*')
           .or('role.eq.trainer,role.ilike.%trainer%');
         
-        if (trainersError) throw trainersError;
+        if (profilesError) {
+          console.error("Error fetching trainers from profiles:", profilesError);
+          throw profilesError;
+        }
         
-        console.log("Found potential trainers:", trainersProfiles?.length);
+        // STEP 2: Get trainers from trainers table
+        const { data: trainersTable, error: trainersError } = await supabase
+          .from('trainers')
+          .select('*');
+        
+        if (trainersError) {
+          console.error("Error fetching trainers from trainers table:", trainersError);
+          throw trainersError;
+        }
+        
+        console.log("Found potential trainers from profiles:", trainersProfiles?.length);
+        console.log("Found trainers from trainers table:", trainersTable?.length);
         
         // Filter to ensure we only get profiles that actually contain 'trainer' as a role
-        // This extra filter ensures we don't get false positives from the 'ilike' query
-        const filteredTrainers = trainersProfiles?.filter(profile => {
+        const filteredProfileTrainers = trainersProfiles?.filter(profile => {
           if (!profile.role) return false;
           
           // Check if 'trainer' exists as a standalone role or as part of a comma-separated list
           const roles = profile.role.split(',').map(r => r.trim().toLowerCase());
           return roles.includes('trainer');
-        });
+        }) || [];
         
-        console.log("Filtered trainers count:", filteredTrainers?.length);
+        console.log("Filtered trainers from profiles:", filteredProfileTrainers.length);
 
-        // Transform the data to match our Trainer interface
-        const formattedTrainers: Trainer[] = filteredTrainers.map(profile => {
-          // Properly handle multi-part names (e.g., "John Smith Johnson")
+        // Transform profile trainers to match our Trainer interface
+        const profileTrainers: Trainer[] = filteredProfileTrainers.map(profile => {
+          // Properly handle multi-part names
           const nameParts = profile.full_name?.split(' ') || ['', ''];
           const firstName = nameParts[0] || '';
           const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
@@ -56,8 +67,39 @@ export function useTrainersList() {
           };
         });
 
-        console.log("Final formatted trainers:", formattedTrainers);
-        return formattedTrainers;
+        // Combine both sources of trainers
+        // First, create a Map to deduplicate by user_id
+        const trainersMap = new Map<string, Trainer>();
+        
+        // Add trainers from the profiles table
+        profileTrainers.forEach(trainer => {
+          trainersMap.set(trainer.user_id, trainer);
+        });
+        
+        // Add/override with trainers from the trainers table which should have more complete data
+        trainersTable?.forEach(trainer => {
+          // If this trainer already exists in the map (from profiles), merge the data
+          if (trainer.user_id && trainersMap.has(trainer.user_id)) {
+            const existingTrainer = trainersMap.get(trainer.user_id)!;
+            trainersMap.set(trainer.user_id, {
+              ...existingTrainer,
+              ...trainer,
+              // Preserve the ID from trainers table as it's the primary ID
+              id: trainer.id,
+            });
+          } else {
+            // Otherwise add the new trainer
+            trainersMap.set(trainer.id, trainer);
+          }
+        });
+        
+        // Convert map to array
+        const combinedTrainers = Array.from(trainersMap.values());
+        
+        console.log("Final combined trainers count:", combinedTrainers.length);
+        console.log("Final trainers list:", combinedTrainers);
+        
+        return combinedTrainers;
       } catch (error) {
         console.error("Error fetching trainers:", error);
         throw error;

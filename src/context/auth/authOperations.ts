@@ -51,29 +51,36 @@ export const signupWithEmailAndPassword = async (email: string, password: string
  */
 export const logout = async () => {
   try {
-    console.log("Attempting to sign out user...");
+    console.log("Performing complete logout with session cleanup");
     
-    // First check if there's a valid session to avoid the error
-    const { data: sessionData } = await supabase.auth.getSession();
-    if (!sessionData.session) {
-      console.log("No active session found, already logged out");
-      return { success: true, error: null };
-    }
-    
-    // Attempt to sign out - this should invalidate the token server-side
-    const { error } = await supabase.auth.signOut({
-      scope: 'global' // Ensure we sign out from all tabs/windows
-    });
-    
-    if (error) throw error;
-    
-    // Clear any session data from local storage as a failsafe
+    // Clear local storage first to ensure immediate UI feedback
     localStorage.removeItem('supabase.auth.token');
     
-    // Add some delay to ensure the signOut operation completes fully
-    await new Promise(resolve => setTimeout(resolve, 100));
+    // Also clear any other auth-related items that might be in localStorage
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.includes('supabase.auth')) {
+        localStorage.removeItem(key);
+      }
+    }
     
-    console.log("Sign out completed successfully");
+    // Force session expiry on the server side
+    const { error } = await supabase.auth.signOut({
+      scope: 'global' // Sign out from all tabs/windows
+    });
+    
+    if (error) {
+      console.error("Error during signout API call:", error);
+      // Even if there's an API error, continue with client-side cleanup
+    }
+    
+    // Add some delay to ensure the signOut operation completes
+    await new Promise(resolve => setTimeout(resolve, 150));
+    
+    // Verify the session is gone
+    const { data } = await supabase.auth.getSession();
+    console.log("Session after logout:", data.session ? "Still present" : "Successfully cleared");
+    
     return { success: true, error: null };
   } catch (error) {
     console.error("Logout error:", error);

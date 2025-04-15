@@ -47,7 +47,7 @@ export const AuthProvider: React.FC<PropsWithChildren> = ({ children }) => {
         login: loginWithEmailAndPassword,
         signup: signupWithEmailAndPassword,
         logout: async () => {
-          // Clear state first for immediate UI update
+          // Clear state immediately for the best user experience
           setUser(null);
           setSession(null);
           setRole(null);
@@ -55,9 +55,11 @@ export const AuthProvider: React.FC<PropsWithChildren> = ({ children }) => {
           
           try {
             // Force a navigation to the auth page immediately
+            // This ensures the user sees the login screen right away
             window.location.href = '/auth';
             
-            // Perform the actual logout operation
+            // The actual logout operation happens in the background
+            // Even if it fails, the user is already redirected to the login page
             const result = await logout();
             return result;
           } catch (error) {

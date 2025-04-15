@@ -4,31 +4,42 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { EditTrainerModal } from "./EditTrainerModal";
 import { useTrainersList } from "./hooks/useTrainersList";
 import { Button } from "@/components/ui/button";
-import { Loader2, RefreshCw } from "lucide-react";
+import { Loader2, RefreshCw, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useState } from "react";
 
 export function TrainersTable() {
-  const { data: trainers, isLoading, error, refetch } = useTrainersList();
+  const { data: trainers, isLoading, error, refetch, isFetching } = useTrainersList();
+  const [isRefreshing, setIsRefreshing] = useState(false);
   
-  const handleRefresh = () => {
-    refetch();
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await refetch();
+    setTimeout(() => setIsRefreshing(false), 500); // Give visual feedback
   };
   
   if (isLoading) {
-    return <div className="text-center p-6">
-      <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
-      <p>Loading trainers...</p>
-    </div>;
+    return (
+      <div className="text-center p-6">
+        <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
+        <p>Loading trainers...</p>
+      </div>
+    );
   }
   
   if (error) {
     return (
-      <div className="text-center p-8 border rounded-md bg-red-50">
-        <p className="text-red-600 mb-4">Error loading trainers: {error.message}</p>
-        <Button onClick={handleRefresh} variant="outline" size="sm">
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Try Again
-        </Button>
-      </div>
+      <Alert variant="destructive" className="mb-6">
+        <AlertCircle className="h-4 w-4" />
+        <AlertTitle>Error loading trainers</AlertTitle>
+        <AlertDescription className="flex flex-col gap-2">
+          <p>{error instanceof Error ? error.message : "An unknown error occurred"}</p>
+          <Button onClick={handleRefresh} variant="outline" size="sm" className="w-fit">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Try Again
+          </Button>
+        </AlertDescription>
+      </Alert>
     );
   }
   
@@ -46,10 +57,18 @@ export function TrainersTable() {
 
   return (
     <div>
-      <div className="flex justify-end mb-4">
-        <Button onClick={handleRefresh} variant="outline" size="sm">
-          <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-          Refresh List
+      <div className="flex justify-between mb-4">
+        <p className="text-sm text-muted-foreground">
+          {trainers.length} trainer{trainers.length !== 1 ? 's' : ''} found
+        </p>
+        <Button 
+          onClick={handleRefresh} 
+          variant="outline" 
+          size="sm" 
+          disabled={isRefreshing || isFetching}
+        >
+          <RefreshCw className={`h-4 w-4 mr-2 ${(isRefreshing || isFetching) ? 'animate-spin' : ''}`} />
+          {isRefreshing ? 'Refreshing...' : 'Refresh List'}
         </Button>
       </div>
       
@@ -71,17 +90,25 @@ export function TrainersTable() {
                       <AvatarImage src={trainer.avatar_url} alt={`${trainer.first_name} ${trainer.last_name}`} />
                     ) : null}
                     <AvatarFallback>
-                      {trainer.first_name.charAt(0)}{trainer.last_name.charAt(0)}
+                      {trainer.first_name?.charAt(0) || ''}
+                      {trainer.last_name?.charAt(0) || ''}
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <div className="font-medium">{trainer.first_name} {trainer.last_name}</div>
+                    <div className="font-medium">
+                      {trainer.first_name || ''} {trainer.last_name || ''}
+                      {trainer.user_id ? (
+                        <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded-full">
+                          User
+                        </span>
+                      ) : null}
+                    </div>
                   </div>
                 </div>
               </TableCell>
               <TableCell>
                 <div className="space-y-1">
-                  <div className="text-sm">{trainer.email}</div>
+                  <div className="text-sm">{trainer.email || 'No email'}</div>
                   {trainer.phone && <div className="text-sm text-muted-foreground">{trainer.phone}</div>}
                 </div>
               </TableCell>
