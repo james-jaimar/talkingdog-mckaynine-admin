@@ -24,8 +24,10 @@ export function PaymentStatusBadge({ invoiceData, isLoadingInvoice }: PaymentSta
       icon: AlertTriangle 
     };
     
-    // Enhanced detection of paid status
-    if (invoiceData.isPaid || invoiceData.invoices.payment_received) {
+    // Enhanced detection of paid status - check both isPaid flag and status/payment_received
+    if (invoiceData.isPaid || 
+        invoiceData.invoices.payment_received || 
+        invoiceData.invoices.status === 'paid') {
       return { 
         status: 'paid', 
         display: 'Paid', 

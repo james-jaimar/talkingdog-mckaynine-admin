@@ -23,6 +23,10 @@ export function useCancelInvoice() {
     onSuccess: (_, invoiceId) => {
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       queryClient.invalidateQueries({ queryKey: ['invoice', invoiceId] });
+      
+      // Also invalidate booking-invoice queries to update payment status badges
+      queryClient.invalidateQueries({ queryKey: ['booking-invoice'] });
+      
       toast.success("Invoice cancelled");
     },
     onError: (error: Error) => {

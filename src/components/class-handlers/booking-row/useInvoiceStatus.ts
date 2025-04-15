@@ -36,7 +36,8 @@ export function useInvoiceStatus(bookingId: string) {
           
           // Check if any invoice is paid
           const paidInvoice = validInvoices.find(item => 
-            item.invoices && item.invoices.payment_received === true
+            item.invoices && 
+            (item.invoices.payment_received === true || item.invoices.status === 'paid')
           );
           
           if (paidInvoice) {

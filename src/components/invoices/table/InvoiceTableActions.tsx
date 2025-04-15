@@ -18,12 +18,16 @@ import {
   Send, 
   Ban, 
   Check, 
-  ArrowUpDown,
-  FileSpreadsheet
+  ArrowUpDown
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { Invoice } from "@/types/invoice";
-import { useDeleteInvoice, useMarkInvoiceAsPaid, useMarkInvoiceAsSent, useCancelInvoice } from "@/hooks/useInvoices";
+import { 
+  useDeleteInvoice, 
+  useMarkInvoiceAsPaid, 
+  useMarkInvoiceAsSent, 
+  useCancelInvoice 
+} from "@/hooks/useInvoices";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 interface InvoiceTableActionsProps {
