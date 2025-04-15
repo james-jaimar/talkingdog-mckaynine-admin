@@ -31,6 +31,7 @@ export function useClientInvoices(clientId?: string) {
             .maybeSingle();
             
           if (clientError) {
+            console.error("Error fetching client data:", clientError);
             throw clientError;
           }
           
@@ -40,26 +41,56 @@ export function useClientInvoices(clientId?: string) {
           }
         }
         
-        // Fetch invoices for this client
+        // Fetch invoices for this client with detailed information
         const { data, error } = await supabase
           .from('invoices')
           .select(`
             *,
-            items:invoice_items(*)
+            items:invoice_items(
+              id,
+              description,
+              quantity,
+              unit_price,
+              amount,
+              booking_id
+            )
           `)
           .eq('client_id', clientId)
           .order('created_at', { ascending: false });
 
         if (error) {
+          console.error("Error fetching client invoices:", error);
           throw error;
         }
         
         console.log(`Retrieved ${data?.length || 0} invoices for client ${clientId}`);
-        return data as Invoice[];
+        
+        // Perform additional validation and data transformation
+        const processedInvoices = data.map(invoice => {
+          // Make sure items is always an array, even if null from database
+          const items = invoice.items || [];
+          
+          // Calculate totals to ensure consistency
+          const subtotal = items.reduce((sum: number, item: any) => sum + (item.amount || 0), 0);
+          const taxAmount = subtotal * (invoice.tax_rate / 100);
+          const total = subtotal + taxAmount;
+          
+          return {
+            ...invoice,
+            items,
+            subtotal,
+            tax_amount: taxAmount,
+            total
+          };
+        });
+        
+        return processedInvoices as Invoice[];
       } catch (error) {
         return handleQueryError(error, "Error fetching client invoices");
       }
     },
     enabled: !!clientId && !!branchId,
+    staleTime: 1000 * 60, // 1 minute
+    refetchOnWindowFocus: true,
   });
 }

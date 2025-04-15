@@ -22,13 +22,19 @@ interface InvoicesTableProps {
   isLoading: boolean;
   searchTerm: string;
   currentMonthLabel?: string;
+  onDeleteInvoice?: (id: string) => void;
+  onEmailInvoice?: (invoice: Invoice) => void;
+  onTransferInvoice?: (invoice: Invoice) => void;
 }
 
 export function InvoicesTable({ 
   invoices, 
   isLoading, 
   searchTerm, 
-  currentMonthLabel = "All Invoices" 
+  currentMonthLabel = "All Invoices",
+  onDeleteInvoice,
+  onEmailInvoice,
+  onTransferInvoice
 }: InvoicesTableProps) {
   const { currentBranch } = useBranch();
   
@@ -66,6 +72,13 @@ export function InvoicesTable({
   };
   
   const totals = calculateInvoiceTotals();
+
+  // Handle opening the transfer dialog via the action menu
+  const handleTransferInvoice = (invoice: Invoice) => {
+    if (onTransferInvoice) {
+      onTransferInvoice(invoice);
+    }
+  };
   
   return (
     <div className="rounded-md border">
@@ -123,7 +136,10 @@ export function InvoicesTable({
                 <TableCell>{getStatusBadge(invoice.status)}</TableCell>
                 <TableCell>{formatCurrency(invoice.total)}</TableCell>
                 <TableCell className="text-right">
-                  <InvoiceTableActions invoice={invoice} />
+                  <InvoiceTableActions 
+                    invoice={invoice} 
+                    onOpenTransferDialog={handleTransferInvoice}
+                  />
                 </TableCell>
               </TableRow>
             ))

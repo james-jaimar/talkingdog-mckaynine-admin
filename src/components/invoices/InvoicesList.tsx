@@ -13,6 +13,7 @@ import { InvoicesTable } from "./table/InvoicesTable";
 import { SearchInvoices } from "./SearchInvoices";
 import { DeleteInvoiceDialog } from "./dialogs/DeleteInvoiceDialog";
 import { EmailInvoiceDialog } from "./dialogs/EmailInvoiceDialog";
+import { TransferInvoiceDialog } from "./dialogs/TransferInvoiceDialog";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useBranch } from "@/context/BranchContext";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -35,6 +36,7 @@ export function InvoicesList({
   const [searchTerm, setSearchTerm] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+  const [transferDialogOpen, setTransferDialogOpen] = useState(false);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
 
@@ -63,6 +65,11 @@ export function InvoicesList({
   const handleEmailRequest = (invoice: Invoice) => {
     setSelectedInvoice(invoice);
     setEmailDialogOpen(true);
+  };
+
+  const handleTransferRequest = (invoice: Invoice) => {
+    setSelectedInvoice(invoice);
+    setTransferDialogOpen(true);
   };
 
   return (
@@ -101,6 +108,9 @@ export function InvoicesList({
                   isLoading={isLoading}
                   searchTerm={searchTerm}
                   currentMonthLabel={currentMonthLabel}
+                  onDeleteInvoice={handleDeleteRequest}
+                  onEmailInvoice={handleEmailRequest}
+                  onTransferInvoice={handleTransferRequest}
                 />
               </div>
             </>
@@ -118,6 +128,12 @@ export function InvoicesList({
         open={emailDialogOpen} 
         onOpenChange={setEmailDialogOpen}
         selectedInvoice={selectedInvoice}
+      />
+
+      <TransferInvoiceDialog
+        open={transferDialogOpen}
+        onOpenChange={setTransferDialogOpen}
+        invoice={selectedInvoice}
       />
     </>
   );

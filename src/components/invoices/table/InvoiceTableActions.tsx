@@ -1,113 +1,197 @@
 
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Invoice } from "@/types/invoice";
-import { Button } from "@/components/ui/button";
-import {
+import { 
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Eye, Edit, Trash, Mail, CheckCircle, BanIcon } from "lucide-react";
-import { useInvoices } from "@/hooks/useInvoices";
+import { Button } from "@/components/ui/button";
+import { 
+  MoreHorizontal, 
+  Eye, 
+  Edit, 
+  Trash, 
+  Send, 
+  Ban, 
+  Check, 
+  ArrowUpDown,
+  FileSpreadsheet
+} from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
+import { Invoice } from "@/types/invoice";
+import { useDeleteInvoice, useMarkInvoiceAsPaid, useMarkInvoiceAsSent, useCancelInvoice } from "@/hooks/useInvoices";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 interface InvoiceTableActionsProps {
   invoice: Invoice;
+  onOpenTransferDialog?: (invoice: Invoice) => void;
 }
 
-export function InvoiceTableActions({ invoice }: InvoiceTableActionsProps) {
+export function InvoiceTableActions({ invoice, onOpenTransferDialog }: InvoiceTableActionsProps) {
   const navigate = useNavigate();
-  const { deleteInvoice, markAsPaid, markAsSent, cancelInvoice } = useInvoices();
-  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
+  const { toast } = useToast();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  
+  // Mutations
+  const deleteInvoice = useDeleteInvoice();
+  const markAsPaid = useMarkInvoiceAsPaid();
+  const markAsSent = useMarkInvoiceAsSent();
+  const cancelInvoice = useCancelInvoice();
 
-  const handleViewInvoice = (id: string) => {
-    navigate(`/invoices/${id}`);
+  const handleView = () => navigate(`/invoices/${invoice.id}`);
+  const handleEdit = () => navigate(`/invoices/${invoice.id}/edit`);
+  
+  const handleMarkAsPaid = () => {
+    if (invoice.status !== 'paid') {
+      markAsPaid.mutate(invoice.id, {
+        onSuccess: () => {
+          toast({
+            title: "Invoice marked as paid",
+            description: `Invoice ${invoice.invoice_number} has been marked as paid.`,
+          });
+        }
+      });
+    }
   };
 
-  const handleEditInvoice = (id: string) => {
-    navigate(`/invoices/${id}/edit`);
+  const handleMarkAsSent = () => {
+    if (invoice.status !== 'sent' && invoice.status !== 'paid') {
+      markAsSent.mutate(invoice.id, {
+        onSuccess: () => {
+          toast({
+            title: "Invoice marked as sent",
+            description: `Invoice ${invoice.invoice_number} status updated to sent.`,
+          });
+        }
+      });
+    }
   };
 
-  const handleDeleteInvoice = (id: string) => {
-    // We just set the ID - the actual deletion is handled by the parent component's dialog
-    setSelectedInvoiceId(id);
-    return id; // Return ID for parent component to use
+  const handleCancel = () => {
+    if (invoice.status !== 'cancelled') {
+      cancelInvoice.mutate(invoice.id, {
+        onSuccess: () => {
+          toast({
+            title: "Invoice cancelled",
+            description: `Invoice ${invoice.invoice_number} has been cancelled.`,
+          });
+        }
+      });
+    }
   };
 
-  const handleMarkAsPaid = async (id: string) => {
-    await markAsPaid.mutateAsync(id);
+  const handleDeleteConfirm = () => {
+    deleteInvoice.mutate(invoice.id, {
+      onSuccess: () => {
+        setDeleteDialogOpen(false);
+        toast({
+          title: "Invoice deleted",
+          description: `Invoice ${invoice.invoice_number} has been deleted.`,
+        });
+      }
+    });
   };
 
-  const handleMarkAsSent = async (id: string) => {
-    await markAsSent.mutateAsync(id);
+  const handleTransfer = () => {
+    if (onOpenTransferDialog) {
+      onOpenTransferDialog(invoice);
+    }
   };
 
-  const handleCancelInvoice = async (id: string) => {
-    await cancelInvoice.mutateAsync(id);
-  };
-
-  const handleEmailInvoice = (invoice: Invoice) => {
-    // We just return the invoice - the actual email dialog is handled by the parent component
-    return invoice;
-  };
+  const isPending = 
+    markAsPaid.isPending || 
+    markAsSent.isPending || 
+    cancelInvoice.isPending || 
+    deleteInvoice.isPending;
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-          <MoreHorizontal className="h-4 w-4" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => handleViewInvoice(invoice.id)}>
-          <Eye className="mr-2 h-4 w-4" />
-          View
-        </DropdownMenuItem>
-        
-        <DropdownMenuItem onClick={() => handleEmailInvoice(invoice)}>
-          <Mail className="mr-2 h-4 w-4" />
-          Send by Email
-        </DropdownMenuItem>
-        
-        {invoice.status !== 'paid' && invoice.status !== 'cancelled' && (
-          <DropdownMenuItem onClick={() => handleEditInvoice(invoice.id)}>
-            <Edit className="mr-2 h-4 w-4" />
-            Edit
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" className="h-8 w-8 p-0">
+            <span className="sr-only">Open menu</span>
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+          <DropdownMenuItem onClick={handleView} disabled={isPending}>
+            <Eye className="mr-2 h-4 w-4" /> View
           </DropdownMenuItem>
-        )}
-        
-        {invoice.status === 'draft' && (
-          <DropdownMenuItem onClick={() => handleMarkAsSent(invoice.id)}>
-            <Mail className="mr-2 h-4 w-4" />
-            Mark as Sent
+          <DropdownMenuItem onClick={handleEdit} disabled={isPending || invoice.status === 'paid'}>
+            <Edit className="mr-2 h-4 w-4" /> Edit
           </DropdownMenuItem>
-        )}
-        
-        {(invoice.status === 'sent' || invoice.status === 'overdue') && (
-          <DropdownMenuItem onClick={() => handleMarkAsPaid(invoice.id)}>
-            <CheckCircle className="mr-2 h-4 w-4" />
-            Mark as Paid
-          </DropdownMenuItem>
-        )}
-        
-        {invoice.status !== 'cancelled' && invoice.status !== 'paid' && (
-          <DropdownMenuItem onClick={() => handleCancelInvoice(invoice.id)}>
-            <BanIcon className="mr-2 h-4 w-4" />
-            Cancel
-          </DropdownMenuItem>
-        )}
-        
-        {invoice.status !== 'paid' && (
+          
+          <DropdownMenuSeparator />
+          <DropdownMenuLabel>Status Actions</DropdownMenuLabel>
+          
           <DropdownMenuItem 
-            onClick={() => handleDeleteInvoice(invoice.id)}
+            onClick={handleMarkAsPaid}
+            disabled={isPending || invoice.status === 'paid' || invoice.status === 'cancelled'}
+          >
+            <Check className="mr-2 h-4 w-4 text-green-600" /> Mark as Paid
+          </DropdownMenuItem>
+          
+          <DropdownMenuItem 
+            onClick={handleMarkAsSent}
+            disabled={isPending || invoice.status === 'sent' || invoice.status === 'paid' || invoice.status === 'cancelled'}
+          >
+            <Send className="mr-2 h-4 w-4 text-blue-600" /> Mark as Sent
+          </DropdownMenuItem>
+          
+          <DropdownMenuItem 
+            onClick={handleCancel}
+            disabled={isPending || invoice.status === 'cancelled' || invoice.status === 'paid'}
+          >
+            <Ban className="mr-2 h-4 w-4 text-red-600" /> Cancel Invoice
+          </DropdownMenuItem>
+          
+          <DropdownMenuSeparator />
+          <DropdownMenuLabel>Advanced</DropdownMenuLabel>
+          
+          <DropdownMenuItem 
+            onClick={handleTransfer}
+            disabled={isPending || !onOpenTransferDialog}
+            className={onOpenTransferDialog ? '' : 'opacity-50'}
+          >
+            <ArrowUpDown className="mr-2 h-4 w-4" /> Transfer Invoice
+          </DropdownMenuItem>
+          
+          <DropdownMenuItem 
+            onClick={() => setDeleteDialogOpen(true)}
+            disabled={isPending}
             className="text-red-600 focus:text-red-600"
           >
-            <Trash className="mr-2 h-4 w-4" />
-            Delete
+            <Trash className="mr-2 h-4 w-4" /> Delete Invoice
           </DropdownMenuItem>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to delete this invoice?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete invoice {invoice.invoice_number}
+              and remove it from our servers.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteInvoice.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteConfirm}
+              disabled={deleteInvoice.isPending}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {deleteInvoice.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
