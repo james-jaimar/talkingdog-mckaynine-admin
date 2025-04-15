@@ -38,7 +38,7 @@ export const AuthProvider: React.FC<PropsWithChildren> = ({ children }) => {
       value={{
         user,
         session,
-        role, // Make sure role is included in the context value
+        role,
         isAdmin,
         isTrainer,
         isHandler,
@@ -51,8 +51,13 @@ export const AuthProvider: React.FC<PropsWithChildren> = ({ children }) => {
           setUser(null);
           setSession(null);
           setRole(null);
+          setTrainerProfile(null);
           
           try {
+            // Force a navigation to the auth page immediately
+            window.location.href = '/auth';
+            
+            // Perform the actual logout operation
             const result = await logout();
             return result;
           } catch (error) {

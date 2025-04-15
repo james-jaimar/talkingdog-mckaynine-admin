@@ -47,10 +47,12 @@ export const signupWithEmailAndPassword = async (email: string, password: string
 };
 
 /**
- * Logout the current user
+ * Logout the current user with thorough cleanup
  */
 export const logout = async () => {
   try {
+    console.log("Attempting to sign out user...");
+    
     // First check if there's a valid session to avoid the error
     const { data: sessionData } = await supabase.auth.getSession();
     if (!sessionData.session) {
@@ -58,10 +60,20 @@ export const logout = async () => {
       return { success: true, error: null };
     }
     
-    // Attempt to sign out
-    const { error } = await supabase.auth.signOut();
+    // Attempt to sign out - this should invalidate the token server-side
+    const { error } = await supabase.auth.signOut({
+      scope: 'global' // Ensure we sign out from all tabs/windows
+    });
+    
     if (error) throw error;
     
+    // Clear any session data from local storage as a failsafe
+    localStorage.removeItem('supabase.auth.token');
+    
+    // Add some delay to ensure the signOut operation completes fully
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    console.log("Sign out completed successfully");
     return { success: true, error: null };
   } catch (error) {
     console.error("Logout error:", error);
