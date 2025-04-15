@@ -76,6 +76,8 @@ export function useScheduleSubmit({
         selected_dates: data.selectedDates.map(date => date.toISOString()),
       };
 
+      console.log("Processed schedule data:", scheduleData);
+
       if (schedule) {
         // Update existing schedule
         const { error } = await supabase
@@ -83,7 +85,10 @@ export function useScheduleSubmit({
           .update(scheduleData)
           .eq("id", schedule.id);
           
-        if (error) throw error;
+        if (error) {
+          console.error("Supabase update error:", error);
+          throw error;
+        }
         
         toast({
           title: "Schedule updated",
@@ -95,7 +100,10 @@ export function useScheduleSubmit({
           .from("class_schedules")
           .insert(scheduleData);
           
-        if (error) throw error;
+        if (error) {
+          console.error("Supabase insert error:", error);
+          throw error;
+        }
         
         toast({
           title: "Schedule created",

@@ -18,6 +18,9 @@ export function useClassScheduleForm(
   const { trainers, isLoadingTrainers } = useTrainerOptions();
   const { isSubmitting, onSubmit } = useScheduleSubmit({ classId, schedule, onSuccess });
   
+  // Special UUID to identify "No Trainer" selection
+  const DEFAULT_TRAINER_ID = "00000000-0000-0000-0000-000000000000";
+  
   // Parse existing schedule data if editing
   let defaultValues: ClassScheduleFormValues;
   
@@ -30,8 +33,11 @@ export function useClassScheduleForm(
       ? schedule.selected_dates.map(dateStr => new Date(dateStr))
       : [];
     
+    // If trainer_id is the special default value, use 'none' for the form
+    const trainerIdValue = schedule.trainer_id === DEFAULT_TRAINER_ID ? 'none' : schedule.trainer_id;
+    
     defaultValues = {
-      trainerId: schedule.trainer_id,
+      trainerId: trainerIdValue,
       startTime: format(startDate, "HH:mm"),
       endTime: format(endDate, "HH:mm"),
       isRecurring: schedule.recurring || false,
