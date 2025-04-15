@@ -1,3 +1,4 @@
+
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Trainer } from "../types/trainer";
@@ -13,7 +14,7 @@ export function useTrainersList() {
         const { data: trainersProfiles, error: profilesError } = await supabase
           .from('profiles')
           .select('*')
-          .or('role.eq.trainer,role.ilike.%trainer%');
+          .filter('role', 'ilike', '%trainer%');
         
         if (profilesError) {
           console.error("Error fetching trainers from profiles:", profilesError);
@@ -67,13 +68,14 @@ export function useTrainersList() {
           };
         });
 
-        // Combine both sources of trainers
-        // First, create a Map to deduplicate by user_id
+        // Combine both sources of trainers using a Map to deduplicate
         const trainersMap = new Map<string, Trainer>();
         
         // Add trainers from the profiles table
         profileTrainers.forEach(trainer => {
-          trainersMap.set(trainer.user_id, trainer);
+          if (trainer.user_id) {
+            trainersMap.set(trainer.user_id, trainer);
+          }
         });
         
         // Add/override with trainers from the trainers table which should have more complete data
@@ -87,8 +89,11 @@ export function useTrainersList() {
               // Preserve the ID from trainers table as it's the primary ID
               id: trainer.id,
             });
+          } else if (trainer.user_id) {
+            // Add using user_id as key
+            trainersMap.set(trainer.user_id, trainer);
           } else {
-            // Otherwise add the new trainer
+            // Fallback to using id as key if no user_id
             trainersMap.set(trainer.id, trainer);
           }
         });

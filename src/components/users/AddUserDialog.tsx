@@ -85,6 +85,8 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
       const userId = data.user?.id;
       if (!userId) throw new Error("User creation failed - no user ID returned");
       
+      console.log("User created successfully with ID:", userId);
+      
       // Update profile with role and app_id
       const { error: profileError } = await supabase
         .from('profiles')
@@ -99,6 +101,34 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
       
       if (profileError) throw profileError;
       
+      // If role is trainer, also create an entry in the trainers table
+      if (values.role === 'trainer') {
+        console.log("Adding user to trainers table");
+        
+        // Parse the name for first and last name
+        const fullName = values.fullName || '';
+        const nameParts = fullName.split(' ');
+        const firstName = nameParts[0] || '';
+        const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+        
+        const { error: trainerError } = await supabase
+          .from('trainers')
+          .insert({
+            user_id: userId,
+            email: values.email,
+            first_name: firstName,
+            last_name: lastName,
+            specialties: []
+          });
+        
+        if (trainerError) {
+          console.error("Error adding user to trainers table:", trainerError);
+          throw trainerError;
+        }
+        
+        console.log("User successfully added to trainers table");
+      }
+      
       // Handle success
       toast({
         title: "User added successfully",
@@ -111,6 +141,7 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
       
       // Refresh data
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      queryClient.invalidateQueries({ queryKey: ['trainers-list'] });
       onUserAdded();
       
     } catch (error: any) {
