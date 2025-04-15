@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { EditTrainerModal } from "./EditTrainerModal";
@@ -14,84 +13,15 @@ import { useToast } from "@/components/ui/use-toast";
 import { Link } from "react-router-dom";
 import { useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useTrainersList } from "./hooks/useTrainersList";
 
 export function TrainersTable() {
   const { currentBranch } = useBranch();
   const { toast } = useToast();
   const [deletionError, setDeletionError] = useState<string | null>(null);
 
-  const { data: trainers, isLoading, refetch } = useQuery({
-    queryKey: ['trainers', currentBranch?.id],
-    queryFn: async () => {
-      console.log("Fetching trainers for branch:", currentBranch?.id || "all");
-      
-      let query = supabase
-        .from('trainers')
-        .select(`
-          *,
-          branches:branch_id (
-            name
-          )
-        `);
-      
-      // Filter by branch if one is selected
-      if (currentBranch) {
-        query = query.eq('branch_id', currentBranch.id);
-      }
-      
-      const { data: trainersData, error: trainersError } = await query;
-      
-      if (trainersError) {
-        console.error("Error fetching trainers:", trainersError);
-        throw trainersError;
-      }
-      
-      // Separately fetch profile information for each trainer with a user_id
-      const trainerProfiles = await Promise.all(
-        (trainersData || []).map(async (trainer) => {
-          if (!trainer.user_id) {
-            // Return trainer with null profiles if no user_id
-            return {
-              ...trainer,
-              branches: trainer.branches || null,
-              profiles: null
-            };
-          }
-          
-          // Fetch profile for this trainer's user_id
-          const { data: profileData, error: profileError } = await supabase
-            .from('profiles')
-            .select('username, role')
-            .eq('id', trainer.user_id)
-            .single();
-          
-          if (profileError) {
-            console.error(`Error fetching profile for trainer ${trainer.id}:`, profileError);
-            return {
-              ...trainer,
-              branches: trainer.branches || null,
-              profiles: null
-            };
-          }
-          
-          return {
-            ...trainer,
-            branches: trainer.branches || null,
-            profiles: profileData
-          };
-        })
-      );
-      
-      console.log("Fetched trainers with profiles:", trainerProfiles);
-      return trainerProfiles as unknown as (Trainer & { 
-        branches: { name: string } | null;
-        profiles: { username: string; role: string } | null;
-      })[];
-    },
-    enabled: !!currentBranch // Only run query when a branch is selected
-  });
+  const { data: trainers, isLoading, refetch } = useTrainersList();
   
-  // Add mutation for deleting trainers
   const { mutate: deleteTrainer } = useMutation({
     mutationFn: async (trainerId: string) => {
       try {
@@ -283,7 +213,7 @@ export function TrainersTable() {
   if (!trainers || trainers.length === 0) {
     return (
       <div className="text-center p-8 border rounded-md bg-gray-50">
-        <p className="text-muted-foreground">No trainers found. Add your first trainer to get started.</p>
+        <p className="text-muted-foreground">No trainers found. Users with trainer role will appear here.</p>
       </div>
     );
   }
@@ -340,10 +270,10 @@ export function TrainersTable() {
                 </div>
               </TableCell>
               <TableCell>
-                {trainer.branches ? (
+                {trainer.branch_id ? (
                   <div className="flex items-center gap-1">
                     <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span>{trainer.branches.name}</span>
+                    <span>{trainer.branch_id}</span>
                   </div>
                 ) : (
                   <span className="text-muted-foreground">Unassigned</span>
@@ -371,11 +301,6 @@ export function TrainersTable() {
                         Has access
                       </span>
                     </div>
-                    {trainer.profiles && (
-                      <ExtendedBadge variant="info" className="text-xs">
-                        {trainer.profiles.role}
-                      </ExtendedBadge>
-                    )}
                     <Button 
                       variant="ghost" 
                       size="sm" 
