@@ -47,7 +47,7 @@ export function Header() {
 
   return (
     <header className="bg-mckaynine-600 text-white sticky top-0 z-50 shadow-md">
-      {/* Main Row: Logo, Navigation, Branch Selector, and User Info */}
+      {/* Main Row: Logo, Primary Navigation, Branch Selector, and User Info */}
       <div className="border-b border-mckaynine-700">
         <div className="container mx-auto px-4 py-2">
           <div className="flex items-center justify-between">
@@ -59,9 +59,9 @@ export function Header() {
               {user && !isMobile && (
                 <div className="hidden md:block">
                   {isAdmin ? (
-                    <AdminNavigation isMobile={false} />
+                    <AdminNavigation isMobile={false} showPrimaryOnly={true} />
                   ) : isTrainer && !isAdmin ? (
-                    <TrainerNavigation isMobile={false} />
+                    <TrainerNavigation isMobile={false} showPrimaryOnly={true} />
                   ) : isHandler && (
                     <HandlerNavigation isMobile={false} />
                   )}
@@ -80,7 +80,7 @@ export function Header() {
                     email={user.email} 
                     role={role} 
                     isMobile={isMobile}
-                    onLogout={null}  // We'll handle logout in the second row
+                    onLogout={null}
                   />
                   {isMobile && (
                     <Button
@@ -99,11 +99,18 @@ export function Header() {
         </div>
       </div>
 
-      {/* Secondary Row: Logout Button */}
+      {/* Secondary Row: Secondary Navigation and Logout */}
       {user && !isMobile && (
         <div className="hidden md:block bg-mckaynine-700">
           <div className="container mx-auto px-4 py-1">
-            <div className="flex justify-end">
+            <div className="flex justify-between items-center">
+              <div className="flex-1">
+                {isAdmin ? (
+                  <AdminNavigation isMobile={false} showPrimaryOnly={false} />
+                ) : isTrainer && !isAdmin ? (
+                  <TrainerNavigation isMobile={false} showPrimaryOnly={false} />
+                ) : null}
+              </div>
               <Button 
                 variant="destructive" 
                 size="sm" 

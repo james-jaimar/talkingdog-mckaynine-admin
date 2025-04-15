@@ -1,69 +1,36 @@
 
 import { Link } from "react-router-dom";
-import { adminPrimaryNavItems, trainerNavItems } from "./navigation-items";
+import { trainerNavItems } from "./navigation-items";
 
 interface TrainerNavigationProps {
   isMobile: boolean;
   onMobileClose?: () => void;
+  showPrimaryOnly?: boolean;
 }
 
-export const TrainerNavigation = ({ isMobile, onMobileClose }: TrainerNavigationProps) => {
-  return isMobile ? (
-    <nav className="flex flex-col space-y-2">
-      {[...adminPrimaryNavItems.slice(0, 5), ...trainerNavItems].map(item => (
+export const TrainerNavigation = ({ isMobile, onMobileClose, showPrimaryOnly = true }: TrainerNavigationProps) => {
+  // For trainers, we'll show the first items in primary nav and remaining in secondary
+  const primaryItems = trainerNavItems.slice(0, 5);
+  const secondaryItems = trainerNavItems.slice(5);
+  const items = showPrimaryOnly ? primaryItems : secondaryItems;
+
+  return (
+    <nav className={isMobile ? "flex flex-col space-y-2" : "flex space-x-4 overflow-x-auto"}>
+      {items.map(item => (
         <Link 
           key={item.path}
           to={item.path} 
-          className="text-white hover:text-gray-200 px-2 py-2 rounded flex items-center"
+          className={`text-white hover:text-gray-200 px-2 ${isMobile ? 'py-2' : 'py-1'} rounded ${isMobile ? 'flex items-center' : 'whitespace-nowrap'}`}
           onClick={onMobileClose}
         >
           {item.icon && (
             <item.icon 
-              className="inline-block mr-2 h-4 w-4" 
+              className={`inline-block mr-1 h-4 w-4 ${isMobile ? 'mr-2' : ''}`} 
             />
           )}
           <span>{item.name}</span>
         </Link>
       ))}
     </nav>
-  ) : (
-    <>
-      <nav className="hidden md:flex space-x-4 overflow-x-auto">
-        {adminPrimaryNavItems.slice(0, 5).map(item => (
-          <Link 
-            key={item.path}
-            to={item.path} 
-            className="text-white hover:text-gray-200 px-2 py-1 rounded whitespace-nowrap"
-          >
-            {item.icon && (
-              <item.icon 
-                className="inline-block mr-1 h-4 w-4" 
-              />
-            )}
-            <span>{item.name}</span>
-          </Link>
-        ))}
-      </nav>
-      <div className="bg-mckaynine-700">
-        <div className="container mx-auto px-4 py-1">
-          <nav className="flex space-x-4 overflow-x-auto">
-            {trainerNavItems.filter(item => item.name === "Invoices").map(item => (
-              <Link 
-                key={item.path}
-                to={item.path} 
-                className="text-white hover:text-gray-200 px-2 py-1 text-sm rounded whitespace-nowrap"
-              >
-                {item.icon && (
-                  <item.icon 
-                    className="inline-block mr-1 h-4 w-4" 
-                  />
-                )}
-                <span>{item.name}</span>
-              </Link>
-            ))}
-          </nav>
-        </div>
-      </div>
-    </>
   );
 };
