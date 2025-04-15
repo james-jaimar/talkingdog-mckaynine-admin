@@ -19,6 +19,8 @@ export function useScheduleSubmit({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
+  const NO_TRAINER_ID = 'ba95153f-699c-4cc1-afe5-762bf30033d4';
+
   const onSubmit = async (data: ClassScheduleFormValues) => {
     setIsSubmitting(true);
 
@@ -30,7 +32,7 @@ export function useScheduleSubmit({
         throw new Error("Please select at least one date");
       }
       
-      // Sort dates to find first and last for start_time and end_time
+      // Sort dates to find first and last
       const sortedDates = [...data.selectedDates].sort((a, b) => a.getTime() - b.getTime());
       const firstDate = sortedDates[0];
       const lastDate = sortedDates[sortedDates.length - 1];
@@ -65,31 +67,9 @@ export function useScheduleSubmit({
         recurring: data.isRecurring,
         recurrence_pattern: data.referenceTitle,
         selected_dates: data.selectedDates.map(date => date.toISOString()),
+        // Use No Trainer ID if 'none' is selected
+        trainer_id: data.trainerId === 'none' ? NO_TRAINER_ID : data.trainerId,
       };
-
-      // Handle trainer_id based on selection
-      if (data.trainerId === 'none') {
-        // If user selects "No Trainer", first try to find any existing trainer to use as a reference
-        const { data: trainers, error: trainerError } = await supabase
-          .from("trainers")
-          .select("id")
-          .limit(1);
-          
-        if (trainerError) {
-          console.error("Error fetching trainers:", trainerError);
-          throw trainerError;
-        }
-        
-        if (trainers && trainers.length > 0) {
-          // Set trainer_id to null in the update data, but we need to use a valid trainer
-          // to satisfy database constraints
-          scheduleData.trainer_id = trainers[0].id;
-        } else {
-          throw new Error("No trainers found in the system. Please add at least one trainer.");
-        }
-      } else {
-        scheduleData.trainer_id = data.trainerId;
-      }
 
       console.log("Processed schedule data:", scheduleData);
 
@@ -144,3 +124,4 @@ export function useScheduleSubmit({
     onSubmit,
   };
 }
+
