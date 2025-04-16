@@ -1,10 +1,10 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertCircle } from "lucide-react";
 import { User } from "./hooks/useUsers";
 import {
   Select,
@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useUserRoleManagement } from "./hooks/useUserRoleManagement";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface UserManageDialogProps {
   user: User;
@@ -29,11 +30,25 @@ export function UserManageDialog({
   onUserUpdated 
 }: UserManageDialogProps) {
   const [role, setRole] = useState(user.role || '');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { updateUserRole, isUpdating } = useUserRoleManagement();
 
-  const handleUpdateUser = async () => {
-    if (!role) return;
+  // Reset state when dialog opens with a different user
+  useEffect(() => {
+    if (open) {
+      setRole(user.role || '');
+      setErrorMessage(null);
+    }
+  }, [open, user]);
 
+  const handleUpdateUser = async () => {
+    if (!role) {
+      setErrorMessage("Please select a role");
+      return;
+    }
+
+    setErrorMessage(null);
+    
     try {
       console.log(`[UserManageDialog] Updating user ${user.id} to role: ${role}`);
       
@@ -47,6 +62,7 @@ export function UserManageDialog({
       
     } catch (error) {
       console.error("[UserManageDialog] Error updating user:", error);
+      setErrorMessage(error instanceof Error ? error.message : "An unexpected error occurred");
     }
   };
 
@@ -61,6 +77,13 @@ export function UserManageDialog({
         </DialogHeader>
         
         <div className="space-y-4 py-4">
+          {errorMessage && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{errorMessage}</AlertDescription>
+            </Alert>
+          )}
+          
           <div className="space-y-2">
             <Label htmlFor="role">Role</Label>
             <Select value={role} onValueChange={setRole}>

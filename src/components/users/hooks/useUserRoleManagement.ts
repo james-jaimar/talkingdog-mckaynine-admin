@@ -16,14 +16,13 @@ export function useUserRoleManagement() {
         throw new Error("User ID and role are required");
       }
 
-      // Start transaction
       try {
-        // Step 1: Get current profile to check existing role
+        // Step 1: Get current profile to check existing role - using maybeSingle() instead of single()
         const { data: currentProfile, error: profileError } = await supabase
           .from('profiles')
           .select('role, app_id')
           .eq('id', userId)
-          .single();
+          .maybeSingle(); // Using maybeSingle() to prevent errors when no row is found
 
         if (profileError) {
           console.error("[useUserRoleManagement] Error fetching current profile:", profileError);
@@ -32,24 +31,44 @@ export function useUserRoleManagement() {
 
         console.log("[useUserRoleManagement] Current profile:", currentProfile);
 
-        // Step 2: Update profile with new role
-        const { error: updateError } = await supabase
-          .from('profiles')
-          .update({ 
-            role,
-            app_id: APP_ID,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', userId);
+        // If profile doesn't exist, create it
+        if (!currentProfile) {
+          console.log("[useUserRoleManagement] Profile not found, creating new profile");
+          const { error: createError } = await supabase
+            .from('profiles')
+            .insert({
+              id: userId,
+              role,
+              app_id: APP_ID,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            });
 
-        if (updateError) {
-          console.error("[useUserRoleManagement] Error updating profile:", updateError);
-          throw new Error(`Failed to update profile: ${updateError.message}`);
+          if (createError) {
+            console.error("[useUserRoleManagement] Error creating profile:", createError);
+            throw new Error(`Failed to create profile: ${createError.message}`);
+          }
+        } else {
+          // Step 2: Update existing profile with new role
+          const { error: updateError } = await supabase
+            .from('profiles')
+            .update({ 
+              role,
+              app_id: APP_ID,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', userId);
+
+          if (updateError) {
+            console.error("[useUserRoleManagement] Error updating profile:", updateError);
+            throw new Error(`Failed to update profile: ${updateError.message}`);
+          }
         }
 
         // Step 3: Handle trainer table synchronization
+        const existingRole = currentProfile?.role || '';
         const isBecomingTrainer = role.includes('trainer');
-        const wasTrainer = currentProfile?.role?.includes('trainer');
+        const wasTrainer = existingRole.includes('trainer');
 
         if (isBecomingTrainer) {
           console.log("[useUserRoleManagement] Syncing trainer record");
@@ -108,7 +127,7 @@ async function syncTrainerRecord(userId: string) {
       .from('profiles')
       .select('username, full_name')
       .eq('id', userId)
-      .single();
+      .maybeSingle(); // Using maybeSingle() here as well
 
     if (profileError) throw profileError;
 
