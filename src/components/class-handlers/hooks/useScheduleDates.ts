@@ -13,39 +13,62 @@ export function useScheduleDates(classId: string) {
           throw new Error("Missing class ID");
         }
         
-        // Get schedule for this class
+        // First check if the ID is a schedule ID
         const { data: scheduleData, error: scheduleError } = await supabase
           .from('class_schedules')
           .select('*')
-          .eq('class_id', classId)
-          .single();
+          .eq('id', classId)
+          .maybeSingle();
+        
+        if (!scheduleError && scheduleData) {
+          console.log("Found schedule by ID:", scheduleData.id);
           
-        if (scheduleError) {
-          console.error("Error fetching schedule:", scheduleError);
-          throw scheduleError;
+          // Process the schedule directly
+          if (scheduleData.selected_dates && Array.isArray(scheduleData.selected_dates) && scheduleData.selected_dates.length > 0) {
+            return scheduleData.selected_dates;
+          }
+          
+          // Return start_time if no selected_dates
+          return scheduleData.start_time ? [scheduleData.start_time] : [];
         }
+        
+        // If not a schedule ID, look for schedules with this class_id
+        console.log("Looking up schedules by class_id:", classId);
+        const { data: classSchedules, error: classError } = await supabase
+          .from('class_schedules')
+          .select('*')
+          .eq('class_id', classId);
           
-        if (!scheduleData) {
-          console.log("No schedule found for class:", classId);
+        if (classError) {
+          console.error("Error fetching schedules by class_id:", classError);
+          throw classError;
+        }
+        
+        if (!classSchedules || classSchedules.length === 0) {
+          console.log("No schedules found for class:", classId);
           return [];
         }
         
-        // Check if we have selected_dates directly in the schedule
-        if (scheduleData.selected_dates && Array.isArray(scheduleData.selected_dates) && scheduleData.selected_dates.length > 0) {
-          console.log("Using selected_dates from schedule:", scheduleData.selected_dates.length);
-          return scheduleData.selected_dates;
+        // Use the first schedule found
+        const firstSchedule = classSchedules[0];
+        console.log("Using first schedule:", firstSchedule.id);
+        
+        // Check if we have selected_dates in the first schedule
+        if (firstSchedule.selected_dates && Array.isArray(firstSchedule.selected_dates) && firstSchedule.selected_dates.length > 0) {
+          console.log("Using selected_dates from schedule:", firstSchedule.selected_dates.length);
+          return firstSchedule.selected_dates;
         }
         
         // If no selected_dates, check if we have recurring pattern information
-        if (!scheduleData.recurring || !scheduleData.recurrence_pattern) {
+        if (!firstSchedule.recurring || !firstSchedule.recurrence_pattern) {
           console.log("No recurring pattern found in schedule");
           // If no recurring pattern, use the start_time as the only class date
-          return scheduleData.start_time ? [scheduleData.start_time] : [];
+          return firstSchedule.start_time ? [firstSchedule.start_time] : [];
         }
         
         // For recurring classes, parse the recurrence pattern
         try {
-          const recurrencePattern = JSON.parse(scheduleData.recurrence_pattern);
+          const recurrencePattern = JSON.parse(firstSchedule.recurrence_pattern);
           
           if (!recurrencePattern || 
               !recurrencePattern.startDate || 
@@ -53,7 +76,7 @@ export function useScheduleDates(classId: string) {
               !recurrencePattern.daysOfWeek ||
               !Array.isArray(recurrencePattern.daysOfWeek)) {
             console.error("Invalid recurrence pattern format:", recurrencePattern);
-            return [scheduleData.start_time]; // Fallback to start_time
+            return [firstSchedule.start_time]; // Fallback to start_time
           }
           
           // Generate dates based on recurrence pattern
@@ -65,7 +88,7 @@ export function useScheduleDates(classId: string) {
           // Safety check for invalid dates
           if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
             console.error("Invalid date range in recurrence pattern:", { startDate: recurrencePattern.startDate, endDate: recurrencePattern.endDate });
-            return [scheduleData.start_time]; // Fallback to start_time
+            return [firstSchedule.start_time]; // Fallback to start_time
           }
           
           let currentDate = new Date(startDate);
@@ -86,7 +109,7 @@ export function useScheduleDates(classId: string) {
           return dates;
         } catch (e) {
           console.error("Error parsing recurrence pattern:", e);
-          return [scheduleData.start_time]; // Fallback to start_time
+          return [firstSchedule.start_time]; // Fallback to start_time
         }
       } catch (error) {
         console.error("Error in useScheduleDates:", error);

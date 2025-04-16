@@ -2,7 +2,7 @@
 export interface ClassSchedule {
   id: string;
   class_id: string;
-  trainer_id: string;
+  trainer_id?: string;
   start_time: string;
   end_time: string;
   recurring: boolean | null;
@@ -19,4 +19,8 @@ export interface ClassSchedule {
   schedule_id?: string;
   // Additional class data
   classes?: any;
+  trainer?: {
+    first_name: string;
+    last_name: string;
+  };
 }
