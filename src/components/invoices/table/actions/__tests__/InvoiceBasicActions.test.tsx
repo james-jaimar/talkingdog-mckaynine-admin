@@ -1,5 +1,6 @@
 
 import { render, screen, fireEvent } from '@testing-library/react';
+import '@testing-library/jest-dom';
 import { BrowserRouter } from 'react-router-dom';
 import { InvoiceBasicActions } from '../InvoiceBasicActions';
 import { InvoiceStatus } from '@/hooks/invoices/types';

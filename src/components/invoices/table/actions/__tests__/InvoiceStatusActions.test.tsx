@@ -1,5 +1,6 @@
 
 import { render, screen, fireEvent } from '@testing-library/react';
+import '@testing-library/jest-dom';
 import { InvoiceStatusActions } from '../InvoiceStatusActions';
 import { InvoiceStatus } from '@/hooks/invoices/types';
 
