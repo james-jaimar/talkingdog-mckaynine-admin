@@ -49,10 +49,6 @@ export function useClassOrder() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['class-tab-order', currentBranch?.id] });
-      queryClient.invalidateQueries({ queryKey: ['active-classes', currentBranch?.id] });
-      
-      // Also update the classes data to reflect the new order immediately
-      queryClient.invalidateQueries({ queryKey: ['classes', currentBranch?.id] });
     },
     onError: (error) => {
       console.error("Error saving class order:", error);
@@ -68,7 +64,7 @@ export function useClassOrder() {
   const moveClassUp = (index: number) => {
     if (index <= 0) return; // Already at the top
     
-    // Get the current classes data directly from the query cache
+    // Always get the most recent data from the query cache
     const classes = queryClient.getQueryData(['classes', currentBranch?.id]) as any[] || [];
     
     if (!classes.length) return;
@@ -100,7 +96,7 @@ export function useClassOrder() {
 
   // Move class down in the order - accepts only index
   const moveClassDown = (index: number) => {
-    // Get the current classes data directly from the query cache
+    // Always get the most recent data from the query cache
     const classes = queryClient.getQueryData(['classes', currentBranch?.id]) as any[] || [];
     
     if (!classes.length || index >= classes.length - 1) return; // Already at the bottom

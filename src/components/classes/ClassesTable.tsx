@@ -28,12 +28,14 @@ export function ClassesTable({ filter }: ClassesTableProps = {}) {
     setIsEditModalOpen(true);
   };
 
-  // Dedicated handlers for move operations
+  // Improved handlers for move operations with better logging
   const handleMoveUp = (index: number) => {
+    console.log(`Moving class up at index ${index}`);
     moveClassUp(index);
   };
 
   const handleMoveDown = (index: number) => {
+    console.log(`Moving class down at index ${index}`);
     moveClassDown(index);
   };
 

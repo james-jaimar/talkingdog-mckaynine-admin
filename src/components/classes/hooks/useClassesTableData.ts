@@ -79,31 +79,42 @@ export function useClassesTableData(filter?: string) {
     enabled: !!currentBranch
   });
 
+  // Get the most current data from the query cache
+  const cachedClasses = queryClient.getQueryData(['classes', currentBranch?.id]) as any[] || classes;
+
   // Order classes based on:
   // 1. Cached ordered data (if we have it from drag operations)
   // 2. Saved database order
   // 3. Or fall back to alphabetical
   const getOrderedClasses = () => {
-    if (!classes || classes.length === 0) return [];
+    // Use the most recent cached classes data
+    const classesData = cachedClasses.length > 0 ? cachedClasses : classes;
+    
+    if (!classesData || classesData.length === 0) return [];
     
     // If we have a saved order from database
     if (savedOrder && savedOrder.class_ids && savedOrder.class_ids.length > 0) {
+      console.log("Using saved order from database");
       // First include ordered classes, then any others not in the order
       const orderedIds = new Set(savedOrder.class_ids);
       const orderedClasses = [
         ...savedOrder.class_ids
-          .map(id => classes.find(c => c.id === id))
+          .map(id => classesData.find(c => c.id === id))
           .filter(Boolean),
-        ...classes.filter(c => !orderedIds.has(c.id))
+        ...classesData.filter(c => !orderedIds.has(c.id))
       ];
       return orderedClasses;
     }
     
     // Default alphabetical order
-    return [...classes].sort((a, b) => a.name.localeCompare(b.name));
+    console.log("Using alphabetical order");
+    return [...classesData].sort((a, b) => a.name.localeCompare(b.name));
   };
 
   const orderedClasses = getOrderedClasses();
+  
+  console.log("Ordered classes count:", orderedClasses.length);
+  orderedClasses.forEach((c, i) => console.log(`${i}: ${c.name}`));
 
   // Apply filter if provided
   const filteredClasses = filter 

@@ -6,8 +6,8 @@ import { useAuth } from "@/context/AuthContext";
 interface ClassSortControlsProps {
   index: number;
   totalClasses: number;
-  onMoveUp: () => void;
-  onMoveDown: () => void;
+  onMoveUp: (index: number) => void;
+  onMoveDown: (index: number) => void;
 }
 
 export function ClassSortControls({ 
@@ -17,6 +17,16 @@ export function ClassSortControls({
   onMoveDown 
 }: ClassSortControlsProps) {
   const { user } = useAuth();
+  
+  const handleMoveUp = () => {
+    // Pass the current index to the parent handler
+    onMoveUp(index);
+  };
+  
+  const handleMoveDown = () => {
+    // Pass the current index to the parent handler
+    onMoveDown(index);
+  };
 
   return (
     <div className="flex flex-col gap-1">
@@ -24,8 +34,9 @@ export function ClassSortControls({
         variant="ghost" 
         size="icon" 
         className="h-7 w-7" 
-        onClick={onMoveUp}
+        onClick={handleMoveUp}
         disabled={index === 0 || !user}
+        title="Move up"
       >
         <ChevronUp className="h-4 w-4" />
       </Button>
@@ -33,8 +44,9 @@ export function ClassSortControls({
         variant="ghost" 
         size="icon" 
         className="h-7 w-7" 
-        onClick={onMoveDown}
+        onClick={handleMoveDown}
         disabled={index === totalClasses - 1 || !user}
+        title="Move down"
       >
         <ChevronDown className="h-4 w-4" />
       </Button>
