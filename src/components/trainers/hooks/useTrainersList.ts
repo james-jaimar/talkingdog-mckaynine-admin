@@ -24,7 +24,7 @@ export function useTrainersList() {
         // STEP 2: Get trainers from trainers table
         const { data: trainersTable, error: trainersError } = await supabase
           .from('trainers')
-          .select('*');
+          .select('*, branches(name)');
         
         if (trainersError) {
           console.error("Error fetching trainers from trainers table:", trainersError);
@@ -64,6 +64,7 @@ export function useTrainersList() {
             specialties: [],
             bio: null,
             branch_id: null,
+            branch_names: null,
             created_at: profile.created_at,
             updated_at: profile.updated_at,
           };
@@ -81,21 +82,32 @@ export function useTrainersList() {
         
         // Add/override with trainers from the trainers table which should have more complete data
         trainersTable?.forEach(trainer => {
+          // Extract branch name if available
+          const branchNames = trainer.branches ? [trainer.branches.name] : null;
+          
           // If this trainer already exists in the map (from profiles), merge the data
           if (trainer.user_id && trainersMap.has(trainer.user_id)) {
             const existingTrainer = trainersMap.get(trainer.user_id)!;
             trainersMap.set(trainer.user_id, {
               ...existingTrainer,
               ...trainer,
+              // Add branch names
+              branch_names: branchNames,
               // Preserve the ID from trainers table as it's the primary ID
               id: trainer.id,
             });
           } else if (trainer.user_id) {
-            // Add using user_id as key
-            trainersMap.set(trainer.user_id, trainer);
+            // Add using user_id as key with branch names
+            trainersMap.set(trainer.user_id, {
+              ...trainer,
+              branch_names: branchNames,
+            });
           } else {
             // Fallback to using id as key if no user_id
-            trainersMap.set(trainer.id, trainer);
+            trainersMap.set(trainer.id, {
+              ...trainer,
+              branch_names: branchNames,
+            });
           }
         });
         

@@ -20,7 +20,7 @@ export function useUserRoleManagement() {
         // Call our edge function to handle the role update
         const { data, error } = await supabase.functions.invoke("manage-user-role", {
           method: 'POST',
-          body: { userId, role }
+          body: { userId, role },
         });
         
         if (error) {
@@ -51,7 +51,9 @@ export function useUserRoleManagement() {
         ['users-admin'],
         ['admin-users-list'],
         ['users'],
-        ['trainers-list']
+        ['trainers-list'],
+        ['trainers-admin'],
+        ['trainers']
       ];
 
       queriesToInvalidate.forEach(queryKey => {

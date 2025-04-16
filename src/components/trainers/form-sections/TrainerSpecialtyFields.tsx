@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { UseFormReturn } from "react-hook-form";
 import { TrainerFormValues } from "../schemas/trainerFormSchema";
@@ -28,6 +28,11 @@ export function TrainerSpecialtyFields({
     { label: "Search & Rescue", value: "Search & Rescue" },
   ]);
 
+  // Debug log to check branches data
+  useEffect(() => {
+    console.log("Branch options in TrainerSpecialtyFields:", branches);
+  }, [branches]);
+
   // For branch selection
   return (
     <>
@@ -46,12 +51,14 @@ export function TrainerSpecialtyFields({
               ) : branches.length > 0 ? (
                 <Select 
                   onValueChange={(value) => {
+                    console.log("Branch selected:", value);
                     form.setValue('branchIds', [value], { 
                       shouldValidate: true, 
                       shouldDirty: true 
                     });
                   }}
                   value={field.value && field.value.length > 0 ? field.value[0] : undefined}
+                  disabled={isLoadingBranches}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select a branch" />

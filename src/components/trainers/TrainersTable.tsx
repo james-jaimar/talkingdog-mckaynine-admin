@@ -1,126 +1,125 @@
 
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useState } from "react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Loader2, RefreshCw } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { EditTrainerModal } from "./EditTrainerModal";
 import { useTrainersList } from "./hooks/useTrainersList";
-import { Button } from "@/components/ui/button";
-import { Loader2, RefreshCw, AlertCircle } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { useState } from "react";
+import { Trainer } from "./types/trainer";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export function TrainersTable() {
-  const { data: trainers, isLoading, error, refetch, isFetching } = useTrainersList();
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    await refetch();
-    setTimeout(() => setIsRefreshing(false), 500); // Give visual feedback
+  const { data: trainers = [], isLoading, refetch } = useTrainersList();
+  const [isRefetching, setIsRefetching] = useState(false);
+
+  const getInitials = (firstName: string, lastName: string) => {
+    return (firstName?.[0] || "") + (lastName?.[0] || "");
   };
-  
-  if (isLoading) {
-    return (
-      <div className="text-center p-6">
-        <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
-        <p>Loading trainers...</p>
-      </div>
-    );
-  }
-  
-  if (error) {
-    return (
-      <Alert variant="destructive" className="mb-6">
-        <AlertCircle className="h-4 w-4" />
-        <AlertTitle>Error loading trainers</AlertTitle>
-        <AlertDescription className="flex flex-col gap-2">
-          <p>{error instanceof Error ? error.message : "An unknown error occurred"}</p>
-          <Button onClick={handleRefresh} variant="outline" size="sm" className="w-fit">
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Try Again
-          </Button>
-        </AlertDescription>
-      </Alert>
-    );
-  }
-  
-  if (!trainers || trainers.length === 0) {
-    return (
-      <div className="text-center p-8 border rounded-md bg-gray-50">
-        <p className="text-muted-foreground mb-4">No trainers found. Add trainers by assigning the trainer role in User Administration.</p>
-        <Button onClick={handleRefresh} variant="outline" size="sm">
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Refresh List
-        </Button>
-      </div>
-    );
-  }
+
+  const handleRefresh = async () => {
+    setIsRefetching(true);
+    await refetch();
+    setIsRefetching(false);
+  };
 
   return (
     <div>
-      <div className="flex justify-between mb-4">
-        <p className="text-sm text-muted-foreground">
-          {trainers.length} trainer{trainers.length !== 1 ? 's' : ''} found
-        </p>
-        <Button 
-          onClick={handleRefresh} 
-          variant="outline" 
-          size="sm" 
-          disabled={isRefreshing || isFetching}
+      <div className="flex justify-end mb-4">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleRefresh}
+          disabled={isLoading || isRefetching}
         >
-          <RefreshCw className={`h-4 w-4 mr-2 ${(isRefreshing || isFetching) ? 'animate-spin' : ''}`} />
-          {isRefreshing ? 'Refreshing...' : 'Refresh List'}
+          {(isLoading || isRefetching) ? (
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+          ) : (
+            <RefreshCw className="h-4 w-4 mr-2" />
+          )}
+          Refresh List
         </Button>
       </div>
-      
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Name</TableHead>
-            <TableHead>Contact</TableHead>
-            <TableHead>Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {trainers?.map((trainer) => (
-            <TableRow key={trainer.id}>
-              <TableCell>
-                <div className="flex items-center gap-3">
-                  <Avatar>
-                    {trainer.avatar_url ? (
-                      <AvatarImage src={trainer.avatar_url} alt={`${trainer.first_name} ${trainer.last_name}`} />
-                    ) : null}
-                    <AvatarFallback>
-                      {trainer.first_name?.charAt(0) || ''}
-                      {trainer.last_name?.charAt(0) || ''}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <div className="font-medium">
-                      {trainer.first_name || ''} {trainer.last_name || ''}
-                      {trainer.user_id ? (
-                        <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded-full">
-                          User
-                        </span>
-                      ) : null}
+
+      {isLoading ? (
+        <div className="flex items-center justify-center py-6">
+          <Loader2 className="h-6 w-6 animate-spin mr-2" />
+          <p>Loading trainers...</p>
+        </div>
+      ) : trainers.length === 0 ? (
+        <div className="text-center py-6 border rounded-md bg-gray-50">
+          <p className="text-gray-500">No trainers found.</p>
+        </div>
+      ) : (
+        <div className="border rounded-md overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Contact</TableHead>
+                <TableHead className="hidden md:table-cell">Branch</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {trainers.map((trainer) => (
+                <TableRow key={trainer.id}>
+                  <TableCell>
+                    <div className="flex items-center space-x-3">
+                      <Avatar className="h-8 w-8 bg-mckaynine-100 text-mckaynine-800">
+                        {trainer.avatar_url ? (
+                          <AvatarImage src={trainer.avatar_url} alt={`${trainer.first_name} ${trainer.last_name}`} />
+                        ) : (
+                          <AvatarFallback>
+                            {getInitials(trainer.first_name, trainer.last_name)}
+                          </AvatarFallback>
+                        )}
+                      </Avatar>
+                      <div>
+                        <div className="font-medium">
+                          {trainer.first_name} {trainer.last_name}
+                        </div>
+                        {trainer.user_id && (
+                          <Badge variant="outline" className="text-xs">User</Badge>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </div>
-              </TableCell>
-              <TableCell>
-                <div className="space-y-1">
-                  <div className="text-sm">{trainer.email || 'No email'}</div>
-                  {trainer.phone && <div className="text-sm text-muted-foreground">{trainer.phone}</div>}
-                </div>
-              </TableCell>
-              <TableCell>
-                <div className="flex items-center gap-2">
-                  <EditTrainerModal trainer={trainer} />
-                </div>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+                  </TableCell>
+                  <TableCell>
+                    <div>
+                      <div>{trainer.email}</div>
+                      {trainer.phone && (
+                        <div className="text-sm text-gray-500">
+                          {trainer.phone}
+                        </div>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell className="hidden md:table-cell">
+                    {trainer.branch_names?.[0] || trainer.branch_id ? (
+                      <Badge variant="secondary">
+                        {trainer.branch_names?.[0] || "Assigned"}
+                      </Badge>
+                    ) : (
+                      <span className="text-gray-500 text-sm">No branch assigned</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <EditTrainerModal trainer={trainer} />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -6,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { Trainer } from "../types/trainer";
 import { trainerFormSchema, TrainerFormValues } from "../schemas/trainerFormSchema";
+import { useBranch } from "@/context/BranchContext";
 
 // Simple branch option type
 type BranchOption = {
@@ -22,9 +24,9 @@ export function useTrainerForm(trainer: Trainer, onSuccess: () => void) {
   
   // Get the branch ID value, accounting for the type mismatch
   // The database uses branch_id but our type uses branch_ids
-  const branchIdValue = Array.isArray(trainer.branch_ids) && trainer.branch_ids.length > 0 
+  const branchIdValue = trainer.branch_id || (Array.isArray(trainer.branch_ids) && trainer.branch_ids.length > 0 
                          ? trainer.branch_ids[0] 
-                         : undefined;
+                         : undefined);
   
   // Pre-populate form with trainer data
   const defaultValues: TrainerFormValues = {
@@ -65,8 +67,10 @@ export function useTrainerForm(trainer: Trainer, onSuccess: () => void) {
             label: branch.name
           }));
           
+          console.log("Loaded branch options:", branchOptions);
           setBranches(branchOptions);
         } else {
+          console.log("No branch data found");
           setBranches([]);
         }
       } catch (error) {
@@ -112,7 +116,10 @@ export function useTrainerForm(trainer: Trainer, onSuccess: () => void) {
         description: `${values.firstName} ${values.lastName}'s information has been updated.`,
       });
       
+      // Invalidate multiple related queries to ensure data is fresh
       queryClient.invalidateQueries({ queryKey: ["trainers"] });
+      queryClient.invalidateQueries({ queryKey: ["trainers-list"] });
+      queryClient.invalidateQueries({ queryKey: ["trainers-admin"] });
       onSuccess();
     } catch (error) {
       console.error("Error updating trainer:", error);
