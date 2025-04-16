@@ -1,6 +1,7 @@
 
 import { render, screen, fireEvent } from '@testing-library/react';
 import { InvoiceStatusActions } from '../InvoiceStatusActions';
+import { InvoiceStatus } from '@/hooks/invoices/types';
 
 // Mock the hooks
 const mockMarkAsPaid = { mutate: jest.fn() };
@@ -16,7 +17,7 @@ jest.mock('@/hooks/useInvoices', () => ({
 describe('InvoiceStatusActions', () => {
   const mockInvoice = {
     id: '123',
-    status: 'draft',
+    status: 'draft' as InvoiceStatus,
     invoice_number: 'INV-001',
     client_id: 'client123',
     issued_date: '2024-04-16',
@@ -86,7 +87,7 @@ describe('InvoiceStatusActions', () => {
       <InvoiceStatusActions 
         {...{ 
           ...mockProps, 
-          invoice: { ...mockInvoice, status: 'paid' } 
+          invoice: { ...mockInvoice, status: 'paid' as InvoiceStatus } 
         }} 
       />
     );

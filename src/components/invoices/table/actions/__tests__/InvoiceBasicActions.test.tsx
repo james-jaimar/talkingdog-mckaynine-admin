@@ -2,6 +2,7 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { InvoiceBasicActions } from '../InvoiceBasicActions';
+import { InvoiceStatus } from '@/hooks/invoices/types';
 
 const mockNavigate = jest.fn();
 jest.mock('react-router-dom', () => ({
@@ -12,7 +13,7 @@ jest.mock('react-router-dom', () => ({
 describe('InvoiceBasicActions', () => {
   const mockInvoice = {
     id: '123',
-    status: 'draft',
+    status: 'draft' as InvoiceStatus,
     invoice_number: 'INV-001',
     client_id: 'client123',
     issued_date: '2024-04-16',
@@ -89,7 +90,7 @@ describe('InvoiceBasicActions', () => {
         <InvoiceBasicActions 
           {...{ 
             ...mockProps, 
-            invoice: { ...mockInvoice, status: 'paid' } 
+            invoice: { ...mockInvoice, status: 'paid' as InvoiceStatus } 
           }} 
         />
       </BrowserRouter>

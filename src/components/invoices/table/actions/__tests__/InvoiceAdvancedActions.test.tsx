@@ -1,11 +1,12 @@
 
 import { render, screen, fireEvent } from '@testing-library/react';
 import { InvoiceAdvancedActions } from '../InvoiceAdvancedActions';
+import { InvoiceStatus } from '@/hooks/invoices/types';
 
 describe('InvoiceAdvancedActions', () => {
   const mockInvoice = {
     id: '123',
-    status: 'draft',
+    status: 'draft' as InvoiceStatus,
     invoice_number: 'INV-001',
     client_id: 'client123',
     issued_date: '2024-04-16',
