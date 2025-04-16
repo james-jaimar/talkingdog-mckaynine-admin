@@ -189,6 +189,12 @@ export default function PuppyClassForm() {
     );
   }
 
+  // Helper function to safely display form error messages
+  const getErrorMessage = (error: any): string => {
+    if (!error) return "";
+    return typeof error === 'string' ? error : error.message || "Invalid input";
+  };
+
   return (
     <DashboardLayout>
       <Helmet>
@@ -364,7 +370,7 @@ export default function PuppyClassForm() {
                       className="mt-1"
                     />
                     {form.formState.errors.ownerName && (
-                      <p className="text-red-500 text-sm mt-1">{form.formState.errors.ownerName.message}</p>
+                      <p className="text-red-500 text-sm mt-1">{getErrorMessage(form.formState.errors.ownerName)}</p>
                     )}
                   </div>
                   
@@ -386,7 +392,7 @@ export default function PuppyClassForm() {
                       className="mt-1"
                     />
                     {form.formState.errors.ownerEmail && (
-                      <p className="text-red-500 text-sm mt-1">{form.formState.errors.ownerEmail.message}</p>
+                      <p className="text-red-500 text-sm mt-1">{getErrorMessage(form.formState.errors.ownerEmail)}</p>
                     )}
                   </div>
                   
@@ -398,7 +404,7 @@ export default function PuppyClassForm() {
                       className="mt-1"
                     />
                     {form.formState.errors.ownerCell && (
-                      <p className="text-red-500 text-sm mt-1">{form.formState.errors.ownerCell.message}</p>
+                      <p className="text-red-500 text-sm mt-1">{getErrorMessage(form.formState.errors.ownerCell)}</p>
                     )}
                   </div>
                   
@@ -435,7 +441,7 @@ export default function PuppyClassForm() {
                       className="mt-1"
                     />
                     {form.formState.errors.dogName && (
-                      <p className="text-red-500 text-sm mt-1">{form.formState.errors.dogName.message}</p>
+                      <p className="text-red-500 text-sm mt-1">{getErrorMessage(form.formState.errors.dogName)}</p>
                     )}
                   </div>
                   
@@ -484,7 +490,7 @@ export default function PuppyClassForm() {
                       className="mt-1"
                     />
                     {form.formState.errors.dogBreed && (
-                      <p className="text-red-500 text-sm mt-1">{form.formState.errors.dogBreed.message}</p>
+                      <p className="text-red-500 text-sm mt-1">{getErrorMessage(form.formState.errors.dogBreed)}</p>
                     )}
                   </div>
                   
