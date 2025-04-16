@@ -1,4 +1,3 @@
-
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Trainer } from "../types/trainer";
@@ -8,45 +7,50 @@ export function useTrainersList() {
     queryKey: ['trainers-list'],
     queryFn: async () => {
       try {
-        console.log("Fetching trainers from both profiles and trainers tables");
+        console.log("[useTrainersList] Fetching trainers from both profiles and trainers tables");
         
         // STEP 1: Get trainers from profiles table (users with trainer role)
         const { data: trainersProfiles, error: profilesError } = await supabase
           .from('profiles')
-          .select('*')
-          .or('role.eq.trainer,role.ilike.%trainer%');
+          .select('id, username, full_name, avatar_url, role, created_at, updated_at')
+          .or('role.eq.trainer,role.like.%trainer%');
         
         if (profilesError) {
-          console.error("Error fetching trainers from profiles:", profilesError);
+          console.error("[useTrainersList] Error fetching trainers from profiles:", profilesError);
           throw profilesError;
         }
         
-        // STEP 2: Get trainers from trainers table
+        console.log("[useTrainersList] Profiles with trainer role:", trainersProfiles?.length);
+        
+        // STEP 2: Get trainers from trainers table with branch data
         const { data: trainersTable, error: trainersError } = await supabase
           .from('trainers')
-          .select('*, branches(name)');
+          .select(`
+            *,
+            branches:branch_id (
+              name
+            )
+          `);
         
         if (trainersError) {
-          console.error("Error fetching trainers from trainers table:", trainersError);
+          console.error("[useTrainersList] Error fetching trainers from trainers table:", trainersError);
           throw trainersError;
         }
         
-        console.log("Found potential trainers from profiles:", trainersProfiles?.length);
-        console.log("Found trainers from trainers table:", trainersTable?.length);
-        
-        // Filter to ensure we only get profiles that actually contain 'trainer' as a role
+        console.log("[useTrainersList] Trainers from trainers table:", trainersTable?.length);
+
+        // Filter to ensure we only get profiles that actually contain 'trainer' role
         const filteredProfileTrainers = trainersProfiles?.filter(profile => {
           if (!profile.role) return false;
           
           // Check if 'trainer' exists as a standalone role or as part of a comma-separated list
           const roles = profile.role.split(',').map(r => r.trim().toLowerCase());
-          return roles.some(r => r === 'trainer' || r.includes('trainer'));
+          return roles.includes('trainer') || roles.includes('admin');
         }) || [];
         
-        console.log("Filtered trainers from profiles:", filteredProfileTrainers.length);
-        console.log("Filtered trainer roles:", filteredProfileTrainers.map(t => t.role));
+        console.log("[useTrainersList] Filtered trainer profiles:", filteredProfileTrainers.length);
 
-        // Transform profile trainers to match our Trainer interface
+        // Transform profile trainers to match Trainer interface
         const profileTrainers: Trainer[] = filteredProfileTrainers.map(profile => {
           // Properly handle multi-part names
           const nameParts = profile.full_name?.split(' ') || ['', ''];
@@ -73,37 +77,36 @@ export function useTrainersList() {
         // Combine both sources of trainers using a Map to deduplicate
         const trainersMap = new Map<string, Trainer>();
         
-        // Add trainers from the profiles table
+        // Add trainers from the profiles table first
         profileTrainers.forEach(trainer => {
-          if (trainer.user_id) {
-            trainersMap.set(trainer.user_id, trainer);
-          }
+          trainersMap.set(trainer.id, trainer);
         });
         
-        // Add/override with trainers from the trainers table which should have more complete data
+        // Then add/override with data from the trainers table
         trainersTable?.forEach(trainer => {
           // Extract branch name if available
           const branchNames = trainer.branches ? [trainer.branches.name] : null;
           
-          // If this trainer already exists in the map (from profiles), merge the data
+          // If this trainer has a user_id that matches a profile trainer, merge the data
           if (trainer.user_id && trainersMap.has(trainer.user_id)) {
             const existingTrainer = trainersMap.get(trainer.user_id)!;
+            // We want to keep the user_id-indexed entry but with trainer table data
             trainersMap.set(trainer.user_id, {
               ...existingTrainer,
               ...trainer,
-              // Add branch names
               branch_names: branchNames,
-              // Preserve the ID from trainers table as it's the primary ID
+              // Use trainer.id as a reference to the trainers table entry
               id: trainer.id,
+              // But keep the user_id reference to match with the profiles table
+              user_id: trainer.user_id
             });
-          } else if (trainer.user_id) {
-            // Add using user_id as key with branch names
-            trainersMap.set(trainer.user_id, {
-              ...trainer,
-              branch_names: branchNames,
-            });
+            
+            // Also add an entry with the trainer.id if different from user_id
+            if (trainer.id !== trainer.user_id) {
+              trainersMap.delete(trainer.id); // Remove any potential conflict
+            }
           } else {
-            // Fallback to using id as key if no user_id
+            // For trainers without user_id or not in profiles, add them directly
             trainersMap.set(trainer.id, {
               ...trainer,
               branch_names: branchNames,
@@ -114,12 +117,10 @@ export function useTrainersList() {
         // Convert map to array
         const combinedTrainers = Array.from(trainersMap.values());
         
-        console.log("Final combined trainers count:", combinedTrainers.length);
-        console.log("Final trainers list:", combinedTrainers);
-        
+        console.log("[useTrainersList] Final combined trainers:", combinedTrainers.length);
         return combinedTrainers;
       } catch (error) {
-        console.error("Error fetching trainers:", error);
+        console.error("[useTrainersList] Error fetching trainers:", error);
         throw error;
       }
     },

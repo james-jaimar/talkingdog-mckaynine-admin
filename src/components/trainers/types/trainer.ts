@@ -8,7 +8,7 @@ export interface Trainer {
   specialties: string[] | null;
   branch_id?: string | null;  // Match the database column name
   branch_ids?: string[] | null; // Keep for backward compatibility
-  branch_names?: string[] | null;
+  branch_names?: string[] | null; // For display purposes
   bio: string | null;
   avatar_url: string | null;
   created_at: string;

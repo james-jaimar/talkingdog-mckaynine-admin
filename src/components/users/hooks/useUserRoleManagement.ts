@@ -33,7 +33,7 @@ export function useUserRoleManagement() {
           throw new Error(data?.error || "Role update failed");
         }
         
-        return { success: true, role };
+        return { success: true, role, userId };
       } catch (error) {
         console.error("[useUserRoleManagement] Transaction failed:", error);
         throw error;
@@ -46,18 +46,24 @@ export function useUserRoleManagement() {
         description: `User role has been updated to ${data.role}`,
       });
 
-      // Invalidate and refetch relevant queries
+      // Invalidate and refetch ALL relevant queries to ensure UI is updated properly
       const queriesToInvalidate = [
         ['users-admin'],
         ['admin-users-list'],
         ['users'],
         ['trainers-list'],
         ['trainers-admin'],
-        ['trainers']
+        ['trainers'],
+        ['user', data.userId],
+        ['trainer', data.userId]
       ];
 
       queriesToInvalidate.forEach(queryKey => {
         queryClient.invalidateQueries({ queryKey });
+        // Force refetch after a small delay to ensure DB has updated
+        setTimeout(() => {
+          queryClient.refetchQueries({ queryKey });
+        }, 300);
       });
     },
     onError: (error: Error) => {

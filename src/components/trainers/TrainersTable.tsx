@@ -86,15 +86,20 @@ export function TrainersTable() {
                         <div className="font-medium">
                           {trainer.first_name} {trainer.last_name}
                         </div>
-                        {trainer.user_id && (
-                          <Badge variant="outline" className="text-xs">User</Badge>
-                        )}
+                        <div className="flex gap-1">
+                          {trainer.user_id && (
+                            <Badge variant="outline" className="text-xs">User</Badge>
+                          )}
+                          {trainer.specialties && trainer.specialties.length > 0 && (
+                            <Badge variant="outline" className="text-xs">{trainer.specialties.length} specialties</Badge>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </TableCell>
                   <TableCell>
                     <div>
-                      <div>{trainer.email}</div>
+                      <div className="truncate max-w-[200px]">{trainer.email}</div>
                       {trainer.phone && (
                         <div className="text-sm text-gray-500">
                           {trainer.phone}
@@ -103,9 +108,13 @@ export function TrainersTable() {
                     </div>
                   </TableCell>
                   <TableCell className="hidden md:table-cell">
-                    {trainer.branch_names?.[0] || trainer.branch_id ? (
+                    {trainer.branch_names && trainer.branch_names.length > 0 ? (
                       <Badge variant="secondary">
-                        {trainer.branch_names?.[0] || "Assigned"}
+                        {trainer.branch_names[0]}
+                      </Badge>
+                    ) : trainer.branch_id ? (
+                      <Badge variant="secondary">
+                        Assigned
                       </Badge>
                     ) : (
                       <span className="text-gray-500 text-sm">No branch assigned</span>

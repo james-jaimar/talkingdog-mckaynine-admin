@@ -49,9 +49,10 @@ Deno.serve(async (req) => {
     }
 
     // Parse request body
-    const { userId, role } = await req.json() as UserRoleRequest;
+    const requestData = await req.json() as UserRoleRequest;
+    const { userId, role } = requestData;
 
-    console.log(`Processing role update for user ${userId} to role: ${role}`);
+    console.log(`[manage-user-role] Processing role update for user ${userId} to role: ${role}`);
 
     // Check if user is authorized (must be admin to change roles)
     const { data: adminCheck, error: adminCheckError } = await supabaseAdmin
@@ -60,18 +61,27 @@ Deno.serve(async (req) => {
       .eq('id', user.id)
       .single();
 
-    if (adminCheckError || !adminCheck || !adminCheck.role.includes('admin')) {
+    if (adminCheckError) {
+      console.error("[manage-user-role] Error checking admin status:", adminCheckError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to verify admin permissions', details: adminCheckError }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!adminCheck || !adminCheck.role.includes('admin')) {
       return new Response(
         JSON.stringify({ error: 'Unauthorized - admin role required' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Get user details for trainer creation if needed
+    // Get user details
     const { data: userData, error: userError } = await supabaseAdmin
       .auth.admin.getUserById(userId);
     
     if (userError || !userData?.user) {
+      console.error("[manage-user-role] Error fetching user:", userError);
       return new Response(
         JSON.stringify({ error: 'Failed to get user information', details: userError }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -88,7 +98,7 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (profileError && profileError.code !== 'PGRST116') {
-      console.error("Error checking profile:", profileError);
+      console.error("[manage-user-role] Error checking profile:", profileError);
       return new Response(
         JSON.stringify({ error: 'Failed to fetch profile data', details: profileError }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -106,6 +116,7 @@ Deno.serve(async (req) => {
     // Create or update profile
     if (!existingProfile) {
       // Create new profile
+      console.log("[manage-user-role] Creating new profile");
       const { error: createError } = await supabaseAdmin
         .from('profiles')
         .insert({
@@ -119,7 +130,7 @@ Deno.serve(async (req) => {
         });
 
       if (createError) {
-        console.error("Error creating profile:", createError);
+        console.error("[manage-user-role] Error creating profile:", createError);
         return new Response(
           JSON.stringify({ error: 'Failed to create profile', details: createError }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -127,6 +138,7 @@ Deno.serve(async (req) => {
       }
     } else {
       // Update existing profile
+      console.log("[manage-user-role] Updating existing profile");
       const { error: updateError } = await supabaseAdmin
         .from('profiles')
         .update({ 
@@ -137,7 +149,7 @@ Deno.serve(async (req) => {
         .eq('id', userId);
 
       if (updateError) {
-        console.error("Error updating profile:", updateError);
+        console.error("[manage-user-role] Error updating profile:", updateError);
         return new Response(
           JSON.stringify({ error: 'Failed to update profile', details: updateError }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -155,13 +167,15 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: `User role updated successfully to ${role}` 
+        message: `User role updated successfully to ${role}`,
+        userId,
+        role
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
-    console.error("Unexpected error:", error);
+    console.error("[manage-user-role] Unexpected error:", error);
     return new Response(
       JSON.stringify({ error: 'Internal server error', details: error.message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -184,10 +198,13 @@ async function syncTrainerRecord(userId: string, supabase: any, email: string, f
       .eq('user_id', userId)
       .maybeSingle();
 
-    if (checkError) throw checkError;
+    if (checkError) {
+      console.error("[syncTrainerRecord] Error checking existing trainer:", checkError);
+      throw checkError;
+    }
 
     if (!existingTrainer) {
-      console.log(`Creating new trainer record for user_id ${userId} with name ${firstName} ${lastName}`);
+      console.log(`[syncTrainerRecord] Creating new trainer record for user_id ${userId} with name ${firstName} ${lastName}`);
       
       // Create new trainer record
       const { data: newTrainer, error: createError } = await supabase
@@ -205,16 +222,16 @@ async function syncTrainerRecord(userId: string, supabase: any, email: string, f
         .single();
 
       if (createError) {
-        console.error("Error creating trainer record:", createError);
+        console.error("[syncTrainerRecord] Error creating trainer record:", createError);
         throw createError;
       }
       
-      console.log("Successfully created trainer record:", newTrainer);
+      console.log("[syncTrainerRecord] Successfully created trainer record:", newTrainer.id);
+      return true;
     } else {
-      console.log(`Trainer record already exists for user_id ${userId}`);
+      console.log(`[syncTrainerRecord] Trainer record already exists for user_id ${userId}`);
+      return true;
     }
-    
-    return true;
   } catch (error) {
     console.error("[syncTrainerRecord] Error:", error);
     throw error;
@@ -224,20 +241,40 @@ async function syncTrainerRecord(userId: string, supabase: any, email: string, f
 // Helper function to remove trainer record
 async function removeTrainerRecord(userId: string, supabase: any) {
   try {
-    console.log(`Attempting to remove trainer record for user_id ${userId}`);
+    console.log(`[removeTrainerRecord] Attempting to remove trainer record for user_id ${userId}`);
+    
+    // First try to get the trainer record
+    const { data: trainerRecord, error: getError } = await supabase
+      .from('trainers')
+      .select('id')
+      .eq('user_id', userId)
+      .maybeSingle();
+      
+    if (getError) {
+      console.error("[removeTrainerRecord] Error finding trainer record:", getError);
+      return false;
+    }
+    
+    if (!trainerRecord) {
+      console.log(`[removeTrainerRecord] No trainer record found for user_id ${userId}`);
+      return true;
+    }
     
     // We won't delete the trainer record, just unlink it from the user
     const { error } = await supabase
       .from('trainers')
-      .update({ user_id: null })
+      .update({ 
+        user_id: null,
+        updated_at: new Date().toISOString()
+      })
       .eq('user_id', userId);
 
     if (error) {
-      console.error("Error unlinking trainer record:", error);
+      console.error("[removeTrainerRecord] Error unlinking trainer record:", error);
       throw error;
     }
     
-    console.log(`Successfully unlinked trainer record for user_id ${userId}`);
+    console.log(`[removeTrainerRecord] Successfully unlinked trainer record for user_id ${userId}`);
     return true;
   } catch (error) {
     console.error("[removeTrainerRecord] Error:", error);

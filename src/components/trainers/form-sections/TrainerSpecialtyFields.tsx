@@ -30,56 +30,62 @@ export function TrainerSpecialtyFields({
 
   // Debug log to check branches data
   useEffect(() => {
-    console.log("Branch options in TrainerSpecialtyFields:", branches);
-  }, [branches]);
+    console.log("[TrainerSpecialtyFields] Branches:", branches);
+    console.log("[TrainerSpecialtyFields] Current branch value:", form.getValues("branchIds"));
+  }, [branches, form]);
 
-  // For branch selection
   return (
     <>
       <FormField
         control={form.control}
         name="branchIds"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Branch</FormLabel>
-            <FormControl>
-              {isLoadingBranches ? (
-                <div className="flex items-center space-x-2 h-10 px-3 py-2 border rounded-md">
-                  <Loader className="h-4 w-4 animate-spin" />
-                  <span className="text-sm text-muted-foreground">Loading branches...</span>
-                </div>
-              ) : branches.length > 0 ? (
-                <Select 
-                  onValueChange={(value) => {
-                    console.log("Branch selected:", value);
-                    form.setValue('branchIds', [value], { 
-                      shouldValidate: true, 
-                      shouldDirty: true 
-                    });
-                  }}
-                  value={field.value && field.value.length > 0 ? field.value[0] : undefined}
-                  disabled={isLoadingBranches}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a branch" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {branches.map((branch) => (
-                      <SelectItem key={branch.value} value={branch.value}>
-                        {branch.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : (
-                <div className="text-sm text-muted-foreground border border-input p-2 rounded">
-                  No branches available. Please add branches first.
-                </div>
-              )}
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
+        render={({ field }) => {
+          // Extract the first branch ID if available
+          const branchValue = field.value && field.value.length > 0 
+            ? field.value[0] 
+            : undefined;
+          
+          return (
+            <FormItem>
+              <FormLabel>Branch</FormLabel>
+              <FormControl>
+                {isLoadingBranches ? (
+                  <div className="flex items-center space-x-2 h-10 px-3 py-2 border rounded-md">
+                    <Loader className="h-4 w-4 animate-spin" />
+                    <span className="text-sm text-muted-foreground">Loading branches...</span>
+                  </div>
+                ) : branches.length > 0 ? (
+                  <Select 
+                    value={branchValue}
+                    onValueChange={(value) => {
+                      console.log("[TrainerSpecialtyFields] Branch selected:", value);
+                      form.setValue('branchIds', [value], { 
+                        shouldValidate: true, 
+                        shouldDirty: true 
+                      });
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a branch" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {branches.map((branch) => (
+                        <SelectItem key={branch.value} value={branch.value}>
+                          {branch.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div className="text-sm text-muted-foreground border border-input p-2 rounded">
+                    No branches available. Please add branches first.
+                  </div>
+                )}
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          );
+        }}
       />
       
       <div className="space-y-3">
@@ -90,27 +96,31 @@ export function TrainerSpecialtyFields({
               key={specialty.value}
               control={form.control}
               name="specialties"
-              render={({ field }) => (
-                <FormItem className="flex items-center space-x-2">
-                  <FormControl>
-                    <Checkbox
-                      checked={field.value?.includes(specialty.value)}
-                      onCheckedChange={(checked) => {
-                        const currentValues = field.value || [];
-                        const updatedValues = checked
-                          ? [...currentValues, specialty.value]
-                          : currentValues.filter(value => value !== specialty.value);
-                        
-                        form.setValue('specialties', updatedValues, {
-                          shouldValidate: true,
-                          shouldDirty: true
-                        });
-                      }}
-                    />
-                  </FormControl>
-                  <span className="text-sm">{specialty.label}</span>
-                </FormItem>
-              )}
+              render={({ field }) => {
+                const specialties = field.value || [];
+                const isChecked = specialties.includes(specialty.value);
+                
+                return (
+                  <FormItem className="flex items-center space-x-2">
+                    <FormControl>
+                      <Checkbox
+                        checked={isChecked}
+                        onCheckedChange={(checked) => {
+                          const updatedValues = checked
+                            ? [...specialties, specialty.value]
+                            : specialties.filter(value => value !== specialty.value);
+                          
+                          form.setValue('specialties', updatedValues, {
+                            shouldValidate: true,
+                            shouldDirty: true
+                          });
+                        }}
+                      />
+                    </FormControl>
+                    <span className="text-sm">{specialty.label}</span>
+                  </FormItem>
+                );
+              }}
             />
           ))}
         </div>
