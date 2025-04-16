@@ -20,6 +20,7 @@ export function useClassData({ classId, scheduleId }: UseClassDataProps) {
     data: classData,
     isLoading: isClassLoading,
     error: classError,
+    refetch: refetchClassData,
   } = useQuery({
     queryKey: ['class-detail', classId],
     queryFn: async () => {
@@ -58,6 +59,7 @@ export function useClassData({ classId, scheduleId }: UseClassDataProps) {
     data: scheduleData,
     isLoading: isScheduleLoading,
     error: scheduleError,
+    refetch: refetchScheduleData,
   } = useQuery({
     queryKey: ['schedule-detail', scheduleId],
     queryFn: async () => {
@@ -91,6 +93,13 @@ export function useClassData({ classId, scheduleId }: UseClassDataProps) {
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
+  // Function to refetch all data
+  const refetch = async () => {
+    console.log("Refetching class and schedule data");
+    if (classId) await refetchClassData();
+    if (scheduleId) await refetchScheduleData();
+  };
+
   const isLoading = isClassLoading || isScheduleLoading;
   const error = classError || scheduleError;
 
@@ -100,6 +109,7 @@ export function useClassData({ classId, scheduleId }: UseClassDataProps) {
     isLoading,
     error,
     isAuthenticated: !!user && !!session,
-    hasBranch: !!currentBranch
+    hasBranch: !!currentBranch,
+    refetch
   };
 }

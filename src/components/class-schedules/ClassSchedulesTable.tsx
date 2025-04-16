@@ -1,7 +1,7 @@
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { EditClassScheduleModal } from "./EditClassScheduleModal";
 import { useAuth } from "@/context/AuthContext";
@@ -28,9 +28,13 @@ export function ClassSchedulesTable({ classId }: ClassSchedulesTableProps) {
   const { toast } = useToast();
   const { user, session } = useAuth();
   const { currentBranch } = useBranch();
+  const queryClient = useQueryClient();
+
+  // Add a state to track if a refresh is needed
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const { data: schedules, isLoading, error, refetch } = useQuery({
-    queryKey: ["class-schedules", classId, user?.id, currentBranch?.id],
+    queryKey: ["class-schedules", classId, user?.id, currentBranch?.id, refreshTrigger],
     queryFn: async () => {
       console.log("Fetching class schedules for classId:", classId);
       console.log("Current user ID:", user?.id);
@@ -61,6 +65,58 @@ export function ClassSchedulesTable({ classId }: ClassSchedulesTableProps) {
     enabled: !!classId && !!user && !!session && !!currentBranch,
   });
 
+  // Function to manually trigger a refresh
+  const forceRefresh = () => {
+    console.log("Forcing schedules refresh");
+    setRefreshTrigger(prev => prev + 1);
+  };
+
+  // Subscribe to realtime changes on class_schedules table
+  useEffect(() => {
+    if (!classId || !user || !session) return;
+
+    console.log("Setting up class schedules subscription");
+    const channel = supabase
+      .channel('table-db-changes')
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'class_schedules',
+          filter: `class_id=eq.${classId}`
+        }, 
+        (payload) => {
+          console.log("Received class_schedules change:", payload);
+          forceRefresh();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log("Cleaning up class schedules subscription");
+      supabase.removeChannel(channel);
+    };
+  }, [classId, user, session]);
+
+  // Listen to invalidations from the query client
+  useEffect(() => {
+    const unsubscribe = queryClient.getQueryCache().subscribe(() => {
+      // Check if any query with the class-schedules prefix was invalidated
+      const wasInvalidated = queryClient.getQueryCache().getAll().some(
+        query => query.queryKey[0] === 'class-schedules' && query.state.isInvalidated
+      );
+      
+      if (wasInvalidated) {
+        console.log("Schedule query was invalidated, refreshing");
+        refetch();
+      }
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [queryClient, refetch]);
+
   const handleDeleteSchedule = async (id: string) => {
     try {
       const { error } = await supabase
@@ -75,7 +131,9 @@ export function ClassSchedulesTable({ classId }: ClassSchedulesTableProps) {
         description: "The class schedule has been successfully deleted.",
       });
       
-      refetch();
+      // Invalidate and refetch queries
+      queryClient.invalidateQueries({ queryKey: ["class-schedules"] });
+      forceRefresh();
     } catch (error) {
       console.error("Error deleting schedule:", error);
       toast({
@@ -97,7 +155,8 @@ export function ClassSchedulesTable({ classId }: ClassSchedulesTableProps) {
 
   const handleEditSuccess = () => {
     // Refresh data
-    refetch();
+    queryClient.invalidateQueries({ queryKey: ["class-schedules"] });
+    forceRefresh();
     // Clear the edit state
     setScheduleToEdit(null);
   };

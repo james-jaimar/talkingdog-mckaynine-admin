@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { ClassSchedule } from "../types/classSchedule";
 import { ClassScheduleFormValues } from "../schemas/classScheduleFormSchema";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface UseScheduleSubmitProps {
   classId: string;
@@ -18,6 +19,7 @@ export function useScheduleSubmit({
 }: UseScheduleSubmitProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const NO_TRAINER_ID = 'ba95153f-699c-4cc1-afe5-762bf30033d4';
 
@@ -116,6 +118,9 @@ export function useScheduleSubmit({
         });
       }
 
+      // Immediately invalidate related queries
+      queryClient.invalidateQueries({ queryKey: ["class-schedules"] });
+      
       // Wait a moment before triggering success callback
       setTimeout(() => {
         onSuccess();

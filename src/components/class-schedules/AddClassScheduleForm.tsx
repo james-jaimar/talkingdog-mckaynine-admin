@@ -6,6 +6,7 @@ import { format } from "date-fns";
 import { useClassScheduleForm } from "./hooks/useClassScheduleForm";
 import { Class } from "@/components/classes/types/class";
 import { ClassScheduleFormFields } from "./ClassScheduleFormFields";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface AddClassScheduleFormProps {
   classId: string;
@@ -18,13 +19,19 @@ export function AddClassScheduleForm({
   classData, 
   onSuccess 
 }: AddClassScheduleFormProps) {
+  const queryClient = useQueryClient();
+  
   const { 
     form, 
     isSubmitting, 
     trainers, 
     isLoadingTrainers, 
     onSubmit 
-  } = useClassScheduleForm(classId, null, onSuccess);
+  } = useClassScheduleForm(classId, null, () => {
+    // Invalidate and refetch class schedules on success
+    queryClient.invalidateQueries({ queryKey: ['class-schedules'] });
+    onSuccess();
+  });
 
   // Extract values for conditional logic
   const startTime = form.watch("startTime");
