@@ -89,6 +89,7 @@ export function useClassOrder() {
       return;
     }
     
+    // Save the new order to the database
     saveClassOrderMutation.mutate(newOrder.map(c => c.id));
     
     toast({
@@ -120,6 +121,7 @@ export function useClassOrder() {
       return;
     }
     
+    // Save the new order to the database
     saveClassOrderMutation.mutate(newOrder.map(c => c.id));
     
     toast({

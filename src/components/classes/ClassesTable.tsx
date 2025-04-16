@@ -28,7 +28,7 @@ export function ClassesTable({ filter }: ClassesTableProps = {}) {
     setIsEditModalOpen(true);
   };
 
-  // These handlers ensure we're passing the correct index to the move functions
+  // Dedicated handlers for move operations
   const handleMoveUp = (index: number) => {
     moveClassUp(index);
   };

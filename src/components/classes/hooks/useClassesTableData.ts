@@ -1,3 +1,4 @@
+
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useBranch } from "@/context/BranchContext";
@@ -31,8 +32,7 @@ export function useClassesTableData(filter?: string) {
               )
             )
           `)
-          .eq('branch_id', currentBranch.id)
-          .order('name');
+          .eq('branch_id', currentBranch.id);
         
         const { data, error } = await query;
         
@@ -79,9 +79,6 @@ export function useClassesTableData(filter?: string) {
     enabled: !!currentBranch
   });
 
-  // Check for manually ordered classes in the QueryClient cache
-  const cachedClasses = queryClient.getQueryData(['classes', currentBranch?.id]);
-  
   // Order classes based on:
   // 1. Cached ordered data (if we have it from drag operations)
   // 2. Saved database order
@@ -89,12 +86,7 @@ export function useClassesTableData(filter?: string) {
   const getOrderedClasses = () => {
     if (!classes || classes.length === 0) return [];
     
-    // If we have a cached version from reordering, use that
-    if (cachedClasses && Array.isArray(cachedClasses) && cachedClasses !== classes) {
-      return cachedClasses;
-    }
-    
-    // Otherwise use the saved order from database
+    // If we have a saved order from database
     if (savedOrder && savedOrder.class_ids && savedOrder.class_ids.length > 0) {
       // First include ordered classes, then any others not in the order
       const orderedIds = new Set(savedOrder.class_ids);
