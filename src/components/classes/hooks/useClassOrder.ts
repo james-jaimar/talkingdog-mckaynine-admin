@@ -50,6 +50,9 @@ export function useClassOrder() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['class-tab-order', currentBranch?.id] });
       queryClient.invalidateQueries({ queryKey: ['active-classes', currentBranch?.id] });
+      
+      // Also update the classes data to reflect the new order immediately
+      queryClient.invalidateQueries({ queryKey: ['classes', currentBranch?.id] });
     },
     onError: (error) => {
       console.error("Error saving class order:", error);
@@ -63,12 +66,19 @@ export function useClassOrder() {
 
   // Move class up in the order - accepts only index
   const moveClassUp = (index: number) => {
-    const orderedClasses = queryClient.getQueryData(['classes', currentBranch?.id]) as any[] || [];
+    if (index <= 0) return; // Already at the top
     
-    if (index <= 0 || !orderedClasses.length) return; // Already at the top
+    // Get the current classes data directly from the query cache
+    const classes = queryClient.getQueryData(['classes', currentBranch?.id]) as any[] || [];
     
-    const newOrder = [...orderedClasses];
+    if (!classes.length) return;
+    
+    // Create a new array with the swapped items
+    const newOrder = [...classes];
     [newOrder[index - 1], newOrder[index]] = [newOrder[index], newOrder[index - 1]];
+    
+    // Update the cache immediately for a responsive UI
+    queryClient.setQueryData(['classes', currentBranch?.id], newOrder);
     
     if (!user) {
       toast({
@@ -89,12 +99,17 @@ export function useClassOrder() {
 
   // Move class down in the order - accepts only index
   const moveClassDown = (index: number) => {
-    const orderedClasses = queryClient.getQueryData(['classes', currentBranch?.id]) as any[] || [];
+    // Get the current classes data directly from the query cache
+    const classes = queryClient.getQueryData(['classes', currentBranch?.id]) as any[] || [];
     
-    if (index >= orderedClasses.length - 1 || !orderedClasses.length) return; // Already at the bottom
+    if (!classes.length || index >= classes.length - 1) return; // Already at the bottom
     
-    const newOrder = [...orderedClasses];
+    // Create a new array with the swapped items
+    const newOrder = [...classes];
     [newOrder[index], newOrder[index + 1]] = [newOrder[index + 1], newOrder[index]];
+    
+    // Update the cache immediately for a responsive UI
+    queryClient.setQueryData(['classes', currentBranch?.id], newOrder);
     
     if (!user) {
       toast({

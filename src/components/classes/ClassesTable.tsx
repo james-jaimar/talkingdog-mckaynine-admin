@@ -28,6 +28,15 @@ export function ClassesTable({ filter }: ClassesTableProps = {}) {
     setIsEditModalOpen(true);
   };
 
+  // These handlers ensure we're passing the correct index to the move functions
+  const handleMoveUp = (index: number) => {
+    moveClassUp(index);
+  };
+
+  const handleMoveDown = (index: number) => {
+    moveClassDown(index);
+  };
+
   if (isLoading) {
     return (
       <div className="text-center p-8">
@@ -67,8 +76,8 @@ export function ClassesTable({ filter }: ClassesTableProps = {}) {
               classItem={classItem}
               index={index}
               totalClasses={orderedClasses.length}
-              onMoveUp={() => moveClassUp(index)}
-              onMoveDown={() => moveClassDown(index)}
+              onMoveUp={handleMoveUp}
+              onMoveDown={handleMoveDown}
               onEdit={handleEdit}
             />
           ))}
