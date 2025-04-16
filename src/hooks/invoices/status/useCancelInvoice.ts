@@ -11,16 +11,22 @@ export function useCancelInvoice() {
 
   return useMutation({
     mutationFn: async (invoiceId: string) => {
-      const { error } = await supabase
-        .from('invoices')
-        .update({ status: 'cancelled' })
-        .eq('id', invoiceId);
+      try {
+        const { error } = await supabase
+          .from('invoices')
+          .update({ status: 'cancelled' })
+          .eq('id', invoiceId);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      return { id: invoiceId };
+        return { id: invoiceId };
+      } catch (error) {
+        console.error("Error in cancel invoice mutation:", error);
+        throw error;
+      }
     },
     onSuccess: (_, invoiceId) => {
+      // Invalidate all relevant queries to update UI
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       queryClient.invalidateQueries({ queryKey: ['invoice', invoiceId] });
       
@@ -33,5 +39,15 @@ export function useCancelInvoice() {
       console.error("Error cancelling invoice:", error);
       toast.error("Failed to cancel invoice");
     },
+    meta: {
+      // Add onSettled to ensure UI is always released, even on error
+      onSettled: () => {
+        console.log("Cancel invoice operation completed");
+        // Ensure any UI locks are released
+        setTimeout(() => {
+          document.body.style.pointerEvents = '';
+        }, 100);
+      }
+    }
   });
 }

@@ -59,10 +59,21 @@ export function useInvoiceStatus(bookingId: string) {
         return null;
       } catch (err) {
         console.error(`Error in useInvoiceStatus for booking ${bookingId}:`, err);
-        throw err;
+        // Return null instead of throwing to prevent UI lockups
+        return null;
       }
     },
     staleTime: 10000, // 10 seconds
     refetchOnWindowFocus: true,
+    retry: 1, // Limit retries to prevent excessive requests on error
+    meta: {
+      // Add onSettled to ensure UI is always released, even on error
+      onSettled: () => {
+        // Ensure any UI locks are released
+        setTimeout(() => {
+          document.body.style.pointerEvents = '';
+        }, 100);
+      }
+    }
   });
 }
