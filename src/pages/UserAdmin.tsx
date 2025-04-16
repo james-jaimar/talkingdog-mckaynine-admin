@@ -103,7 +103,8 @@ export default function UserAdmin() {
             />
 
             <UsersTable
-              users={filteredUsers}
+              users={users}
+              filteredUsers={filteredUsers}
               isLoading={isLoading}
               onEditRole={handleEditRole}
               onResetPassword={handleResetPassword}
