@@ -39,6 +39,17 @@ export default function UserAdmin() {
     includeAllUsers: showAllUsers
   });
 
+  // Create a wrapper function with the required signature
+  const handleMigrationComplete = async () => {
+    try {
+      await refetch();
+      return Promise.resolve();
+    } catch (error) {
+      console.error("Error refetching after migration:", error);
+      return Promise.resolve();
+    }
+  };
+
   // Handle authentication
   if (authLoading) {
     return (
@@ -114,7 +125,7 @@ export default function UserAdmin() {
                 </div>
                 
                 {usersWithoutAppId > 0 && (
-                  <MigrateUsersButton onComplete={refetch} />
+                  <MigrateUsersButton onComplete={handleMigrationComplete} />
                 )}
               </div>
             </div>
