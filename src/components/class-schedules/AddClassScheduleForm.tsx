@@ -33,28 +33,17 @@ export function AddClassScheduleForm({
   // Update reference title when class data or start time changes
   useEffect(() => {
     if (classData && startTime) {
-      const formattedTime = startTime.split(":")[0].padStart(2, "0") + "h" + startTime.split(":")[1].padStart(2, "0");
-      const referenceTitle = `${classData.name} ${formattedTime} ${format(new Date(), 'MMMM/yyyy')}`;
-      form.setValue("referenceTitle", referenceTitle);
+      try {
+        const formattedTime = startTime.split(":")[0].padStart(2, "0") + "h" + startTime.split(":")[1].padStart(2, "0");
+        const referenceTitle = `${classData.name} ${formattedTime} ${format(new Date(), 'MMMM/yyyy')}`;
+        form.setValue("referenceTitle", referenceTitle);
+        
+        console.log("Updated form reference title:", referenceTitle);
+      } catch (err) {
+        console.error("Error updating reference title:", err);
+      }
     }
   }, [classData, startTime, form]);
-  
-  // Comment out the conflicting code that references removed fields
-  // We don't need to explicitly set start/end dates anymore as we're using selectedDates
-  /*
-  useEffect(() => {
-    if (selectedDates.length > 0) {
-      // Sort dates to find first and last
-      const sortedDates = [...selectedDates].sort((a, b) => a.getTime() - b.getTime());
-      const firstDate = sortedDates[0];
-      const lastDate = sortedDates[sortedDates.length - 1];
-      
-      // Update start and end dates
-      form.setValue("startDate", firstDate);
-      form.setValue("endDate", lastDate);
-    }
-  }, [selectedDates, form]);
-  */
 
   return (
     <Form {...form}>

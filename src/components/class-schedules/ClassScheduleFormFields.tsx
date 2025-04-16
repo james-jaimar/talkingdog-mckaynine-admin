@@ -20,7 +20,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Switch } from "@/components/ui/switch";
 import { ClassScheduleFormValues } from "./schemas/classScheduleFormSchema";
 import { Separator } from "@/components/ui/separator";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface ClassScheduleFormFieldsProps {
   control: Control<ClassScheduleFormValues>;
@@ -119,7 +119,7 @@ export function ClassScheduleFormFields({
                   field.onChange(selectedDatesArray);
                   console.log("Selected dates in calendar:", selectedDatesArray);
                 }}
-                numberOfMonths={4}
+                numberOfMonths={3}
                 disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
                 className="rounded-md border"
               />

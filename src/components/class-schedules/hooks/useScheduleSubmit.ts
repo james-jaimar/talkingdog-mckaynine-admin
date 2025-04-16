@@ -28,7 +28,8 @@ export function useScheduleSubmit({
     setIsSubmitting(true);
 
     try {
-      console.log("Submitting schedule data:", data);
+      console.log("Starting schedule submission with data:", data);
+      console.log("For class ID:", classId);
       
       // Check if we have selected dates
       if (!data.selectedDates || data.selectedDates.length === 0) {
@@ -74,7 +75,7 @@ export function useScheduleSubmit({
         trainer_id: data.trainerId === 'none' ? NO_TRAINER_ID : data.trainerId,
       };
 
-      console.log("Processed schedule data:", scheduleData);
+      console.log("Prepared schedule data for submission:", scheduleData);
 
       let result;
       
@@ -90,6 +91,8 @@ export function useScheduleSubmit({
           throw result.error;
         }
         
+        console.log("Schedule updated successfully:", result);
+        
         toast({
           title: "Schedule updated",
           description: "The class schedule has been successfully updated.",
@@ -104,6 +107,8 @@ export function useScheduleSubmit({
           console.error("Supabase insert error:", result.error);
           throw result.error;
         }
+        
+        console.log("Schedule created successfully:", result);
         
         toast({
           title: "Schedule created",

@@ -15,6 +15,8 @@ interface ClassSchedulesContentProps {
 export function ClassSchedulesContent({ classId, classData }: ClassSchedulesContentProps) {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
+  console.log("Rendering ClassSchedulesContent with:", { classId, className: classData?.name });
+
   return (
     <DashboardLayout>
       <Helmet>
