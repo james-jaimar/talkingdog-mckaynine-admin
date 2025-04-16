@@ -25,14 +25,16 @@ interface UserRoleDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   selectedUser: UserProfile | null;
-  onSaveRole?: (role: string) => Promise<void>;
+  onSaveRole?: (userId: string, role: string) => Promise<void>;
+  onSuccess?: () => void;
 }
 
 export function UserRoleDialog({ 
   open, 
   onOpenChange, 
   selectedUser,
-  onSaveRole 
+  onSaveRole,
+  onSuccess
 }: UserRoleDialogProps) {
   const [newRole, setNewRole] = useState(selectedUser?.role || "");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -41,6 +43,7 @@ export function UserRoleDialog({
   // Reset state when dialog opens with a different user
   useEffect(() => {
     if (open && selectedUser) {
+      console.log("[UserRoleDialog] Dialog opened with user:", selectedUser);
       setNewRole(selectedUser.role || "");
       setErrorMessage(null);
     }
@@ -59,7 +62,7 @@ export function UserRoleDialog({
       
       // If a custom onSaveRole handler is provided, use it
       if (onSaveRole) {
-        await onSaveRole(newRole);
+        await onSaveRole(selectedUser.id, newRole);
       } else {
         // Otherwise use the default role management hook
         await updateUserRole({
@@ -68,9 +71,13 @@ export function UserRoleDialog({
         });
       }
       
+      if (onSuccess) {
+        onSuccess();
+      }
+      
       onOpenChange(false);
     } catch (error) {
-      console.error("Error updating role:", error);
+      console.error("[UserRoleDialog] Error updating role:", error);
       setErrorMessage(error instanceof Error ? error.message : "An unexpected error occurred");
     }
   };

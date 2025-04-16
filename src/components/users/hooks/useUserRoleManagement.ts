@@ -33,6 +33,7 @@ export function useUserRoleManagement() {
           throw new Error(data?.error || "Role update failed");
         }
         
+        console.log("[useUserRoleManagement] Role update successful response:", data);
         return { success: true, role, userId };
       } catch (error) {
         console.error("[useUserRoleManagement] Transaction failed:", error);
@@ -46,25 +47,28 @@ export function useUserRoleManagement() {
         description: `User role has been updated to ${data.role}`,
       });
 
-      // Invalidate and refetch ALL relevant queries to ensure UI is updated properly
-      const queriesToInvalidate = [
-        ['users-admin'],
-        ['admin-users-list'],
-        ['users'],
-        ['trainers-list'],
-        ['trainers-admin'],
-        ['trainers'],
-        ['user', data.userId],
-        ['trainer', data.userId]
-      ];
+      // Delay and refetch ALL relevant queries to ensure data is properly updated
+      setTimeout(() => {
+        console.log("[useUserRoleManagement] Invalidating queries after role update");
+        
+        // Invalidate ALL relevant queries
+        const queriesToInvalidate = [
+          ['users-admin'],
+          ['admin-users-list'],
+          ['users'],
+          ['trainers-list'],
+          ['trainers-admin'],
+          ['trainers'],
+          ['user', data.userId],
+          ['trainer', data.userId]
+        ];
 
-      queriesToInvalidate.forEach(queryKey => {
-        queryClient.invalidateQueries({ queryKey });
-        // Force refetch after a small delay to ensure DB has updated
-        setTimeout(() => {
+        queriesToInvalidate.forEach(queryKey => {
+          queryClient.invalidateQueries({ queryKey });
+          // Force refetch to ensure UI is updated properly
           queryClient.refetchQueries({ queryKey });
-        }, 300);
-      });
+        });
+      }, 500); // Add delay to ensure edge function completes fully
     },
     onError: (error: Error) => {
       console.error("[useUserRoleManagement] Role update failed:", error);

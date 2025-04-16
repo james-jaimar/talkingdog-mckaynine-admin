@@ -69,14 +69,14 @@ Deno.serve(async (req) => {
       );
     }
 
-    if (!adminCheck || !adminCheck.role.includes('admin')) {
+    if (!adminCheck || !adminCheck.role || !adminCheck.role.includes('admin')) {
       return new Response(
         JSON.stringify({ error: 'Unauthorized - admin role required' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Get user details
+    // Get user details from auth
     const { data: userData, error: userError } = await supabaseAdmin
       .auth.admin.getUserById(userId);
     
@@ -89,6 +89,7 @@ Deno.serve(async (req) => {
     }
 
     const userEmail = userData.user.email;
+    console.log(`[manage-user-role] User email: ${userEmail}`);
     
     // Check if profile exists
     const { data: existingProfile, error: profileError } = await supabaseAdmin
@@ -121,10 +122,10 @@ Deno.serve(async (req) => {
         .from('profiles')
         .insert({
           id: userId,
-          role,
+          role: role,
           app_id: APP_ID,
           full_name: fullName,
-          username,
+          username: username,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         });
@@ -138,11 +139,11 @@ Deno.serve(async (req) => {
       }
     } else {
       // Update existing profile
-      console.log("[manage-user-role] Updating existing profile");
+      console.log(`[manage-user-role] Updating existing profile from role '${currentRole}' to '${role}'`);
       const { error: updateError } = await supabaseAdmin
         .from('profiles')
         .update({ 
-          role,
+          role: role,
           app_id: APP_ID,
           updated_at: new Date().toISOString()
         })
@@ -159,9 +160,11 @@ Deno.serve(async (req) => {
 
     // Handle trainer table synchronization
     if (isBecomingTrainer) {
+      console.log(`[manage-user-role] User is becoming a trainer, ensuring trainer record exists`);
       await syncTrainerRecord(userId, supabaseAdmin, username, fullName);
     } else if (wasTrainer && !isBecomingTrainer) {
-      await removeTrainerRecord(userId, supabaseAdmin);
+      console.log(`[manage-user-role] User is no longer a trainer, handling trainer record`);
+      await handleTrainerRecordRemoval(userId, supabaseAdmin);
     }
 
     return new Response(
@@ -238,25 +241,25 @@ async function syncTrainerRecord(userId: string, supabase: any, email: string, f
   }
 }
 
-// Helper function to remove trainer record
-async function removeTrainerRecord(userId: string, supabase: any) {
+// Helper function to handle removal of trainer role
+async function handleTrainerRecordRemoval(userId: string, supabase: any) {
   try {
-    console.log(`[removeTrainerRecord] Attempting to remove trainer record for user_id ${userId}`);
+    console.log(`[handleTrainerRecordRemoval] Processing trainer record for user_id ${userId}`);
     
     // First try to get the trainer record
     const { data: trainerRecord, error: getError } = await supabase
       .from('trainers')
-      .select('id')
+      .select('id, user_id')
       .eq('user_id', userId)
       .maybeSingle();
       
     if (getError) {
-      console.error("[removeTrainerRecord] Error finding trainer record:", getError);
+      console.error("[handleTrainerRecordRemoval] Error finding trainer record:", getError);
       return false;
     }
     
     if (!trainerRecord) {
-      console.log(`[removeTrainerRecord] No trainer record found for user_id ${userId}`);
+      console.log(`[handleTrainerRecordRemoval] No trainer record found for user_id ${userId}`);
       return true;
     }
     
@@ -270,14 +273,14 @@ async function removeTrainerRecord(userId: string, supabase: any) {
       .eq('user_id', userId);
 
     if (error) {
-      console.error("[removeTrainerRecord] Error unlinking trainer record:", error);
+      console.error("[handleTrainerRecordRemoval] Error unlinking trainer record:", error);
       throw error;
     }
     
-    console.log(`[removeTrainerRecord] Successfully unlinked trainer record for user_id ${userId}`);
+    console.log(`[handleTrainerRecordRemoval] Successfully unlinked trainer record for user_id ${userId}`);
     return true;
   } catch (error) {
-    console.error("[removeTrainerRecord] Error:", error);
+    console.error("[handleTrainerRecordRemoval] Error:", error);
     throw error;
   }
 }

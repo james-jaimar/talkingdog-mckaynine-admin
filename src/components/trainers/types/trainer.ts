@@ -14,4 +14,5 @@ export interface Trainer {
   created_at: string;
   updated_at: string;
   user_id?: string | null;
+  display_name?: string; // Added for consistent display
 }

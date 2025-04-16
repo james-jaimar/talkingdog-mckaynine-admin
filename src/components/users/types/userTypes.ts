@@ -1,12 +1,25 @@
 
 export interface UserProfile {
   id: string;
-  email: string;
-  username: string;
-  full_name: string;
+  username?: string;
+  email?: string;
+  full_name?: string;
+  avatar_url?: string | null;
   role: string;
-  avatar_url: string | null;
   created_at: string;
-  isCurrentUser?: boolean;
+  updated_at?: string;
   app_id?: string;
+  isCurrentUser?: boolean;
+}
+
+export interface UserFormValues {
+  email: string;
+  fullName: string;
+  role: string;
+  password?: string;
+}
+
+export interface UserRoleChangeRequest {
+  userId: string;
+  role: string;
 }
