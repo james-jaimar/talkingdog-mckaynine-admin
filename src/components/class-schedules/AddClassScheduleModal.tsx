@@ -13,6 +13,7 @@ interface AddClassScheduleModalProps {
   onOpenChange: (open: boolean) => void;
   classId: string;
   classData: Class;
+  onSuccess?: () => void; // Added onSuccess as an optional prop
 }
 
 export function AddClassScheduleModal({ 
@@ -20,6 +21,7 @@ export function AddClassScheduleModal({
   onOpenChange, 
   classId,
   classData,
+  onSuccess,
 }: AddClassScheduleModalProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -30,7 +32,10 @@ export function AddClassScheduleModal({
         <AddClassScheduleForm 
           classId={classId} 
           classData={classData}
-          onSuccess={() => onOpenChange(false)} 
+          onSuccess={() => {
+            if (onSuccess) onSuccess();
+            onOpenChange(false);
+          }} 
         />
       </DialogContent>
     </Dialog>
