@@ -28,20 +28,20 @@ export function UserManageDialog({
   onOpenChange, 
   onUserUpdated 
 }: UserManageDialogProps) {
-  const [role, setRole] = useState(user.role);
+  const [role, setRole] = useState(user.role || '');
   const { updateUserRole, isUpdating } = useUserRoleManagement();
 
   const handleUpdateUser = async () => {
+    if (!role) return;
+
     try {
       console.log(`[UserManageDialog] Updating user ${user.id} to role: ${role}`);
       
-      // Use the refactored updateUserRole mutation
       await updateUserRole({ 
         userId: user.id, 
         role 
       });
       
-      // Close dialog and refresh user list
       onOpenChange(false);
       onUserUpdated();
       
@@ -93,7 +93,10 @@ export function UserManageDialog({
           >
             Cancel
           </Button>
-          <Button onClick={handleUpdateUser} disabled={isUpdating}>
+          <Button 
+            onClick={handleUpdateUser} 
+            disabled={isUpdating || !role || role === user.role}
+          >
             {isUpdating ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
