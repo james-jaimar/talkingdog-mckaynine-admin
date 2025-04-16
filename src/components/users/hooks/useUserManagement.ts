@@ -5,9 +5,10 @@ import { useToast } from "@/components/ui/use-toast";
 import { UserProfile } from "../types/userTypes";
 import { APP_ID } from "@/constants/app";
 
-export function useUserManagement() {
+export function useUserManagement(options?: { includeAllUsers?: boolean }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const includeAllUsers = options?.includeAllUsers || false;
 
   // Fetch users for current app
   const {
@@ -16,22 +17,30 @@ export function useUserManagement() {
     error,
     refetch
   } = useQuery({
-    queryKey: ['users-admin'],
+    queryKey: ['users-admin', { includeAllUsers }],
     queryFn: async () => {
-      console.log("Fetching users filtered by app_id:", APP_ID);
+      console.log(includeAllUsers ? "Fetching all users" : `Fetching users filtered by app_id: ${APP_ID}`);
 
       try {
         // Get current user for marking in UI
         const { data: { user: currentUser } } = await supabase.auth.getUser();
         
-        // Get all profiles for this app
-        const { data: profiles, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('app_id', APP_ID)
-          .order('created_at', { ascending: false });
+        // Get profiles based on filtering option
+        let query = supabase.from('profiles').select('*');
+        
+        // Only apply app_id filter if we're not including all users
+        if (!includeAllUsers) {
+          query = query.eq('app_id', APP_ID);
+        }
+        
+        // Add ordering
+        query = query.order('created_at', { ascending: false });
+        
+        const { data: profiles, error } = await query;
         
         if (error) throw error;
+
+        console.log(`Fetched ${profiles?.length || 0} user profiles${includeAllUsers ? ' (all users)' : ''}`);
 
         return profiles.map(profile => ({
           id: profile.id,

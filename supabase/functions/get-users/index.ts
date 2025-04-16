@@ -81,6 +81,8 @@ serve(async (req: Request) => {
     if (app_id) {
       query = query.eq('app_id', app_id);
       console.log("Filtering profiles by app_id:", app_id);
+    } else {
+      console.log("No app_id provided, returning all profiles");
     }
 
     const { data: profiles, error } = await query;

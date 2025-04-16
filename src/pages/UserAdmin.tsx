@@ -13,6 +13,9 @@ import { UserPasswordResetDialog } from "@/components/users/UserPasswordResetDia
 import { AddUserDialog } from "@/components/users/AddUserDialog";
 import { UsersTable } from "@/components/users/components/UsersTable";
 import { UserProfile } from "@/components/users/types/userTypes";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { MigrateUsersButton } from "@/components/users/components/MigrateUsersButton";
 
 export default function UserAdmin() {
   const { isAdmin, isLoading: authLoading } = useAuth();
@@ -25,13 +28,16 @@ export default function UserAdmin() {
   const [manageDialogOpen, setManageDialogOpen] = useState(false);
   const [resetPasswordOpen, setResetPasswordOpen] = useState(false);
   const [addUserOpen, setAddUserOpen] = useState(false);
+  const [showAllUsers, setShowAllUsers] = useState(true);
 
   const {
     users,
     isLoading,
     refetch,
     updateRole
-  } = useUserManagement();
+  } = useUserManagement({
+    includeAllUsers: showAllUsers
+  });
 
   // Handle authentication
   if (authLoading) {
@@ -80,6 +86,10 @@ export default function UserAdmin() {
     }
   };
 
+  // Count users with and without app_id
+  const usersWithAppId = users.filter(user => user.app_id).length;
+  const usersWithoutAppId = users.length - usersWithAppId;
+
   return (
     <DashboardLayout>
       <Helmet>
@@ -91,7 +101,29 @@ export default function UserAdmin() {
 
         <Card>
           <CardHeader className="pb-0">
-            <CardTitle>Users ({users.length})</CardTitle>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              <CardTitle>Users ({users.length})</CardTitle>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                <div className="flex items-center space-x-2">
+                  <Switch 
+                    id="show-all-users"
+                    checked={showAllUsers}
+                    onCheckedChange={setShowAllUsers}
+                  />
+                  <Label htmlFor="show-all-users">Show all users</Label>
+                </div>
+                
+                {usersWithoutAppId > 0 && (
+                  <MigrateUsersButton onComplete={refetch} />
+                )}
+              </div>
+            </div>
+            
+            {usersWithoutAppId > 0 && (
+              <div className="mt-2 text-sm text-amber-600">
+                {usersWithoutAppId} users without app_id detected. Use the migration button to fix.
+              </div>
+            )}
           </CardHeader>
           <CardContent>
             <UserListHeader

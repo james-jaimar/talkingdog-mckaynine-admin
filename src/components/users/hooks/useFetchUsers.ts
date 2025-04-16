@@ -4,11 +4,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { UserProfile } from "../types/userTypes";
 import { APP_ID } from "@/constants/app";
 
-export function useFetchUsers() {
+export function useFetchUsers(options?: { includeAllUsers?: boolean }) {
+  const includeAllUsers = options?.includeAllUsers || false;
+  
   return useQuery({
-    queryKey: ['admin-users-list'],
+    queryKey: ['admin-users-list', { includeAllUsers }],
     queryFn: async () => {
-      console.log("Fetching users filtered by app_id:", APP_ID);
+      console.log(includeAllUsers ? "Fetching all users" : `Fetching users filtered by app_id: ${APP_ID}`);
       
       try {
         // Get current user for marking in the UI
@@ -21,9 +23,13 @@ export function useFetchUsers() {
           throw new Error("No active session");
         }
 
-        // Call the edge function to get all users
-        // The proper way to pass query parameters is through the URL
-        const { data, error } = await supabase.functions.invoke(`get-users?app_id=${encodeURIComponent(APP_ID)}`, {
+        // Call the edge function to get users
+        // If including all users, don't filter by app_id
+        const endpoint = includeAllUsers 
+          ? 'get-users'
+          : `get-users?app_id=${encodeURIComponent(APP_ID)}`;
+          
+        const { data, error } = await supabase.functions.invoke(endpoint, {
           method: 'GET',
         });
         
