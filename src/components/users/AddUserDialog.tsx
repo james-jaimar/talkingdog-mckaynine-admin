@@ -200,12 +200,12 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
         <DialogHeader>
           <DialogTitle>Add New User</DialogTitle>
           <DialogDescription>
-            Create a new user account with specific permissions
+            Create a new user account with the specified role.
           </DialogDescription>
         </DialogHeader>
         
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleAddUser)} className="space-y-4 py-2">
+          <form onSubmit={form.handleSubmit(handleAddUser)} className="space-y-4">
             <FormField
               control={form.control}
               name="email"
@@ -213,7 +213,7 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
                 <FormItem>
                   <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input {...field} type="email" placeholder="user@example.com" />
+                    <Input type="email" placeholder="user@example.com" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -227,7 +227,7 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
                 <FormItem>
                   <FormLabel>Password</FormLabel>
                   <FormControl>
-                    <Input {...field} type="password" placeholder="••••••••" />
+                    <Input type="password" placeholder="••••••••" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -239,9 +239,9 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
               name="fullName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Full Name (Optional)</FormLabel>
+                  <FormLabel>Full Name</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="John Doe" />
+                    <Input placeholder="John Doe" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -254,13 +254,13 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Role</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
+                  <Select 
+                    onValueChange={field.onChange} 
                     defaultValue={field.value}
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select a role" />
+                        <SelectValue placeholder="Select role" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -276,23 +276,16 @@ export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialog
             />
             
             <DialogFooter>
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={() => onOpenChange(false)}
-                disabled={isSubmitting}
-              >
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
                 Cancel
               </Button>
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Adding...
+                    Creating...
                   </>
-                ) : (
-                  "Add User"
-                )}
+                ) : "Create User"}
               </Button>
             </DialogFooter>
           </form>
