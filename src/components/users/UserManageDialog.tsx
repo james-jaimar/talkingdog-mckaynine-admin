@@ -13,7 +13,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { APP_ID } from "@/constants/app";
 import { useUserRoleManagement } from "./hooks/useUserRoleManagement";
 
 interface UserManageDialogProps {
@@ -34,17 +33,20 @@ export function UserManageDialog({
 
   const handleUpdateUser = async () => {
     try {
+      console.log(`[UserManageDialog] Updating user ${user.id} to role: ${role}`);
+      
       // Use the refactored updateUserRole mutation
-      await updateUserRole({ userId: user.id, role });
+      await updateUserRole({ 
+        userId: user.id, 
+        role 
+      });
       
-      // Close dialog
+      // Close dialog and refresh user list
       onOpenChange(false);
-      
-      // Refresh user list
       onUserUpdated();
       
     } catch (error) {
-      console.error("Error updating user:", error);
+      console.error("[UserManageDialog] Error updating user:", error);
     }
   };
 
