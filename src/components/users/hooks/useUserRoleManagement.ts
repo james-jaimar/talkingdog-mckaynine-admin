@@ -17,67 +17,22 @@ export function useUserRoleManagement() {
       }
 
       try {
-        // Step 1: Get current profile to check existing role - using maybeSingle() instead of single()
-        const { data: currentProfile, error: profileError } = await supabase
-          .from('profiles')
-          .select('role, app_id')
-          .eq('id', userId)
-          .maybeSingle(); // Using maybeSingle() to prevent errors when no row is found
-
-        if (profileError) {
-          console.error("[useUserRoleManagement] Error fetching current profile:", profileError);
-          throw new Error(`Failed to fetch current profile: ${profileError.message}`);
+        // Call our edge function to handle the role update
+        const { data, error } = await supabase.functions.invoke("manage-user-role", {
+          method: 'POST',
+          body: { userId, role }
+        });
+        
+        if (error) {
+          console.error("[useUserRoleManagement] Edge function error:", error);
+          throw new Error(`Role update failed: ${error.message}`);
         }
-
-        console.log("[useUserRoleManagement] Current profile:", currentProfile);
-
-        // If profile doesn't exist, create it
-        if (!currentProfile) {
-          console.log("[useUserRoleManagement] Profile not found, creating new profile");
-          const { error: createError } = await supabase
-            .from('profiles')
-            .insert({
-              id: userId,
-              role,
-              app_id: APP_ID,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            });
-
-          if (createError) {
-            console.error("[useUserRoleManagement] Error creating profile:", createError);
-            throw new Error(`Failed to create profile: ${createError.message}`);
-          }
-        } else {
-          // Step 2: Update existing profile with new role
-          const { error: updateError } = await supabase
-            .from('profiles')
-            .update({ 
-              role,
-              app_id: APP_ID,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', userId);
-
-          if (updateError) {
-            console.error("[useUserRoleManagement] Error updating profile:", updateError);
-            throw new Error(`Failed to update profile: ${updateError.message}`);
-          }
+        
+        if (!data || !data.success) {
+          console.error("[useUserRoleManagement] Role update unsuccessful:", data);
+          throw new Error(data?.error || "Role update failed");
         }
-
-        // Step 3: Handle trainer table synchronization
-        const existingRole = currentProfile?.role || '';
-        const isBecomingTrainer = role.includes('trainer');
-        const wasTrainer = existingRole.includes('trainer');
-
-        if (isBecomingTrainer) {
-          console.log("[useUserRoleManagement] Syncing trainer record");
-          await syncTrainerRecord(userId);
-        } else if (wasTrainer && !isBecomingTrainer) {
-          console.log("[useUserRoleManagement] Removing trainer record");
-          await removeTrainerRecord(userId);
-        }
-
+        
         return { success: true, role };
       } catch (error) {
         console.error("[useUserRoleManagement] Transaction failed:", error);
@@ -117,64 +72,4 @@ export function useUserRoleManagement() {
     updateUserRole,
     isUpdating
   };
-}
-
-// Helper function to sync trainer record
-async function syncTrainerRecord(userId: string) {
-  try {
-    // Get user profile data
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('username, full_name')
-      .eq('id', userId)
-      .maybeSingle(); // Using maybeSingle() here as well
-
-    if (profileError) throw profileError;
-
-    const nameParts = (profile?.full_name || '').split(' ');
-    const firstName = nameParts[0] || '';
-    const lastName = nameParts.slice(1).join(' ') || '';
-
-    // Check if trainer record exists
-    const { data: existingTrainer, error: checkError } = await supabase
-      .from('trainers')
-      .select('id')
-      .eq('user_id', userId)
-      .maybeSingle();
-
-    if (checkError) throw checkError;
-
-    if (!existingTrainer) {
-      // Create new trainer record
-      const { error: createError } = await supabase
-        .from('trainers')
-        .insert({
-          user_id: userId,
-          email: profile?.username || '',
-          first_name: firstName,
-          last_name: lastName,
-          specialties: [],
-        });
-
-      if (createError) throw createError;
-    }
-  } catch (error) {
-    console.error("[syncTrainerRecord] Error:", error);
-    throw new Error('Failed to sync trainer record');
-  }
-}
-
-// Helper function to remove trainer record
-async function removeTrainerRecord(userId: string) {
-  try {
-    const { error } = await supabase
-      .from('trainers')
-      .delete()
-      .eq('user_id', userId);
-
-    if (error) throw error;
-  } catch (error) {
-    console.error("[removeTrainerRecord] Error:", error);
-    throw new Error('Failed to remove trainer record');
-  }
 }
