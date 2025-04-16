@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { useAuth } from "@/context/auth";
@@ -848,4 +849,121 @@ export default function PuppyClassForm() {
                       <div className="flex items-center space-x-2">
                         <Checkbox
                           id="vetClearanceLetter"
-                          {...form.register
+                          {...form.register("vetClearanceLetter")}
+                        />
+                        <Label htmlFor="vetClearanceLetter">
+                          My vet has given me clearance to bring my puppy to class
+                        </Label>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <Separator />
+                  
+                  <div className="bg-green-50 p-4 rounded-md border border-green-200">
+                    <h4 className="text-lg font-semibold mb-2">Terms and Agreements</h4>
+                    <div className="space-y-4">
+                      <div className="flex items-start space-x-2">
+                        <Checkbox
+                          id="whatsAppPermission"
+                          {...form.register("whatsAppPermission")}
+                          className="mt-1"
+                        />
+                        <Label htmlFor="whatsAppPermission" className="text-sm">
+                          I give permission to be added to the class WhatsApp group for class updates and information
+                        </Label>
+                      </div>
+                      
+                      <div className="flex items-start space-x-2">
+                        <Checkbox
+                          id="photoPermission"
+                          {...form.register("photoPermission")}
+                          className="mt-1"
+                        />
+                        <Label htmlFor="photoPermission" className="text-sm">
+                          I give permission for photos of my dog in class to be used on social media and marketing materials
+                        </Label>
+                      </div>
+                      
+                      <div className="flex items-start space-x-2">
+                        <Checkbox
+                          id="offleaseSocializingAgreement"
+                          {...form.register("offleaseSocializingAgreement")}
+                          className="mt-1"
+                        />
+                        <Label htmlFor="offleaseSocializingAgreement" className="text-sm">
+                          I understand that puppy socializing is conducted off-lead and that my pup may get dirty during play
+                        </Label>
+                      </div>
+                      
+                      <div className="flex items-start space-x-2">
+                        <Checkbox
+                          id="equipmentAgreement"
+                          {...form.register("equipmentAgreement")}
+                          className="mt-1"
+                        />
+                        <Label htmlFor="equipmentAgreement" className="text-sm">
+                          I agree to only use equipment recommended by the trainer
+                        </Label>
+                      </div>
+                      
+                      <div className="flex items-start space-x-2">
+                        <Checkbox
+                          id="trainingTreatsAgreement"
+                          {...form.register("trainingTreatsAgreement")}
+                          className="mt-1"
+                        />
+                        <Label htmlFor="trainingTreatsAgreement" className="text-sm">
+                          I agree to bring suitable training treats to each class
+                        </Label>
+                      </div>
+                      
+                      <div className="flex items-start space-x-2">
+                        <Checkbox
+                          id="wasteDisposalAgreement"
+                          {...form.register("wasteDisposalAgreement")}
+                          className="mt-1"
+                        />
+                        <Label htmlFor="wasteDisposalAgreement" className="text-sm">
+                          I agree to clean up after my dog and dispose of waste properly
+                        </Label>
+                      </div>
+                      
+                      <div className="flex items-start space-x-2">
+                        <Checkbox
+                          id="termsAgreement"
+                          {...form.register("termsAgreement")}
+                          className="mt-1"
+                        />
+                        <Label htmlFor="termsAgreement" className="text-sm font-bold">
+                          I agree to the terms and conditions of McKaynine Training Centre
+                        </Label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="mt-8 flex justify-end">
+                  <Button 
+                    type="submit" 
+                    disabled={isSubmitting}
+                    className="bg-mckaynine-600 hover:bg-mckaynine-700"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Submitting...
+                      </>
+                    ) : (
+                      "Submit Registration"
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </form>
+          </Form>
+        </div>
+      </div>
+    </DashboardLayout>
+  );
+}
