@@ -35,7 +35,7 @@ export function useUserManagement() {
 
         return profiles.map(profile => ({
           id: profile.id,
-          email: profile.username || '',
+          email: profile.username || '', // Ensure email is always set (from username field)
           username: profile.username || '',
           full_name: profile.full_name || '',
           role: profile.role || 'user',

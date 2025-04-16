@@ -5,10 +5,8 @@ import { useToast } from "@/components/ui/use-toast";
 import { UserProfile } from "../types/userTypes";
 import { APP_ID } from "@/constants/app";
 
-// Extend UserProfile to ensure email is required
-export type User = UserProfile & {
-  email: string; // Make email required for User type
-};
+// Use UserProfile directly since we've updated it to require email
+export type User = UserProfile;
 
 export function useUsers() {
   const [users, setUsers] = useState<User[]>([]);

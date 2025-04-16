@@ -10,11 +10,15 @@ import { UserProfile } from "../types/userTypes";
 interface UsersTableProps {
   users: UserProfile[];
   isLoading: boolean;
+  filteredUsers?: UserProfile[]; // Make this property optional
   onEditRole: (userId: string, currentRole: string) => void;
   onResetPassword: (userId: string) => void;
 }
 
-export function UsersTable({ users, isLoading, onEditRole, onResetPassword }: UsersTableProps) {
+export function UsersTable({ users, filteredUsers, isLoading, onEditRole, onResetPassword }: UsersTableProps) {
+  // Use filteredUsers if provided, otherwise use users
+  const displayUsers = filteredUsers || users;
+  
   const getRoleBadgeVariant = (role: string) => {
     switch (role) {
       case 'admin':
@@ -35,7 +39,7 @@ export function UsersTable({ users, isLoading, onEditRole, onResetPassword }: Us
     );
   }
 
-  if (users.length === 0) {
+  if (displayUsers.length === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground">
         No users found.
@@ -55,7 +59,7 @@ export function UsersTable({ users, isLoading, onEditRole, onResetPassword }: Us
           </TableRow>
         </TableHeader>
         <TableBody>
-          {users.map((user) => {
+          {displayUsers.map((user) => {
             const initials = user.full_name
               ?.split(' ')
               .map(n => n[0])
@@ -75,7 +79,7 @@ export function UsersTable({ users, isLoading, onEditRole, onResetPassword }: Us
                         {user.full_name || 'Unnamed User'}
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        {user.email}
+                        {user.email || user.username || ''}
                       </div>
                       {user.isCurrentUser && (
                         <Badge variant="secondary" className="mt-1">You</Badge>

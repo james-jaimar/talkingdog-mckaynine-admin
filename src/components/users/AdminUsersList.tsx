@@ -138,14 +138,14 @@ export function AdminUsersList() {
       <UserRoleDialog 
         open={roleDialogOpen}
         onOpenChange={setRoleDialogOpen}
-        selectedUser={selectedUser}
+        selectedUser={selectedUser || null}
         onSaveRole={handleSaveRole}
       />
       
       <UserResetPasswordDialog 
         open={passwordDialogOpen}
         onOpenChange={setPasswordDialogOpen}
-        selectedUser={selectedUser}
+        selectedUser={selectedUser || null}
         onResetPassword={handleSavePassword}
       />
       

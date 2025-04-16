@@ -2,7 +2,7 @@
 export interface UserProfile {
   id: string;
   username?: string;
-  email?: string;
+  email: string; // Make email required
   full_name?: string;
   avatar_url?: string | null;
   role: string;
