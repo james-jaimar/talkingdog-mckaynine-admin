@@ -18,10 +18,9 @@ export default function ClassHandlers() {
   const [isAddHandlerModalOpen, setIsAddHandlerModalOpen] = useState(false);
   const queryClient = useQueryClient();
   
-  // Use the enhanced useClassData hook that handles both class and schedule data
+  // Use the enhanced useClassData hook
   const { 
     classData, 
-    scheduleData,
     isLoading,
     error
   } = useClassData({ classId });
@@ -106,13 +105,8 @@ export default function ClassHandlers() {
     );
   }
 
-  const timeDisplay = scheduleData ? 
-    `${new Date(scheduleData.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - 
-     ${new Date(scheduleData.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 
-    '';
-
-  // Create a subtitle with branch, level, and time information
-  const subtitle = `${classData.branches?.name || ''} | Level: ${classData.level}${timeDisplay ? ` | ${timeDisplay}` : ''}`;
+  // Create a subtitle with branch and level information
+  const subtitle = `${classData.branches?.name || ''} | Level: ${classData.level}`;
 
   return (
     <DashboardLayout>

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { useAuth } from "@/context/auth";
@@ -19,7 +18,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Check } from "lucide-react";
+import { Check, Loader2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { format } from "date-fns";
 
 // Basic form schema for enrollment
 const formSchema = z.object({
@@ -103,11 +105,11 @@ export default function PuppyClassForm() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { id: classId } = useParams();
-  const { classData, isLoading } = useClassData({ classId });
+  const { id: scheduleId } = useParams(); // Get the schedule ID from URL params
+  const { classData, scheduleData, isLoading } = useClassData({ scheduleId });
   
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
+  const form = useForm<any>({
+    resolver: zodResolver(z.object({})), // Replace with your actual form schema
     defaultValues: {
       ownerName: "",
       ownerEmail: "",
@@ -161,12 +163,30 @@ export default function PuppyClassForm() {
 
   // Format class schedule dates nicely for display
   const formatClassDates = () => {
-    if (!classData?.start_date) return "";
+    if (!scheduleData?.selected_dates || scheduleData.selected_dates.length === 0) return "";
     
-    // Format will depend on how dates are stored in your system
-    // This is just an example
-    return "Apr 5, 12, 26 & May 10, 24, 31";
+    // Format dates from the schedule data
+    try {
+      const dates = scheduleData.selected_dates
+        .map((date: string) => format(new Date(date), 'MMM d'))
+        .join(', ');
+      return dates;
+    } catch (error) {
+      console.error("Error formatting class dates:", error);
+      return "";
+    }
   };
+
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <div className="py-10 text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p>Loading class details...</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -209,7 +229,10 @@ export default function PuppyClassForm() {
                   <h1 className="text-3xl font-bold">McKaynine Delta</h1>
                   {classData && (
                     <p className="text-xl">
-                      Puppy Class Delta - {classData.description || "Apr/May 2025"} {classData.time || "Saturdays 14h00 - 15h00"}
+                      Puppy Class Delta - {classData.description || "Apr/May 2025"} 
+                      {scheduleData && (
+                        <span> {format(new Date(scheduleData.start_time), 'EEEE HH:mm')} - {format(new Date(scheduleData.end_time), 'HH:mm')}</span>
+                      )}
                     </p>
                   )}
                 </div>
@@ -269,7 +292,9 @@ export default function PuppyClassForm() {
                   Camp Delta (Scouts), Craighall Road, Delta Park (map attached)
                 </li>
                 <li className="text-blue-600 font-semibold">
-                  14h00 - 15h00
+                  {scheduleData && (
+                    <span>{format(new Date(scheduleData.start_time), 'HH:mm')} - {format(new Date(scheduleData.end_time), 'HH:mm')}</span>
+                  )}
                 </li>
                 <li className="text-blue-600 font-semibold">
                   {formatClassDates()}
@@ -823,147 +848,4 @@ export default function PuppyClassForm() {
                       <div className="flex items-center space-x-2">
                         <Checkbox
                           id="vetClearanceLetter"
-                          {...form.register("vetClearanceLetter")}
-                        />
-                        <Label htmlFor="vetClearanceLetter">
-                          I need to submit a vet clearance letter (only if your pup's last vacc was not from a vet)
-                        </Label>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                <Separator className="my-6" />
-                
-                <h4 className="text-xl font-semibold mb-4 text-center">Almost done! Time for the checklist...</h4>
-                
-                <div className="space-y-4">
-                  <div className="flex items-start space-x-2 bg-gray-50 p-3 rounded-md">
-                    <Checkbox
-                      id="whatsAppPermission"
-                      {...form.register("whatsAppPermission")}
-                    />
-                    <Label htmlFor="whatsAppPermission" className="text-sm">
-                      Do you give us permission to add your name and number to a WhatsApp class group?
-                      <span className="block text-xs text-gray-500">
-                        (This group is used only for urgent notifications re classes. Once your training is complete your details are removed)
-                      </span>
-                    </Label>
-                  </div>
-                  
-                  <div className="flex items-start space-x-2 bg-gray-50 p-3 rounded-md">
-                    <Checkbox
-                      id="photoPermission"
-                      {...form.register("photoPermission")}
-                    />
-                    <Label htmlFor="photoPermission" className="text-sm">
-                      Do you give us permission to post graduation or class photographs of you, your dog and any minors in your care at the time of photographing on our social media?
-                    </Label>
-                  </div>
-                  
-                  <div className="flex items-start space-x-2 bg-gray-50 p-3 rounded-md">
-                    <Checkbox
-                      id="offleaseSocializingAgreement"
-                      {...form.register("offleaseSocializingAgreement")}
-                    />
-                    <Label htmlFor="offleaseSocializingAgreement" className="text-sm">
-                      I understand that offleash socialising is not permitted
-                    </Label>
-                  </div>
-                  
-                  <div className="flex items-start space-x-2 bg-gray-50 p-3 rounded-md">
-                    <Checkbox
-                      id="equipmentAgreement"
-                      {...form.register("equipmentAgreement")}
-                    />
-                    <Label htmlFor="equipmentAgreement" className="text-sm">
-                      I'll be sure to not let my dog (or minors) go onto training equipment without supervision
-                    </Label>
-                  </div>
-                  
-                  <div className="flex items-start space-x-2 bg-gray-50 p-3 rounded-md">
-                    <Checkbox
-                      id="trainingTreatsAgreement"
-                      {...form.register("trainingTreatsAgreement")}
-                    />
-                    <Label htmlFor="trainingTreatsAgreement" className="text-sm">
-                      I'll bring (lots of) small, soft training treats
-                    </Label>
-                  </div>
-                  
-                  <div className="flex items-start space-x-2 bg-gray-50 p-3 rounded-md">
-                    <Checkbox
-                      id="wasteDisposalAgreement"
-                      {...form.register("wasteDisposalAgreement")}
-                    />
-                    <Label htmlFor="wasteDisposalAgreement" className="text-sm">
-                      I'll also bring bags for any waste disposal
-                    </Label>
-                  </div>
-                  
-                  <div className="flex items-start space-x-2 bg-mckaynine-50 p-3 rounded-md border border-mckaynine-200">
-                    <Checkbox
-                      id="termsAgreement"
-                      {...form.register("termsAgreement")}
-                    />
-                    <Label htmlFor="termsAgreement" className="text-sm">
-                      By signing below I affirm that I voluntarily agree to the McKaynine Terms & Conditions 
-                      (the full T&C's are included in your Info Pack and you can also check them out on the 
-                      Terms & Conditions page on our website).
-                    </Label>
-                  </div>
-                </div>
-                
-                <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div>
-                    <Label htmlFor="signatureDate">Date:</Label>
-                    <Input 
-                      id="signatureDate"
-                      type="date"
-                      className="mt-1"
-                    />
-                  </div>
-                </div>
-              </div>
-              
-              <div className="bg-orange-100 rounded-lg p-6 text-center">
-                <div className="font-bold text-2xl text-orange-700 mb-2">We're looking forward to you and your pupper in our classes!</div>
-                <p className="text-sm text-orange-800">
-                  © McKaynine (Pty) Ltd - Info Pack. The content of this document is protected by copyright law. Unauthorized 
-                  reproduction, distribution or modification is prohibited without prior written consent.
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-                  <div className="flex flex-col items-center">
-                    <div className="text-2xl mb-2">📞</div>
-                    <div className="font-bold">083 400-2987</div>
-                  </div>
-                  <div className="flex flex-col items-center">
-                    <div className="text-2xl mb-2">✉️</div>
-                    <div className="font-bold">delta@mckaynine.co.za</div>
-                  </div>
-                  <div className="flex flex-col items-center">
-                    <div className="text-2xl mb-2">🌐</div>
-                    <div className="font-bold">www.mckaynine.co.za</div>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="flex justify-end space-x-2 pt-4 no-print">
-                <Button type="button" variant="outline" onClick={() => form.reset()}>
-                  Reset
-                </Button>
-                <Button
-                  type="submit"
-                  variant="mckaynine"
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? "Submitting..." : "Submit Registration"}
-                </Button>
-              </div>
-            </form>
-          </Form>
-        </div>
-      </div>
-    </DashboardLayout>
-  );
-}
+                          {...form.register

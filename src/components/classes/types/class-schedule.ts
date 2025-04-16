@@ -23,4 +23,6 @@ export interface ClassSchedule {
     first_name: string;
     last_name: string;
   };
+  // Additional fields that might be needed
+  reference_title?: string;
 }
