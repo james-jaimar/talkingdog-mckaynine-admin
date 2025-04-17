@@ -12,10 +12,11 @@ export const migrateUsersToAppId = async () => {
     // Check if there are users without app_id
     const { data: usersWithoutAppId, error: checkError } = await supabase
       .from('profiles')
-      .select('id')
+      .select('id, username, role')
       .is('app_id', null);
     
     if (checkError) {
+      console.error("Error checking for users without app_id:", checkError);
       throw checkError;
     }
     
@@ -29,19 +30,22 @@ export const migrateUsersToAppId = async () => {
       };
     }
     
+    console.log("Users without app_id:", usersWithoutAppId?.map(u => `${u.username} (${u.id})`));
+    
     // Update all users without app_id
     const { data, error } = await supabase
       .from('profiles')
       .update({ app_id: APP_ID })
       .is('app_id', null)
-      .select('id');
+      .select('id, username');
     
     if (error) {
+      console.error("Error updating users with app_id:", error);
       throw error;
     }
     
     const updatedCount = data?.length || 0;
-    console.log(`Successfully updated ${updatedCount} users with app_id`);
+    console.log(`Successfully updated ${updatedCount} users with app_id:`, data);
     
     return {
       success: true,

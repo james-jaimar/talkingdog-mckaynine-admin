@@ -10,58 +10,52 @@ export function useFetchUsers(options?: { includeAllUsers?: boolean }) {
   return useQuery({
     queryKey: ['admin-users-list', { includeAllUsers }],
     queryFn: async () => {
-      console.log(includeAllUsers ? "Fetching all users" : `Fetching users filtered by app_id: ${APP_ID}`);
+      const filteringMessage = includeAllUsers 
+        ? "Fetching all users" 
+        : `Fetching users filtered by app_id: ${APP_ID}`;
+      console.log(filteringMessage);
       
       try {
         // Get current user for marking in the UI
         const { data: { user: currentUser } } = await supabase.auth.getUser();
         console.log("Current user ID:", currentUser?.id);
         
-        // Get current session for auth token
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-          throw new Error("No active session");
+        // Build query based on filtering option
+        let query = supabase.from('profiles').select('*');
+        
+        if (!includeAllUsers) {
+          console.log(`Adding app_id filter: ${APP_ID}`);
+          query = query.eq('app_id', APP_ID);
         }
-
-        // Call the edge function to get users
-        // If including all users, don't filter by app_id
-        const endpoint = includeAllUsers 
-          ? 'get-users'
-          : `get-users?app_id=${encodeURIComponent(APP_ID)}`;
-          
-        const { data, error } = await supabase.functions.invoke(endpoint, {
-          method: 'GET',
-        });
+        
+        // Add ordering and execute query
+        query = query.order('created_at', { ascending: false });
+        const { data: profiles, error } = await query;
         
         if (error) {
-          console.error("Edge function error:", error);
-          throw new Error(`Failed to fetch users: ${error.message}`);
+          console.error("Error fetching profiles:", error);
+          throw error;
         }
         
-        if (!data || !Array.isArray(data)) {
-          console.error("Invalid response format:", data);
-          throw new Error("Invalid response format from get-users function");
-        }
+        console.log(`Fetched ${profiles?.length || 0} profiles${includeAllUsers ? ' (all users)' : ''}`);
         
-        console.log("Raw profiles data retrieved:", data.length, "records");
-        console.log("First few profiles:", data.slice(0, 3));
-        
-        if (data.length === 0) {
-          console.warn("No profiles were returned from the edge function");
-          return [];
+        if (profiles && profiles.length > 0) {
+          console.log("Sample profile data:", profiles[0]);
+        } else {
+          console.warn("No profiles returned from query");
         }
         
         // Map profiles to UserProfile objects
-        const userProfiles: UserProfile[] = data.map(profile => ({
+        const userProfiles: UserProfile[] = (profiles || []).map(profile => ({
           id: profile.id,
           username: profile.username || "",
+          email: profile.username || "", // Email is stored in username field
           full_name: profile.full_name || "",
           avatar_url: profile.avatar_url,
           role: profile.role || "user",
           created_at: profile.created_at,
-          email: profile.username || "", // Email is stored in username field
-          isCurrentUser: currentUser?.id === profile.id,
-          app_id: profile.app_id
+          app_id: profile.app_id,
+          isCurrentUser: currentUser?.id === profile.id
         }));
         
         console.log("Processed user profiles:", userProfiles.length);

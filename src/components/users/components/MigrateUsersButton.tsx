@@ -17,6 +17,8 @@ export function MigrateUsersButton({ onComplete }: MigrateUsersButtonProps) {
   const handleMigrate = async () => {
     try {
       setIsRunning(true);
+      console.log(`Starting migration of users to app_id: ${APP_ID}`);
+      
       const result = await migrateUsersToAppId();
       
       toast({
@@ -26,9 +28,11 @@ export function MigrateUsersButton({ onComplete }: MigrateUsersButtonProps) {
       });
       
       if (result.success && onComplete) {
+        console.log("Migration successful, triggering onComplete callback");
         await onComplete();
       }
     } catch (error) {
+      console.error("Error during migration:", error);
       toast({
         title: "Migration failed",
         description: `An error occurred: ${error instanceof Error ? error.message : String(error)}`,

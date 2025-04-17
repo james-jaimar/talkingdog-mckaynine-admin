@@ -35,6 +35,7 @@ export function useUsersList(options: UseUsersListOptions = {}) {
         
         // Only apply app_id filter if we're not showing all users
         if (!showAllUsers) {
+          console.log(`[useUsersList] Adding app_id filter: ${APP_ID}`);
           query = query.eq('app_id', APP_ID);
         }
         
@@ -49,6 +50,17 @@ export function useUsersList(options: UseUsersListOptions = {}) {
         }
         
         console.log(`[useUsersList] Fetched ${profiles?.length || 0} user profiles`);
+        
+        // Log profile details for debugging
+        if (profiles && profiles.length > 0) {
+          console.log("[useUsersList] First profile:", profiles[0]);
+          
+          // Show users without app_id for debugging
+          const withoutAppId = profiles.filter(p => !p.app_id);
+          if (withoutAppId.length > 0) {
+            console.log(`[useUsersList] Found ${withoutAppId.length} profiles without app_id`);
+          }
+        }
         
         // Transform profiles to UserProfile format
         const userProfiles: UserProfile[] = (profiles || []).map(profile => ({
