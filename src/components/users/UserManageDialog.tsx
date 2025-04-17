@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, AlertCircle } from "lucide-react";
-import { User } from "./hooks/useUsers";
+import { UserProfile } from "./types/userTypes";
 import {
   Select,
   SelectContent,
@@ -13,11 +13,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useUserRoleManagement } from "./hooks/useUserRoleManagement";
+import { useUserRoleManager } from "./hooks/useUserRoleManager";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface UserManageDialogProps {
-  user: User;
+  user: UserProfile;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onUserUpdated: () => void;
@@ -31,7 +31,7 @@ export function UserManageDialog({
 }: UserManageDialogProps) {
   const [role, setRole] = useState(user.role || '');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const { updateUserRole, isUpdating } = useUserRoleManagement();
+  const { updateUserRole } = useUserRoleManager();
 
   // Reset state when dialog opens with a different user
   useEffect(() => {
@@ -50,9 +50,7 @@ export function UserManageDialog({
     setErrorMessage(null);
     
     try {
-      console.log(`[UserManageDialog] Updating user ${user.id} to role: ${role}`);
-      
-      await updateUserRole({ 
+      await updateUserRole.mutateAsync({ 
         userId: user.id, 
         role 
       });
@@ -61,7 +59,6 @@ export function UserManageDialog({
       onUserUpdated();
       
     } catch (error) {
-      console.error("[UserManageDialog] Error updating user:", error);
       setErrorMessage(error instanceof Error ? error.message : "An unexpected error occurred");
     }
   };
@@ -112,15 +109,15 @@ export function UserManageDialog({
           <Button 
             variant="outline" 
             onClick={() => onOpenChange(false)}
-            disabled={isUpdating}
+            disabled={updateUserRole.isPending}
           >
             Cancel
           </Button>
           <Button 
             onClick={handleUpdateUser} 
-            disabled={isUpdating || !role || role === user.role}
+            disabled={updateUserRole.isPending || !role || role === user.role}
           >
-            {isUpdating ? (
+            {updateUserRole.isPending ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 Saving...

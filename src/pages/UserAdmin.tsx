@@ -6,51 +6,49 @@ import { useAuth } from "@/context/auth";
 import { useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useUserManagement } from "@/components/users/hooks/useUserManagement";
-import { UserListHeader } from "@/components/users/components/UserListHeader";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { RefreshCw, UserPlus } from "lucide-react";
+import { UsersTable } from "@/components/users/components/UsersTable";
 import { UserManageDialog } from "@/components/users/UserManageDialog";
 import { UserPasswordResetDialog } from "@/components/users/UserPasswordResetDialog";
 import { AddUserDialog } from "@/components/users/AddUserDialog";
-import { UsersTable } from "@/components/users/components/UsersTable";
-import { UserProfile } from "@/components/users/types/userTypes";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { MigrateUsersButton } from "@/components/users/components/MigrateUsersButton";
+import { useUsersList } from "@/components/users/hooks/useUsersList";
 
 export default function UserAdmin() {
   const { isAdmin, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
   
-  // User management state and handlers
+  // State management
   const [searchTerm, setSearchTerm] = useState("");
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [manageDialogOpen, setManageDialogOpen] = useState(false);
   const [resetPasswordOpen, setResetPasswordOpen] = useState(false);
   const [addUserOpen, setAddUserOpen] = useState(false);
-  const [showAllUsers, setShowAllUsers] = useState(true);
+  const [showAllUsers, setShowAllUsers] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
+  // Fetch users with simplified hook
   const {
     users,
     isLoading,
     refetch,
-    updateRole
-  } = useUserManagement({
-    includeAllUsers: showAllUsers
+    usersWithoutAppId,
+    isRefetching
+  } = useUsersList({
+    showAllUsers,
+    enabled: !authLoading && isAdmin
   });
 
-  // Create a wrapper function with the required signature
+  // Create a simple wrapper function for migration completion
   const handleMigrationComplete = async () => {
-    try {
-      await refetch();
-      return Promise.resolve();
-    } catch (error) {
-      console.error("Error refetching after migration:", error);
-      return Promise.resolve();
-    }
+    await refetch();
   };
 
-  // Handle authentication
+  // Handle authentication check
   if (authLoading) {
     return (
       <DashboardLayout>
@@ -81,25 +79,18 @@ export default function UserAdmin() {
     setIsRefreshing(false);
   };
 
-  const handleEditRole = (userId: string, currentRole: string) => {
-    const user = users.find(u => u.id === userId);
-    if (user) {
-      setSelectedUser(user);
-      setManageDialogOpen(true);
-    }
+  const handleEditRole = (userId: string) => {
+    setSelectedUserId(userId);
+    setManageDialogOpen(true);
   };
 
   const handleResetPassword = (userId: string) => {
-    const user = users.find(u => u.id === userId);
-    if (user) {
-      setSelectedUser(user);
-      setResetPasswordOpen(true);
-    }
+    setSelectedUserId(userId);
+    setResetPasswordOpen(true);
   };
 
-  // Count users with and without app_id
-  const usersWithAppId = users.filter(user => user.app_id).length;
-  const usersWithoutAppId = users.length - usersWithAppId;
+  // Find the selected user for dialogs
+  const selectedUser = users.find(user => user.id === selectedUserId) || null;
 
   return (
     <DashboardLayout>
@@ -137,17 +128,33 @@ export default function UserAdmin() {
             )}
           </CardHeader>
           <CardContent>
-            <UserListHeader
-              onRefresh={handleRefresh}
-              onAddUser={() => setAddUserOpen(true)}
-              isRefreshing={isRefreshing}
-              searchTerm={searchTerm}
-              onSearchChange={setSearchTerm}
-            />
+            <div className="flex flex-col sm:flex-row gap-4 justify-between mb-6">
+              <div className="flex-1 max-w-sm">
+                <Input
+                  placeholder="Search users..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="max-w-xs"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={handleRefresh}
+                  disabled={isRefreshing || isRefetching}
+                >
+                  <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing || isRefetching ? 'animate-spin' : ''}`} />
+                  Refresh
+                </Button>
+                <Button onClick={() => setAddUserOpen(true)}>
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Add User
+                </Button>
+              </div>
+            </div>
 
             <UsersTable
-              users={users}
-              filteredUsers={filteredUsers}
+              users={filteredUsers}
               isLoading={isLoading}
               onEditRole={handleEditRole}
               onResetPassword={handleResetPassword}

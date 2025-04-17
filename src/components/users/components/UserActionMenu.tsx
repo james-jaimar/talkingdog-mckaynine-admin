@@ -6,8 +6,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, UserCog, Key } from "lucide-react";
 import { UserProfile } from "../types/userTypes";
+import { MoreHorizontal, User, Key } from "lucide-react";
 
 interface UserActionMenuProps {
   user: UserProfile;
@@ -19,18 +19,19 @@ export function UserActionMenu({ user, onEditRole, onResetPassword }: UserAction
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="h-8 w-8 p-0">
+        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+          <span className="sr-only">Open menu</span>
           <MoreHorizontal className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem onClick={onEditRole}>
-          <UserCog className="h-4 w-4 mr-2" />
-          Edit Role
+          <User className="h-4 w-4 mr-2" />
+          <span>Edit Role</span>
         </DropdownMenuItem>
         <DropdownMenuItem onClick={onResetPassword}>
           <Key className="h-4 w-4 mr-2" />
-          Reset Password
+          <span>Reset Password</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

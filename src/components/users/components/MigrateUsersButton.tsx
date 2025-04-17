@@ -7,7 +7,7 @@ import { migrateUsersToAppId } from '@/scripts/migrateUsersToAppId';
 import { APP_ID } from '@/constants/app';
 
 interface MigrateUsersButtonProps {
-  onComplete?: () => Promise<void>;
+  onComplete?: () => Promise<void> | void;
 }
 
 export function MigrateUsersButton({ onComplete }: MigrateUsersButtonProps) {
