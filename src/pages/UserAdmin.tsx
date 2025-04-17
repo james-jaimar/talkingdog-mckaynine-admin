@@ -33,6 +33,12 @@ export default function UserAdmin() {
       </Helmet>
 
       <div className="container mx-auto py-6">
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold">User Administration</h1>
+          <p className="text-muted-foreground mt-1">
+            Manage all users and their roles across the application
+          </p>
+        </div>
         <UserManagementTable />
       </div>
     </DashboardLayout>

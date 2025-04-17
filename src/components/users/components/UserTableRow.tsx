@@ -36,6 +36,9 @@ export function UserTableRow({ user, onManageUser, onResetPassword }: UserTableR
     <TableRow>
       <TableCell className="font-medium">
         {user.full_name || 'No name'}
+        {user.isCurrentUser && (
+          <Badge variant="secondary" className="ml-2 text-xs">You</Badge>
+        )}
       </TableCell>
       <TableCell>{user.email}</TableCell>
       <TableCell>
@@ -45,6 +48,9 @@ export function UserTableRow({ user, onManageUser, onResetPassword }: UserTableR
         >
           {user.role}
         </Badge>
+      </TableCell>
+      <TableCell>
+        {user.app_id || 'No App ID'}
       </TableCell>
       <TableCell>
         {new Date(user.created_at).toLocaleDateString()}

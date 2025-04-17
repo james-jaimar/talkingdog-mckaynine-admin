@@ -11,7 +11,7 @@ import { useUserManagement } from "@/hooks/useUserManagement";
 import { UserProfile } from "./types/userTypes";
 
 export function UserManagementTable() {
-  const { users, isLoading, refetch } = useUserManagement();
+  const { users, isLoading, refetch } = useUserManagement({ showAllUsers: true });
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [addUserOpen, setAddUserOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
@@ -19,11 +19,12 @@ export function UserManagementTable() {
   const [resetPasswordDialogOpen, setResetPasswordDialogOpen] = useState(false);
   const [filter, setFilter] = useState("");
 
-  // Filter users by name or email
+  // Filter users by name, email or role
   const filteredUsers = users.filter(
     (user) =>
       (user.full_name?.toLowerCase() || '').includes(filter.toLowerCase()) ||
-      (user.email?.toLowerCase() || '').includes(filter.toLowerCase())
+      (user.email?.toLowerCase() || '').includes(filter.toLowerCase()) ||
+      (user.role?.toLowerCase() || '').includes(filter.toLowerCase())
   );
 
   const handleRefresh = async () => {
@@ -59,6 +60,7 @@ export function UserManagementTable() {
               <th className="px-4 py-3 text-left">Name</th>
               <th className="px-4 py-3 text-left">Email</th>
               <th className="px-4 py-3 text-left">Role</th>
+              <th className="px-4 py-3 text-left">App ID</th>
               <th className="px-4 py-3 text-left">Created</th>
               <th className="px-4 py-3 text-right w-[80px]">Actions</th>
             </tr>
@@ -83,7 +85,6 @@ export function UserManagementTable() {
         </Table>
       </div>
 
-      {/* Dialogs */}
       {selectedUser && (
         <>
           <UserManageDialog 
