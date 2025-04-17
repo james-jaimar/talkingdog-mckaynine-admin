@@ -1,5 +1,4 @@
 
-import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Helmet } from "react-helmet";
 import { useAuth } from "@/context/auth";
@@ -11,7 +10,6 @@ export default function UserAdmin() {
   const { isAdmin, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
 
-  // Handle authentication check
   if (authLoading) {
     return (
       <DashboardLayout>
@@ -35,7 +33,6 @@ export default function UserAdmin() {
       </Helmet>
 
       <div className="container mx-auto py-6">
-        <h1 className="text-2xl font-bold mb-6">User Administration</h1>
         <UserManagementTable />
       </div>
     </DashboardLayout>

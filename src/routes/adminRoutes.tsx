@@ -1,8 +1,6 @@
-
 import { Navigate } from "react-router-dom";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import UserAdmin from "@/pages/UserAdmin";
-import UserManagement from "@/pages/UserManagement";
 import Branches from "@/pages/Branches";
 import UnpaidHandlers from "@/pages/UnpaidHandlers";
 import Forms from "@/pages/Forms";
@@ -17,14 +15,6 @@ export const adminRoutes = [
     element: (
       <ProtectedRoute requiredRole="admin">
         <UserAdmin />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/user-management",
-    element: (
-      <ProtectedRoute requiredRole="admin">
-        <UserManagement />
       </ProtectedRoute>
     ),
   },
