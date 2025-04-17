@@ -4,7 +4,7 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Helmet } from "react-helmet";
 import { useAuth } from "@/context/auth";
 import { useNavigate } from "react-router-dom";
-import { Loader2 } from "lucide-react";
+import { Loader2, Info } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,6 @@ import { MigrateUsersButton } from "@/components/users/components/MigrateUsersBu
 import { useUsersList } from "@/components/users/hooks/useUsersList";
 import { APP_ID } from "@/constants/app";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { Info } from "lucide-react";
 
 export default function UserAdmin() {
   const { isAdmin, isLoading: authLoading } = useAuth();
@@ -34,12 +33,12 @@ export default function UserAdmin() {
   const [showAllUsers, setShowAllUsers] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Fetch users with our improved hook
+  // Fetch users with our simplified hook
   const {
     users,
     isLoading,
     refetch,
-    usersWithoutAppId,
+    usersNeedingMigration,
     isRefetching
   } = useUsersList({
     showAllUsers,
@@ -109,23 +108,23 @@ export default function UserAdmin() {
                   <Switch 
                     id="show-all-users"
                     checked={showAllUsers}
-                    onCheckedChange={(checked) => {
-                      console.log(`Setting showAllUsers to: ${checked}`);
-                      setShowAllUsers(checked);
-                    }}
+                    onCheckedChange={setShowAllUsers}
                   />
                   <Label htmlFor="show-all-users">Show all users</Label>
                 </div>
                 
-                {usersWithoutAppId > 0 && (
-                  <MigrateUsersButton onComplete={handleRefresh} />
+                {usersNeedingMigration > 0 && (
+                  <MigrateUsersButton 
+                    onComplete={handleRefresh} 
+                    userCount={usersNeedingMigration} 
+                  />
                 )}
               </div>
             </div>
             
-            {usersWithoutAppId > 0 && (
+            {usersNeedingMigration > 0 && (
               <div className="mt-2 text-sm text-amber-600">
-                {usersWithoutAppId} users without app_id detected. Use the migration button to fix.
+                {usersNeedingMigration} users need app_id update. Use the migration button to fix.
               </div>
             )}
             

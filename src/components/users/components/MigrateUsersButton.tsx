@@ -8,9 +8,10 @@ import { APP_ID } from '@/constants/app';
 
 interface MigrateUsersButtonProps {
   onComplete?: () => Promise<void> | void;
+  userCount?: number;
 }
 
-export function MigrateUsersButton({ onComplete }: MigrateUsersButtonProps) {
+export function MigrateUsersButton({ onComplete, userCount = 0 }: MigrateUsersButtonProps) {
   const [isRunning, setIsRunning] = useState(false);
   const { toast } = useToast();
 
@@ -27,7 +28,6 @@ export function MigrateUsersButton({ onComplete }: MigrateUsersButtonProps) {
         variant: result.success ? "default" : "destructive",
       });
       
-      // Always attempt to run onComplete, even if we get "no users to migrate" message
       if (onComplete) {
         console.log("Migration process finished, triggering onComplete callback");
         await onComplete();
@@ -57,7 +57,7 @@ export function MigrateUsersButton({ onComplete }: MigrateUsersButtonProps) {
           Updating users...
         </>
       ) : (
-        `Fix missing app_id (${APP_ID})`
+        `Update ${userCount} users to app_id: ${APP_ID}`
       )}
     </Button>
   );
