@@ -1,105 +1,118 @@
 
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { supabase } from "@/integrations/supabase/client";
+import { Loader2, AlertCircle, EyeOff, Eye } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
-import { Loader2 } from "lucide-react";
-import { User } from "./hooks/useUsers";
+import { supabase } from "@/integrations/supabase/client";
+import { User } from "@/hooks/useUsers";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface UserPasswordResetDialogProps {
-  user: User;
+  user: User | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export function UserPasswordResetDialog({ user, open, onOpenChange }: UserPasswordResetDialogProps) {
-  const [newPassword, setNewPassword] = useState("");
-  const [isResetting, setIsResetting] = useState(false);
+export function UserPasswordResetDialog({
+  user,
+  open,
+  onOpenChange
+}: UserPasswordResetDialogProps) {
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
-
+  
   const handleResetPassword = async () => {
-    if (!newPassword) {
-      toast({
-        title: "Missing password",
-        description: "Please enter a new password.",
-        variant: "destructive",
-      });
+    if (!user) return;
+    if (!password || password.length < 6) {
+      setError("Password must be at least 6 characters");
       return;
     }
     
+    setIsSubmitting(true);
+    setError(null);
+    
     try {
-      setIsResetting(true);
-      
-      // Reset user password
-      const { error } = await supabase.auth.admin.updateUserById(user.id, {
-        password: newPassword,
+      // Use edge function to reset password securely
+      const { error } = await supabase.functions.invoke('update-user-role', {
+        method: 'POST',
+        body: { userId: user.id, password },
       });
       
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
       
-      // Close dialog and reset form
-      onOpenChange(false);
-      setNewPassword("");
-      
-      // Show success message
       toast({
         title: "Password reset",
-        description: `Password for ${user.email} has been reset successfully.`,
+        description: "Password has been reset successfully",
       });
       
-    } catch (error: any) {
+      setPassword("");
+      onOpenChange(false);
+    } catch (error) {
       console.error("Error resetting password:", error);
-      toast({
-        title: "Failed to reset password",
-        description: error.message || "An unexpected error occurred.",
-        variant: "destructive",
-      });
+      setError(error instanceof Error ? error.message : "Failed to reset password");
     } finally {
-      setIsResetting(false);
+      setIsSubmitting(false);
     }
   };
-
+  
+  const toggleShowPassword = () => setShowPassword(prev => !prev);
+  
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Reset Password</DialogTitle>
           <DialogDescription>
-            Enter a new password for {user.full_name || user.email}
+            {user && `Set a new password for ${user.full_name || user.email}`}
           </DialogDescription>
         </DialogHeader>
         
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="newPassword">New Password</Label>
-            <Input 
-              id="newPassword" 
-              type="password" 
-              value={newPassword} 
-              onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="••••••••"
+        {error && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+        
+        <div className="py-4">
+          <div className="relative">
+            <Input
+              type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="New password"
+              className="pr-10"
             />
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="absolute right-0 top-0 h-full px-3"
+              onClick={toggleShowPassword}
+            >
+              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </Button>
           </div>
         </div>
         
         <DialogFooter>
-          <Button 
-            variant="outline" 
-            onClick={() => {
-              onOpenChange(false);
-              setNewPassword("");
-            }}
-            disabled={isResetting}
-          >
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button onClick={handleResetPassword} disabled={isResetting}>
-            {isResetting ? (
+          <Button onClick={handleResetPassword} disabled={isSubmitting || !password}>
+            {isSubmitting ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 Resetting...

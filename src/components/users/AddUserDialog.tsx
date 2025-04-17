@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import {
   Dialog,
@@ -5,16 +6,10 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter,
+  DialogFooter
 } from "@/components/ui/dialog";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -22,273 +17,193 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
-import { Loader2 } from "lucide-react";
-import { z } from "zod";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { Loader2, AlertCircle, Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useQueryClient } from "@tanstack/react-query";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { APP_ID } from "@/constants/app";
-
-// Form validation schema
-const formSchema = z.object({
-  email: z.string().email("Please enter a valid email"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-  fullName: z.string().optional(),
-  role: z.string().default("user"),
-});
-
-type FormValues = z.infer<typeof formSchema>;
 
 interface AddUserDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onUserAdded: () => void;
+  onSuccess?: () => void;
 }
 
-export function AddUserDialog({ open, onOpenChange, onUserAdded }: AddUserDialogProps) {
+export function AddUserDialog({
+  open,
+  onOpenChange,
+  onSuccess
+}: AddUserDialogProps) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [role, setRole] = useState("user");
+  const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
-  const queryClient = useQueryClient();
   
-  // Setup form
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-      fullName: "",
-      role: "user",
-    },
-  });
+  const resetForm = () => {
+    setEmail("");
+    setPassword("");
+    setFullName("");
+    setRole("user");
+    setError(null);
+  };
   
-  const handleAddUser = async (values: FormValues) => {
+  const handleAddUser = async () => {
+    if (!email || !password || password.length < 6) {
+      setError("Please fill in all required fields (password must be at least 6 characters)");
+      return;
+    }
+    
     setIsSubmitting(true);
+    setError(null);
     
     try {
-      console.log("Creating user with role:", values.role);
-      
       // Step 1: Create user with Supabase Auth
-      const { error: signUpError, data } = await supabase.auth.signUp({
-        email: values.email,
-        password: values.password,
+      const { error: signupError, data } = await supabase.auth.signUp({
+        email,
+        password,
         options: {
-          data: { full_name: values.fullName || "" },
-          emailRedirectTo: window.location.origin,
+          data: { full_name: fullName },
         }
       });
       
-      if (signUpError) throw signUpError;
+      if (signupError) throw signupError;
       
+      // Step 2: Set up profile with role and app_id
       const userId = data.user?.id;
-      if (!userId) throw new Error("User creation failed - no user ID returned");
+      if (!userId) throw new Error("Failed to create user");
       
-      console.log("User created successfully with ID:", userId);
-      
-      // Step 2: Update profile with role and app_id
       const { error: profileError } = await supabase
         .from('profiles')
         .upsert({
           id: userId,
-          username: values.email,
-          full_name: values.fullName || "",
-          role: values.role,
+          username: email,
+          full_name: fullName || "",
+          role: role,
           app_id: APP_ID,
           updated_at: new Date().toISOString()
         });
       
       if (profileError) throw profileError;
       
-      console.log("Profile updated successfully with role:", values.role);
-      
-      // Step 3: Handle trainer role specific logic
-      const isTrainerRole = values.role === 'trainer' || values.role.includes('trainer');
-      if (isTrainerRole) {
-        await createTrainerRecord(userId, values.email, values.fullName || "");
-      }
-      
-      // Handle success
       toast({
-        title: "User added successfully",
-        description: `${values.email} has been added with role: ${values.role}`,
+        title: "User added",
+        description: `User ${email} has been created successfully`,
       });
       
-      // Reset form and close dialog
-      form.reset();
+      resetForm();
       onOpenChange(false);
-      
-      // Refresh data
-      invalidateAndRefetchQueries();
-      onUserAdded();
-      
-    } catch (error: any) {
-      toast({
-        title: "Failed to add user",
-        description: error.message || "An unexpected error occurred",
-        variant: "destructive",
-      });
+      if (onSuccess) onSuccess();
+    } catch (error) {
       console.error("Error adding user:", error);
+      setError(error instanceof Error ? error.message : "Failed to add user");
     } finally {
       setIsSubmitting(false);
     }
   };
-
-  // Helper function to create trainer record
-  async function createTrainerRecord(userId: string, email: string, fullName: string) {
-    try {
-      console.log("Adding user to trainers table");
-      
-      // Parse the name for first and last name
-      const nameParts = fullName.split(' ');
-      const firstName = nameParts[0] || '';
-      const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
-      
-      // Check if this user already exists in the trainers table
-      const { data: existingTrainer } = await supabase
-        .from('trainers')
-        .select('id')
-        .eq('user_id', userId);
-      
-      // Only create a new trainer record if one doesn't exist
-      if (!existingTrainer || existingTrainer.length === 0) {
-        const { error: trainerError } = await supabase
-          .from('trainers')
-          .insert({
-            user_id: userId,
-            email: email,
-            first_name: firstName,
-            last_name: lastName,
-            specialties: []
-          });
-        
-        if (trainerError) {
-          console.error("Error adding user to trainers table:", trainerError);
-          throw trainerError;
-        }
-        
-        console.log("User successfully added to trainers table");
-      } else {
-        console.log("Trainer record already exists for user, skipping creation");
-      }
-    } catch (error) {
-      console.error("Error creating trainer record:", error);
-      throw error;
-    }
-  }
-  
-  // Helper function to invalidate and refetch queries
-  function invalidateAndRefetchQueries() {
-    const queriesToInvalidate = [
-      'admin-users', 
-      'admin-users-list', 
-      'trainers-list'
-    ];
-    
-    queriesToInvalidate.forEach(query => {
-      queryClient.invalidateQueries({ queryKey: [query] });
-      setTimeout(() => queryClient.refetchQueries({ queryKey: [query] }), 300);
-    });
-  }
   
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+    <Dialog open={open} onOpenChange={(newOpen) => {
+      if (!newOpen) resetForm();
+      onOpenChange(newOpen);
+    }}>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Add New User</DialogTitle>
           <DialogDescription>
-            Create a new user account with the specified role.
+            Create a new user account with specified role
           </DialogDescription>
         </DialogHeader>
         
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleAddUser)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <Input type="email" placeholder="user@example.com" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+        {error && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+        
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="user@example.com"
+              required
             />
-            
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Password</FormLabel>
-                  <FormControl>
-                    <Input type="password" placeholder="••••••••" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="fullName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Full Name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="John Doe" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="role"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Role</FormLabel>
-                  <Select 
-                    onValueChange={field.onChange} 
-                    defaultValue={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select role" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="admin">Admin</SelectItem>
-                      <SelectItem value="trainer">Trainer</SelectItem>
-                      <SelectItem value="handler">Handler</SelectItem>
-                      <SelectItem value="user">User</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
-                Cancel
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="password">Password</Label>
+            <div className="relative">
+              <Input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                required
+                className="pr-10"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="absolute right-0 top-0 h-full px-3"
+                onClick={() => setShowPassword(prev => !prev)}
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Creating...
-                  </>
-                ) : "Create User"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
+            </div>
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="fullName">Full Name</Label>
+            <Input
+              id="fullName"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder="John Doe"
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="role">Role</Label>
+            <Select value={role} onValueChange={setRole}>
+              <SelectTrigger id="role">
+                <SelectValue placeholder="Select a role" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="admin">Admin</SelectItem>
+                <SelectItem value="branch_admin">Branch Admin</SelectItem>
+                <SelectItem value="trainer">Trainer</SelectItem>
+                <SelectItem value="user">User</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
+            Cancel
+          </Button>
+          <Button onClick={handleAddUser} disabled={isSubmitting}>
+            {isSubmitting ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Adding...
+              </>
+            ) : (
+              "Add User"
+            )}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

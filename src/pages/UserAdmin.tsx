@@ -5,55 +5,47 @@ import { Helmet } from "react-helmet";
 import { useAuth } from "@/context/auth";
 import { useNavigate } from "react-router-dom";
 import { Loader2, Info } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { RefreshCw, UserPlus } from "lucide-react";
-import { UsersTable } from "@/components/users/components/UsersTable";
-import { UserManageDialog } from "@/components/users/UserManageDialog";
-import { UserPasswordResetDialog } from "@/components/users/UserPasswordResetDialog";
-import { AddUserDialog } from "@/components/users/AddUserDialog";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { MigrateUsersButton } from "@/components/users/components/MigrateUsersButton";
-import { useUsersList } from "@/components/users/hooks/useUsersList";
-import { APP_ID } from "@/constants/app";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { UserTable } from "@/components/users/UserTable";
+import { UserRoleDialog } from "@/components/users/UserRoleDialog";
+import { UserPasswordResetDialog } from "@/components/users/UserPasswordResetDialog";
+import { AddUserDialog } from "@/components/users/AddUserDialog";
+import { MigrateUsersButton } from "@/components/users/MigrateUsersButton";
+import { useUsers, User } from "@/hooks/useUsers";
+import { APP_ID } from "@/constants/app";
 
 export default function UserAdmin() {
   const { isAdmin, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
   
   // State management
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
-  const [manageDialogOpen, setManageDialogOpen] = useState(false);
-  const [resetPasswordOpen, setResetPasswordOpen] = useState(false);
-  const [addUserOpen, setAddUserOpen] = useState(false);
   const [showAllUsers, setShowAllUsers] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [roleDialogOpen, setRoleDialogOpen] = useState(false);
+  const [passwordResetOpen, setPasswordResetOpen] = useState(false);
+  const [addUserOpen, setAddUserOpen] = useState(false);
 
   // Fetch users with our simplified hook
   const {
     users,
     isLoading,
     refetch,
-    usersNeedingMigration,
-    isRefetching
-  } = useUsersList({
-    showAllUsers,
-    enabled: !authLoading && isAdmin
+    usersNeedingMigration
+  } = useUsers({
+    showAllUsers
   });
 
   // Handle authentication check
   if (authLoading) {
     return (
       <DashboardLayout>
-        <div className="container mx-auto py-6">
-          <div className="flex items-center justify-center h-64">
-            <Loader2 className="h-8 w-8 animate-spin text-mckaynine-600" />
-            <span className="ml-2">Checking permissions...</span>
-          </div>
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin mr-2" />
+          <span>Checking permissions...</span>
         </div>
       </DashboardLayout>
     );
@@ -64,45 +56,40 @@ export default function UserAdmin() {
     return null;
   }
 
-  // Filter users based on search term
-  const filteredUsers = users.filter(user => 
-    user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.email?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
   const handleRefresh = async () => {
     setIsRefreshing(true);
     await refetch();
     setIsRefreshing(false);
   };
 
-  const handleEditRole = (userId: string, currentRole?: string) => {
-    console.log(`Editing role for user: ${userId}, current role: ${currentRole}`);
-    setSelectedUserId(userId);
-    setManageDialogOpen(true);
+  const handleEditRole = (user: User) => {
+    setSelectedUser(user);
+    setRoleDialogOpen(true);
   };
 
-  const handleResetPassword = (userId: string) => {
-    setSelectedUserId(userId);
-    setResetPasswordOpen(true);
+  const handleResetPassword = (user: User) => {
+    setSelectedUser(user);
+    setPasswordResetOpen(true);
   };
-
-  // Find the selected user for dialogs
-  const selectedUser = users.find(user => user.id === selectedUserId) || null;
 
   return (
     <DashboardLayout>
       <Helmet>
-        <title>User Administration - McKaynine Training Centre</title>
+        <title>User Administration</title>
       </Helmet>
 
       <div className="container mx-auto py-6 px-4">
         <h1 className="text-2xl font-bold mb-6">User Administration</h1>
 
-        <Card>
-          <CardHeader className="pb-0">
+        <Card className="mb-6">
+          <CardHeader>
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-              <CardTitle>Users ({users.length})</CardTitle>
+              <div>
+                <CardTitle>Users ({users.length})</CardTitle>
+                <CardDescription>
+                  Manage user accounts and permissions
+                </CardDescription>
+              </div>
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
                 <div className="flex items-center space-x-2">
                   <Switch 
@@ -121,15 +108,10 @@ export default function UserAdmin() {
                 )}
               </div>
             </div>
-            
-            {usersNeedingMigration > 0 && (
-              <div className="mt-2 text-sm text-amber-600">
-                {usersNeedingMigration} users need app_id update. Use the migration button to fix.
-              </div>
-            )}
-            
+          </CardHeader>
+          <CardContent>
             {users.length === 0 && !isLoading && (
-              <Alert className="mt-4 bg-blue-50">
+              <Alert className="mb-6 bg-blue-50">
                 <Info className="h-4 w-4" />
                 <AlertTitle>No users found</AlertTitle>
                 <AlertDescription>
@@ -145,64 +127,37 @@ export default function UserAdmin() {
                 </AlertDescription>
               </Alert>
             )}
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col sm:flex-row gap-4 justify-between mb-6">
-              <div className="flex-1 max-w-sm">
-                <Input
-                  placeholder="Search users..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="max-w-xs"
-                />
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  onClick={handleRefresh}
-                  disabled={isRefreshing || isRefetching}
-                >
-                  <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing || isRefetching ? 'animate-spin' : ''}`} />
-                  Refresh
-                </Button>
-                <Button onClick={() => setAddUserOpen(true)}>
-                  <UserPlus className="h-4 w-4 mr-2" />
-                  Add User
-                </Button>
-              </div>
-            </div>
-
-            <UsersTable
+            
+            <UserTable
               users={users}
-              filteredUsers={filteredUsers}
               isLoading={isLoading}
+              onRefresh={handleRefresh}
+              isRefreshing={isRefreshing}
+              onAddUser={() => setAddUserOpen(true)}
               onEditRole={handleEditRole}
               onResetPassword={handleResetPassword}
             />
           </CardContent>
         </Card>
-
+        
         {/* Dialogs */}
-        {selectedUser && (
-          <>
-            <UserManageDialog
-              user={selectedUser}
-              open={manageDialogOpen}
-              onOpenChange={setManageDialogOpen}
-              onUserUpdated={refetch}
-            />
-            <UserPasswordResetDialog
-              user={selectedUser}
-              open={resetPasswordOpen}
-              onOpenChange={setResetPasswordOpen}
-            />
-          </>
-        )}
-
+        <UserRoleDialog
+          user={selectedUser}
+          open={roleDialogOpen}
+          onOpenChange={setRoleDialogOpen}
+          onSuccess={refetch}
+        />
+        
+        <UserPasswordResetDialog
+          user={selectedUser}
+          open={passwordResetOpen}
+          onOpenChange={setPasswordResetOpen}
+        />
+        
         <AddUserDialog
           open={addUserOpen}
           onOpenChange={setAddUserOpen}
-          onUserAdded={refetch}
+          onSuccess={refetch}
         />
       </div>
     </DashboardLayout>
