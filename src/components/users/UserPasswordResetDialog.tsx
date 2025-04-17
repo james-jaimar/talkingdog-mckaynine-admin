@@ -11,9 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2, AlertCircle, EyeOff, Eye } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
-import { supabase } from "@/integrations/supabase/client";
-import { User } from "@/hooks/useUsers";
+import { User, useUserManagement } from "@/hooks/useUserManagement";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface UserPasswordResetDialogProps {
@@ -29,9 +27,8 @@ export function UserPasswordResetDialog({
 }: UserPasswordResetDialogProps) {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { toast } = useToast();
+  const { resetPassword } = useUserManagement();
   
   const handleResetPassword = async () => {
     if (!user) return;
@@ -40,30 +37,14 @@ export function UserPasswordResetDialog({
       return;
     }
     
-    setIsSubmitting(true);
     setError(null);
     
     try {
-      // Use edge function to reset password securely
-      const { error } = await supabase.functions.invoke('update-user-role', {
-        method: 'POST',
-        body: { userId: user.id, password },
-      });
-      
-      if (error) throw error;
-      
-      toast({
-        title: "Password reset",
-        description: "Password has been reset successfully",
-      });
-      
+      await resetPassword.mutateAsync({ userId: user.id, password });
       setPassword("");
       onOpenChange(false);
     } catch (error) {
-      console.error("Error resetting password:", error);
       setError(error instanceof Error ? error.message : "Failed to reset password");
-    } finally {
-      setIsSubmitting(false);
     }
   };
   
@@ -108,11 +89,11 @@ export function UserPasswordResetDialog({
         </div>
         
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={resetPassword.isPending}>
             Cancel
           </Button>
-          <Button onClick={handleResetPassword} disabled={isSubmitting || !password}>
-            {isSubmitting ? (
+          <Button onClick={handleResetPassword} disabled={resetPassword.isPending || !password}>
+            {resetPassword.isPending ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 Resetting...

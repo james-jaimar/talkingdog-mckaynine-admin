@@ -17,8 +17,7 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Loader2, AlertCircle } from "lucide-react";
-import { User } from "@/hooks/useUsers";
-import { useUserRole } from "@/hooks/useUserRole";
+import { User, useUserManagement } from "@/hooks/useUserManagement";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface UserRoleDialogProps {
@@ -34,34 +33,35 @@ export function UserRoleDialog({
   onOpenChange,
   onSuccess
 }: UserRoleDialogProps) {
-  const [role, setRole] = useState("");
+  const [newRole, setNewRole] = useState(user?.role || "");
   const [error, setError] = useState<string | null>(null);
-  const { updateUserRole } = useUserRole();
+  const { updateRole } = useUserManagement();
   
   useEffect(() => {
     if (user && open) {
-      setRole(user.role || "");
+      setNewRole(user.role);
       setError(null);
     }
   }, [user, open]);
   
   const handleSave = async () => {
-    if (!user || !role) {
-      setError("Please select a role");
+    if (!user || !newRole) {
+      setError("Please select a valid role");
       return;
     }
     
+    setError(null);
+    
     try {
-      await updateUserRole.mutateAsync({ 
+      await updateRole.mutateAsync({ 
         userId: user.id, 
-        role 
+        role: newRole 
       });
       
       if (onSuccess) onSuccess();
       onOpenChange(false);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "An unexpected error occurred";
-      setError(message);
+      setError(error instanceof Error ? error.message : "An unexpected error occurred");
     }
   };
   
@@ -69,7 +69,7 @@ export function UserRoleDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Edit User Role</DialogTitle>
+          <DialogTitle>Change User Role</DialogTitle>
           <DialogDescription>
             {user && `Update role for ${user.full_name || user.email}`}
           </DialogDescription>
@@ -83,25 +83,25 @@ export function UserRoleDialog({
         )}
         
         <div className="py-4">
-          <Select value={role} onValueChange={setRole}>
+          <Select value={newRole} onValueChange={setNewRole}>
             <SelectTrigger>
               <SelectValue placeholder="Select role" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="admin">Admin</SelectItem>
-              <SelectItem value="branch_admin">Branch Admin</SelectItem>
               <SelectItem value="trainer">Trainer</SelectItem>
+              <SelectItem value="handler">Handler</SelectItem>
               <SelectItem value="user">User</SelectItem>
             </SelectContent>
           </Select>
         </div>
         
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={updateUserRole.isPending}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={updateRole.isPending}>
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={updateUserRole.isPending || !role || role === user?.role}>
-            {updateUserRole.isPending ? (
+          <Button onClick={handleSave} disabled={updateRole.isPending || !newRole || newRole === user?.role}>
+            {updateRole.isPending ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 Saving...

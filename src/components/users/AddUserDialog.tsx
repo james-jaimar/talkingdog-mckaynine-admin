@@ -18,35 +18,29 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/components/ui/use-toast";
 import { Loader2, AlertCircle, Eye, EyeOff } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { APP_ID } from "@/constants/app";
-import { QueryObserverResult } from "@tanstack/react-query";
-import { UserProfile } from "./types/userTypes";
+import { useUserManagement } from "@/hooks/useUserManagement";
 
 interface AddUserDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
-  onUserAdded?: () => Promise<void> | Promise<QueryObserverResult<UserProfile[], Error>> | void;
 }
 
 export function AddUserDialog({
   open,
   onOpenChange,
-  onSuccess,
-  onUserAdded
+  onSuccess
 }: AddUserDialogProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [role, setRole] = useState("user");
   const [showPassword, setShowPassword] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { toast } = useToast();
+  
+  const { addUser } = useUserManagement();
   
   const resetForm = () => {
     setEmail("");
@@ -62,54 +56,22 @@ export function AddUserDialog({
       return;
     }
     
-    setIsSubmitting(true);
     setError(null);
     
     try {
-      // Step 1: Create user with Supabase Auth
-      const { error: signupError, data } = await supabase.auth.signUp({
+      await addUser.mutateAsync({
         email,
         password,
-        options: {
-          data: { full_name: fullName },
-        }
-      });
-      
-      if (signupError) throw signupError;
-      
-      // Step 2: Set up profile with role and app_id
-      const userId = data.user?.id;
-      if (!userId) throw new Error("Failed to create user");
-      
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .upsert({
-          id: userId,
-          username: email,
-          full_name: fullName || "",
-          role: role,
-          app_id: APP_ID,
-          updated_at: new Date().toISOString()
-        });
-      
-      if (profileError) throw profileError;
-      
-      toast({
-        title: "User added",
-        description: `User ${email} has been created successfully`,
+        fullName,
+        role
       });
       
       resetForm();
       onOpenChange(false);
       
-      // Call both callbacks if provided
       if (onSuccess) onSuccess();
-      if (onUserAdded) await onUserAdded();
     } catch (error) {
-      console.error("Error adding user:", error);
       setError(error instanceof Error ? error.message : "Failed to add user");
-    } finally {
-      setIsSubmitting(false);
     }
   };
   
@@ -197,11 +159,11 @@ export function AddUserDialog({
         </div>
         
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={addUser.isPending}>
             Cancel
           </Button>
-          <Button onClick={handleAddUser} disabled={isSubmitting}>
-            {isSubmitting ? (
+          <Button onClick={handleAddUser} disabled={addUser.isPending}>
+            {addUser.isPending ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 Adding...
