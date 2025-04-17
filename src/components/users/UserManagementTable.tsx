@@ -7,13 +7,13 @@ import { UserTableEmpty } from "./components/UserTableEmpty";
 import { UserManageDialog } from "./UserManageDialog";
 import { UserPasswordResetDialog } from "./UserPasswordResetDialog";
 import { AddUserDialog } from "./AddUserDialog";
-import { useUsers, User } from "./hooks/useUsers";
+import { useUsers } from "./hooks/useUsers";
 
 export function UserManagementTable() {
   const { users, isLoading, refetchUsers } = useUsers();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [addUserOpen, setAddUserOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [selectedUser, setSelectedUser] = useState<any | null>(null);
   const [manageDialogOpen, setManageDialogOpen] = useState(false);
   const [resetPasswordDialogOpen, setResetPasswordDialogOpen] = useState(false);
   const [filter, setFilter] = useState("");
@@ -31,12 +31,12 @@ export function UserManagementTable() {
     setIsRefreshing(false);
   };
 
-  const handleManageUser = (user: User) => {
+  const handleManageUser = (user: any) => {
     setSelectedUser(user);
     setManageDialogOpen(true);
   };
 
-  const handleResetPassword = (user: User) => {
+  const handleResetPassword = (user: any) => {
     setSelectedUser(user);
     setResetPasswordDialogOpen(true);
   };
@@ -102,7 +102,7 @@ export function UserManagementTable() {
       <AddUserDialog
         open={addUserOpen}
         onOpenChange={setAddUserOpen}
-        onUserAdded={refetchUsers}
+        onSuccess={refetchUsers}
       />
     </div>
   );

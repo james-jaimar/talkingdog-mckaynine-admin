@@ -152,7 +152,7 @@ export function AdminUsersList() {
       <AddUserDialog 
         open={addUserOpen} 
         onOpenChange={setAddUserOpen} 
-        onUserAdded={() => refetch()} 
+        onSuccess={() => refetch()} 
       />
     </Card>
   );

@@ -123,7 +123,7 @@ export default function UserAdminTable({ users: externalUsers, onRefresh: extern
       <AddUserDialog
         open={addUserOpen}
         onOpenChange={setAddUserOpen}
-        onUserAdded={refetchUsers}
+        onSuccess={refetchUsers}
       />
     </div>
   );

@@ -181,13 +181,15 @@ export default function UserAdmin() {
             <div className="space-y-4">
               <div className="flex flex-col sm:flex-row gap-4 justify-between">
                 <div className="flex-1 max-w-sm">
-                  <Input
-                    placeholder="Search users..."
-                    value={filter}
-                    onChange={(e) => setFilter(e.target.value)}
-                    className="max-w-xs"
-                    startIcon={<Search className="h-4 w-4" />}
-                  />
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search users..."
+                      value={filter}
+                      onChange={(e) => setFilter(e.target.value)}
+                      className="pl-8 max-w-xs"
+                    />
+                  </div>
                 </div>
                 <div className="flex gap-2">
                   <Button
