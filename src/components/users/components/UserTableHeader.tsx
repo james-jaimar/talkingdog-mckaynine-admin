@@ -21,7 +21,7 @@ export function UserTableHeader({
 }: UserTableHeaderProps) {
   return (
     <>
-      <div className="flex flex-row items-center justify-between">
+      <div className="flex flex-row items-center justify-between p-4">
         <div>
           <h2 className="text-lg font-medium">Users</h2>
           <p className="text-sm text-muted-foreground">
@@ -48,15 +48,17 @@ export function UserTableHeader({
         </div>
       </div>
       
-      <div className="relative mb-4 mt-4">
-        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-        <Input
-          type="search"
-          placeholder="Search users..."
-          className="pl-8"
-          value={filter}
-          onChange={(e) => onFilterChange(e.target.value)}
-        />
+      <div className="px-4 pb-4">
+        <div className="relative">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="search"
+            placeholder="Search users..."
+            className="pl-8"
+            value={filter}
+            onChange={(e) => onFilterChange(e.target.value)}
+          />
+        </div>
       </div>
     </>
   );

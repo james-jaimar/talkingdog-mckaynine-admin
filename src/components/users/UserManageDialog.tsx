@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useUserRoleManager } from "./hooks/useUserRoleManager";
+import { useUserManagement } from "@/hooks/useUserManagement";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface UserManageDialogProps {
@@ -31,7 +31,7 @@ export function UserManageDialog({
 }: UserManageDialogProps) {
   const [role, setRole] = useState(user.role || '');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const { updateUserRole } = useUserRoleManager();
+  const { updateRole } = useUserManagement();
 
   // Reset state when dialog opens with a different user
   useEffect(() => {
@@ -50,7 +50,7 @@ export function UserManageDialog({
     setErrorMessage(null);
     
     try {
-      await updateUserRole.mutateAsync({ 
+      await updateRole.mutateAsync({ 
         userId: user.id, 
         role 
       });
@@ -109,15 +109,15 @@ export function UserManageDialog({
           <Button 
             variant="outline" 
             onClick={() => onOpenChange(false)}
-            disabled={updateUserRole.isPending}
+            disabled={updateRole.isPending}
           >
             Cancel
           </Button>
           <Button 
             onClick={handleUpdateUser} 
-            disabled={updateUserRole.isPending || !role || role === user.role}
+            disabled={updateRole.isPending || !role || role === user.role}
           >
-            {updateUserRole.isPending ? (
+            {updateRole.isPending ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 Saving...

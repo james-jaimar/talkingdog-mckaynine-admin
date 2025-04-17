@@ -7,13 +7,14 @@ import { UserTableEmpty } from "./components/UserTableEmpty";
 import { UserManageDialog } from "./UserManageDialog";
 import { UserPasswordResetDialog } from "./UserPasswordResetDialog";
 import { AddUserDialog } from "./AddUserDialog";
-import { useUsers } from "./hooks/useUsers";
+import { useUserManagement } from "@/hooks/useUserManagement";
+import { UserProfile } from "./types/userTypes";
 
 export function UserManagementTable() {
-  const { users, isLoading, refetchUsers } = useUsers();
+  const { users, isLoading, refetch } = useUserManagement();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [addUserOpen, setAddUserOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<any | null>(null);
+  const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
   const [manageDialogOpen, setManageDialogOpen] = useState(false);
   const [resetPasswordDialogOpen, setResetPasswordDialogOpen] = useState(false);
   const [filter, setFilter] = useState("");
@@ -27,16 +28,16 @@ export function UserManagementTable() {
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await refetchUsers();
+    await refetch();
     setIsRefreshing(false);
   };
 
-  const handleManageUser = (user: any) => {
+  const handleManageUser = (user: UserProfile) => {
     setSelectedUser(user);
     setManageDialogOpen(true);
   };
 
-  const handleResetPassword = (user: any) => {
+  const handleResetPassword = (user: UserProfile) => {
     setSelectedUser(user);
     setResetPasswordDialogOpen(true);
   };
@@ -89,7 +90,7 @@ export function UserManagementTable() {
             user={selectedUser}
             open={manageDialogOpen}
             onOpenChange={setManageDialogOpen}
-            onUserUpdated={refetchUsers}
+            onUserUpdated={refetch}
           />
           <UserPasswordResetDialog
             user={selectedUser}
@@ -102,7 +103,7 @@ export function UserManagementTable() {
       <AddUserDialog
         open={addUserOpen}
         onOpenChange={setAddUserOpen}
-        onSuccess={refetchUsers}
+        onSuccess={refetch}
       />
     </div>
   );

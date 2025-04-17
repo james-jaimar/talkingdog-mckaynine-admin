@@ -11,11 +11,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2, AlertCircle, EyeOff, Eye } from "lucide-react";
-import { User, useUserManagement } from "@/hooks/useUserManagement";
+import { UserProfile } from "./types/userTypes";
+import { useUserManagement } from "@/hooks/useUserManagement";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface UserPasswordResetDialogProps {
-  user: User | null;
+  user: UserProfile | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }

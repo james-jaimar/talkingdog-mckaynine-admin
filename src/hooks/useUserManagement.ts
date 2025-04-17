@@ -2,19 +2,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import { UserProfile } from "@/components/users/types/userTypes";
 import { APP_ID } from "@/constants/app";
-
-export interface User {
-  id: string;
-  email: string;
-  full_name?: string;
-  role: string;
-  app_id?: string;
-  avatar_url?: string;
-  created_at: string;
-  isCurrentUser?: boolean;
-  username?: string;
-}
 
 export interface UseUserManagementOptions {
   showAllUsers?: boolean;
@@ -60,8 +49,8 @@ export function useUserManagement(options: UseUserManagementOptions = {}) {
           throw error;
         }
         
-        // Transform to User format
-        const userProfiles: User[] = (profiles || []).map(profile => ({
+        // Transform to UserProfile format
+        const userProfiles: UserProfile[] = (profiles || []).map(profile => ({
           id: profile.id,
           email: profile.username || '', // Email is stored in username field
           username: profile.username || '',

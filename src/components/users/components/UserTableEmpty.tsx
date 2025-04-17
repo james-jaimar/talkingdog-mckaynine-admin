@@ -1,43 +1,56 @@
 
 import { TableRow, TableCell } from "@/components/ui/table";
-import { Loader2 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { UserProfile } from "../types/userTypes";
 
 interface UserTableEmptyProps {
-  users: any[];
-  filteredUsers: any[];
+  users: UserProfile[];
+  filteredUsers: UserProfile[];
   filter: string;
-  isLoading?: boolean; // Make isLoading optional
+  isLoading: boolean;
 }
 
-export function UserTableEmpty({ users, filteredUsers, filter, isLoading = false }: UserTableEmptyProps) {
+export function UserTableEmpty({ users, filteredUsers, filter, isLoading }: UserTableEmptyProps) {
   if (isLoading) {
     return (
-      <TableRow>
-        <TableCell colSpan={5} className="h-24 text-center">
-          <Loader2 className="h-6 w-6 animate-spin mx-auto" />
-          <span className="mt-2 block text-sm text-muted-foreground">
-            Loading users...
-          </span>
-        </TableCell>
-      </TableRow>
-    );
-  }
-  
-  if (!users || users.length === 0) {
-    return (
-      <TableRow>
-        <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-          No users found in database.
-        </TableCell>
-      </TableRow>
+      <>
+        {Array(3).fill(0).map((_, i) => (
+          <TableRow key={`loading-${i}`}>
+            <TableCell>
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-3 w-24 mt-1" />
+            </TableCell>
+            <TableCell>
+              <Skeleton className="h-4 w-40" />
+            </TableCell>
+            <TableCell>
+              <Skeleton className="h-6 w-16" />
+            </TableCell>
+            <TableCell>
+              <Skeleton className="h-4 w-24" />
+            </TableCell>
+            <TableCell>
+              <Skeleton className="h-8 w-8 ml-auto" />
+            </TableCell>
+          </TableRow>
+        ))}
+      </>
     );
   }
   
   if (filteredUsers.length === 0) {
     return (
       <TableRow>
-        <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-          No users match your search.
+        <TableCell colSpan={5} className="h-32 text-center">
+          {users.length === 0 ? (
+            <div className="text-muted-foreground">
+              No users found. Add users to get started.
+            </div>
+          ) : (
+            <div className="text-muted-foreground">
+              No users match your search criteria.
+            </div>
+          )}
         </TableCell>
       </TableRow>
     );

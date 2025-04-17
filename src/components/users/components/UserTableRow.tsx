@@ -9,12 +9,12 @@ import {
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal, Key, UserCog } from "lucide-react";
-import { User } from "../hooks/useUsers";
+import { UserProfile } from "../types/userTypes";
 
 interface UserTableRowProps {
-  user: User;
-  onManageUser: (user: User) => void;
-  onResetPassword: (user: User) => void;
+  user: UserProfile;
+  onManageUser: (user: UserProfile) => void;
+  onResetPassword: (user: UserProfile) => void;
 }
 
 export function UserTableRow({ user, onManageUser, onResetPassword }: UserTableRowProps) {
@@ -43,7 +43,7 @@ export function UserTableRow({ user, onManageUser, onResetPassword }: UserTableR
           variant="outline" 
           className={getRoleBadgeColor(user.role)}
         >
-          {user.role || 'user'}
+          {user.role}
         </Badge>
       </TableCell>
       <TableCell>
