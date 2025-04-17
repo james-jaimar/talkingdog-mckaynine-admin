@@ -5,7 +5,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { UserProfile } from "../types/userTypes";
 import { APP_ID } from "@/constants/app";
 
-// Use UserProfile directly since we've updated it to require email
+// Use UserProfile directly since we've updated it to require email and role
 export type User = UserProfile;
 
 export function useUsers() {
@@ -44,7 +44,7 @@ export function useUsers() {
         id: user.id,
         email: user.username || '',  // Email is stored in username field and always set
         username: user.username || '',
-        role: user.role || 'user',
+        role: user.role || 'user',   // Ensure role is always set
         full_name: user.full_name || '',
         created_at: user.created_at || new Date().toISOString(),
         avatar_url: user.avatar_url,

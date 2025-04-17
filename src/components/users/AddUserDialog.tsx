@@ -23,17 +23,21 @@ import { Loader2, AlertCircle, Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { APP_ID } from "@/constants/app";
+import { QueryObserverResult } from "@tanstack/react-query";
+import { UserProfile } from "./types/userTypes";
 
 interface AddUserDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
+  onUserAdded?: () => Promise<void> | Promise<QueryObserverResult<UserProfile[], Error>> | void;
 }
 
 export function AddUserDialog({
   open,
   onOpenChange,
-  onSuccess
+  onSuccess,
+  onUserAdded
 }: AddUserDialogProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -97,7 +101,10 @@ export function AddUserDialog({
       
       resetForm();
       onOpenChange(false);
+      
+      // Call both callbacks if provided
       if (onSuccess) onSuccess();
+      if (onUserAdded) await onUserAdded();
     } catch (error) {
       console.error("Error adding user:", error);
       setError(error instanceof Error ? error.message : "Failed to add user");

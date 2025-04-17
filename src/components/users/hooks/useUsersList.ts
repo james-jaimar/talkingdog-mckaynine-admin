@@ -49,13 +49,13 @@ export function useUsersList(options: UseUsersListOptions = {}) {
         
         console.log(`[useUsersList] Fetched ${profiles?.length || 0} user profiles`);
         
-        // Transform to UserProfile format
+        // Transform to UserProfile format, ensuring role is always set
         const userProfiles: UserProfile[] = (profiles || []).map(profile => ({
           id: profile.id,
           email: profile.username || '', // Email is stored in username field
           username: profile.username || '',
           full_name: profile.full_name || '',
-          role: profile.role || 'user',
+          role: profile.role || 'user', // Ensure role is never undefined
           avatar_url: profile.avatar_url,
           created_at: profile.created_at,
           app_id: profile.app_id,

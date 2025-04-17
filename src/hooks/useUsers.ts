@@ -59,7 +59,7 @@ export function useUsers(options: UseUsersOptions = {}) {
           id: profile.id,
           email: profile.username || '', // Email is stored in username field
           full_name: profile.full_name || '',
-          role: profile.role || 'user',
+          role: profile.role || 'user', // Ensure role is always set
           app_id: profile.app_id,
           avatar_url: profile.avatar_url,
           created_at: profile.created_at,

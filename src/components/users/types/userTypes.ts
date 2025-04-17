@@ -5,7 +5,7 @@ export interface UserProfile {
   email: string;
   full_name?: string;
   avatar_url?: string | null;
-  role?: string;
+  role: string; // Changed from optional to required
   created_at: string;
   app_id?: string | null;
   isCurrentUser?: boolean;
