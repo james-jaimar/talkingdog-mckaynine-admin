@@ -17,11 +17,12 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Loader2, AlertCircle } from "lucide-react";
-import { User, useUserManagement } from "@/hooks/useUserManagement";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { UserProfile } from "./types/userTypes";
+import { useUserManagement } from "@/hooks/useUserManagement";
 
 interface UserRoleDialogProps {
-  user: User | null;
+  user: UserProfile | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
