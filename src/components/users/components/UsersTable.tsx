@@ -9,13 +9,15 @@ import { UserProfile } from "../types/userTypes";
 
 interface UsersTableProps {
   users: UserProfile[];
+  filteredUsers?: UserProfile[]; // Make this optional
   isLoading: boolean;
-  onEditRole: (userId: string) => void;
+  onEditRole: (userId: string, currentRole: string) => void; // Updated to match expected signature
   onResetPassword: (userId: string) => void;
 }
 
 export function UsersTable({ 
   users, 
+  filteredUsers = users, // Default to all users if not provided
   isLoading, 
   onEditRole, 
   onResetPassword 
@@ -58,7 +60,9 @@ export function UsersTable({
     );
   }
 
-  if (users.length === 0) {
+  const displayedUsers = filteredUsers || users;
+
+  if (displayedUsers.length === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground border rounded-md p-6">
         No users found matching your criteria.
@@ -78,7 +82,7 @@ export function UsersTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {users.map((user) => (
+          {displayedUsers.map((user) => (
             <TableRow key={user.id}>
               <TableCell>
                 <div className="flex items-center gap-3">
@@ -118,7 +122,7 @@ export function UsersTable({
               <TableCell className="text-right">
                 <UserActionMenu
                   user={user}
-                  onEditRole={() => onEditRole(user.id)}
+                  onEditRole={() => onEditRole(user.id, user.role || '')}
                   onResetPassword={() => onResetPassword(user.id)}
                 />
               </TableCell>
