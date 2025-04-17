@@ -24,7 +24,7 @@ interface UserRoleDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   selectedUser: UserProfile | null;
-  onSaveRole?: (userId: string, role: string) => Promise<void>;
+  onSaveRole?: (newRole: string) => Promise<void>;
   onSuccess?: () => void;
 }
 
@@ -61,7 +61,7 @@ export function UserRoleDialog({
       
       // If a custom onSaveRole handler is provided, use it
       if (onSaveRole) {
-        await onSaveRole(selectedUser.id, newRole);
+        await onSaveRole(newRole);
       } else {
         // Otherwise use the default role management hook
         await updateUserRole({

@@ -27,8 +27,9 @@ export function MigrateUsersButton({ onComplete }: MigrateUsersButtonProps) {
         variant: result.success ? "default" : "destructive",
       });
       
-      if (result.success && onComplete) {
-        console.log("Migration successful, triggering onComplete callback");
+      // Always attempt to run onComplete, even if we get "no users to migrate" message
+      if (onComplete) {
+        console.log("Migration process finished, triggering onComplete callback");
         await onComplete();
       }
     } catch (error) {
@@ -48,6 +49,7 @@ export function MigrateUsersButton({ onComplete }: MigrateUsersButtonProps) {
       variant="outline" 
       onClick={handleMigrate} 
       disabled={isRunning}
+      className="bg-amber-50 hover:bg-amber-100 border-amber-200" 
     >
       {isRunning ? (
         <>

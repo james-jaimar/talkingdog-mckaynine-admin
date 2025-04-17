@@ -17,6 +17,9 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { MigrateUsersButton } from "@/components/users/components/MigrateUsersButton";
 import { useUsersList } from "@/components/users/hooks/useUsersList";
+import { APP_ID } from "@/constants/app";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { Info } from "lucide-react";
 
 export default function UserAdmin() {
   const { isAdmin, isLoading: authLoading } = useAuth();
@@ -31,7 +34,7 @@ export default function UserAdmin() {
   const [showAllUsers, setShowAllUsers] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Fetch users with simplified hook
+  // Fetch users with our improved hook
   const {
     users,
     isLoading,
@@ -42,11 +45,6 @@ export default function UserAdmin() {
     showAllUsers,
     enabled: !authLoading && isAdmin
   });
-
-  // Create a simple wrapper function for migration completion
-  const handleMigrationComplete = async () => {
-    await refetch();
-  };
 
   // Handle authentication check
   if (authLoading) {
@@ -79,7 +77,8 @@ export default function UserAdmin() {
     setIsRefreshing(false);
   };
 
-  const handleEditRole = (userId: string) => {
+  const handleEditRole = (userId: string, currentRole?: string) => {
+    console.log(`Editing role for user: ${userId}, current role: ${currentRole}`);
     setSelectedUserId(userId);
     setManageDialogOpen(true);
   };
@@ -110,13 +109,16 @@ export default function UserAdmin() {
                   <Switch 
                     id="show-all-users"
                     checked={showAllUsers}
-                    onCheckedChange={setShowAllUsers}
+                    onCheckedChange={(checked) => {
+                      console.log(`Setting showAllUsers to: ${checked}`);
+                      setShowAllUsers(checked);
+                    }}
                   />
                   <Label htmlFor="show-all-users">Show all users</Label>
                 </div>
                 
                 {usersWithoutAppId > 0 && (
-                  <MigrateUsersButton onComplete={handleMigrationComplete} />
+                  <MigrateUsersButton onComplete={handleRefresh} />
                 )}
               </div>
             </div>
@@ -125,6 +127,24 @@ export default function UserAdmin() {
               <div className="mt-2 text-sm text-amber-600">
                 {usersWithoutAppId} users without app_id detected. Use the migration button to fix.
               </div>
+            )}
+            
+            {users.length === 0 && !isLoading && (
+              <Alert className="mt-4 bg-blue-50">
+                <Info className="h-4 w-4" />
+                <AlertTitle>No users found</AlertTitle>
+                <AlertDescription>
+                  {showAllUsers ? (
+                    "No users found in the database."
+                  ) : (
+                    <>
+                      No users found with the current app_id: <strong>{APP_ID}</strong>. 
+                      Try using the "Show all users" toggle to see all users in the system, 
+                      then migrate them to the current app.
+                    </>
+                  )}
+                </AlertDescription>
+              </Alert>
             )}
           </CardHeader>
           <CardContent>
@@ -154,7 +174,8 @@ export default function UserAdmin() {
             </div>
 
             <UsersTable
-              users={filteredUsers}
+              users={users}
+              filteredUsers={filteredUsers}
               isLoading={isLoading}
               onEditRole={handleEditRole}
               onResetPassword={handleResetPassword}

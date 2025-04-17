@@ -9,15 +9,15 @@ import { UserProfile } from "../types/userTypes";
 
 interface UsersTableProps {
   users: UserProfile[];
-  filteredUsers?: UserProfile[]; // Make this optional
+  filteredUsers?: UserProfile[];
   isLoading: boolean;
-  onEditRole: (userId: string, currentRole: string) => void; // Updated to match expected signature
+  onEditRole: (userId: string, currentRole?: string) => void;
   onResetPassword: (userId: string) => void;
 }
 
 export function UsersTable({ 
   users, 
-  filteredUsers = users, // Default to all users if not provided
+  filteredUsers = users,
   isLoading, 
   onEditRole, 
   onResetPassword 
@@ -60,12 +60,14 @@ export function UsersTable({
     );
   }
 
-  const displayedUsers = filteredUsers || users;
-
-  if (displayedUsers.length === 0) {
+  if (filteredUsers.length === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground border rounded-md p-6">
-        No users found matching your criteria.
+        {users.length === 0 ? (
+          "No users found. The system may be experiencing an issue with user data retrieval or permissions."
+        ) : (
+          "No users found matching your search criteria."
+        )}
       </div>
     );
   }
@@ -82,7 +84,7 @@ export function UsersTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {displayedUsers.map((user) => (
+          {filteredUsers.map((user) => (
             <TableRow key={user.id}>
               <TableCell>
                 <div className="flex items-center gap-3">
@@ -122,7 +124,7 @@ export function UsersTable({
               <TableCell className="text-right">
                 <UserActionMenu
                   user={user}
-                  onEditRole={() => onEditRole(user.id, user.role || '')}
+                  onEditRole={() => onEditRole(user.id, user.role)}
                   onResetPassword={() => onResetPassword(user.id)}
                 />
               </TableCell>
