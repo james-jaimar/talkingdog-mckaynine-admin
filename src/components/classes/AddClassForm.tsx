@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useClassForm } from "./hooks/useClassForm";
+import { FeeFields } from "./form-sections/FeeFields";
 
 interface AddClassFormProps {
   onSuccess: () => void;
@@ -106,21 +107,7 @@ export function AddClassForm({ onSuccess }: AddClassFormProps) {
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <FormField
-            control={form.control}
-            name="price"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Price (R)</FormLabel>
-                <FormControl>
-                  <Input type="number" min="0" step="0.01" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             control={form.control}
             name="duration"
@@ -149,6 +136,8 @@ export function AddClassForm({ onSuccess }: AddClassFormProps) {
             )}
           />
         </div>
+
+        <FeeFields control={form.control} />
 
         <div className="flex justify-end">
           <Button type="submit" disabled={isSubmitting}>

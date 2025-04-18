@@ -87,7 +87,7 @@ export function useInvoicesList() {
                       id, 
                       start_time,
                       class_id,
-                      classes (id, name, description, price)
+                      classes (id, name, description, course_fee)
                     )
                   `)
                   .eq('id', item.booking_id)
@@ -105,7 +105,7 @@ export function useInvoicesList() {
                   const dogName = booking.dogs.name;
                   const className = booking.class_schedules.classes.name;
                   const classDescription = booking.class_schedules.classes.description;
-                  const classPrice = booking.class_schedules.classes.price;
+                  const classPrice = booking.class_schedules.classes.course_fee;
                   
                   console.log(`Enhanced item with class: ${className} and dog: ${dogName}`);
                   

@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/select";
 import { useClassForm } from "./hooks/useClassForm";
 import { Class } from "./types/class";
+import { FeeFields } from "./form-sections/FeeFields";
 
 interface EditClassFormProps {
   classData: Class;
@@ -108,21 +109,7 @@ export function EditClassForm({ classData, onSuccess }: EditClassFormProps) {
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <FormField
-            control={form.control}
-            name="price"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Price (R)</FormLabel>
-                <FormControl>
-                  <Input type="number" min="0" step="0.01" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             control={form.control}
             name="duration"
@@ -151,6 +138,8 @@ export function EditClassForm({ classData, onSuccess }: EditClassFormProps) {
             )}
           />
         </div>
+
+        <FeeFields control={form.control} />
 
         <div className="flex justify-end">
           <Button type="submit" disabled={isSubmitting}>
