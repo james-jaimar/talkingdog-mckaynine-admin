@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/auth"; 
@@ -10,22 +9,16 @@ export function useClassTabNavigation() {
   
   // Determine active tab from URL path
   const getActiveTabFromPath = useCallback(() => {
-    // Check for class ID in the class detail path
-    const classIdMatch = location.pathname.match(/\/class\/([^/]+)$/);
+    // Enhanced pattern matching to detect class IDs in various routes
+    const classIdMatch = location.pathname.match(/\/class\/([^/]+)(?:\/.*)?$/);
     if (classIdMatch) {
       return classIdMatch[1];
     }
     
     // Check for class ID in the class schedules path
-    const scheduleMatch = location.pathname.match(/\/classes\/([^/]+)\/schedules/);
+    const scheduleMatch = location.pathname.match(/\/classes\/([^/]+)(?:\/.*)?$/);
     if (scheduleMatch) {
       return scheduleMatch[1];
-    }
-    
-    // Check for class ID in the class handlers path
-    const handlersMatch = location.pathname.match(/\/class\/([^/]+)\/handlers/);
-    if (handlersMatch) {
-      return handlersMatch[1];
     }
     
     return "all";

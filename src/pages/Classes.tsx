@@ -25,9 +25,9 @@ export default function Classes() {
           </Button>
         </div>
 
-        {/* Secondary navigation bar */}
+        {/* Always show the class tabs on this page */}
         <div className="mb-6">
-          <ClassesTabs />
+          <ClassesTabs alwaysShow={true} />
         </div>
 
         {/* Show classes table */}

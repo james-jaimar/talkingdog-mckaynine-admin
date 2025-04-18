@@ -19,7 +19,7 @@ export function ClassesTabs({ alwaysShow = false }) {
   const { handleTabClick } = useClassTabNavigation();
   const currentClassId = useClassIdFromUrl();
   
-  // Determine whether to show tabs
+  // Enhanced path detection to show tabs on more class-related pages
   const isClassRelatedPath = 
     location.pathname.includes('/class/') || 
     location.pathname.includes('/classes/') ||

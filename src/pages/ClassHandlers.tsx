@@ -11,6 +11,7 @@ import { Helmet } from "react-helmet";
 import { FormNavigation } from "@/components/forms/FormNavigation";
 import { useClassData } from "@/components/class-schedules/hooks/useClassData";
 import { Link } from "react-router-dom";
+import { ClassesTabs } from "@/components/classes/ClassesTabs";
 
 export default function ClassHandlers() {
   // Support both URL params and query params
@@ -128,6 +129,11 @@ export default function ClassHandlers() {
           backPath="/classes"
           backLabel="Back to Classes"
         />
+
+        {/* Add ClassesTabs with alwaysShow prop */}
+        <div className="mb-6">
+          <ClassesTabs alwaysShow={true} />
+        </div>
         
         <div className="mb-6 flex justify-end">
           <Button onClick={() => setIsAddHandlerModalOpen(true)}>

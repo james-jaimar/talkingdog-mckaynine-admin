@@ -4,6 +4,7 @@ import { useLocation } from "react-router-dom";
 export function useClassIdFromUrl() {
   const location = useLocation();
   
+  // Updated regex patterns to better catch all class-related URLs
   const classesMatch = location.pathname.match(/\/classes\/([^/]+)$/);
   const schedulesMatch = location.pathname.match(/\/classes\/([^/]+)\/schedules/);
   const handlersMatch = location.pathname.match(/\/class\/([^/]+)\/handlers/);
