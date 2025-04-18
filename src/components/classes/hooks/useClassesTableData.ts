@@ -84,7 +84,8 @@ export function useClassesTableData(filter?: string) {
         return null;
       }
     },
-    enabled: !!currentBranch
+    enabled: !!currentBranch,
+    staleTime: 10000 // 10 seconds - shorter stale time to detect changes more quickly
   });
 
   // Get the most current data from the query cache

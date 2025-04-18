@@ -7,12 +7,16 @@ import { ClassTableRow } from "./ClassTableRow";
 import { useClassOrder } from "./hooks/useClassOrder";
 import { EditClassModal } from "./EditClassModal";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useQueryClient } from "@tanstack/react-query";
+import { useBranch } from "@/context/BranchContext";
 
 export function ClassesTable() {
   const { orderedClasses, isLoading, error } = useClassesTableData();
   const { moveClassUp, moveClassDown } = useClassOrder();
   const [editingClass, setEditingClass] = useState<any>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const queryClient = useQueryClient();
+  const { currentBranch } = useBranch();
   
   const handleEdit = (classItem: any) => {
     console.log("Editing class:", classItem);
@@ -26,6 +30,13 @@ export function ClassesTable() {
     setTimeout(() => {
       setEditingClass(null);
     }, 300); // Small delay to allow modal animation to complete
+  };
+  
+  const handleEditSuccess = () => {
+    // Refresh data after successful edit
+    queryClient.invalidateQueries({ queryKey: ['classes', currentBranch?.id] });
+    queryClient.invalidateQueries({ queryKey: ['class-tab-order', currentBranch?.id] });
+    handleCloseModal();
   };
   
   if (isLoading) {
@@ -103,10 +114,7 @@ export function ClassesTable() {
         open={isEditModalOpen}
         onOpenChange={handleCloseModal}
         classData={editingClass}
-        onSuccess={() => {
-          // Reset the editing class after successful update
-          setEditingClass(null);
-        }}
+        onSuccess={handleEditSuccess}
       />
     </>
   );

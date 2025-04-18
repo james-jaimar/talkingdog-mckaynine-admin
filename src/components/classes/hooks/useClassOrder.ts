@@ -70,11 +70,10 @@ export function useClassOrder() {
         console.log("Created new class order");
       }
 
-      // Return the updated class IDs to update the cache
       return classIds;
     },
     onSuccess: (classIds) => {
-      // On successful save, update the class-tab-order query
+      // We need to update both cache entries to ensure consistency
       queryClient.setQueryData(['class-tab-order', currentBranch?.id], (oldData: any) => {
         if (!oldData) {
           return {
@@ -90,7 +89,10 @@ export function useClassOrder() {
         };
       });
       
-      queryClient.invalidateQueries({ queryKey: ['class-tab-order', currentBranch?.id] });
+      // Force a refresh of the cache after a short delay to ensure changes are picked up
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['class-tab-order', currentBranch?.id] });
+      }, 100);
     },
     onError: (error) => {
       console.error("Error saving class order:", error);
