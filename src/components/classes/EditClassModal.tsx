@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -37,28 +37,60 @@ export function EditClassModal({ open, onOpenChange, classData, onSuccess }: Edi
   const form = useForm<ClassFormValues>({
     resolver: zodResolver(classFormSchema),
     defaultValues: {
-      name: classData?.name || "",
-      level: classData?.level || "",
-      duration: classData?.duration || 60,
-      course_fee: classData?.course_fee || 0,
-      enrollment_fee: classData?.enrollment_fee || 0,
-      mckaynine_commission_type: classData?.mckaynine_commission_type || 'percentage',
-      mckaynine_commission_value: classData?.mckaynine_commission_value || 0,
-      admin_fee_type: classData?.admin_fee_type || 'percentage',
-      admin_fee_value: classData?.admin_fee_value || 0,
-      trainer_fee_type: classData?.trainer_fee_type || 'percentage',
-      trainer_fee_value: classData?.trainer_fee_value || 0,
-      capacity: classData?.capacity || 8,
-      description: classData?.description || "",
+      name: "",
+      level: "",
+      duration: 60,
+      course_fee: 0,
+      enrollment_fee: 0,
+      mckaynine_commission_type: 'percentage',
+      mckaynine_commission_value: 0,
+      admin_fee_type: 'percentage',
+      admin_fee_value: 0,
+      trainer_fee_type: 'percentage',
+      trainer_fee_value: 0,
+      capacity: 8,
+      description: "",
       branchId: currentBranch?.id || "",
     },
   });
+
+  // Reset the form with fresh data when the modal is opened or classData changes
+  useEffect(() => {
+    if (open && classData) {
+      console.log("Setting form values with class data:", classData);
+      form.reset({
+        name: classData.name || "",
+        level: classData.level || "",
+        duration: classData.duration || 60,
+        course_fee: classData.course_fee || 0,
+        enrollment_fee: classData.enrollment_fee || 0,
+        mckaynine_commission_type: classData.mckaynine_commission_type || 'percentage',
+        mckaynine_commission_value: classData.mckaynine_commission_value || 0,
+        admin_fee_type: classData.admin_fee_type || 'percentage',
+        admin_fee_value: classData.admin_fee_value || 0,
+        trainer_fee_type: classData.trainer_fee_type || 'percentage',
+        trainer_fee_value: classData.trainer_fee_value || 0,
+        capacity: classData.capacity || 8,
+        description: classData.description || "",
+        branchId: currentBranch?.id || "",
+      });
+    }
+  }, [form, classData, open]);
 
   const onSubmit = async (values: ClassFormValues) => {
     if (!currentBranch) {
       toast({
         title: "No branch selected",
         description: "Please select a branch before updating a class",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!classData || !classData.id) {
+      toast({
+        title: "Invalid class data",
+        description: "Cannot update class without an ID",
         variant: "destructive",
       });
       return;
@@ -114,7 +146,7 @@ export function EditClassModal({ open, onOpenChange, classData, onSuccess }: Edi
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Class</DialogTitle>
           <DialogDescription>

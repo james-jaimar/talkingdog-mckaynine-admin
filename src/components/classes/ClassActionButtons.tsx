@@ -1,7 +1,16 @@
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
-import { Users } from "lucide-react";
+import { MoreHorizontal, Edit, CalendarRange, Users } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { EditClassModal } from "./EditClassModal";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/context/auth";
 
 interface ClassActionButtonsProps {
   classId: string;
@@ -9,26 +18,65 @@ interface ClassActionButtonsProps {
 }
 
 export function ClassActionButtons({ classId, onEdit }: ClassActionButtonsProps) {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  
+  const handleSchedulesClick = () => {
+    navigate(`/class-schedules?classId=${classId}`);
+  };
+  
+  const handleHandlersClick = () => {
+    navigate(`/class-handlers?classId=${classId}`);
+  };
+
   return (
-    <div className="flex space-x-2">
-      <Link to={`/classes/${classId}/schedules`}>
-        <Button variant="outline" size="sm">
-          Schedules
-        </Button>
-      </Link>
-      <Link to={`/class/${classId}/handlers`}>
-        <Button variant="outline" size="sm">
-          <Users className="h-3.5 w-3.5 mr-1" />
-          Handlers
-        </Button>
-      </Link>
+    <div className="flex items-center">
       <Button 
-        variant="outline" 
-        size="sm"
-        onClick={onEdit}
+        variant="ghost" 
+        size="icon" 
+        onClick={() => onEdit()}
+        disabled={!user}
+        title="Edit class"
       >
-        Edit
+        <Edit className="h-4 w-4" />
       </Button>
+      
+      <Button 
+        variant="ghost" 
+        size="icon" 
+        onClick={handleSchedulesClick}
+        title="View schedules"
+      >
+        <CalendarRange className="h-4 w-4" />
+      </Button>
+      
+      <Button 
+        variant="ghost" 
+        size="icon" 
+        onClick={handleHandlersClick}
+        title="View handlers"
+      >
+        <Users className="h-4 w-4" />
+      </Button>
+      
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon">
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={handleSchedulesClick}>
+            View Schedules
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={handleHandlersClick}>
+            View Handlers
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => onEdit()}>
+            Edit Class
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }
