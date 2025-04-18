@@ -2,6 +2,7 @@
 import { useClassOrdering } from "./useClassOrdering";
 import { useBranch } from "@/context/BranchContext";
 import { useAuth } from "@/context/auth";
+import { Class } from "../types/class";
 
 export function useClassesData() {
   const { currentBranch } = useBranch();

@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { useBranch } from "@/context/BranchContext";
-import { Class } from "../types/class";
+import { Class, ClassFromDB } from "../types/class";
 import debounce from "lodash/debounce";
 
 interface UseClassOrderingOptions {
@@ -55,7 +55,15 @@ export function useClassOrdering(options?: UseClassOrderingOptions) {
           throw error;
         }
         
-        return data || [];
+        // Convert the data from DB to properly typed Class objects
+        const typedData: Class[] = (data || []).map((item: ClassFromDB) => ({
+          ...item,
+          mckaynine_commission_type: item.mckaynine_commission_type as 'percentage' | 'amount',
+          admin_fee_type: item.admin_fee_type as 'percentage' | 'amount',
+          trainer_fee_type: item.trainer_fee_type as 'percentage' | 'amount'
+        }));
+        
+        return typedData;
       } catch (error) {
         console.error("Error in classes query:", error);
         throw error;
