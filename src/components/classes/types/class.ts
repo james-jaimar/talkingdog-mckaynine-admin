@@ -1,4 +1,7 @@
 
+// Import ClassSchedule type for proper typing
+import { ClassSchedule } from './class-schedule';
+
 export interface Class {
   id: string;
   name: string;
@@ -44,10 +47,15 @@ export interface ClassFromDB {
   branches?: {
     name: string;
   };
-  class_schedules?: ClassSchedule[];
+  class_schedules?: {
+    id: string;
+    bookings?: { id: string }[];
+    // Add other fields that might be fetched but aren't used directly
+    class_id?: string;
+    start_time?: string;
+    end_time?: string;
+    recurring?: boolean;
+  }[];
   created_at: string;
   updated_at: string;
 }
-
-// Import ClassSchedule type for proper typing
-import { ClassSchedule } from './class-schedule';

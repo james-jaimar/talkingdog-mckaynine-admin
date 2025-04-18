@@ -25,4 +25,6 @@ export interface ClassSchedule {
   };
   // Additional fields that might be needed
   reference_title?: string;
+  // Bookings field for relationship data
+  bookings?: { id: string }[];
 }

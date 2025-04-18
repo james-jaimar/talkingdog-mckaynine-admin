@@ -56,7 +56,7 @@ export function useClassOrdering(options?: UseClassOrderingOptions) {
         }
         
         // Convert the data from DB to properly typed Class objects
-        const typedData: Class[] = (data || []).map((item: ClassFromDB) => ({
+        const typedData: Class[] = (data || []).map((item: any) => ({
           ...item,
           mckaynine_commission_type: item.mckaynine_commission_type as 'percentage' | 'amount',
           admin_fee_type: item.admin_fee_type as 'percentage' | 'amount',
