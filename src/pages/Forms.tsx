@@ -75,7 +75,7 @@ export default function Forms() {
             name: classData.name,
             description: classData.description,
             level: classData.level,
-            price: classData.price,
+            price: classData.course_fee, // Updated to use course_fee instead of price
             branch_id: classData.branch_id,
             capacity: classData.capacity,
             created_at: schedule.created_at,
