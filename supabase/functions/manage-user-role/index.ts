@@ -2,22 +2,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 import { corsHeaders } from '../_shared/cors.ts';
 
-interface UserRoleRequest {
-  userId: string;
-  role: string;
-}
-
-// Create a Supabase client with the service role key for privileged operations
-const supabaseAdmin = createClient(
-  Deno.env.get('SUPABASE_URL') ?? '',
-  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-  {
-    auth: {
-      persistSession: false,
-    }
-  }
-);
-
 const APP_ID = 'mckaynine'; // Match the APP_ID from your constants
 
 Deno.serve(async (req) => {
@@ -39,6 +23,17 @@ Deno.serve(async (req) => {
     // Extract the token
     const token = authHeader.replace('Bearer ', '');
     
+    // Create Supabase client with the service role key for privileged operations
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      {
+        auth: {
+          persistSession: false,
+        }
+      }
+    );
+    
     // Verify the token to get user info
     const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
     if (authError || !user) {
@@ -49,8 +44,7 @@ Deno.serve(async (req) => {
     }
 
     // Parse request body
-    const requestData = await req.json() as UserRoleRequest;
-    const { userId, role } = requestData;
+    const { userId, role } = await req.json();
 
     console.log(`[manage-user-role] Processing role update for user ${userId} to role: ${role}`);
 

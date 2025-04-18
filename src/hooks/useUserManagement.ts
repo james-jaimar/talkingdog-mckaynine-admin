@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { UserProfile } from "@/components/users/types/userTypes";
+import { APP_ID } from "@/constants/app";
 
 export interface UseUserManagementOptions {
   enabled?: boolean;
@@ -31,10 +32,11 @@ export function useUserManagement(options: UseUserManagementOptions = {}) {
         const { data: { user: currentUser } } = await supabase.auth.getUser();
         console.log("Current user ID:", currentUser?.id);
         
-        // Get all profiles without any filtering
+        // Get all profiles filtered by app_id
         const { data: profiles, error } = await supabase
           .from('profiles')
           .select('*')
+          .eq('app_id', APP_ID)
           .order('created_at', { ascending: false });
         
         if (error) {
@@ -95,16 +97,38 @@ export function useUserManagement(options: UseUserManagementOptions = {}) {
         
         const userId = authData.user.id;
         
-        // Update the profile with role
+        // Update the profile with role and app_id
         const { error: profileError } = await supabase
           .from('profiles')
           .update({ 
             full_name: fullName,
-            role: role
+            role: role,
+            app_id: APP_ID
           })
           .eq('id', userId);
         
         if (profileError) throw profileError;
+        
+        // If role is trainer, create trainer record
+        if (role === 'trainer') {
+          const names = fullName.split(' ');
+          const firstName = names[0];
+          const lastName = names.slice(1).join(' ');
+          
+          const { error: trainerError } = await supabase
+            .from('trainers')
+            .insert({
+              user_id: userId,
+              first_name: firstName,
+              last_name: lastName || '',
+              email: email
+            });
+            
+          if (trainerError) {
+            console.error("[useUserManagement] Error creating trainer record:", trainerError);
+            // Don't throw, as the user is still created
+          }
+        }
         
         return authData.user;
       } catch (error) {
@@ -134,10 +158,11 @@ export function useUserManagement(options: UseUserManagementOptions = {}) {
       console.log(`[useUserManagement] Updating user ${userId} to role: ${role}`);
       
       try {
-        const { error } = await supabase
-          .from('profiles')
-          .update({ role })
-          .eq('id', userId);
+        // Call our edge function to handle role updates
+        const { data, error } = await supabase.functions.invoke('manage-user-role', {
+          method: 'POST',
+          body: { userId, role },
+        });
         
         if (error) throw error;
         
