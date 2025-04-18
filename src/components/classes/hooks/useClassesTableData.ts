@@ -7,7 +7,8 @@ export function useClassesTableData(filter?: string) {
   const { currentBranch } = useBranch();
   const queryClient = useQueryClient();
 
-  const { data: classes = [], isLoading, error, refetch } = useQuery({
+  // Fetch all classes data
+  const { data: classes = [], isLoading: isLoadingClasses, error, refetch } = useQuery({
     queryKey: ['classes', currentBranch?.id],
     queryFn: async () => {
       try {
@@ -52,7 +53,7 @@ export function useClassesTableData(filter?: string) {
     staleTime: 30000, // 30 seconds
   });
 
-  // Get saved order
+  // Fetch saved class order from database
   const { data: savedOrder, isLoading: isLoadingOrder } = useQuery({
     queryKey: ['class-tab-order', currentBranch?.id],
     queryFn: async () => {
@@ -88,6 +89,7 @@ export function useClassesTableData(filter?: string) {
 
   // Get the most current data from the query cache
   const cachedClasses = queryClient.getQueryData(['classes', currentBranch?.id]) as any[] || classes;
+  const isLoading = isLoadingClasses || isLoadingOrder;
 
   // Order classes based on:
   // 1. Cached ordered data (if we have it from drag operations)
@@ -115,7 +117,9 @@ export function useClassesTableData(filter?: string) {
       const orderedIds = new Set(savedOrder.class_ids);
       const remainingClasses = classesData.filter(c => !orderedIds.has(c.id));
       
-      return [...orderedClasses, ...remainingClasses];
+      const result = [...orderedClasses, ...remainingClasses];
+      console.log("Final ordered classes:", result.map(c => c.name));
+      return result;
     }
     
     // Default alphabetical order
@@ -135,7 +139,7 @@ export function useClassesTableData(filter?: string) {
   return {
     classes: orderedClasses, // Use ordered classes as the primary classes array
     orderedClasses: filteredClasses,
-    isLoading: isLoading || isLoadingOrder,
+    isLoading,
     error,
     refetch
   };

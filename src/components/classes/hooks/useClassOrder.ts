@@ -69,8 +69,27 @@ export function useClassOrder() {
         
         console.log("Created new class order");
       }
+
+      // Return the updated class IDs to update the cache
+      return classIds;
     },
-    onSuccess: () => {
+    onSuccess: (classIds) => {
+      // On successful save, update the class-tab-order query
+      queryClient.setQueryData(['class-tab-order', currentBranch?.id], (oldData: any) => {
+        if (!oldData) {
+          return {
+            branch_id: currentBranch?.id,
+            class_ids: classIds,
+            user_id: user?.id
+          };
+        }
+        
+        return {
+          ...oldData,
+          class_ids: classIds
+        };
+      });
+      
       queryClient.invalidateQueries({ queryKey: ['class-tab-order', currentBranch?.id] });
     },
     onError: (error) => {
@@ -119,12 +138,8 @@ export function useClassOrder() {
     }
     
     // Save the new order to the database (only the IDs)
-    saveClassOrderMutation.mutate(newOrder.map(c => c.id));
-    
-    toast({
-      title: "Class moved up",
-      description: "The class order has been updated.",
-    });
+    const classIds = newOrder.map(c => c.id);
+    saveClassOrderMutation.mutate(classIds);
   };
 
   // Move class down in the order - accepts only index
@@ -161,12 +176,8 @@ export function useClassOrder() {
     }
     
     // Save the new order to the database (only the IDs)
-    saveClassOrderMutation.mutate(newOrder.map(c => c.id));
-    
-    toast({
-      title: "Class moved down",
-      description: "The class order has been updated.",
-    });
+    const classIds = newOrder.map(c => c.id);
+    saveClassOrderMutation.mutate(classIds);
   };
 
   return {

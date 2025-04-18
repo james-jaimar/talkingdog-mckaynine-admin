@@ -19,6 +19,14 @@ export function ClassesTable() {
     setEditingClass(classItem);
     setIsEditModalOpen(true);
   };
+
+  const handleCloseModal = () => {
+    setIsEditModalOpen(false);
+    // Clear editing class after modal closes
+    setTimeout(() => {
+      setEditingClass(null);
+    }, 300); // Small delay to allow modal animation to complete
+  };
   
   if (isLoading) {
     return (
@@ -93,7 +101,7 @@ export function ClassesTable() {
       {/* Edit Class Modal */}
       <EditClassModal
         open={isEditModalOpen}
-        onOpenChange={setIsEditModalOpen}
+        onOpenChange={handleCloseModal}
         classData={editingClass}
         onSuccess={() => {
           // Reset the editing class after successful update
