@@ -1,78 +1,35 @@
 
 import { useState, useEffect, useCallback } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/components/ui/use-toast";
+import { useQuery } from "@tanstack/react-query";
 import { useBranch } from "@/context/BranchContext";
-import { Class, ClassFromDB } from "../types/class";
+import { Class } from "../types/class";
+import { useOrderMutations } from "./class-ordering/useOrderMutations";
+import { fetchClassOrder } from "./class-ordering/fetchClassOrder";
+import { fetchSavedOrder } from "./class-ordering/fetchSavedOrder";
 import debounce from "lodash/debounce";
 
 interface UseClassOrderingOptions {
   onOrderSaved?: () => void;
 }
 
-/**
- * Hook for managing class ordering
- * This is the single source of truth for class order in the application
- */
 export function useClassOrdering(options?: UseClassOrderingOptions) {
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
   const { currentBranch } = useBranch();
   const [isMoving, setIsMoving] = useState(false);
   const [isOrderDirty, setIsOrderDirty] = useState(false);
   const [orderedClasses, setOrderedClasses] = useState<Class[]>([]);
   
-  // Fetch all classes from the database
+  // Fetch classes
   const {
     data: classesData = [],
     isLoading: isLoadingClasses,
     error: classesError
   } = useQuery({
     queryKey: ['classes', currentBranch?.id],
-    queryFn: async () => {
-      if (!currentBranch) return [];
-      
-      try {
-        const { data, error } = await supabase
-          .from('classes')
-          .select(`
-            *,
-            branches:branch_id (
-              name
-            ),
-            class_schedules:class_schedules (
-              id,
-              bookings:bookings (
-                id
-              )
-            )
-          `)
-          .eq('branch_id', currentBranch.id);
-        
-        if (error) {
-          console.error("Error fetching classes:", error);
-          throw error;
-        }
-        
-        // Convert the data from DB to properly typed Class objects
-        const typedData: Class[] = (data || []).map((item: any) => ({
-          ...item,
-          mckaynine_commission_type: item.mckaynine_commission_type as 'percentage' | 'amount',
-          admin_fee_type: item.admin_fee_type as 'percentage' | 'amount',
-          trainer_fee_type: item.trainer_fee_type as 'percentage' | 'amount'
-        }));
-        
-        return typedData;
-      } catch (error) {
-        console.error("Error in classes query:", error);
-        throw error;
-      }
-    },
+    queryFn: () => fetchClassOrder(currentBranch?.id),
     enabled: !!currentBranch,
   });
 
-  // Fetch saved class order from database
+  // Fetch saved order
   const {
     data: savedOrder,
     isLoading: isLoadingOrder,
@@ -80,113 +37,14 @@ export function useClassOrdering(options?: UseClassOrderingOptions) {
     refetch: refetchOrder
   } = useQuery({
     queryKey: ['class-tab-order', currentBranch?.id],
-    queryFn: async () => {
-      if (!currentBranch) return null;
-      
-      try {
-        const { data, error } = await supabase
-          .from('class_tab_order')
-          .select('*')
-          .eq('branch_id', currentBranch.id)
-          .maybeSingle();
-        
-        if (error && error.code !== 'PGRST116') {
-          console.error("Error fetching class order:", error);
-          throw error;
-        }
-        
-        return data;
-      } catch (error) {
-        console.error("Error fetching order:", error);
-        throw error;
-      }
-    },
+    queryFn: () => fetchSavedOrder(currentBranch?.id),
     enabled: !!currentBranch,
   });
 
-  // Save class order to database (debounced to prevent too many requests)
-  const saveOrderToDatabase = useMutation({
-    mutationFn: async (classIds: string[]) => {
-      if (!currentBranch) {
-        throw new Error("No branch selected");
-      }
+  // Set up mutations
+  const saveOrderToDatabase = useOrderMutations(currentBranch?.id, options?.onOrderSaved);
 
-      console.log("Saving class order to database:", classIds);
-
-      try {
-        // First check if an order already exists
-        const { data: existingOrder, error: checkError } = await supabase
-          .from('class_tab_order')
-          .select('id')
-          .eq('branch_id', currentBranch.id)
-          .maybeSingle();
-          
-        if (checkError && checkError.code !== 'PGRST116') {
-          console.error("Error checking order existence:", checkError);
-          throw checkError;
-        }
-
-        if (existingOrder) {
-          // Update existing order
-          const { error: updateError } = await supabase
-            .from('class_tab_order')
-            .update({ class_ids: classIds })
-            .eq('id', existingOrder.id);
-            
-          if (updateError) {
-            console.error("Error updating class order:", updateError);
-            throw updateError;
-          }
-        } else {
-          // Create new order
-          const { error: insertError } = await supabase
-            .from('class_tab_order')
-            .insert({
-              branch_id: currentBranch.id,
-              class_ids: classIds
-            });
-            
-          if (insertError) {
-            console.error("Error creating class order:", insertError);
-            throw insertError;
-          }
-        }
-        
-        return classIds;
-      } catch (error) {
-        console.error("Database operation failed:", error);
-        throw error;
-      }
-    },
-    onSuccess: () => {
-      setIsOrderDirty(false);
-      toast({
-        title: "Order saved",
-        description: "Class order has been saved successfully.",
-      });
-      
-      // Refresh data
-      refetchOrder();
-      queryClient.invalidateQueries({ queryKey: ['class-tab-order', currentBranch?.id] });
-      
-      if (options?.onOrderSaved) {
-        options.onOrderSaved();
-      }
-    },
-    onError: (error) => {
-      console.error("Failed to save class order:", error);
-      toast({
-        title: "Save failed",
-        description: "Failed to save class order. Please try again.",
-        variant: "destructive",
-      });
-    },
-    onSettled: () => {
-      setIsMoving(false);
-    }
-  });
-
-  // Debounced save function to prevent multiple rapid saves
+  // Debounced save function
   const debouncedSave = useCallback(
     debounce((classIds: string[]) => {
       saveOrderToDatabase.mutate(classIds);
@@ -194,7 +52,7 @@ export function useClassOrdering(options?: UseClassOrderingOptions) {
     [currentBranch?.id, saveOrderToDatabase]
   );
 
-  // Initialize ordered classes based on saved order or default order
+  // Initialize ordered classes
   useEffect(() => {
     if (!classesData || classesData.length === 0 || isLoadingOrder) return;
     
@@ -209,7 +67,7 @@ export function useClassOrdering(options?: UseClassOrderingOptions) {
         .map(id => classesById.get(id))
         .filter(Boolean) as Class[];
       
-      // Then add any classes not in the saved order (alphabetically)
+      // Then add any classes not in the saved order
       const orderedIds = new Set(savedOrder.class_ids);
       const remainingClasses = classesData
         .filter(c => !orderedIds.has(c.id))
@@ -217,7 +75,7 @@ export function useClassOrdering(options?: UseClassOrderingOptions) {
       
       sortedClasses = [...orderedExists, ...remainingClasses];
     } else {
-      // Default alphabetical order if no saved order exists
+      // Default alphabetical order
       sortedClasses = [...classesData].sort((a, b) => a.name.localeCompare(b.name));
     }
     
@@ -225,7 +83,7 @@ export function useClassOrdering(options?: UseClassOrderingOptions) {
     setIsOrderDirty(false);
   }, [classesData, savedOrder, isLoadingOrder]);
 
-  // Save function that can be called directly (not debounced)
+  // Save order
   const saveOrder = useCallback(() => {
     if (isOrderDirty && orderedClasses.length > 0) {
       const classIds = orderedClasses.map(c => c.id);
@@ -233,19 +91,17 @@ export function useClassOrdering(options?: UseClassOrderingOptions) {
     }
   }, [orderedClasses, isOrderDirty, saveOrderToDatabase]);
 
-  // Move class up in the order
+  // Move class up
   const moveClassUp = useCallback((index: number) => {
-    if (index <= 0) return; // Already at the top
+    if (index <= 0) return;
     
     setIsMoving(true);
     setIsOrderDirty(true);
     
-    // Create a new array with the swapped items
     setOrderedClasses(prevClasses => {
       const newOrder = [...prevClasses];
       [newOrder[index - 1], newOrder[index]] = [newOrder[index], newOrder[index - 1]];
       
-      // Trigger a debounced save
       const classIds = newOrder.map(c => c.id);
       debouncedSave(classIds);
       
@@ -253,19 +109,17 @@ export function useClassOrdering(options?: UseClassOrderingOptions) {
     });
   }, [debouncedSave]);
 
-  // Move class down in the order
+  // Move class down
   const moveClassDown = useCallback((index: number) => {
     setOrderedClasses(prevClasses => {
-      if (index >= prevClasses.length - 1) return prevClasses; // Already at the bottom
+      if (index >= prevClasses.length - 1) return prevClasses;
       
       setIsMoving(true);
       setIsOrderDirty(true);
       
-      // Create a new array with the swapped items
       const newOrder = [...prevClasses];
       [newOrder[index], newOrder[index + 1]] = [newOrder[index + 1], newOrder[index]];
       
-      // Trigger a debounced save
       const classIds = newOrder.map(c => c.id);
       debouncedSave(classIds);
       
@@ -273,7 +127,6 @@ export function useClassOrdering(options?: UseClassOrderingOptions) {
     });
   }, [debouncedSave]);
 
-  // Check for any error 
   const error = classesError || orderError;
 
   return {
@@ -285,10 +138,7 @@ export function useClassOrdering(options?: UseClassOrderingOptions) {
     error,
     moveClassUp,
     moveClassDown,
-    saveOrder, // Force an immediate save
-    refetch: () => {
-      queryClient.invalidateQueries({ queryKey: ['classes', currentBranch?.id] });
-      queryClient.invalidateQueries({ queryKey: ['class-tab-order', currentBranch?.id] });
-    }
+    saveOrder,
+    refetch: refetchOrder
   };
 }
