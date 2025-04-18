@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { useAuth } from "@/context/auth";
@@ -11,6 +10,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import { formatCurrency } from "@/lib/formatters";
 import { Class } from "@/components/classes/types/class";
 import { ClassSchedule } from "@/components/classes/types/class-schedule";
 
@@ -69,22 +69,28 @@ export default function Forms() {
         // Combine the data to create a more complete representation
         const enrichedClasses = schedules.map((schedule) => {
           const classData = schedule.classes as Class;
+          
+          // Calculate total price (course_fee + admin_fee)
+          const adminFeeAmount = classData.admin_fee_type === 'percentage'
+            ? (classData.course_fee * classData.admin_fee_value / 100)
+            : classData.admin_fee_value;
+          const totalPrice = classData.course_fee + adminFeeAmount;
+          
           return {
             id: schedule.id,
             class_id: classData.id,
             name: classData.name,
             description: classData.description,
             level: classData.level,
-            price: classData.course_fee, // Updated to use course_fee instead of price
+            price: totalPrice, // Now using the calculated total price
             branch_id: classData.branch_id,
             capacity: classData.capacity,
             created_at: schedule.created_at,
             updated_at: schedule.updated_at,
-            // Display fields formatted from the schedule data
             title: `${classData.name} - ${classData.description}`,
             start_date: new Date(schedule.start_time).toLocaleDateString(),
             time: `${new Date(schedule.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${new Date(schedule.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
-            location: 'Main Branch', // Default location if not specified
+            location: 'Main Branch',
             schedule_id: schedule.id,
             selected_dates: schedule.selected_dates
           };
@@ -141,6 +147,7 @@ export default function Forms() {
                         <p>Start date: {puppyClass.start_date}</p>
                         <p>Time: {puppyClass.time || 'Not specified'}</p>
                         <p>Location: {puppyClass.location || 'Main Branch'}</p>
+                        <p className="font-medium mt-2">Total Fee: {formatCurrency(puppyClass.price)}</p>
                       </div>
                       <div className="mt-4">
                         <Button variant="mckaynine" size="sm" asChild>
