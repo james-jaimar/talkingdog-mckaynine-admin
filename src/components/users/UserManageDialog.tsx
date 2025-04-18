@@ -33,7 +33,7 @@ export function UserManageDialog({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { updateRole } = useUserManagement();
 
-  // Reset state when dialog opens with a different user
+  // Reset state when dialog opens
   useEffect(() => {
     if (open) {
       setRole(user.role || '');
@@ -102,6 +102,11 @@ export function UserManageDialog({
             <p className="text-xs text-muted-foreground">
               This is the user's unique identifier in the database
             </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="appId">App ID</Label>
+            <Input id="appId" value={user.app_id || 'No App ID'} disabled className="bg-muted" />
           </div>
         </div>
         
