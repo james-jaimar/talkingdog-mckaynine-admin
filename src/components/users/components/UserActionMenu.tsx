@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { UserProfile } from "../types/userTypes";
 import { MoreHorizontal, User, Key } from "lucide-react";
+import { useDropdownState } from "@/hooks/useDropdownState";
 
 interface UserActionMenuProps {
   user: UserProfile;
@@ -16,8 +17,20 @@ interface UserActionMenuProps {
 }
 
 export function UserActionMenu({ user, onEditRole, onResetPassword }: UserActionMenuProps) {
+  const { isOpen, setIsOpen } = useDropdownState();
+
+  const handleEditRole = () => {
+    onEditRole();
+    setIsOpen(false);
+  };
+
+  const handleResetPassword = () => {
+    onResetPassword();
+    setIsOpen(false);
+  };
+
   return (
-    <DropdownMenu>
+    <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
           <span className="sr-only">Open menu</span>
@@ -25,11 +38,11 @@ export function UserActionMenu({ user, onEditRole, onResetPassword }: UserAction
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={onEditRole}>
+        <DropdownMenuItem onClick={handleEditRole}>
           <User className="h-4 w-4 mr-2" />
           <span>Edit Role</span>
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={onResetPassword}>
+        <DropdownMenuItem onClick={handleResetPassword}>
           <Key className="h-4 w-4 mr-2" />
           <span>Reset Password</span>
         </DropdownMenuItem>

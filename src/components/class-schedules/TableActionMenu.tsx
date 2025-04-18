@@ -11,6 +11,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal } from "lucide-react";
 import { ClassSchedule } from "./types/classSchedule";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 interface TableActionMenuProps {
   schedule: ClassSchedule;
@@ -19,8 +21,26 @@ interface TableActionMenuProps {
 }
 
 export function TableActionMenu({ schedule, onEdit, onDelete }: TableActionMenuProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const navigate = useNavigate();
+
+  const handleEdit = () => {
+    onEdit(schedule);
+    setIsOpen(false);
+  };
+
+  const handleDelete = () => {
+    onDelete(schedule.id);
+    setIsOpen(false);
+  };
+
+  const handleManageHandlers = () => {
+    navigate(`/bookings/${schedule.id}`);
+    setIsOpen(false);
+  };
+
   return (
-    <DropdownMenu>
+    <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="h-8 w-8 p-0">
           <span className="sr-only">Open menu</span>
@@ -30,17 +50,17 @@ export function TableActionMenu({ schedule, onEdit, onDelete }: TableActionMenuP
       <DropdownMenuContent align="end">
         <DropdownMenuLabel>Actions</DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => onEdit(schedule)}>
+        <DropdownMenuItem onClick={handleEdit}>
           <Edit className="mr-2 h-4 w-4" />
           Edit
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => window.location.href = `/bookings/${schedule.id}`}>
+        <DropdownMenuItem onClick={handleManageHandlers}>
           <Users className="mr-2 h-4 w-4" />
           Manage Handlers
         </DropdownMenuItem>
         <DropdownMenuItem 
           className="text-destructive"
-          onClick={() => onDelete(schedule.id)}
+          onClick={handleDelete}
         >
           <Trash className="mr-2 h-4 w-4" />
           Delete

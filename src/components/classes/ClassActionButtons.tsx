@@ -8,7 +8,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { EditClassModal } from "./EditClassModal";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/auth";
 
@@ -20,13 +19,21 @@ interface ClassActionButtonsProps {
 export function ClassActionButtons({ classId, onEdit }: ClassActionButtonsProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
-  
+  const [isOpen, setIsOpen] = useState(false);
+
   const handleSchedulesClick = () => {
     navigate(`/class-schedules?classId=${classId}`);
+    setIsOpen(false);
   };
-  
+
   const handleHandlersClick = () => {
     navigate(`/class/${classId}/handlers`);
+    setIsOpen(false);
+  };
+
+  const handleEditClick = () => {
+    onEdit();
+    setIsOpen(false);
   };
 
   return (
@@ -34,7 +41,7 @@ export function ClassActionButtons({ classId, onEdit }: ClassActionButtonsProps)
       <Button 
         variant="ghost" 
         size="icon" 
-        onClick={() => onEdit()}
+        onClick={handleEditClick}
         disabled={!user}
         title="Edit class"
       >
@@ -59,7 +66,7 @@ export function ClassActionButtons({ classId, onEdit }: ClassActionButtonsProps)
         <Users className="h-4 w-4" />
       </Button>
       
-      <DropdownMenu>
+      <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="icon">
             <MoreHorizontal className="h-4 w-4" />
@@ -72,7 +79,7 @@ export function ClassActionButtons({ classId, onEdit }: ClassActionButtonsProps)
           <DropdownMenuItem onClick={handleHandlersClick}>
             View Handlers
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => onEdit()}>
+          <DropdownMenuItem onClick={handleEditClick}>
             Edit Class
           </DropdownMenuItem>
         </DropdownMenuContent>
