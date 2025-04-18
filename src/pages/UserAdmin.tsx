@@ -5,10 +5,18 @@ import { useAuth } from "@/context/auth";
 import { useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { UserAdminPanel } from "@/components/users/UserAdmin";
+import { useEffect } from "react";
 
 export default function UserAdmin() {
   const { isAdmin, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
+
+  // Redirect non-admin users
+  useEffect(() => {
+    if (!authLoading && !isAdmin) {
+      navigate("/dashboard");
+    }
+  }, [isAdmin, authLoading, navigate]);
 
   if (authLoading) {
     return (
@@ -22,8 +30,7 @@ export default function UserAdmin() {
   }
 
   if (!isAdmin) {
-    navigate("/dashboard");
-    return null;
+    return null; // Will be redirected
   }
 
   return (

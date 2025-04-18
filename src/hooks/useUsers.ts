@@ -66,35 +66,31 @@ export function useUsers() {
   const addUser = useMutation({
     mutationFn: async ({ email, password, fullName, role }: { email: string; password: string; fullName: string; role: string }) => {
       try {
-        // Create the user in Supabase Auth
-        const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-          email,
-          password,
-          email_confirm: true,
-          user_metadata: { full_name: fullName }
+        console.log("Adding user:", email, fullName, role);
+        
+        // Use the edge function to create a user with admin privileges
+        const { data, error } = await supabase.functions.invoke('user-role', {
+          method: 'POST',
+          body: { 
+            operation: 'create_user',
+            email, 
+            password, 
+            fullName, 
+            role 
+          }
         });
         
-        if (authError) throw authError;
-        if (!authData.user) throw new Error("User creation failed");
-        
-        // Update the profile
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .update({ 
-            full_name: fullName,
-            role: role,
-            app_id: APP_ID
-          })
-          .eq('id', authData.user.id);
-        
-        if (profileError) throw profileError;
-        
-        // Handle trainer role if needed
-        if (role === 'trainer') {
-          await createTrainerRecord(authData.user.id, email, fullName);
+        if (error) {
+          console.error("Error from user-role function:", error);
+          throw new Error(error.message || 'Failed to create user');
         }
         
-        return authData.user;
+        if (!data?.success) {
+          console.error("User creation failed:", data);
+          throw new Error(data?.error || 'User creation failed');
+        }
+        
+        return data.user;
       } catch (error) {
         console.error("Error adding user:", error);
         throw error;
