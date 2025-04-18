@@ -1,7 +1,7 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { EditClassScheduleModal } from "./EditClassScheduleModal";
 import { useAuth } from "@/context/AuthContext";
@@ -29,16 +29,15 @@ export function ClassSchedulesTable({ classId }: ClassSchedulesTableProps) {
   const { user, session } = useAuth();
   const { currentBranch } = useBranch();
   const queryClient = useQueryClient();
+  const previousInvalidationRef = useRef<number>(0);
 
   // Add a state to track if a refresh is needed
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const { data: schedules, isLoading, error, refetch } = useQuery({
-    queryKey: ["class-schedules", classId, user?.id, currentBranch?.id, refreshTrigger],
+    queryKey: ["class-schedules", classId, refreshTrigger],
     queryFn: async () => {
       console.log("Fetching class schedules for classId:", classId);
-      console.log("Current user ID:", user?.id);
-      console.log("Current branch ID:", currentBranch?.id);
       
       if (!user || !session) {
         console.log("User not authenticated, aborting fetch");
@@ -63,6 +62,7 @@ export function ClassSchedulesTable({ classId }: ClassSchedulesTableProps) {
       return data as ClassSchedule[];
     },
     enabled: !!classId && !!user && !!session && !!currentBranch,
+    staleTime: 10000, // Add staleTime to prevent excessive refetches
   });
 
   // Function to manually trigger a refresh
@@ -98,17 +98,27 @@ export function ClassSchedulesTable({ classId }: ClassSchedulesTableProps) {
     };
   }, [classId, user, session]);
 
-  // Listen to invalidations from the query client
+  // Listen to invalidations from the query client with debounce and recursion prevention
   useEffect(() => {
-    const unsubscribe = queryClient.getQueryCache().subscribe(() => {
-      // Check if any query with the class-schedules prefix was invalidated
-      const wasInvalidated = queryClient.getQueryCache().getAll().some(
-        query => query.queryKey[0] === 'class-schedules' && query.state.isInvalidated
-      );
+    const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
+      if (!event.query) return;
       
-      if (wasInvalidated) {
-        console.log("Schedule query was invalidated, refreshing");
-        refetch();
+      // Check if any query with the class-schedules prefix was invalidated
+      if (Array.isArray(event.query.queryKey) && 
+          event.query.queryKey[0] === 'class-schedules' && 
+          event.query.state.isInvalidated) {
+        
+        // Get current timestamp
+        const now = Date.now();
+        
+        // Prevent multiple rapid invalidations (debounce)
+        if (now - previousInvalidationRef.current > 1000) {
+          console.log("Schedule query was invalidated, refreshing");
+          previousInvalidationRef.current = now;
+          refetch();
+        } else {
+          console.log("Skipping rapid invalidation to prevent recursion");
+        }
       }
     });
 
@@ -131,8 +141,6 @@ export function ClassSchedulesTable({ classId }: ClassSchedulesTableProps) {
         description: "The class schedule has been successfully deleted.",
       });
       
-      // Invalidate and refetch queries
-      queryClient.invalidateQueries({ queryKey: ["class-schedules"] });
       forceRefresh();
     } catch (error) {
       console.error("Error deleting schedule:", error);
@@ -154,11 +162,12 @@ export function ClassSchedulesTable({ classId }: ClassSchedulesTableProps) {
   };
 
   const handleEditSuccess = () => {
-    // Refresh data
-    queryClient.invalidateQueries({ queryKey: ["class-schedules"] });
-    forceRefresh();
     // Clear the edit state
     setScheduleToEdit(null);
+    // Refresh data after a short delay
+    setTimeout(() => {
+      forceRefresh();
+    }, 300);
   };
 
   if (!user || !session) {
