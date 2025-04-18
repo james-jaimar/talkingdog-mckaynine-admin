@@ -6,7 +6,7 @@ import { NoClassSelected } from "@/components/class-schedules/NoClassSelected";
 import { ClassNotFound } from "@/components/class-schedules/ClassNotFound";
 import { AuthRequirements } from "@/components/class-schedules/AuthRequirements";
 import { useClassData } from "@/components/class-schedules/hooks/useClassData";
-import { useEffect } from "react";
+import { ClassesTabs } from "@/components/classes/ClassesTabs";
 
 export default function ClassSchedules() {
   // Support all possible sources of class ID (URL params, path params, and query params)
@@ -37,22 +37,23 @@ export default function ClassSchedules() {
     return <AuthRequirements message="Please select a branch to view class schedules." />;
   }
 
-  if (isLoading) {
-    return <ClassSchedulesLoading message="Loading class information..." />;
-  }
+  return (
+    <>
+      {/* Add ClassesTabs with alwaysShow prop */}
+      <ClassesTabs alwaysShow={true} />
 
-  if (error) {
-    return <ClassSchedulesLoading message={`Error loading class data: ${error instanceof Error ? error.message : "Unknown error"}`} />;
-  }
-
-  if (!classData && !isLoading && classId) {
-    return <ClassNotFound />;
-  }
-
-  // If no classId was provided in any form
-  if (!classId) {
-    return <NoClassSelected />;
-  }
-
-  return <ClassSchedulesContent classId={classId} classData={classData!} />;
+      {isLoading ? (
+        <ClassSchedulesLoading message="Loading class information..." />
+      ) : error ? (
+        <ClassSchedulesLoading message={`Error loading class data: ${error instanceof Error ? error.message : "Unknown error"}`} />
+      ) : !classData && !isLoading && classId ? (
+        <ClassNotFound />
+      ) : !classId ? (
+        <NoClassSelected />
+      ) : (
+        <ClassSchedulesContent classId={classId} classData={classData!} />
+      )}
+    </>
+  );
 }
+

@@ -8,7 +8,7 @@ import { useAuth } from "@/context/auth";
 import { useClassTabNavigation } from "./hooks/useClassTabNavigation";
 import { Skeleton } from "@/components/ui/skeleton";
 
-export function ClassesTabs() {
+export function ClassesTabs({ alwaysShow = false }) {
   const location = useLocation();
   const { currentBranch } = useBranch();
   const { user } = useAuth();
@@ -19,6 +19,12 @@ export function ClassesTabs() {
   // Use tab navigation hook
   const { handleTabClick, activeTab } = useClassTabNavigation();
   
+  // Determine whether to show tabs based on current path and alwaysShow flag
+  const isClassRelatedPath = 
+    location.pathname.includes('/class/') || 
+    location.pathname.includes('/classes/') ||
+    alwaysShow;
+
   // Show loading state while fetching data
   if (isLoading) {
     return (
@@ -45,7 +51,6 @@ export function ClassesTabs() {
   // Extract the current class ID from the URL
   let currentClassId = null;
   
-  // Check for class ID in various path patterns
   const classesMatch = location.pathname.match(/\/classes\/([^/]+)$/);
   const schedulesMatch = location.pathname.match(/\/classes\/([^/]+)\/schedules/);
   const handlersMatch = location.pathname.match(/\/class\/([^/]+)\/handlers/);
@@ -63,8 +68,8 @@ export function ClassesTabs() {
     c => c.class_schedules && c.class_schedules.length > 0
   );
   
-  // If no classes have schedules, don't render anything
-  if (classesWithSchedules.length === 0) {
+  // If no classes have schedules and not forced to show, don't render
+  if (classesWithSchedules.length === 0 && !isClassRelatedPath) {
     return null;
   }
   
@@ -86,3 +91,4 @@ export function ClassesTabs() {
     </div>
   );
 }
+
