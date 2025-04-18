@@ -1,5 +1,5 @@
 
-import { useParams } from "react-router-dom";
+import { useParams, useLocation } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { ClassHandlersTable } from "@/components/class-handlers/ClassHandlersTable";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -13,8 +13,15 @@ import { useClassData } from "@/components/class-schedules/hooks/useClassData";
 import { Link } from "react-router-dom";
 
 export default function ClassHandlers() {
-  const { id } = useParams<{ id: string }>();
-  const classId = id; // Use the id from the URL parameter
+  // Support both URL params and query params
+  const { id: urlParamId } = useParams<{ id: string }>();
+  const location = useLocation();
+  const queryParams = new URLSearchParams(location.search);
+  const queryParamId = queryParams.get('classId');
+  
+  // Use URL param first, then fall back to query param
+  const classId = urlParamId || queryParamId || '';
+  
   const [isAddHandlerModalOpen, setIsAddHandlerModalOpen] = useState(false);
   const queryClient = useQueryClient();
   

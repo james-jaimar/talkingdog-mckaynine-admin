@@ -26,7 +26,7 @@ export function ClassActionButtons({ classId, onEdit }: ClassActionButtonsProps)
   };
   
   const handleHandlersClick = () => {
-    navigate(`/class-handlers?classId=${classId}`);
+    navigate(`/class/${classId}/handlers`);
   };
 
   return (
