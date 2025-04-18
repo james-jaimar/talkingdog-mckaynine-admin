@@ -66,6 +66,68 @@ export function useUserManagement(options: UseUserManagementOptions = {}) {
     staleTime: 1000 * 60, // 1 minute
   });
 
+  // Add User mutation
+  const addUser = useMutation({
+    mutationFn: async ({ 
+      email, 
+      password, 
+      fullName, 
+      role 
+    }: { 
+      email: string; 
+      password: string; 
+      fullName: string; 
+      role: string;
+    }) => {
+      console.log(`[useUserManagement] Creating new user with email: ${email}`);
+      
+      try {
+        // Create the user in Supabase Auth
+        const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+          email,
+          password,
+          email_confirm: true,
+          user_metadata: { full_name: fullName }
+        });
+        
+        if (authError) throw authError;
+        if (!authData.user) throw new Error("User creation failed");
+        
+        const userId = authData.user.id;
+        
+        // Update the profile with role
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({ 
+            full_name: fullName,
+            role: role
+          })
+          .eq('id', userId);
+        
+        if (profileError) throw profileError;
+        
+        return authData.user;
+      } catch (error) {
+        console.error("[useUserManagement] Error creating user:", error);
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      toast({
+        title: "User created",
+        description: "User has been created successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ['users-admin'] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "User creation failed",
+        description: error.message || "Failed to create user",
+        variant: "destructive",
+      });
+    }
+  });
+
   // Update user role
   const updateRole = useMutation({
     mutationFn: async ({ userId, role }: { userId: string; role: string }) => {
@@ -139,6 +201,7 @@ export function useUserManagement(options: UseUserManagementOptions = {}) {
     isError,
     error,
     refetch,
+    addUser,
     updateRole,
     resetPassword
   };
