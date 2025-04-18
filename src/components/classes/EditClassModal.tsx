@@ -8,17 +8,18 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { classFormSchema, ClassFormValues } from "./schemas/classFormSchema";
 import { useBranch } from "@/context/BranchContext";
 import { supabase } from "@/integrations/supabase/client";
+import { FormTextField } from "@/components/handlers/form/FormTextField";
+import { Form } from "@/components/ui/form";
+import { FeeFields } from "./form-sections/FeeFields";
 
 interface EditClassModalProps {
   open: boolean;
@@ -38,9 +39,16 @@ export function EditClassModal({ open, onOpenChange, classData, onSuccess }: Edi
     defaultValues: {
       name: classData?.name || "",
       level: classData?.level || "",
-      duration: classData?.duration ? Number(classData.duration) : 0,
-      price: classData?.price ? Number(classData.price) : 0,
-      capacity: classData?.capacity ? Number(classData.capacity) : 8,
+      duration: classData?.duration || 60,
+      course_fee: classData?.course_fee || 0,
+      enrollment_fee: classData?.enrollment_fee || 0,
+      mckaynine_commission_type: classData?.mckaynine_commission_type || 'percentage',
+      mckaynine_commission_value: classData?.mckaynine_commission_value || 0,
+      admin_fee_type: classData?.admin_fee_type || 'percentage',
+      admin_fee_value: classData?.admin_fee_value || 0,
+      trainer_fee_type: classData?.trainer_fee_type || 'percentage',
+      trainer_fee_value: classData?.trainer_fee_value || 0,
+      capacity: classData?.capacity || 8,
       description: classData?.description || "",
       branchId: currentBranch?.id || "",
     },
@@ -65,7 +73,14 @@ export function EditClassModal({ open, onOpenChange, classData, onSuccess }: Edi
           name: values.name,
           level: values.level,
           duration: values.duration,
-          price: values.price,
+          course_fee: values.course_fee,
+          enrollment_fee: values.enrollment_fee,
+          mckaynine_commission_type: values.mckaynine_commission_type,
+          mckaynine_commission_value: values.mckaynine_commission_value,
+          admin_fee_type: values.admin_fee_type,
+          admin_fee_value: values.admin_fee_value,
+          trainer_fee_type: values.trainer_fee_type,
+          trainer_fee_value: values.trainer_fee_value,
           capacity: values.capacity,
           description: values.description,
           branch_id: currentBranch.id,
@@ -99,82 +114,73 @@ export function EditClassModal({ open, onOpenChange, classData, onSuccess }: Edi
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>Edit Class</DialogTitle>
           <DialogDescription>
             Make changes to your class here. Click save when you're done.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4 py-4">
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="name" className="text-right">
-              Name
-            </Label>
-            <Input id="name"  className="col-span-3" {...form.register("name")} />
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="level" className="text-right">
-              Level
-            </Label>
-            <Input id="level"  className="col-span-3" {...form.register("level")} />
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="duration" className="text-right">
-              Duration
-            </Label>
-            <Input
-              id="duration"
-               className="col-span-3"
-              {...form.register("duration")}
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormTextField
+                control={form.control}
+                name="name"
+                label="Name"
+                required
+              />
+              <FormTextField
+                control={form.control}
+                name="level"
+                label="Level"
+                required
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormTextField
+                control={form.control}
+                name="duration"
+                label="Duration (minutes)"
+                type="number"
+                required
+              />
+              <FormTextField
+                control={form.control}
+                name="capacity"
+                label="Capacity"
+                type="number"
+                required
+              />
+            </div>
+
+            <FormTextField
+              control={form.control}
+              name="description"
+              label="Description"
+              required
             />
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="price" className="text-right">
-              Price
-            </Label>
-            <Input
-              id="price"
-               className="col-span-3"
-              {...form.register("price")}
-            />
-          </div>
-           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="capacity" className="text-right">
-              Capacity
-            </Label>
-            <Input
-              id="capacity"
-               className="col-span-3"
-              {...form.register("capacity")}
-            />
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="description" className="text-right">
-              Description
-            </Label>
-            <Input
-              id="description"
-               className="col-span-3"
-              {...form.register("description")}
-            />
-          </div>
-        </form>
-        <DialogFooter>
-          <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button type="submit" disabled={isSubmitting} onClick={form.handleSubmit(onSubmit)}>
-            {isSubmitting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Updating...
-              </>
-            ) : (
-              "Save changes"
-            )}
-          </Button>
-        </DialogFooter>
+
+            <FeeFields control={form.control} />
+
+            <DialogFooter>
+              <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Updating...
+                  </>
+                ) : (
+                  "Save changes"
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );
