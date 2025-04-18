@@ -20,7 +20,7 @@ export function useSaveClassOrder(branchId: string | undefined) {
     onSuccess: () => {
       toast({
         title: "Order saved",
-        description: "Class order has been saved successfully.",
+        description: "Class order has been saved successfully."
       });
       
       if (branchId) {
@@ -34,7 +34,7 @@ export function useSaveClassOrder(branchId: string | undefined) {
       toast({
         title: "Save failed",
         description: "Failed to save class order. Please try again.",
-        variant: "destructive",
+        variant: "destructive"
       });
       setIsSaving(false);
     }

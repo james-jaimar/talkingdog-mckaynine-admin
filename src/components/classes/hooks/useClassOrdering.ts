@@ -8,14 +8,10 @@ import { fetchSavedOrder } from "./class-ordering/fetchSavedOrder";
 import { useOptimisticUpdate } from "./class-ordering/useOptimisticUpdate";
 import { useSaveClassOrder } from "./class-ordering/useSaveClassOrder";
 
-interface UseClassOrderingOptions {
-  onOrderSaved?: () => void;
-}
-
-export function useClassOrdering(options?: UseClassOrderingOptions) {
+export function useClassOrdering() {
   const { currentBranch } = useBranch();
   const [orderedClasses, setOrderedClasses] = useState<Class[]>([]);
-  const [pendingMovements, setPendingMovements] = useState<{from: number, to: number}[]>([]);
+  const [pendingMovements, setPendingMovements] = useState<number>(0);
   
   // Optimistic update helpers
   const { isItemMoving, moveItemOptimistically, markAsMoving, unmarkAsMoving } = useOptimisticUpdate();
@@ -76,91 +72,92 @@ export function useClassOrdering(options?: UseClassOrderingOptions) {
     setOrderedClasses(sortedClasses);
   }, [classesData, savedOrder, isLoadingOrder]);
 
-  // Process pending movements
-  const processPendingMovements = useCallback(() => {
-    if (pendingMovements.length === 0 || !orderedClasses.length) return;
-    
-    // Take the first pending movement
-    const movement = pendingMovements[0];
-    
-    // Create new array with classes
-    const newOrdered = [...orderedClasses];
-    
-    // Perform the move
-    const [removedClass] = newOrdered.splice(movement.from, 1);
-    newOrdered.splice(movement.to, 0, removedClass);
-    
-    // Update state
-    setOrderedClasses(newOrdered);
-    
-    // Remove this movement from pending
-    setPendingMovements(current => current.slice(1));
-    
-    // Save the new order
-    const classIds = newOrdered.map(c => c.id);
-    saveClassOrder(classIds);
-  }, [orderedClasses, pendingMovements, saveClassOrder]);
-
-  // Process pending movements when not saving
-  useEffect(() => {
-    if (!isSaving && pendingMovements.length > 0) {
-      processPendingMovements();
-    }
-  }, [isSaving, pendingMovements, processPendingMovements]);
-
-  // Move class up
+  // Move class up with debounced saving
   const moveClassUp = useCallback((index: number) => {
     if (index <= 0 || isSaving) return;
     
-    // Mark class as moving for UI feedback
-    if (index < orderedClasses.length) {
-      markAsMoving(orderedClasses[index].id);
+    // Apply optimistic update immediately
+    setOrderedClasses(currentClasses => {
+      const updatedClasses = moveItemOptimistically(currentClasses, index, index - 1);
       
-      // Optimistically update UI immediately
-      setOrderedClasses(currentClasses => 
-        moveItemOptimistically(currentClasses, index, index - 1)
-      );
-      
-      // Add to pending movements queue
-      setPendingMovements(current => [...current, { from: index, to: index - 1 }]);
-      
-      // Process immediately if no pending saves
-      if (!isSaving && pendingMovements.length === 0) {
-        const newOrder = [...orderedClasses];
-        [newOrder[index - 1], newOrder[index]] = [newOrder[index], newOrder[index - 1]];
-        const classIds = newOrder.map(c => c.id);
-        saveClassOrder(classIds);
+      // Mark the moved item
+      if (index < currentClasses.length) {
+        markAsMoving(currentClasses[index].id);
       }
-    }
-  }, [orderedClasses, isSaving, markAsMoving, moveItemOptimistically, pendingMovements, saveClassOrder]);
-
-  // Move class down
-  const moveClassDown = useCallback((index: number) => {
-    if (index >= orderedClasses.length - 1 || isSaving) return;
+      
+      return updatedClasses;
+    });
     
-    // Mark class as moving for UI feedback
-    if (index < orderedClasses.length) {
-      markAsMoving(orderedClasses[index].id);
-      
-      // Optimistically update UI immediately
-      setOrderedClasses(currentClasses => 
-        moveItemOptimistically(currentClasses, index, index + 1)
-      );
-      
-      // Add to pending movements queue
-      setPendingMovements(current => [...current, { from: index, to: index + 1 }]);
-      
-      // Process immediately if no pending saves
-      if (!isSaving && pendingMovements.length === 0) {
-        const newOrder = [...orderedClasses];
-        [newOrder[index], newOrder[index + 1]] = [newOrder[index + 1], newOrder[index]];
-        const classIds = newOrder.map(c => c.id);
-        saveClassOrder(classIds);
-      }
+    // Track that we have a pending save
+    setPendingMovements(prev => prev + 1);
+    
+    // Save the changes if we're not already saving
+    if (!isSaving) {
+      // Use timeout to debounce rapid changes
+      setTimeout(() => {
+        setOrderedClasses(current => {
+          const classIds = current.map(c => c.id);
+          saveClassOrder(classIds);
+          return current;
+        });
+        
+        // Reset pending movements count after initiating save
+        setPendingMovements(0);
+      }, 300);
     }
-  }, [orderedClasses, isSaving, markAsMoving, moveItemOptimistically, pendingMovements, saveClassOrder]);
+  }, [isSaving, markAsMoving, moveItemOptimistically, saveClassOrder]);
 
-  // Immediately save current order (for manual saves)
+  // Move class down with debounced saving
+  const moveClassDown = useCallback((index: number) => {
+    if (orderedClasses.length <= 1 || index >= orderedClasses.length - 1 || isSaving) return;
+    
+    // Apply optimistic update immediately
+    setOrderedClasses(currentClasses => {
+      const updatedClasses = moveItemOptimistically(currentClasses, index, index + 1);
+      
+      // Mark the moved item
+      if (index < currentClasses.length) {
+        markAsMoving(currentClasses[index].id);
+      }
+      
+      return updatedClasses;
+    });
+    
+    // Track that we have a pending save
+    setPendingMovements(prev => prev + 1);
+    
+    // Save the changes if we're not already saving
+    if (!isSaving) {
+      // Use timeout to debounce rapid changes
+      setTimeout(() => {
+        setOrderedClasses(current => {
+          const classIds = current.map(c => c.id);
+          saveClassOrder(classIds);
+          return current;
+        });
+        
+        // Reset pending movements count after initiating save
+        setPendingMovements(0);
+      }, 300);
+    }
+  }, [orderedClasses.length, isSaving, markAsMoving, moveItemOptimistically, saveClassOrder]);
+
+  // Reset moving states when saving completes
+  useEffect(() => {
+    if (!isSaving && orderedClasses.length > 0) {
+      // Remove "moving" status from all items after a short delay
+      // This gives the UI time to show the success state
+      const timer = setTimeout(() => {
+        orderedClasses.forEach(classItem => {
+          unmarkAsMoving(classItem.id);
+        });
+      }, 500);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isSaving, orderedClasses, unmarkAsMoving]);
+
+  // Manual order saving function
   const saveOrder = useCallback(() => {
     if (orderedClasses.length > 0) {
       const classIds = orderedClasses.map(c => c.id);
@@ -181,6 +178,6 @@ export function useClassOrdering(options?: UseClassOrderingOptions) {
     moveClassDown,
     saveOrder,
     refetch: refetchOrder,
-    pendingMovements: pendingMovements.length
+    pendingMovements: pendingMovements
   };
 }

@@ -21,7 +21,9 @@ export function ClassTableRow({
   const availableSlots = calculateAvailableSlots(classItem);
   
   return (
-    <TableRow className={isMoving ? "bg-yellow-50 transition-colors" : undefined}>
+    <TableRow 
+      className={isMoving ? "bg-yellow-50 transition-colors duration-300" : undefined}
+    >
       <TableCell>
         <ClassSortControls 
           index={index}

@@ -41,7 +41,6 @@ export function useOptimisticUpdate() {
     const newList = [...classes];
     const [removed] = newList.splice(fromIndex, 1);
     newList.splice(toIndex, 0, removed);
-    markAsMoving(removed.id);
     
     return newList;
   };

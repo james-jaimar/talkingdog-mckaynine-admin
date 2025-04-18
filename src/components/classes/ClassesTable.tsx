@@ -64,9 +64,7 @@ export function ClassesTable() {
         <CardContent className="p-0 overflow-auto">
           {(isMoving || pendingMovements > 0) && (
             <div className="bg-yellow-50 text-yellow-800 p-2 text-xs text-center">
-              {pendingMovements > 0 
-                ? `Saving class order... (${pendingMovements} changes pending)` 
-                : "Saving class order..."}
+              Saving class order...
             </div>
           )}
           <Table>
