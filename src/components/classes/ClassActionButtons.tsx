@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/auth";
+import { useDropdownState } from "@/hooks/useDropdownState";
 
 interface ClassActionButtonsProps {
   classId: string;
@@ -19,10 +20,11 @@ interface ClassActionButtonsProps {
 export function ClassActionButtons({ classId, onEdit }: ClassActionButtonsProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [isOpen, setIsOpen] = useState(false);
+  const { isOpen, setIsOpen } = useDropdownState();
 
   const handleSchedulesClick = () => {
-    navigate(`/class-schedules?classId=${classId}`);
+    // Update to use the proper URL format that ClassSchedules component expects
+    navigate(`/classes/${classId}/schedules`);
     setIsOpen(false);
   };
 

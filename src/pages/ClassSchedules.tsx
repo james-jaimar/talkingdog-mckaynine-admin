@@ -1,16 +1,21 @@
 
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { ClassSchedulesLoading } from "@/components/class-schedules/ClassSchedulesLoading";
 import { ClassSchedulesContent } from "@/components/class-schedules/ClassSchedulesContent";
 import { NoClassSelected } from "@/components/class-schedules/NoClassSelected";
 import { ClassNotFound } from "@/components/class-schedules/ClassNotFound";
 import { AuthRequirements } from "@/components/class-schedules/AuthRequirements";
 import { useClassData } from "@/components/class-schedules/hooks/useClassData";
+import { useEffect } from "react";
 
 export default function ClassSchedules() {
-  // Update to use both id and classId to support both URL patterns
+  // Support all possible sources of class ID (URL params, path params, and query params)
   const { id, classId: urlClassId } = useParams<{ id: string; classId: string }>();
-  const classId = id || urlClassId; // Use id from /classes/:id/schedules or classId from /class/:classId/schedules
+  const [searchParams] = useSearchParams();
+  const queryParamId = searchParams.get('classId');
+  
+  // Use the first available class ID from different sources
+  const classId = id || urlClassId || queryParamId || '';
   
   console.log("ClassSchedules component rendering with classId:", classId);
 
@@ -44,7 +49,7 @@ export default function ClassSchedules() {
     return <ClassNotFound />;
   }
 
-  // If no classId was provided in the URL
+  // If no classId was provided in any form
   if (!classId) {
     return <NoClassSelected />;
   }
