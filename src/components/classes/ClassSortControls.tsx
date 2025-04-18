@@ -1,6 +1,6 @@
 
 import { Button } from "@/components/ui/button";
-import { ChevronUp, ChevronDown } from "lucide-react";
+import { ChevronUp, ChevronDown, Loader2 } from "lucide-react";
 
 interface ClassSortControlsProps {
   index: number;
@@ -30,28 +30,33 @@ export function ClassSortControls({
   };
 
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-1 relative">
+      {isLoading && (
+        <div className="absolute -left-6 top-1/2 -translate-y-1/2">
+          <Loader2 className="h-4 w-4 animate-spin text-primary" />
+        </div>
+      )}
       <Button 
         variant="ghost" 
         size="icon" 
-        className="h-7 w-7" 
+        className={`h-7 w-7 transition-opacity ${isLoading ? 'opacity-50' : ''}`}
         onClick={handleMoveUp}
         disabled={index === 0 || isLoading}
         title="Move up"
         aria-label="Move class up in order"
       >
-        <ChevronUp className={`h-4 w-4 ${isLoading ? 'text-gray-400' : ''}`} />
+        <ChevronUp className="h-4 w-4" />
       </Button>
       <Button 
         variant="ghost" 
         size="icon" 
-        className="h-7 w-7" 
+        className={`h-7 w-7 transition-opacity ${isLoading ? 'opacity-50' : ''}`}
         onClick={handleMoveDown}
         disabled={index === totalClasses - 1 || isLoading}
         title="Move down"
         aria-label="Move class down in order"
       >
-        <ChevronDown className={`h-4 w-4 ${isLoading ? 'text-gray-400' : ''}`} />
+        <ChevronDown className="h-4 w-4" />
       </Button>
     </div>
   );

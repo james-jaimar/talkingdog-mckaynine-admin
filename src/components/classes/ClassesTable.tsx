@@ -17,9 +17,11 @@ export function ClassesTable() {
     orderedClasses, 
     isLoading, 
     isMoving,
+    isItemMoving,
     error, 
     moveClassUp, 
-    moveClassDown 
+    moveClassDown,
+    pendingMovements
   } = useClassOrdering();
   const [editingClass, setEditingClass] = useState<any>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -60,9 +62,11 @@ export function ClassesTable() {
     <>
       <Card>
         <CardContent className="p-0 overflow-auto">
-          {isMoving && (
+          {(isMoving || pendingMovements > 0) && (
             <div className="bg-yellow-50 text-yellow-800 p-2 text-xs text-center">
-              Saving class order...
+              {pendingMovements > 0 
+                ? `Saving class order... (${pendingMovements} changes pending)` 
+                : "Saving class order..."}
             </div>
           )}
           <Table>
@@ -77,6 +81,8 @@ export function ClassesTable() {
                   onMoveUp={moveClassUp}
                   onMoveDown={moveClassDown}
                   onEdit={() => handleEdit(classItem)}
+                  isLoading={isMoving}
+                  isMoving={isItemMoving(classItem.id)}
                 />
               ))}
             </TableBody>

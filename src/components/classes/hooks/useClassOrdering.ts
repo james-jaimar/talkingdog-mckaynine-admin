@@ -3,10 +3,10 @@ import { useState, useEffect, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useBranch } from "@/context/BranchContext";
 import { Class } from "../types/class";
-import { useOrderMutations } from "./class-ordering/useOrderMutations";
 import { fetchClassOrder } from "./class-ordering/fetchClassOrder";
 import { fetchSavedOrder } from "./class-ordering/fetchSavedOrder";
-import debounce from "lodash/debounce";
+import { useOptimisticUpdate } from "./class-ordering/useOptimisticUpdate";
+import { useSaveClassOrder } from "./class-ordering/useSaveClassOrder";
 
 interface UseClassOrderingOptions {
   onOrderSaved?: () => void;
@@ -14,9 +14,14 @@ interface UseClassOrderingOptions {
 
 export function useClassOrdering(options?: UseClassOrderingOptions) {
   const { currentBranch } = useBranch();
-  const [isMoving, setIsMoving] = useState(false);
-  const [isOrderDirty, setIsOrderDirty] = useState(false);
   const [orderedClasses, setOrderedClasses] = useState<Class[]>([]);
+  const [pendingMovements, setPendingMovements] = useState<{from: number, to: number}[]>([]);
+  
+  // Optimistic update helpers
+  const { isItemMoving, moveItemOptimistically, markAsMoving, unmarkAsMoving } = useOptimisticUpdate();
+  
+  // Save order mutation
+  const { saveClassOrder, isSaving } = useSaveClassOrder(currentBranch?.id);
   
   // Fetch classes
   const {
@@ -40,17 +45,6 @@ export function useClassOrdering(options?: UseClassOrderingOptions) {
     queryFn: () => fetchSavedOrder(currentBranch?.id),
     enabled: !!currentBranch,
   });
-
-  // Set up mutations
-  const saveOrderToDatabase = useOrderMutations(currentBranch?.id, options?.onOrderSaved);
-
-  // Debounced save function
-  const debouncedSave = useCallback(
-    debounce((classIds: string[]) => {
-      saveOrderToDatabase.mutate(classIds);
-    }, 2000),
-    [currentBranch?.id, saveOrderToDatabase]
-  );
 
   // Initialize ordered classes
   useEffect(() => {
@@ -80,52 +74,99 @@ export function useClassOrdering(options?: UseClassOrderingOptions) {
     }
     
     setOrderedClasses(sortedClasses);
-    setIsOrderDirty(false);
   }, [classesData, savedOrder, isLoadingOrder]);
 
-  // Save order
-  const saveOrder = useCallback(() => {
-    if (isOrderDirty && orderedClasses.length > 0) {
-      const classIds = orderedClasses.map(c => c.id);
-      saveOrderToDatabase.mutate(classIds);
+  // Process pending movements
+  const processPendingMovements = useCallback(() => {
+    if (pendingMovements.length === 0 || !orderedClasses.length) return;
+    
+    // Take the first pending movement
+    const movement = pendingMovements[0];
+    
+    // Create new array with classes
+    const newOrdered = [...orderedClasses];
+    
+    // Perform the move
+    const [removedClass] = newOrdered.splice(movement.from, 1);
+    newOrdered.splice(movement.to, 0, removedClass);
+    
+    // Update state
+    setOrderedClasses(newOrdered);
+    
+    // Remove this movement from pending
+    setPendingMovements(current => current.slice(1));
+    
+    // Save the new order
+    const classIds = newOrdered.map(c => c.id);
+    saveClassOrder(classIds);
+  }, [orderedClasses, pendingMovements, saveClassOrder]);
+
+  // Process pending movements when not saving
+  useEffect(() => {
+    if (!isSaving && pendingMovements.length > 0) {
+      processPendingMovements();
     }
-  }, [orderedClasses, isOrderDirty, saveOrderToDatabase]);
+  }, [isSaving, pendingMovements, processPendingMovements]);
 
   // Move class up
   const moveClassUp = useCallback((index: number) => {
-    if (index <= 0) return;
+    if (index <= 0 || isSaving) return;
     
-    setIsMoving(true);
-    setIsOrderDirty(true);
-    
-    setOrderedClasses(prevClasses => {
-      const newOrder = [...prevClasses];
-      [newOrder[index - 1], newOrder[index]] = [newOrder[index], newOrder[index - 1]];
+    // Mark class as moving for UI feedback
+    if (index < orderedClasses.length) {
+      markAsMoving(orderedClasses[index].id);
       
-      const classIds = newOrder.map(c => c.id);
-      debouncedSave(classIds);
+      // Optimistically update UI immediately
+      setOrderedClasses(currentClasses => 
+        moveItemOptimistically(currentClasses, index, index - 1)
+      );
       
-      return newOrder;
-    });
-  }, [debouncedSave]);
+      // Add to pending movements queue
+      setPendingMovements(current => [...current, { from: index, to: index - 1 }]);
+      
+      // Process immediately if no pending saves
+      if (!isSaving && pendingMovements.length === 0) {
+        const newOrder = [...orderedClasses];
+        [newOrder[index - 1], newOrder[index]] = [newOrder[index], newOrder[index - 1]];
+        const classIds = newOrder.map(c => c.id);
+        saveClassOrder(classIds);
+      }
+    }
+  }, [orderedClasses, isSaving, markAsMoving, moveItemOptimistically, pendingMovements, saveClassOrder]);
 
   // Move class down
   const moveClassDown = useCallback((index: number) => {
-    setOrderedClasses(prevClasses => {
-      if (index >= prevClasses.length - 1) return prevClasses;
+    if (index >= orderedClasses.length - 1 || isSaving) return;
+    
+    // Mark class as moving for UI feedback
+    if (index < orderedClasses.length) {
+      markAsMoving(orderedClasses[index].id);
       
-      setIsMoving(true);
-      setIsOrderDirty(true);
+      // Optimistically update UI immediately
+      setOrderedClasses(currentClasses => 
+        moveItemOptimistically(currentClasses, index, index + 1)
+      );
       
-      const newOrder = [...prevClasses];
-      [newOrder[index], newOrder[index + 1]] = [newOrder[index + 1], newOrder[index]];
+      // Add to pending movements queue
+      setPendingMovements(current => [...current, { from: index, to: index + 1 }]);
       
-      const classIds = newOrder.map(c => c.id);
-      debouncedSave(classIds);
-      
-      return newOrder;
-    });
-  }, [debouncedSave]);
+      // Process immediately if no pending saves
+      if (!isSaving && pendingMovements.length === 0) {
+        const newOrder = [...orderedClasses];
+        [newOrder[index], newOrder[index + 1]] = [newOrder[index + 1], newOrder[index]];
+        const classIds = newOrder.map(c => c.id);
+        saveClassOrder(classIds);
+      }
+    }
+  }, [orderedClasses, isSaving, markAsMoving, moveItemOptimistically, pendingMovements, saveClassOrder]);
+
+  // Immediately save current order (for manual saves)
+  const saveOrder = useCallback(() => {
+    if (orderedClasses.length > 0) {
+      const classIds = orderedClasses.map(c => c.id);
+      saveClassOrder(classIds);
+    }
+  }, [orderedClasses, saveClassOrder]);
 
   const error = classesError || orderError;
 
@@ -133,12 +174,13 @@ export function useClassOrdering(options?: UseClassOrderingOptions) {
     orderedClasses,
     originalClasses: classesData,
     isLoading: isLoadingClasses || isLoadingOrder,
-    isMoving: isMoving || saveOrderToDatabase.isPending,
-    isOrderDirty,
+    isMoving: isSaving,
+    isItemMoving,
     error,
     moveClassUp,
     moveClassDown,
     saveOrder,
-    refetch: refetchOrder
+    refetch: refetchOrder,
+    pendingMovements: pendingMovements.length
   };
 }
