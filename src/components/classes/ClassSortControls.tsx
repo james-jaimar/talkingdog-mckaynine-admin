@@ -1,7 +1,6 @@
 
 import { Button } from "@/components/ui/button";
 import { ChevronUp, ChevronDown } from "lucide-react";
-import { useAuth } from "@/context/auth";
 
 interface ClassSortControlsProps {
   index: number;
@@ -16,15 +15,11 @@ export function ClassSortControls({
   onMoveUp, 
   onMoveDown 
 }: ClassSortControlsProps) {
-  const { user } = useAuth();
-  
   const handleMoveUp = () => {
-    // Pass the current index to the parent handler
     onMoveUp(index);
   };
   
   const handleMoveDown = () => {
-    // Pass the current index to the parent handler
     onMoveDown(index);
   };
 
@@ -35,7 +30,7 @@ export function ClassSortControls({
         size="icon" 
         className="h-7 w-7" 
         onClick={handleMoveUp}
-        disabled={index === 0 || !user}
+        disabled={index === 0}
         title="Move up"
       >
         <ChevronUp className="h-4 w-4" />
@@ -45,7 +40,7 @@ export function ClassSortControls({
         size="icon" 
         className="h-7 w-7" 
         onClick={handleMoveDown}
-        disabled={index === totalClasses - 1 || !user}
+        disabled={index === totalClasses - 1}
         title="Move down"
       >
         <ChevronDown className="h-4 w-4" />

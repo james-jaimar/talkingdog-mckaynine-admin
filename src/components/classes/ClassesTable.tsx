@@ -12,21 +12,19 @@ import { useBranch } from "@/context/BranchContext";
 
 export function ClassesTable() {
   const { orderedClasses, isLoading, error } = useClassesTableData();
-  const { moveClassUp, moveClassDown } = useClassOrder();
+  const { moveClassUp, moveClassDown, isLoading: isSaving } = useClassOrder();
   const [editingClass, setEditingClass] = useState<any>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const queryClient = useQueryClient();
   const { currentBranch } = useBranch();
   
   const handleEdit = (classItem: any) => {
-    console.log("Editing class:", classItem);
     setEditingClass(classItem);
     setIsEditModalOpen(true);
   };
 
   const handleCloseModal = () => {
     setIsEditModalOpen(false);
-    // Clear editing class after modal closes
     setTimeout(() => {
       setEditingClass(null);
     }, 300); // Small delay to allow modal animation to complete
@@ -77,6 +75,11 @@ export function ClassesTable() {
     <>
       <Card>
         <CardContent className="p-0 overflow-auto">
+          {isSaving && (
+            <div className="bg-yellow-50 text-yellow-800 p-2 text-xs text-center">
+              Saving class order...
+            </div>
+          )}
           <Table>
             <TableCaption>Active class configurations</TableCaption>
             <TableHeader>
@@ -109,7 +112,6 @@ export function ClassesTable() {
         </CardContent>
       </Card>
       
-      {/* Edit Class Modal */}
       <EditClassModal
         open={isEditModalOpen}
         onOpenChange={handleCloseModal}

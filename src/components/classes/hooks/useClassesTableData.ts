@@ -1,25 +1,21 @@
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useBranch } from "@/context/BranchContext";
 
-export function useClassesTableData(filter?: string) {
+export function useClassesTableData() {
   const { currentBranch } = useBranch();
-  const queryClient = useQueryClient();
 
   // Fetch all classes data
-  const { data: classes = [], isLoading: isLoadingClasses, error, refetch } = useQuery({
+  const { data: classesData = [], isLoading: isLoadingClasses, error } = useQuery({
     queryKey: ['classes', currentBranch?.id],
     queryFn: async () => {
       try {
-        console.log(`Fetching classes for branch: ${currentBranch?.name || 'none'}`);
-        
         if (!currentBranch) {
-          console.warn("No branch selected, cannot fetch classes");
           return [];
         }
         
-        let query = supabase
+        const { data, error } = await supabase
           .from('classes')
           .select(`
             *,
@@ -35,8 +31,6 @@ export function useClassesTableData(filter?: string) {
           `)
           .eq('branch_id', currentBranch.id);
         
-        const { data, error } = await query;
-        
         if (error) {
           console.error("Error fetching classes:", error);
           throw error;
@@ -46,66 +40,45 @@ export function useClassesTableData(filter?: string) {
         return data || [];
       } catch (error) {
         console.error("Error in classes query:", error);
-        throw error; // Ensure error is thrown to be caught by React Query
+        throw error;
       }
     },
-    enabled: !!currentBranch, // Only run query when a branch is selected
-    staleTime: 30000, // 30 seconds
+    enabled: !!currentBranch,
   });
 
   // Fetch saved class order from database
   const { data: savedOrder, isLoading: isLoadingOrder } = useQuery({
     queryKey: ['class-tab-order', currentBranch?.id],
     queryFn: async () => {
-      try {
-        if (!currentBranch) {
-          console.warn("No branch selected, cannot fetch class order");
-          return null;
-        }
-        
-        console.log("Fetching class order for branch:", currentBranch.id);
-        
-        // Get order specifically for this branch
-        const { data, error } = await supabase
-          .from('class_tab_order')
-          .select('*')
-          .eq('branch_id', currentBranch.id)
-          .maybeSingle();
-        
-        if (error && error.code !== 'PGRST116') {
-          console.error("Error fetching class order:", error);
-          return null;
-        }
-        
-        console.log("Retrieved class order:", data);
-        return data;
-      } catch (error) {
-        console.error("Error in fetchSavedOrder:", error);
+      if (!currentBranch) {
         return null;
       }
+      
+      // Get order specifically for this branch
+      const { data, error } = await supabase
+        .from('class_tab_order')
+        .select('*')
+        .eq('branch_id', currentBranch.id)
+        .maybeSingle();
+      
+      if (error && error.code !== 'PGRST116') {
+        console.error("Error fetching class order:", error);
+        return null;
+      }
+      
+      return data;
     },
     enabled: !!currentBranch,
-    staleTime: 10000 // 10 seconds - shorter stale time to detect changes more quickly
   });
 
-  // Get the most current data from the query cache
-  const cachedClasses = queryClient.getQueryData(['classes', currentBranch?.id]) as any[] || classes;
-  const isLoading = isLoadingClasses || isLoadingOrder;
-
-  // Order classes based on:
-  // 1. Cached ordered data (if we have it from drag operations)
-  // 2. Saved database order
-  // 3. Or fall back to alphabetical
-  const getOrderedClasses = () => {
-    // Use the most recent cached classes data
-    const classesData = cachedClasses.length > 0 ? cachedClasses : classes;
-    
-    if (!classesData || classesData.length === 0) return [];
+  // Determine the ordered classes based on saved order or default to alphabetical
+  const orderedClasses = (() => {
+    if (!classesData || classesData.length === 0) {
+      return [];
+    }
     
     // If we have a saved order from database
     if (savedOrder && savedOrder.class_ids && savedOrder.class_ids.length > 0) {
-      console.log("Using saved order from database");
-      
       // Create a map of classes by ID for fast lookup
       const classesById = new Map(classesData.map(c => [c.id, c]));
       
@@ -118,30 +91,20 @@ export function useClassesTableData(filter?: string) {
       const orderedIds = new Set(savedOrder.class_ids);
       const remainingClasses = classesData.filter(c => !orderedIds.has(c.id));
       
-      const result = [...orderedClasses, ...remainingClasses];
-      console.log("Final ordered classes:", result.map(c => c.name));
-      return result;
+      return [...orderedClasses, ...remainingClasses];
     }
     
     // Default alphabetical order
-    console.log("Using alphabetical order");
     return [...classesData].sort((a, b) => a.name.localeCompare(b.name));
-  };
+  })();
 
-  const orderedClasses = getOrderedClasses();
+  // Combine loading states
+  const isLoading = isLoadingClasses || isLoadingOrder;
   
-  console.log("Ordered classes count:", orderedClasses.length);
-  
-  // Apply filter if provided
-  const filteredClasses = filter 
-    ? orderedClasses.filter(classItem => classItem.id === filter)
-    : orderedClasses;
-
   return {
-    classes: orderedClasses, // Use ordered classes as the primary classes array
-    orderedClasses: filteredClasses,
+    classes: classesData,
+    orderedClasses,
     isLoading,
-    error,
-    refetch
+    error
   };
 }
