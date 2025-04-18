@@ -2,7 +2,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/context/auth";
 import { useBranch } from "@/context/BranchContext";
 
 export function useClassOrder() {
@@ -64,14 +64,24 @@ export function useClassOrder() {
   const moveClassUp = (index: number) => {
     if (index <= 0) return; // Already at the top
     
-    // Always get the most recent data from the query cache
+    // Get the current classes data from cache
     const classes = queryClient.getQueryData(['classes', currentBranch?.id]) as any[] || [];
     
     if (!classes.length) return;
     
-    // Create a new array with the swapped items
+    console.log('Before swap (moveUp):', classes.map(c => c.name));
+    
+    // Create a new array with the swapped items (shallow copy of the array)
     const newOrder = [...classes];
-    [newOrder[index - 1], newOrder[index]] = [newOrder[index], newOrder[index - 1]];
+    // Store references to the two items being swapped
+    const itemToMove = newOrder[index];
+    const itemToReplace = newOrder[index - 1];
+    
+    // Perform the swap
+    newOrder[index - 1] = itemToMove;
+    newOrder[index] = itemToReplace;
+    
+    console.log('After swap (moveUp):', newOrder.map(c => c.name));
     
     // Update the cache immediately for a responsive UI
     queryClient.setQueryData(['classes', currentBranch?.id], newOrder);
@@ -85,7 +95,7 @@ export function useClassOrder() {
       return;
     }
     
-    // Save the new order to the database
+    // Save the new order to the database (only the IDs)
     saveClassOrderMutation.mutate(newOrder.map(c => c.id));
     
     toast({
@@ -96,14 +106,24 @@ export function useClassOrder() {
 
   // Move class down in the order - accepts only index
   const moveClassDown = (index: number) => {
-    // Always get the most recent data from the query cache
+    // Get the current classes data from cache
     const classes = queryClient.getQueryData(['classes', currentBranch?.id]) as any[] || [];
     
     if (!classes.length || index >= classes.length - 1) return; // Already at the bottom
     
-    // Create a new array with the swapped items
+    console.log('Before swap (moveDown):', classes.map(c => c.name));
+    
+    // Create a new array with the swapped items (shallow copy of the array)
     const newOrder = [...classes];
-    [newOrder[index], newOrder[index + 1]] = [newOrder[index + 1], newOrder[index]];
+    // Store references to the two items being swapped
+    const itemToMove = newOrder[index];
+    const itemToReplace = newOrder[index + 1];
+    
+    // Perform the swap
+    newOrder[index + 1] = itemToMove;
+    newOrder[index] = itemToReplace;
+    
+    console.log('After swap (moveDown):', newOrder.map(c => c.name));
     
     // Update the cache immediately for a responsive UI
     queryClient.setQueryData(['classes', currentBranch?.id], newOrder);
@@ -117,7 +137,7 @@ export function useClassOrder() {
       return;
     }
     
-    // Save the new order to the database
+    // Save the new order to the database (only the IDs)
     saveClassOrderMutation.mutate(newOrder.map(c => c.id));
     
     toast({

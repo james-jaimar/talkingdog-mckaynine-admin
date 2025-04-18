@@ -1,7 +1,7 @@
 
 import { Button } from "@/components/ui/button";
 import { ChevronUp, ChevronDown } from "lucide-react";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/context/auth";
 
 interface ClassSortControlsProps {
   index: number;

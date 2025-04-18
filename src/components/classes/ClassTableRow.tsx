@@ -32,8 +32,8 @@ export function ClassTableRow({
         <ClassSortControls 
           index={index}
           totalClasses={totalClasses}
-          onMoveUp={() => onMoveUp(index)}
-          onMoveDown={() => onMoveDown(index)}
+          onMoveUp={onMoveUp}
+          onMoveDown={onMoveDown}
         />
       </TableCell>
       <TableCell className="font-medium">{classItem.name}</TableCell>
