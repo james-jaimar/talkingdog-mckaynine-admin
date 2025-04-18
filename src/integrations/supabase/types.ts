@@ -409,39 +409,60 @@ export type Database = {
       }
       classes: {
         Row: {
+          admin_fee_type: string
+          admin_fee_value: number
           branch_id: string
           capacity: number
+          course_fee: number
           created_at: string
           description: string
           duration: number
+          enrollment_fee: number
           id: string
           level: string
+          mckaynine_commission_type: string
+          mckaynine_commission_value: number
           name: string
-          price: number
+          trainer_fee_type: string
+          trainer_fee_value: number
           updated_at: string
         }
         Insert: {
+          admin_fee_type?: string
+          admin_fee_value?: number
           branch_id: string
           capacity?: number
+          course_fee?: number
           created_at?: string
           description: string
           duration: number
+          enrollment_fee?: number
           id?: string
           level: string
+          mckaynine_commission_type?: string
+          mckaynine_commission_value?: number
           name: string
-          price: number
+          trainer_fee_type?: string
+          trainer_fee_value?: number
           updated_at?: string
         }
         Update: {
+          admin_fee_type?: string
+          admin_fee_value?: number
           branch_id?: string
           capacity?: number
+          course_fee?: number
           created_at?: string
           description?: string
           duration?: number
+          enrollment_fee?: number
           id?: string
           level?: string
+          mckaynine_commission_type?: string
+          mckaynine_commission_value?: number
           name?: string
-          price?: number
+          trainer_fee_type?: string
+          trainer_fee_value?: number
           updated_at?: string
         }
         Relationships: [

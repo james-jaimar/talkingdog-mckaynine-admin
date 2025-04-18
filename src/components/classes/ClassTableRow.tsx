@@ -48,7 +48,7 @@ export function ClassTableRow({
       </TableCell>
       <TableCell>
         <div className="flex items-center gap-1">
-          <span>R {classItem.price}</span>
+          <span>R {classItem.course_fee}</span>
         </div>
       </TableCell>
       <TableCell>
