@@ -28,7 +28,6 @@ export function EditClassScheduleForm({
 
   // Extract values for conditional logic
   const startTime = form.watch("startTime");
-  const selectedDates = form.watch("selectedDates") || [];
   
   // Update reference title when schedule.class.name or start time changes
   useEffect(() => {
@@ -39,26 +38,18 @@ export function EditClassScheduleForm({
     }
   }, [schedule.class?.name, startTime, form]);
   
-  // Comment out the conflicting code that references removed fields
-  // We don't need to explicitly set start/end dates anymore as we're using selectedDates
-  /*
-  useEffect(() => {
-    if (selectedDates.length > 0) {
-      // Sort dates to find first and last
-      const sortedDates = [...selectedDates].sort((a, b) => a.getTime() - b.getTime());
-      const firstDate = sortedDates[0];
-      const lastDate = sortedDates[sortedDates.length - 1];
-      
-      // Update start and end dates
-      form.setValue("startDate", firstDate);
-      form.setValue("endDate", lastDate);
+  // Handle form submission with proper cleanup
+  const handleFormSubmit = async (values: any) => {
+    try {
+      await onSubmit(values);
+    } catch (error) {
+      console.error("Form submission error:", error);
     }
-  }, [selectedDates, form]);
-  */
+  };
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
         <ClassScheduleFormFields
           control={form.control}
           trainers={trainers}

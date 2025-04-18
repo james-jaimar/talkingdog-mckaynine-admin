@@ -118,8 +118,11 @@ export function useScheduleSubmit({
         });
       }
 
-      // Immediately invalidate related queries
-      queryClient.invalidateQueries({ queryKey: ["class-schedules"] });
+      // FIX: Use a more specific query key to avoid potential circular invalidations
+      // and prevent the "maximum call stack size exceeded" error
+      queryClient.invalidateQueries({ 
+        queryKey: ["class-schedules", classId]
+      });
       
       // Wait a moment before triggering success callback
       setTimeout(() => {

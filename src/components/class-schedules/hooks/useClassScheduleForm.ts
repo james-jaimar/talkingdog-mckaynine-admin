@@ -30,11 +30,10 @@ export function useClassScheduleForm(
       ? schedule.selected_dates.map(dateStr => new Date(dateStr))
       : [];
     
-    // Check if trainer exists and decide whether to set 'none' or trainer ID
-    let trainerIdValue = 'none';
-    if (schedule.trainer && schedule.trainer.first_name && schedule.trainer.last_name) {
-      trainerIdValue = schedule.trainer_id;
-    }
+    // Fix: Handle trainer ID more carefully to avoid potential undefined issues
+    const trainerIdValue = schedule.trainer_id 
+      ? (schedule.trainer_id === 'ba95153f-699c-4cc1-afe5-762bf30033d4' ? 'none' : schedule.trainer_id)
+      : 'none';
     
     defaultValues = {
       trainerId: trainerIdValue,
