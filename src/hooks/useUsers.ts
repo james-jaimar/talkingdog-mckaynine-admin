@@ -68,6 +68,13 @@ export function useUsers() {
       try {
         console.log("Adding user:", email, fullName, role);
         
+        // Get the current session token to pass as authorization
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError || !session) {
+          throw new Error("Not authenticated");
+        }
+        
         // Use the edge function to create a user with admin privileges
         const { data, error } = await supabase.functions.invoke('user-role', {
           method: 'POST',
@@ -77,6 +84,9 @@ export function useUsers() {
             password, 
             fullName, 
             role 
+          },
+          headers: {
+            Authorization: `Bearer ${session.access_token}`
           }
         });
         
@@ -113,9 +123,19 @@ export function useUsers() {
   const updateRole = useMutation({
     mutationFn: async ({ userId, role }: { userId: string; role: string }) => {
       try {
+        // Get the current session token to pass as authorization
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError || !session) {
+          throw new Error("Not authenticated");
+        }
+        
         const { error } = await supabase.functions.invoke('user-role', {
           method: 'POST',
-          body: { userId, role }
+          body: { userId, role },
+          headers: {
+            Authorization: `Bearer ${session.access_token}`
+          }
         });
         
         if (error) throw error;
@@ -142,11 +162,29 @@ export function useUsers() {
   const resetPassword = useMutation({
     mutationFn: async ({ userId, password }: { userId: string; password: string }) => {
       try {
-        const { error } = await supabase.auth.admin.updateUserById(userId, {
-          password: password
+        // Get the current session token to pass as authorization
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError || !session) {
+          throw new Error("Not authenticated");
+        }
+        
+        // Use the edge function or directly call admin API
+        const { data, error } = await supabase.functions.invoke('user-role', {
+          method: 'POST',
+          body: { 
+            operation: 'reset_password',
+            userId, 
+            password 
+          },
+          headers: {
+            Authorization: `Bearer ${session.access_token}`
+          }
         });
         
         if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+        
         return { success: true };
       } catch (error) {
         console.error("Error resetting password:", error);
@@ -164,27 +202,6 @@ export function useUsers() {
       });
     }
   });
-
-  // Helper for trainer creation
-  const createTrainerRecord = async (userId: string, email: string, fullName: string) => {
-    const names = fullName.split(' ');
-    const firstName = names[0];
-    const lastName = names.slice(1).join(' ');
-    
-    const { error } = await supabase
-      .from('trainers')
-      .insert({
-        user_id: userId,
-        first_name: firstName,
-        last_name: lastName || '',
-        email: email
-      });
-      
-    if (error) {
-      console.error("Error creating trainer record:", error);
-      // Don't throw, as the user is still created
-    }
-  };
 
   return {
     users,

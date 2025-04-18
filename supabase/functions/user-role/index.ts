@@ -11,9 +11,19 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Get the auth token
+    // Create Supabase client with service role key for admin operations
+    // We'll validate the auth token separately
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      { auth: { persistSession: false } }
+    );
+    
+    // Get the auth token and validate it
     const authHeader = req.headers.get('Authorization');
+    
     if (!authHeader) {
+      console.error("Missing authorization header");
       return new Response(
         JSON.stringify({ error: 'Missing authorization header' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -22,42 +32,19 @@ Deno.serve(async (req) => {
 
     const token = authHeader.replace('Bearer ', '');
     
-    // Create Supabase client with service role key for admin operations
-    const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-      { auth: { persistSession: false } }
-    );
-    
     // Create a client with the user's token to verify their permissions
-    const supabaseUser = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { 
-        auth: { 
-          persistSession: false,
-          autoRefreshToken: false
-        },
-        global: {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
-      }
-    );
+    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
     
-    // Verify the token and check admin status
-    const { data: { user }, error: userError } = await supabaseUser.auth.getUser();
     if (userError || !user) {
       console.error("Auth error:", userError);
       return new Response(
-        JSON.stringify({ error: 'Invalid token' }),
+        JSON.stringify({ error: 'Invalid token', details: userError?.message }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Check if requesting user is admin using the user client
-    const { data: adminCheck, error: adminCheckError } = await supabaseUser
+    // Check if requesting user is admin using the admin client
+    const { data: adminCheck, error: adminCheckError } = await supabaseAdmin
       .from('profiles')
       .select('role')
       .eq('id', user.id)
@@ -72,8 +59,9 @@ Deno.serve(async (req) => {
     }
 
     if (!adminCheck?.role?.includes('admin')) {
+      console.error("User is not an admin:", user.id);
       return new Response(
-        JSON.stringify({ error: 'Only admins can update user roles' }),
+        JSON.stringify({ error: 'Only admins can perform this action' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -84,6 +72,8 @@ Deno.serve(async (req) => {
     // Handle different operations based on the request type
     if (requestData.operation === 'create_user') {
       return await handleCreateUser(requestData, supabaseAdmin, corsHeaders);
+    } else if (requestData.operation === 'reset_password') {
+      return await handleResetPassword(requestData, supabaseAdmin, corsHeaders);
     } else {
       // Default to role update operation
       return await handleRoleUpdate(requestData, supabaseAdmin, corsHeaders);
@@ -110,6 +100,8 @@ async function handleCreateUser(data, supabase, corsHeaders) {
   }
   
   try {
+    console.log("Creating user with email:", email);
+    
     // Create the user via admin API
     const { data: userData, error: createError } = await supabase.auth.admin.createUser({
       email,
@@ -128,6 +120,7 @@ async function handleCreateUser(data, supabase, corsHeaders) {
     }
     
     const userId = userData.user.id;
+    console.log("User created with ID:", userId);
     
     // Update the profile with role and app_id
     const { error: profileError } = await supabase
@@ -159,6 +152,44 @@ async function handleCreateUser(data, supabase, corsHeaders) {
     console.error("Create user error:", error);
     return new Response(
       JSON.stringify({ error: error.message || 'Error creating user' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+}
+
+// Function to handle password resets
+async function handleResetPassword(data, supabase, corsHeaders) {
+  const { userId, password } = data;
+  
+  if (!userId || !password) {
+    return new Response(
+      JSON.stringify({ error: 'Missing required fields for password reset' }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+  
+  try {
+    console.log("Resetting password for user:", userId);
+    
+    // Update user's password using admin API
+    const { error } = await supabase.auth.admin.updateUserById(userId, {
+      password: password
+    });
+    
+    if (error) {
+      console.error("Password reset error:", error);
+      throw error;
+    }
+    
+    return new Response(
+      JSON.stringify({ success: true }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+    
+  } catch (error) {
+    console.error("Password reset error:", error);
+    return new Response(
+      JSON.stringify({ error: error.message || 'Error resetting password' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
