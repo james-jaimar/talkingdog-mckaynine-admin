@@ -7,20 +7,26 @@ interface ClassSortControlsProps {
   totalClasses: number;
   onMoveUp: (index: number) => void;
   onMoveDown: (index: number) => void;
+  isLoading?: boolean;
 }
 
 export function ClassSortControls({ 
   index, 
   totalClasses, 
   onMoveUp, 
-  onMoveDown 
+  onMoveDown,
+  isLoading = false
 }: ClassSortControlsProps) {
   const handleMoveUp = () => {
-    onMoveUp(index);
+    if (!isLoading) {
+      onMoveUp(index);
+    }
   };
   
   const handleMoveDown = () => {
-    onMoveDown(index);
+    if (!isLoading) {
+      onMoveDown(index);
+    }
   };
 
   return (
@@ -30,20 +36,22 @@ export function ClassSortControls({
         size="icon" 
         className="h-7 w-7" 
         onClick={handleMoveUp}
-        disabled={index === 0}
+        disabled={index === 0 || isLoading}
         title="Move up"
+        aria-label="Move class up in order"
       >
-        <ChevronUp className="h-4 w-4" />
+        <ChevronUp className={`h-4 w-4 ${isLoading ? 'text-gray-400' : ''}`} />
       </Button>
       <Button 
         variant="ghost" 
         size="icon" 
         className="h-7 w-7" 
         onClick={handleMoveDown}
-        disabled={index === totalClasses - 1}
+        disabled={index === totalClasses - 1 || isLoading}
         title="Move down"
+        aria-label="Move class down in order"
       >
-        <ChevronDown className="h-4 w-4" />
+        <ChevronDown className={`h-4 w-4 ${isLoading ? 'text-gray-400' : ''}`} />
       </Button>
     </div>
   );

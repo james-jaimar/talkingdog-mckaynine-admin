@@ -2,17 +2,23 @@
 import { useState } from "react";
 import { Table, TableBody, TableCaption, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
-import { useClassesTableData } from "./hooks/useClassesTableData";
 import { ClassTableRow } from "./ClassTableRow";
-import { useClassOrder } from "./hooks/useClassOrder";
+import { useClassOrdering } from "./hooks/useClassOrdering";
 import { EditClassModal } from "./EditClassModal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useQueryClient } from "@tanstack/react-query";
 import { useBranch } from "@/context/BranchContext";
+import { Loader2 } from "lucide-react";
 
 export function ClassesTable() {
-  const { orderedClasses, isLoading, error } = useClassesTableData();
-  const { moveClassUp, moveClassDown, isLoading: isSaving } = useClassOrder();
+  const { 
+    orderedClasses, 
+    isLoading, 
+    isMoving,
+    error, 
+    moveClassUp, 
+    moveClassDown 
+  } = useClassOrdering();
   const [editingClass, setEditingClass] = useState<any>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const queryClient = useQueryClient();
@@ -47,7 +53,7 @@ export function ClassesTable() {
     );
   }
   
-  if (error || !orderedClasses) {
+  if (error) {
     return (
       <Card>
         <CardContent className="p-6">
@@ -59,7 +65,7 @@ export function ClassesTable() {
     );
   }
   
-  if (orderedClasses.length === 0) {
+  if (!orderedClasses || orderedClasses.length === 0) {
     return (
       <Card>
         <CardContent className="p-6">
@@ -75,7 +81,7 @@ export function ClassesTable() {
     <>
       <Card>
         <CardContent className="p-0 overflow-auto">
-          {isSaving && (
+          {isMoving && (
             <div className="bg-yellow-50 text-yellow-800 p-2 text-xs text-center">
               Saving class order...
             </div>

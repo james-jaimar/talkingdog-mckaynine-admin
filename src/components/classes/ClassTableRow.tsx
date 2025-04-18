@@ -14,6 +14,7 @@ interface ClassTableRowProps {
   onMoveUp: (index: number) => void;
   onMoveDown: (index: number) => void;
   onEdit: (classItem: any) => void;
+  isLoading?: boolean;
 }
 
 export function ClassTableRow({
@@ -23,6 +24,7 @@ export function ClassTableRow({
   onMoveUp,
   onMoveDown,
   onEdit,
+  isLoading = false,
 }: ClassTableRowProps) {
   const availableSlots = calculateAvailableSlots(classItem);
   
@@ -34,6 +36,7 @@ export function ClassTableRow({
           totalClasses={totalClasses}
           onMoveUp={onMoveUp}
           onMoveDown={onMoveDown}
+          isLoading={isLoading}
         />
       </TableCell>
       <TableCell className="font-medium">{classItem.name}</TableCell>

@@ -35,6 +35,7 @@ export function ClassTab({ classItem, index, isActive, onTabClick }: ClassTabPro
           ? "bg-white text-mckaynine-600 shadow-sm" 
           : "text-gray-700 hover:bg-gray-200 hover:text-gray-900"
       )}
+      data-index={index}
     >
       {classItem.name}
     </TabsTrigger>
