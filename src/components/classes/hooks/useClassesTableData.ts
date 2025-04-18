@@ -52,13 +52,19 @@ export function useClassesTableData(filter?: string) {
     staleTime: 30000, // 30 seconds
   });
 
-  // Get user's saved order
-  const { data: savedOrder } = useQuery({
+  // Get saved order
+  const { data: savedOrder, isLoading: isLoadingOrder } = useQuery({
     queryKey: ['class-tab-order', currentBranch?.id],
     queryFn: async () => {
       try {
-        if (!currentBranch) return null;
+        if (!currentBranch) {
+          console.warn("No branch selected, cannot fetch class order");
+          return null;
+        }
         
+        console.log("Fetching class order for branch:", currentBranch.id);
+        
+        // Get order specifically for this branch
         const { data, error } = await supabase
           .from('class_tab_order')
           .select('*')
@@ -70,6 +76,7 @@ export function useClassesTableData(filter?: string) {
           return null;
         }
         
+        console.log("Retrieved class order:", data);
         return data;
       } catch (error) {
         console.error("Error in fetchSavedOrder:", error);
@@ -95,15 +102,20 @@ export function useClassesTableData(filter?: string) {
     // If we have a saved order from database
     if (savedOrder && savedOrder.class_ids && savedOrder.class_ids.length > 0) {
       console.log("Using saved order from database");
-      // First include ordered classes, then any others not in the order
+      
+      // Create a map of classes by ID for fast lookup
+      const classesById = new Map(classesData.map(c => [c.id, c]));
+      
+      // First include ordered classes that exist in our dataset
+      const orderedClasses = savedOrder.class_ids
+        .map(id => classesById.get(id))
+        .filter(Boolean);
+      
+      // Then add any classes not in the saved order
       const orderedIds = new Set(savedOrder.class_ids);
-      const orderedClasses = [
-        ...savedOrder.class_ids
-          .map(id => classesData.find(c => c.id === id))
-          .filter(Boolean),
-        ...classesData.filter(c => !orderedIds.has(c.id))
-      ];
-      return orderedClasses;
+      const remainingClasses = classesData.filter(c => !orderedIds.has(c.id));
+      
+      return [...orderedClasses, ...remainingClasses];
     }
     
     // Default alphabetical order
@@ -114,18 +126,17 @@ export function useClassesTableData(filter?: string) {
   const orderedClasses = getOrderedClasses();
   
   console.log("Ordered classes count:", orderedClasses.length);
-  orderedClasses.forEach((c, i) => console.log(`${i}: ${c.name}`));
-
+  
   // Apply filter if provided
   const filteredClasses = filter 
     ? orderedClasses.filter(classItem => classItem.id === filter)
     : orderedClasses;
 
   return {
-    classes,
+    classes: orderedClasses, // Use ordered classes as the primary classes array
     orderedClasses: filteredClasses,
-    isLoading,
-    error, // Make sure to include the error in the return object
+    isLoading: isLoading || isLoadingOrder,
+    error,
     refetch
   };
 }

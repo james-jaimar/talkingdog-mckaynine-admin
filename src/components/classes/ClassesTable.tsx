@@ -9,7 +9,7 @@ import { EditClassModal } from "./EditClassModal";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export function ClassesTable() {
-  const { classes, isLoading, error } = useClassesTableData();
+  const { orderedClasses, isLoading, error } = useClassesTableData();
   const { moveClassUp, moveClassDown } = useClassOrder();
   const [editingClass, setEditingClass] = useState<any>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -30,7 +30,7 @@ export function ClassesTable() {
     );
   }
   
-  if (error || !classes) {
+  if (error || !orderedClasses) {
     return (
       <Card>
         <CardContent className="p-6">
@@ -42,7 +42,7 @@ export function ClassesTable() {
     );
   }
   
-  if (classes.length === 0) {
+  if (orderedClasses.length === 0) {
     return (
       <Card>
         <CardContent className="p-6">
@@ -74,12 +74,12 @@ export function ClassesTable() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {classes.map((classItem, index) => (
+              {orderedClasses.map((classItem, index) => (
                 <ClassTableRow
                   key={classItem.id}
                   classItem={classItem}
                   index={index}
-                  totalClasses={classes.length}
+                  totalClasses={orderedClasses.length}
                   onMoveUp={moveClassUp}
                   onMoveDown={moveClassDown}
                   onEdit={() => handleEdit(classItem)}

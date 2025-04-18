@@ -18,33 +18,56 @@ export function useClassOrder() {
         throw new Error("User not authenticated");
       }
 
-      // Check if order already exists for this user and branch
-      const { data: existingOrder } = await (supabase
-        .from('class_tab_order') as any)
+      if (!currentBranch?.id) {
+        throw new Error("No branch selected");
+      }
+
+      console.log("Saving class order to database:", classIds);
+
+      // Check if order already exists for this branch
+      const { data: existingOrder, error: fetchError } = await supabase
+        .from('class_tab_order')
         .select('id')
-        .eq('user_id', user.id)
-        .eq('branch_id', currentBranch?.id || null)
+        .eq('branch_id', currentBranch.id)
         .maybeSingle();
+        
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        console.error("Error checking existing order:", fetchError);
+        throw fetchError;
+      }
 
       if (existingOrder) {
         // Update existing order
-        const { error } = await (supabase
-          .from('class_tab_order') as any)
-          .update({ class_ids: classIds })
+        const { error } = await supabase
+          .from('class_tab_order')
+          .update({ 
+            class_ids: classIds,
+            user_id: user.id  // Update with current user
+          })
           .eq('id', existingOrder.id);
           
-        if (error) throw error;
+        if (error) {
+          console.error("Error updating class order:", error);
+          throw error;
+        }
+        
+        console.log("Updated existing class order");
       } else {
         // Create new order
-        const { error } = await (supabase
-          .from('class_tab_order') as any)
+        const { error } = await supabase
+          .from('class_tab_order')
           .insert({
             user_id: user.id,
-            branch_id: currentBranch?.id || null,
+            branch_id: currentBranch.id,
             class_ids: classIds
           });
           
-        if (error) throw error;
+        if (error) {
+          console.error("Error creating class order:", error);
+          throw error;
+        }
+        
+        console.log("Created new class order");
       }
     },
     onSuccess: () => {
