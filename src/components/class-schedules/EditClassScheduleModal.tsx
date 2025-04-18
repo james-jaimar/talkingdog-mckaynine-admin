@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { EditClassScheduleForm } from "./EditClassScheduleForm";
 import { ClassSchedule } from "./types/classSchedule";
+import { useEffect } from "react";
 
 interface EditClassScheduleModalProps {
   open: boolean;
@@ -24,7 +25,7 @@ export function EditClassScheduleModal({
   schedule,
   onSuccess,
 }: EditClassScheduleModalProps) {
-  // Handle success by properly closing the modal first
+  // Handle successful form submission
   const handleSuccess = () => {
     // Close the modal first
     onOpenChange(false);
@@ -34,8 +35,21 @@ export function EditClassScheduleModal({
     }, 100);
   };
 
+  // Ensure proper cleanup when dialog is closed
+  const handleOpenChange = (isOpen: boolean) => {
+    onOpenChange(isOpen);
+    
+    // If closing the dialog, make sure we don't have any lingering state
+    if (!isOpen) {
+      // Allow any animations to complete before notifying parent
+      setTimeout(() => {
+        document.body.style.pointerEvents = ""; // Reset any pointer-events styling
+      }, 100);
+    }
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Schedule</DialogTitle>

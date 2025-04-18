@@ -1,5 +1,4 @@
 
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { MoreHorizontal, Edit, CalendarRange, Users } from "lucide-react";
 import {
@@ -20,22 +19,22 @@ interface ClassActionButtonsProps {
 export function ClassActionButtons({ classId, onEdit }: ClassActionButtonsProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { isOpen, setIsOpen } = useDropdownState();
+  const { isOpen, setIsOpen, onClose } = useDropdownState();
 
   const handleSchedulesClick = () => {
     // Update to use the proper URL format that ClassSchedules component expects
     navigate(`/classes/${classId}/schedules`);
-    setIsOpen(false);
+    onClose();
   };
 
   const handleHandlersClick = () => {
     navigate(`/class/${classId}/handlers`);
-    setIsOpen(false);
+    onClose();
   };
 
   const handleEditClick = () => {
     onEdit();
-    setIsOpen(false);
+    onClose();
   };
 
   return (
@@ -74,7 +73,7 @@ export function ClassActionButtons({ classId, onEdit }: ClassActionButtonsProps)
             <MoreHorizontal className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
+        <DropdownMenuContent align="end" className="bg-background z-50">
           <DropdownMenuItem onClick={handleSchedulesClick}>
             View Schedules
           </DropdownMenuItem>

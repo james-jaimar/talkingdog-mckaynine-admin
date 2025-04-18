@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal } from "lucide-react";
 import { ClassSchedule } from "./types/classSchedule";
-import { useState } from "react";
+import { useDropdownState } from "@/hooks/useDropdownState";
 import { useNavigate } from "react-router-dom";
 
 interface TableActionMenuProps {
@@ -21,24 +21,24 @@ interface TableActionMenuProps {
 }
 
 export function TableActionMenu({ schedule, onEdit, onDelete }: TableActionMenuProps) {
-  const [isOpen, setIsOpen] = useState(false);
+  const { isOpen, setIsOpen, onClose } = useDropdownState();
   const navigate = useNavigate();
 
   const handleEdit = () => {
     onEdit(schedule);
-    setIsOpen(false);
+    onClose();
   };
 
   const handleDelete = () => {
     onDelete(schedule.id);
-    setIsOpen(false);
+    onClose();
   };
 
   const handleManageHandlers = () => {
     navigate(`/bookings/${schedule.id}`);
-    setIsOpen(false);
+    onClose();
   };
-
+  
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
@@ -47,7 +47,7 @@ export function TableActionMenu({ schedule, onEdit, onDelete }: TableActionMenuP
           <MoreHorizontal className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
+      <DropdownMenuContent align="end" className="bg-background">
         <DropdownMenuLabel>Actions</DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleEdit}>

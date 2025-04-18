@@ -17,16 +17,16 @@ interface UserActionMenuProps {
 }
 
 export function UserActionMenu({ user, onEditRole, onResetPassword }: UserActionMenuProps) {
-  const { isOpen, setIsOpen } = useDropdownState();
+  const { isOpen, setIsOpen, onClose } = useDropdownState();
 
   const handleEditRole = () => {
     onEditRole();
-    setIsOpen(false);
+    onClose();
   };
 
   const handleResetPassword = () => {
     onResetPassword();
-    setIsOpen(false);
+    onClose();
   };
 
   return (
@@ -37,7 +37,7 @@ export function UserActionMenu({ user, onEditRole, onResetPassword }: UserAction
           <MoreHorizontal className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
+      <DropdownMenuContent align="end" className="bg-background z-50">
         <DropdownMenuItem onClick={handleEditRole}>
           <User className="h-4 w-4 mr-2" />
           <span>Edit Role</span>
