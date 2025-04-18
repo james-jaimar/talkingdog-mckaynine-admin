@@ -7,6 +7,7 @@ import { ClassActionButtons } from "./ClassActionButtons";
 import { calculateAvailableSlots } from "./utils/classSlotUtils";
 import { ClassMetadataCell } from "./table/cells/ClassMetadataCell";
 import { ClassRowProps } from "./types/class-row";
+import { cn } from "@/lib/utils";
 
 export function ClassTableRow({
   classItem,
@@ -20,9 +21,15 @@ export function ClassTableRow({
 }: ClassRowProps) {
   const availableSlots = calculateAvailableSlots(classItem);
   
+  // Add alternate row coloring
+  const rowBackground = cn(
+    index % 2 === 0 ? "bg-gray-50" : "bg-white", 
+    isMoving ? "bg-yellow-50 transition-colors duration-300" : ""
+  );
+  
   return (
     <TableRow 
-      className={isMoving ? "bg-yellow-50 transition-colors duration-300" : undefined}
+      className={rowBackground}
     >
       <TableCell>
         <ClassSortControls 
