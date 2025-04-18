@@ -7,7 +7,7 @@ export function useClassesTableData(filter?: string) {
   const { currentBranch } = useBranch();
   const queryClient = useQueryClient();
 
-  const { data: classes = [], isLoading, refetch } = useQuery({
+  const { data: classes = [], isLoading, error, refetch } = useQuery({
     queryKey: ['classes', currentBranch?.id],
     queryFn: async () => {
       try {
@@ -45,7 +45,7 @@ export function useClassesTableData(filter?: string) {
         return data || [];
       } catch (error) {
         console.error("Error in classes query:", error);
-        return [];
+        throw error; // Ensure error is thrown to be caught by React Query
       }
     },
     enabled: !!currentBranch, // Only run query when a branch is selected
@@ -125,6 +125,7 @@ export function useClassesTableData(filter?: string) {
     classes,
     orderedClasses: filteredClasses,
     isLoading,
+    error, // Make sure to include the error in the return object
     refetch
   };
 }
