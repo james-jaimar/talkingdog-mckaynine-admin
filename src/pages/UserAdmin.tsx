@@ -4,7 +4,7 @@ import { Helmet } from "react-helmet";
 import { useAuth } from "@/context/auth";
 import { useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
-import { UserManagementTable } from "@/components/users/UserManagementTable";
+import { UserAdminPanel } from "@/components/users/UserAdmin";
 
 export default function UserAdmin() {
   const { isAdmin, isLoading: authLoading } = useAuth();
@@ -36,10 +36,11 @@ export default function UserAdmin() {
         <div className="mb-6">
           <h1 className="text-2xl font-bold">User Administration</h1>
           <p className="text-muted-foreground mt-1">
-            Manage all users and their roles across the application
+            Manage user accounts and their roles
           </p>
         </div>
-        <UserManagementTable />
+        
+        <UserAdminPanel />
       </div>
     </DashboardLayout>
   );
