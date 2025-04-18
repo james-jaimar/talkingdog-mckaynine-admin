@@ -30,26 +30,7 @@ export const fetchUserProfile = async (userId: string | undefined) => {
 };
 
 export const ensureAdminRole = async (userId: string, email: string | undefined, currentRole: string | null) => {
-  // Special handling for Ady Hawkins - combine roles if needed
-  if (email === "ady@talkingdog.co.za") {
-    console.log("Special role management for branch owner/trainer");
-    
-    // Ensure both admin and trainer roles are set
-    const { error } = await supabase
-      .from('profiles')
-      .update({ 
-        role: 'admin,trainer', // Use comma-separated roles
-        app_id: APP_ID 
-      })
-      .eq('id', userId);
-    
-    if (error) {
-      console.error("Error updating Ady's roles:", error);
-      return currentRole;
-    }
-    
-    return 'admin'; // Default to admin for routing purposes
-  }
+  // Only preserve roles and ensure app_id is set, but don't override manually set roles
   
   // Most important: If the user has a handler role, preserve it
   if (currentRole === 'handler') {
@@ -64,36 +45,36 @@ export const ensureAdminRole = async (userId: string, email: string | undefined,
     return 'handler';
   }
   
-  // Special case for ady@talkingdog.co.za
-  if (email === "ady@talkingdog.co.za" && currentRole !== "admin") {
-    console.log("This is the admin user, ensuring admin role");
+  // For all other users, just ensure app_id is set but don't change roles
+  if (currentRole) {
+    console.log(`Preserving existing role: ${currentRole}`);
     
-    // Update role to admin for this special user
-    const { error: updateError } = await supabase
+    // Ensure app_id is set
+    await supabase
       .from('profiles')
-      .update({ 
-        role: 'admin',
-        app_id: APP_ID // Set app_id for this application
-      })
-      .eq('id', userId);
-    
-    if (updateError) {
-      console.error("Error updating admin role:", updateError);
-      return currentRole;
-    } else {
-      console.log("Successfully set ady@talkingdog.co.za as admin");
-      return 'admin';
-    }
+      .update({ app_id: APP_ID })
+      .eq('id', userId)
+      .is('app_id', null); // Only update if app_id is null
+      
+    return currentRole;
   }
   
-  // For all other cases, ensure app_id is set
-  await supabase
+  // For new users without a role, set a default role
+  console.log("Setting default role for new user");
+  const { error } = await supabase
     .from('profiles')
-    .update({ app_id: APP_ID })
+    .update({ 
+      role: 'user',
+      app_id: APP_ID 
+    })
     .eq('id', userId);
   
-  // Return the current role
-  return currentRole;
+  if (error) {
+    console.error("Error updating default role:", error);
+    return currentRole || 'user';
+  }
+  
+  return 'user';
 };
 
 // New utility to check if a user has a specific role
