@@ -14,6 +14,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useBranch } from "@/context/BranchContext";
+import { useState, useEffect } from "react";
 
 interface ClassFinance {
   className: string;
@@ -29,136 +30,170 @@ interface ClassFinance {
 
 export function ClassFinancialReport() {
   const { currentBranch } = useBranch();
+  const [classFinances, setClassFinances] = useState<ClassFinance[]>([]);
+  const [isCalculating, setIsCalculating] = useState(false);
   
-  const { data: classFinances, isLoading } = useQuery({
-    queryKey: ['class-finances', currentBranch?.id],
+  // 1. Fetch classes for the current branch
+  const { data: classes, isLoading: isLoadingClasses, error: classesError } = useQuery({
+    queryKey: ['financial-classes', currentBranch?.id],
     queryFn: async () => {
-      try {
-        if (!currentBranch?.id) {
-          console.log("No branch selected");
-          return [];
-        }
+      if (!currentBranch?.id) {
+        return [];
+      }
+      
+      const { data, error } = await supabase
+        .from("classes")
+        .select("id, name, course_fee, enrollment_fee, mckaynine_commission_value, mckaynine_commission_type, admin_fee_value, admin_fee_type, trainer_fee_value, trainer_fee_type")
+        .eq("branch_id", currentBranch.id);
         
-        console.log(`Fetching financial data for branch: ${currentBranch.name} (${currentBranch.id})`);
-        
-        // Step 1: Get classes for the current branch
-        const { data: classes, error: classesError } = await supabase
-          .from("classes")
-          .select("id, name, course_fee, enrollment_fee, mckaynine_commission_value, mckaynine_commission_type, admin_fee_value, admin_fee_type, trainer_fee_value, trainer_fee_type")
-          .eq("branch_id", currentBranch.id);
-          
-        if (classesError) {
-          console.error("Error fetching classes:", classesError);
-          throw new Error(`Error fetching classes: ${classesError.message}`);
-        }
-        
-        if (!classes || classes.length === 0) {
-          console.log(`No classes found for branch: ${currentBranch.name}`);
-          return [];
-        }
-        
-        console.log(`Found ${classes.length} classes for branch ${currentBranch.name}`);
-        
-        // Step 2: For each class, find all its schedules and then find paid bookings for those schedules
-        const classFinances = await Promise.all(classes.map(async (classItem) => {
-          try {
-            // Get class schedules for this class
-            const { data: schedules, error: schedulesError } = await supabase
-              .from("class_schedules")
-              .select("id")
-              .eq("class_id", classItem.id);
-              
-            if (schedulesError) {
-              console.error(`Error fetching schedules for class ${classItem.id}:`, schedulesError);
-              return null;
-            }
-            
-            if (!schedules || schedules.length === 0) {
-              console.log(`No schedules found for class: ${classItem.name}`);
-              // Return class with zero bookings
-              return {
-                className: classItem.name,
-                courseFee: 0,
-                enrollmentFee: 0,
-                franchiseFee: 0,
-                totalOwingToFranchisor: 0,
-                adminFee: 0,
-                instructorFee: 0,
-                profit: 0,
-                bookingsCount: 0
-              };
-            }
-            
-            const scheduleIds = schedules.map(schedule => schedule.id);
-            
-            // Get paid bookings for these schedules
-            const { data: bookings, error: bookingsError } = await supabase
-              .from("bookings")
-              .select("id")
-              .in("class_schedule_id", scheduleIds)
-              .eq("payment_status", "paid");
-              
-            if (bookingsError) {
-              console.error(`Error fetching bookings for class ${classItem.id}:`, bookingsError);
-              return null;
-            }
-            
-            const activeBookingsCount = bookings ? bookings.length : 0;
-            
-            // Calculate financial metrics
-            const totalCourseFees = activeBookingsCount * classItem.course_fee;
-            const totalEnrollmentFees = activeBookingsCount * classItem.enrollment_fee;
-            
-            // Calculate franchise fee (mckaynine commission)
-            const franchiseFee = classItem.mckaynine_commission_type === 'percentage'
-              ? (totalCourseFees + totalEnrollmentFees) * (classItem.mckaynine_commission_value / 100)
-              : activeBookingsCount * classItem.mckaynine_commission_value;
-            
-            // Calculate admin fee
-            const adminFee = classItem.admin_fee_type === 'percentage'
-              ? (totalCourseFees + totalEnrollmentFees) * (classItem.admin_fee_value / 100)
-              : activeBookingsCount * classItem.admin_fee_value;
-            
-            // Calculate instructor fee
-            const instructorFee = classItem.trainer_fee_type === 'percentage'
-              ? (totalCourseFees + totalEnrollmentFees) * (classItem.trainer_fee_value / 100)
-              : activeBookingsCount * classItem.trainer_fee_value;
-            
-            // Calculate total revenue and profit
-            const totalRevenue = totalCourseFees + totalEnrollmentFees;
-            const profit = totalRevenue - franchiseFee - adminFee - instructorFee;
-            
-            return {
-              className: classItem.name,
-              courseFee: totalCourseFees,
-              enrollmentFee: totalEnrollmentFees,
-              franchiseFee,
-              totalOwingToFranchisor: franchiseFee,
-              adminFee,
-              instructorFee,
-              profit,
-              bookingsCount: activeBookingsCount
-            };
-          } catch (error) {
-            console.error(`Error processing class ${classItem.id}:`, error);
-            return null;
-          }
-        }));
-        
-        // Filter out null entries (classes that had errors)
-        return classFinances.filter(Boolean) as ClassFinance[];
-      } catch (error) {
-        console.error("Error fetching class finances:", error);
-        toast.error("Failed to load financial data");
+      if (error) {
+        console.error("Error fetching classes:", error);
         throw error;
       }
+      
+      return data || [];
     },
     enabled: !!currentBranch?.id,
-    retry: 1, // Only retry once to avoid excessive console errors
-    staleTime: 5 * 60 * 1000, // 5 minutes cache
   });
 
-  if (isLoading) {
+  // 2. Fetch bookings with payment status for these classes
+  const { data: bookingData, isLoading: isLoadingBookings } = useQuery({
+    queryKey: ['financial-bookings', currentBranch?.id, classes?.map(c => c.id).join(',')],
+    queryFn: async () => {
+      if (!classes || classes.length === 0) return {};
+      
+      // Get all schedules for all classes
+      const { data: schedules, error: schedulesError } = await supabase
+        .from("class_schedules")
+        .select("id, class_id")
+        .in("class_id", classes.map(c => c.id));
+        
+      if (schedulesError) {
+        console.error("Error fetching schedules:", schedulesError);
+        throw schedulesError;
+      }
+      
+      if (!schedules || schedules.length === 0) {
+        return {};
+      }
+      
+      // Create a mapping of class IDs to schedule IDs
+      const classSchedules: Record<string, string[]> = {};
+      schedules.forEach(schedule => {
+        if (!classSchedules[schedule.class_id]) {
+          classSchedules[schedule.class_id] = [];
+        }
+        classSchedules[schedule.class_id].push(schedule.id);
+      });
+      
+      // Fetch bookings for each class separately
+      const bookingsByClass: Record<string, any[]> = {};
+      
+      // Process each class in batches to prevent excessive database load
+      for (const classItem of classes) {
+        const scheduleIds = classSchedules[classItem.id] || [];
+        
+        if (scheduleIds.length === 0) {
+          bookingsByClass[classItem.id] = [];
+          continue;
+        }
+        
+        try {
+          const { data: bookings, error: bookingsError } = await supabase
+            .from("bookings")
+            .select(`
+              id, 
+              payment_status,
+              proof_of_payment,
+              class_schedule_id
+            `)
+            .in("class_schedule_id", scheduleIds)
+            .eq("status", "confirmed");
+            
+          if (bookingsError) {
+            console.error(`Error fetching bookings for class ${classItem.id}:`, bookingsError);
+            bookingsByClass[classItem.id] = [];
+            continue;
+          }
+          
+          bookingsByClass[classItem.id] = bookings || [];
+        } catch (err) {
+          console.error(`Error processing bookings for class ${classItem.id}:`, err);
+          bookingsByClass[classItem.id] = [];
+        }
+      }
+      
+      return bookingsByClass;
+    },
+    enabled: !!classes && classes.length > 0,
+  });
+
+  // Calculate financial metrics when data is available
+  useEffect(() => {
+    if (!classes || classes.length === 0 || !bookingData || isLoadingClasses || isLoadingBookings) {
+      return;
+    }
+    
+    setIsCalculating(true);
+    
+    try {
+      const finances: ClassFinance[] = classes.map(classItem => {
+        // Get bookings for this class
+        const classBookings = bookingData[classItem.id] || [];
+        const paidBookings = classBookings.filter(b => 
+          b.payment_status === 'paid' || 
+          (b.proof_of_payment && b.proof_of_payment.trim() !== '')
+        );
+        
+        const bookingsCount = paidBookings.length;
+        
+        // Calculate fees based on number of paid bookings
+        const totalCourseFees = bookingsCount * (classItem.course_fee || 0);
+        const totalEnrollmentFees = bookingsCount * (classItem.enrollment_fee || 0);
+        const totalRevenue = totalCourseFees + totalEnrollmentFees;
+        
+        // Calculate franchise fee
+        const franchiseFee = classItem.mckaynine_commission_type === 'percentage'
+          ? (totalRevenue * (classItem.mckaynine_commission_value / 100))
+          : bookingsCount * classItem.mckaynine_commission_value;
+        
+        // Calculate admin fee
+        const adminFee = classItem.admin_fee_type === 'percentage'
+          ? (totalRevenue * (classItem.admin_fee_value / 100))
+          : bookingsCount * classItem.admin_fee_value;
+        
+        // Calculate instructor fee
+        const instructorFee = classItem.trainer_fee_type === 'percentage'
+          ? (totalRevenue * (classItem.trainer_fee_value / 100))
+          : bookingsCount * classItem.trainer_fee_value;
+        
+        // Calculate profit
+        const profit = totalRevenue - franchiseFee - adminFee - instructorFee;
+        
+        return {
+          className: classItem.name,
+          courseFee: totalCourseFees,
+          enrollmentFee: totalEnrollmentFees,
+          franchiseFee,
+          totalOwingToFranchisor: franchiseFee,
+          adminFee,
+          instructorFee,
+          profit,
+          bookingsCount
+        };
+      });
+      
+      setClassFinances(finances);
+    } catch (error) {
+      console.error("Error calculating financial data:", error);
+      toast.error("Error processing financial data");
+    } finally {
+      setIsCalculating(false);
+    }
+  }, [classes, bookingData, isLoadingClasses, isLoadingBookings]);
+
+  // Show loading state
+  if (isLoadingClasses || isLoadingBookings || isCalculating) {
     return (
       <Card className="w-full">
         <CardHeader>
@@ -171,6 +206,21 @@ export function ClassFinancialReport() {
     );
   }
 
+  // Show error state
+  if (classesError) {
+    return (
+      <Card className="w-full">
+        <CardHeader>
+          <CardTitle>Class Financial Report</CardTitle>
+        </CardHeader>
+        <CardContent className="text-center text-red-500">
+          <p>Failed to load financial data. Please try again later.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Show empty state
   if (!classFinances || classFinances.length === 0) {
     return (
       <Card className="w-full">
@@ -210,7 +260,7 @@ export function ClassFinancialReport() {
       <CardHeader>
         <CardTitle>Class Financial Report</CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
