@@ -3,7 +3,7 @@ import { Invoice } from '@/hooks/invoices/types';
 import { formatCurrency } from '@/lib/formatters';
 
 export function addInvoiceSummary(doc: any, invoice: Invoice, startY: number): number {
-  const { subtotal, tax_rate, tax_amount, discount_amount, discount_type, total } = invoice;
+  const { subtotal, tax_rate, tax_amount, total, monetary_discount, discount_type, original_discount_amount, discount_amount } = invoice;
   
   // Calculate available width
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -28,20 +28,15 @@ export function addInvoiceSummary(doc: any, invoice: Invoice, startY: number): n
   currentY += 8;  // Slightly reduced vertical spacing
   
   // Discount (if applicable)
-  if (discount_amount > 0) {
-    // Calculate the actual monetary discount amount
-    const discountMonetaryAmount = discount_type === 'percentage' 
-      ? (subtotal * discount_amount / 100)
-      : discount_amount;
-    
-    // Format the discount label based on type with clear indicator
+  if (monetary_discount > 0) {
+    // Format the discount label based on type
     const discountLabel = discount_type === 'percentage'
-      ? `Discount (${discount_amount}% off):`
-      : 'Discount (Fixed amount):';
-      
+      ? `Discount (${original_discount_amount || discount_amount}%):`
+      : 'Discount:';
+    
     doc.setTextColor(220, 53, 69); // Red color for discount
     doc.text(discountLabel, labelX, currentY);
-    doc.text(`-${formatCurrency(discountMonetaryAmount)}`, valueX, currentY, { align: 'right' });
+    doc.text(`-${formatCurrency(monetary_discount)}`, valueX, currentY, { align: 'right' });
     doc.setTextColor(0, 0, 0); // Reset to black
     currentY += 8;
   }

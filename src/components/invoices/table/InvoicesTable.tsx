@@ -90,8 +90,7 @@ export function InvoicesTable({
             <TableHead>Due Date</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Total</TableHead>
-            {/* Add discount column */}
-            <TableHead className="text-right">Discount</TableHead>
+            <TableHead>Discount</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -136,12 +135,16 @@ export function InvoicesTable({
                 <TableCell>{format(new Date(invoice.due_date), "PP")}</TableCell>
                 <TableCell>{getStatusBadge(invoice.status)}</TableCell>
                 <TableCell>{formatCurrency(invoice.total)}</TableCell>
-                {invoice.discount_amount > 0 && (
-                  <TableCell className="text-right text-red-600">
-                    -{formatCurrency(invoice.discount_amount)}
-                    {invoice.discount_type === 'percentage' && ` (${invoice.discount_amount}%)`}
-                  </TableCell>
-                )}
+                <TableCell>
+                  {invoice.monetary_discount > 0 && (
+                    <span className="text-red-600">
+                      -{formatCurrency(invoice.monetary_discount)}
+                      {invoice.discount_type === 'percentage' && 
+                        ` (${invoice.original_discount_amount || invoice.discount_amount}%)`
+                      }
+                    </span>
+                  )}
+                </TableCell>
                 <TableCell className="text-right">
                   <InvoiceTableActions 
                     invoice={invoice} 
