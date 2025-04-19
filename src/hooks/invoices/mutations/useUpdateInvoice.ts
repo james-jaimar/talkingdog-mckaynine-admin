@@ -25,39 +25,31 @@ export function useUpdateInvoice() {
         const subtotal = values.items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
         
         // Normalize discount values to prevent issues
-        let discount_amount = 0;
         const discount_type = values.discount_type || 'fixed';
-        const original_discount_input = Number(values.discount_amount || 0);
+        const discount_amount_input = Number(values.discount_amount || 0);
         
-        // Calculate the actual monetary discount amount based on type
-        if (discount_type === 'percentage') {
-          // For percentage type, store the percentage directly but calculate the monetary value
-          const percentage = Math.min(Math.max(original_discount_input, 0), 100);
-          const discount_monetary_value = (subtotal * percentage) / 100;
-          discount_amount = original_discount_input; // Store original percentage for percentage type
-        } else {
-          // For fixed type, ensure it doesn't exceed subtotal
-          discount_amount = Math.min(original_discount_input, subtotal);
-        }
+        // We handle percentage and fixed amounts differently in calculations,
+        // but store the input value in the database
+        let discount_amount = discount_amount_input;
+        
+        // Calculate the actual monetary discount for display purposes
+        const monetary_discount = discount_type === 'percentage' ? 
+          (subtotal * discount_amount_input) / 100 : 
+          discount_amount_input;
         
         // Calculate tax on the amount after discount
-        const taxable_amount = discount_type === 'percentage' ? 
-          subtotal - ((subtotal * original_discount_input) / 100) : 
-          subtotal - discount_amount;
-          
+        const taxable_amount = subtotal - monetary_discount;
         const tax_amount = taxable_amount * (values.tax_rate / 100);
         
         // Calculate total: subtotal - discount + tax
-        const total = discount_type === 'percentage' ?
-          subtotal - ((subtotal * original_discount_input) / 100) + tax_amount :
-          subtotal - discount_amount + tax_amount;
+        const total = subtotal - monetary_discount + tax_amount;
 
         console.log("Invoice update calculations:", {
           subtotal,
           discount_type,
-          discount_input: original_discount_input,
-          calculated_discount_amount: discount_type === 'percentage' ? 
-            ((subtotal * original_discount_input) / 100) : discount_amount,
+          discount_input: discount_amount_input,
+          monetary_discount,
+          taxable_amount,
           tax_rate: values.tax_rate,
           tax_amount,
           total
@@ -75,8 +67,8 @@ export function useUpdateInvoice() {
           tax_rate: values.tax_rate,
           tax_amount,
           total,
-          discount_amount,
-          discount_type,
+          discount_amount,  // Store the original input (percentage or fixed amount)
+          discount_type,    // This determines how to interpret discount_amount
           discount_reason: values.discount_reason || null
         };
 
