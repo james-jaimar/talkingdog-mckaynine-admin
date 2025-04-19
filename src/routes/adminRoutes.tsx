@@ -1,89 +1,75 @@
 
-import { Navigate } from "react-router-dom";
-import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
-import UserAdmin from "@/pages/UserAdmin";
-import Branches from "@/pages/Branches";
-import UnpaidHandlers from "@/pages/UnpaidHandlers";
-import Forms from "@/pages/Forms";
+import { createBrowserRouter } from "react-router-dom";
+import Dashboard from "@/pages/Dashboard";
+import ClassDetail from "@/pages/ClassDetail";
+import BranchManagement from "@/pages/BranchManagement";
+import Classes from "@/pages/Classes";
+import Trainers from "@/pages/Trainers";
+import Handlers from "@/pages/Handlers";
+import HandlerDetail from "@/pages/HandlerDetail";
+import ClassSchedules from "@/pages/ClassSchedules";
 import Invoices from "@/pages/Invoices";
 import InvoiceDetail from "@/pages/InvoiceDetail";
 import InvoiceEdit from "@/pages/InvoiceEdit";
-import BranchManagement from "@/pages/BranchManagement";
+import UserAdmin from "@/pages/UserAdmin";
 import FinancialDashboard from "@/pages/FinancialDashboard";
+import FinancialReports from "@/pages/FinancialReports";
 
 export const adminRoutes = [
   {
-    path: "/user-admin",
-    element: (
-      <ProtectedRoute requiredRole="admin">
-        <UserAdmin />
-      </ProtectedRoute>
-    ),
+    path: "/dashboard",
+    element: <Dashboard />
   },
   {
-    path: "/branches",
-    element: (
-      <ProtectedRoute requiredRole="admin">
-        <Branches />
-      </ProtectedRoute>
-    ),
+    path: "/classes",
+    element: <Classes />
+  },
+  {
+    path: "/classes/:classId",
+    element: <ClassDetail />
+  },
+  {
+    path: "/schedules",
+    element: <ClassSchedules />
+  },
+  {
+    path: "/trainers",
+    element: <Trainers />
   },
   {
     path: "/branch-management",
-    element: (
-      <ProtectedRoute requiredRole="admin">
-        <BranchManagement />
-      </ProtectedRoute>
-    ),
+    element: <BranchManagement />
   },
   {
-    path: "/unpaid-handlers",
-    element: (
-      <ProtectedRoute requiredRole="admin">
-        <UnpaidHandlers />
-      </ProtectedRoute>
-    ),
+    path: "/handlers",
+    element: <Handlers />
   },
   {
-    path: "/forms",
-    element: (
-      <ProtectedRoute requiredRole="admin">
-        <Forms />
-      </ProtectedRoute>
-    ),
+    path: "/handlers/:handlerId",
+    element: <HandlerDetail />
   },
-  // Financial dashboard route
-  {
-    path: "/financial-dashboard",
-    element: (
-      <ProtectedRoute requiredRole="admin">
-        <FinancialDashboard />
-      </ProtectedRoute>
-    ),
-  },
-  // Invoice routes
   {
     path: "/invoices",
-    element: (
-      <ProtectedRoute requiredRole="trainer">
-        <Invoices />
-      </ProtectedRoute>
-    ),
+    element: <Invoices />
   },
   {
-    path: "/invoices/:id",
-    element: (
-      <ProtectedRoute requiredRole="trainer">
-        <InvoiceDetail />
-      </ProtectedRoute>
-    ),
+    path: "/invoices/:invoiceId",
+    element: <InvoiceDetail />
   },
   {
-    path: "/invoices/:id/edit",
-    element: (
-      <ProtectedRoute requiredRole="trainer">
-        <InvoiceEdit />
-      </ProtectedRoute>
-    ),
+    path: "/invoices/:invoiceId/edit",
+    element: <InvoiceEdit />
   },
+  {
+    path: "/user-admin",
+    element: <UserAdmin />
+  },
+  {
+    path: "/financial-dashboard",
+    element: <FinancialDashboard />
+  },
+  {
+    path: "/financial-reports",
+    element: <FinancialReports />
+  }
 ];
