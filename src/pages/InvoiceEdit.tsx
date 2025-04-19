@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useForm, useFieldArray } from "react-hook-form";
@@ -21,8 +20,9 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { ArrowLeft, Plus, Trash2, CalendarIcon, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { DiscountFields } from "@/components/invoices/discount/DiscountFields";
 
-// Validation schema
+// Validation schema updated to include discount fields
 const invoiceSchema = z.object({
   client_id: z.string().min(1, "Client is required"),
   invoice_number: z.string().min(1, "Invoice number is required"),
@@ -37,6 +37,9 @@ const invoiceSchema = z.object({
     unit_price: z.number().min(0, "Unit price can't be negative"),
     booking_id: z.string().optional().nullable(),
   })).min(1, "At least one item is required"),
+  discount_type: z.enum(['fixed', 'percentage']),
+  discount_amount: z.number().min(0),
+  discount_reason: z.string().optional(),
 });
 
 export default function InvoiceEdit() {
@@ -56,8 +59,11 @@ export default function InvoiceEdit() {
       issued_date: new Date(),
       due_date: new Date(),
       notes: "",
-      tax_rate: 0, // Updated to 0%
-      items: [{ description: "", quantity: 1, unit_price: 0 }]
+      tax_rate: 0,
+      items: [{ description: "", quantity: 1, unit_price: 0 }],
+      discount_type: 'fixed',
+      discount_amount: 0,
+      discount_reason: ''
     }
   });
   
@@ -83,25 +89,42 @@ export default function InvoiceEdit() {
           quantity: item.quantity,
           unit_price: item.unit_price,
           booking_id: item.booking_id
-        })) || [{ description: "", quantity: 1, unit_price: 0 }]
+        })) || [{ description: "", quantity: 1, unit_price: 0 }],
+        discount_type: invoice.discount_type || 'fixed',
+        discount_amount: invoice.discount_amount || 0,
+        discount_reason: invoice.discount_reason || ''
       });
       setIsLoaded(true);
     }
   }, [invoice, form, isLoaded]);
   
-  // Calculate total
+  // Calculate total with discount
   const calculateSubtotal = () => {
     const items = form.getValues("items");
     return items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
   };
   
+  const calculateDiscount = () => {
+    const discountType = form.getValues("discount_type");
+    const discountAmount = form.getValues("discount_amount");
+    const subtotal = calculateSubtotal();
+
+    if (discountType === "percentage") {
+      return (subtotal * discountAmount) / 100;
+    } else {
+      return discountAmount;
+    }
+  };
+  
   const calculateTax = () => {
     const taxRate = form.getValues("tax_rate");
-    return calculateSubtotal() * (taxRate / 100);
+    const subtotal = calculateSubtotal();
+    const discount = calculateDiscount();
+    return (subtotal - discount) * (taxRate / 100);
   };
   
   const calculateTotal = () => {
-    return calculateSubtotal() + calculateTax();
+    return calculateSubtotal() - calculateDiscount() + calculateTax();
   };
   
   const onSubmit = (values: InvoiceFormValues) => {
@@ -342,7 +365,6 @@ export default function InvoiceEdit() {
                   />
                 </div>
                 
-                {/* Invoice Items */}
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <h3 className="text-lg font-medium">Items</h3>
@@ -441,6 +463,12 @@ export default function InvoiceEdit() {
                   </div>
                 </div>
                 
+                {/* Add Discount section before totals */}
+                <div className="mt-6 mb-4">
+                  <h3 className="text-lg font-medium mb-4">Discount</h3>
+                  <DiscountFields form={form} />
+                </div>
+                
                 <div className="grid grid-cols-2 gap-4">
                   {/* Tax Rate */}
                   <FormField
@@ -480,11 +508,24 @@ export default function InvoiceEdit() {
                   />
                 </div>
                 
+                {/* Updated totals calculation with discount */}
                 <div className="ml-auto space-y-2 text-right">
                   <div className="flex justify-end space-x-4">
                     <span className="text-sm">Subtotal:</span>
                     <span className="text-sm font-medium">ZAR {calculateSubtotal().toFixed(2)}</span>
                   </div>
+                  {form.watch("discount_amount") > 0 && (
+                    <div className="flex justify-end space-x-4 text-red-600">
+                      <span className="text-sm">
+                        Discount {form.watch("discount_type") === "percentage" ? 
+                          `(${form.watch("discount_amount")}%)` : 
+                          "(ZAR)"}:
+                      </span>
+                      <span className="text-sm font-medium">
+                        -ZAR {calculateDiscount().toFixed(2)}
+                      </span>
+                    </div>
+                  )}
                   <div className="flex justify-end space-x-4">
                     <span className="text-sm">Tax ({form.watch("tax_rate")}%):</span>
                     <span className="text-sm font-medium">ZAR {calculateTax().toFixed(2)}</span>
