@@ -62,7 +62,7 @@ export function InvoiceTotalSummary() {
         <div className="flex justify-between text-sm text-red-600">
           <span>
             Discount {discountType === "percentage" ? 
-              `(${discountAmount}%)` : 
+              `(${discountAmount}%)` : // Show the original percentage input 
               ""}
           </span>
           <span>-{formatCurrency(totals.discountValue)}</span>

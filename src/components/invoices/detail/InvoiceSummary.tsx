@@ -8,7 +8,7 @@ interface InvoiceSummaryProps {
 }
 
 export function InvoiceSummary({ invoice }: InvoiceSummaryProps) {
-  // Calculate discount amount for display
+  // Calculate the actual monetary discount amount
   const calculateDiscountAmount = () => {
     if (invoice.discount_type === 'percentage') {
       return (invoice.subtotal * invoice.discount_amount / 100);
@@ -16,10 +16,10 @@ export function InvoiceSummary({ invoice }: InvoiceSummaryProps) {
     return invoice.discount_amount;
   };
   
-  // Format the discount display label
+  // For percentage discounts, display the original percentage value
   const displayDiscountValue = () => {
     if (invoice.discount_type === 'percentage') {
-      return `(${invoice.discount_amount}%)`;
+      return `(${invoice.discount_amount}%)`; // Show original percentage input
     }
     return '';
   };
