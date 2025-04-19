@@ -12,9 +12,9 @@ import { DateRangePicker } from "@/components/dashboard/financial/DateRangePicke
 import { addMonths, startOfMonth, endOfMonth, subMonths } from "date-fns";
 
 export default function FinancialReports() {
-  // By default, show current month
+  // Set default date range to previous month for better chance of having data
   const [dateRange, setDateRange] = useState({
-    from: startOfMonth(new Date()),
+    from: startOfMonth(subMonths(new Date(), 1)),
     to: endOfMonth(new Date())
   });
   

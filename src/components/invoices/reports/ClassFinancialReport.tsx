@@ -37,65 +37,42 @@ export function ClassFinancialReport({ dateRange }: ClassFinancialReportProps) {
   const [classFinances, setClassFinances] = useState<ClassFinance[]>([]);
   const [isCalculating, setIsCalculating] = useState(false);
   
-  // Format dates for logging and querying
-  const fromDate = dateRange?.from;
-  const toDate = dateRange?.to;
+  // Convert dates to ISO strings for query parameters
+  const fromDate = dateRange?.from ? dateRange.from.toISOString() : undefined;
+  const toDate = dateRange?.to ? dateRange.to.toISOString() : undefined;
   
-  // Fetch all classes for the current branch
-  const { data: classes, isLoading: isLoadingClasses, error: classesError } = useQuery({
-    queryKey: ['financial-classes', currentBranch?.id],
-    queryFn: async () => {
-      if (!currentBranch?.id) {
-        return [];
-      }
-      
-      console.log("Fetching classes for branch:", currentBranch.name);
-      
-      const { data, error } = await supabase
-        .from("classes")
-        .select("id, name, course_fee, enrollment_fee, mckaynine_commission_value, mckaynine_commission_type, admin_fee_value, admin_fee_type, trainer_fee_value, trainer_fee_type")
-        .eq("branch_id", currentBranch.id);
-        
-      if (error) {
-        console.error("Error fetching classes:", error);
-        throw error;
-      }
-      
-      console.log(`Found ${data?.length || 0} classes for branch ${currentBranch.name}`);
-      return data || [];
-    },
-    enabled: !!currentBranch?.id,
-  });
+  // Log date range for debugging
+  useEffect(() => {
+    console.log('ClassFinancialReport - Date range:', {
+      from: fromDate,
+      to: toDate,
+      branchId: currentBranch?.id
+    });
+  }, [fromDate, toDate, currentBranch?.id]);
 
-  // Direct query to get all bookings with their related class_schedules and classes
-  const { data: bookingsData, isLoading: isLoadingBookings } = useQuery({
-    queryKey: ['financial-bookings', currentBranch?.id, fromDate?.toISOString(), toDate?.toISOString()],
+  // Joint query to get bookings with all related class data in one go
+  const { data: bookingsData, isLoading: isLoadingBookings, error: bookingsError } = useQuery({
+    queryKey: ['financial-bookings-joint', currentBranch?.id, fromDate, toDate],
     queryFn: async () => {
       if (!currentBranch?.id) {
-        console.log("No branch ID available");
+        console.log("No branch ID available for financial report");
         return [];
       }
       
-      console.log("Fetching bookings for financial report with date range:", 
-        fromDate ? fromDate.toISOString().split('T')[0] : 'not set',
-        "to",
-        toDate ? toDate.toISOString().split('T')[0] : 'not set'
-      );
+      console.log(`Fetching financial report data - Branch: ${currentBranch.name}, Date range: ${fromDate} to ${toDate}`);
 
       try {
-        // Build the query to get bookings with all related data in a single query
+        // Single query to get all the data we need in one go
         let query = supabase
           .from('bookings')
           .select(`
             id, 
             payment_status,
             proof_of_payment,
-            class_schedule_id,
             created_at,
-            class_schedules!inner (
+            class_schedules:class_schedule_id (
               id,
-              class_id,
-              classes!inner (
+              classes:class_id (
                 id,
                 name,
                 course_fee,
@@ -112,53 +89,58 @@ export function ClassFinancialReport({ dateRange }: ClassFinancialReportProps) {
           `)
           .eq("class_schedules.classes.branch_id", currentBranch.id)
           .eq("status", "confirmed");
-          
+        
         // Apply date filters if provided
         if (fromDate) {
-          query = query.gte('created_at', fromDate.toISOString());
-          console.log("Filtering bookings from:", fromDate.toISOString());
+          query = query.gte('created_at', fromDate);
         }
         
         if (toDate) {
-          query = query.lte('created_at', toDate.toISOString());
-          console.log("Filtering bookings to:", toDate.toISOString());
+          query = query.lte('created_at', toDate);
         }
         
         const { data: bookings, error } = await query;
         
         if (error) {
-          console.error("Error fetching bookings:", error);
+          console.error("Error fetching bookings for financial report:", error);
           throw error;
         }
         
-        // Log the results for debugging
-        console.log(`Found ${bookings?.length || 0} total bookings for financial report`);
+        // Log results
+        console.log(`Retrieved ${bookings?.length || 0} total bookings for financial report`);
         
-        // Count bookings by payment status
-        const paymentStatusCounts = bookings?.reduce((acc, booking) => {
-          const status = booking.payment_status || 'unknown';
-          acc[status] = (acc[status] || 0) + 1;
-          return acc;
-        }, {} as Record<string, number>);
-        
-        const proofOfPaymentCount = bookings?.filter(b => b.proof_of_payment && b.proof_of_payment.trim() !== '').length || 0;
-        
-        console.log("Payment status breakdown:", paymentStatusCounts);
-        console.log("Bookings with proof of payment:", proofOfPaymentCount);
+        // Debug: Log some bookings to see what data we're getting
+        if (bookings && bookings.length > 0) {
+          console.log("Sample booking data:", bookings[0]);
+          
+          // Count by payment status
+          const statusCounts = bookings.reduce((acc: any, booking) => {
+            const status = booking.payment_status || 'unknown';
+            acc[status] = (acc[status] || 0) + 1;
+            return acc;
+          }, {});
+          
+          console.log("Bookings by payment status:", statusCounts);
+          
+          // Count those with proof of payment
+          const withProof = bookings.filter(b => b.proof_of_payment && b.proof_of_payment.trim() !== '').length;
+          console.log("Bookings with proof of payment:", withProof);
+        }
         
         return bookings || [];
       } catch (err) {
-        console.error("Error in bookings query:", err);
+        console.error("Error in financial report query:", err);
         throw err;
       }
     },
     enabled: !!currentBranch?.id,
   });
 
-  // Calculate financial metrics directly from the bookings data
+  // Calculate financial metrics based on booking data
   useEffect(() => {
-    if (isLoadingBookings || !bookingsData || bookingsData.length === 0) {
-      console.log("No booking data available for calculations");
+    if (!bookingsData || bookingsData.length === 0) {
+      console.log("No booking data available for financial calculations");
+      setClassFinances([]);
       return;
     }
     
@@ -168,17 +150,16 @@ export function ClassFinancialReport({ dateRange }: ClassFinancialReportProps) {
     
     try {
       // Group bookings by class ID
-      const bookingsByClassId: Record<string, any[]> = {};
-      
-      bookingsData.forEach(booking => {
+      const bookingsByClassId = bookingsData.reduce((acc: Record<string, any[]>, booking) => {
         const classId = booking.class_schedules?.classes?.id;
-        if (classId) {
-          if (!bookingsByClassId[classId]) {
-            bookingsByClassId[classId] = [];
-          }
-          bookingsByClassId[classId].push(booking);
+        if (!classId) return acc;
+        
+        if (!acc[classId]) {
+          acc[classId] = [];
         }
-      });
+        acc[classId].push(booking);
+        return acc;
+      }, {});
       
       console.log(`Grouped bookings into ${Object.keys(bookingsByClassId).length} class groups`);
       
@@ -189,8 +170,12 @@ export function ClassFinancialReport({ dateRange }: ClassFinancialReportProps) {
         if (!classBookings || classBookings.length === 0) return;
         
         const classData = classBookings[0].class_schedules.classes;
+        if (!classData) {
+          console.log(`No class data found for bookings with class ID ${classId}`);
+          return;
+        }
         
-        // Count only paid bookings or those with proof of payment
+        // Count bookings with payment status 'paid' OR proof of payment (more inclusive approach)
         const paidBookings = classBookings.filter(booking => 
           booking.payment_status === 'paid' || 
           (booking.proof_of_payment && booking.proof_of_payment.trim() !== '')
@@ -201,7 +186,7 @@ export function ClassFinancialReport({ dateRange }: ClassFinancialReportProps) {
         
         if (bookingsCount === 0) {
           console.log(`Skipping class ${classData.name} as it has no paid bookings`);
-          return; // Skip classes with no paid bookings
+          return;
         }
 
         // Calculate fees based on number of paid bookings
@@ -249,32 +234,20 @@ export function ClassFinancialReport({ dateRange }: ClassFinancialReportProps) {
         });
       });
       
-      console.log("Calculated financial data for classes:", finances);
+      console.log(`Generated financial data for ${finances.length} classes:`, finances);
       setClassFinances(finances);
     } catch (error) {
       console.error("Error calculating financial data:", error);
       toast.error("Error processing financial data");
+      setClassFinances([]);
     } finally {
       setIsCalculating(false);
     }
-  }, [bookingsData, isLoadingBookings]);
+  }, [bookingsData]);
 
-  // Show loading state
-  if (isLoadingClasses || isLoadingBookings || isCalculating) {
-    return (
-      <Card className="w-full">
-        <CardHeader>
-          <CardTitle>Class Financial Report</CardTitle>
-        </CardHeader>
-        <CardContent className="flex items-center justify-center h-36">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </CardContent>
-      </Card>
-    );
-  }
-
-  // Show error state
-  if (classesError) {
+  // Error state handling
+  if (bookingsError) {
+    console.error("Financial report error:", bookingsError);
     return (
       <Card className="w-full">
         <CardHeader>
@@ -282,6 +255,20 @@ export function ClassFinancialReport({ dateRange }: ClassFinancialReportProps) {
         </CardHeader>
         <CardContent className="text-center text-red-500">
           <p>Failed to load financial data. Please try again later.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Show loading state
+  if (isLoadingBookings || isCalculating) {
+    return (
+      <Card className="w-full">
+        <CardHeader>
+          <CardTitle>Class Financial Report</CardTitle>
+        </CardHeader>
+        <CardContent className="flex items-center justify-center h-36">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </CardContent>
       </Card>
     );
