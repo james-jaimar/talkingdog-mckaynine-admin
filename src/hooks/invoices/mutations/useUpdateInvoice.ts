@@ -24,17 +24,13 @@ export function useUpdateInvoice() {
         // Calculate subtotal
         const subtotal = values.items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
         
-        // Preserve the original percentage value entered by user for display purposes
-        const originalDiscountInput = values.discount_amount;
-        let original_discount_percentage = null;
+        // Track original percentage value for display purposes
+        let discount_amount = values.discount_amount;
         
         // Calculate discount - fixed amount or percentage of subtotal
-        let discount_amount = originalDiscountInput;
         if (values.discount_type === 'percentage') {
-          // Store the original percentage value for display
-          original_discount_percentage = originalDiscountInput;
           // Calculate the actual amount based on the percentage
-          discount_amount = (subtotal * originalDiscountInput) / 100;
+          discount_amount = (subtotal * values.discount_amount) / 100;
         }
         
         // Calculate tax amount based on subtotal minus discount
@@ -46,38 +42,42 @@ export function useUpdateInvoice() {
         console.log("Invoice update calculations:", {
           subtotal,
           discount_type: values.discount_type,
-          original_discount_input: originalDiscountInput,
-          original_discount_percentage,
+          original_discount_input: values.discount_amount,
           calculated_discount_amount: discount_amount,
           tax_rate: values.tax_rate,
           tax_amount,
           total
         });
 
+        // Create invoice update object - DO NOT include original_discount_percentage
+        const updateData = {
+          client_id: values.client_id,
+          invoice_number: values.invoice_number,
+          status: values.status,
+          issued_date: values.issued_date.toISOString(),
+          due_date: values.due_date.toISOString(),
+          notes: values.notes || null,
+          subtotal,
+          tax_rate: values.tax_rate,
+          tax_amount,
+          total,
+          discount_amount: values.discount_type === 'percentage' ? discount_amount : values.discount_amount,
+          discount_type: values.discount_type,
+          discount_reason: values.discount_reason || null
+        };
+
         // Update invoice
         const { error: invoiceError, data: updatedInvoice } = await supabase
           .from('invoices')
-          .update({
-            client_id: values.client_id,
-            invoice_number: values.invoice_number,
-            status: values.status,
-            issued_date: values.issued_date.toISOString(),
-            due_date: values.due_date.toISOString(),
-            notes: values.notes || null,
-            subtotal,
-            tax_rate: values.tax_rate,
-            tax_amount,
-            total,
-            discount_amount,
-            discount_type: values.discount_type,
-            discount_reason: values.discount_reason || null,
-            original_discount_percentage
-          })
+          .update(updateData)
           .eq('id', invoiceId)
           .select('*');
 
         if (invoiceError) {
           console.error("Error updating invoice:", invoiceError);
+          if (invoiceError.message) {
+            console.error("Error message:", invoiceError.message);
+          }
           throw invoiceError;
         }
 

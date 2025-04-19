@@ -79,11 +79,14 @@ export default function InvoiceEdit() {
     if (invoice && !isLoaded) {
       console.log("Initializing form with invoice data:", invoice);
       
-      // Handle percentage discount correctly
-      const discountAmount = 
-        invoice.discount_type === 'percentage' && invoice.original_discount_percentage !== null
-          ? invoice.original_discount_percentage 
-          : invoice.discount_amount || 0;
+      // Handle discount value correctly based on type
+      let discountAmount = invoice.discount_amount || 0;
+      if (invoice.discount_type === 'percentage') {
+        // Calculate percentage based on subtotal if available
+        if (invoice.subtotal > 0) {
+          discountAmount = (invoice.discount_amount / invoice.subtotal) * 100;
+        }
+      }
       
       form.reset({
         client_id: invoice.client_id,

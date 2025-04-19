@@ -61,12 +61,10 @@ export function useInvoiceDetails(invoiceId: string | undefined) {
             return [];
           }
           
-          return basicItems.map(item => ({
-            ...item,
-            // Include bare minimum structure to prevent type errors
-            bookings: undefined
-          }));
+          return basicItems || [];
         };
+        
+        let invoiceItems: InvoiceItem[] = [];
         
         try {
           // Try to use the RPC function first
@@ -76,111 +74,92 @@ export function useInvoiceDetails(invoiceId: string | undefined) {
           if (enhancedItemsError) {
             console.error("Error fetching enhanced invoice items:", enhancedItemsError);
             console.log("Falling back to direct item fetch");
-            const basicItems = await fetchItemsDirectly();
-            return {
-              ...normalizedInvoice,
-              items: basicItems.length > 0 ? basicItems : []
-            } as Invoice;
-          }
-          
-          console.log("Enhanced items retrieved from secure function:", enhancedItems);
-          
-          if (!enhancedItems || enhancedItems.length === 0) {
-            console.log("No items found, falling back to direct fetch");
-            const basicItems = await fetchItemsDirectly();
+            invoiceItems = await fetchItemsDirectly();
+          } else if (!enhancedItems || enhancedItems.length === 0) {
+            console.log("No enhanced items found, falling back to direct fetch");
+            invoiceItems = await fetchItemsDirectly();
+          } else {
+            console.log("Enhanced items retrieved from secure function:", enhancedItems);
             
-            if (basicItems.length === 0) {
-              console.log("No items found, creating default item");
-              const defaultItem: InvoiceItem = {
-                id: "default-item",
-                description: "Training services",
-                quantity: 1,
-                unit_price: normalizedInvoice.total,
-                amount: normalizedInvoice.total
+            // Process the enhanced items to match our expected InvoiceItem structure
+            invoiceItems = enhancedItems.map((item: any) => {
+              const processedItem: InvoiceItem = {
+                id: item.id,
+                invoice_id: item.invoice_id,
+                description: item.description || "Training services",
+                quantity: item.quantity,
+                unit_price: item.unit_price,
+                amount: item.amount,
+                booking_id: item.booking_id,
+                created_at: item.created_at,
+                updated_at: item.updated_at
               };
               
-              return {
-                ...normalizedInvoice,
-                items: [defaultItem]
-              } as Invoice;
-            }
-            
-            return {
-              ...normalizedInvoice,
-              items: basicItems
-            } as Invoice;
-          }
-          
-          // Process the enhanced items to match our expected InvoiceItem structure
-          const processedItems = enhancedItems.map((item: any) => {
-            const processedItem: InvoiceItem = {
-              id: item.id,
-              invoice_id: item.invoice_id,
-              description: item.description || "Training services",
-              quantity: item.quantity,
-              unit_price: item.unit_price,
-              amount: item.amount,
-              booking_id: item.booking_id,
-              created_at: item.created_at,
-              updated_at: item.updated_at
-            };
-            
-            // Add booking data if available
-            if (item.booking_details) {
-              const bookingDetails = item.booking_details;
-              
-              // Create the bookings property with properly structured data
-              processedItem.bookings = {
-                id: bookingDetails.id,
+              // Add booking data if available
+              if (item.booking_details) {
+                const bookingDetails = item.booking_details;
                 
-                // Add dog information
-                dogs: bookingDetails.dog ? {
-                  name: bookingDetails.dog.name,
-                  breed: bookingDetails.dog.breed || 'Unknown'
-                } : undefined,
-                
-                // Add class schedule information
-                class_schedules: bookingDetails.class_schedule ? {
-                  id: bookingDetails.class_schedule.id,
-                  start_time: bookingDetails.class_schedule.start_time || new Date().toISOString(),
+                // Create the bookings property with properly structured data
+                processedItem.bookings = {
+                  id: bookingDetails.id,
                   
-                  // Add class information
-                  classes: bookingDetails.class_schedule.class ? {
-                    id: bookingDetails.class_schedule.class.id,
-                    name: bookingDetails.class_schedule.class.name,
-                    price: bookingDetails.class_schedule.class.price || 0,
-                    description: bookingDetails.class_schedule.class.description || ''
+                  // Add dog information
+                  dogs: bookingDetails.dog ? {
+                    name: bookingDetails.dog.name,
+                    breed: bookingDetails.dog.breed || 'Unknown'
+                  } : undefined,
+                  
+                  // Add class schedule information
+                  class_schedules: bookingDetails.class_schedule ? {
+                    id: bookingDetails.class_schedule.id,
+                    start_time: bookingDetails.class_schedule.start_time || new Date().toISOString(),
+                    
+                    // Add class information
+                    classes: bookingDetails.class_schedule.class ? {
+                      id: bookingDetails.class_schedule.class.id,
+                      name: bookingDetails.class_schedule.class.name,
+                      price: bookingDetails.class_schedule.class.price || 0,
+                      description: bookingDetails.class_schedule.class.description || ''
+                    } : undefined
                   } : undefined
-                } : undefined
-              };
-              
-              // Update item description with class and dog info if available
-              if (bookingDetails.class_schedule?.class?.name && bookingDetails.dog?.name) {
-                processedItem.description = `${bookingDetails.class_schedule.class.name} - ${bookingDetails.dog.name}`;
-                console.log(`Updated description for item ${item.id}: ${processedItem.description}`);
+                };
+                
+                // Update item description with class and dog info if available
+                if (bookingDetails.class_schedule?.class?.name && bookingDetails.dog?.name) {
+                  processedItem.description = `${bookingDetails.class_schedule.class.name} - ${bookingDetails.dog.name}`;
+                  console.log(`Updated description for item ${item.id}: ${processedItem.description}`);
+                }
               }
-            }
-            
-            return processedItem;
-          });
-          
-          // Return complete invoice with processed items
-          const result = {
-            ...normalizedInvoice,
-            items: processedItems
-          } as Invoice;
-          
-          console.log("Final invoice data with enhanced items:", result);
-          return result;
+              
+              return processedItem;
+            });
+          }
         } catch (error) {
           console.error("Error processing enhanced items:", error);
           console.log("Falling back to direct item fetch");
-          const basicItems = await fetchItemsDirectly();
-          return {
-            ...normalizedInvoice,
-            items: basicItems.length > 0 ? basicItems : []
-          } as Invoice;
+          invoiceItems = await fetchItemsDirectly();
         }
+        
+        // If still no items, create a default one
+        if (!invoiceItems || invoiceItems.length === 0) {
+          console.log("No items found, creating default item");
+          invoiceItems = [{
+            id: "default-item",
+            description: "Training services",
+            quantity: 1,
+            unit_price: normalizedInvoice.total,
+            amount: normalizedInvoice.total
+          }];
+        }
+          
+        // Return complete invoice with processed items
+        const result = {
+          ...normalizedInvoice,
+          items: invoiceItems
+        } as Invoice;
+          
+        console.log("Final invoice data with items:", result);
+        return result;
       } catch (error) {
         console.error("Error in useInvoiceDetails:", error);
         throw error;

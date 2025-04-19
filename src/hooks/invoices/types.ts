@@ -82,7 +82,7 @@ export interface Invoice {
   created_at: string;
   updated_at: string;
   items?: InvoiceItem[];
-  original_discount_percentage?: number | null;
+  // Remove original_discount_percentage field as it doesn't exist in the database
   // Computed properties
   computed_payment_status?: PaymentStatus;
   computed_days_overdue?: number;
