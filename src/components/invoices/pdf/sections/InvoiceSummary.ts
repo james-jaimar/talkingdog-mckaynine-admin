@@ -4,10 +4,6 @@ import { formatCurrency } from '@/lib/formatters';
 
 export function addInvoiceSummary(doc: any, invoice: Invoice, startY: number): number {
   const { subtotal, tax_rate, tax_amount, discount_amount, discount_type, total } = invoice;
-  const columnPositions = {
-    label: 120,
-    value: 170
-  };
   
   // Calculate available width
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -22,14 +18,14 @@ export function addInvoiceSummary(doc: any, invoice: Invoice, startY: number): n
   // Line before summary
   doc.setLineWidth(0.1);
   doc.line(labelX - 10, currentY - 5, valueX + 30, currentY - 5);
-  currentY += 5;
+  currentY += 10;  // Increased spacing
   
   // Subtotal
   doc.setFont(undefined, 'normal');
   doc.setFontSize(10);
   doc.text('Subtotal:', labelX, currentY);
   doc.text(formatCurrency(subtotal), valueX, currentY, { align: 'right' });
-  currentY += 6;
+  currentY += 8;  // Slightly reduced vertical spacing
   
   // Discount (if applicable)
   if (discount_amount > 0) {
@@ -47,18 +43,18 @@ export function addInvoiceSummary(doc: any, invoice: Invoice, startY: number): n
     doc.text(discountLabel, labelX, currentY);
     doc.text(`-${formatCurrency(discountMonetaryAmount)}`, valueX, currentY, { align: 'right' });
     doc.setTextColor(0, 0, 0); // Reset to black
-    currentY += 6;
+    currentY += 8;
   }
   
   // Tax
   doc.text(`Tax (${tax_rate}%):`, labelX, currentY);
   doc.text(formatCurrency(tax_amount), valueX, currentY, { align: 'right' });
-  currentY += 6;
+  currentY += 10;  // Increased spacing
   
   // Line before total
   doc.setLineWidth(0.1);
   doc.line(labelX - 10, currentY, valueX + 30, currentY);
-  currentY += 4;
+  currentY += 6;
   
   // Total
   doc.setFont(undefined, 'bold');
