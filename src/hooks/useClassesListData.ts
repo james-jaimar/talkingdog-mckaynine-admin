@@ -1,10 +1,9 @@
 
-import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useBranch } from '@/context/BranchContext';
 
-interface Handler {
+export interface Handler {
   clientId: string;
   clientName: string;
   dogId: string;
@@ -15,7 +14,7 @@ interface Handler {
   totalClasses: number;
 }
 
-interface ClassGroup {
+export interface ClassGroup {
   className: string;
   handlers: Handler[];
 }

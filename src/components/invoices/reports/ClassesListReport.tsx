@@ -4,7 +4,7 @@ import { useClassesListData } from "@/hooks/useClassesListData";
 import { Loader2 } from "lucide-react";
 
 export function ClassesListReport() {
-  const { classesData, isLoading } = useClassesListData();
+  const { data: classesData = [], isLoading } = useClassesListData();
 
   if (isLoading) {
     return (
