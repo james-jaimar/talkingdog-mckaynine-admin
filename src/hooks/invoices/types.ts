@@ -60,7 +60,6 @@ export interface Invoice {
     last_name: string;
     email: string;
     phone?: string;
-    // Add missing client address fields
     address?: string;
     city?: string;
     postal_code?: string;
@@ -82,7 +81,10 @@ export interface Invoice {
   created_at: string;
   updated_at: string;
   items?: InvoiceItem[];
-  // Computed properties
+  // New computed properties
+  monetary_discount?: number;
+  original_discount_amount?: number;
+  original_discount_type?: 'fixed' | 'percentage';
   computed_payment_status?: PaymentStatus;
   computed_days_overdue?: number;
 }

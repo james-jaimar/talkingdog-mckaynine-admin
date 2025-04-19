@@ -13,7 +13,7 @@ export function InvoiceSummary({ invoice }: InvoiceSummaryProps) {
     if (invoice.discount_type === 'percentage') {
       return (
         <span className="flex items-center">
-          Discount <span className="font-medium ml-1">({invoice.original_discount_amount}%)</span>
+          Discount <span className="font-medium ml-1">({invoice.original_discount_amount || invoice.discount_amount}%)</span>
         </span>
       );
     }
@@ -27,11 +27,11 @@ export function InvoiceSummary({ invoice }: InvoiceSummaryProps) {
         <span className="font-medium">{formatCurrency(invoice.subtotal)}</span>
       </div>
       
-      {invoice.monetary_discount > 0 && (
+      {(invoice.monetary_discount || invoice.discount_amount > 0) && (
         <div className="flex justify-between text-red-600">
           {renderDiscountLabel()}
           <span className="font-medium">
-            -{formatCurrency(invoice.monetary_discount)}
+            -{formatCurrency(invoice.monetary_discount || invoice.discount_amount)}
           </span>
         </div>
       )}
