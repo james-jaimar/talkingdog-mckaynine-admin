@@ -1,3 +1,4 @@
+
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import {
   Table,
@@ -11,6 +12,7 @@ import { formatCurrency } from "@/lib/formatters";
 import { Loader2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface ClassFinance {
   className: string;
@@ -29,7 +31,7 @@ export function ClassFinancialReport() {
     queryKey: ['class-finances'],
     queryFn: async () => {
       try {
-        // Fetch classes with their financial data
+        // First fetch all the classes with their financial settings
         const { data: classes, error: classesError } = await supabase
           .from('classes')
           .select(`
@@ -42,48 +44,55 @@ export function ClassFinancialReport() {
             admin_fee_value,
             admin_fee_type,
             trainer_fee_value,
-            trainer_fee_type,
-            bookings (
-              id,
-              payment_status,
-              invoices (
-                id,
-                status,
-                total
-              )
-            )
+            trainer_fee_type
           `);
 
         if (classesError) throw classesError;
         if (!classes) return [];
 
-        // Process class data to calculate financials
-        return classes.map(classData => {
-          // Ensure bookings is an array before filtering
-          const bookings = Array.isArray(classData.bookings) ? classData.bookings : [];
+        // For each class, fetch associated bookings separately
+        const classFinances = await Promise.all(classes.map(async (classData) => {
+          // Get paid bookings for this class
+          const { data: bookings, error: bookingsError } = await supabase
+            .from('bookings')
+            .select(`
+              id,
+              payment_status,
+              class_schedule_id,
+              class_schedules:class_schedule_id(class_id)
+            `)
+            .eq('payment_status', 'paid');
           
-          // Now safely filter the bookings array
-          const activeBookings = bookings.filter(
-            booking => booking.payment_status === 'paid'
-          );
+          if (bookingsError) {
+            console.error(`Error fetching bookings for class ${classData.id}:`, bookingsError);
+            return null;
+          }
 
-          const totalCourseFees = activeBookings.length * classData.course_fee;
-          const totalEnrollmentFees = activeBookings.length * classData.enrollment_fee;
+          // Filter bookings that belong to this class
+          const classBookings = bookings ? bookings.filter(booking => 
+            booking.class_schedules && booking.class_schedules.class_id === classData.id
+          ) : [];
+          
+          const activeBookingsCount = classBookings.length;
+
+          // Calculate financial metrics
+          const totalCourseFees = activeBookingsCount * classData.course_fee;
+          const totalEnrollmentFees = activeBookingsCount * classData.enrollment_fee;
 
           // Calculate franchise fee (mckaynine commission)
           const franchiseFee = classData.mckaynine_commission_type === 'percentage'
             ? (totalCourseFees + totalEnrollmentFees) * (classData.mckaynine_commission_value / 100)
-            : activeBookings.length * classData.mckaynine_commission_value;
+            : activeBookingsCount * classData.mckaynine_commission_value;
 
           // Calculate admin fee
           const adminFee = classData.admin_fee_type === 'percentage'
             ? (totalCourseFees + totalEnrollmentFees) * (classData.admin_fee_value / 100)
-            : activeBookings.length * classData.admin_fee_value;
+            : activeBookingsCount * classData.admin_fee_value;
 
           // Calculate instructor fee
           const instructorFee = classData.trainer_fee_type === 'percentage'
             ? (totalCourseFees + totalEnrollmentFees) * (classData.trainer_fee_value / 100)
-            : activeBookings.length * classData.trainer_fee_value;
+            : activeBookingsCount * classData.trainer_fee_value;
 
           // Calculate total revenue and profit
           const totalRevenue = totalCourseFees + totalEnrollmentFees;
@@ -98,11 +107,15 @@ export function ClassFinancialReport() {
             adminFee,
             instructorFee,
             profit,
-            bookingsCount: activeBookings.length
+            bookingsCount: activeBookingsCount
           };
-        });
+        }));
+
+        // Filter out null entries (classes that had errors)
+        return classFinances.filter(Boolean) as ClassFinance[];
       } catch (error) {
         console.error('Error fetching class finances:', error);
+        toast.error('Failed to load financial data');
         throw error;
       }
     }
@@ -135,36 +148,25 @@ export function ClassFinancialReport() {
   }
 
   // Calculate totals for the footer
-  const totals = classFinances && classFinances.length > 0 
-    ? classFinances.reduce((acc, curr) => ({
-        courseFee: acc.courseFee + curr.courseFee,
-        enrollmentFee: acc.enrollmentFee + curr.enrollmentFee,
-        franchiseFee: acc.franchiseFee + curr.franchiseFee,
-        totalOwingToFranchisor: acc.totalOwingToFranchisor + curr.totalOwingToFranchisor,
-        adminFee: acc.adminFee + curr.adminFee,
-        instructorFee: acc.instructorFee + curr.instructorFee,
-        profit: acc.profit + curr.profit,
-        bookingsCount: acc.bookingsCount + curr.bookingsCount
-      }), {
-        courseFee: 0,
-        enrollmentFee: 0,
-        franchiseFee: 0,
-        totalOwingToFranchisor: 0,
-        adminFee: 0,
-        instructorFee: 0,
-        profit: 0,
-        bookingsCount: 0
-      })
-    : {
-        courseFee: 0,
-        enrollmentFee: 0,
-        franchiseFee: 0,
-        totalOwingToFranchisor: 0,
-        adminFee: 0,
-        instructorFee: 0,
-        profit: 0,
-        bookingsCount: 0
-      };
+  const totals = classFinances.reduce((acc, curr) => ({
+    courseFee: acc.courseFee + curr.courseFee,
+    enrollmentFee: acc.enrollmentFee + curr.enrollmentFee,
+    franchiseFee: acc.franchiseFee + curr.franchiseFee,
+    totalOwingToFranchisor: acc.totalOwingToFranchisor + curr.totalOwingToFranchisor,
+    adminFee: acc.adminFee + curr.adminFee,
+    instructorFee: acc.instructorFee + curr.instructorFee,
+    profit: acc.profit + curr.profit,
+    bookingsCount: acc.bookingsCount + curr.bookingsCount
+  }), {
+    courseFee: 0,
+    enrollmentFee: 0,
+    franchiseFee: 0,
+    totalOwingToFranchisor: 0,
+    adminFee: 0,
+    instructorFee: 0,
+    profit: 0,
+    bookingsCount: 0
+  });
 
   return (
     <Card className="w-full">
