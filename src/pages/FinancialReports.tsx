@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Helmet } from "react-helmet";
 import { useInvoices } from "@/hooks/useInvoices";
@@ -9,47 +9,25 @@ import { InvoiceRevenueChart } from "@/components/invoices/reports/InvoiceRevenu
 import { TrainerPaymentsSummary } from "@/components/invoices/reports/TrainerPaymentsSummary";
 import { ClassFinancialReport } from "@/components/invoices/reports/ClassFinancialReport";
 import { DateRangePicker } from "@/components/dashboard/financial/DateRangePicker";
-import { addMonths, startOfMonth, endOfMonth, subMonths } from "date-fns";
+import { startOfMonth, endOfMonth, subMonths } from "date-fns";
 
 export default function FinancialReports() {
-  // Set default date range to previous month for better chance of having data
+  // Set default date range to current month
   const [dateRange, setDateRange] = useState({
-    from: startOfMonth(subMonths(new Date(), 1)),
+    from: startOfMonth(subMonths(new Date(), 0)), // Current month
     to: endOfMonth(new Date())
   });
   
   const { currentBranch } = useBranch();
   const { invoices, isLoading } = useInvoices();
 
-  // Log the date range on component mount and when it changes
-  useEffect(() => {
-    console.log("Financial Reports - Current date range:", {
-      from: dateRange.from.toISOString(),
-      to: dateRange.to.toISOString()
-    });
-  }, [dateRange]);
-
   // Handle date range changes
   const handleDateRangeChange = (range: { from: Date; to?: Date }) => {
-    const updatedRange = {
+    setDateRange({
       from: range.from,
       to: range.to || endOfMonth(new Date())
-    };
-    
-    setDateRange(updatedRange);
-    
-    console.log("Date range changed:", {
-      from: updatedRange.from.toISOString(),
-      to: updatedRange.to.toISOString()
     });
   };
-
-  // Filter invoices based on date range for the revenue chart
-  const filteredInvoices = invoices ? invoices.filter(invoice => {
-    const invoiceDate = new Date(invoice.issued_date);
-    return invoiceDate >= dateRange.from && 
-           invoiceDate <= (dateRange.to || new Date());
-  }) : [];
 
   return (
     <RequireAdmin>
@@ -68,7 +46,7 @@ export default function FinancialReports() {
             />
           </div>
 
-          {/* Class Financial Report - Passing the date range */}
+          {/* Class Financial Report */}
           <div className="mb-6">
             <ClassFinancialReport dateRange={dateRange} />
           </div>
@@ -76,7 +54,7 @@ export default function FinancialReports() {
           {/* Revenue Chart */}
           <div className="mb-6">
             <InvoiceRevenueChart 
-              invoices={filteredInvoices} 
+              invoices={invoices} 
               timeframe="monthly"
             />
           </div>
