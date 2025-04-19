@@ -37,9 +37,13 @@ export default function FinancialReports() {
 
   // Function to refresh all financial data
   const refreshFinancialData = () => {
-    refreshAllInvoiceQueries();
+    // Invalidate all relevant queries first
     queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
     queryClient.invalidateQueries({ queryKey: ['classes-list-data'] });
+    
+    // Then refresh invoice data
+    refreshAllInvoiceQueries();
+    
     toast.success("Financial data refreshed");
   };
 
@@ -77,7 +81,11 @@ export default function FinancialReports() {
               <div className="space-y-6">
                 <ClassFinancialReport 
                   dateRange={dateRange} 
-                  onRefreshSuccess={() => toast.success("Financial data refreshed")} 
+                  onRefreshSuccess={() => {
+                    // When class financials are refreshed, also refresh invoice data
+                    refreshAllInvoiceQueries();
+                    toast.success("Financial data refreshed");
+                  }} 
                 />
                 <InvoiceRevenueChart 
                   invoices={invoices} 

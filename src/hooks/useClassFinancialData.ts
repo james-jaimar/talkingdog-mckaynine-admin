@@ -29,7 +29,7 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
 
       console.log(`Fetching financial data for branch ${branchId} from ${fromDate} to ${toDate}`);
       
-      // First get all confirmed bookings in the date range
+      // First get all confirmed bookings with their class information
       const { data: bookings, error: bookingsError } = await supabase
         .from('bookings')
         .select(`
@@ -59,49 +59,71 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
         throw bookingsError;
       }
       
-      // Get all invoice items linked to these bookings to check their payment status
-      const bookingIds = bookings?.map(b => b.id) || [];
-      let invoiceItems: any[] = [];
-      
-      if (bookingIds.length > 0) {
-        const { data: items, error: itemsError } = await supabase
-          .from('invoice_items')
-          .select(`
-            booking_id,
-            invoice_id,
-            invoices:invoice_id (
-              status,
-              payment_received,
-              total
-            )
-          `)
-          .in('booking_id', bookingIds);
+      // Also fetch invoice items to get accurate revenue data
+      const { data: invoiceItems, error: invoiceItemsError } = await supabase
+        .from('invoice_items')
+        .select(`
+          id,
+          invoice_id,
+          booking_id,
+          amount,
+          unit_price,
+          quantity,
+          invoices:invoice_id (
+            id,
+            status,
+            payment_received,
+            total,
+            client_id,
+            issued_date
+          )
+        `)
+        .gte('invoices.issued_date', fromDate)
+        .lte('invoices.issued_date', toDate)
+        .neq('invoices.status', 'cancelled');
         
-        if (itemsError) {
-          console.error("Error fetching invoice items:", itemsError);
-        } else {
-          invoiceItems = items || [];
-        }
+      if (invoiceItemsError) {
+        console.error("Error fetching invoice items:", invoiceItemsError);
+        throw invoiceItemsError;
+      }
+        
+      // Map invoices to bookings for financial calculations
+      const bookingInvoiceMap = new Map();
+      
+      if (invoiceItems && invoiceItems.length > 0) {
+        invoiceItems.forEach(item => {
+          if (item.booking_id) {
+            bookingInvoiceMap.set(item.booking_id, {
+              amount: item.amount || (item.unit_price * item.quantity),
+              invoiceStatus: item.invoices?.status || 'unknown',
+              isPaid: item.invoices?.payment_received || item.invoices?.status === 'paid'
+            });
+          }
+        });
       }
       
-      // Create a map of booking id to invoice payment status
-      const bookingPaymentMap = new Map();
-      invoiceItems.forEach(item => {
-        if (item.booking_id && item.invoices) {
-          bookingPaymentMap.set(item.booking_id, {
-            isPaid: item.invoices.payment_received === true || item.invoices.status === 'paid',
-            invoiceTotal: item.invoices.total || 0
-          });
-        }
-      });
+      console.log(`Retrieved ${bookings?.length || 0} bookings and ${invoiceItems?.length || 0} invoice items`);
+      console.log(`Mapped ${bookingInvoiceMap.size} bookings to invoices`);
       
-      console.log(`Retrieved ${bookings?.length || 0} bookings and ${invoiceItems.length} invoice items`);
-      
-      // Return data with payment info
-      return bookings?.map(booking => ({
-        ...booking,
-        invoiceInfo: bookingPaymentMap.get(booking.id) || { isPaid: false, invoiceTotal: 0 }
-      })) || [];
+      // Enhance bookings with invoice data
+      return bookings?.map(booking => {
+        // Get invoice data if available
+        const invoiceData = bookingInvoiceMap.get(booking.id);
+        
+        // Use invoice amount if available, otherwise use class fee
+        const courseFromClass = booking.class_schedules?.classes?.course_fee || 0;
+        const invoiceAmount = invoiceData?.amount;
+        
+        // Prioritize invoice amount over class fee for revenue calculation
+        const actualRevenue = invoiceAmount !== undefined ? invoiceAmount : courseFromClass;
+        
+        return {
+          ...booking,
+          actualRevenue,
+          invoiceInfo: invoiceData || { isPaid: false, amount: 0, invoiceStatus: 'not_invoiced' },
+          calculatedFee: courseFromClass // Keep the class fee for percentage calculations
+        };
+      }) || [];
     },
     enabled: !!branchId && !!fromDate && !!toDate,
     staleTime: 30000, // 30 seconds
@@ -123,8 +145,8 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
       if (!classData) return;
 
       const className = classData.name;
-      // Use invoice amount if available, otherwise use course fee from class
-      const courseFee = classData.course_fee || 0;
+      // Use actual revenue from invoice or course fee
+      const courseRevenue = booking.actualRevenue || classData.course_fee || 0;
 
       // Get or create class summary
       const summary = classSummaries.get(className) || {
@@ -139,23 +161,27 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
 
       // Update summary
       summary.bookingsCount++;
-      summary.totalRevenue += courseFee;
+      summary.totalRevenue += courseRevenue;
+
+      // For fee calculations, use the class's defined percentages
+      // but apply them to the actual revenue collected (from invoice if available)
+      const feeBaseAmount = booking.calculatedFee || courseRevenue;
 
       // Calculate fees based on course fee
       if (classData.mckaynine_commission_type === 'percentage') {
-        summary.franchiseFee += courseFee * (classData.mckaynine_commission_value / 100);
+        summary.franchiseFee += feeBaseAmount * (classData.mckaynine_commission_value / 100);
       } else {
         summary.franchiseFee += classData.mckaynine_commission_value;
       }
 
       if (classData.admin_fee_type === 'percentage') {
-        summary.adminFee += courseFee * (classData.admin_fee_value / 100);
+        summary.adminFee += feeBaseAmount * (classData.admin_fee_value / 100);
       } else {
         summary.adminFee += classData.admin_fee_value;
       }
 
       if (classData.trainer_fee_type === 'percentage') {
-        summary.instructorFee += courseFee * (classData.trainer_fee_value / 100);
+        summary.instructorFee += feeBaseAmount * (classData.trainer_fee_value / 100);
       } else {
         summary.instructorFee += classData.trainer_fee_value;
       }
