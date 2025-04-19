@@ -47,7 +47,7 @@ export function useInvoiceDetails(invoiceId: string | undefined) {
         
         console.log("Invoice basic data retrieved:", normalizedInvoice);
         
-        // Fetch items directly if the RPC function fails
+        // Fetch items directly from the invoice_items table
         const fetchItemsDirectly = async () => {
           console.log("Fetching invoice items directly");
           
@@ -66,79 +66,9 @@ export function useInvoiceDetails(invoiceId: string | undefined) {
         
         let invoiceItems: InvoiceItem[] = [];
         
-        try {
-          // Try to use the RPC function first
-          const { data: enhancedItems, error: enhancedItemsError } = await supabase
-            .rpc('get_invoice_items_with_details', { p_invoice_id: invoiceId });
-            
-          if (enhancedItemsError) {
-            console.error("Error fetching enhanced invoice items:", enhancedItemsError);
-            console.log("Falling back to direct item fetch");
-            invoiceItems = await fetchItemsDirectly();
-          } else if (!enhancedItems || enhancedItems.length === 0) {
-            console.log("No enhanced items found, falling back to direct fetch");
-            invoiceItems = await fetchItemsDirectly();
-          } else {
-            console.log("Enhanced items retrieved from secure function:", enhancedItems);
-            
-            // Process the enhanced items to match our expected InvoiceItem structure
-            invoiceItems = enhancedItems.map((item: any) => {
-              const processedItem: InvoiceItem = {
-                id: item.id,
-                invoice_id: item.invoice_id,
-                description: item.description || "Training services",
-                quantity: item.quantity,
-                unit_price: item.unit_price,
-                amount: item.amount,
-                booking_id: item.booking_id,
-                created_at: item.created_at,
-                updated_at: item.updated_at
-              };
-              
-              // Add booking data if available
-              if (item.booking_details) {
-                const bookingDetails = item.booking_details;
-                
-                // Create the bookings property with properly structured data
-                processedItem.bookings = {
-                  id: bookingDetails.id,
-                  
-                  // Add dog information
-                  dogs: bookingDetails.dog ? {
-                    name: bookingDetails.dog.name,
-                    breed: bookingDetails.dog.breed || 'Unknown'
-                  } : undefined,
-                  
-                  // Add class schedule information
-                  class_schedules: bookingDetails.class_schedule ? {
-                    id: bookingDetails.class_schedule.id,
-                    start_time: bookingDetails.class_schedule.start_time || new Date().toISOString(),
-                    
-                    // Add class information
-                    classes: bookingDetails.class_schedule.class ? {
-                      id: bookingDetails.class_schedule.class.id,
-                      name: bookingDetails.class_schedule.class.name,
-                      price: bookingDetails.class_schedule.class.price || 0,
-                      description: bookingDetails.class_schedule.class.description || ''
-                    } : undefined
-                  } : undefined
-                };
-                
-                // Update item description with class and dog info if available
-                if (bookingDetails.class_schedule?.class?.name && bookingDetails.dog?.name) {
-                  processedItem.description = `${bookingDetails.class_schedule.class.name} - ${bookingDetails.dog.name}`;
-                  console.log(`Updated description for item ${item.id}: ${processedItem.description}`);
-                }
-              }
-              
-              return processedItem;
-            });
-          }
-        } catch (error) {
-          console.error("Error processing enhanced items:", error);
-          console.log("Falling back to direct item fetch");
-          invoiceItems = await fetchItemsDirectly();
-        }
+        // Skip the RPC function call and directly fetch items
+        // This avoids the "column c.price does not exist" error
+        invoiceItems = await fetchItemsDirectly();
         
         // If still no items, create a default one
         if (!invoiceItems || invoiceItems.length === 0) {

@@ -80,7 +80,7 @@ export async function enhanceInvoiceItem(item: InvoiceItem): Promise<InvoiceItem
               enhancedItem.bookings.class_schedules.classes = {
                 id: classData.id,
                 name: classData.name,
-                price: classData.price,
+                price: classData.course_fee || 0, // Using course_fee instead of price
                 description: classData.description || classData.name || 'Training class'
               };
               
@@ -101,9 +101,9 @@ export async function enhanceInvoiceItem(item: InvoiceItem): Promise<InvoiceItem
               
               // Use class price if unit price is missing or zero
               if (!enhancedItem.unit_price || enhancedItem.unit_price === 0) {
-                enhancedItem.unit_price = classData.price;
-                enhancedItem.amount = classData.price * enhancedItem.quantity;
-                console.log(`Updated item price to class price: ${classData.price}`);
+                enhancedItem.unit_price = classData.course_fee || 0; // Using course_fee instead of price
+                enhancedItem.amount = (classData.course_fee || 0) * enhancedItem.quantity;
+                console.log(`Updated item price to class course_fee: ${classData.course_fee}`);
               }
             } else {
               console.log("No class data found for the specified class ID");

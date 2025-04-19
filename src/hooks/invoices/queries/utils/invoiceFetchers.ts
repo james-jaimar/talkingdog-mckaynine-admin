@@ -2,7 +2,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { Invoice, InvoiceItem } from "@/hooks/invoices/types";
 import { toast } from "sonner";
-import { handleQueryError } from "./errorHandlers";
 
 /**
  * Fetch the base invoice data with client information
