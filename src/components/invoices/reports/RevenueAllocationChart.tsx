@@ -134,7 +134,7 @@ export function RevenueAllocationChart({ invoices, showOnlyPaid = true }: Revenu
                 outerRadius={80}
                 fill="#8884d8"
                 dataKey="value"
-                label={({ name, percent }) => `${name}: ${formatPercentage(percent)}`}
+                label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(1)}%`}
               >
                 {allocationData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.color} />
@@ -145,6 +145,8 @@ export function RevenueAllocationChart({ invoices, showOnlyPaid = true }: Revenu
                 content={({active, payload}) => {
                   if (active && payload && payload.length) {
                     const data = payload[0].payload;
+                    const percentage = data.value / totalRevenue;
+                    
                     return (
                       <div className="rounded-lg border bg-background p-2 shadow-md">
                         <div className="font-medium">{data.name}</div>
@@ -154,7 +156,7 @@ export function RevenueAllocationChart({ invoices, showOnlyPaid = true }: Revenu
                         </div>
                         <div className="flex items-center justify-between gap-8 text-sm">
                           <span>Percentage: </span>
-                          <span className="font-medium">{formatPercentage(data.value / totalRevenue)}</span>
+                          <span className="font-medium">{(percentage * 100).toFixed(1)}%</span>
                         </div>
                       </div>
                     );

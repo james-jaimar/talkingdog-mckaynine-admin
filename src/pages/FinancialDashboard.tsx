@@ -10,7 +10,7 @@ import { TrainerPaymentsSummary } from "@/components/invoices/reports/TrainerPay
 import { useInvoices } from "@/hooks/useInvoices";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { formatCurrency } from "@/lib/formatters";
+import { formatCurrency, formatPercentage } from "@/lib/formatters";
 import { useBranch } from "@/context/BranchContext";
 import RequireAdmin from "@/components/auth/RequireAdmin";
 import { DollarSign, Users, Calendar, TrendingUp } from "lucide-react";
@@ -100,6 +100,19 @@ export default function FinancialDashboard() {
       .reduce((sum, invoice) => sum + invoice.total, 0) : 0
   };
 
+  // Calculate correct percentages - ensure we account for edge cases
+  const collectedPercentage = financialMetrics.totalRevenue > 0 
+    ? (financialMetrics.collectedRevenue / financialMetrics.totalRevenue) 
+    : 0;
+    
+  const pendingPercentage = financialMetrics.totalRevenue > 0 
+    ? (financialMetrics.pendingRevenue / financialMetrics.totalRevenue) 
+    : 0;
+    
+  const overduePercentage = financialMetrics.totalRevenue > 0 
+    ? (financialMetrics.overdueRevenue / financialMetrics.totalRevenue) 
+    : 0;
+
   return (
     <RequireAdmin>
       <DashboardLayout>
@@ -155,9 +168,7 @@ export default function FinancialDashboard() {
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {financialMetrics.totalRevenue > 0 
-                    ? ((financialMetrics.collectedRevenue / financialMetrics.totalRevenue) * 100).toFixed(1) 
-                    : "0"}% of total revenue
+                  {formatPercentage(collectedPercentage)} of total revenue
                 </p>
               </CardContent>
             </Card>
@@ -176,9 +187,7 @@ export default function FinancialDashboard() {
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {financialMetrics.totalRevenue > 0
-                    ? ((financialMetrics.pendingRevenue / financialMetrics.totalRevenue) * 100).toFixed(1)
-                    : "0"}% of total revenue
+                  {formatPercentage(pendingPercentage)} of total revenue
                 </p>
               </CardContent>
             </Card>
@@ -197,9 +206,7 @@ export default function FinancialDashboard() {
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {financialMetrics.totalRevenue > 0
-                    ? ((financialMetrics.overdueRevenue / financialMetrics.totalRevenue) * 100).toFixed(1)
-                    : "0"}% of total revenue
+                  {formatPercentage(overduePercentage)} of total revenue
                 </p>
               </CardContent>
             </Card>
