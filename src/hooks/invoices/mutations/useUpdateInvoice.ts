@@ -16,13 +16,16 @@ export function useUpdateInvoice() {
       // Calculate subtotal
       const subtotal = values.items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
       
-      // Original percentage or fixed amount entered by user
+      // Preserve the original percentage value entered by user for display purposes
       const originalDiscountInput = values.discount_amount;
+      let original_discount_percentage = null;
       
       // Calculate discount - fixed amount or percentage of subtotal
       let discount_amount = originalDiscountInput;
       if (values.discount_type === 'percentage') {
-        // Store the actual calculated amount, not the percentage
+        // Store the original percentage value for display
+        original_discount_percentage = originalDiscountInput;
+        // Calculate the actual amount based on the percentage
         discount_amount = (subtotal * originalDiscountInput) / 100;
       }
       
@@ -36,6 +39,7 @@ export function useUpdateInvoice() {
         subtotal,
         discount_type: values.discount_type,
         original_discount_input: originalDiscountInput,
+        original_discount_percentage,
         calculated_discount_amount: discount_amount,
         tax_rate: values.tax_rate,
         tax_amount,
@@ -58,7 +62,8 @@ export function useUpdateInvoice() {
           total,
           discount_amount,
           discount_type: values.discount_type,
-          discount_reason: values.discount_reason || null
+          discount_reason: values.discount_reason || null,
+          original_discount_percentage: original_discount_percentage
         })
         .eq('id', invoiceId);
 

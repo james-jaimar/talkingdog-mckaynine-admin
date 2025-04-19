@@ -1,4 +1,5 @@
 export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled';
+export type PaymentStatus = 'paid' | 'unpaid' | 'partially_paid';
 
 export interface InvoiceItem {
   id?: string;
@@ -8,28 +9,6 @@ export interface InvoiceItem {
   unit_price: number;
   amount?: number;
   booking_id?: string | null;
-  created_at?: string;
-  updated_at?: string;
-  bookings?: {
-    id: string;
-    dog_id?: string;
-    class_schedule_id?: string;
-    dogs?: {
-      name: string;
-      breed: string;
-    };
-    class_schedules?: {
-      id: string;
-      start_time: string;
-      class_id?: string;
-      classes?: {
-        id: string;
-        name: string;
-        description?: string;
-        price: number;
-      }
-    }
-  };
 }
 
 export interface InvoiceFormValues {
@@ -41,40 +20,41 @@ export interface InvoiceFormValues {
   notes?: string;
   tax_rate: number;
   items: InvoiceItem[];
-  discount_amount: number;
   discount_type: 'fixed' | 'percentage';
+  discount_amount: number;
   discount_reason?: string;
 }
 
 export interface Invoice {
   id: string;
-  client_id: string;
   invoice_number: string;
-  status: InvoiceStatus;
-  issued_date: string;
-  due_date: string;
-  payment_date?: string | null;
-  payment_received: boolean;
-  email_sent: boolean;
-  notes?: string | null;
-  subtotal: number;
-  tax_rate: number;
-  tax_amount: number;
-  total: number;
-  created_at: string;
-  updated_at: string;
+  client_id: string;
   client?: {
     id: string;
     first_name: string;
     last_name: string;
     email: string;
     phone?: string;
-    address?: string;
-    city?: string;
-    postal_code?: string;
   };
-  items?: InvoiceItem[];
+  status: InvoiceStatus;
+  issued_date: string;
+  due_date: string;
+  subtotal: number;
+  tax_rate: number;
+  tax_amount: number;
+  total: number;
   discount_amount: number;
   discount_type: 'fixed' | 'percentage';
-  discount_reason?: string | null;
+  discount_reason?: string;
+  notes?: string;
+  payment_received?: boolean;
+  payment_date?: string;
+  email_sent?: boolean;
+  created_at: string;
+  updated_at: string;
+  items?: InvoiceItem[];
+  original_discount_percentage?: number;
+  // Computed properties
+  computed_payment_status?: PaymentStatus;
+  computed_days_overdue?: number;
 }

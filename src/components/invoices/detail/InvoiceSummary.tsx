@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { formatCurrency } from '@/lib/formatters';
 import { Invoice } from '@/hooks/invoices/types';
@@ -8,19 +7,22 @@ interface InvoiceSummaryProps {
 }
 
 export function InvoiceSummary({ invoice }: InvoiceSummaryProps) {
-  // For percentage discounts, display the original percentage value, not calculated from amount
-  // This ensures we show what was entered (e.g., 25%) rather than a derived value
+  // For percentage discounts, we need to show the original percentage value
   let discountDisplay = '';
   
   if (invoice.discount_type === 'percentage') {
-    // In the database we store the calculated amount, not the percentage
-    // So we need to calculate back to get the original percentage
-    // But we'll cap it at 100% to prevent unreasonable values
-    const calculatedPercentage = Math.min(
-      (invoice.discount_amount / invoice.subtotal) * 100, 
-      100
-    ).toFixed(1);
-    discountDisplay = `(${calculatedPercentage}%)`;
+    // For percentage discounts, we use the original_discount_percentage if available,
+    // otherwise we calculate an approximation
+    if (invoice.original_discount_percentage) {
+      discountDisplay = `(${invoice.original_discount_percentage}%)`;
+    } else {
+      // Fallback calculation - calculate percentage from amount relative to subtotal
+      const calculatedPercentage = Math.min(
+        (invoice.discount_amount / invoice.subtotal) * 100, 
+        100
+      ).toFixed(1);
+      discountDisplay = `(${calculatedPercentage}%)`;
+    }
   }
 
   return (

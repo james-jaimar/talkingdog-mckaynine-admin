@@ -3,7 +3,7 @@ import { Invoice } from '@/hooks/invoices/types';
 import { formatCurrency } from '@/lib/formatters';
 
 export function addInvoiceSummary(doc: any, invoice: Invoice, startY: number): number {
-  const { subtotal, tax_rate, tax_amount, discount_amount, discount_type, total } = invoice;
+  const { subtotal, tax_rate, tax_amount, discount_amount, discount_type, total, original_discount_percentage } = invoice;
   const columnPositions = {
     label: 120,
     value: 170
@@ -33,10 +33,15 @@ export function addInvoiceSummary(doc: any, invoice: Invoice, startY: number): n
   
   // Discount (if applicable)
   if (discount_amount > 0) {
-    // For percentage discounts, display the percentage in a reasonable range (capped at 100%)
-    const discountLabel = discount_type === 'percentage'
-      ? `Discount (${Math.min((discount_amount / subtotal * 100), 100).toFixed(1)}%):`
-      : 'Discount:';
+    // Get the correct percentage display for percentage discounts
+    let discountLabel = 'Discount:';
+    
+    if (discount_type === 'percentage') {
+      // Use the original percentage if available, otherwise calculate an approximation
+      const displayPercentage = original_discount_percentage || 
+        Math.min((discount_amount / subtotal * 100), 100).toFixed(1);
+      discountLabel = `Discount (${displayPercentage}%):`;
+    }
       
     doc.setTextColor(220, 53, 69); // Red color for discount
     doc.text(discountLabel, labelX, currentY);
