@@ -33,8 +33,9 @@ export function addInvoiceSummary(doc: any, invoice: Invoice, startY: number): n
   
   // Discount (if applicable)
   if (discount_amount > 0) {
+    // For percentage discounts, display the percentage in a reasonable range (capped at 100%)
     const discountLabel = discount_type === 'percentage'
-      ? `Discount (${(discount_amount / subtotal * 100).toFixed(1)}%):`
+      ? `Discount (${Math.min((discount_amount / subtotal * 100), 100).toFixed(1)}%):`
       : 'Discount:';
       
     doc.setTextColor(220, 53, 69); // Red color for discount

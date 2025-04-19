@@ -16,11 +16,14 @@ export function useUpdateInvoice() {
       // Calculate subtotal
       const subtotal = values.items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
       
+      // Original percentage or fixed amount entered by user
+      const originalDiscountInput = values.discount_amount;
+      
       // Calculate discount - fixed amount or percentage of subtotal
-      let discount_amount = values.discount_amount;
+      let discount_amount = originalDiscountInput;
       if (values.discount_type === 'percentage') {
         // Store the actual calculated amount, not the percentage
-        discount_amount = (subtotal * values.discount_amount) / 100;
+        discount_amount = (subtotal * originalDiscountInput) / 100;
       }
       
       // Calculate tax amount based on subtotal minus discount
@@ -32,8 +35,8 @@ export function useUpdateInvoice() {
       console.log("Invoice update calculations:", {
         subtotal,
         discount_type: values.discount_type,
-        discount_amount_input: values.discount_amount,
-        calculated_discount: discount_amount,
+        original_discount_input: originalDiscountInput,
+        calculated_discount_amount: discount_amount,
         tax_rate: values.tax_rate,
         tax_amount,
         total
