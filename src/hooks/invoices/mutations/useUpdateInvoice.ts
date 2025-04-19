@@ -33,30 +33,7 @@ export function useUpdateInvoice() {
           throw new Error("Percentage discount must be between 0 and 100");
         }
         
-        // Calculate the actual monetary discount
-        const monetary_discount = discount_type === 'percentage' 
-          ? (subtotal * discount_amount) / 100 
-          : Math.min(discount_amount, subtotal);
-        
-        // Calculate tax on the amount after discount
-        const taxable_amount = subtotal - monetary_discount;
-        const tax_amount = taxable_amount * (values.tax_rate / 100);
-        
-        // Calculate total
-        const total = subtotal - monetary_discount + tax_amount;
-
-        console.log("Invoice update calculations:", {
-          subtotal,
-          discount_type,
-          discount_amount,
-          monetary_discount,
-          taxable_amount,
-          tax_rate: values.tax_rate,
-          tax_amount,
-          total
-        });
-
-        // Create invoice update object
+        // Let the database trigger handle the actual discount calculations
         const updateData = {
           client_id: values.client_id,
           invoice_number: values.invoice_number,
@@ -66,10 +43,8 @@ export function useUpdateInvoice() {
           notes: values.notes || null,
           subtotal,
           tax_rate: values.tax_rate,
-          tax_amount,
-          total,
-          discount_amount, // Store the original input value (percentage or fixed amount)
-          discount_type,   // This determines how to interpret discount_amount
+          discount_amount, // This will be interpreted by the trigger based on discount_type
+          discount_type,   // The trigger will handle percentage vs fixed calculation
           discount_reason: values.discount_reason || null
         };
 

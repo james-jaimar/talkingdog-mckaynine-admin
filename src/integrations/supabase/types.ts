@@ -738,7 +738,10 @@ export type Database = {
           id: string
           invoice_number: string
           issued_date: string
+          monetary_discount: number | null
           notes: string | null
+          original_discount_amount: number | null
+          original_discount_type: string | null
           payment_date: string | null
           payment_received: boolean | null
           status: string
@@ -759,7 +762,10 @@ export type Database = {
           id?: string
           invoice_number: string
           issued_date?: string
+          monetary_discount?: number | null
           notes?: string | null
+          original_discount_amount?: number | null
+          original_discount_type?: string | null
           payment_date?: string | null
           payment_received?: boolean | null
           status?: string
@@ -780,7 +786,10 @@ export type Database = {
           id?: string
           invoice_number?: string
           issued_date?: string
+          monetary_discount?: number | null
           notes?: string | null
+          original_discount_amount?: number | null
+          original_discount_type?: string | null
           payment_date?: string | null
           payment_received?: boolean | null
           status?: string
