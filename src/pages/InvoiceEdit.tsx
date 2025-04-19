@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useForm, useFieldArray } from "react-hook-form";
@@ -46,9 +47,10 @@ export default function InvoiceEdit() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { useInvoiceDetails, updateInvoice } = useInvoices();
   const { clients, isLoading: clientsLoading } = useClientsData();
-  const { data: invoice, isLoading, isError } = useInvoiceDetails(id);
+  const { data: invoice, isLoading, isError, error } = useInvoiceDetails(id);
   
   const form = useForm<InvoiceFormValues>({
     resolver: zodResolver(invoiceSchema),
@@ -97,7 +99,7 @@ export default function InvoiceEdit() {
           quantity: item.quantity,
           unit_price: item.unit_price,
           booking_id: item.booking_id
-        })) : [{ description: "", quantity: 1, unit_price: 0 }],
+        })) : [{ description: "Invoice item", quantity: 1, unit_price: 0 }],
         discount_type: invoice.discount_type || 'fixed',
         discount_amount: discountAmount,
         discount_reason: invoice.discount_reason || ''
@@ -109,12 +111,12 @@ export default function InvoiceEdit() {
   // Calculate total with discount
   const calculateSubtotal = () => {
     const items = form.getValues("items");
-    return items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
+    return items.reduce((sum, item) => sum + ((item.quantity || 0) * (item.unit_price || 0)), 0);
   };
   
   const calculateDiscount = () => {
     const discountType = form.getValues("discount_type");
-    const discountAmount = form.getValues("discount_amount");
+    const discountAmount = form.getValues("discount_amount") || 0;
     const subtotal = calculateSubtotal();
 
     if (discountType === "percentage") {
@@ -125,7 +127,7 @@ export default function InvoiceEdit() {
   };
   
   const calculateTax = () => {
-    const taxRate = form.getValues("tax_rate");
+    const taxRate = form.getValues("tax_rate") || 0;
     const subtotal = calculateSubtotal();
     const discount = calculateDiscount();
     return (subtotal - discount) * (taxRate / 100);
@@ -142,11 +144,23 @@ export default function InvoiceEdit() {
     }
     
     console.log("Submitting form with values:", values);
+    setIsSubmitting(true);
     
     try {
+      // Ensure all items have valid values
+      const validItems = values.items.map(item => ({
+        ...item,
+        description: item.description || "Invoice item",
+        quantity: item.quantity || 1,
+        unit_price: item.unit_price || 0
+      }));
+      
       const result = await updateInvoice.mutateAsync({ 
         invoiceId: id, 
-        values 
+        values: {
+          ...values,
+          items: validItems
+        } 
       });
       
       console.log("Update result:", result);
@@ -157,9 +171,11 @@ export default function InvoiceEdit() {
       } else {
         toast.error("Failed to update invoice - please try again");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Form submission error:", error);
-      toast.error("Failed to update invoice due to an error");
+      toast.error(error.message || "Failed to update invoice due to an error");
+    } finally {
+      setIsSubmitting(false);
     }
   };
   
@@ -183,6 +199,9 @@ export default function InvoiceEdit() {
           <div className="text-center">
             <h1 className="text-2xl font-bold text-red-600">Error Loading Invoice</h1>
             <p className="mt-2">The requested invoice could not be found or you don't have permission to view it.</p>
+            {error && (
+              <p className="text-sm text-red-500 mt-2">Error: {error instanceof Error ? error.message : 'Unknown error'}</p>
+            )}
             <Button 
               onClick={() => navigate('/invoices')} 
               className="mt-4"
@@ -420,7 +439,7 @@ export default function InvoiceEdit() {
                                 <FormItem>
                                   <FormLabel>Description</FormLabel>
                                   <FormControl>
-                                    <Input {...field} />
+                                    <Input {...field} value={field.value || ''} />
                                   </FormControl>
                                   <FormMessage />
                                 </FormItem>
@@ -441,7 +460,8 @@ export default function InvoiceEdit() {
                                       min={1}
                                       step={1}
                                       {...field}
-                                      onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                                      value={field.value || 1}
+                                      onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
                                     />
                                   </FormControl>
                                   <FormMessage />
@@ -463,6 +483,7 @@ export default function InvoiceEdit() {
                                       min={0}
                                       step={0.01}
                                       {...field}
+                                      value={field.value || 0}
                                       onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                                     />
                                   </FormControl>
@@ -507,6 +528,7 @@ export default function InvoiceEdit() {
                             max={100}
                             step={0.1}
                             {...field}
+                            value={field.value || 0}
                             onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                           />
                         </FormControl>
@@ -564,15 +586,15 @@ export default function InvoiceEdit() {
                     type="button"
                     variant="outline"
                     onClick={() => navigate(`/invoices/${id}`)}
-                    disabled={updateInvoice.isPending}
+                    disabled={isSubmitting || updateInvoice.isPending}
                   >
                     Cancel
                   </Button>
                   <Button 
                     type="submit" 
-                    disabled={updateInvoice.isPending}
+                    disabled={isSubmitting || updateInvoice.isPending}
                   >
-                    {updateInvoice.isPending ? (
+                    {isSubmitting || updateInvoice.isPending ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Saving...

@@ -74,7 +74,7 @@ export function useUpdateInvoice() {
             original_discount_percentage
           })
           .eq('id', invoiceId)
-          .select();
+          .select('*');
 
         if (invoiceError) {
           console.error("Error updating invoice:", invoiceError);
@@ -99,10 +99,10 @@ export function useUpdateInvoice() {
         // Insert new items
         const itemsToInsert = values.items.map(item => ({
           invoice_id: invoiceId,
-          description: item.description,
-          quantity: item.quantity,
-          unit_price: item.unit_price,
-          amount: item.quantity * item.unit_price,
+          description: item.description || "Invoice item",
+          quantity: item.quantity || 1,
+          unit_price: item.unit_price || 0,
+          amount: (item.quantity || 1) * (item.unit_price || 0),
           booking_id: item.booking_id || null
         }));
 
@@ -132,8 +132,18 @@ export function useUpdateInvoice() {
 
         console.log("New invoice items inserted successfully:", insertedItems);
         return { id: invoiceId, success: true };
-      } catch (error) {
+      } catch (error: any) {
         console.error("Invoice update failed with error:", error);
+        // Provide more detailed error information
+        if (error.details) {
+          console.error("Error details:", error.details);
+        }
+        if (error.hint) {
+          console.error("Error hint:", error.hint);
+        }
+        if (error.message) {
+          console.error("Error message:", error.message);
+        }
         throw error;
       }
     },

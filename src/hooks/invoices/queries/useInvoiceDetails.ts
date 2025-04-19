@@ -79,25 +79,35 @@ export function useInvoiceDetails(invoiceId: string | undefined) {
             const basicItems = await fetchItemsDirectly();
             return {
               ...normalizedInvoice,
-              items: basicItems
+              items: basicItems.length > 0 ? basicItems : []
             } as Invoice;
           }
           
           console.log("Enhanced items retrieved from secure function:", enhancedItems);
           
           if (!enhancedItems || enhancedItems.length === 0) {
-            console.log("No items found, creating default item");
-            const defaultItem: InvoiceItem = {
-              id: "default-item",
-              description: "Training services",
-              quantity: 1,
-              unit_price: normalizedInvoice.total,
-              amount: normalizedInvoice.total
-            };
+            console.log("No items found, falling back to direct fetch");
+            const basicItems = await fetchItemsDirectly();
+            
+            if (basicItems.length === 0) {
+              console.log("No items found, creating default item");
+              const defaultItem: InvoiceItem = {
+                id: "default-item",
+                description: "Training services",
+                quantity: 1,
+                unit_price: normalizedInvoice.total,
+                amount: normalizedInvoice.total
+              };
+              
+              return {
+                ...normalizedInvoice,
+                items: [defaultItem]
+              } as Invoice;
+            }
             
             return {
               ...normalizedInvoice,
-              items: [defaultItem]
+              items: basicItems
             } as Invoice;
           }
           
@@ -164,10 +174,11 @@ export function useInvoiceDetails(invoiceId: string | undefined) {
           return result;
         } catch (error) {
           console.error("Error processing enhanced items:", error);
+          console.log("Falling back to direct item fetch");
           const basicItems = await fetchItemsDirectly();
           return {
             ...normalizedInvoice,
-            items: basicItems
+            items: basicItems.length > 0 ? basicItems : []
           } as Invoice;
         }
       } catch (error) {
