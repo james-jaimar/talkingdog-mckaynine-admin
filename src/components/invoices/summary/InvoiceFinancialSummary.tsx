@@ -19,7 +19,7 @@ export function InvoiceFinancialSummary({ invoices, currentMonthLabel }: Financi
     const overdueAmount = invoices.reduce((sum, invoice) => 
       invoice.status === 'overdue' ? sum + invoice.total : sum, 0);
     
-    // Calculate collection rate as a decimal
+    // Calculate collection rate as a decimal (0-1)
     const collectionRate = totalAmount > 0 
       ? paidAmount / totalAmount
       : 0;

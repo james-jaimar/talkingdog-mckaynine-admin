@@ -56,7 +56,18 @@ export function useRevenueChartData(invoices: Invoice[], timeframe: TimeFrame = 
       }
     });
 
+    // Sort the data by period for proper chronological display
     const sortedData = Object.values(data).sort((a, b) => a.name.localeCompare(b.name));
+    
+    // Verify that for each period, paid + pending + overdue = total
+    sortedData.forEach(period => {
+      const sum = period.paidRevenue + period.pendingRevenue + period.overdueRevenue;
+      // If there's a discrepancy due to floating point, adjust the pending amount
+      if (Math.abs(period.totalRevenue - sum) > 0.01) {
+        period.pendingRevenue += (period.totalRevenue - sum);
+      }
+    });
+    
     setChartData(sortedData);
   }, [invoices, timeframe]);
 

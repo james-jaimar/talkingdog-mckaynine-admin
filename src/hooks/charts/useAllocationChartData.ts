@@ -36,25 +36,35 @@ export function useAllocationChartData(invoices: Invoice[], showOnlyPaid: boolea
     const total = filteredInvoices.reduce((sum, invoice) => sum + invoice.total, 0);
     setTotalRevenue(total);
 
+    // Using fixed percentages of total revenue for allocation categories
+    const trainerCompensation = total * 0.60;
+    const franchiseRoyalties = total * 0.15;
+    const branchOperations = total * 0.20;
+    const adminFees = total * 0.05;
+    
+    // Verify that all categories sum to total (accounting for potential floating point precision issues)
+    const sum = trainerCompensation + franchiseRoyalties + branchOperations + adminFees;
+    const adjustment = total - sum;
+    
     const data: AllocationCategory[] = [
       { 
         name: 'Trainer Compensation', 
-        value: total * 0.60,
+        value: trainerCompensation,
         color: COLORS[0]
       },
       { 
         name: 'Franchise Royalties', 
-        value: total * 0.15,
+        value: franchiseRoyalties,
         color: COLORS[1]
       },
       { 
         name: 'Branch Operations', 
-        value: total * 0.20,
+        value: branchOperations,
         color: COLORS[2]
       },
       { 
         name: 'Admin Fees', 
-        value: total * 0.05,
+        value: adminFees + adjustment, // Add any rounding adjustment to the smallest category
         color: COLORS[3]
       }
     ];

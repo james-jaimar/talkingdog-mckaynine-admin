@@ -15,6 +15,7 @@ interface FinancialMetricsCardsProps {
 }
 
 export function FinancialMetricsCards({ metrics }: FinancialMetricsCardsProps) {
+  // Calculate percentages out of total revenue
   const collectedPercentage = metrics.totalRevenue > 0 
     ? metrics.collectedRevenue / metrics.totalRevenue 
     : 0;

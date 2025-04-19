@@ -24,10 +24,10 @@ export function formatCurrency(value: number): string {
 export function formatPercentage(value: number): string {
   if (value === undefined || value === null) return "0.0%";
   
-  // Ensure value is properly normalized:
+  // Make sure we're working with a decimal between 0-1
   // If value is already in percentage form (e.g., 15 for 15%)
   // convert it to decimal form (e.g., 0.15)
-  const normalizedValue = value >= 1 ? value / 100 : value;
+  const normalizedValue = value > 1 ? value / 100 : value;
   
   return new Intl.NumberFormat('en-ZA', {
     style: 'percent',
