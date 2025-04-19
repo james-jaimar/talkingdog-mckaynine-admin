@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Invoice } from "@/types/invoice";
 import {
@@ -12,7 +13,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { Loader2, Calculator, GitBranch } from "lucide-react";
-import { formatCurrency } from "@/lib/formatters";
+import { formatCurrency, formatPercentage } from "@/lib/formatters";
 import { InvoiceTableActions } from "./InvoiceTableActions";
 import { useBranch } from "@/context/BranchContext";
 
@@ -79,6 +80,29 @@ export function InvoicesTable({
     }
   };
   
+  // Helper function to properly display discount info
+  const renderDiscountCell = (invoice: Invoice) => {
+    if (!invoice.monetary_discount || invoice.monetary_discount <= 0) {
+      return null;
+    }
+    
+    // For percentage discounts, show the original percentage value
+    if (invoice.discount_type === 'percentage') {
+      const percentValue = invoice.original_discount_amount !== null && invoice.original_discount_amount !== undefined 
+        ? invoice.original_discount_amount 
+        : invoice.discount_amount || 0;
+        
+      return (
+        <span className="text-red-600">
+          {formatCurrency(invoice.monetary_discount)} ({percentValue}%)
+        </span>
+      );
+    }
+    
+    // For fixed discounts, just show the amount
+    return <span className="text-red-600">{formatCurrency(invoice.monetary_discount)}</span>;
+  };
+  
   return (
     <div className="rounded-md border">
       <Table>
@@ -136,14 +160,7 @@ export function InvoicesTable({
                 <TableCell>{getStatusBadge(invoice.status)}</TableCell>
                 <TableCell>{formatCurrency(invoice.total)}</TableCell>
                 <TableCell>
-                  {invoice.monetary_discount > 0 && (
-                    <span className="text-red-600">
-                      -{formatCurrency(invoice.monetary_discount)}
-                      {invoice.discount_type === 'percentage' && 
-                        ` (${invoice.original_discount_amount || invoice.discount_amount}%)`
-                      }
-                    </span>
-                  )}
+                  {renderDiscountCell(invoice)}
                 </TableCell>
                 <TableCell className="text-right">
                   <InvoiceTableActions 

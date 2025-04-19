@@ -1,4 +1,3 @@
-
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -11,17 +10,52 @@ export function useMarkInvoiceAsSent() {
 
   return useMutation({
     mutationFn: async (invoiceId: string) => {
+      console.log(`Marking invoice ${invoiceId} as sent`);
+      
+      // First, get the current invoice data to preserve discount values
+      const { data: currentInvoice, error: fetchError } = await supabase
+        .from('invoices')
+        .select('*')
+        .eq('id', invoiceId)
+        .single();
+        
+      if (fetchError) {
+        console.error("Error fetching invoice data:", fetchError);
+        throw fetchError;
+      }
+      
+      // Preserve the original discount values
+      const { 
+        discount_amount, 
+        discount_type, 
+        monetary_discount, 
+        original_discount_amount,
+        original_discount_type,
+        discount_reason
+      } = currentInvoice;
+      
+      // Update only the status without changing discount values
       const { error, data } = await supabase
         .from('invoices')
         .update({
           status: 'sent',
-          email_sent: true
+          email_sent: true,
+          // Ensure we keep the original discount values
+          discount_amount,
+          discount_type,
+          monetary_discount,
+          original_discount_amount,
+          original_discount_type,
+          discount_reason
         })
         .eq('id', invoiceId)
         .select('client_id')
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error marking invoice as sent:", error);
+        throw error;
+      }
 
       return { id: invoiceId, client_id: data?.client_id };
     },

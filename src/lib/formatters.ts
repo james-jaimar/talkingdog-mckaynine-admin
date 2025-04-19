@@ -1,12 +1,18 @@
+
 /**
  * Format a number as currency in South African Rands (ZAR)
  * @param value A number to format
  * @returns A formatted currency string
  */
 export function formatCurrency(value: number): string {
+  // Use the South African locale for proper formatting
   return new Intl.NumberFormat('en-ZA', {
     style: 'currency',
     currency: 'ZAR',
+    currencyDisplay: 'symbol',
+    // Ensure we get the "R" symbol instead of "ZAR"
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
   }).format(value);
 }
 
@@ -16,7 +22,7 @@ export function formatCurrency(value: number): string {
  * @returns A formatted percentage string (e.g., "15%")
  */
 export function formatPercentage(value: number): string {
-  return new Intl.NumberFormat('en-US', {
+  return new Intl.NumberFormat('en-ZA', {
     style: 'percent',
     minimumFractionDigits: 1,
     maximumFractionDigits: 1,
@@ -44,7 +50,7 @@ export function formatDate(dateString?: string | Date | null): string {
     
     if (isNaN(date.getTime())) return "";
     
-    return new Intl.DateTimeFormat('en-CA', {
+    return new Intl.DateTimeFormat('en-ZA', {
       year: 'numeric',
       month: 'long',
       day: 'numeric'
