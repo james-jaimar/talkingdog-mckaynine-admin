@@ -27,6 +27,8 @@ export function useClassesListData() {
     queryFn: async () => {
       if (!currentBranch?.id) return [];
 
+      console.log(`Fetching classes list data for branch ${currentBranch.name}`);
+
       const { data: classes, error: classesError } = await supabase
         .from('classes')
         .select(`
@@ -40,13 +42,25 @@ export function useClassesListData() {
               payment_status,
               clients(id, first_name, last_name),
               dogs(id, name, breed),
-              attendances:class_attendance(attendance_status)
+              attendances:class_attendance(attendance_status),
+              invoice_items(
+                invoice_id,
+                invoices:invoice_id (
+                  status,
+                  payment_received
+                )
+              )
             )
           )
         `)
         .eq('branch_id', currentBranch.id);
 
-      if (classesError) throw classesError;
+      if (classesError) {
+        console.error("Error fetching classes data:", classesError);
+        throw classesError;
+      }
+
+      console.log(`Retrieved ${classes?.length || 0} classes for branch ${currentBranch.name}`);
 
       const classGroups: ClassGroup[] = classes.map(classItem => {
         const handlers: Handler[] = [];
@@ -57,9 +71,20 @@ export function useClassesListData() {
           schedule.bookings?.forEach(booking => {
             if (!booking.clients || !booking.dogs) return;
 
+            // Check attendance count
             const attendanceCount = booking.attendances?.filter(
               a => a.attendance_status === 'present'
             ).length || 0;
+            
+            // Check payment status from invoices
+            let paymentStatus = booking.payment_status;
+            const invoiceItem = booking.invoice_items?.find(item => item.invoices);
+            
+            if (invoiceItem?.invoices) {
+              if (invoiceItem.invoices.payment_received || invoiceItem.invoices.status === 'paid') {
+                paymentStatus = 'paid';
+              }
+            }
 
             handlers.push({
               clientId: booking.clients.id,
@@ -67,7 +92,7 @@ export function useClassesListData() {
               dogId: booking.dogs.id,
               dogName: booking.dogs.name,
               dogBreed: booking.dogs.breed,
-              paymentStatus: booking.payment_status,
+              paymentStatus,
               attendanceCount,
               totalClasses
             });
@@ -80,8 +105,12 @@ export function useClassesListData() {
         };
       });
 
+      console.log(`Processed ${classGroups.length} class groups with handler information`);
       return classGroups;
     },
-    enabled: !!currentBranch?.id
+    enabled: !!currentBranch?.id,
+    staleTime: 30000, // 30 seconds
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true
   });
 }

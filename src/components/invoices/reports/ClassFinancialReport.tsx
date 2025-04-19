@@ -7,14 +7,18 @@ import { useBranch } from "@/context/BranchContext";
 import { useClassFinancialData } from "@/hooks/useClassFinancialData";
 import { ClassFinancialTable } from "./ClassFinancialTable";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface ClassFinancialReportProps {
   dateRange?: { from: Date; to: Date };
+  onRefreshSuccess?: () => void;
 }
 
-export function ClassFinancialReport({ dateRange }: ClassFinancialReportProps) {
+export function ClassFinancialReport({ dateRange, onRefreshSuccess }: ClassFinancialReportProps) {
   const { currentBranch } = useBranch();
   const [refreshing, setRefreshing] = useState(false);
+  const queryClient = useQueryClient();
+  
   const fromDate = dateRange?.from?.toISOString();
   const toDate = dateRange?.to?.toISOString();
 
@@ -24,13 +28,30 @@ export function ClassFinancialReport({ dateRange }: ClassFinancialReportProps) {
     toDate
   );
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setRefreshing(true);
-    refreshData();
-    toast.success("Refreshing financial data");
     
-    // Reset refreshing state after animation
-    setTimeout(() => setRefreshing(false), 1000);
+    try {
+      // First invalidate all related queries
+      await queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      await queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
+      await queryClient.invalidateQueries({ queryKey: ['classes-list-data'] });
+      
+      // Then refresh the data
+      await refreshData();
+      
+      if (onRefreshSuccess) {
+        onRefreshSuccess();
+      } else {
+        toast.success("Financial data refreshed");
+      }
+    } catch (error) {
+      console.error("Error refreshing financial data:", error);
+      toast.error("Failed to refresh financial data");
+    } finally {
+      // Reset refreshing state
+      setTimeout(() => setRefreshing(false), 1000);
+    }
   };
 
   if (isLoading) {

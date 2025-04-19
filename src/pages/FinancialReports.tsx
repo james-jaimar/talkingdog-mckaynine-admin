@@ -13,6 +13,7 @@ import { ClassesListReport } from "@/components/invoices/reports/ClassesListRepo
 import { DateRangePicker } from "@/components/dashboard/financial/DateRangePicker";
 import { startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { toast } from "sonner";
 
 export default function FinancialReports() {
   const queryClient = useQueryClient();
@@ -26,14 +27,21 @@ export default function FinancialReports() {
   const { currentBranch } = useBranch();
   const { invoices, isLoading, refreshAllInvoiceQueries } = useInvoices();
   
-  // Refresh data when component mounts or branch changes
+  // Refresh data when component mounts, branch changes or date range changes
   useEffect(() => {
     if (currentBranch) {
-      console.log("Financial Reports: Branch changed, refreshing data");
-      refreshAllInvoiceQueries();
-      queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
+      console.log("Financial Reports: Branch or date range changed, refreshing data");
+      refreshFinancialData();
     }
-  }, [currentBranch, refreshAllInvoiceQueries, queryClient]);
+  }, [currentBranch, dateRange]);
+
+  // Function to refresh all financial data
+  const refreshFinancialData = () => {
+    refreshAllInvoiceQueries();
+    queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
+    queryClient.invalidateQueries({ queryKey: ['classes-list-data'] });
+    toast.success("Financial data refreshed");
+  };
 
   // Handle date range changes
   const handleDateRangeChange = (range: { from: Date; to?: Date }) => {
@@ -41,9 +49,6 @@ export default function FinancialReports() {
       from: range.from,
       to: range.to || endOfMonth(new Date())
     });
-    
-    // Refresh data when date range changes
-    queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
   };
 
   return (
@@ -70,7 +75,10 @@ export default function FinancialReports() {
 
             <TabsContent value="financial">
               <div className="space-y-6">
-                <ClassFinancialReport dateRange={dateRange} />
+                <ClassFinancialReport 
+                  dateRange={dateRange} 
+                  onRefreshSuccess={() => toast.success("Financial data refreshed")} 
+                />
                 <InvoiceRevenueChart 
                   invoices={invoices} 
                   timeframe="monthly"
