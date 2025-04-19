@@ -1,94 +1,22 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Helmet } from "react-helmet";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { InvoiceRevenueChart } from "@/components/invoices/reports/InvoiceRevenueChart";
 import { RevenueAllocationChart } from "@/components/invoices/reports/RevenueAllocationChart";
 import { TrainerPaymentsSummary } from "@/components/invoices/reports/TrainerPaymentsSummary";
 import { useInvoices } from "@/hooks/useInvoices";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { formatCurrency, formatPercentage } from "@/lib/formatters";
 import { useBranch } from "@/context/BranchContext";
 import RequireAdmin from "@/components/auth/RequireAdmin";
-import { DollarSign, Users, Calendar, TrendingUp } from "lucide-react";
-import { toast } from "react-toastify";
+import { FinancialMetricsCards } from "@/components/dashboard/financial/FinancialMetricsCards";
+import { useTrainerPayments } from "@/hooks/useTrainerPayments";
 
 export default function FinancialDashboard() {
   const [timeframe, setTimeframe] = useState<'monthly' | 'quarterly' | 'yearly'>('monthly');
   const { invoices, isLoading } = useInvoices();
   const { currentBranch } = useBranch();
-  
-  // Fetch trainers data with actual data from database
-  const { data: trainers = [], isLoading: isTrainersLoading } = useQuery({
-    queryKey: ['trainers', currentBranch?.id],
-    queryFn: async () => {
-      if (!currentBranch) return [];
-      
-      try {
-        const { data, error } = await supabase
-          .from('trainers')
-          .select(`
-            id,
-            first_name,
-            last_name,
-            invoices:invoice_items(
-              id,
-              amount,
-              invoice:invoices(status, payment_date)
-            )
-          `)
-          .eq('branch_id', currentBranch.id);
-        
-        if (error) {
-          console.error("Error fetching trainer data:", error);
-          toast.error("Error loading trainer payment data");
-          return [];
-        }
-        
-        if (!data || !Array.isArray(data)) {
-          console.error("No trainer data returned or invalid format");
-          return [];
-        }
-        
-        return data.map(trainer => {
-          // Ensure invoices is an array before processing
-          const invoiceItems = Array.isArray(trainer.invoices) ? trainer.invoices : [];
-          const totalEarned = invoiceItems.reduce((sum: number, item: any) => sum + (item.amount || 0), 0);
-          const paidInvoices = invoiceItems.filter((item: any) => item.invoice?.status === 'paid');
-          const paidAmount = paidInvoices.reduce((sum: number, item: any) => sum + (item.amount || 0), 0);
-          
-          let lastPaymentDate = null;
-          if (paidInvoices.length > 0) {
-            const paymentDates = paidInvoices
-              .map((item: any) => item.invoice?.payment_date ? new Date(item.invoice.payment_date).getTime() : 0)
-              .filter((timestamp: number) => timestamp > 0);
-              
-            if (paymentDates.length > 0) {
-              lastPaymentDate = new Date(Math.max(...paymentDates)).toISOString();
-            }
-          }
-
-          return {
-            id: trainer.id,
-            trainerName: `${trainer.first_name} ${trainer.last_name}`,
-            totalEarned,
-            paid: paidAmount,
-            pending: totalEarned - paidAmount,
-            invoicesCount: invoiceItems.length,
-            lastPaymentDate: lastPaymentDate || undefined
-          };
-        });
-      } catch (err) {
-        console.error("Failed to process trainer data:", err);
-        toast.error("Error processing trainer payment data");
-        return [];
-      }
-    },
-    enabled: !!currentBranch?.id
-  });
+  const { data: trainers = [], isLoading: isTrainersLoading } = useTrainerPayments(currentBranch?.id);
 
   // Calculate financial metrics from actual invoice data
   const financialMetrics = {
@@ -100,19 +28,6 @@ export default function FinancialDashboard() {
     overdueRevenue: invoices ? invoices.filter(invoice => invoice.status === 'overdue')
       .reduce((sum, invoice) => sum + invoice.total, 0) : 0
   };
-
-  // Calculate correct percentages - ensure we account for edge cases
-  const collectedPercentage = financialMetrics.totalRevenue > 0 
-    ? financialMetrics.collectedRevenue / financialMetrics.totalRevenue 
-    : 0;
-    
-  const pendingPercentage = financialMetrics.totalRevenue > 0 
-    ? financialMetrics.pendingRevenue / financialMetrics.totalRevenue 
-    : 0;
-    
-  const overduePercentage = financialMetrics.totalRevenue > 0 
-    ? financialMetrics.overdueRevenue / financialMetrics.totalRevenue 
-    : 0;
 
   return (
     <RequireAdmin>
@@ -134,84 +49,8 @@ export default function FinancialDashboard() {
             </Tabs>
           </div>
 
-          {/* Financial summary cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Total Revenue
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center">
-                  <DollarSign className="h-4 w-4 text-muted-foreground mr-2" />
-                  <span className="text-2xl font-bold">
-                    {formatCurrency(financialMetrics.totalRevenue)}
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  All time
-                </p>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Collected Revenue
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center">
-                  <TrendingUp className="h-4 w-4 text-green-500 mr-2" />
-                  <span className="text-2xl font-bold text-green-500">
-                    {formatCurrency(financialMetrics.collectedRevenue)}
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {formatPercentage(collectedPercentage)} of total revenue
-                </p>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Pending Revenue
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center">
-                  <Calendar className="h-4 w-4 text-amber-500 mr-2" />
-                  <span className="text-2xl font-bold text-amber-500">
-                    {formatCurrency(financialMetrics.pendingRevenue)}
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {formatPercentage(pendingPercentage)} of total revenue
-                </p>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Overdue Revenue
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center">
-                  <Users className="h-4 w-4 text-red-500 mr-2" />
-                  <span className="text-2xl font-bold text-red-500">
-                    {formatCurrency(financialMetrics.overdueRevenue)}
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {formatPercentage(overduePercentage)} of total revenue
-                </p>
-              </CardContent>
-            </Card>
-          </div>
+          {/* Financial metrics cards */}
+          <FinancialMetricsCards metrics={financialMetrics} />
 
           {/* Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
