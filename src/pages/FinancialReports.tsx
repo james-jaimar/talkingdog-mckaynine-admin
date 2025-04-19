@@ -9,8 +9,10 @@ import RequireAdmin from "@/components/auth/RequireAdmin";
 import { InvoiceRevenueChart } from "@/components/invoices/reports/InvoiceRevenueChart";
 import { TrainerPaymentsSummary } from "@/components/invoices/reports/TrainerPaymentsSummary";
 import { ClassFinancialReport } from "@/components/invoices/reports/ClassFinancialReport";
+import { ClassesListReport } from "@/components/invoices/reports/ClassesListReport";
 import { DateRangePicker } from "@/components/dashboard/financial/DateRangePicker";
 import { startOfMonth, endOfMonth, subMonths } from "date-fns";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function FinancialReports() {
   const queryClient = useQueryClient();
@@ -54,33 +56,36 @@ export default function FinancialReports() {
         <div className="container mx-auto py-6">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
             <h1 className="text-3xl font-bold">Financial Reports</h1>
-            
             <DateRangePicker 
               dateRange={dateRange} 
               onDateRangeChange={handleDateRangeChange} 
             />
           </div>
 
-          {/* Class Financial Report */}
-          <div className="mb-6">
-            <ClassFinancialReport dateRange={dateRange} />
-          </div>
+          <Tabs defaultValue="financial" className="w-full">
+            <TabsList className="mb-4">
+              <TabsTrigger value="financial">Financial Report</TabsTrigger>
+              <TabsTrigger value="classes">Classes List</TabsTrigger>
+            </TabsList>
 
-          {/* Revenue Chart */}
-          <div className="mb-6">
-            <InvoiceRevenueChart 
-              invoices={invoices} 
-              timeframe="monthly"
-            />
-          </div>
+            <TabsContent value="financial">
+              <div className="space-y-6">
+                <ClassFinancialReport dateRange={dateRange} />
+                <InvoiceRevenueChart 
+                  invoices={invoices} 
+                  timeframe="monthly"
+                />
+                <TrainerPaymentsSummary
+                  trainers={[]} 
+                  isLoading={isLoading}
+                />
+              </div>
+            </TabsContent>
 
-          {/* Trainer Payments Summary */}
-          <div className="mb-6">
-            <TrainerPaymentsSummary
-              trainers={[]} 
-              isLoading={isLoading}
-            />
-          </div>
+            <TabsContent value="classes">
+              <ClassesListReport />
+            </TabsContent>
+          </Tabs>
         </div>
       </DashboardLayout>
     </RequireAdmin>
