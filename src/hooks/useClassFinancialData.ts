@@ -106,7 +106,7 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
     enabled: !!branchId && !!fromDate && !!toDate,
     staleTime: 30000, // 30 seconds
     refetchOnWindowFocus: true,
-    cacheTime: 10 * 60 * 1000, // 10 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes - changed from cacheTime to gcTime
   });
 
   // Process booking data into financial summaries
