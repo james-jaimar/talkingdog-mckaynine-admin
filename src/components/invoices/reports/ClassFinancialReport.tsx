@@ -37,9 +37,9 @@ export function ClassFinancialReport({ dateRange }: ClassFinancialReportProps) {
   const [classFinances, setClassFinances] = useState<ClassFinance[]>([]);
   const [isCalculating, setIsCalculating] = useState(false);
   
-  // Format dates for logging
-  const fromDateStr = dateRange?.from ? dateRange.from.toISOString().split('T')[0] : 'not set';
-  const toDateStr = dateRange?.to ? dateRange.to.toISOString().split('T')[0] : 'not set';
+  // Format dates for logging and querying
+  const fromDate = dateRange?.from;
+  const toDate = dateRange?.to;
   
   // Fetch all classes for the current branch
   const { data: classes, isLoading: isLoadingClasses, error: classesError } = useQuery({
@@ -67,74 +67,74 @@ export function ClassFinancialReport({ dateRange }: ClassFinancialReportProps) {
     enabled: !!currentBranch?.id,
   });
 
-  // Modified approach to fetch all needed data in a single function
-  const { data: financialData, isLoading: isLoadingFinancialData } = useQuery({
-    queryKey: ['financial-data', currentBranch?.id, dateRange?.from?.toISOString(), dateRange?.to?.toISOString()],
+  // Direct query to get all bookings with their related class_schedules and classes
+  const { data: bookingsData, isLoading: isLoadingBookings } = useQuery({
+    queryKey: ['financial-bookings', currentBranch?.id, fromDate?.toISOString(), toDate?.toISOString()],
     queryFn: async () => {
-      if (!classes || classes.length === 0 || !currentBranch?.id) {
-        console.log("Unable to fetch financial data - missing classes or branch", {
-          classesCount: classes?.length,
-          branchId: currentBranch?.id,
-          dateRange: { from: fromDateStr, to: toDateStr }
-        });
-        return { schedules: [], bookings: [] };
+      if (!currentBranch?.id) {
+        console.log("No branch ID available");
+        return [];
       }
       
-      console.log("Fetching financial data for date range:", { from: fromDateStr, to: toDateStr });
+      console.log("Fetching bookings for financial report with date range:", 
+        fromDate ? fromDate.toISOString().split('T')[0] : 'not set',
+        "to",
+        toDate ? toDate.toISOString().split('T')[0] : 'not set'
+      );
 
       try {
-        // 1. Get all class schedules for the classes in this branch
-        const { data: schedules, error: schedulesError } = await supabase
-          .from("class_schedules")
-          .select("id, class_id")
-          .in("class_id", classes.map(c => c.id));
-          
-        if (schedulesError) {
-          console.error("Error fetching schedules:", schedulesError);
-          throw schedulesError;
-        }
-        
-        console.log(`Found ${schedules?.length || 0} schedules for classes`);
-        
-        if (!schedules || schedules.length === 0) {
-          console.log("No schedules found for classes");
-          return { schedules: [], bookings: [] };
-        }
-
-        // 2. Get all bookings for these schedules, applying date filter if available
-        let bookingsQuery = supabase
-          .from("bookings")
+        // Build the query to get bookings with all related data in a single query
+        let query = supabase
+          .from('bookings')
           .select(`
             id, 
             payment_status,
             proof_of_payment,
             class_schedule_id,
-            created_at
+            created_at,
+            class_schedules!inner (
+              id,
+              class_id,
+              classes!inner (
+                id,
+                name,
+                course_fee,
+                enrollment_fee,
+                mckaynine_commission_value,
+                mckaynine_commission_type,
+                admin_fee_value,
+                admin_fee_type,
+                trainer_fee_value,
+                trainer_fee_type,
+                branch_id
+              )
+            )
           `)
-          .in("class_schedule_id", schedules.map(s => s.id))
+          .eq("class_schedules.classes.branch_id", currentBranch.id)
           .eq("status", "confirmed");
           
-        // Apply date filter if provided
-        if (dateRange?.from) {
-          bookingsQuery = bookingsQuery.gte('created_at', dateRange.from.toISOString());
-          console.log("Applying from date filter:", dateRange.from.toISOString());
+        // Apply date filters if provided
+        if (fromDate) {
+          query = query.gte('created_at', fromDate.toISOString());
+          console.log("Filtering bookings from:", fromDate.toISOString());
         }
         
-        if (dateRange?.to) {
-          bookingsQuery = bookingsQuery.lte('created_at', dateRange.to.toISOString());
-          console.log("Applying to date filter:", dateRange.to.toISOString());
+        if (toDate) {
+          query = query.lte('created_at', toDate.toISOString());
+          console.log("Filtering bookings to:", toDate.toISOString());
         }
         
-        const { data: bookings, error: bookingsError } = await bookingsQuery;
-          
-        if (bookingsError) {
-          console.error("Error fetching bookings:", bookingsError);
-          throw bookingsError;
+        const { data: bookings, error } = await query;
+        
+        if (error) {
+          console.error("Error fetching bookings:", error);
+          throw error;
         }
         
-        console.log(`Found ${bookings?.length || 0} total bookings${dateRange ? " in date range" : ""}`);
+        // Log the results for debugging
+        console.log(`Found ${bookings?.length || 0} total bookings for financial report`);
         
-        // Log the payment statuses for debugging
+        // Count bookings by payment status
         const paymentStatusCounts = bookings?.reduce((acc, booking) => {
           const status = booking.payment_status || 'unknown';
           acc[status] = (acc[status] || 0) + 1;
@@ -146,108 +146,98 @@ export function ClassFinancialReport({ dateRange }: ClassFinancialReportProps) {
         console.log("Payment status breakdown:", paymentStatusCounts);
         console.log("Bookings with proof of payment:", proofOfPaymentCount);
         
-        return { 
-          schedules: schedules || [],
-          bookings: bookings || []
-        };
+        return bookings || [];
       } catch (err) {
-        console.error("Error fetching financial data:", err);
+        console.error("Error in bookings query:", err);
         throw err;
       }
     },
-    enabled: !!classes && classes.length > 0 && !!currentBranch?.id,
+    enabled: !!currentBranch?.id,
   });
 
-  // Calculate financial metrics when data is available
+  // Calculate financial metrics directly from the bookings data
   useEffect(() => {
-    if (!classes || classes.length === 0 || !financialData || isLoadingClasses || isLoadingFinancialData) {
+    if (isLoadingBookings || !bookingsData || bookingsData.length === 0) {
+      console.log("No booking data available for calculations");
       return;
     }
     
-    console.log("Calculating financial metrics with:", { 
-      classesCount: classes.length,
-      schedulesCount: financialData.schedules.length,
-      bookingsCount: financialData.bookings.length
-    });
+    console.log(`Processing ${bookingsData.length} bookings for financial calculations`);
     
     setIsCalculating(true);
     
     try {
-      // Create a mapping of schedules to their class IDs for faster lookup
-      const scheduleToClassMap = new Map<string, string>();
-      financialData.schedules.forEach(schedule => {
-        scheduleToClassMap.set(schedule.id, schedule.class_id);
-      });
+      // Group bookings by class ID
+      const bookingsByClassId: Record<string, any[]> = {};
       
-      // Group bookings by class
-      const bookingsByClass: Record<string, any[]> = {};
-      
-      // Initialize with all classes
-      classes.forEach(cls => {
-        bookingsByClass[cls.id] = [];
-      });
-      
-      // Populate bookings by class using the mapping
-      financialData.bookings.forEach(booking => {
-        const scheduleId = booking.class_schedule_id;
-        const classId = scheduleToClassMap.get(scheduleId);
-        
-        if (classId && bookingsByClass[classId]) {
-          bookingsByClass[classId].push(booking);
+      bookingsData.forEach(booking => {
+        const classId = booking.class_schedules?.classes?.id;
+        if (classId) {
+          if (!bookingsByClassId[classId]) {
+            bookingsByClassId[classId] = [];
+          }
+          bookingsByClassId[classId].push(booking);
         }
       });
       
-      // Now calculate financial data for each class
-      const finances: ClassFinance[] = classes.map(classItem => {
-        // Get bookings for this class
-        const classBookingsArr = bookingsByClass[classItem.id] || [];
+      console.log(`Grouped bookings into ${Object.keys(bookingsByClassId).length} class groups`);
+      
+      // Create financial records for each class
+      const finances: ClassFinance[] = [];
+      
+      Object.entries(bookingsByClassId).forEach(([classId, classBookings]) => {
+        if (!classBookings || classBookings.length === 0) return;
         
-        // IMPORTANT: Consider a booking as "paid" if it has EITHER:
-        // 1. payment_status = 'paid'
-        // 2. proof_of_payment is not empty
-        const paidBookings = classBookingsArr.filter(booking => 
+        const classData = classBookings[0].class_schedules.classes;
+        
+        // Count only paid bookings or those with proof of payment
+        const paidBookings = classBookings.filter(booking => 
           booking.payment_status === 'paid' || 
           (booking.proof_of_payment && booking.proof_of_payment.trim() !== '')
         );
         
-        console.log(`Class ${classItem.name}: ${paidBookings.length} paid bookings out of ${classBookingsArr.length} total`);
-        
         const bookingsCount = paidBookings.length;
+        console.log(`Class ${classData.name}: ${bookingsCount} paid/proof-of-payment bookings out of ${classBookings.length} total`);
         
+        if (bookingsCount === 0) {
+          console.log(`Skipping class ${classData.name} as it has no paid bookings`);
+          return; // Skip classes with no paid bookings
+        }
+
         // Calculate fees based on number of paid bookings
-        const totalCourseFees = bookingsCount * (classItem.course_fee || 0);
-        const totalEnrollmentFees = bookingsCount * (classItem.enrollment_fee || 0);
+        const totalCourseFees = bookingsCount * (classData.course_fee || 0);
+        const totalEnrollmentFees = bookingsCount * (classData.enrollment_fee || 0);
         const totalRevenue = totalCourseFees + totalEnrollmentFees;
         
         // Calculate franchise fee
         let franchiseFee = 0;
-        if (classItem.mckaynine_commission_type === 'percentage') {
-          franchiseFee = totalRevenue * (classItem.mckaynine_commission_value / 100);
+        if (classData.mckaynine_commission_type === 'percentage') {
+          franchiseFee = totalRevenue * (classData.mckaynine_commission_value / 100);
         } else {
-          franchiseFee = bookingsCount * classItem.mckaynine_commission_value;
+          franchiseFee = bookingsCount * classData.mckaynine_commission_value;
         }
         
         // Calculate admin fee
         let adminFee = 0;
-        if (classItem.admin_fee_type === 'percentage') {
-          adminFee = totalRevenue * (classItem.admin_fee_value / 100);
+        if (classData.admin_fee_type === 'percentage') {
+          adminFee = totalRevenue * (classData.admin_fee_value / 100);
         } else {
-          adminFee = bookingsCount * classItem.admin_fee_value;
+          adminFee = bookingsCount * classData.admin_fee_value;
         }
         
         // Calculate instructor fee
         let instructorFee = 0;
-        if (classItem.trainer_fee_type === 'percentage') {
-          instructorFee = totalRevenue * (classItem.trainer_fee_value / 100);
+        if (classData.trainer_fee_type === 'percentage') {
+          instructorFee = totalRevenue * (classData.trainer_fee_value / 100);
         } else {
-          instructorFee = bookingsCount * classItem.trainer_fee_value;
+          instructorFee = bookingsCount * classData.trainer_fee_value;
         }
         
         // Calculate profit
         const profit = totalRevenue - franchiseFee - adminFee - instructorFee;
         
-        return {
-          className: classItem.name,
+        finances.push({
+          className: classData.name,
           courseFee: totalCourseFees,
           enrollmentFee: totalEnrollmentFees,
           franchiseFee,
@@ -256,10 +246,10 @@ export function ClassFinancialReport({ dateRange }: ClassFinancialReportProps) {
           instructorFee,
           profit,
           bookingsCount
-        };
+        });
       });
       
-      console.log("Calculated finances:", finances);
+      console.log("Calculated financial data for classes:", finances);
       setClassFinances(finances);
     } catch (error) {
       console.error("Error calculating financial data:", error);
@@ -267,10 +257,10 @@ export function ClassFinancialReport({ dateRange }: ClassFinancialReportProps) {
     } finally {
       setIsCalculating(false);
     }
-  }, [classes, financialData, isLoadingClasses, isLoadingFinancialData]);
+  }, [bookingsData, isLoadingBookings]);
 
   // Show loading state
-  if (isLoadingClasses || isLoadingFinancialData || isCalculating) {
+  if (isLoadingClasses || isLoadingBookings || isCalculating) {
     return (
       <Card className="w-full">
         <CardHeader>

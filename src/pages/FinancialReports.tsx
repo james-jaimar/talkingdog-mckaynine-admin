@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Helmet } from "react-helmet";
 import { useInvoices } from "@/hooks/useInvoices";
@@ -12,12 +12,22 @@ import { DateRangePicker } from "@/components/dashboard/financial/DateRangePicke
 import { addMonths, startOfMonth, endOfMonth, subMonths } from "date-fns";
 
 export default function FinancialReports() {
+  // By default, show current month
   const [dateRange, setDateRange] = useState({
-    from: startOfMonth(subMonths(new Date(), 1)), // Default to previous month
+    from: startOfMonth(new Date()),
     to: endOfMonth(new Date())
   });
+  
   const { currentBranch } = useBranch();
   const { invoices, isLoading } = useInvoices();
+
+  // Log the date range on component mount and when it changes
+  useEffect(() => {
+    console.log("Financial Reports - Current date range:", {
+      from: dateRange.from.toISOString(),
+      to: dateRange.to.toISOString()
+    });
+  }, [dateRange]);
 
   // Handle date range changes
   const handleDateRangeChange = (range: { from: Date; to?: Date }) => {
@@ -34,7 +44,7 @@ export default function FinancialReports() {
     });
   };
 
-  // Filter invoices based on date range
+  // Filter invoices based on date range for the revenue chart
   const filteredInvoices = invoices ? invoices.filter(invoice => {
     const invoiceDate = new Date(invoice.issued_date);
     return invoiceDate >= dateRange.from && 
@@ -58,7 +68,7 @@ export default function FinancialReports() {
             />
           </div>
 
-          {/* Class Financial Report - Now passing the date range */}
+          {/* Class Financial Report - Passing the date range */}
           <div className="mb-6">
             <ClassFinancialReport dateRange={dateRange} />
           </div>
