@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 export interface ClassFinance {
@@ -15,12 +15,19 @@ export interface ClassFinance {
 
 export function useClassFinancialData(branchId?: string, fromDate?: string, toDate?: string) {
   const [classFinances, setClassFinances] = useState<ClassFinance[]>([]);
+  const queryClient = useQueryClient();
+  
+  // Add invoices query key as a dependency to trigger refresh when invoices change
+  const invoicesKey = ['invoices', branchId];
+  const invoicesData = queryClient.getQueryData(invoicesKey);
 
   // Get financial data for confirmed bookings
   const { data: bookingsData, isLoading } = useQuery({
-    queryKey: ['financial-bookings', branchId, fromDate, toDate],
+    queryKey: ['financial-bookings', branchId, fromDate, toDate, invoicesData],
     queryFn: async () => {
       if (!branchId) return [];
+
+      console.log(`Fetching financial data for branch ${branchId} from ${fromDate} to ${toDate}`);
 
       const { data, error } = await supabase
         .from('bookings')
@@ -45,10 +52,17 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
         .gte('created_at', fromDate)
         .lte('created_at', toDate);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching booking data for financial report:", error);
+        throw error;
+      }
+      
+      console.log(`Retrieved ${data?.length || 0} bookings for financial report`);
       return data || [];
     },
-    enabled: !!branchId && !!fromDate && !!toDate
+    enabled: !!branchId && !!fromDate && !!toDate,
+    staleTime: 60000, // 1 minute
+    refetchOnWindowFocus: true
   });
 
   // Process booking data into financial summaries
@@ -107,8 +121,19 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
       classSummaries.set(className, summary);
     });
 
-    setClassFinances(Array.from(classSummaries.values()));
+    // Convert to array and sort by class name
+    const sortedFinances = Array.from(classSummaries.values())
+      .sort((a, b) => a.className.localeCompare(b.className));
+      
+    console.log(`Processed ${sortedFinances.length} class financial summaries`);
+    setClassFinances(sortedFinances);
   }, [bookingsData]);
 
-  return { classFinances, isLoading };
+  // Function to manually refresh the data
+  const refreshData = () => {
+    console.log("Manually refreshing financial data");
+    queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
+  };
+
+  return { classFinances, isLoading, refreshData };
 }
