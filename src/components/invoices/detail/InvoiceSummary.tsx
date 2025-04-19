@@ -1,6 +1,7 @@
 
-import { Invoice } from "@/hooks/invoices/types";
-import { formatCurrency } from "@/lib/formatters";
+import React from 'react';
+import { formatCurrency } from '@/lib/formatters';
+import { Invoice } from '@/hooks/invoices/types';
 
 interface InvoiceSummaryProps {
   invoice: Invoice;
@@ -8,20 +9,33 @@ interface InvoiceSummaryProps {
 
 export function InvoiceSummary({ invoice }: InvoiceSummaryProps) {
   return (
-    <div className="flex justify-end mt-4">
-      <div className="w-full max-w-md space-y-2">
-        <div className="flex justify-between">
-          <span>Subtotal:</span>
-          <span>{formatCurrency(invoice.subtotal)}</span>
+    <div className="space-y-2">
+      <div className="flex justify-between">
+        <span className="text-muted-foreground">Subtotal:</span>
+        <span className="font-medium">{formatCurrency(invoice.subtotal)}</span>
+      </div>
+      
+      {invoice.discount_amount > 0 && (
+        <div className="flex justify-between text-red-600">
+          <span>
+            Discount {invoice.discount_type === 'percentage' ? 
+              `(${(invoice.discount_amount / invoice.subtotal * 100).toFixed(1)}%)` : 
+              ''}:
+          </span>
+          <span className="font-medium">-{formatCurrency(invoice.discount_amount)}</span>
         </div>
-        <div className="flex justify-between">
-          <span>Tax ({invoice.tax_rate}%):</span>
-          <span>{formatCurrency(invoice.tax_amount)}</span>
-        </div>
-        <div className="flex justify-between font-semibold">
-          <span>Total:</span>
-          <span>{formatCurrency(invoice.total)}</span>
-        </div>
+      )}
+      
+      <div className="flex justify-between">
+        <span className="text-muted-foreground">Tax ({invoice.tax_rate}%):</span>
+        <span className="font-medium">{formatCurrency(invoice.tax_amount)}</span>
+      </div>
+      
+      <div className="h-px bg-border my-2"></div>
+      
+      <div className="flex justify-between font-bold">
+        <span>Total:</span>
+        <span>{formatCurrency(invoice.total)}</span>
       </div>
     </div>
   );

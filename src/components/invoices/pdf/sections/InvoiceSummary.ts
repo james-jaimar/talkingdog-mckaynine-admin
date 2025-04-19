@@ -1,36 +1,64 @@
 
-import { jsPDF } from "jspdf";
-import { Invoice } from "@/hooks/invoices/types";
-import { formatCurrency } from "@/lib/formatters";
+import { Invoice } from '@/hooks/invoices/types';
+import { formatCurrency } from '../utils/formatters';
 
-/**
- * Adds the invoice summary (subtotal, tax, total) to the PDF
- */
-export const addInvoiceSummary = (doc: jsPDF, invoice: Invoice, startY: number, pageWidth: number) => {
-  const finalY = startY + 10;
+export function addInvoiceSummary(doc: any, invoice: Invoice, startY: number): number {
+  const { subtotal, tax_rate, tax_amount, discount_amount, discount_type, total } = invoice;
+  const columnPositions = {
+    label: 120,
+    value: 170
+  };
   
-  // Draw a line
-  doc.setDrawColor(200, 200, 200);
-  doc.setLineWidth(0.5);
-  doc.line(pageWidth - 90, finalY, pageWidth - 14, finalY);
+  // Calculate available width
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const rightColumnWidth = 60;
   
-  // Subtotal, Tax, Total
+  // Calculate positions
+  const labelX = pageWidth - rightColumnWidth - 50;
+  const valueX = pageWidth - rightColumnWidth;
+  
+  let currentY = startY + 10;
+  
+  // Line before summary
+  doc.setLineWidth(0.1);
+  doc.line(labelX - 10, currentY - 5, valueX + 30, currentY - 5);
+  currentY += 5;
+  
+  // Subtotal
+  doc.setFont(undefined, 'normal');
   doc.setFontSize(10);
-  doc.text("Subtotal:", pageWidth - 90, finalY + 8);
-  doc.text(formatCurrency(invoice.subtotal), pageWidth - 14, finalY + 8, { align: "right" });
+  doc.text('Subtotal:', labelX, currentY);
+  doc.text(formatCurrency(subtotal), valueX, currentY, { align: 'right' });
+  currentY += 6;
   
-  doc.text(`Tax (${invoice.tax_rate}%):`, pageWidth - 90, finalY + 15);
-  doc.text(formatCurrency(invoice.tax_amount), pageWidth - 14, finalY + 15, { align: "right" });
+  // Discount (if applicable)
+  if (discount_amount > 0) {
+    const discountLabel = discount_type === 'percentage'
+      ? `Discount (${(discount_amount / subtotal * 100).toFixed(1)}%):`
+      : 'Discount:';
+      
+    doc.setTextColor(220, 53, 69); // Red color for discount
+    doc.text(discountLabel, labelX, currentY);
+    doc.text(`-${formatCurrency(discount_amount)}`, valueX, currentY, { align: 'right' });
+    doc.setTextColor(0, 0, 0); // Reset to black
+    currentY += 6;
+  }
   
-  // Draw another line
-  doc.line(pageWidth - 90, finalY + 18, pageWidth - 14, finalY + 18);
+  // Tax
+  doc.text(`Tax (${tax_rate}%):`, labelX, currentY);
+  doc.text(formatCurrency(tax_amount), valueX, currentY, { align: 'right' });
+  currentY += 6;
   
-  // Total (bold)
-  doc.setFont(undefined, "bold");
-  doc.text("Total:", pageWidth - 90, finalY + 25);
-  doc.text(formatCurrency(invoice.total), pageWidth - 14, finalY + 25, { align: "right" });
-  doc.setFont(undefined, "normal");
+  // Line before total
+  doc.setLineWidth(0.1);
+  doc.line(labelX - 10, currentY, valueX + 30, currentY);
+  currentY += 4;
   
-  // Return the next Y position
-  return finalY + 35;
-};
+  // Total
+  doc.setFont(undefined, 'bold');
+  doc.setFontSize(12);
+  doc.text('Total:', labelX, currentY + 2);
+  doc.text(formatCurrency(total), valueX, currentY + 2, { align: 'right' });
+  
+  return currentY + 10;
+}
