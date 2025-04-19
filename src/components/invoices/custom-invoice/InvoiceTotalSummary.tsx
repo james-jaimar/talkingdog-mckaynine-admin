@@ -15,7 +15,7 @@ export function InvoiceTotalSummary() {
     
     // Get discount details
     const discountType = form.getValues("discount_type");
-    const discountAmount = form.getValues("discount_amount") || 0;
+    const discountAmount = Number(form.getValues("discount_amount") || 0);
     
     // Calculate the actual discount value
     let actualDiscount = discountAmount;
@@ -23,7 +23,7 @@ export function InvoiceTotalSummary() {
       actualDiscount = subtotal * (discountAmount / 100);
     }
     
-    const taxRate = form.getValues("tax_rate") || 0;
+    const taxRate = Number(form.getValues("tax_rate") || 0);
     const tax = (subtotal - actualDiscount) * (taxRate / 100);
     
     return {

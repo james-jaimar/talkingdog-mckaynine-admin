@@ -12,6 +12,9 @@ export interface FormValues {
   notes?: string;
   items: InvoiceItem[];
   tax_rate: number;
+  discount_type: 'fixed' | 'percentage';
+  discount_amount: number;
+  discount_reason?: string;
 }
 
 interface InvoiceFormProviderProps {
@@ -30,6 +33,9 @@ export function InvoiceFormProvider({
       notes: "",
       tax_rate: defaultTaxRate,
       items: [{ description: "", quantity: 1, unit_price: 0 }],
+      discount_type: 'fixed',
+      discount_amount: 0,
+      discount_reason: ""
     },
   });
 
