@@ -156,7 +156,7 @@ export function RevenueAllocationChart({ invoices, showOnlyPaid = true }: Revenu
                         </div>
                         <div className="flex items-center justify-between gap-8 text-sm">
                           <span>Percentage: </span>
-                          <span className="font-medium">{(percentage * 100).toFixed(1)}%</span>
+                          <span className="font-medium">{formatPercentage(percentage)}</span>
                         </div>
                       </div>
                     );

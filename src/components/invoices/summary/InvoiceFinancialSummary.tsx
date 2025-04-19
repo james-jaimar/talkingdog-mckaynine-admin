@@ -2,7 +2,7 @@
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { DollarSign, BadgePercent, AlertCircle } from "lucide-react";
 import { Invoice } from "@/types/invoice";
-import { formatCurrency } from "@/lib/formatters";
+import { formatCurrency, formatPercentage } from "@/lib/formatters";
 
 interface FinancialSummaryProps {
   invoices: Invoice[];
@@ -19,7 +19,7 @@ export function InvoiceFinancialSummary({ invoices, currentMonthLabel }: Financi
     const overdueAmount = invoices.reduce((sum, invoice) => 
       invoice.status === 'overdue' ? sum + invoice.total : sum, 0);
     
-    // Calculate collection rate as a decimal (percentage will be formatted by the formatPercentage function)
+    // Calculate collection rate as a decimal
     const collectionRate = totalAmount > 0 
       ? paidAmount / totalAmount
       : 0;
@@ -63,7 +63,7 @@ export function InvoiceFinancialSummary({ invoices, currentMonthLabel }: Financi
         <CardContent>
           <div className="flex items-center">
             <BadgePercent className="h-4 w-4 text-muted-foreground mr-2" />
-            <span className="text-2xl font-bold">{(financialSummary.collectionRate * 100).toFixed(1)}%</span>
+            <span className="text-2xl font-bold">{formatPercentage(financialSummary.collectionRate)}</span>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
             {formatCurrency(financialSummary.paidAmount)} of {formatCurrency(financialSummary.totalAmount)}

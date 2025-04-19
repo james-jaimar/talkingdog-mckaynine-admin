@@ -54,6 +54,7 @@ export default function FinancialDashboard() {
         }
         
         return data.map(trainer => {
+          // Ensure invoices is an array before processing
           const invoiceItems = Array.isArray(trainer.invoices) ? trainer.invoices : [];
           const totalEarned = invoiceItems.reduce((sum: number, item: any) => sum + (item.amount || 0), 0);
           const paidInvoices = invoiceItems.filter((item: any) => item.invoice?.status === 'paid');
@@ -102,15 +103,15 @@ export default function FinancialDashboard() {
 
   // Calculate correct percentages - ensure we account for edge cases
   const collectedPercentage = financialMetrics.totalRevenue > 0 
-    ? (financialMetrics.collectedRevenue / financialMetrics.totalRevenue) 
+    ? financialMetrics.collectedRevenue / financialMetrics.totalRevenue 
     : 0;
     
   const pendingPercentage = financialMetrics.totalRevenue > 0 
-    ? (financialMetrics.pendingRevenue / financialMetrics.totalRevenue) 
+    ? financialMetrics.pendingRevenue / financialMetrics.totalRevenue 
     : 0;
     
   const overduePercentage = financialMetrics.totalRevenue > 0 
-    ? (financialMetrics.overdueRevenue / financialMetrics.totalRevenue) 
+    ? financialMetrics.overdueRevenue / financialMetrics.totalRevenue 
     : 0;
 
   return (

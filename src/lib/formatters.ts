@@ -18,13 +18,16 @@ export function formatCurrency(value: number): string {
 
 /**
  * Format a decimal value as a percentage
- * @param value A decimal value (e.g., 0.15)
+ * @param value A decimal value (e.g., 0.15 for 15%)
  * @returns A formatted percentage string (e.g., "15.0%")
  */
 export function formatPercentage(value: number): string {
-  // If the value is already multiplied by 100 (e.g., 15 instead of 0.15)
-  // we need to convert it to a decimal first
-  const normalizedValue = value > 1 ? value / 100 : value;
+  if (value === undefined || value === null) return "0.0%";
+  
+  // Ensure value is properly normalized:
+  // If value is already in percentage form (e.g., 15 for 15%)
+  // convert it to decimal form (e.g., 0.15)
+  const normalizedValue = value >= 1 ? value / 100 : value;
   
   return new Intl.NumberFormat('en-ZA', {
     style: 'percent',
