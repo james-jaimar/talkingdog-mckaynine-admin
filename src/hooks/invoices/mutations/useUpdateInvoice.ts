@@ -15,8 +15,15 @@ export function useUpdateInvoice() {
     mutationFn: async ({ invoiceId, values }: { invoiceId: string, values: InvoiceFormValues }) => {
       // Calculate totals
       const subtotal = values.items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
-      const tax_amount = subtotal * (values.tax_rate / 100);
-      const total = subtotal + tax_amount;
+      
+      // Calculate discount
+      let discount_amount = values.discount_amount;
+      if (values.discount_type === 'percentage') {
+        discount_amount = subtotal * (values.discount_amount / 100);
+      }
+      
+      const tax_amount = (subtotal - discount_amount) * (values.tax_rate / 100);
+      const total = subtotal - discount_amount + tax_amount;
 
       // Update invoice
       const { error: invoiceError } = await supabase
@@ -31,7 +38,10 @@ export function useUpdateInvoice() {
           subtotal,
           tax_rate: values.tax_rate,
           tax_amount,
-          total
+          total,
+          discount_amount: values.discount_type === 'percentage' ? discount_amount : values.discount_amount,
+          discount_type: values.discount_type,
+          discount_reason: values.discount_reason || null
         })
         .eq('id', invoiceId);
 
