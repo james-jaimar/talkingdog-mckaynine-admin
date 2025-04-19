@@ -14,7 +14,7 @@ import { DateRangePicker } from "@/components/dashboard/financial/DateRangePicke
 import { startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { InfoCircledIcon } from "@radix-ui/react-icons";
+import { Info } from "lucide-react"; // Changed from '@radix-ui/react-icons'
 import { toast } from "sonner";
 
 export default function FinancialReports() {
@@ -74,7 +74,7 @@ export default function FinancialReports() {
           </div>
 
           <Alert className="mb-6">
-            <InfoCircledIcon className="h-4 w-4" />
+            <Info className="h-4 w-4" /> {/* Changed from InfoCircledIcon */}
             <AlertTitle>Important Financial Information</AlertTitle>
             <AlertDescription>
               This report includes both booking-associated invoices and general training invoices 
@@ -119,3 +119,4 @@ export default function FinancialReports() {
     </RequireAdmin>
   );
 }
+
