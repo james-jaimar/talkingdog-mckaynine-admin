@@ -1,4 +1,3 @@
-
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import {
   Table,
@@ -56,10 +55,15 @@ export function ClassFinancialReport() {
           `);
 
         if (classesError) throw classesError;
+        if (!classes) return [];
 
         // Process class data to calculate financials
         return classes.map(classData => {
-          const activeBookings = (classData.bookings || []).filter(
+          // Ensure bookings is an array before filtering
+          const bookings = Array.isArray(classData.bookings) ? classData.bookings : [];
+          
+          // Now safely filter the bookings array
+          const activeBookings = bookings.filter(
             booking => booking.payment_status === 'paid'
           );
 
@@ -131,25 +135,36 @@ export function ClassFinancialReport() {
   }
 
   // Calculate totals for the footer
-  const totals = classFinances.reduce((acc, curr) => ({
-    courseFee: acc.courseFee + curr.courseFee,
-    enrollmentFee: acc.enrollmentFee + curr.enrollmentFee,
-    franchiseFee: acc.franchiseFee + curr.franchiseFee,
-    totalOwingToFranchisor: acc.totalOwingToFranchisor + curr.totalOwingToFranchisor,
-    adminFee: acc.adminFee + curr.adminFee,
-    instructorFee: acc.instructorFee + curr.instructorFee,
-    profit: acc.profit + curr.profit,
-    bookingsCount: acc.bookingsCount + curr.bookingsCount
-  }), {
-    courseFee: 0,
-    enrollmentFee: 0,
-    franchiseFee: 0,
-    totalOwingToFranchisor: 0,
-    adminFee: 0,
-    instructorFee: 0,
-    profit: 0,
-    bookingsCount: 0
-  });
+  const totals = classFinances && classFinances.length > 0 
+    ? classFinances.reduce((acc, curr) => ({
+        courseFee: acc.courseFee + curr.courseFee,
+        enrollmentFee: acc.enrollmentFee + curr.enrollmentFee,
+        franchiseFee: acc.franchiseFee + curr.franchiseFee,
+        totalOwingToFranchisor: acc.totalOwingToFranchisor + curr.totalOwingToFranchisor,
+        adminFee: acc.adminFee + curr.adminFee,
+        instructorFee: acc.instructorFee + curr.instructorFee,
+        profit: acc.profit + curr.profit,
+        bookingsCount: acc.bookingsCount + curr.bookingsCount
+      }), {
+        courseFee: 0,
+        enrollmentFee: 0,
+        franchiseFee: 0,
+        totalOwingToFranchisor: 0,
+        adminFee: 0,
+        instructorFee: 0,
+        profit: 0,
+        bookingsCount: 0
+      })
+    : {
+        courseFee: 0,
+        enrollmentFee: 0,
+        franchiseFee: 0,
+        totalOwingToFranchisor: 0,
+        adminFee: 0,
+        instructorFee: 0,
+        profit: 0,
+        bookingsCount: 0
+      };
 
   return (
     <Card className="w-full">
