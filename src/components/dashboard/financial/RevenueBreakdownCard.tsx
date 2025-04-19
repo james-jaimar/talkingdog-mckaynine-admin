@@ -44,16 +44,18 @@ export function RevenueBreakdownCard({ invoices, dateRange, isLoading }: Revenue
       .filter(invoice => invoice.status === 'overdue')
       .reduce((sum, invoice) => sum + invoice.total, 0);
     
-    // Calculate percentages based on components sum to ensure they add up to 100%
-    const componentsSum = collected + pending + overdue;
-    const collectedPct = componentsSum > 0 ? collected / componentsSum : 0;
-    const pendingPct = componentsSum > 0 ? pending / componentsSum : 0;
-    const overduePct = componentsSum > 0 ? overdue / componentsSum : 0;
+    // Fix: Use the total revenue directly as the base for percentage calculations
+    // to ensure percentages accurately reflect proportion of the total
+    const totalForPercentage = total > 0 ? total : 1;
     
-    // Verify percentages add up to 1 (100%)
-    const totalPct = collectedPct + pendingPct + overduePct;
-    if (Math.abs(totalPct - 1) > 0.001 && componentsSum > 0) {
-      console.warn(`Revenue percentages don't add to 100%. Sum: ${totalPct * 100}%`);
+    // Log a warning if there's a discrepancy between total and sum of components
+    const sumOfComponents = collected + pending + overdue;
+    if (Math.abs(total - sumOfComponents) > 0.01) {
+      console.warn(
+        `Warning: Revenue components don't add up to total revenue. ` +
+        `Total: ${total}, Sum of components: ${sumOfComponents}, ` +
+        `Difference: ${total - sumOfComponents}`
+      );
     }
     
     return {
@@ -62,9 +64,9 @@ export function RevenueBreakdownCard({ invoices, dateRange, isLoading }: Revenue
       pendingRevenue: pending,
       overdueRevenue: overdue,
       percentages: {
-        collected: collectedPct,
-        pending: pendingPct,
-        overdue: overduePct
+        collected: total > 0 ? collected / totalForPercentage : 0,
+        pending: total > 0 ? pending / totalForPercentage : 0,
+        overdue: total > 0 ? overdue / totalForPercentage : 0
       }
     };
   }, [invoices, dateRange]);

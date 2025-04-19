@@ -19,6 +19,7 @@ export default function FinancialDashboard() {
   const { data: trainers = [], isLoading: isTrainersLoading } = useTrainerPayments(currentBranch?.id);
 
   // Calculate financial metrics from actual invoice data
+  // Ensure we're properly separating and accounting for each status type
   const financialMetrics = {
     totalRevenue: invoices ? invoices.reduce((sum, invoice) => sum + invoice.total, 0) : 0,
     collectedRevenue: invoices ? invoices.filter(invoice => invoice.status === 'paid')
@@ -28,6 +29,19 @@ export default function FinancialDashboard() {
     overdueRevenue: invoices ? invoices.filter(invoice => invoice.status === 'overdue')
       .reduce((sum, invoice) => sum + invoice.total, 0) : 0
   };
+
+  // Log any discrepancies for debugging
+  const sumOfComponents = financialMetrics.collectedRevenue + 
+                          financialMetrics.pendingRevenue + 
+                          financialMetrics.overdueRevenue;
+                          
+  if (Math.abs(financialMetrics.totalRevenue - sumOfComponents) > 0.01) {
+    console.warn(
+      `Warning: Dashboard metrics don't add up. ` +
+      `Total: ${financialMetrics.totalRevenue}, Sum of components: ${sumOfComponents}, ` +
+      `Difference: ${financialMetrics.totalRevenue - sumOfComponents}`
+    );
+  }
 
   return (
     <RequireAdmin>

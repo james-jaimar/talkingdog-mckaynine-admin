@@ -15,39 +15,21 @@ interface FinancialMetricsCardsProps {
 }
 
 export function FinancialMetricsCards({ metrics }: FinancialMetricsCardsProps) {
-  // Ensure we're calculating percentages against actual revenue
-  // Note: We use direct calculation rather than relying on computed totals
-  // to ensure the percentages add up to exactly 100%
-  const revenueSum = metrics.collectedRevenue + metrics.pendingRevenue + metrics.overdueRevenue;
-  
-  // If there's a small discrepancy between totalRevenue and the sum of components,
-  // use the sum to ensure percentages add to 100%
-  const baseForPercentage = Math.abs(metrics.totalRevenue - revenueSum) < 0.01 
-    ? metrics.totalRevenue 
-    : revenueSum;
+  // Fix: Always use totalRevenue as the denominator for percentage calculations
+  // to ensure percentages properly reflect proportion of the total
+  const totalForPercentage = metrics.totalRevenue > 0 ? metrics.totalRevenue : 1;
     
-  const collectedPercentage = baseForPercentage > 0 
-    ? metrics.collectedRevenue / baseForPercentage 
-    : 0;
-    
-  const pendingPercentage = baseForPercentage > 0 
-    ? metrics.pendingRevenue / baseForPercentage 
-    : 0;
-    
-  const overduePercentage = baseForPercentage > 0 
-    ? metrics.overdueRevenue / baseForPercentage 
-    : 0;
+  const collectedPercentage = metrics.collectedRevenue / totalForPercentage;
+  const pendingPercentage = metrics.pendingRevenue / totalForPercentage;
+  const overduePercentage = metrics.overdueRevenue / totalForPercentage;
 
-  // Validation - ensure percentages sum to 1 (100%)
-  // This is just a sanity check - if these values aren't very close to 1, 
-  // something is wrong with our calculations
-  const percentageSum = collectedPercentage + pendingPercentage + overduePercentage;
-  
-  // Log a warning if the percentages don't add up (with small tolerance for floating point)
-  if (Math.abs(percentageSum - 1) > 0.001 && baseForPercentage > 0) {
+  // Add validation to log any discrepancies for debugging
+  const sumOfComponents = metrics.collectedRevenue + metrics.pendingRevenue + metrics.overdueRevenue;
+  if (Math.abs(metrics.totalRevenue - sumOfComponents) > 0.01) {
     console.warn(
-      `Warning: Revenue percentages don't add up to 100%. Sum: ${percentageSum * 100}%`,
-      { collectedPercentage, pendingPercentage, overduePercentage }
+      `Warning: Revenue components don't add up to total revenue. ` +
+      `Total: ${metrics.totalRevenue}, Sum of components: ${sumOfComponents}, ` +
+      `Difference: ${metrics.totalRevenue - sumOfComponents}`
     );
   }
 
