@@ -82,7 +82,7 @@ export interface Invoice {
   created_at: string;
   updated_at: string;
   items?: InvoiceItem[];
-  original_discount_percentage?: number;
+  original_discount_percentage?: number | null;
   // Computed properties
   computed_payment_status?: PaymentStatus;
   computed_days_overdue?: number;

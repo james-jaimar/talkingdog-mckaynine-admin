@@ -76,6 +76,13 @@ export default function InvoiceEdit() {
   useEffect(() => {
     if (invoice && !isLoaded) {
       console.log("Initializing form with invoice data:", invoice);
+      
+      // Handle percentage discount correctly
+      const discountAmount = 
+        invoice.discount_type === 'percentage' && invoice.original_discount_percentage !== null
+          ? invoice.original_discount_percentage 
+          : invoice.discount_amount || 0;
+      
       form.reset({
         client_id: invoice.client_id,
         invoice_number: invoice.invoice_number,
@@ -84,17 +91,15 @@ export default function InvoiceEdit() {
         due_date: new Date(invoice.due_date),
         notes: invoice.notes || "",
         tax_rate: invoice.tax_rate,
-        items: invoice.items?.map(item => ({
+        items: invoice.items?.length ? invoice.items.map(item => ({
           id: item.id,
           description: item.description,
           quantity: item.quantity,
           unit_price: item.unit_price,
           booking_id: item.booking_id
-        })) || [{ description: "", quantity: 1, unit_price: 0 }],
+        })) : [{ description: "", quantity: 1, unit_price: 0 }],
         discount_type: invoice.discount_type || 'fixed',
-        discount_amount: invoice.discount_type === 'percentage' && invoice.original_discount_percentage 
-          ? invoice.original_discount_percentage 
-          : invoice.discount_amount || 0,
+        discount_amount: discountAmount,
         discount_reason: invoice.discount_reason || ''
       });
       setIsLoaded(true);
@@ -131,22 +136,30 @@ export default function InvoiceEdit() {
   };
   
   const onSubmit = async (values: InvoiceFormValues) => {
-    if (!id) return;
+    if (!id) {
+      toast.error("Missing invoice ID");
+      return;
+    }
     
     console.log("Submitting form with values:", values);
     
     try {
-      await updateInvoice.mutateAsync(
-        { invoiceId: id, values },
-        {
-          onSuccess: () => {
-            console.log("Navigation to invoice detail page");
-            navigate(`/invoices/${id}`);
-          }
-        }
-      );
+      const result = await updateInvoice.mutateAsync({ 
+        invoiceId: id, 
+        values 
+      });
+      
+      console.log("Update result:", result);
+      
+      if (result && result.success) {
+        toast.success("Invoice updated successfully");
+        navigate(`/invoices/${id}`);
+      } else {
+        toast.error("Failed to update invoice - please try again");
+      }
     } catch (error) {
       console.error("Form submission error:", error);
+      toast.error("Failed to update invoice due to an error");
     }
   };
   
