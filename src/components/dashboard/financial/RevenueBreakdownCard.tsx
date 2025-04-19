@@ -21,16 +21,20 @@ export function RevenueBreakdownCard({ invoices, dateRange, isLoading }: Revenue
     overdueRevenue,
     percentages
   } = useMemo(() => {
-    // Filter invoices by date range
-    const filteredInvoices = invoices.filter(invoice => {
-      const invoiceDate = new Date(invoice.issued_date);
-      const endDate = dateRange.to || dateRange.from;
-      
-      return isWithinInterval(invoiceDate, {
-        start: dateRange.from,
-        end: endDate
-      });
-    });
+    // Filter invoices by date range and exclude cancelled invoices
+    const filteredInvoices = invoices
+      .filter(invoice => invoice.status !== 'cancelled') // Exclude cancelled invoices
+      .filter(invoice => {
+        const invoiceDate = new Date(invoice.issued_date);
+        const endDate = dateRange.to || dateRange.from;
+        
+        return isWithinInterval(invoiceDate, {
+          start: dateRange.from,
+          end: endDate
+        });
+      })
+      // Further filter to only include sent, paid, or overdue invoices
+      .filter(invoice => invoice.status === 'sent' || invoice.status === 'paid' || invoice.status === 'overdue');
     
     // Calculate revenue metrics
     const total = filteredInvoices.reduce((sum, invoice) => sum + invoice.total, 0);
@@ -44,9 +48,16 @@ export function RevenueBreakdownCard({ invoices, dateRange, isLoading }: Revenue
       .filter(invoice => invoice.status === 'overdue')
       .reduce((sum, invoice) => sum + invoice.total, 0);
     
-    // Fix: Use the total revenue directly as the base for percentage calculations
-    // to ensure percentages accurately reflect proportion of the total
+    // Use the total revenue directly as the base for percentage calculations
     const totalForPercentage = total > 0 ? total : 1;
+    
+    // Log invoice counts by status for debugging
+    console.log("Filtered invoices breakdown:", {
+      total: filteredInvoices.length,
+      paid: filteredInvoices.filter(invoice => invoice.status === 'paid').length,
+      sent: filteredInvoices.filter(invoice => invoice.status === 'sent').length,
+      overdue: filteredInvoices.filter(invoice => invoice.status === 'overdue').length
+    });
     
     // Log a warning if there's a discrepancy between total and sum of components
     const sumOfComponents = collected + pending + overdue;
@@ -64,9 +75,9 @@ export function RevenueBreakdownCard({ invoices, dateRange, isLoading }: Revenue
       pendingRevenue: pending,
       overdueRevenue: overdue,
       percentages: {
-        collected: total > 0 ? collected / totalForPercentage : 0,
-        pending: total > 0 ? pending / totalForPercentage : 0,
-        overdue: total > 0 ? overdue / totalForPercentage : 0
+        collected: collected / totalForPercentage,
+        pending: pending / totalForPercentage,
+        overdue: overdue / totalForPercentage
       }
     };
   }, [invoices, dateRange]);

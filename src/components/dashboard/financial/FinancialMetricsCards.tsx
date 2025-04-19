@@ -15,8 +15,7 @@ interface FinancialMetricsCardsProps {
 }
 
 export function FinancialMetricsCards({ metrics }: FinancialMetricsCardsProps) {
-  // Fix: Always use totalRevenue as the denominator for percentage calculations
-  // to ensure percentages properly reflect proportion of the total
+  // Always use totalRevenue as the denominator for percentage calculations
   const totalForPercentage = metrics.totalRevenue > 0 ? metrics.totalRevenue : 1;
     
   const collectedPercentage = metrics.collectedRevenue / totalForPercentage;
@@ -25,11 +24,21 @@ export function FinancialMetricsCards({ metrics }: FinancialMetricsCardsProps) {
 
   // Add validation to log any discrepancies for debugging
   const sumOfComponents = metrics.collectedRevenue + metrics.pendingRevenue + metrics.overdueRevenue;
+  const sumOfPercentages = collectedPercentage + pendingPercentage + overduePercentage;
+  
   if (Math.abs(metrics.totalRevenue - sumOfComponents) > 0.01) {
     console.warn(
       `Warning: Revenue components don't add up to total revenue. ` +
       `Total: ${metrics.totalRevenue}, Sum of components: ${sumOfComponents}, ` +
       `Difference: ${metrics.totalRevenue - sumOfComponents}`
+    );
+  }
+  
+  if (Math.abs(1 - sumOfPercentages) > 0.01 && metrics.totalRevenue > 0) {
+    console.warn(
+      `Warning: Revenue percentages don't add up to 100%. ` +
+      `Sum of percentages: ${sumOfPercentages * 100}%, ` +
+      `Difference: ${(1 - sumOfPercentages) * 100}%`
     );
   }
 
@@ -49,7 +58,7 @@ export function FinancialMetricsCards({ metrics }: FinancialMetricsCardsProps) {
             </span>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            All time
+            Active invoices (sent, paid, overdue)
           </p>
         </CardContent>
       </Card>

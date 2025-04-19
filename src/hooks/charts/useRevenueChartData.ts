@@ -21,8 +21,13 @@ export function useRevenueChartData(invoices: Invoice[], timeframe: TimeFrame = 
       overdueRevenue: number;
     }> = {};
 
+    // Filter out cancelled invoices
+    const activeInvoices = invoices.filter(invoice => 
+      invoice.status !== 'cancelled' && (invoice.status === 'sent' || invoice.status === 'paid' || invoice.status === 'overdue')
+    );
+
     // Group by month/quarter/year based on timeframe
-    invoices.forEach(invoice => {
+    activeInvoices.forEach(invoice => {
       const date = new Date(invoice.issued_date);
       let period: string;
       
@@ -62,33 +67,22 @@ export function useRevenueChartData(invoices: Invoice[], timeframe: TimeFrame = 
     const sortedData = Object.values(data).sort((a, b) => a.name.localeCompare(b.name));
     
     // Verify that for each period, paid + pending + overdue = total
-    // If there's any discrepancy, adjust the values to ensure they sum correctly
     sortedData.forEach(period => {
       const sum = period.paidRevenue + period.pendingRevenue + period.overdueRevenue;
       
       // If there's a discrepancy due to floating point precision or data issues
       if (Math.abs(period.totalRevenue - sum) > 0.01) {
-        // Calculate the adjustment needed
-        const adjustment = period.totalRevenue - sum;
+        // Log the discrepancy
+        console.warn(
+          `Revenue balance issue detected for period ${period.name}: ` +
+          `total ${period.totalRevenue} vs sum ${sum}, difference ${period.totalRevenue - sum}`
+        );
         
-        // Apply adjustment to the largest non-zero category to minimize percentage impact
-        if (period.paidRevenue >= period.pendingRevenue && period.paidRevenue >= period.overdueRevenue && period.paidRevenue > 0) {
-          period.paidRevenue += adjustment;
-        } else if (period.pendingRevenue >= period.paidRevenue && period.pendingRevenue >= period.overdueRevenue && period.pendingRevenue > 0) {
-          period.pendingRevenue += adjustment;
-        } else if (period.overdueRevenue > 0) {
-          period.overdueRevenue += adjustment;
-        } else {
-          // If all categories are 0, just put the adjustment in pending
-          period.pendingRevenue += adjustment;
+        // Only adjust if there is a meaningful discrepancy
+        if (Math.abs(period.totalRevenue - sum) > 1) {
+          // Reset the total to be the sum of components for consistency
+          period.totalRevenue = sum;
         }
-      }
-      
-      // Double-check our adjustment worked
-      const newSum = period.paidRevenue + period.pendingRevenue + period.overdueRevenue;
-      if (Math.abs(period.totalRevenue - newSum) > 0.01) {
-        console.warn(`Revenue balance issue remains for period ${period.name}: ` +
-          `total ${period.totalRevenue} vs sum ${newSum}`);
       }
     });
     

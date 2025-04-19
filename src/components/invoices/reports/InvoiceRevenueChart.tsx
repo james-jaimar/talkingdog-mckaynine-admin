@@ -13,7 +13,13 @@ interface InvoiceRevenueChartProps {
 }
 
 export function InvoiceRevenueChart({ invoices, timeframe = 'monthly' }: InvoiceRevenueChartProps) {
-  const { chartData } = useRevenueChartData(invoices, timeframe);
+  // Filter out cancelled invoices before passing to the hook
+  const activeInvoices = invoices ? invoices.filter(invoice => 
+    invoice.status !== 'cancelled' && 
+    (invoice.status === 'sent' || invoice.status === 'paid' || invoice.status === 'overdue')
+  ) : [];
+  
+  const { chartData } = useRevenueChartData(activeInvoices, timeframe);
 
   if (!chartData.length) {
     return (

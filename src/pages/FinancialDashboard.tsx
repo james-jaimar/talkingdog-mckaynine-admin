@@ -18,19 +18,36 @@ export default function FinancialDashboard() {
   const { currentBranch } = useBranch();
   const { data: trainers = [], isLoading: isTrainersLoading } = useTrainerPayments(currentBranch?.id);
 
-  // Calculate financial metrics from actual invoice data
-  // Ensure we're properly separating and accounting for each status type
+  // Filter out any cancelled invoices and include only sent or paid invoices for revenue calculations
+  const activeInvoices = invoices ? invoices.filter(invoice => 
+    invoice.status !== 'cancelled' && (invoice.status === 'sent' || invoice.status === 'paid' || invoice.status === 'overdue')
+  ) : [];
+  
+  // Calculate financial metrics from filtered invoice data
   const financialMetrics = {
-    totalRevenue: invoices ? invoices.reduce((sum, invoice) => sum + invoice.total, 0) : 0,
-    collectedRevenue: invoices ? invoices.filter(invoice => invoice.status === 'paid')
-      .reduce((sum, invoice) => sum + invoice.total, 0) : 0,
-    pendingRevenue: invoices ? invoices.filter(invoice => invoice.status === 'sent')
-      .reduce((sum, invoice) => sum + invoice.total, 0) : 0,
-    overdueRevenue: invoices ? invoices.filter(invoice => invoice.status === 'overdue')
-      .reduce((sum, invoice) => sum + invoice.total, 0) : 0
+    // Only count active invoices (sent, paid, overdue) in total revenue
+    totalRevenue: activeInvoices.reduce((sum, invoice) => sum + invoice.total, 0),
+    
+    // Only paid invoices count as collected revenue
+    collectedRevenue: activeInvoices.filter(invoice => invoice.status === 'paid')
+      .reduce((sum, invoice) => sum + invoice.total, 0),
+    
+    // Only sent invoices count as pending revenue
+    pendingRevenue: activeInvoices.filter(invoice => invoice.status === 'sent')
+      .reduce((sum, invoice) => sum + invoice.total, 0),
+    
+    // Only overdue invoices count as overdue revenue
+    overdueRevenue: activeInvoices.filter(invoice => invoice.status === 'overdue')
+      .reduce((sum, invoice) => sum + invoice.total, 0)
   };
 
-  // Log any discrepancies for debugging
+  // Log detailed breakdown of invoices for debugging
+  console.log("Active invoices count:", activeInvoices.length);
+  console.log("Paid invoices count:", activeInvoices.filter(invoice => invoice.status === 'paid').length);
+  console.log("Sent invoices count:", activeInvoices.filter(invoice => invoice.status === 'sent').length);
+  console.log("Overdue invoices count:", activeInvoices.filter(invoice => invoice.status === 'overdue').length);
+  
+  // Validate that components match total
   const sumOfComponents = financialMetrics.collectedRevenue + 
                           financialMetrics.pendingRevenue + 
                           financialMetrics.overdueRevenue;
@@ -63,13 +80,13 @@ export default function FinancialDashboard() {
             </Tabs>
           </div>
 
-          {/* Financial metrics cards */}
+          {/* Financial metrics cards - pass the filtered active invoices */}
           <FinancialMetricsCards metrics={financialMetrics} />
 
-          {/* Charts */}
+          {/* Charts - pass the filtered active invoices */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            <InvoiceRevenueChart invoices={invoices} timeframe={timeframe} />
-            <RevenueAllocationChart invoices={invoices} />
+            <InvoiceRevenueChart invoices={activeInvoices} timeframe={timeframe} />
+            <RevenueAllocationChart invoices={activeInvoices} />
           </div>
 
           {/* Trainer payments summary */}
