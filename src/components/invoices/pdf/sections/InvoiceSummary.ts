@@ -38,7 +38,9 @@ export function addInvoiceSummary(doc: any, invoice: Invoice, startY: number): n
     
     if (discount_type === 'percentage') {
       // Calculate percentage from amount relative to subtotal
-      const calculatedPercentage = Math.min((discount_amount / subtotal * 100), 100).toFixed(1);
+      const calculatedPercentage = subtotal > 0
+        ? Math.min((discount_amount / subtotal * 100), 100).toFixed(1)
+        : '0.0';
       discountLabel = `Discount (${calculatedPercentage}%):`;
     }
       

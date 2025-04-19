@@ -15,24 +15,35 @@ export function InvoiceTotalSummary() {
     
     // Get discount details
     const discountType = form.getValues("discount_type");
-    const discountAmount = Number(form.getValues("discount_amount") || 0);
+    const discountInput = Number(form.getValues("discount_amount") || 0);
     
     // Calculate the actual discount value
-    let actualDiscount = discountAmount;
+    let actualDiscount = 0;
+    
     if (discountType === "percentage") {
-      actualDiscount = subtotal * (discountAmount / 100);
+      // For percentage, make sure it's between 0-100
+      const percentage = Math.min(Math.max(discountInput, 0), 100);
+      actualDiscount = subtotal * (percentage / 100);
+    } else {
+      // For fixed, make sure it doesn't exceed subtotal
+      actualDiscount = Math.min(discountInput, subtotal);
     }
     
+    // Ensure discount doesn't create a negative amount
+    actualDiscount = Math.max(0, Math.min(actualDiscount, subtotal));
+    
+    // Calculate tax on the amount after discount
     const taxRate = Number(form.getValues("tax_rate") || 0);
-    const tax = (subtotal - actualDiscount) * (taxRate / 100);
+    const taxable = subtotal - actualDiscount;
+    const tax = taxable * (taxRate / 100);
     
     return {
-      subtotal: subtotal.toFixed(2),
-      discount: actualDiscount.toFixed(2),
+      subtotal: subtotal,
+      discount: actualDiscount,
       discountType,
-      discountAmount,
-      tax: tax.toFixed(2),
-      total: (subtotal - actualDiscount + tax).toFixed(2)
+      discountAmount: discountInput,
+      tax: tax,
+      total: subtotal - actualDiscount + tax
     };
   };
 
@@ -44,27 +55,27 @@ export function InvoiceTotalSummary() {
     <div className="border-t pt-4 space-y-1">
       <div className="flex justify-between text-sm">
         <span>Subtotal</span>
-        <span>{formatCurrency(parseFloat(totals.subtotal))}</span>
+        <span>{formatCurrency(totals.subtotal)}</span>
       </div>
       
-      {parseFloat(totals.discount) > 0 && (
+      {totals.discount > 0 && (
         <div className="flex justify-between text-sm text-red-600">
           <span>
             Discount {discountType === "percentage" ? 
               `(${discountAmount}%)` : 
               ""}
           </span>
-          <span>-{formatCurrency(parseFloat(totals.discount))}</span>
+          <span>-{formatCurrency(totals.discount)}</span>
         </div>
       )}
       
       <div className="flex justify-between text-sm">
         <span>Tax ({form.getValues("tax_rate")}%)</span>
-        <span>{formatCurrency(parseFloat(totals.tax))}</span>
+        <span>{formatCurrency(totals.tax)}</span>
       </div>
       <div className="flex justify-between font-bold">
         <span>Total</span>
-        <span>{formatCurrency(parseFloat(totals.total))}</span>
+        <span>{formatCurrency(totals.total)}</span>
       </div>
     </div>
   );

@@ -11,6 +11,19 @@ interface DiscountFieldsProps {
 }
 
 export function DiscountFields({ form }: DiscountFieldsProps) {
+  const discountType = form.watch("discount_type");
+  
+  const handleDiscountChange = (value: number) => {
+    if (discountType === "percentage") {
+      // For percentage, clamp between 0-100
+      const clampedValue = Math.min(Math.max(value, 0), 100);
+      form.setValue("discount_amount", clampedValue);
+    } else {
+      // For fixed amount, ensure it's not negative
+      form.setValue("discount_amount", Math.max(0, value));
+    }
+  };
+  
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -20,7 +33,14 @@ export function DiscountFields({ form }: DiscountFieldsProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Discount Type</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
+              <Select 
+                onValueChange={(value) => {
+                  field.onChange(value);
+                  // Reset discount amount when changing type
+                  form.setValue("discount_amount", 0);
+                }} 
+                value={field.value}
+              >
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Select discount type" />
@@ -42,16 +62,17 @@ export function DiscountFields({ form }: DiscountFieldsProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>
-                Discount {form.watch("discount_type") === "percentage" ? "(%) " : "(ZAR) "}
+                Discount {discountType === "percentage" ? "(%) " : "(ZAR) "}
               </FormLabel>
               <FormControl>
                 <Input
                   type="number"
                   min={0}
-                  step={form.watch("discount_type") === "percentage" ? "0.1" : "0.01"}
-                  max={form.watch("discount_type") === "percentage" ? "100" : undefined}
+                  step={discountType === "percentage" ? "0.1" : "0.01"}
+                  max={discountType === "percentage" ? "100" : undefined}
                   {...field}
-                  onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                  value={field.value || 0}
+                  onChange={(e) => handleDiscountChange(parseFloat(e.target.value) || 0)}
                 />
               </FormControl>
               <FormMessage />

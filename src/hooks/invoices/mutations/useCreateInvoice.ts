@@ -17,10 +17,41 @@ export function useCreateInvoice() {
         console.log("Creating invoice with values:", values);
         console.log("Using invoice number:", values.invoice_number);
         
-        // Calculate totals
+        // Calculate subtotal
         const subtotal = values.items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
-        const tax_amount = subtotal * (values.tax_rate / 100);
-        const total = subtotal + tax_amount;
+        
+        // Calculate discount amount based on type
+        let discount_amount = 0;
+        
+        if (values.discount_type === 'percentage') {
+          // For percentage type, calculate the actual amount based on the percentage input
+          // Make sure the percentage is between 0-100
+          const percentage = Math.min(Math.max(values.discount_amount || 0, 0), 100);
+          discount_amount = (subtotal * percentage) / 100;
+        } else {
+          // For fixed type, use the input directly but ensure it doesn't exceed the subtotal
+          discount_amount = Math.min(values.discount_amount || 0, subtotal);
+        }
+        
+        // Ensure discount doesn't create a negative amount
+        discount_amount = Math.max(0, Math.min(discount_amount, subtotal));
+        
+        // Calculate tax on the amount after discount
+        const taxable_amount = subtotal - discount_amount;
+        const tax_amount = taxable_amount * (values.tax_rate / 100);
+        
+        // Calculate total: subtotal - discount + tax
+        const total = subtotal - discount_amount + tax_amount;
+        
+        console.log("Invoice calculations:", {
+          subtotal,
+          discount_type: values.discount_type,
+          discount_input: values.discount_amount,
+          calculated_discount_amount: discount_amount,
+          tax_rate: values.tax_rate,
+          tax_amount,
+          total
+        });
 
         // Insert invoice
         const { data: invoice, error: invoiceError } = await supabase
@@ -35,7 +66,10 @@ export function useCreateInvoice() {
             subtotal,
             tax_rate: values.tax_rate,
             tax_amount,
-            total
+            total,
+            discount_amount,
+            discount_type: values.discount_type,
+            discount_reason: values.discount_reason || null
           })
           .select('*')
           .single();

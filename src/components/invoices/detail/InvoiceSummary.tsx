@@ -13,10 +13,9 @@ export function InvoiceSummary({ invoice }: InvoiceSummaryProps) {
   
   if (invoice.discount_type === 'percentage') {
     // Calculate percentage from amount relative to subtotal
-    const calculatedPercentage = Math.min(
-      (invoice.discount_amount / invoice.subtotal) * 100, 
-      100
-    ).toFixed(1);
+    const calculatedPercentage = invoice.subtotal > 0 
+      ? Math.min((invoice.discount_amount / invoice.subtotal) * 100, 100).toFixed(1)
+      : '0.0';
     discountDisplay = `(${calculatedPercentage}%)`;
   }
 
