@@ -33,13 +33,15 @@ export function ClassFinancialReport() {
   const [classFinances, setClassFinances] = useState<ClassFinance[]>([]);
   const [isCalculating, setIsCalculating] = useState(false);
   
-  // 1. Fetch classes for the current branch
+  // Fetch all classes for the current branch
   const { data: classes, isLoading: isLoadingClasses, error: classesError } = useQuery({
     queryKey: ['financial-classes', currentBranch?.id],
     queryFn: async () => {
       if (!currentBranch?.id) {
         return [];
       }
+      
+      console.log("Fetching classes for branch:", currentBranch.name);
       
       const { data, error } = await supabase
         .from("classes")
@@ -51,99 +53,130 @@ export function ClassFinancialReport() {
         throw error;
       }
       
+      console.log(`Found ${data?.length || 0} classes for branch ${currentBranch.name}`);
       return data || [];
     },
     enabled: !!currentBranch?.id,
   });
 
-  // 2. Fetch bookings with payment status for these classes
-  const { data: bookingData, isLoading: isLoadingBookings } = useQuery({
-    queryKey: ['financial-bookings', currentBranch?.id, classes?.map(c => c.id).join(',')],
+  // Fetch bookings for classes in this branch - with a modified approach
+  const { data: classBookings, isLoading: isLoadingBookings } = useQuery({
+    queryKey: ['financial-bookings-unified', currentBranch?.id, classes?.map(c => c.id).join(',')],
     queryFn: async () => {
-      if (!classes || classes.length === 0) return {};
+      if (!classes || classes.length === 0 || !currentBranch?.id) return {};
       
-      // Get all schedules for all classes
-      const { data: schedules, error: schedulesError } = await supabase
-        .from("class_schedules")
-        .select("id, class_id")
-        .in("class_id", classes.map(c => c.id));
-        
-      if (schedulesError) {
-        console.error("Error fetching schedules:", schedulesError);
-        throw schedulesError;
-      }
-      
-      if (!schedules || schedules.length === 0) {
-        return {};
-      }
-      
-      // Create a mapping of class IDs to schedule IDs
-      const classSchedules: Record<string, string[]> = {};
-      schedules.forEach(schedule => {
-        if (!classSchedules[schedule.class_id]) {
-          classSchedules[schedule.class_id] = [];
-        }
-        classSchedules[schedule.class_id].push(schedule.id);
-      });
-      
-      // Fetch bookings for each class separately
-      const bookingsByClass: Record<string, any[]> = {};
-      
-      // Process each class in batches to prevent excessive database load
-      for (const classItem of classes) {
-        const scheduleIds = classSchedules[classItem.id] || [];
-        
-        if (scheduleIds.length === 0) {
-          bookingsByClass[classItem.id] = [];
-          continue;
-        }
-        
-        try {
-          const { data: bookings, error: bookingsError } = await supabase
-            .from("bookings")
-            .select(`
-              id, 
-              payment_status,
-              proof_of_payment,
-              class_schedule_id
-            `)
-            .in("class_schedule_id", scheduleIds)
-            .eq("status", "confirmed");
-            
-          if (bookingsError) {
-            console.error(`Error fetching bookings for class ${classItem.id}:`, bookingsError);
-            bookingsByClass[classItem.id] = [];
-            continue;
-          }
+      console.log("Fetching bookings data for financial report...");
+
+      try {
+        // First get all class schedules for this branch's classes
+        const { data: schedules, error: schedulesError } = await supabase
+          .from("class_schedules")
+          .select("id, class_id")
+          .in("class_id", classes.map(c => c.id));
           
-          bookingsByClass[classItem.id] = bookings || [];
-        } catch (err) {
-          console.error(`Error processing bookings for class ${classItem.id}:`, err);
-          bookingsByClass[classItem.id] = [];
+        if (schedulesError) {
+          console.error("Error fetching schedules:", schedulesError);
+          throw schedulesError;
         }
+        
+        if (!schedules || schedules.length === 0) {
+          console.log("No schedules found for classes");
+          return {};
+        }
+
+        console.log(`Found ${schedules.length} schedules for classes`);
+        
+        // Map schedules to their classes
+        const schedulesByClass: Record<string, string[]> = {};
+        schedules.forEach(schedule => {
+          if (!schedulesByClass[schedule.class_id]) {
+            schedulesByClass[schedule.class_id] = [];
+          }
+          schedulesByClass[schedule.class_id].push(schedule.id);
+        });
+        
+        // Get all bookings for all schedules in a single query
+        const scheduleIds = schedules.map(s => s.id);
+        
+        const { data: allBookings, error: bookingsError } = await supabase
+          .from("bookings")
+          .select(`
+            id, 
+            payment_status,
+            proof_of_payment,
+            class_schedule_id
+          `)
+          .in("class_schedule_id", scheduleIds)
+          .eq("status", "confirmed");
+          
+        if (bookingsError) {
+          console.error("Error fetching bookings:", bookingsError);
+          throw bookingsError;
+        }
+        
+        console.log(`Found ${allBookings?.length || 0} total bookings`);
+        
+        // Now organize bookings by class
+        const bookingsByClass: Record<string, any[]> = {};
+        
+        // Initialize with empty arrays for all classes
+        classes.forEach(cls => {
+          bookingsByClass[cls.id] = [];
+        });
+        
+        // Populate bookings by class
+        allBookings?.forEach(booking => {
+          // Find which class this booking belongs to
+          const schedule = schedules.find(s => s.id === booking.class_schedule_id);
+          if (schedule) {
+            const classId = schedule.class_id;
+            if (bookingsByClass[classId]) {
+              bookingsByClass[classId].push(booking);
+            }
+          }
+        });
+        
+        console.log("Organized bookings by class:", Object.keys(bookingsByClass).map(classId => ({
+          classId,
+          bookingCount: bookingsByClass[classId].length
+        })));
+        
+        return bookingsByClass;
+      } catch (err) {
+        console.error("Error in bookings query:", err);
+        throw err;
       }
-      
-      return bookingsByClass;
     },
-    enabled: !!classes && classes.length > 0,
+    enabled: !!classes && classes.length > 0 && !!currentBranch?.id,
   });
 
   // Calculate financial metrics when data is available
   useEffect(() => {
-    if (!classes || classes.length === 0 || !bookingData || isLoadingClasses || isLoadingBookings) {
+    if (!classes || classes.length === 0 || !classBookings || isLoadingClasses || isLoadingBookings) {
       return;
     }
+    
+    console.log("Calculating financial metrics with data:", { 
+      classesCount: classes.length,
+      hasBookingsData: !!classBookings 
+    });
     
     setIsCalculating(true);
     
     try {
       const finances: ClassFinance[] = classes.map(classItem => {
         // Get bookings for this class
-        const classBookings = bookingData[classItem.id] || [];
-        const paidBookings = classBookings.filter(b => 
-          b.payment_status === 'paid' || 
-          (b.proof_of_payment && b.proof_of_payment.trim() !== '')
+        const classBookingsArr = classBookings[classItem.id] || [];
+        
+        // Consider a booking as "paid" if it has either:
+        // 1. payment_status = 'paid'
+        // 2. proof_of_payment is not empty
+        const paidBookings = classBookingsArr.filter(booking => 
+          booking.payment_status === 'paid' || 
+          (booking.proof_of_payment && booking.proof_of_payment.trim() !== '')
         );
+        
+        console.log(`Class ${classItem.name}: ${paidBookings.length} paid bookings out of ${classBookingsArr.length} total`);
         
         const bookingsCount = paidBookings.length;
         
@@ -153,19 +186,28 @@ export function ClassFinancialReport() {
         const totalRevenue = totalCourseFees + totalEnrollmentFees;
         
         // Calculate franchise fee
-        const franchiseFee = classItem.mckaynine_commission_type === 'percentage'
-          ? (totalRevenue * (classItem.mckaynine_commission_value / 100))
-          : bookingsCount * classItem.mckaynine_commission_value;
+        let franchiseFee = 0;
+        if (classItem.mckaynine_commission_type === 'percentage') {
+          franchiseFee = totalRevenue * (classItem.mckaynine_commission_value / 100);
+        } else {
+          franchiseFee = bookingsCount * classItem.mckaynine_commission_value;
+        }
         
         // Calculate admin fee
-        const adminFee = classItem.admin_fee_type === 'percentage'
-          ? (totalRevenue * (classItem.admin_fee_value / 100))
-          : bookingsCount * classItem.admin_fee_value;
+        let adminFee = 0;
+        if (classItem.admin_fee_type === 'percentage') {
+          adminFee = totalRevenue * (classItem.admin_fee_value / 100);
+        } else {
+          adminFee = bookingsCount * classItem.admin_fee_value;
+        }
         
         // Calculate instructor fee
-        const instructorFee = classItem.trainer_fee_type === 'percentage'
-          ? (totalRevenue * (classItem.trainer_fee_value / 100))
-          : bookingsCount * classItem.trainer_fee_value;
+        let instructorFee = 0;
+        if (classItem.trainer_fee_type === 'percentage') {
+          instructorFee = totalRevenue * (classItem.trainer_fee_value / 100);
+        } else {
+          instructorFee = bookingsCount * classItem.trainer_fee_value;
+        }
         
         // Calculate profit
         const profit = totalRevenue - franchiseFee - adminFee - instructorFee;
@@ -183,6 +225,7 @@ export function ClassFinancialReport() {
         };
       });
       
+      console.log("Calculated finances:", finances);
       setClassFinances(finances);
     } catch (error) {
       console.error("Error calculating financial data:", error);
@@ -190,7 +233,7 @@ export function ClassFinancialReport() {
     } finally {
       setIsCalculating(false);
     }
-  }, [classes, bookingData, isLoadingClasses, isLoadingBookings]);
+  }, [classes, classBookings, isLoadingClasses, isLoadingBookings]);
 
   // Show loading state
   if (isLoadingClasses || isLoadingBookings || isCalculating) {

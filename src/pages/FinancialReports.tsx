@@ -10,11 +10,10 @@ import { TrainerPaymentsSummary } from "@/components/invoices/reports/TrainerPay
 import { ClassFinancialReport } from "@/components/invoices/reports/ClassFinancialReport";
 import { DateRangePicker } from "@/components/dashboard/financial/DateRangePicker";
 import { addMonths, startOfMonth, endOfMonth, subMonths } from "date-fns";
-import { Card } from "@/components/ui/card";
 
 export default function FinancialReports() {
   const [dateRange, setDateRange] = useState({
-    from: startOfMonth(subMonths(new Date(), 3)),
+    from: startOfMonth(subMonths(new Date(), 1)), // Default to previous month
     to: endOfMonth(new Date())
   });
   const { currentBranch } = useBranch();
@@ -23,6 +22,11 @@ export default function FinancialReports() {
   // Handle date range changes
   const handleDateRangeChange = (range: { from: Date; to?: Date }) => {
     setDateRange({
+      from: range.from,
+      to: range.to || endOfMonth(new Date())
+    });
+    
+    console.log("Date range changed:", {
       from: range.from,
       to: range.to || endOfMonth(new Date())
     });
