@@ -19,9 +19,15 @@ export function InvoiceFinancialSummary({ invoices, currentMonthLabel }: Financi
     const overdueAmount = invoices.reduce((sum, invoice) => 
       invoice.status === 'overdue' ? sum + invoice.total : sum, 0);
     
+    // Use the sum of components to ensure percentages add up to exactly 100%
+    const revenueComponents = paidAmount + outstandingAmount;
+    const baseForPercentage = Math.abs(totalAmount - revenueComponents) < 0.01 
+      ? totalAmount 
+      : revenueComponents;
+    
     // Calculate collection rate as a decimal (0-1)
-    const collectionRate = totalAmount > 0 
-      ? paidAmount / totalAmount
+    const collectionRate = baseForPercentage > 0 
+      ? paidAmount / baseForPercentage
       : 0;
     
     return {
@@ -85,7 +91,7 @@ export function InvoiceFinancialSummary({ invoices, currentMonthLabel }: Financi
             </span>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            Awaiting payment
+            {formatPercentage(financialSummary.outstandingAmount / (financialSummary.totalAmount || 1))} of total
           </p>
         </CardContent>
       </Card>
@@ -104,7 +110,7 @@ export function InvoiceFinancialSummary({ invoices, currentMonthLabel }: Financi
             </span>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            Past due date
+            {formatPercentage(financialSummary.overdueAmount / (financialSummary.totalAmount || 1))} of total
           </p>
         </CardContent>
       </Card>

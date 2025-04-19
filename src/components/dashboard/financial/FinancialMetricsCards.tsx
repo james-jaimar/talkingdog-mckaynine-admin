@@ -15,18 +15,41 @@ interface FinancialMetricsCardsProps {
 }
 
 export function FinancialMetricsCards({ metrics }: FinancialMetricsCardsProps) {
-  // Calculate percentages out of total revenue
-  const collectedPercentage = metrics.totalRevenue > 0 
-    ? metrics.collectedRevenue / metrics.totalRevenue 
+  // Ensure we're calculating percentages against actual revenue
+  // Note: We use direct calculation rather than relying on computed totals
+  // to ensure the percentages add up to exactly 100%
+  const revenueSum = metrics.collectedRevenue + metrics.pendingRevenue + metrics.overdueRevenue;
+  
+  // If there's a small discrepancy between totalRevenue and the sum of components,
+  // use the sum to ensure percentages add to 100%
+  const baseForPercentage = Math.abs(metrics.totalRevenue - revenueSum) < 0.01 
+    ? metrics.totalRevenue 
+    : revenueSum;
+    
+  const collectedPercentage = baseForPercentage > 0 
+    ? metrics.collectedRevenue / baseForPercentage 
     : 0;
     
-  const pendingPercentage = metrics.totalRevenue > 0 
-    ? metrics.pendingRevenue / metrics.totalRevenue 
+  const pendingPercentage = baseForPercentage > 0 
+    ? metrics.pendingRevenue / baseForPercentage 
     : 0;
     
-  const overduePercentage = metrics.totalRevenue > 0 
-    ? metrics.overdueRevenue / metrics.totalRevenue 
+  const overduePercentage = baseForPercentage > 0 
+    ? metrics.overdueRevenue / baseForPercentage 
     : 0;
+
+  // Validation - ensure percentages sum to 1 (100%)
+  // This is just a sanity check - if these values aren't very close to 1, 
+  // something is wrong with our calculations
+  const percentageSum = collectedPercentage + pendingPercentage + overduePercentage;
+  
+  // Log a warning if the percentages don't add up (with small tolerance for floating point)
+  if (Math.abs(percentageSum - 1) > 0.001 && baseForPercentage > 0) {
+    console.warn(
+      `Warning: Revenue percentages don't add up to 100%. Sum: ${percentageSum * 100}%`,
+      { collectedPercentage, pendingPercentage, overduePercentage }
+    );
+  }
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">

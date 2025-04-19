@@ -37,10 +37,26 @@ export function useAllocationChartData(invoices: Invoice[], showOnlyPaid: boolea
     setTotalRevenue(total);
 
     // Using fixed percentages of total revenue for allocation categories
-    const trainerCompensation = total * 0.60;
-    const franchiseRoyalties = total * 0.15;
-    const branchOperations = total * 0.20;
-    const adminFees = total * 0.05;
+    // These percentages MUST add up to exactly 100% (1.0)
+    const targetPercentages = {
+      trainerCompensation: 0.60, // 60%
+      franchiseRoyalties: 0.15,  // 15%
+      branchOperations: 0.20,    // 20%
+      adminFees: 0.05            // 5%
+    };
+    
+    // Verify that target percentages add up to 100%
+    const percentageSum = Object.values(targetPercentages).reduce((sum, p) => sum + p, 0);
+    console.assert(
+      Math.abs(percentageSum - 1) < 0.001, 
+      `Allocation percentages must add to 100%, got ${percentageSum * 100}%`
+    );
+    
+    // Calculate values based on percentages
+    const trainerCompensation = total * targetPercentages.trainerCompensation;
+    const franchiseRoyalties = total * targetPercentages.franchiseRoyalties;
+    const branchOperations = total * targetPercentages.branchOperations;
+    const adminFees = total * targetPercentages.adminFees;
     
     // Verify that all categories sum to total (accounting for potential floating point precision issues)
     const sum = trainerCompensation + franchiseRoyalties + branchOperations + adminFees;

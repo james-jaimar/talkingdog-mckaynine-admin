@@ -29,11 +29,14 @@ export function formatPercentage(value: number): string {
   // convert it to decimal form (e.g., 0.15)
   const normalizedValue = value > 1 ? value / 100 : value;
   
+  // Clamp between 0 and 1 to prevent invalid percentages
+  const clampedValue = Math.max(0, Math.min(1, normalizedValue));
+  
   return new Intl.NumberFormat('en-ZA', {
     style: 'percent',
     minimumFractionDigits: 1,
     maximumFractionDigits: 1,
-  }).format(normalizedValue);
+  }).format(clampedValue);
 }
 
 /**
