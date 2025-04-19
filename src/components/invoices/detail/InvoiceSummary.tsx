@@ -8,6 +8,12 @@ interface InvoiceSummaryProps {
 }
 
 export function InvoiceSummary({ invoice }: InvoiceSummaryProps) {
+  // For percentage discounts, calculate and display the effective percentage
+  const discountPercentage = 
+    invoice.discount_type === 'percentage' 
+      ? (invoice.discount_amount / invoice.subtotal * 100).toFixed(1)
+      : null;
+
   return (
     <div className="space-y-2">
       <div className="flex justify-between">
@@ -19,7 +25,7 @@ export function InvoiceSummary({ invoice }: InvoiceSummaryProps) {
         <div className="flex justify-between text-red-600">
           <span>
             Discount {invoice.discount_type === 'percentage' ? 
-              `(${(invoice.discount_amount / invoice.subtotal * 100).toFixed(1)}%)` : 
+              `(${discountPercentage}%)` : 
               ''}:
           </span>
           <span className="font-medium">-{formatCurrency(invoice.discount_amount)}</span>
