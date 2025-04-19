@@ -34,125 +34,128 @@ export function ClassFinancialReport() {
     queryKey: ['class-finances', currentBranch?.id],
     queryFn: async () => {
       try {
-        // First fetch all the classes for the current branch
+        if (!currentBranch?.id) {
+          console.log("No branch selected");
+          return [];
+        }
+        
+        console.log(`Fetching financial data for branch: ${currentBranch.name} (${currentBranch.id})`);
+        
+        // Step 1: Get classes for the current branch
         const { data: classes, error: classesError } = await supabase
-          .from('classes')
-          .select(`
-            id,
-            name,
-            course_fee,
-            enrollment_fee,
-            mckaynine_commission_value,
-            mckaynine_commission_type,
-            admin_fee_value,
-            admin_fee_type,
-            trainer_fee_value,
-            trainer_fee_type
-          `)
-          .eq('branch_id', currentBranch?.id || '');
-
+          .from("classes")
+          .select("id, name, course_fee, enrollment_fee, mckaynine_commission_value, mckaynine_commission_type, admin_fee_value, admin_fee_type, trainer_fee_value, trainer_fee_type")
+          .eq("branch_id", currentBranch.id);
+          
         if (classesError) {
-          console.error('Error fetching classes:', classesError);
-          throw classesError;
+          console.error("Error fetching classes:", classesError);
+          throw new Error(`Error fetching classes: ${classesError.message}`);
         }
         
         if (!classes || classes.length === 0) {
-          console.log('No classes found for branch:', currentBranch?.name);
+          console.log(`No classes found for branch: ${currentBranch.name}`);
           return [];
         }
-
-        console.log(`Found ${classes.length} classes for branch ${currentBranch?.name}`);
-
-        // For each class, fetch associated bookings separately
-        const classFinances = await Promise.all(classes.map(async (classData) => {
-          // Get class schedules for this class
-          const { data: schedules, error: schedulesError } = await supabase
-            .from('class_schedules')
-            .select('id')
-            .eq('class_id', classData.id);
+        
+        console.log(`Found ${classes.length} classes for branch ${currentBranch.name}`);
+        
+        // Step 2: For each class, find all its schedules and then find paid bookings for those schedules
+        const classFinances = await Promise.all(classes.map(async (classItem) => {
+          try {
+            // Get class schedules for this class
+            const { data: schedules, error: schedulesError } = await supabase
+              .from("class_schedules")
+              .select("id")
+              .eq("class_id", classItem.id);
+              
+            if (schedulesError) {
+              console.error(`Error fetching schedules for class ${classItem.id}:`, schedulesError);
+              return null;
+            }
             
-          if (schedulesError) {
-            console.error(`Error fetching schedules for class ${classData.id}:`, schedulesError);
-            return null;
-          }
-          
-          if (!schedules || schedules.length === 0) {
-            console.log(`No schedules found for class: ${classData.name}`);
-            // Return class with zero bookings
+            if (!schedules || schedules.length === 0) {
+              console.log(`No schedules found for class: ${classItem.name}`);
+              // Return class with zero bookings
+              return {
+                className: classItem.name,
+                courseFee: 0,
+                enrollmentFee: 0,
+                franchiseFee: 0,
+                totalOwingToFranchisor: 0,
+                adminFee: 0,
+                instructorFee: 0,
+                profit: 0,
+                bookingsCount: 0
+              };
+            }
+            
+            const scheduleIds = schedules.map(schedule => schedule.id);
+            
+            // Get paid bookings for these schedules
+            const { data: bookings, error: bookingsError } = await supabase
+              .from("bookings")
+              .select("id")
+              .in("class_schedule_id", scheduleIds)
+              .eq("payment_status", "paid");
+              
+            if (bookingsError) {
+              console.error(`Error fetching bookings for class ${classItem.id}:`, bookingsError);
+              return null;
+            }
+            
+            const activeBookingsCount = bookings ? bookings.length : 0;
+            
+            // Calculate financial metrics
+            const totalCourseFees = activeBookingsCount * classItem.course_fee;
+            const totalEnrollmentFees = activeBookingsCount * classItem.enrollment_fee;
+            
+            // Calculate franchise fee (mckaynine commission)
+            const franchiseFee = classItem.mckaynine_commission_type === 'percentage'
+              ? (totalCourseFees + totalEnrollmentFees) * (classItem.mckaynine_commission_value / 100)
+              : activeBookingsCount * classItem.mckaynine_commission_value;
+            
+            // Calculate admin fee
+            const adminFee = classItem.admin_fee_type === 'percentage'
+              ? (totalCourseFees + totalEnrollmentFees) * (classItem.admin_fee_value / 100)
+              : activeBookingsCount * classItem.admin_fee_value;
+            
+            // Calculate instructor fee
+            const instructorFee = classItem.trainer_fee_type === 'percentage'
+              ? (totalCourseFees + totalEnrollmentFees) * (classItem.trainer_fee_value / 100)
+              : activeBookingsCount * classItem.trainer_fee_value;
+            
+            // Calculate total revenue and profit
+            const totalRevenue = totalCourseFees + totalEnrollmentFees;
+            const profit = totalRevenue - franchiseFee - adminFee - instructorFee;
+            
             return {
-              className: classData.name,
-              courseFee: 0,
-              enrollmentFee: 0,
-              franchiseFee: 0,
-              totalOwingToFranchisor: 0,
-              adminFee: 0,
-              instructorFee: 0,
-              profit: 0,
-              bookingsCount: 0
+              className: classItem.name,
+              courseFee: totalCourseFees,
+              enrollmentFee: totalEnrollmentFees,
+              franchiseFee,
+              totalOwingToFranchisor: franchiseFee,
+              adminFee,
+              instructorFee,
+              profit,
+              bookingsCount: activeBookingsCount
             };
-          }
-          
-          const scheduleIds = schedules.map(schedule => schedule.id);
-          
-          // Get paid bookings for these schedules
-          const { data: bookings, error: bookingsError } = await supabase
-            .from('bookings')
-            .select('id, payment_status')
-            .in('class_schedule_id', scheduleIds)
-            .eq('payment_status', 'paid');
-            
-          if (bookingsError) {
-            console.error(`Error fetching bookings for class ${classData.id}:`, bookingsError);
+          } catch (error) {
+            console.error(`Error processing class ${classItem.id}:`, error);
             return null;
           }
-          
-          const activeBookingsCount = bookings ? bookings.length : 0;
-          
-          // Calculate financial metrics
-          const totalCourseFees = activeBookingsCount * classData.course_fee;
-          const totalEnrollmentFees = activeBookingsCount * classData.enrollment_fee;
-          
-          // Calculate franchise fee (mckaynine commission)
-          const franchiseFee = classData.mckaynine_commission_type === 'percentage'
-            ? (totalCourseFees + totalEnrollmentFees) * (classData.mckaynine_commission_value / 100)
-            : activeBookingsCount * classData.mckaynine_commission_value;
-          
-          // Calculate admin fee
-          const adminFee = classData.admin_fee_type === 'percentage'
-            ? (totalCourseFees + totalEnrollmentFees) * (classData.admin_fee_value / 100)
-            : activeBookingsCount * classData.admin_fee_value;
-          
-          // Calculate instructor fee
-          const instructorFee = classData.trainer_fee_type === 'percentage'
-            ? (totalCourseFees + totalEnrollmentFees) * (classData.trainer_fee_value / 100)
-            : activeBookingsCount * classData.trainer_fee_value;
-          
-          // Calculate total revenue and profit
-          const totalRevenue = totalCourseFees + totalEnrollmentFees;
-          const profit = totalRevenue - franchiseFee - adminFee - instructorFee;
-          
-          return {
-            className: classData.name,
-            courseFee: totalCourseFees,
-            enrollmentFee: totalEnrollmentFees,
-            franchiseFee,
-            totalOwingToFranchisor: franchiseFee,
-            adminFee,
-            instructorFee,
-            profit,
-            bookingsCount: activeBookingsCount
-          };
         }));
         
         // Filter out null entries (classes that had errors)
         return classFinances.filter(Boolean) as ClassFinance[];
       } catch (error) {
-        console.error('Error fetching class finances:', error);
-        toast.error('Failed to load financial data');
+        console.error("Error fetching class finances:", error);
+        toast.error("Failed to load financial data");
         throw error;
       }
     },
-    enabled: !!currentBranch?.id
+    enabled: !!currentBranch?.id,
+    retry: 1, // Only retry once to avoid excessive console errors
+    staleTime: 5 * 60 * 1000, // 5 minutes cache
   });
 
   if (isLoading) {

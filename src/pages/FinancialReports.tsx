@@ -10,6 +10,7 @@ import { TrainerPaymentsSummary } from "@/components/invoices/reports/TrainerPay
 import { ClassFinancialReport } from "@/components/invoices/reports/ClassFinancialReport";
 import { DateRangePicker } from "@/components/dashboard/financial/DateRangePicker";
 import { addMonths, startOfMonth, endOfMonth, subMonths } from "date-fns";
+import { Card } from "@/components/ui/card";
 
 export default function FinancialReports() {
   const [dateRange, setDateRange] = useState({
@@ -26,6 +27,13 @@ export default function FinancialReports() {
       to: range.to || endOfMonth(new Date())
     });
   };
+
+  // Filter invoices based on date range
+  const filteredInvoices = invoices ? invoices.filter(invoice => {
+    const invoiceDate = new Date(invoice.issued_date);
+    return invoiceDate >= dateRange.from && 
+           invoiceDate <= (dateRange.to || new Date());
+  }) : [];
 
   return (
     <RequireAdmin>
@@ -52,7 +60,7 @@ export default function FinancialReports() {
           {/* Revenue Chart */}
           <div className="mb-6">
             <InvoiceRevenueChart 
-              invoices={invoices} 
+              invoices={filteredInvoices} 
               timeframe="monthly"
             />
           </div>
