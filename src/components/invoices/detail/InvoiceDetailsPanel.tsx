@@ -6,6 +6,7 @@ import { format } from "date-fns";
 import { Invoice } from "@/hooks/invoices/types";
 import { InvoiceStatusBadge } from "./InvoiceStatusBadge";
 import { InvoiceItemsTable } from "./InvoiceItemsTable";
+import { InvoiceSummary } from "./InvoiceSummary";
 
 interface InvoiceDetailsPanelProps {
   invoice: Invoice;
@@ -40,30 +41,7 @@ export function InvoiceDetailsPanel({ invoice }: InvoiceDetailsPanelProps) {
           <div>
             <h3 className="font-medium text-sm text-muted-foreground">Payment Details</h3>
             <div className="space-y-1 mt-2">
-              <p className="text-sm flex justify-between">
-                <span>Subtotal:</span>
-                <span className="font-medium">{formatCurrency(invoice.subtotal)}</span>
-              </p>
-              
-              {invoice.discount_amount > 0 && (
-                <p className="text-sm flex justify-between text-red-600">
-                  <span>
-                    Discount {invoice.discount_type === 'percentage' ? 
-                      `(${(invoice.discount_amount / invoice.subtotal * 100).toFixed(1)}%)` : 
-                      ''}:
-                  </span>
-                  <span className="font-medium">-{formatCurrency(invoice.discount_amount)}</span>
-                </p>
-              )}
-              
-              <p className="text-sm flex justify-between">
-                <span>Tax ({invoice.tax_rate}%):</span>
-                <span className="font-medium">{formatCurrency(invoice.tax_amount)}</span>
-              </p>
-              <p className="text-sm flex justify-between font-bold">
-                <span>Total:</span>
-                <span>{formatCurrency(invoice.total)}</span>
-              </p>
+              <InvoiceSummary invoice={invoice} />
             </div>
           </div>
         </div>
@@ -84,7 +62,7 @@ export function InvoiceDetailsPanel({ invoice }: InvoiceDetailsPanelProps) {
         
         <div className="mt-6">
           <h3 className="font-medium text-base mb-3">Items</h3>
-          <InvoiceItemsTable invoice={invoice} />
+          <InvoiceItemsTable items={invoice.items} />
         </div>
       </CardContent>
     </Card>

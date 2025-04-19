@@ -83,7 +83,7 @@ async function createInvoicePDF(invoice: Invoice): Promise<jsPDF> {
   }
   
   // Add invoice summary (subtotal, tax, total)
-  const summaryEndY = addInvoiceSummary(doc, invoice, summaryStartY, pageWidth);
+  const summaryEndY = addInvoiceSummary(doc, invoice, summaryStartY);
   
   // Check current page height before adding footer
   if (summaryEndY > (pageHeight - 70)) { // Reduced from 80 to fit more on first page

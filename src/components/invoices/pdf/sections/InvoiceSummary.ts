@@ -1,6 +1,6 @@
 
 import { Invoice } from '@/hooks/invoices/types';
-import { formatCurrency } from '../utils/formatters';
+import { formatCurrency } from '@/lib/formatters';
 
 export function addInvoiceSummary(doc: any, invoice: Invoice, startY: number): number {
   const { subtotal, tax_rate, tax_amount, discount_amount, discount_type, total } = invoice;
