@@ -33,7 +33,12 @@ export function addInvoiceSummary(doc: any, invoice: Invoice, startY: number): n
   
   // Discount (if applicable)
   if (discount_amount > 0) {
-    // Get the correct percentage display for percentage discounts
+    // Calculate the actual discount monetary amount
+    const discountMonetaryAmount = discount_type === 'percentage' 
+      ? (subtotal * discount_amount / 100)
+      : discount_amount;
+    
+    // Get the correct display label for percentage discounts
     let discountLabel = 'Discount:';
     
     if (discount_type === 'percentage') {
@@ -42,7 +47,7 @@ export function addInvoiceSummary(doc: any, invoice: Invoice, startY: number): n
       
     doc.setTextColor(220, 53, 69); // Red color for discount
     doc.text(discountLabel, labelX, currentY);
-    doc.text(`-${formatCurrency(discount_amount)}`, valueX, currentY, { align: 'right' });
+    doc.text(`-${formatCurrency(discountMonetaryAmount)}`, valueX, currentY, { align: 'right' });
     doc.setTextColor(0, 0, 0); // Reset to black
     currentY += 6;
   }

@@ -8,6 +8,15 @@ interface InvoiceSummaryProps {
 }
 
 export function InvoiceSummary({ invoice }: InvoiceSummaryProps) {
+  // Calculate discount amount for display
+  const calculateDiscountAmount = () => {
+    if (invoice.discount_type === 'percentage') {
+      return (invoice.subtotal * invoice.discount_amount / 100);
+    }
+    return invoice.discount_amount;
+  };
+  
+  // Format the discount display label
   const displayDiscountValue = () => {
     if (invoice.discount_type === 'percentage') {
       return `(${invoice.discount_amount}%)`;
@@ -28,9 +37,7 @@ export function InvoiceSummary({ invoice }: InvoiceSummaryProps) {
             Discount {displayDiscountValue()}:
           </span>
           <span className="font-medium">
-            -{formatCurrency(invoice.discount_type === 'percentage' 
-              ? (invoice.subtotal * invoice.discount_amount / 100)
-              : invoice.discount_amount)}
+            -{formatCurrency(calculateDiscountAmount())}
           </span>
         </div>
       )}
