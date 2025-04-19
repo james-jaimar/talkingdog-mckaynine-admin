@@ -11,18 +11,22 @@ export type ExtendedBadgeVariant =
   | "outline" 
   | "warning" 
   | "info" 
-  | "success";
+  | "success"
+  | "amber"
+  | "green";
 
 // Modify interface to use our extended variant type
 export interface ExtendedBadgeProps extends Omit<BadgeProps, 'variant'> {
   variant?: ExtendedBadgeVariant;
 }
 
-export function ExtendedBadge({ className, variant = "default", ...props }: ExtendedBadgeProps) {
+export function Badge({ className, variant = "default", ...props }: ExtendedBadgeProps) {
   const variantClasses = {
     warning: "border-transparent bg-amber-500 text-white hover:bg-amber-600",
     info: "border-transparent bg-blue-500 text-white hover:bg-blue-600",
     success: "border-transparent bg-green-500 text-white hover:bg-green-600",
+    amber: "border-transparent bg-amber-500 text-white hover:bg-amber-600",
+    green: "border-transparent bg-green-500 text-white hover:bg-green-600",
   };
 
   // Use the built-in variants for the standard ones
@@ -42,3 +46,6 @@ export function ExtendedBadge({ className, variant = "default", ...props }: Exte
     />
   );
 }
+
+// Additionally export the ExtendedBadge with a different name to avoid collision
+export { Badge as ExtendedBadge };

@@ -8,7 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge-variants";
+import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/formatters";
 import { Loader2 } from "lucide-react";
 
@@ -87,9 +87,9 @@ export function TrainerPaymentsSummary({ trainers, isLoading }: TrainerPaymentsS
                 </TableCell>
                 <TableCell className="text-right">
                   {trainer.pending > 0 ? (
-                    <Badge variant="amber">Payment Due</Badge>
+                    <Badge className="bg-amber-100 text-amber-800">Payment Due</Badge>
                   ) : (
-                    <Badge variant="green">Paid</Badge>
+                    <Badge className="bg-green-100 text-green-800">Paid</Badge>
                   )}
                 </TableCell>
               </TableRow>

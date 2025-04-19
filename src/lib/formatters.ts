@@ -1,3 +1,4 @@
+
 /**
  * Format a number as currency
  * @param value A number to format
@@ -21,4 +22,36 @@ export function formatPercentage(value: number): string {
     minimumFractionDigits: 1,
     maximumFractionDigits: 1,
   }).format(value);
+}
+
+/**
+ * Format a date string into a human-readable format
+ * @param dateString A date string or Date object
+ * @returns A formatted date string
+ */
+export function formatDate(dateString?: string | Date | null): string {
+  if (!dateString) return "";
+  
+  try {
+    // Handle different input types
+    let date: Date;
+    
+    if (dateString instanceof Date) {
+      date = dateString;
+    } else {
+      // Try to parse ISO string format
+      date = new Date(dateString);
+    }
+    
+    if (isNaN(date.getTime())) return "";
+    
+    return new Intl.DateTimeFormat('en-CA', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    }).format(date);
+  } catch (error) {
+    console.error("Error formatting date:", error);
+    return "";
+  }
 }
