@@ -34,7 +34,7 @@ export function HandlerDetailHeader({ isLoading, handler, onHandlerUpdated }: Ha
           </Link>
         </Button>
         <h1 className={`text-2xl ${isMobile ? 'text-xl' : 'text-3xl'} font-bold text-gray-900`}>
-          {isLoading ? 'Loading...' : handler?.first_name}
+          {isLoading ? 'Loading...' : `${handler?.first_name || ''} ${handler?.last_name || ''}`}
         </h1>
       </div>
       {!isLoading && handler && (

@@ -14,6 +14,7 @@ import InvoiceEdit from "@/pages/InvoiceEdit";
 import UserAdmin from "@/pages/UserAdmin";
 import FinancialDashboard from "@/pages/FinancialDashboard";
 import FinancialReports from "@/pages/FinancialReports";
+import RequireAdmin from "@/components/auth/RequireAdmin";
 
 export const adminRoutes = [
   {
@@ -46,7 +47,7 @@ export const adminRoutes = [
   },
   {
     path: "/handlers/:handlerId",
-    element: <HandlerDetail />
+    element: <RequireAdmin><HandlerDetail /></RequireAdmin>
   },
   {
     path: "/invoices",

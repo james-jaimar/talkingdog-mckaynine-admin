@@ -1,200 +1,256 @@
-
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+import {
+  ColumnDef,
+  flexRender,
+  getCoreRowModel,
+  getPaginationRowModel,
+  useReactTable,
+} from "@tanstack/react-table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { useEffect, useState } from "react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Pencil, Eye, FileText } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { useState, useMemo } from "react";
-import { TablePagination } from "@/components/ui/table-pagination";
-import { Skeleton } from "@/components/ui/skeleton";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { ExtendedBadge } from "@/components/ui/badge-variants";
+import { DotsHorizontalIcon } from "@radix-ui/react-icons";
+import { EditHandlerModal } from "./EditHandlerModal";
+import { useToast } from "@/hooks/use-toast";
+import { deleteHandler } from "@/lib/api/handlers";
+import { useQueryClient } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 
-// Move the hook outside of component function
-const useHandlerInvoiceStatus = (clientId) => {
-  return useQuery({
-    queryKey: ['handler-invoice-status', clientId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('invoices')
-        .select('id, status, payment_received')
-        .eq('client_id', clientId)
-        .order('created_at', { ascending: false })
-        .limit(5);
-      
-      if (error) throw error;
-      
-      if (!data || data.length === 0) return { hasInvoices: false };
-      
-      const unpaidInvoices = data.filter(inv => 
-        !inv.payment_received && inv.status !== 'cancelled'
-      );
-      
-      return { 
-        hasInvoices: true,
-        hasUnpaidInvoices: unpaidInvoices.length > 0,
-        invoiceCount: data.length,
-        unpaidCount: unpaidInvoices.length
-      };
+interface ClientData {
+  id: string;
+  first_name: string;
+  last_name?: string;
+  email: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  postal_code?: string;
+  notes?: string;
+  branch_id?: string;
+}
+
+interface HandlerTableProps {
+  handlers: ClientData[];
+  searchQuery: string;
+  itemsPerPage: number;
+  loading: boolean;
+}
+
+export function HandlerTable({ handlers, searchQuery, itemsPerPage, loading }: HandlerTableProps) {
+  const [pageIndex, setPageIndex] = useState(0);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    setPageIndex(0); // Reset to the first page when handlers or searchQuery changes
+  }, [handlers, searchQuery]);
+
+  const columns: ColumnDef<ClientData>[] = [
+    {
+      accessorKey: "first_name",
+      header: "First Name",
     },
-    enabled: !!clientId,
+    {
+      accessorKey: "last_name",
+      header: "Last Name",
+    },
+    {
+      accessorKey: "email",
+      header: "Email",
+    },
+    {
+      accessorKey: "phone",
+      header: "Phone",
+    },
+    {
+      id: "actions",
+      cell: ({ row }) => {
+        const handler = row.original;
+        const [isDeleting, setIsDeleting] = useState(false);
+
+        const handleDelete = async () => {
+          setIsDeleting(true);
+          try {
+            await deleteHandler(handler.id);
+            toast({
+              title: "Handler deleted",
+              description: "The handler has been deleted successfully",
+            });
+            queryClient.invalidateQueries({ queryKey: ["handlers"] });
+          } catch (error) {
+            console.error("Error deleting handler:", error);
+            toast({
+              variant: "destructive",
+              title: "Failed to delete handler",
+              description: "There was an error deleting the handler",
+            });
+          } finally {
+            setIsDeleting(false);
+          }
+        };
+
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <span className="sr-only">Open menu</span>
+                <DotsHorizontalIcon className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+              <DropdownMenuItem>
+                <EditHandlerModal handler={handler} />
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleDelete} disabled={isDeleting}>
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        );
+      },
+    },
+  ];
+
+  const table = useReactTable({
+    data: handlers,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    pageCount: Math.ceil(handlers.length / itemsPerPage),
+    state: {
+      pagination: {
+        pageIndex,
+        pageSize: itemsPerPage,
+      },
+    },
+    onPaginationChange: (updater) => {
+      if (typeof updater === "function") {
+        setPageIndex((prev) => updater(prev));
+      } else {
+        setPageIndex(updater.pageIndex);
+      }
+    },
   });
-};
 
-// Create a component for the invoice status cell to properly use the hook
-const InvoiceStatusCell = ({ clientId }) => {
-  const { data: invoiceStatus, isLoading: isLoadingInvoices } = useHandlerInvoiceStatus(clientId);
-  
-  if (isLoadingInvoices) {
-    return <Skeleton className="h-5 w-12" />;
-  }
-  
-  if (!invoiceStatus?.hasInvoices) {
-    return "—";
-  }
-  
-  return (
-    <div className="flex items-center space-x-1">
-      <FileText className="h-3.5 w-3.5 text-gray-500" />
-      <span className="text-sm">{invoiceStatus.invoiceCount}</span>
-      {invoiceStatus.hasUnpaidInvoices && (
-        <ExtendedBadge variant="warning" className="text-xs ml-1 px-1.5">
-          {invoiceStatus.unpaidCount} unpaid
-        </ExtendedBadge>
-      )}
-    </div>
-  );
-};
+  // Filter handlers based on search query
+  const filteredHandlers = handlers.filter((handler) => {
+    const fullName = `${handler.first_name} ${handler.last_name || ""}`.toLowerCase();
+    return fullName.includes(searchQuery.toLowerCase());
+  });
 
-export function HandlerTable({ 
-  handlers, 
-  searchQuery,
-  itemsPerPage = 15,
-  loading = false
-}) {
-  const navigate = useNavigate();
-  const [page, setPage] = useState(1);
-
-  // Calculate number of pages
-  const totalPages = Math.ceil(handlers.length / itemsPerPage);
-  
-  // Get current page's data
-  const currentHandlers = useMemo(() => {
-    const start = (page - 1) * itemsPerPage;
-    const end = start + itemsPerPage;
-    return handlers.slice(start, end);
-  }, [handlers, page, itemsPerPage]);
-
-  // Return loading state if data is loading
-  if (loading) {
+  // Handler row component
+  const HandlerRow = ({ handler, index }: { handler: ClientData; index: number }) => {
     return (
-      <div className="relative w-full overflow-auto">
+      <TableRow key={handler.id}>
+        <TableCell>
+          <Link 
+            to={`/handlers/${handler.id}`}
+            className="hover:text-blue-600 font-medium"
+          >
+            {handler.first_name} {handler.last_name}
+          </Link>
+        </TableCell>
+        <TableCell>{handler.email}</TableCell>
+        <TableCell>{handler.phone}</TableCell>
+        <TableCell>{handler.address}</TableCell>
+        <TableCell>{handler.city}</TableCell>
+        <TableCell>{handler.postal_code}</TableCell>
+        <TableCell>{handler.notes}</TableCell>
+        <TableCell>{handler.branch_id}</TableCell>
+        <TableCell>
+          <EditHandlerModal handler={handler} />
+        </TableCell>
+      </TableRow>
+    );
+  };
+
+  return (
+    <div className="rounded-md border">
+      <div className="relative overflow-x-auto">
         <Table>
           <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Phone</TableHead>
-              <TableHead>Dogs</TableHead>
-              <TableHead>Invoices</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {[...Array(5)].map((_, index) => (
-              <TableRow key={index}>
-                <TableCell><Skeleton className="h-6 w-20" /></TableCell>
-                <TableCell><Skeleton className="h-6 w-32" /></TableCell>
-                <TableCell><Skeleton className="h-6 w-24" /></TableCell>
-                <TableCell><Skeleton className="h-6 w-12" /></TableCell>
-                <TableCell><Skeleton className="h-6 w-16" /></TableCell>
-                <TableCell><Skeleton className="h-6 w-20 ml-auto" /></TableCell>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => {
+                  return (
+                    <TableHead key={header.id}>
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                    </TableHead>
+                  );
+                })}
               </TableRow>
             ))}
-          </TableBody>
-        </Table>
-      </div>
-    );
-  }
-
-  return (
-    <>
-      <div className="relative w-full overflow-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Phone</TableHead>
-              <TableHead>Dogs</TableHead>
-              <TableHead>Invoices</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
           </TableHeader>
           <TableBody>
-            {handlers.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center">
-                  {searchQuery 
-                    ? `No handlers found matching "${searchQuery}"`
-                    : "No handlers found"
-                  }
-                </TableCell>
-              </TableRow>
+            {loading ? (
+              <tr>
+                <td colSpan={columns.length} className="text-center py-4">
+                  Loading handlers...
+                </td>
+              </tr>
+            ) : filteredHandlers.length === 0 ? (
+              <tr>
+                <td colSpan={columns.length} className="text-center py-4">
+                  No handlers found.
+                </td>
+              </tr>
             ) : (
-              currentHandlers.map((handler) => (
-                <TableRow key={handler.id}>
-                  <TableCell className="font-medium">
-                    {handler.first_name} {handler.last_name}
-                  </TableCell>
-                  <TableCell>{handler.email}</TableCell>
-                  <TableCell>{handler.phone || "—"}</TableCell>
-                  <TableCell>
-                    {handler.dogs?.length > 0 ? (
-                      <span className="text-sm bg-gray-100 py-0.5 px-2 rounded-full">
-                        {handler.dogs.length}
-                      </span>
-                    ) : "—"}
-                  </TableCell>
-                  <TableCell>
-                    <InvoiceStatusCell clientId={handler.id} />
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end space-x-1">
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => navigate(`/handlers/${handler.id}`)}
-                        className="h-8 w-8 p-0"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => navigate(`/handlers/${handler.id}`)}
-                        className="h-8 w-8 p-0"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
+              filteredHandlers
+                .slice(
+                  pageIndex * itemsPerPage,
+                  (pageIndex + 1) * itemsPerPage
+                )
+                .map((handler, index) => (
+                  <HandlerRow key={handler.id} handler={handler} index={index} />
+                ))
             )}
           </TableBody>
         </Table>
       </div>
-      
-      {totalPages > 1 && (
-        <div className="mt-4">
-          <TablePagination
-            currentPage={page}
-            totalPages={totalPages}
-            onPageChange={setPage}
-          />
+      <div className="flex items-center justify-end space-x-2 py-2 px-4">
+        <div className="text-sm text-gray-500">
+          {pageIndex * itemsPerPage + 1} -{" "}
+          {Math.min((pageIndex + 1) * itemsPerPage, filteredHandlers.length)}{" "}
+          of {filteredHandlers.length}
         </div>
-      )}
-    </>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => table.previousPage()}
+          disabled={!table.getCanPreviousPage()}
+        >
+          Previous
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => table.nextPage()}
+          disabled={!table.getCanNextPage()}
+        >
+          Next
+        </Button>
+      </div>
+    </div>
   );
 }

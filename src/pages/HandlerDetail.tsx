@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -203,7 +202,7 @@ function DogsList({ clientId, clientData, isLoading, onAddDog, onEditDog }: { cl
 }
 
 export default function HandlerDetail() {
-  const { id } = useParams<{ id: string }>();
+  const { handlerId } = useParams<{ handlerId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [editHandlerOpen, setEditHandlerOpen] = useState(false);
@@ -211,17 +210,19 @@ export default function HandlerDetail() {
   const [editDogOpen, setEditDogOpen] = useState(false);
   const [selectedDog, setSelectedDog] = useState(null);
 
-  // Fetch client data
+  // Fetch client data - making sure we're using the correct parameter
   const { data: clientData, isLoading, refetch } = useQuery({
-    queryKey: ['client', id],
+    queryKey: ['client', handlerId],
     queryFn: async () => {
+      console.log("Fetching handler with ID:", handlerId);
+      
       const { data, error } = await supabase
         .from('clients')
         .select(`
           *, 
           dogs(*)
         `)
-        .eq('id', id)
+        .eq('id', handlerId)
         .single();
 
       if (error) {
@@ -235,7 +236,7 @@ export default function HandlerDetail() {
 
       return data;
     },
-    enabled: !!id,
+    enabled: !!handlerId,
   });
 
   // Handler profile form setup
@@ -312,7 +313,7 @@ export default function HandlerDetail() {
       const { error } = await supabase
         .from('clients')
         .update(values)
-        .eq('id', id);
+        .eq('id', handlerId);
 
       if (error) {
         toast({
@@ -398,7 +399,7 @@ export default function HandlerDetail() {
         const { error } = await supabase
           .from('dogs')
           .insert({
-            client_id: id,
+            client_id: handlerId,
             name: values.name,
             breed: values.breed, // Make sure breed is always provided
             age: values.age,
@@ -473,7 +474,7 @@ export default function HandlerDetail() {
             
             {/* Dogs list */}
             <DogsList 
-              clientId={id} 
+              clientId={handlerId} 
               clientData={clientData}
               isLoading={isLoading} 
               onAddDog={openAddDogModal}
@@ -609,9 +610,9 @@ export default function HandlerDetail() {
         </Dialog>
 
         {/* Add Dog Modal using EditDogModal component */}
-        {id && (
+        {handlerId && (
           <EditDogModal 
-            clientId={id}
+            clientId={handlerId}
             isNew={true}
             onSuccess={() => {
               closeAddDogModal();
@@ -621,10 +622,10 @@ export default function HandlerDetail() {
         )}
 
         {/* Edit Dog Modal using EditDogModal component */}
-        {selectedDog && id && (
+        {selectedDog && handlerId && (
           <EditDogModal
             dog={selectedDog}
-            clientId={id}
+            clientId={handlerId}
             isNew={false}
             onSuccess={() => {
               closeEditDogModal();

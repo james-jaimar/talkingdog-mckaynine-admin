@@ -20,8 +20,15 @@ const dashboardRoute = {
 // Combine all routes
 const router = createBrowserRouter([
   ...publicRoutes,
+  ...adminRoutes.map(route => ({
+    ...route,
+    element: (
+      <ProtectedRoute requiredRole="admin">
+        {route.element}
+      </ProtectedRoute>
+    ),
+  })),
   dashboardRoute, // Only accessible to trainers and admins (due to requiredRole="trainer")
-  ...adminRoutes,
   ...trainerRoutes,
   ...customerRoutes, // Customer routes with handler-specific layouts
 ]);
