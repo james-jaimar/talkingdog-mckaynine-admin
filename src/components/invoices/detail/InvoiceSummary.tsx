@@ -9,24 +9,26 @@ interface InvoiceSummaryProps {
 
 export function InvoiceSummary({ invoice }: InvoiceSummaryProps) {
   // Calculate the actual monetary discount amount
-  const calculateDiscountAmount = () => {
+  const calculateMonetaryDiscount = () => {
     if (invoice.discount_type === 'percentage') {
       return (invoice.subtotal * invoice.discount_amount / 100);
     }
     return invoice.discount_amount;
   };
   
-  // Format the discount display label with percentage or fixed amount indicator
-  const formatDiscountLabel = () => {
+  // Format the discount display label
+  const renderDiscountLabel = () => {
     if (invoice.discount_type === 'percentage') {
       return (
-        <span>
-          Discount <span className="font-medium">({invoice.discount_amount}%)</span>:
+        <span className="flex items-center">
+          Discount <span className="font-medium ml-1">({invoice.discount_amount}%)</span>
         </span>
       );
     }
-    return <span>Discount (Fixed):</span>;
+    return <span>Discount (Fixed)</span>;
   };
+
+  const monetaryDiscount = calculateMonetaryDiscount();
 
   return (
     <div className="space-y-2">
@@ -37,9 +39,9 @@ export function InvoiceSummary({ invoice }: InvoiceSummaryProps) {
       
       {invoice.discount_amount > 0 && (
         <div className="flex justify-between text-red-600">
-          {formatDiscountLabel()}
+          {renderDiscountLabel()}
           <span className="font-medium">
-            -{formatCurrency(calculateDiscountAmount())}
+            -{formatCurrency(monetaryDiscount)}
           </span>
         </div>
       )}

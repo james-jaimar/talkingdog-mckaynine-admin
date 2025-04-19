@@ -24,30 +24,31 @@ export function useUpdateInvoice() {
         // Calculate subtotal
         const subtotal = values.items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
         
-        // Normalize discount values to prevent issues
+        // Normalize discount values
         const discount_type = values.discount_type || 'fixed';
-        const discount_amount_input = Number(values.discount_amount || 0);
+        const discount_amount = Number(values.discount_amount || 0);
         
-        // We handle percentage and fixed amounts differently in calculations,
-        // but store the input value in the database
-        let discount_amount = discount_amount_input;
+        // For percentage discounts, ensure the value is between 0-100
+        if (discount_type === 'percentage' && (discount_amount < 0 || discount_amount > 100)) {
+          throw new Error("Percentage discount must be between 0 and 100");
+        }
         
-        // Calculate the actual monetary discount for display purposes
-        const monetary_discount = discount_type === 'percentage' ? 
-          (subtotal * discount_amount_input) / 100 : 
-          discount_amount_input;
+        // Calculate the actual monetary discount
+        const monetary_discount = discount_type === 'percentage' 
+          ? (subtotal * discount_amount) / 100 
+          : Math.min(discount_amount, subtotal);
         
         // Calculate tax on the amount after discount
         const taxable_amount = subtotal - monetary_discount;
         const tax_amount = taxable_amount * (values.tax_rate / 100);
         
-        // Calculate total: subtotal - discount + tax
+        // Calculate total
         const total = subtotal - monetary_discount + tax_amount;
 
         console.log("Invoice update calculations:", {
           subtotal,
           discount_type,
-          discount_input: discount_amount_input,
+          discount_amount,
           monetary_discount,
           taxable_amount,
           tax_rate: values.tax_rate,
@@ -55,7 +56,7 @@ export function useUpdateInvoice() {
           total
         });
 
-        // Create invoice update object with properly formatted fields
+        // Create invoice update object
         const updateData = {
           client_id: values.client_id,
           invoice_number: values.invoice_number,
@@ -67,8 +68,8 @@ export function useUpdateInvoice() {
           tax_rate: values.tax_rate,
           tax_amount,
           total,
-          discount_amount,  // Store the original input (percentage or fixed amount)
-          discount_type,    // This determines how to interpret discount_amount
+          discount_amount, // Store the original input value (percentage or fixed amount)
+          discount_type,   // This determines how to interpret discount_amount
           discount_reason: values.discount_reason || null
         };
 
@@ -77,13 +78,11 @@ export function useUpdateInvoice() {
           .from('invoices')
           .update(updateData)
           .eq('id', invoiceId)
-          .select('*');
+          .select('*')
+          .single();
 
         if (invoiceError) {
           console.error("Error updating invoice:", invoiceError);
-          if (invoiceError.message) {
-            console.error("Error message:", invoiceError.message);
-          }
           throw invoiceError;
         }
 
@@ -100,8 +99,6 @@ export function useUpdateInvoice() {
           throw deleteError;
         }
 
-        console.log("Old invoice items deleted successfully");
-
         // Insert new items
         const itemsToInsert = values.items.map(item => ({
           invoice_id: invoiceId,
@@ -112,20 +109,6 @@ export function useUpdateInvoice() {
           booking_id: item.booking_id || null
         }));
 
-        console.log("Inserting new invoice items:", itemsToInsert);
-
-        if (itemsToInsert.length === 0) {
-          console.warn("No items to insert - creating default item");
-          itemsToInsert.push({
-            invoice_id: invoiceId,
-            description: "Invoice item",
-            quantity: 1,
-            unit_price: subtotal,
-            amount: subtotal,
-            booking_id: null
-          });
-        }
-
         const { error: itemsError } = await supabase
           .from('invoice_items')
           .insert(itemsToInsert);
@@ -135,25 +118,14 @@ export function useUpdateInvoice() {
           throw itemsError;
         }
 
-        console.log("New invoice items inserted successfully");
         return { id: invoiceId, success: true };
-      } catch (error: any) {
+      } catch (error) {
         console.error("Invoice update failed with error:", error);
-        // Provide more detailed error information
-        if (error.details) {
-          console.error("Error details:", error.details);
-        }
-        if (error.hint) {
-          console.error("Error hint:", error.hint);
-        }
-        if (error.message) {
-          console.error("Error message:", error.message);
-        }
         throw error;
       }
     },
     onSuccess: (result, variables) => {
-      console.log("Invoice update successful, invalidating queries", result);
+      console.log("Invoice update successful, invalidating queries");
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       queryClient.invalidateQueries({ queryKey: ['invoice', variables.invoiceId] });
       toast.success("Invoice updated successfully");
