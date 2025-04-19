@@ -13,6 +13,9 @@ export function useUpdateInvoice() {
 
   return useMutation({
     mutationFn: async ({ invoiceId, values }: { invoiceId: string, values: InvoiceFormValues }) => {
+      console.log("Starting invoice update for ID:", invoiceId);
+      console.log("Update values:", values);
+      
       // Calculate subtotal
       const subtotal = values.items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
       
@@ -46,61 +49,86 @@ export function useUpdateInvoice() {
         total
       });
 
-      // Update invoice
-      const { error: invoiceError } = await supabase
-        .from('invoices')
-        .update({
-          client_id: values.client_id,
-          invoice_number: values.invoice_number,
-          status: values.status,
-          issued_date: values.issued_date.toISOString(),
-          due_date: values.due_date.toISOString(),
-          notes: values.notes || null,
-          subtotal,
-          tax_rate: values.tax_rate,
-          tax_amount,
-          total,
-          discount_amount,
-          discount_type: values.discount_type,
-          discount_reason: values.discount_reason || null,
-          original_discount_percentage: original_discount_percentage
-        })
-        .eq('id', invoiceId);
+      try {
+        // Update invoice
+        const { error: invoiceError, data: updatedInvoice } = await supabase
+          .from('invoices')
+          .update({
+            client_id: values.client_id,
+            invoice_number: values.invoice_number,
+            status: values.status,
+            issued_date: values.issued_date.toISOString(),
+            due_date: values.due_date.toISOString(),
+            notes: values.notes || null,
+            subtotal,
+            tax_rate: values.tax_rate,
+            tax_amount,
+            total,
+            discount_amount,
+            discount_type: values.discount_type,
+            discount_reason: values.discount_reason || null,
+            original_discount_percentage: original_discount_percentage
+          })
+          .eq('id', invoiceId)
+          .select();
 
-      if (invoiceError) throw invoiceError;
+        if (invoiceError) {
+          console.error("Error updating invoice:", invoiceError);
+          throw invoiceError;
+        }
 
-      // Delete existing items
-      const { error: deleteError } = await supabase
-        .from('invoice_items')
-        .delete()
-        .eq('invoice_id', invoiceId);
+        console.log("Invoice updated successfully:", updatedInvoice);
 
-      if (deleteError) throw deleteError;
+        // Delete existing items
+        const { error: deleteError } = await supabase
+          .from('invoice_items')
+          .delete()
+          .eq('invoice_id', invoiceId);
 
-      // Insert new items
-      const itemsToInsert = values.items.map(item => ({
-        invoice_id: invoiceId,
-        description: item.description,
-        quantity: item.quantity,
-        unit_price: item.unit_price,
-        amount: item.quantity * item.unit_price,
-        booking_id: item.booking_id || null
-      }));
+        if (deleteError) {
+          console.error("Error deleting invoice items:", deleteError);
+          throw deleteError;
+        }
 
-      const { error: itemsError } = await supabase
-        .from('invoice_items')
-        .insert(itemsToInsert);
+        console.log("Old invoice items deleted successfully");
 
-      if (itemsError) throw itemsError;
+        // Insert new items
+        const itemsToInsert = values.items.map(item => ({
+          invoice_id: invoiceId,
+          description: item.description,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          amount: item.quantity * item.unit_price,
+          booking_id: item.booking_id || null
+        }));
 
-      return { id: invoiceId };
+        console.log("Inserting new invoice items:", itemsToInsert);
+
+        const { error: itemsError, data: insertedItems } = await supabase
+          .from('invoice_items')
+          .insert(itemsToInsert)
+          .select();
+
+        if (itemsError) {
+          console.error("Error inserting invoice items:", itemsError);
+          throw itemsError;
+        }
+
+        console.log("New invoice items inserted successfully:", insertedItems);
+        return { id: invoiceId };
+      } catch (error) {
+        console.error("Invoice update failed with error:", error);
+        throw error;
+      }
     },
     onSuccess: (_, variables) => {
+      console.log("Invoice update successful, invalidating queries");
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       queryClient.invalidateQueries({ queryKey: ['invoice', variables.invoiceId] });
       toast.success("Invoice updated successfully");
     },
     onError: (error: Error) => {
+      console.error("Invoice update error in mutation:", error);
       handleMutationError(error, "Failed to update invoice");
     },
   });

@@ -75,6 +75,7 @@ export default function InvoiceEdit() {
   // Initialize form with invoice data
   useEffect(() => {
     if (invoice && !isLoaded) {
+      console.log("Initializing form with invoice data:", invoice);
       form.reset({
         client_id: invoice.client_id,
         invoice_number: invoice.invoice_number,
@@ -91,7 +92,9 @@ export default function InvoiceEdit() {
           booking_id: item.booking_id
         })) || [{ description: "", quantity: 1, unit_price: 0 }],
         discount_type: invoice.discount_type || 'fixed',
-        discount_amount: invoice.discount_amount || 0,
+        discount_amount: invoice.discount_type === 'percentage' && invoice.original_discount_percentage 
+          ? invoice.original_discount_percentage 
+          : invoice.discount_amount || 0,
         discount_reason: invoice.discount_reason || ''
       });
       setIsLoaded(true);
@@ -127,17 +130,24 @@ export default function InvoiceEdit() {
     return calculateSubtotal() - calculateDiscount() + calculateTax();
   };
   
-  const onSubmit = (values: InvoiceFormValues) => {
+  const onSubmit = async (values: InvoiceFormValues) => {
     if (!id) return;
     
-    updateInvoice.mutate(
-      { invoiceId: id, values },
-      {
-        onSuccess: () => {
-          navigate(`/invoices/${id}`);
+    console.log("Submitting form with values:", values);
+    
+    try {
+      await updateInvoice.mutateAsync(
+        { invoiceId: id, values },
+        {
+          onSuccess: () => {
+            console.log("Navigation to invoice detail page");
+            navigate(`/invoices/${id}`);
+          }
         }
-      }
-    );
+      );
+    } catch (error) {
+      console.error("Form submission error:", error);
+    }
   };
   
   if (isLoading) {
@@ -176,7 +186,7 @@ export default function InvoiceEdit() {
   return (
     <DashboardLayout>
       <Helmet>
-        <title>{`Edit Invoice ${invoice.invoice_number} - McKaynine Training Centre`}</title>
+        <title>{`Edit Invoice ${invoice?.invoice_number || ''} - McKaynine Training Centre`}</title>
       </Helmet>
       
       <div className="container mx-auto py-6">
@@ -190,7 +200,7 @@ export default function InvoiceEdit() {
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back
             </Button>
-            <h1 className="text-2xl font-bold">Edit Invoice {invoice.invoice_number}</h1>
+            <h1 className="text-2xl font-bold">Edit Invoice {invoice?.invoice_number}</h1>
           </div>
         </div>
         
@@ -545,7 +555,10 @@ export default function InvoiceEdit() {
                   >
                     Cancel
                   </Button>
-                  <Button type="submit" disabled={updateInvoice.isPending}>
+                  <Button 
+                    type="submit" 
+                    disabled={updateInvoice.isPending}
+                  >
                     {updateInvoice.isPending ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
