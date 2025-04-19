@@ -1,4 +1,5 @@
 
+import { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import {
   Table,
@@ -14,7 +15,6 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useBranch } from "@/context/BranchContext";
-import { useState, useEffect } from "react";
 
 interface ClassFinance {
   className: string;
@@ -28,10 +28,18 @@ interface ClassFinance {
   bookingsCount: number;
 }
 
-export function ClassFinancialReport() {
+interface ClassFinancialReportProps {
+  dateRange?: { from: Date; to: Date };
+}
+
+export function ClassFinancialReport({ dateRange }: ClassFinancialReportProps) {
   const { currentBranch } = useBranch();
   const [classFinances, setClassFinances] = useState<ClassFinance[]>([]);
   const [isCalculating, setIsCalculating] = useState(false);
+  
+  // Format dates for logging
+  const fromDateStr = dateRange?.from ? dateRange.from.toISOString().split('T')[0] : 'not set';
+  const toDateStr = dateRange?.to ? dateRange.to.toISOString().split('T')[0] : 'not set';
   
   // Fetch all classes for the current branch
   const { data: classes, isLoading: isLoadingClasses, error: classesError } = useQuery({
@@ -59,16 +67,23 @@ export function ClassFinancialReport() {
     enabled: !!currentBranch?.id,
   });
 
-  // Fetch bookings for classes in this branch - with a modified approach
-  const { data: classBookings, isLoading: isLoadingBookings } = useQuery({
-    queryKey: ['financial-bookings-unified', currentBranch?.id, classes?.map(c => c.id).join(',')],
+  // Modified approach to fetch all needed data in a single function
+  const { data: financialData, isLoading: isLoadingFinancialData } = useQuery({
+    queryKey: ['financial-data', currentBranch?.id, dateRange?.from?.toISOString(), dateRange?.to?.toISOString()],
     queryFn: async () => {
-      if (!classes || classes.length === 0 || !currentBranch?.id) return {};
+      if (!classes || classes.length === 0 || !currentBranch?.id) {
+        console.log("Unable to fetch financial data - missing classes or branch", {
+          classesCount: classes?.length,
+          branchId: currentBranch?.id,
+          dateRange: { from: fromDateStr, to: toDateStr }
+        });
+        return { schedules: [], bookings: [] };
+      }
       
-      console.log("Fetching bookings data for financial report...");
+      console.log("Fetching financial data for date range:", { from: fromDateStr, to: toDateStr });
 
       try {
-        // First get all class schedules for this branch's classes
+        // 1. Get all class schedules for the classes in this branch
         const { data: schedules, error: schedulesError } = await supabase
           .from("class_schedules")
           .select("id, class_id")
@@ -79,71 +94,64 @@ export function ClassFinancialReport() {
           throw schedulesError;
         }
         
+        console.log(`Found ${schedules?.length || 0} schedules for classes`);
+        
         if (!schedules || schedules.length === 0) {
           console.log("No schedules found for classes");
-          return {};
+          return { schedules: [], bookings: [] };
         }
 
-        console.log(`Found ${schedules.length} schedules for classes`);
-        
-        // Map schedules to their classes
-        const schedulesByClass: Record<string, string[]> = {};
-        schedules.forEach(schedule => {
-          if (!schedulesByClass[schedule.class_id]) {
-            schedulesByClass[schedule.class_id] = [];
-          }
-          schedulesByClass[schedule.class_id].push(schedule.id);
-        });
-        
-        // Get all bookings for all schedules in a single query
-        const scheduleIds = schedules.map(s => s.id);
-        
-        const { data: allBookings, error: bookingsError } = await supabase
+        // 2. Get all bookings for these schedules, applying date filter if available
+        let bookingsQuery = supabase
           .from("bookings")
           .select(`
             id, 
             payment_status,
             proof_of_payment,
-            class_schedule_id
+            class_schedule_id,
+            created_at
           `)
-          .in("class_schedule_id", scheduleIds)
+          .in("class_schedule_id", schedules.map(s => s.id))
           .eq("status", "confirmed");
+          
+        // Apply date filter if provided
+        if (dateRange?.from) {
+          bookingsQuery = bookingsQuery.gte('created_at', dateRange.from.toISOString());
+          console.log("Applying from date filter:", dateRange.from.toISOString());
+        }
+        
+        if (dateRange?.to) {
+          bookingsQuery = bookingsQuery.lte('created_at', dateRange.to.toISOString());
+          console.log("Applying to date filter:", dateRange.to.toISOString());
+        }
+        
+        const { data: bookings, error: bookingsError } = await bookingsQuery;
           
         if (bookingsError) {
           console.error("Error fetching bookings:", bookingsError);
           throw bookingsError;
         }
         
-        console.log(`Found ${allBookings?.length || 0} total bookings`);
+        console.log(`Found ${bookings?.length || 0} total bookings${dateRange ? " in date range" : ""}`);
         
-        // Now organize bookings by class
-        const bookingsByClass: Record<string, any[]> = {};
+        // Log the payment statuses for debugging
+        const paymentStatusCounts = bookings?.reduce((acc, booking) => {
+          const status = booking.payment_status || 'unknown';
+          acc[status] = (acc[status] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>);
         
-        // Initialize with empty arrays for all classes
-        classes.forEach(cls => {
-          bookingsByClass[cls.id] = [];
-        });
+        const proofOfPaymentCount = bookings?.filter(b => b.proof_of_payment && b.proof_of_payment.trim() !== '').length || 0;
         
-        // Populate bookings by class
-        allBookings?.forEach(booking => {
-          // Find which class this booking belongs to
-          const schedule = schedules.find(s => s.id === booking.class_schedule_id);
-          if (schedule) {
-            const classId = schedule.class_id;
-            if (bookingsByClass[classId]) {
-              bookingsByClass[classId].push(booking);
-            }
-          }
-        });
+        console.log("Payment status breakdown:", paymentStatusCounts);
+        console.log("Bookings with proof of payment:", proofOfPaymentCount);
         
-        console.log("Organized bookings by class:", Object.keys(bookingsByClass).map(classId => ({
-          classId,
-          bookingCount: bookingsByClass[classId].length
-        })));
-        
-        return bookingsByClass;
+        return { 
+          schedules: schedules || [],
+          bookings: bookings || []
+        };
       } catch (err) {
-        console.error("Error in bookings query:", err);
+        console.error("Error fetching financial data:", err);
         throw err;
       }
     },
@@ -152,23 +160,49 @@ export function ClassFinancialReport() {
 
   // Calculate financial metrics when data is available
   useEffect(() => {
-    if (!classes || classes.length === 0 || !classBookings || isLoadingClasses || isLoadingBookings) {
+    if (!classes || classes.length === 0 || !financialData || isLoadingClasses || isLoadingFinancialData) {
       return;
     }
     
-    console.log("Calculating financial metrics with data:", { 
+    console.log("Calculating financial metrics with:", { 
       classesCount: classes.length,
-      hasBookingsData: !!classBookings 
+      schedulesCount: financialData.schedules.length,
+      bookingsCount: financialData.bookings.length
     });
     
     setIsCalculating(true);
     
     try {
+      // Create a mapping of schedules to their class IDs for faster lookup
+      const scheduleToClassMap = new Map<string, string>();
+      financialData.schedules.forEach(schedule => {
+        scheduleToClassMap.set(schedule.id, schedule.class_id);
+      });
+      
+      // Group bookings by class
+      const bookingsByClass: Record<string, any[]> = {};
+      
+      // Initialize with all classes
+      classes.forEach(cls => {
+        bookingsByClass[cls.id] = [];
+      });
+      
+      // Populate bookings by class using the mapping
+      financialData.bookings.forEach(booking => {
+        const scheduleId = booking.class_schedule_id;
+        const classId = scheduleToClassMap.get(scheduleId);
+        
+        if (classId && bookingsByClass[classId]) {
+          bookingsByClass[classId].push(booking);
+        }
+      });
+      
+      // Now calculate financial data for each class
       const finances: ClassFinance[] = classes.map(classItem => {
         // Get bookings for this class
-        const classBookingsArr = classBookings[classItem.id] || [];
+        const classBookingsArr = bookingsByClass[classItem.id] || [];
         
-        // Consider a booking as "paid" if it has either:
+        // IMPORTANT: Consider a booking as "paid" if it has EITHER:
         // 1. payment_status = 'paid'
         // 2. proof_of_payment is not empty
         const paidBookings = classBookingsArr.filter(booking => 
@@ -233,10 +267,10 @@ export function ClassFinancialReport() {
     } finally {
       setIsCalculating(false);
     }
-  }, [classes, classBookings, isLoadingClasses, isLoadingBookings]);
+  }, [classes, financialData, isLoadingClasses, isLoadingFinancialData]);
 
   // Show loading state
-  if (isLoadingClasses || isLoadingBookings || isCalculating) {
+  if (isLoadingClasses || isLoadingFinancialData || isCalculating) {
     return (
       <Card className="w-full">
         <CardHeader>
@@ -271,7 +305,7 @@ export function ClassFinancialReport() {
           <CardTitle>Class Financial Report</CardTitle>
         </CardHeader>
         <CardContent className="text-center">
-          <p className="text-muted-foreground py-4">No class financial data available</p>
+          <p className="text-muted-foreground py-4">No class financial data available for the selected date range</p>
         </CardContent>
       </Card>
     );

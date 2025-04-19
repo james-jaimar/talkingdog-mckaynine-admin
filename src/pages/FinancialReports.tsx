@@ -21,14 +21,16 @@ export default function FinancialReports() {
 
   // Handle date range changes
   const handleDateRangeChange = (range: { from: Date; to?: Date }) => {
-    setDateRange({
+    const updatedRange = {
       from: range.from,
       to: range.to || endOfMonth(new Date())
-    });
+    };
+    
+    setDateRange(updatedRange);
     
     console.log("Date range changed:", {
-      from: range.from,
-      to: range.to || endOfMonth(new Date())
+      from: updatedRange.from.toISOString(),
+      to: updatedRange.to.toISOString()
     });
   };
 
@@ -56,9 +58,9 @@ export default function FinancialReports() {
             />
           </div>
 
-          {/* Class Financial Report */}
+          {/* Class Financial Report - Now passing the date range */}
           <div className="mb-6">
-            <ClassFinancialReport />
+            <ClassFinancialReport dateRange={dateRange} />
           </div>
 
           {/* Revenue Chart */}
