@@ -1,38 +1,24 @@
-
 /**
- * Format a number as currency (ZAR by default)
+ * Format a number as currency
+ * @param value A number to format
+ * @returns A formatted currency string
  */
-export const formatCurrency = (value: number, currency = 'ZAR', locale = 'en-ZA'): string => {
-  return new Intl.NumberFormat(locale, {
+export function formatCurrency(value: number): string {
+  return new Intl.NumberFormat('en-CA', {
     style: 'currency',
-    currency: currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value).replace('R', 'R '); // Ensure space after R
-};
+    currency: 'CAD',
+  }).format(value);
+}
 
 /**
- * Format a number with commas as thousands separators
+ * Format a decimal value as a percentage
+ * @param value A decimal value (e.g., 0.15)
+ * @returns A formatted percentage string (e.g., "15%")
  */
-export const formatNumber = (value: number): string => {
-  return new Intl.NumberFormat().format(value);
-};
-
-/**
- * Format a percentage value
- */
-export const formatPercent = (value: number): string => {
-  return `${value}%`;
-};
-
-/**
- * Format a date as a string
- */
-export const formatDate = (date: Date | string): string => {
-  const d = typeof date === 'string' ? new Date(date) : date;
-  return d.toLocaleDateString('en-ZA', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric'
-  });
-};
+export function formatPercentage(value: number): string {
+  return new Intl.NumberFormat('en-US', {
+    style: 'percent',
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  }).format(value);
+}

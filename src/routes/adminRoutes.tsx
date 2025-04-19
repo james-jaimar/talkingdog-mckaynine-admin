@@ -1,3 +1,4 @@
+
 import { Navigate } from "react-router-dom";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import UserAdmin from "@/pages/UserAdmin";
@@ -8,6 +9,7 @@ import Invoices from "@/pages/Invoices";
 import InvoiceDetail from "@/pages/InvoiceDetail";
 import InvoiceEdit from "@/pages/InvoiceEdit";
 import BranchManagement from "@/pages/BranchManagement";
+import FinancialDashboard from "@/pages/FinancialDashboard";
 
 export const adminRoutes = [
   {
@@ -47,6 +49,15 @@ export const adminRoutes = [
     element: (
       <ProtectedRoute requiredRole="admin">
         <Forms />
+      </ProtectedRoute>
+    ),
+  },
+  // Financial dashboard route
+  {
+    path: "/financial-dashboard",
+    element: (
+      <ProtectedRoute requiredRole="admin">
+        <FinancialDashboard />
       </ProtectedRoute>
     ),
   },

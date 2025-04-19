@@ -1,7 +1,7 @@
 
 import { 
   Home, MessageSquare, DollarSign, Clipboard, GitBranch, 
-  FileText, Users, User
+  FileText, Users, User, BarChart
 } from "lucide-react";
 
 export const primaryNavItems = [
@@ -27,6 +27,7 @@ export const adminPrimaryNavItems = [
   { name: "Classes", path: "/classes", icon: null },
   { name: "Class Schedules", path: "/class-schedules", icon: null },
   { name: "Trainers", path: "/trainers", icon: null },
+  { name: "Finance", path: "/financial-dashboard", icon: BarChart },
 ];
 
 export const adminSecondaryNavItems = [
