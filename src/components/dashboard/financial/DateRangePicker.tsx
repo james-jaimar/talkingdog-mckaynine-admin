@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 
-interface DateRange {
+export interface DateRange {
   from: Date;
   to?: Date;
 }

@@ -23,6 +23,14 @@ export default function FinancialReports() {
   const { invoices, isLoading } = useInvoices();
   const { currentBranch } = useBranch();
 
+  // Handle date range changes ensuring to property is always set
+  const handleDateRangeChange = (range: { from: Date; to?: Date }) => {
+    setDateRange({
+      from: range.from,
+      to: range.to || endOfMonth(new Date())
+    });
+  };
+
   return (
     <RequireAdmin>
       <DashboardLayout>
@@ -37,7 +45,7 @@ export default function FinancialReports() {
             <div className="flex flex-col sm:flex-row gap-4 items-center">
               <DateRangePicker 
                 dateRange={dateRange} 
-                onDateRangeChange={setDateRange} 
+                onDateRangeChange={handleDateRangeChange} 
               />
               
               <Tabs value={timeframe} onValueChange={(value) => setTimeframe(value as any)} className="w-fit">

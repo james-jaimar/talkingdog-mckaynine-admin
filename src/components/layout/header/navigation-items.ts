@@ -1,3 +1,6 @@
+
+import { Home, Calendar, Users, FileText, BarChart2, Settings, UserPlus, Building, Dog } from "lucide-react";
+
 export const adminNavItems = [
   {
     title: "Dashboard",
@@ -39,4 +42,129 @@ export const adminNavItems = [
     title: "Branch Management",
     href: "/branch-management",
   },
+];
+
+// Primary navigation items for admin
+export const adminPrimaryNavItems = [
+  {
+    name: "Dashboard",
+    path: "/dashboard",
+    icon: Home
+  },
+  {
+    name: "Classes",
+    path: "/classes",
+    icon: Calendar
+  },
+  {
+    name: "Schedules", 
+    path: "/schedules",
+    icon: Calendar
+  },
+  {
+    name: "Handlers",
+    path: "/handlers",
+    icon: Users
+  },
+  {
+    name: "Invoices",
+    path: "/invoices",
+    icon: FileText
+  }
+];
+
+// Secondary navigation items for admin
+export const adminSecondaryNavItems = [
+  {
+    name: "Financial Dashboard",
+    path: "/financial-dashboard",
+    icon: BarChart2
+  },
+  {
+    name: "Financial Reports",
+    path: "/financial-reports",
+    icon: BarChart2
+  },
+  {
+    name: "Users",
+    path: "/user-admin",
+    icon: UserPlus
+  },
+  {
+    name: "Branch Management",
+    path: "/branch-management",
+    icon: Building
+  },
+  {
+    name: "Trainers",
+    path: "/trainers",
+    icon: Users
+  }
+];
+
+// Primary navigation items for handlers
+export const primaryNavItems = [
+  {
+    name: "Dashboard",
+    path: "/customer/dashboard",
+    icon: Home
+  },
+  {
+    name: "My Profile",
+    path: "/customer/profile",
+    icon: Users
+  }
+];
+
+// Additional handler navigation items
+export const handlerNavItems = [
+  {
+    name: "My Invoices",
+    path: "/customer/invoices",
+    icon: FileText
+  },
+  {
+    name: "Messages",
+    path: "/customer/messages",
+    icon: FileText
+  }
+];
+
+// Navigation items for trainers
+export const trainerNavItems = [
+  {
+    name: "Dashboard",
+    path: "/trainer/dashboard",
+    icon: Home
+  },
+  {
+    name: "Classes",
+    path: "/trainer/classes",
+    icon: Calendar
+  },
+  {
+    name: "Handlers",
+    path: "/trainer/handlers",
+    icon: Users
+  },
+  {
+    name: "Dogs",
+    path: "/trainer/dogs",
+    icon: Dog
+  },
+  {
+    name: "Schedule",
+    path: "/trainer/schedule",
+    icon: Calendar
+  },
+  {
+    name: "Payments",
+    path: "/trainer/payments", 
+    icon: FileText
+  },
+  {
+    name: "Reports",
+    path: "/trainer/reports",
+    icon: BarChart2
+  }
 ];
