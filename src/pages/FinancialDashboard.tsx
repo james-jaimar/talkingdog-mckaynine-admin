@@ -20,7 +20,7 @@ export default function FinancialDashboard() {
   const { invoices, isLoading } = useInvoices();
   const { currentBranch } = useBranch();
   
-  // Fetch trainers data
+  // Fetch trainers data with actual data from database
   const { data: trainers = [], isLoading: isTrainersLoading } = useQuery({
     queryKey: ['trainers', currentBranch?.id],
     queryFn: async () => {
@@ -28,31 +28,52 @@ export default function FinancialDashboard() {
       
       const { data, error } = await supabase
         .from('trainers')
-        .select('id, first_name, last_name')
+        .select(`
+          id,
+          first_name,
+          last_name,
+          invoices:invoice_items(
+            id,
+            amount,
+            invoice:invoices(status, payment_date)
+          )
+        `)
         .eq('branch_id', currentBranch.id);
       
       if (error) throw error;
       
-      // Transform to required format - in a real app this would fetch actual payment data
-      return data.map(trainer => ({
-        id: trainer.id,
-        trainerName: `${trainer.first_name} ${trainer.last_name}`,
-        totalEarned: Math.floor(Math.random() * 50000) + 10000, // Mock data
-        paid: Math.floor(Math.random() * 40000) + 5000, // Mock data
-        pending: Math.floor(Math.random() * 10000), // Mock data
-        invoicesCount: Math.floor(Math.random() * 20) + 5, // Mock data
-        lastPaymentDate: new Date(Date.now() - Math.floor(Math.random() * 30) * 86400000).toISOString() // Random date within last 30 days
-      }));
+      return data.map(trainer => {
+        const invoiceItems = trainer.invoices || [];
+        const totalEarned = invoiceItems.reduce((sum: number, item: any) => sum + (item.amount || 0), 0);
+        const paidInvoices = invoiceItems.filter((item: any) => item.invoice?.status === 'paid');
+        const paidAmount = paidInvoices.reduce((sum: number, item: any) => sum + (item.amount || 0), 0);
+        const lastPaymentDate = paidInvoices.length > 0 
+          ? Math.max(...paidInvoices.map((item: any) => new Date(item.invoice.payment_date).getTime()))
+          : null;
+
+        return {
+          id: trainer.id,
+          trainerName: `${trainer.first_name} ${trainer.last_name}`,
+          totalEarned,
+          paid: paidAmount,
+          pending: totalEarned - paidAmount,
+          invoicesCount: invoiceItems.length,
+          lastPaymentDate: lastPaymentDate ? new Date(lastPaymentDate).toISOString() : undefined
+        };
+      });
     },
     enabled: !!currentBranch?.id
   });
 
-  // Calculate financial metrics
+  // Calculate financial metrics from actual invoice data
   const financialMetrics = {
     totalRevenue: invoices ? invoices.reduce((sum, invoice) => sum + invoice.total, 0) : 0,
-    collectedRevenue: invoices ? invoices.filter(invoice => invoice.status === 'paid').reduce((sum, invoice) => sum + invoice.total, 0) : 0,
-    pendingRevenue: invoices ? invoices.filter(invoice => invoice.status === 'sent').reduce((sum, invoice) => sum + invoice.total, 0) : 0,
-    overdueRevenue: invoices ? invoices.filter(invoice => invoice.status === 'overdue').reduce((sum, invoice) => sum + invoice.total, 0) : 0
+    collectedRevenue: invoices ? invoices.filter(invoice => invoice.status === 'paid')
+      .reduce((sum, invoice) => sum + invoice.total, 0) : 0,
+    pendingRevenue: invoices ? invoices.filter(invoice => invoice.status === 'sent')
+      .reduce((sum, invoice) => sum + invoice.total, 0) : 0,
+    overdueRevenue: invoices ? invoices.filter(invoice => invoice.status === 'overdue')
+      .reduce((sum, invoice) => sum + invoice.total, 0) : 0
   };
 
   return (

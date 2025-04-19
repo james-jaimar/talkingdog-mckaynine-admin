@@ -1,13 +1,12 @@
-
 /**
- * Format a number as currency
+ * Format a number as currency in South African Rands (ZAR)
  * @param value A number to format
  * @returns A formatted currency string
  */
 export function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('en-CA', {
+  return new Intl.NumberFormat('en-ZA', {
     style: 'currency',
-    currency: 'CAD',
+    currency: 'ZAR',
   }).format(value);
 }
 

@@ -82,7 +82,7 @@ export function TrainerPaymentsSummary({ trainers, isLoading }: TrainerPaymentsS
                 <TableCell className="text-right">{trainer.invoicesCount}</TableCell>
                 <TableCell className="text-right">
                   {trainer.lastPaymentDate 
-                    ? new Date(trainer.lastPaymentDate).toLocaleDateString() 
+                    ? new Date(trainer.lastPaymentDate).toLocaleDateString('en-ZA')
                     : 'Never'}
                 </TableCell>
                 <TableCell className="text-right">

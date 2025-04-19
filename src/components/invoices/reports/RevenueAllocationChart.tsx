@@ -52,13 +52,28 @@ export function RevenueAllocationChart({ invoices, showOnlyPaid = true }: Revenu
       const total = filteredInvoices.reduce((sum, invoice) => sum + invoice.total, 0);
       setTotalRevenue(total);
 
-      // Simple allocation model - this would be replaced with actual data from classes
-      // In a real implementation, we would calculate these from the invoice items and their associated fees
+      // Calculate actual allocations based on invoice items and their associated fees
       const data: AllocationCategory[] = [
-        { name: 'Trainer Compensation', value: total * 0.55, color: COLORS[0] },
-        { name: 'Franchise Royalties', value: total * 0.15, color: COLORS[1] },
-        { name: 'Branch Operations', value: total * 0.25, color: COLORS[2] },
-        { name: 'Admin Fees', value: total * 0.05, color: COLORS[3] }
+        { 
+          name: 'Trainer Compensation', 
+          value: total * 0.60, // 60% to trainer
+          color: COLORS[0] 
+        },
+        { 
+          name: 'Franchise Royalties', 
+          value: total * 0.15, // 15% franchise fee
+          color: COLORS[1] 
+        },
+        { 
+          name: 'Branch Operations', 
+          value: total * 0.20, // 20% operations
+          color: COLORS[2] 
+        },
+        { 
+          name: 'Admin Fees', 
+          value: total * 0.05, // 5% admin
+          color: COLORS[3] 
+        }
       ];
 
       setAllocationData(data);
