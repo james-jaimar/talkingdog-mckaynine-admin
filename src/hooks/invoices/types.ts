@@ -1,4 +1,3 @@
-
 export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled';
 
 export interface InvoiceItem {
@@ -42,6 +41,9 @@ export interface InvoiceFormValues {
   notes?: string;
   tax_rate: number;
   items: InvoiceItem[];
+  discount_amount: number;
+  discount_type: 'fixed' | 'percentage';
+  discount_reason?: string;
 }
 
 export interface Invoice {
@@ -72,4 +74,7 @@ export interface Invoice {
     postal_code?: string;
   };
   items?: InvoiceItem[];
+  discount_amount: number;
+  discount_type: 'fixed' | 'percentage';
+  discount_reason?: string | null;
 }

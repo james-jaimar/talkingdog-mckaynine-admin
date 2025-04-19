@@ -1,95 +1,88 @@
-
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Invoice } from "@/hooks/invoices/types";
+import { Invoice } from "@/types/invoice";
 import { format } from "date-fns";
-import { InvoiceStatusBadge } from "./InvoiceStatusBadge";
-import { InvoiceItemsTable } from "./InvoiceItemsTable";
-import { InvoiceSummary } from "./InvoiceSummary";
-import { AlertCircle, FileText } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { formatCurrency } from "@/lib/formatters";
 
 interface InvoiceDetailsPanelProps {
   invoice: Invoice;
 }
 
 export function InvoiceDetailsPanel({ invoice }: InvoiceDetailsPanelProps) {
-  // Log invoice data for debugging purposes
-  console.log("Rendering InvoiceDetailsPanel with invoice:", invoice);
-  
-  // Check if any item has booking-related class information
-  const hasBookingItems = invoice.items?.some(item => item.booking_id);
-  
-  // Check if any item has complete booking data with class info
-  const hasClassBookings = invoice.items?.some(item => 
-    item.bookings?.class_schedules?.classes?.name
-  );
-  
-  // Check if invoice appears to be for a class booking based on notes or items
-  const isLikelyClassBooking = 
-    (invoice.notes?.toLowerCase().includes('booking') || 
-     invoice.notes?.toLowerCase().includes('class')) ||
-    hasBookingItems;
-  
-  // Debug log booking status
-  console.log("Invoice details:", {
-    hasBookingItems,
-    hasClassBookings,
-    isLikelyClassBooking,
-    itemsCount: invoice.items?.length || 0
-  });
-  
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between border-b">
-        <CardTitle className="flex items-center">
-          <FileText className="mr-2 h-5 w-5 text-muted-foreground" /> 
-          Invoice Details
-        </CardTitle>
-        <InvoiceStatusBadge status={invoice.status} />
-      </CardHeader>
-      <CardContent className="pt-6">
-        <div className="mb-4">
-          <p className="text-sm text-muted-foreground">
-            Issued on {format(new Date(invoice.issued_date), "dd/MM/yyyy")}
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Due on {format(new Date(invoice.due_date), "dd/MM/yyyy")}
-          </p>
+    <div className="space-y-6">
+      <div>
+        <h3 className="font-medium text-lg">Invoice Details</h3>
+        <div className="text-sm space-y-1">
+          <div className="flex justify-between">
+            <span>Invoice Number:</span>
+            <span className="font-medium">{invoice.invoice_number}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Issue Date:</span>
+            <span className="font-medium">{format(new Date(invoice.issued_date), "PP")}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Due Date:</span>
+            <span className="font-medium">{format(new Date(invoice.due_date), "PP")}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Status:</span>
+            <span className="font-medium">{invoice.status}</span>
+          </div>
         </div>
-        
-        {/* Client information */}
-        {invoice.client && (
-          <div className="mb-6 p-3 bg-gray-50 rounded-md border">
-            <h3 className="text-sm font-medium mb-1">Bill To:</h3>
-            <p className="text-sm">{invoice.client.first_name} {invoice.client.last_name}</p>
-            <p className="text-sm text-gray-600">{invoice.client.email}</p>
-            {invoice.client.phone && <p className="text-sm text-gray-600">{invoice.client.phone}</p>}
+      </div>
+
+      <div>
+        <h3 className="font-medium text-lg">Payment Details</h3>
+        <div className="text-sm space-y-1">
+          <div className="flex justify-between">
+            <span>Subtotal:</span>
+            <span className="font-medium">{formatCurrency(invoice.subtotal)}</span>
           </div>
-        )}
-        
-        {/* Show class booking alert if this invoice is for classes but missing data */}
-        {isLikelyClassBooking && !hasClassBookings && hasBookingItems && (
-          <Alert className="mb-4 bg-blue-50 border-blue-200">
-            <AlertCircle className="h-4 w-4 text-blue-600" />
-            <AlertTitle className="text-blue-700">Class booking information</AlertTitle>
-            <AlertDescription className="text-blue-600 text-sm">
-              This invoice appears to be for class bookings, but some class details couldn't be fully retrieved.
-              Basic booking information is shown where available.
-            </AlertDescription>
-          </Alert>
-        )}
-        
-        <InvoiceItemsTable items={invoice.items || []} />
-        
-        <InvoiceSummary invoice={invoice} />
-        
-        {invoice.notes && (
-          <div className="mt-6">
-            <h3 className="font-medium mb-2">Notes:</h3>
-            <p className="text-sm text-muted-foreground whitespace-pre-wrap">{invoice.notes}</p>
+          <div className="flex justify-between">
+            <span>Tax ({invoice.tax_rate}%):</span>
+            <span className="font-medium">{formatCurrency(invoice.tax_amount)}</span>
           </div>
-        )}
-      </CardContent>
-    </Card>
+          <div className="flex justify-between">
+            <span>Total:</span>
+            <span className="font-medium">{formatCurrency(invoice.total)}</span>
+          </div>
+        </div>
+      </div>
+  
+      {invoice.discount_amount > 0 && (
+        <div className="border-t pt-4">
+          <h3 className="font-medium mb-2">Discount Details</h3>
+          <div className="text-sm space-y-1">
+            <div className="flex justify-between">
+              <span>Type:</span>
+              <span className="font-medium">
+                {invoice.discount_type === 'percentage' ? 'Percentage' : 'Fixed Amount'}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span>Amount:</span>
+              <span className="font-medium text-red-600">
+                {invoice.discount_type === 'percentage' 
+                  ? `${invoice.discount_amount}%`
+                  : `ZAR ${invoice.discount_amount.toFixed(2)}`}
+              </span>
+            </div>
+            {invoice.discount_reason && (
+              <div className="flex justify-between">
+                <span>Reason:</span>
+                <span className="font-medium">{invoice.discount_reason}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {invoice.notes && (
+        <div>
+          <h3 className="font-medium text-lg">Notes</h3>
+          <p className="text-sm">{invoice.notes}</p>
+        </div>
+      )}
+    </div>
   );
 }

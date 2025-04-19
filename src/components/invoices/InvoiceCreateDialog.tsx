@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -18,13 +17,14 @@ import { CalendarIcon, Plus, Trash2, Loader2 } from "lucide-react";
 import { format, addDays } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useBranch } from "@/context/BranchContext";
+import { DiscountFields } from "./discount/DiscountFields";
 
 interface InvoiceCreateDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-// Validation schema
+// Update validation schema to include discount fields
 const invoiceSchema = z.object({
   client_id: z.string().min(1, "Client is required"),
   invoice_number: z.string().min(1, "Invoice number is required"),
@@ -39,6 +39,9 @@ const invoiceSchema = z.object({
     unit_price: z.number().min(0, "Unit price can't be negative"),
     booking_id: z.string().optional().nullable(),
   })).min(1, "At least one item is required"),
+  discount_type: z.enum(['fixed', 'percentage']),
+  discount_amount: z.number().min(0),
+  discount_reason: z.string().optional(),
 });
 
 export function InvoiceCreateDialog({ open, onOpenChange }: InvoiceCreateDialogProps) {
@@ -66,7 +69,10 @@ export function InvoiceCreateDialog({ open, onOpenChange }: InvoiceCreateDialogP
       tax_rate: 0, // Default is set to 0%
       items: [
         { description: "", quantity: 1, unit_price: 0 }
-      ]
+      ],
+      discount_type: 'fixed',
+      discount_amount: 0,
+      discount_reason: '',
     }
   });
   
@@ -100,6 +106,18 @@ export function InvoiceCreateDialog({ open, onOpenChange }: InvoiceCreateDialogP
     const items = form.getValues("items");
     return items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
   };
+
+  const calculateDiscount = () => {
+    const discountType = form.getValues("discount_type");
+    const discountAmount = form.getValues("discount_amount");
+    const subtotal = calculateSubtotal();
+
+    if (discountType === "percentage") {
+      return (subtotal * discountAmount) / 100;
+    } else {
+      return discountAmount;
+    }
+  };
   
   const calculateTax = () => {
     const taxRate = form.getValues("tax_rate");
@@ -107,7 +125,7 @@ export function InvoiceCreateDialog({ open, onOpenChange }: InvoiceCreateDialogP
   };
   
   const calculateTotal = () => {
-    return calculateSubtotal() + calculateTax();
+    return calculateSubtotal() + calculateTax() - calculateDiscount();
   };
   
   const onSubmit = (values: InvoiceFormValues) => {
@@ -398,6 +416,12 @@ export function InvoiceCreateDialog({ open, onOpenChange }: InvoiceCreateDialogP
               </div>
             </div>
             
+            {/* Add Discount section before totals */}
+            <div className="mt-6 mb-4">
+              <h3 className="text-lg font-medium mb-4">Discount</h3>
+              <DiscountFields form={form} />
+            </div>
+            
             <div className="grid grid-cols-2 gap-4">
               {/* Tax Rate */}
               <FormField
@@ -437,11 +461,24 @@ export function InvoiceCreateDialog({ open, onOpenChange }: InvoiceCreateDialogP
               />
             </div>
             
+            {/* Update totals calculation */}
             <div className="ml-auto space-y-2 text-right">
               <div className="flex justify-end space-x-4">
                 <span className="text-sm">Subtotal:</span>
                 <span className="text-sm font-medium">ZAR {calculateSubtotal().toFixed(2)}</span>
               </div>
+              {form.watch("discount_amount") > 0 && (
+                <div className="flex justify-end space-x-4 text-red-600">
+                  <span className="text-sm">
+                    Discount {form.watch("discount_type") === "percentage" ? 
+                      `(${form.watch("discount_amount")}%)` : 
+                      "(ZAR)"}:
+                  </span>
+                  <span className="text-sm font-medium">
+                    -ZAR {calculateDiscount().toFixed(2)}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-end space-x-4">
                 <span className="text-sm">Tax ({form.watch("tax_rate")}%):</span>
                 <span className="text-sm font-medium">ZAR {calculateTax().toFixed(2)}</span>
