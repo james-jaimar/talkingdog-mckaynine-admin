@@ -1,3 +1,4 @@
+
 import {
   ColumnDef,
   flexRender,
@@ -23,12 +24,24 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { DotsHorizontalIcon } from "@radix-ui/react-icons";
+import { MoreHorizontal } from "lucide-react";
 import { EditHandlerModal } from "./EditHandlerModal";
 import { useToast } from "@/hooks/use-toast";
-import { deleteHandler } from "@/lib/api/handlers";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
+
+// Create a deleteHandler function to replace the imported one
+const deleteHandler = async (id: string) => {
+  const response = await fetch(`/api/handlers/${id}`, {
+    method: 'DELETE',
+  });
+  
+  if (!response.ok) {
+    throw new Error('Failed to delete handler');
+  }
+  
+  return await response.json();
+};
 
 interface ClientData {
   id: string;
@@ -108,7 +121,7 @@ export function HandlerTable({ handlers, searchQuery, itemsPerPage, loading }: H
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="h-8 w-8 p-0">
                 <span className="sr-only">Open menu</span>
-                <DotsHorizontalIcon className="h-4 w-4" />
+                <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
