@@ -14,6 +14,7 @@ import { formatCurrency } from "@/lib/formatters";
 import { useBranch } from "@/context/BranchContext";
 import RequireAdmin from "@/components/auth/RequireAdmin";
 import { DollarSign, Users, Calendar, TrendingUp } from "lucide-react";
+import { toast } from "react-toastify";
 
 export default function FinancialDashboard() {
   const [timeframe, setTimeframe] = useState<'monthly' | 'quarterly' | 'yearly'>('monthly');
@@ -26,41 +27,64 @@ export default function FinancialDashboard() {
     queryFn: async () => {
       if (!currentBranch) return [];
       
-      const { data, error } = await supabase
-        .from('trainers')
-        .select(`
-          id,
-          first_name,
-          last_name,
-          invoices:invoice_items(
+      try {
+        const { data, error } = await supabase
+          .from('trainers')
+          .select(`
             id,
-            amount,
-            invoice:invoices(status, payment_date)
-          )
-        `)
-        .eq('branch_id', currentBranch.id);
-      
-      if (error) throw error;
-      
-      return data.map(trainer => {
-        const invoiceItems = trainer.invoices || [];
-        const totalEarned = invoiceItems.reduce((sum: number, item: any) => sum + (item.amount || 0), 0);
-        const paidInvoices = invoiceItems.filter((item: any) => item.invoice?.status === 'paid');
-        const paidAmount = paidInvoices.reduce((sum: number, item: any) => sum + (item.amount || 0), 0);
-        const lastPaymentDate = paidInvoices.length > 0 
-          ? Math.max(...paidInvoices.map((item: any) => new Date(item.invoice.payment_date).getTime()))
-          : null;
+            first_name,
+            last_name,
+            invoices:invoice_items(
+              id,
+              amount,
+              invoice:invoices(status, payment_date)
+            )
+          `)
+          .eq('branch_id', currentBranch.id);
+        
+        if (error) {
+          console.error("Error fetching trainer data:", error);
+          toast.error("Error loading trainer payment data");
+          return [];
+        }
+        
+        if (!data || !Array.isArray(data)) {
+          console.error("No trainer data returned or invalid format");
+          return [];
+        }
+        
+        return data.map(trainer => {
+          const invoiceItems = Array.isArray(trainer.invoices) ? trainer.invoices : [];
+          const totalEarned = invoiceItems.reduce((sum: number, item: any) => sum + (item.amount || 0), 0);
+          const paidInvoices = invoiceItems.filter((item: any) => item.invoice?.status === 'paid');
+          const paidAmount = paidInvoices.reduce((sum: number, item: any) => sum + (item.amount || 0), 0);
+          
+          let lastPaymentDate = null;
+          if (paidInvoices.length > 0) {
+            const paymentDates = paidInvoices
+              .map((item: any) => item.invoice?.payment_date ? new Date(item.invoice.payment_date).getTime() : 0)
+              .filter((timestamp: number) => timestamp > 0);
+              
+            if (paymentDates.length > 0) {
+              lastPaymentDate = new Date(Math.max(...paymentDates)).toISOString();
+            }
+          }
 
-        return {
-          id: trainer.id,
-          trainerName: `${trainer.first_name} ${trainer.last_name}`,
-          totalEarned,
-          paid: paidAmount,
-          pending: totalEarned - paidAmount,
-          invoicesCount: invoiceItems.length,
-          lastPaymentDate: lastPaymentDate ? new Date(lastPaymentDate).toISOString() : undefined
-        };
-      });
+          return {
+            id: trainer.id,
+            trainerName: `${trainer.first_name} ${trainer.last_name}`,
+            totalEarned,
+            paid: paidAmount,
+            pending: totalEarned - paidAmount,
+            invoicesCount: invoiceItems.length,
+            lastPaymentDate: lastPaymentDate || undefined
+          };
+        });
+      } catch (err) {
+        console.error("Failed to process trainer data:", err);
+        toast.error("Error processing trainer payment data");
+        return [];
+      }
     },
     enabled: !!currentBranch?.id
   });
@@ -131,7 +155,9 @@ export default function FinancialDashboard() {
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {((financialMetrics.collectedRevenue / financialMetrics.totalRevenue) * 100).toFixed(1)}% of total revenue
+                  {financialMetrics.totalRevenue > 0 
+                    ? ((financialMetrics.collectedRevenue / financialMetrics.totalRevenue) * 100).toFixed(1) 
+                    : "0"}% of total revenue
                 </p>
               </CardContent>
             </Card>
@@ -150,7 +176,9 @@ export default function FinancialDashboard() {
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {((financialMetrics.pendingRevenue / financialMetrics.totalRevenue) * 100).toFixed(1)}% of total revenue
+                  {financialMetrics.totalRevenue > 0
+                    ? ((financialMetrics.pendingRevenue / financialMetrics.totalRevenue) * 100).toFixed(1)
+                    : "0"}% of total revenue
                 </p>
               </CardContent>
             </Card>
@@ -169,7 +197,9 @@ export default function FinancialDashboard() {
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {((financialMetrics.overdueRevenue / financialMetrics.totalRevenue) * 100).toFixed(1)}% of total revenue
+                  {financialMetrics.totalRevenue > 0
+                    ? ((financialMetrics.overdueRevenue / financialMetrics.totalRevenue) * 100).toFixed(1)
+                    : "0"}% of total revenue
                 </p>
               </CardContent>
             </Card>
