@@ -24,37 +24,46 @@ export function useUpdateInvoice() {
         // Calculate subtotal
         const subtotal = values.items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
         
+        // Normalize discount values to prevent issues
         let discount_amount = 0;
-        const original_discount_input = values.discount_amount || 0;
+        const discount_type = values.discount_type || 'fixed';
+        const original_discount_input = Number(values.discount_amount || 0);
         
-        // Calculate the actual monetary discount amount for fixed discounts
-        if (values.discount_type === 'percentage') {
-          // For percentage type, calculate the monetary value
+        // Calculate the actual monetary discount amount based on type
+        if (discount_type === 'percentage') {
+          // For percentage type, store the percentage directly but calculate the monetary value
           const percentage = Math.min(Math.max(original_discount_input, 0), 100);
-          discount_amount = (subtotal * percentage) / 100;
+          const discount_monetary_value = (subtotal * percentage) / 100;
+          discount_amount = original_discount_input; // Store original percentage for percentage type
         } else {
-          // For fixed type, use the input directly
+          // For fixed type, ensure it doesn't exceed subtotal
           discount_amount = Math.min(original_discount_input, subtotal);
         }
         
         // Calculate tax on the amount after discount
-        const taxable_amount = subtotal - discount_amount;
+        const taxable_amount = discount_type === 'percentage' ? 
+          subtotal - ((subtotal * original_discount_input) / 100) : 
+          subtotal - discount_amount;
+          
         const tax_amount = taxable_amount * (values.tax_rate / 100);
         
         // Calculate total: subtotal - discount + tax
-        const total = subtotal - discount_amount + tax_amount;
+        const total = discount_type === 'percentage' ?
+          subtotal - ((subtotal * original_discount_input) / 100) + tax_amount :
+          subtotal - discount_amount + tax_amount;
 
         console.log("Invoice update calculations:", {
           subtotal,
-          discount_type: values.discount_type,
+          discount_type,
           discount_input: original_discount_input,
-          calculated_discount_amount: discount_amount, 
+          calculated_discount_amount: discount_type === 'percentage' ? 
+            ((subtotal * original_discount_input) / 100) : discount_amount,
           tax_rate: values.tax_rate,
           tax_amount,
           total
         });
 
-        // Create invoice update object - store the appropriate discount value based on type
+        // Create invoice update object with properly formatted fields
         const updateData = {
           client_id: values.client_id,
           invoice_number: values.invoice_number,
@@ -66,10 +75,8 @@ export function useUpdateInvoice() {
           tax_rate: values.tax_rate,
           tax_amount,
           total,
-          discount_amount: values.discount_type === 'percentage' ? 
-            original_discount_input : // Store percentage for percentage type
-            discount_amount, // Store actual amount for fixed type
-          discount_type: values.discount_type,
+          discount_amount,
+          discount_type,
           discount_reason: values.discount_reason || null
         };
 
@@ -127,17 +134,16 @@ export function useUpdateInvoice() {
           });
         }
 
-        const { error: itemsError, data: insertedItems } = await supabase
+        const { error: itemsError } = await supabase
           .from('invoice_items')
-          .insert(itemsToInsert)
-          .select();
+          .insert(itemsToInsert);
 
         if (itemsError) {
           console.error("Error inserting invoice items:", itemsError);
           throw itemsError;
         }
 
-        console.log("New invoice items inserted successfully:", insertedItems);
+        console.log("New invoice items inserted successfully");
         return { id: invoiceId, success: true };
       } catch (error: any) {
         console.error("Invoice update failed with error:", error);

@@ -40,7 +40,14 @@ export function InvoiceFormProvider({
   });
 
   const handleSubmit = (values: FormValues) => {
-    onSubmit(values);
+    // Ensure discount values are properly normalized
+    const normalizedValues = {
+      ...values,
+      discount_type: values.discount_type || 'fixed',
+      discount_amount: Number(values.discount_amount || 0)
+    };
+    
+    onSubmit(normalizedValues);
   };
 
   return (
