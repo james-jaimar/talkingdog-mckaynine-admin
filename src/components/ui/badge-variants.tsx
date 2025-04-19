@@ -1,5 +1,5 @@
 
-import { Badge } from "./badge";
+import { Badge as BaseBadge } from "./badge";
 import { cn } from "@/lib/utils";
 import { BadgeProps } from "./badge";
 
@@ -20,7 +20,7 @@ export interface ExtendedBadgeProps extends Omit<BadgeProps, 'variant'> {
   variant?: ExtendedBadgeVariant;
 }
 
-export function Badge({ className, variant = "default", ...props }: ExtendedBadgeProps) {
+export function ExtendedBadge({ className, variant = "default", ...props }: ExtendedBadgeProps) {
   const variantClasses = {
     warning: "border-transparent bg-amber-500 text-white hover:bg-amber-600",
     info: "border-transparent bg-blue-500 text-white hover:bg-blue-600",
@@ -31,12 +31,12 @@ export function Badge({ className, variant = "default", ...props }: ExtendedBadg
 
   // Use the built-in variants for the standard ones
   if (["default", "secondary", "destructive", "outline"].includes(variant)) {
-    return <Badge variant={variant as any} className={className} {...props} />;
+    return <BaseBadge variant={variant as any} className={className} {...props} />;
   }
 
   // Use our custom variant
   return (
-    <Badge 
+    <BaseBadge 
       variant="outline"
       className={cn(
         variantClasses[variant as keyof typeof variantClasses], 
@@ -47,5 +47,5 @@ export function Badge({ className, variant = "default", ...props }: ExtendedBadg
   );
 }
 
-// Additionally export the ExtendedBadge with a different name to avoid collision
-export { Badge as ExtendedBadge };
+// Export with Badge name for backward compatibility
+export { ExtendedBadge as Badge };
