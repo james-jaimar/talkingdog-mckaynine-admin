@@ -114,6 +114,9 @@ export function BookingToInvoiceProvider({
         notes: `Invoice for training classes. Includes ${selectedBookings.length} booking(s).`,
         tax_rate: 0,
         items,
+        discount_amount: 0, // Default value for discount
+        discount_type: 'fixed', // Default discount type
+        discount_reason: '' // Default empty string for discount reason
       };
       
       // Log complete invoice data before submission

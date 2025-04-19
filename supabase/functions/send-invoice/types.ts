@@ -32,6 +32,9 @@ export interface Invoice {
   tax_amount: number;
   total: number;
   notes?: string;
+  discount_amount: number;
+  discount_type: 'fixed' | 'percentage';
+  discount_reason?: string;
 }
 
 export const corsHeaders = {

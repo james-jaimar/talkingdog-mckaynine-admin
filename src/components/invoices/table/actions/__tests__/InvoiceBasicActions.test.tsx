@@ -26,7 +26,10 @@ describe('InvoiceBasicActions', () => {
     tax_amount: 10,
     total: 110,
     created_at: '2024-04-16',
-    updated_at: '2024-04-16'
+    updated_at: '2024-04-16',
+    discount_amount: 0,
+    discount_type: 'fixed' as 'fixed' | 'percentage',
+    discount_reason: null
   };
 
   const mockProps = {

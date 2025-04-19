@@ -53,6 +53,9 @@ export function CreateCustomInvoice({
           quantity: item.quantity,
           unit_price: item.unit_price
         })),
+        discount_amount: 0, // Default value for discount amount
+        discount_type: 'fixed' as 'fixed' | 'percentage', // Default value for discount type
+        discount_reason: '' // Default value for discount reason
       };
       
       // Create invoice
