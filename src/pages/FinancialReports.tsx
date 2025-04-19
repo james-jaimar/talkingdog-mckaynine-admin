@@ -13,6 +13,8 @@ import { ClassesListReport } from "@/components/invoices/reports/ClassesListRepo
 import { DateRangePicker } from "@/components/dashboard/financial/DateRangePicker";
 import { startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { InfoCircledIcon } from "@radix-ui/react-icons";
 import { toast } from "sonner";
 
 export default function FinancialReports() {
@@ -70,6 +72,16 @@ export default function FinancialReports() {
               onDateRangeChange={handleDateRangeChange} 
             />
           </div>
+
+          <Alert className="mb-6">
+            <InfoCircledIcon className="h-4 w-4" />
+            <AlertTitle>Important Financial Information</AlertTitle>
+            <AlertDescription>
+              This report includes both booking-associated invoices and general training invoices 
+              that don't have specific class associations. Any invoice items without booking associations 
+              will appear under "General Training Services".
+            </AlertDescription>
+          </Alert>
 
           <Tabs defaultValue="financial" className="w-full">
             <TabsList className="mb-4">

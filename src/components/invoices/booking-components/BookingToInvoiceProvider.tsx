@@ -1,4 +1,3 @@
-
 import { useState, ReactNode } from "react";
 import { useInvoices } from "@/hooks/useInvoices";
 import { InvoiceFormValues } from "@/types/invoice";
@@ -100,7 +99,7 @@ export function BookingToInvoiceProvider({
           description: `${className} - ${dogName}`,
           quantity: 1,
           unit_price: price,
-          booking_id: booking.id,
+          booking_id: booking.id, // Ensure booking_id is explicitly set
         };
       });
       

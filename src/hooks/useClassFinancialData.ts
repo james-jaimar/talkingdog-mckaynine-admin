@@ -11,10 +11,12 @@ export interface ClassFinance {
   adminFee: number;
   instructorFee: number;
   profit: number;
+  invoiceCount: number; // Added to track number of invoices per class
 }
 
 export function useClassFinancialData(branchId?: string, fromDate?: string, toDate?: string) {
   const [classFinances, setClassFinances] = useState<ClassFinance[]>([]);
+  const [unassociatedRevenue, setUnassociatedRevenue] = useState<number>(0);
   const queryClient = useQueryClient();
   
   // Track invoices data to trigger refetch when invoices change
@@ -25,7 +27,7 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
   const { data: financialData, isLoading } = useQuery({
     queryKey: ['financial-bookings', branchId, fromDate, toDate, invoicesData],
     queryFn: async () => {
-      if (!branchId) return [];
+      if (!branchId) return { bookingsWithInvoices: [], unassociatedInvoices: [] };
 
       console.log(`Fetching financial data for branch ${branchId} from ${fromDate} to ${toDate}`);
       
@@ -69,13 +71,17 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
           amount,
           unit_price,
           quantity,
+          description,
           invoices:invoice_id (
             id,
             status,
             payment_received,
             total,
             client_id,
-            issued_date
+            issued_date,
+            client:client_id (
+              branch_id
+            )
           )
         `)
         .gte('invoices.issued_date', fromDate)
@@ -86,27 +92,46 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
         console.error("Error fetching invoice items:", invoiceItemsError);
         throw invoiceItemsError;
       }
+
+      // Filter invoice items by the specified branch
+      const branchInvoiceItems = invoiceItems.filter(item => 
+        item.invoices?.client?.branch_id === branchId
+      );
+      
+      console.log(`Filtered to ${branchInvoiceItems.length} invoice items for branch ${branchId}`);
         
       // Map invoices to bookings for financial calculations
       const bookingInvoiceMap = new Map();
       
-      if (invoiceItems && invoiceItems.length > 0) {
-        invoiceItems.forEach(item => {
+      // Track invoice items without booking associations
+      const unassociatedInvoiceItems: any[] = [];
+      
+      if (branchInvoiceItems && branchInvoiceItems.length > 0) {
+        branchInvoiceItems.forEach(item => {
           if (item.booking_id) {
             bookingInvoiceMap.set(item.booking_id, {
               amount: item.amount || (item.unit_price * item.quantity),
+              description: item.description,
               invoiceStatus: item.invoices?.status || 'unknown',
-              isPaid: item.invoices?.payment_received || item.invoices?.status === 'paid'
+              isPaid: item.invoices?.payment_received || item.invoices?.status === 'paid',
+              invoiceId: item.invoice_id
+            });
+          } else {
+            // Track invoice items without booking associations
+            unassociatedInvoiceItems.push({
+              ...item,
+              amount: item.amount || (item.unit_price * item.quantity)
             });
           }
         });
       }
       
-      console.log(`Retrieved ${bookings?.length || 0} bookings and ${invoiceItems?.length || 0} invoice items`);
+      console.log(`Retrieved ${bookings?.length || 0} bookings and ${branchInvoiceItems?.length || 0} invoice items`);
       console.log(`Mapped ${bookingInvoiceMap.size} bookings to invoices`);
+      console.log(`Found ${unassociatedInvoiceItems.length} invoice items without booking associations`);
       
       // Enhance bookings with invoice data
-      return bookings?.map(booking => {
+      const bookingsWithInvoices = bookings?.map(booking => {
         // Get invoice data if available
         const invoiceData = bookingInvoiceMap.get(booking.id);
         
@@ -124,23 +149,52 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
           calculatedFee: courseFromClass // Keep the class fee for percentage calculations
         };
       }) || [];
+      
+      return { 
+        bookingsWithInvoices, 
+        unassociatedInvoices: unassociatedInvoiceItems 
+      };
     },
     enabled: !!branchId && !!fromDate && !!toDate,
     staleTime: 30000, // 30 seconds
     refetchOnWindowFocus: true,
-    gcTime: 10 * 60 * 1000, // 10 minutes - changed from cacheTime to gcTime
+    gcTime: 10 * 60 * 1000, // 10 minutes - using gcTime instead of cacheTime
   });
 
   // Process booking data into financial summaries
   useEffect(() => {
     if (!financialData) {
       setClassFinances([]);
+      setUnassociatedRevenue(0);
       return;
     }
 
+    const { bookingsWithInvoices, unassociatedInvoices } = financialData;
+    
+    // Calculate total revenue from unassociated invoice items
+    const unassociatedTotal = unassociatedInvoices.reduce((sum, item) => sum + (item.amount || 0), 0);
+    setUnassociatedRevenue(unassociatedTotal);
+    
+    // Process the class finances
     const classSummaries = new Map<string, ClassFinance>();
 
-    financialData.forEach(booking => {
+    // Create a "General Training" entry for unassociated revenue if it exists
+    if (unassociatedTotal > 0) {
+      const generalTraining: ClassFinance = {
+        className: "General Training Services",
+        totalRevenue: unassociatedTotal,
+        bookingsCount: 0,
+        franchiseFee: 0, // Default commission rate (can be customized)
+        adminFee: 0,     // Default admin fee (can be customized)
+        instructorFee: 0, // Default trainer fee (can be customized)
+        profit: unassociatedTotal, // All profit since no fees are deducted
+        invoiceCount: unassociatedInvoices.length
+      };
+      
+      classSummaries.set("General Training Services", generalTraining);
+    }
+
+    bookingsWithInvoices.forEach(booking => {
       const classData = booking.class_schedules?.classes;
       if (!classData) return;
 
@@ -156,12 +210,18 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
         franchiseFee: 0,
         adminFee: 0,
         instructorFee: 0,
-        profit: 0
+        profit: 0,
+        invoiceCount: 0
       };
 
       // Update summary
       summary.bookingsCount++;
       summary.totalRevenue += courseRevenue;
+      
+      // Track invoice count
+      if (booking.invoiceInfo && booking.invoiceInfo.invoiceId) {
+        summary.invoiceCount++;
+      }
 
       // For fee calculations, use the class's defined percentages
       // but apply them to the actual revenue collected (from invoice if available)
@@ -198,6 +258,8 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
       
     console.log(`Processed ${sortedFinances.length} class financial summaries`);
     console.log(`Total revenue across classes: ${sortedFinances.reduce((sum, curr) => sum + curr.totalRevenue, 0)}`);
+    console.log(`Unassociated revenue: ${unassociatedTotal}`);
+    
     setClassFinances(sortedFinances);
   }, [financialData]);
 
@@ -208,5 +270,10 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
     queryClient.invalidateQueries({ queryKey: ['invoices'] });
   };
 
-  return { classFinances, isLoading, refreshData };
+  return { 
+    classFinances, 
+    unassociatedRevenue,
+    isLoading, 
+    refreshData 
+  };
 }

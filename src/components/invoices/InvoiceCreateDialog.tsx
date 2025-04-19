@@ -129,6 +129,15 @@ export function InvoiceCreateDialog({ open, onOpenChange }: InvoiceCreateDialogP
   };
   
   const onSubmit = (values: InvoiceFormValues) => {
+    // Log the invoice creation request to help with debugging
+    console.log("Creating invoice with these values:", values);
+    
+    // Check if any invoice items don't have booking associations
+    const hasUnassociatedItems = values.items.some(item => !item.booking_id);
+    if (hasUnassociatedItems) {
+      console.log("Warning: Creating invoice with items that don't have booking associations");
+    }
+    
     createInvoice.mutate(values, {
       onSuccess: () => {
         onOpenChange(false);
