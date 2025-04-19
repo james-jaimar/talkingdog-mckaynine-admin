@@ -25,7 +25,7 @@ export function useCreateInvoice() {
         
         if (values.discount_type === 'percentage') {
           // For percentage type, calculate the actual amount based on the percentage input
-          // Make sure the percentage is between 0-100
+          // Ensure the percentage is between 0-100
           const percentage = Math.min(Math.max(values.discount_amount || 0, 0), 100);
           discount_amount = (subtotal * percentage) / 100;
         } else {

@@ -8,15 +8,15 @@ interface InvoiceSummaryProps {
 }
 
 export function InvoiceSummary({ invoice }: InvoiceSummaryProps) {
-  // For percentage discounts, we need to show the original percentage value
+  // Display the correct percentage for percentage discounts
   let discountDisplay = '';
   
   if (invoice.discount_type === 'percentage') {
-    // Calculate percentage from amount relative to subtotal
-    const calculatedPercentage = invoice.subtotal > 0 
-      ? Math.min((invoice.discount_amount / invoice.subtotal) * 100, 100).toFixed(1)
-      : '0.0';
-    discountDisplay = `(${calculatedPercentage}%)`;
+    // For percentage discounts, we calculate the effective percentage
+    const effectivePercentage = invoice.subtotal > 0 
+      ? (invoice.discount_amount / invoice.subtotal) * 100
+      : 0;
+    discountDisplay = `(${effectivePercentage.toFixed(1)}%)`;
   }
 
   return (

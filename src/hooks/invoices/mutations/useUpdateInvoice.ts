@@ -24,7 +24,7 @@ export function useUpdateInvoice() {
         // Calculate subtotal
         const subtotal = values.items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
         
-        // First determine the actual discount amount based on the discount type
+        // Calculate actual discount amount based on the discount type
         let discount_amount = 0;
         
         if (values.discount_type === 'percentage') {

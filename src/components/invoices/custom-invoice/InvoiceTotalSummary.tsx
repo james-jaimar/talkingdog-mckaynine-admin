@@ -41,7 +41,7 @@ export function InvoiceTotalSummary() {
       subtotal: subtotal,
       discount: actualDiscount,
       discountType,
-      discountAmount: discountInput,
+      discountInput,
       tax: tax,
       total: subtotal - actualDiscount + tax
     };
