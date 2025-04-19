@@ -24,7 +24,6 @@ export function useUpdateInvoice() {
         // Calculate subtotal
         const subtotal = values.items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
         
-        // Track original percentage value for display purposes
         let discount_amount = values.discount_amount;
         
         // Calculate discount - fixed amount or percentage of subtotal
@@ -49,7 +48,7 @@ export function useUpdateInvoice() {
           total
         });
 
-        // Create invoice update object - DO NOT include original_discount_percentage
+        // Create invoice update object
         const updateData = {
           client_id: values.client_id,
           invoice_number: values.invoice_number,

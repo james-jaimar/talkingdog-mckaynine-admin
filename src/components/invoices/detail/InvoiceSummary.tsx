@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { formatCurrency } from '@/lib/formatters';
 import { Invoice } from '@/hooks/invoices/types';
@@ -11,18 +12,12 @@ export function InvoiceSummary({ invoice }: InvoiceSummaryProps) {
   let discountDisplay = '';
   
   if (invoice.discount_type === 'percentage') {
-    // For percentage discounts, we use the original_discount_percentage if available,
-    // otherwise we calculate an approximation
-    if (invoice.original_discount_percentage) {
-      discountDisplay = `(${invoice.original_discount_percentage}%)`;
-    } else {
-      // Fallback calculation - calculate percentage from amount relative to subtotal
-      const calculatedPercentage = Math.min(
-        (invoice.discount_amount / invoice.subtotal) * 100, 
-        100
-      ).toFixed(1);
-      discountDisplay = `(${calculatedPercentage}%)`;
-    }
+    // Calculate percentage from amount relative to subtotal
+    const calculatedPercentage = Math.min(
+      (invoice.discount_amount / invoice.subtotal) * 100, 
+      100
+    ).toFixed(1);
+    discountDisplay = `(${calculatedPercentage}%)`;
   }
 
   return (
