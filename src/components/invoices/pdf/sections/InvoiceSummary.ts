@@ -37,11 +37,7 @@ export function addInvoiceSummary(doc: any, invoice: Invoice, startY: number): n
     let discountLabel = 'Discount:';
     
     if (discount_type === 'percentage') {
-      // Calculate the effective percentage based on the actual discount amount
-      const effectivePercentage = subtotal > 0
-        ? Math.min((discount_amount / subtotal * 100), 100).toFixed(1)
-        : '0.0';
-      discountLabel = `Discount (${effectivePercentage}%):`;
+      discountLabel = `Discount (${discount_amount}%):`;
     }
       
     doc.setTextColor(220, 53, 69); // Red color for discount

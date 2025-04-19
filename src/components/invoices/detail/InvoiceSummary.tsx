@@ -8,16 +8,19 @@ interface InvoiceSummaryProps {
 }
 
 export function InvoiceSummary({ invoice }: InvoiceSummaryProps) {
-  // Display the correct percentage for percentage discounts
-  let discountDisplay = '';
-  
-  if (invoice.discount_type === 'percentage') {
-    // For percentage discounts, we calculate the effective percentage
-    const effectivePercentage = invoice.subtotal > 0 
-      ? (invoice.discount_amount / invoice.subtotal) * 100
-      : 0;
-    discountDisplay = `(${effectivePercentage.toFixed(1)}%)`;
-  }
+  // For percentage discounts, we need to correctly display the percentage
+  // rather than calculate it from the discount amount
+  const displayDiscountValue = () => {
+    if (invoice.discount_type === 'percentage' && invoice.discount_amount > 0) {
+      // When viewing an invoice with percentage discount, we need to show
+      // the stored percentage value, which is in the discount_amount field
+      // This is because for percentage discounts:
+      // - When stored: discount_amount = actual percentage (e.g., 10 for 10%)
+      // - The actual monetary value is calculated during invoice creation/update
+      return `(${invoice.discount_amount}%)`;
+    }
+    return '';
+  };
 
   return (
     <div className="space-y-2">
@@ -29,7 +32,7 @@ export function InvoiceSummary({ invoice }: InvoiceSummaryProps) {
       {invoice.discount_amount > 0 && (
         <div className="flex justify-between text-red-600">
           <span>
-            Discount {invoice.discount_type === 'percentage' ? discountDisplay : ''}:
+            Discount {displayDiscountValue()}:
           </span>
           <span className="font-medium">-{formatCurrency(invoice.discount_amount)}</span>
         </div>

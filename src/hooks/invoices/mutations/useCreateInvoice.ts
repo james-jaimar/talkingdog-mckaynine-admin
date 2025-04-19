@@ -20,21 +20,18 @@ export function useCreateInvoice() {
         // Calculate subtotal
         const subtotal = values.items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
         
-        // Calculate discount amount based on type
         let discount_amount = 0;
+        const original_discount_input = values.discount_amount || 0;
         
+        // Calculate the actual monetary discount amount for saving
         if (values.discount_type === 'percentage') {
-          // For percentage type, calculate the actual amount based on the percentage input
-          // Ensure the percentage is between 0-100
-          const percentage = Math.min(Math.max(values.discount_amount || 0, 0), 100);
+          // For percentage type, calculate the monetary value
+          const percentage = Math.min(Math.max(original_discount_input, 0), 100);
           discount_amount = (subtotal * percentage) / 100;
         } else {
-          // For fixed type, use the input directly but ensure it doesn't exceed the subtotal
-          discount_amount = Math.min(values.discount_amount || 0, subtotal);
+          // For fixed type, use the input directly
+          discount_amount = Math.min(original_discount_input, subtotal);
         }
-        
-        // Ensure discount doesn't create a negative amount
-        discount_amount = Math.max(0, Math.min(discount_amount, subtotal));
         
         // Calculate tax on the amount after discount
         const taxable_amount = subtotal - discount_amount;
@@ -47,13 +44,13 @@ export function useCreateInvoice() {
           subtotal,
           discount_type: values.discount_type,
           discount_input: values.discount_amount,
-          calculated_discount_amount: discount_amount,
+          discount_amount,
           tax_rate: values.tax_rate,
           tax_amount,
           total
         });
 
-        // Insert invoice
+        // Insert invoice - store the original discount input for percentage discounts
         const { data: invoice, error: invoiceError } = await supabase
           .from('invoices')
           .insert({
@@ -67,7 +64,9 @@ export function useCreateInvoice() {
             tax_rate: values.tax_rate,
             tax_amount,
             total,
-            discount_amount,
+            discount_amount: values.discount_type === 'percentage' ? 
+              original_discount_input : // Store percentage for percentage type
+              discount_amount, // Store actual amount for fixed type
             discount_type: values.discount_type,
             discount_reason: values.discount_reason || null
           })
