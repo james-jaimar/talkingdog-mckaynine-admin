@@ -38,10 +38,10 @@ export function addInvoiceSummary(doc: any, invoice: Invoice, startY: number): n
       ? (subtotal * discount_amount / 100)
       : discount_amount;
     
-    // Format the discount label based on type
+    // Format the discount label based on type with clear indicator
     const discountLabel = discount_type === 'percentage'
-      ? `Discount (${discount_amount}%):` // Show original percentage
-      : 'Discount:';
+      ? `Discount (${discount_amount}% off):`
+      : 'Discount (Fixed amount):';
       
     doc.setTextColor(220, 53, 69); // Red color for discount
     doc.text(discountLabel, labelX, currentY);

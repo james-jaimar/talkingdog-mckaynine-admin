@@ -51,6 +51,18 @@ export function InvoiceTotalSummary() {
   const discountType = form.watch("discount_type");
   const discountAmount = form.watch("discount_amount");
 
+  // Format discount label based on type
+  const renderDiscountLabel = () => {
+    if (discountType === "percentage") {
+      return (
+        <span className="flex items-center">
+          Discount <span className="font-medium ml-1">({discountAmount}%)</span>
+        </span>
+      );
+    }
+    return <span>Discount (Fixed)</span>;
+  };
+
   return (
     <div className="border-t pt-4 space-y-1">
       <div className="flex justify-between text-sm">
@@ -60,11 +72,7 @@ export function InvoiceTotalSummary() {
       
       {totals.discountValue > 0 && (
         <div className="flex justify-between text-sm text-red-600">
-          <span>
-            Discount {discountType === "percentage" ? 
-              `(${discountAmount}%)` : // Show the original percentage input 
-              ""}
-          </span>
+          {renderDiscountLabel()}
           <span>-{formatCurrency(totals.discountValue)}</span>
         </div>
       )}

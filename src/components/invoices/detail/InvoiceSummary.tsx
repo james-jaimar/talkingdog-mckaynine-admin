@@ -16,12 +16,16 @@ export function InvoiceSummary({ invoice }: InvoiceSummaryProps) {
     return invoice.discount_amount;
   };
   
-  // For percentage discounts, display the original percentage value
-  const displayDiscountValue = () => {
+  // Format the discount display label with percentage or fixed amount indicator
+  const formatDiscountLabel = () => {
     if (invoice.discount_type === 'percentage') {
-      return `(${invoice.discount_amount}%)`; // Show original percentage input
+      return (
+        <span>
+          Discount <span className="font-medium">({invoice.discount_amount}%)</span>:
+        </span>
+      );
     }
-    return '';
+    return <span>Discount (Fixed):</span>;
   };
 
   return (
@@ -33,9 +37,7 @@ export function InvoiceSummary({ invoice }: InvoiceSummaryProps) {
       
       {invoice.discount_amount > 0 && (
         <div className="flex justify-between text-red-600">
-          <span>
-            Discount {displayDiscountValue()}:
-          </span>
+          {formatDiscountLabel()}
           <span className="font-medium">
             -{formatCurrency(calculateDiscountAmount())}
           </span>
