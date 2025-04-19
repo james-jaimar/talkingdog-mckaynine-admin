@@ -64,7 +64,7 @@ export function TrainerPaymentsSummary({ trainers, isLoading }: TrainerPaymentsS
           <TableHeader>
             <TableRow>
               <TableHead>Trainer</TableHead>
-              <TableHead className="text-right">Earned</TableHead>
+              <TableHead className="text-right">Total Revenue</TableHead>
               <TableHead className="text-right">Paid</TableHead>
               <TableHead className="text-right">Outstanding</TableHead>
               <TableHead className="text-right">Invoices</TableHead>
