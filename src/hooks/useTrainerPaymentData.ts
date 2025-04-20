@@ -22,7 +22,7 @@ export function useTrainerPaymentData(branchId?: string, dateRange?: { from: Dat
 
       try {
         const fromDate = dateRange?.from.toISOString();
-        const toDate = dateRange?.to?.toISOString();
+        const toDate = dateRange?.to.toISOString();
         
         // Get trainers with their payment data
         const { data: trainersData, error: trainersError } = await supabase
@@ -31,7 +31,7 @@ export function useTrainerPaymentData(branchId?: string, dateRange?: { from: Dat
             id,
             first_name,
             last_name,
-            trainer_payments!inner (
+            trainer_payments (
               id,
               amount,
               status,
@@ -40,15 +40,15 @@ export function useTrainerPaymentData(branchId?: string, dateRange?: { from: Dat
             ),
             class_schedules!trainer_id (
               id,
+              start_time,
+              end_time,
               bookings (
                 id,
                 client_id
               )
             )
           `)
-          .eq('branch_id', branchId)
-          .gte('trainer_payments.created_at', fromDate)
-          .lte('trainer_payments.created_at', toDate);
+          .eq('branch_id', branchId);
 
         if (trainersError) {
           console.error('Error fetching trainer payments:', trainersError);
@@ -57,21 +57,32 @@ export function useTrainerPaymentData(branchId?: string, dateRange?: { from: Dat
 
         // Process and aggregate trainer payment data
         const processedData: TrainerPaymentData[] = trainersData.map(trainer => {
-          const payments = trainer.trainer_payments || [];
-          const schedules = trainer.class_schedules || [];
+          // Filter payments within date range
+          const payments = trainer.trainer_payments?.filter(payment => {
+            const schedule = trainer.class_schedules?.find(s => s.id === payment.class_schedule_id);
+            if (!schedule) return false;
+            
+            const scheduleDate = new Date(schedule.start_time);
+            return scheduleDate >= dateRange?.from && scheduleDate <= dateRange?.to;
+          }) || [];
+
+          const schedules = trainer.class_schedules?.filter(schedule => {
+            const scheduleDate = new Date(schedule.start_time);
+            return scheduleDate >= dateRange?.from && scheduleDate <= dateRange?.to;
+          }) || [];
           
-          // Calculate totals
+          // Calculate totals from filtered payments
           const totalEarned = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
           const paidAmount = payments
             .filter(p => p.status === 'paid')
             .reduce((sum, p) => sum + (p.amount || 0), 0);
           
-          // Get unique client count
+          // Get unique client count from filtered schedules
           const uniqueClients = new Set(
             schedules.flatMap(s => s.bookings?.map(b => b.client_id) || [])
           );
 
-          // Find last payment date
+          // Find last payment date from filtered payments
           const paidPayments = payments
             .filter(p => p.status === 'paid' && p.payment_date)
             .sort((a, b) => new Date(b.payment_date!).getTime() - new Date(a.payment_date!).getTime());
