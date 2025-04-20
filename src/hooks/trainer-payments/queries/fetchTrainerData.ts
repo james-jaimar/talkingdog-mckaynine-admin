@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Schedule, Booking, InvoiceItem } from "../types";
 
@@ -108,4 +107,30 @@ export async function fetchInvoiceItems(bookingIds: string[]): Promise<InvoiceIt
   }
 
   return invoiceItems as InvoiceItem[];
+}
+
+export async function fetchTrainerPayments(trainerId: string, dateRange?: { from: string; to: string }) {
+  const query = supabase
+    .from('trainer_payments')
+    .select(`
+      id,
+      amount,
+      status,
+      payment_date,
+      class_schedule_id
+    `)
+    .eq('trainer_id', trainerId);
+
+  if (dateRange) {
+    query.gte('created_at', dateRange.from).lte('created_at', dateRange.to);
+  }
+
+  const { data: payments, error } = await query;
+
+  if (error) {
+    console.error('Error fetching trainer payments:', error);
+    throw error;
+  }
+
+  return payments;
 }
