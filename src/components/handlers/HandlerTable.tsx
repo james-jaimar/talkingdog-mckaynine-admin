@@ -1,10 +1,10 @@
-
 import {
   ColumnDef,
   flexRender,
   getCoreRowModel,
   getPaginationRowModel,
   useReactTable,
+  PaginationState,
 } from "@tanstack/react-table";
 import {
   Table,
@@ -29,19 +29,7 @@ import { EditHandlerModal } from "./EditHandlerModal";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-
-// Create a deleteHandler function to replace the imported one
-const deleteHandler = async (id: string) => {
-  const response = await fetch(`/api/handlers/${id}`, {
-    method: 'DELETE',
-  });
-  
-  if (!response.ok) {
-    throw new Error('Failed to delete handler');
-  }
-  
-  return await response.json();
-};
+import { deleteHandler } from "@/lib/api/handlers"; // Import from API lib
 
 interface ClientData {
   id: string;
@@ -64,12 +52,17 @@ interface HandlerTableProps {
 }
 
 export function HandlerTable({ handlers, searchQuery, itemsPerPage, loading }: HandlerTableProps) {
-  const [pageIndex, setPageIndex] = useState(0);
+  // Use a pagination state object instead of just a page number
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: itemsPerPage,
+  });
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   useEffect(() => {
-    setPageIndex(0); // Reset to the first page when handlers or searchQuery changes
+    // Reset to the first page when handlers or searchQuery changes
+    setPagination(prev => ({ ...prev, pageIndex: 0 }));
   }, [handlers, searchQuery]);
 
   const columns: ColumnDef<ClientData>[] = [
@@ -147,18 +140,10 @@ export function HandlerTable({ handlers, searchQuery, itemsPerPage, loading }: H
     getPaginationRowModel: getPaginationRowModel(),
     pageCount: Math.ceil(handlers.length / itemsPerPage),
     state: {
-      pagination: {
-        pageIndex,
-        pageSize: itemsPerPage,
-      },
+      pagination,
     },
-    onPaginationChange: (updater) => {
-      if (typeof updater === "function") {
-        setPageIndex((prev) => updater(prev));
-      } else {
-        setPageIndex(updater.pageIndex);
-      }
-    },
+    onPaginationChange: setPagination,
+    manualPagination: false,
   });
 
   // Filter handlers based on search query
@@ -192,6 +177,9 @@ export function HandlerTable({ handlers, searchQuery, itemsPerPage, loading }: H
       </TableRow>
     );
   };
+
+  // Get current page info for pagination display
+  const { pageIndex, pageSize } = pagination;
 
   return (
     <div className="rounded-md border">
@@ -231,8 +219,8 @@ export function HandlerTable({ handlers, searchQuery, itemsPerPage, loading }: H
             ) : (
               filteredHandlers
                 .slice(
-                  pageIndex * itemsPerPage,
-                  (pageIndex + 1) * itemsPerPage
+                  pageIndex * pageSize,
+                  (pageIndex + 1) * pageSize
                 )
                 .map((handler, index) => (
                   <HandlerRow key={handler.id} handler={handler} index={index} />
@@ -243,8 +231,8 @@ export function HandlerTable({ handlers, searchQuery, itemsPerPage, loading }: H
       </div>
       <div className="flex items-center justify-end space-x-2 py-2 px-4">
         <div className="text-sm text-gray-500">
-          {pageIndex * itemsPerPage + 1} -{" "}
-          {Math.min((pageIndex + 1) * itemsPerPage, filteredHandlers.length)}{" "}
+          {pageIndex * pageSize + 1} -{" "}
+          {Math.min((pageIndex + 1) * pageSize, filteredHandlers.length)}{" "}
           of {filteredHandlers.length}
         </div>
         <Button
