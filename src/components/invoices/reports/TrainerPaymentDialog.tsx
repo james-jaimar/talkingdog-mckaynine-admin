@@ -23,6 +23,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import { ExtendedBadge } from "@/components/ui/badge-variants";
 
 interface TrainerClassData {
   id: string;
