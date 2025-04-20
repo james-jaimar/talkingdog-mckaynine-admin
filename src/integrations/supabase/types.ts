@@ -270,6 +270,7 @@ export type Database = {
       }
       class_enrollments: {
         Row: {
+          a_test_class: string | null
           beginner_novice_class: string | null
           bronze_cgc_class: string | null
           created_at: string
@@ -283,6 +284,7 @@ export type Database = {
           yoga_class: string | null
         }
         Insert: {
+          a_test_class?: string | null
           beginner_novice_class?: string | null
           bronze_cgc_class?: string | null
           created_at?: string
@@ -296,6 +298,7 @@ export type Database = {
           yoga_class?: string | null
         }
         Update: {
+          a_test_class?: string | null
           beginner_novice_class?: string | null
           bronze_cgc_class?: string | null
           created_at?: string
