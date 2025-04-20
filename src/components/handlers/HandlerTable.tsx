@@ -1,36 +1,9 @@
 
-import {
-  ColumnDef,
-  flexRender,
-  getCoreRowModel,
-  getPaginationRowModel,
-  useReactTable,
-  PaginationState,
-} from "@tanstack/react-table";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { useEffect, useState } from "react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Table, TableBody } from "@/components/ui/table";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Eye, MoreHorizontal, Pencil } from "lucide-react";
-import { EditHandlerModal } from "./EditHandlerModal";
-import { useToast } from "@/hooks/use-toast";
-import { useQueryClient } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
-import { deleteHandler } from "@/lib/api/handlers"; // Import from API lib
+import { TableHeader } from "./table/TableHeader";
+import { HandlerTableRow } from "./table/HandlerTableRow";
 
 interface ClientData {
   id: string;
@@ -53,171 +26,20 @@ interface HandlerTableProps {
   loading: boolean;
 }
 
-export function HandlerTable({ handlers, searchQuery, itemsPerPage, loading }: HandlerTableProps) {
-  // Use a pagination state object instead of just a page number
-  const [pagination, setPagination] = useState<PaginationState>({
+export function HandlerTable({ 
+  handlers, 
+  searchQuery, 
+  itemsPerPage, 
+  loading 
+}: HandlerTableProps) {
+  const [pagination, setPagination] = useState({
     pageIndex: 0,
     pageSize: itemsPerPage,
   });
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
 
   useEffect(() => {
-    // Reset to the first page when handlers or searchQuery changes
     setPagination(prev => ({ ...prev, pageIndex: 0 }));
   }, [handlers, searchQuery]);
-
-  const columns: ColumnDef<ClientData>[] = [
-    {
-      accessorKey: "name",
-      header: "Name",
-      cell: ({ row }) => {
-        const handler = row.original;
-        return (
-          <Link 
-            to={`/handlers/${handler.id}`}
-            className="hover:text-blue-600 font-medium"
-          >
-            {handler.first_name} {handler.last_name}
-          </Link>
-        );
-      }
-    },
-    {
-      accessorKey: "email",
-      header: "Email",
-    },
-    {
-      accessorKey: "phone",
-      header: "Phone",
-    },
-    {
-      accessorKey: "dogs",
-      header: "Dogs",
-      cell: ({ row }) => {
-        const handler = row.original;
-        return (
-          <span>{handler.dogs?.length || 0}</span>
-        );
-      }
-    },
-    {
-      accessorKey: "invoices",
-      header: "Invoices",
-      cell: () => {
-        // This is a placeholder; in the screenshot it shows either a dash or a document icon with a count
-        return (
-          <span>—</span>
-        );
-      }
-    },
-    {
-      id: "actions",
-      header: "Actions",
-      cell: ({ row }) => {
-        const handler = row.original;
-        const [isDeleting, setIsDeleting] = useState(false);
-
-        const handleDelete = async () => {
-          setIsDeleting(true);
-          try {
-            await deleteHandler(handler.id);
-            toast({
-              title: "Handler deleted",
-              description: "The handler has been deleted successfully",
-            });
-            queryClient.invalidateQueries({ queryKey: ["handlers"] });
-          } catch (error) {
-            console.error("Error deleting handler:", error);
-            toast({
-              variant: "destructive",
-              title: "Failed to delete handler",
-              description: "There was an error deleting the handler",
-            });
-          } finally {
-            setIsDeleting(false);
-          }
-        };
-
-        return (
-          <div className="flex justify-end items-center space-x-1">
-            <Button variant="ghost" size="icon" asChild>
-              <Link to={`/handlers/${handler.id}`}>
-                <Eye className="h-4 w-4" />
-                <span className="sr-only">View</span>
-              </Link>
-            </Button>
-            
-            <Button 
-              variant="ghost" 
-              size="icon"
-              id={`edit-handler-${handler.id}`}
-              onClick={() => {
-                // Find the modal trigger and open it
-                const modal = document.getElementById(`edit-handler-modal-${handler.id}`) as HTMLButtonElement;
-                if (modal) modal.click();
-              }}
-            >
-              <Pencil className="h-4 w-4" />
-              <span className="sr-only">Edit</span>
-            </Button>
-            
-            <EditHandlerModal handler={handler} onSuccess={() => {
-              queryClient.invalidateQueries({ queryKey: ["handlers"] });
-            }}>
-              <Button 
-                variant="outline" 
-                id={`edit-handler-modal-${handler.id}`}
-                className="hidden" // Hide this button, it's just used as a trigger
-              >
-                Open Edit Modal
-              </Button>
-            </EditHandlerModal>
-            
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <span className="sr-only">Open menu</span>
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                <DropdownMenuItem asChild>
-                  <Link to={`/handlers/${handler.id}`}>
-                    View details
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => {
-                  const editButton = document.getElementById(`edit-handler-${handler.id}`) as HTMLButtonElement;
-                  if (editButton) editButton.click();
-                }}>
-                  Edit handler
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleDelete} disabled={isDeleting} className="text-red-600">
-                  Delete handler
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        );
-      },
-    },
-  ];
-
-  const table = useReactTable({
-    data: handlers,
-    columns,
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    pageCount: Math.ceil(handlers.length / itemsPerPage),
-    state: {
-      pagination,
-    },
-    onPaginationChange: setPagination,
-    manualPagination: false,
-  });
 
   // Filter handlers based on search query
   const filteredHandlers = handlers.filter((handler) => {
@@ -235,29 +57,20 @@ export function HandlerTable({ handlers, searchQuery, itemsPerPage, loading }: H
     <div className="rounded-md border">
       <div className="relative overflow-x-auto">
         <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Phone</TableHead>
-              <TableHead>Dogs</TableHead>
-              <TableHead>Invoices</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
+          <TableHeader />
           <TableBody>
             {loading ? (
-              <TableRow>
-                <TableCell colSpan={columns.length} className="text-center py-4">
+              <tr>
+                <td colSpan={6} className="text-center py-4">
                   Loading handlers...
-                </TableCell>
-              </TableRow>
+                </td>
+              </tr>
             ) : filteredHandlers.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={columns.length} className="text-center py-4">
+              <tr>
+                <td colSpan={6} className="text-center py-4">
                   No handlers found.
-                </TableCell>
-              </TableRow>
+                </td>
+              </tr>
             ) : (
               filteredHandlers
                 .slice(
@@ -265,108 +78,7 @@ export function HandlerTable({ handlers, searchQuery, itemsPerPage, loading }: H
                   (pagination.pageIndex + 1) * pagination.pageSize
                 )
                 .map((handler) => (
-                  <TableRow key={handler.id}>
-                    <TableCell>
-                      <Link 
-                        to={`/handlers/${handler.id}`}
-                        className="hover:text-blue-600 font-medium"
-                      >
-                        {handler.first_name} {handler.last_name}
-                      </Link>
-                    </TableCell>
-                    <TableCell>{handler.email}</TableCell>
-                    <TableCell>{handler.phone || "—"}</TableCell>
-                    <TableCell>{handler.dogs?.length || 0}</TableCell>
-                    <TableCell>—</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end items-center space-x-1">
-                        <Button variant="ghost" size="icon" asChild>
-                          <Link to={`/handlers/${handler.id}`}>
-                            <Eye className="h-4 w-4" />
-                            <span className="sr-only">View</span>
-                          </Link>
-                        </Button>
-                        
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          id={`edit-handler-${handler.id}`}
-                          onClick={() => {
-                            const modal = document.getElementById(`edit-handler-modal-${handler.id}`) as HTMLButtonElement;
-                            if (modal) modal.click();
-                          }}
-                        >
-                          <Pencil className="h-4 w-4" />
-                          <span className="sr-only">Edit</span>
-                        </Button>
-                        
-                        <EditHandlerModal handler={handler} onSuccess={() => {
-                          queryClient.invalidateQueries({ queryKey: ["handlers"] });
-                        }}>
-                          <Button 
-                            variant="outline" 
-                            id={`edit-handler-modal-${handler.id}`}
-                            className="hidden"
-                          >
-                            Open Edit Modal
-                          </Button>
-                        </EditHandlerModal>
-                        
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <span className="sr-only">Open menu</span>
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem asChild>
-                              <Link to={`/handlers/${handler.id}`}>
-                                View details
-                              </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => {
-                              const editButton = document.getElementById(`edit-handler-${handler.id}`) as HTMLButtonElement;
-                              if (editButton) editButton.click();
-                            }}>
-                              Edit handler
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem 
-                              onClick={() => {
-                                const [isDeleting, setIsDeleting] = useState(false);
-                                const handleDelete = async () => {
-                                  setIsDeleting(true);
-                                  try {
-                                    await deleteHandler(handler.id);
-                                    toast({
-                                      title: "Handler deleted",
-                                      description: "The handler has been deleted successfully",
-                                    });
-                                    queryClient.invalidateQueries({ queryKey: ["handlers"] });
-                                  } catch (error) {
-                                    console.error("Error deleting handler:", error);
-                                    toast({
-                                      variant: "destructive",
-                                      title: "Failed to delete handler",
-                                      description: "There was an error deleting the handler",
-                                    });
-                                  } finally {
-                                    setIsDeleting(false);
-                                  }
-                                };
-                                handleDelete();
-                              }} 
-                              className="text-red-600"
-                            >
-                              Delete handler
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </TableCell>
-                  </TableRow>
+                  <HandlerTableRow key={handler.id} handler={handler} />
                 ))
             )}
           </TableBody>
@@ -382,16 +94,16 @@ export function HandlerTable({ handlers, searchQuery, itemsPerPage, loading }: H
           <Button
             variant="outline"
             size="sm"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
+            onClick={() => setPagination(prev => ({ ...prev, pageIndex: prev.pageIndex - 1 }))}
+            disabled={pagination.pageIndex === 0}
           >
             Previous
           </Button>
           <Button
             variant="outline"
             size="sm"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
+            onClick={() => setPagination(prev => ({ ...prev, pageIndex: prev.pageIndex + 1 }))}
+            disabled={pagination.pageIndex >= totalPages - 1}
           >
             Next
           </Button>
