@@ -1,8 +1,9 @@
-
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Link } from "react-router-dom";
 import { ActionMenu } from "./ActionMenu";
 import { ConsentStatusBadge } from "../status/ConsentStatusBadge";
+import { CLASS_TYPES } from "@/components/classes/types/class-types";
+import { ClassStatusCell } from "./ClassStatusCell";
 
 interface HandlerTableRowProps {
   handler: {
@@ -44,6 +45,20 @@ export function HandlerTableRow({ handler }: HandlerTableRowProps) {
           {invoiceCount}
         </span>
       </TableCell>
+      
+      {/* New Class Type Columns */}
+      {CLASS_TYPES.map((classType) => (
+        <ClassStatusCell
+          key={`${handler.id}-${classType}`}
+          classType={classType}
+          initialStatus={null} // This would come from the database in a real implementation
+          onUpdate={(data) => {
+            console.log('Updated status for', fullName, classType, data);
+            // Here you would implement the logic to save this to the database
+          }}
+        />
+      ))}
+      
       <TableCell className="text-center">
         <ConsentStatusBadge status={handler.uses_whatsapp_status} />
       </TableCell>
