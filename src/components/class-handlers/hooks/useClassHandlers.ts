@@ -3,6 +3,15 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Booking } from "../types/booking";
 
+/**
+ * Validates if a status string matches the expected consent status values
+ */
+const validateConsentStatus = (status: string | null): "yes" | "no" | "not_marked" => {
+  if (status === "yes") return "yes";
+  if (status === "no") return "no";
+  return "not_marked";
+};
+
 export function useClassHandlers(classId: string) {
   return useQuery({
     queryKey: ['class-handlers', classId],
@@ -77,12 +86,24 @@ export function useClassHandlers(classId: string) {
           throw error;
         }
 
-        return data.map(booking => ({
-          ...booking,
-          computed_payment_status: booking.payment_status,
-          info_eo_status: booking.info_eo ? true : null,
-          info_pg_status: booking.info_pg ? true : null,
-        }));
+        return data.map(booking => {
+          // Ensure consent statuses conform to the expected type
+          const whatsAppStatus = validateConsentStatus(booking.clients?.uses_whatsapp_status);
+          const socialMediaStatus = validateConsentStatus(booking.clients?.social_media_consent_status);
+
+          return {
+            ...booking,
+            computed_payment_status: booking.payment_status,
+            info_eo_status: booking.info_eo ? true : null,
+            info_pg_status: booking.info_pg ? true : null,
+            // Make sure clients object has properly typed status fields
+            clients: booking.clients ? {
+              ...booking.clients,
+              uses_whatsapp_status: whatsAppStatus,
+              social_media_consent_status: socialMediaStatus
+            } : undefined
+          };
+        });
       } catch (err) {
         console.error("Error in useClassHandlers:", err);
         throw err;
