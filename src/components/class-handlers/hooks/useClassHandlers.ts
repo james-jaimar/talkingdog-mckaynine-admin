@@ -1,3 +1,4 @@
+
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Booking } from "../types/booking";
@@ -81,8 +82,6 @@ export function useClassHandlers(classId: string) {
           computed_payment_status: booking.payment_status,
           info_eo_status: booking.info_eo ? true : null,
           info_pg_status: booking.info_pg ? true : null,
-          uses_whatsapp: booking.clients?.uses_whatsapp_status,
-          social_media_consent: booking.clients?.social_media_consent_status
         }));
       } catch (err) {
         console.error("Error in useClassHandlers:", err);

@@ -31,8 +31,6 @@ export function useHandlerForm() {
         proof_of_payment: booking.proof_of_payment || '',
         additional_notes: booking.additional_notes || '',
         info_eo: booking.info_eo || '',
-        uses_whatsapp: booking.uses_whatsapp,
-        social_media_consent: booking.social_media_consent,
         info_pg: booking.info_pg || ''
       }
     }));
