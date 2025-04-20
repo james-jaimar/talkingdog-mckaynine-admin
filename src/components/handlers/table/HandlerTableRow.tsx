@@ -1,3 +1,4 @@
+
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Link } from "react-router-dom";
 import { ActionMenu } from "./ActionMenu";
@@ -16,12 +17,22 @@ interface HandlerTableRowProps {
     invoices?: any[];
     uses_whatsapp_status: 'yes' | 'no' | 'not_marked';
     social_media_consent_status: 'yes' | 'no' | 'not_marked';
+    class_statuses?: {
+      class_type: string;
+      status: 'completed' | 'interested' | 'not-interested';
+      period?: string;
+    }[];
   };
 }
 
 export function HandlerTableRow({ handler }: HandlerTableRowProps) {
   const fullName = `${handler.first_name} ${handler.last_name || ''}`.trim();
   const invoiceCount = handler.invoices?.length || 0;
+
+  // Helper function to find the class status for a specific class type
+  const getClassStatus = (classType: string) => {
+    return handler.class_statuses?.find(status => status.class_type === classType);
+  };
 
   return (
     <TableRow key={handler.id}>
@@ -46,18 +57,19 @@ export function HandlerTableRow({ handler }: HandlerTableRowProps) {
         </span>
       </TableCell>
       
-      {/* New Class Type Columns */}
-      {CLASS_TYPES.map((classType) => (
-        <ClassStatusCell
-          key={`${handler.id}-${classType}`}
-          classType={classType}
-          initialStatus={null} // This would come from the database in a real implementation
-          onUpdate={(data) => {
-            console.log('Updated status for', fullName, classType, data);
-            // Here you would implement the logic to save this to the database
-          }}
-        />
-      ))}
+      {/* Class Type Columns */}
+      {CLASS_TYPES.map((classType) => {
+        const classStatus = getClassStatus(classType);
+        return (
+          <ClassStatusCell
+            key={`${handler.id}-${classType}`}
+            classType={classType}
+            clientId={handler.id}
+            initialStatus={classStatus?.status || null}
+            initialPeriod={classStatus?.period || ''}
+          />
+        );
+      })}
       
       <TableCell className="text-center">
         <ConsentStatusBadge status={handler.uses_whatsapp_status} />

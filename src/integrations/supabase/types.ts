@@ -678,6 +678,44 @@ export type Database = {
           },
         ]
       }
+      handler_class_status: {
+        Row: {
+          class_type: string
+          client_id: string
+          created_at: string
+          id: string
+          period: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          class_type: string
+          client_id: string
+          created_at?: string
+          id?: string
+          period?: string | null
+          status: string
+          updated_at?: string
+        }
+        Update: {
+          class_type?: string
+          client_id?: string
+          created_at?: string
+          id?: string
+          period?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "handler_class_status_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoice_items: {
         Row: {
           amount: number

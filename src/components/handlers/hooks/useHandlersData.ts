@@ -1,3 +1,4 @@
+
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
@@ -27,6 +28,12 @@ interface ClassEnrollment {
   yoga_class?: string | null;
 }
 
+interface ClassStatus {
+  class_type: string;
+  status: 'completed' | 'interested' | 'not-interested';
+  period?: string;
+}
+
 export interface Handler {
   id: string;
   first_name: string;
@@ -40,6 +47,7 @@ export interface Handler {
   uses_whatsapp_status: 'yes' | 'no' | 'not_marked';
   social_media_consent_status: 'yes' | 'no' | 'not_marked';
   invoices: any[];
+  class_statuses?: ClassStatus[];
 }
 
 export function useHandlersData() {
@@ -97,15 +105,39 @@ export function useHandlersData() {
         
         query = query.order('first_name', { ascending: true });
         
-        const { data, error } = await query;
+        const { data: clientsData, error } = await query;
         
         if (error) {
           console.error("Error fetching handlers:", error);
           throw error;
         }
         
-        console.log(`Fetched ${data?.length || 0} handlers for branch: ${currentBranch?.name || 'all'}`);
-        return (data || []) as Handler[];
+        // Fetch class statuses for all handlers in a single query
+        const { data: classStatusData, error: classStatusError } = await supabase
+          .from('handler_class_status')
+          .select('*')
+          .in('client_id', (clientsData || []).map(client => client.id));
+        
+        if (classStatusError) {
+          console.error("Error fetching class statuses:", classStatusError);
+          throw classStatusError;
+        }
+        
+        // Merge class status data with client data
+        const handlersWithClassStatus = (clientsData || []).map(client => {
+          const classStatuses = classStatusData?.filter(status => status.client_id === client.id) || [];
+          return {
+            ...client,
+            class_statuses: classStatuses.map(status => ({
+              class_type: status.class_type,
+              status: status.status as 'completed' | 'interested' | 'not-interested',
+              period: status.period
+            }))
+          };
+        });
+        
+        console.log(`Fetched ${handlersWithClassStatus?.length || 0} handlers for branch: ${currentBranch?.name || 'all'}`);
+        return (handlersWithClassStatus || []) as Handler[];
       } catch (error) {
         console.error("Error in handlers query:", error);
         return [] as Handler[];

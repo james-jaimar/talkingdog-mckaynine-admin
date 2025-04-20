@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,22 +10,25 @@ import {
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface ClassStatusCellProps {
   classType: string;
+  clientId: string;
   initialStatus?: 'completed' | 'interested' | 'not-interested' | null;
   initialPeriod?: string;
-  onUpdate?: (data: { status: string; period: string }) => void;
 }
 
 export function ClassStatusCell({ 
   classType, 
+  clientId,
   initialStatus = null,
-  initialPeriod = '',
-  onUpdate 
+  initialPeriod = ''
 }: ClassStatusCellProps) {
-  const [status, setStatus] = useState(initialStatus);
-  const [period, setPeriod] = useState(initialPeriod);
+  const [status, setStatus] = useState<string | null>(initialStatus);
+  const [period, setPeriod] = useState<string>(initialPeriod);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   
   const statusColors = {
     'completed': 'bg-green-100 text-green-800 border-green-200',
@@ -33,10 +36,39 @@ export function ClassStatusCell({
     'not-interested': 'bg-red-100 text-red-800 border-red-200',
   };
 
-  const handleUpdate = (newStatus: string, newPeriod: string) => {
-    setStatus(newStatus as any);
-    setPeriod(newPeriod);
-    onUpdate?.({ status: newStatus, period: newPeriod });
+  const handleUpdate = async (newStatus: string, newPeriod: string) => {
+    if (!clientId) return;
+    
+    setIsLoading(true);
+    
+    try {
+      const { error } = await supabase
+        .from('handler_class_status')
+        .upsert({
+          client_id: clientId,
+          class_type: classType,
+          status: newStatus,
+          period: newPeriod
+        }, { 
+          onConflict: 'client_id,class_type',
+          ignoreDuplicates: false 
+        });
+      
+      if (error) {
+        console.error('Error updating class status:', error);
+        toast.error('Failed to update class status');
+        return;
+      }
+      
+      setStatus(newStatus);
+      setPeriod(newPeriod);
+      toast.success(`${classType} class status updated`);
+    } catch (error) {
+      console.error('Error in handler update:', error);
+      toast.error('An unexpected error occurred');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (!status) {
@@ -47,8 +79,9 @@ export function ClassStatusCell({
             <Button 
               variant="ghost" 
               className="h-6 w-6 p-0 hover:bg-muted"
+              disabled={isLoading}
             >
-              +
+              {isLoading ? "..." : "+"}
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-60">
@@ -68,7 +101,8 @@ export function ClassStatusCell({
               <Input
                 placeholder="Period (e.g., Dec/Jan 25)"
                 value={period}
-                onChange={(e) => handleUpdate(status || 'completed', e.target.value)}
+                onChange={(e) => setPeriod(e.target.value)}
+                onBlur={() => status && handleUpdate(status, period)}
               />
             </div>
           </PopoverContent>
@@ -84,10 +118,12 @@ export function ClassStatusCell({
           <button
             className={cn(
               "text-xs px-2 py-1 rounded border w-full",
-              statusColors[status]
+              statusColors[status as keyof typeof statusColors],
+              isLoading && "opacity-50 cursor-not-allowed"
             )}
+            disabled={isLoading}
           >
-            {period || "Set period"}
+            {isLoading ? "Saving..." : period || "Set period"}
           </button>
         </PopoverTrigger>
         <PopoverContent className="w-60">
@@ -108,7 +144,8 @@ export function ClassStatusCell({
             <Input
               placeholder="Period (e.g., Dec/Jan 25)"
               value={period}
-              onChange={(e) => handleUpdate(status, e.target.value)}
+              onChange={(e) => setPeriod(e.target.value)}
+              onBlur={() => status && handleUpdate(status, period)}
             />
           </div>
         </PopoverContent>
