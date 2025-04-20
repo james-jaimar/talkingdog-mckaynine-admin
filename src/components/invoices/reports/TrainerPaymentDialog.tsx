@@ -183,6 +183,7 @@ export function TrainerPaymentDialog({
           classDate: schedule.start_time,
           scheduleDate: new Date(schedule.start_time),
           revenue,
+          potentialRevenue: revenue, // Add the missing potentialRevenue property
           bookings: bookingsCount,
           isPaid
         };

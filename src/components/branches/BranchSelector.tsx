@@ -39,7 +39,7 @@ export function BranchSelector() {
 
   if (!branches || branches.length === 0) {
     return (
-      <ExtendedBadge variant="warning" className="flex items-center gap-2 px-3 py-1">
+      <ExtendedBadge variant="amber" className="flex items-center gap-2 px-3 py-1">
         <GitBranch className="w-4 h-4" />
         <span>No branches available</span>
       </ExtendedBadge>
