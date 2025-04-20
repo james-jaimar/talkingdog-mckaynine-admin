@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import {
   Dialog,
@@ -36,7 +37,7 @@ interface TrainerClassData {
 interface TrainerPaymentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  trainerId: string | null;
+  trainerId: string;
   branchId?: string;
   dateRange: { from: Date; to: Date };
   scheduleIds?: string[]; // Added this prop to match usage
@@ -83,13 +84,12 @@ export function TrainerPaymentDialog({
         setTrainerName(`${trainerData.first_name} ${trainerData.last_name}`);
       }
       
-      // If scheduleIds were provided, use them, otherwise query for schedules
+      // Use the scheduleIds passed in if available, otherwise fetch them
       const scheduleIdsToUse = scheduleIds || [];
 
-      // If no scheduleIds were provided or the array is empty, fetch them
+      // If no scheduleIds were provided, fetch class schedules for this trainer
       if (scheduleIdsToUse.length === 0) {
-        // Get classes taught by this trainer
-        const { data: schedules } = await supabase
+        const { data: trainerSchedules } = await supabase
           .from('class_schedules')
           .select(`
             id,
@@ -102,14 +102,14 @@ export function TrainerPaymentDialog({
           `)
           .eq('trainer_id', trainerId);
         
-        if (!schedules || schedules.length === 0) {
+        if (!trainerSchedules || trainerSchedules.length === 0) {
           setTrainerClasses([]);
           setLoading(false);
           return;
         }
         
-        // Use the fetched schedule IDs
-        scheduleIdsToUse.push(...schedules.map(s => s.id));
+        // Update scheduleIdsToUse with fetched schedule IDs
+        scheduleIdsToUse.push(...trainerSchedules.map(s => s.id));
       }
       
       if (scheduleIdsToUse.length === 0) {
@@ -145,8 +145,8 @@ export function TrainerPaymentDialog({
       }
       
       // Group bookings by class schedule
-      const classData = schedules.map(schedule => {
-        const classBookings = bookings.filter(b => b.class_schedule_id === schedule.id);
+      const classData = scheduleIdsToUse.map(scheduleId => {
+        const classBookings = bookings.filter(b => b.class_schedule_id === scheduleId);
         const classRevenue = classBookings.reduce((sum, booking) => {
           if (booking.invoice_items && booking.invoice_items.length > 0) {
             return sum + booking.invoice_items.reduce((itemSum, item) => itemSum + (item.amount || 0), 0);
@@ -154,13 +154,24 @@ export function TrainerPaymentDialog({
           return sum;
         }, 0);
         
+        // Get the class details for this schedule
+        const classDetails = classBookings.length > 0 
+          ? bookings[0].invoice_items[0].invoices 
+            ? {
+                name: 'Unknown Class', // Default name if not found
+                trainer_fee_value: 0,
+                trainer_fee_type: 'fixed'
+              }
+            : null
+          : null;
+        
         // Calculate commission based on class settings
         let commission = 0;
-        if (schedule.classes) {
-          if (schedule.classes.trainer_fee_type === 'percentage') {
-            commission = classRevenue * (schedule.classes.trainer_fee_value / 100);
+        if (classDetails) {
+          if (classDetails.trainer_fee_type === 'percentage') {
+            commission = classRevenue * (classDetails.trainer_fee_value / 100);
           } else {
-            commission = classBookings.length * schedule.classes.trainer_fee_value;
+            commission = classBookings.length * classDetails.trainer_fee_value;
           }
         }
         
@@ -174,8 +185,8 @@ export function TrainerPaymentDialog({
         );
         
         return {
-          id: schedule.classes?.id || '',
-          name: schedule.classes?.name || 'Unknown Class',
+          id: scheduleId,
+          name: classDetails?.name || 'Unknown Class',
           revenue: classRevenue,
           bookings: classBookings.length,
           commission,
