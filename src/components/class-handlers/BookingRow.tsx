@@ -1,4 +1,3 @@
-
 import { TableRow, TableCell } from "@/components/ui/table";
 import { Booking } from "./types/booking";
 import { BookingHandlerInfo } from "./booking-row/BookingHandlerInfo";
@@ -82,8 +81,8 @@ export function BookingRow({
       <TableCell>
         <EditableCell
           isEditing={isEditing}
-          value={bookingData.info_eo || ''}
-          onChange={(value) => handleInputChange(booking.id, 'info_eo', value)}
+          value={bookingData.additional_notes || ''}
+          onChange={(value) => handleInputChange(booking.id, 'additional_notes', value)}
         />
       </TableCell>
       
@@ -96,7 +95,27 @@ export function BookingRow({
       </TableCell>
       
       <TableCell className="text-center">
-        {renderInfoStatus(booking.info_pg_status)}
+        {isEditing ? (
+          <CheckableCell
+            isEditing={true}
+            checked={bookingData.info_eo || false}
+            onChange={(checked) => handleInputChange(booking.id, 'info_eo', checked)}
+          />
+        ) : (
+          renderInfoStatus(booking.info_eo_status)
+        )}
+      </TableCell>
+      
+      <TableCell className="text-center">
+        {isEditing ? (
+          <CheckableCell
+            isEditing={true}
+            checked={bookingData.info_pg || false}
+            onChange={(checked) => handleInputChange(booking.id, 'info_pg', checked)}
+          />
+        ) : (
+          renderInfoStatus(booking.info_pg_status)
+        )}
       </TableCell>
       
       <TableCell>

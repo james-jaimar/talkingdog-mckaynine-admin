@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -30,8 +29,8 @@ export function useHandlerForm() {
         vaccination_verified: booking.vaccination_verified,
         proof_of_payment: booking.proof_of_payment || '',
         additional_notes: booking.additional_notes || '',
-        info_eo: booking.info_eo || '',
-        info_pg: booking.info_pg || ''
+        info_eo: booking.info_eo || false,
+        info_pg: booking.info_pg || false
       }
     }));
   };
