@@ -17,6 +17,8 @@ interface ClientData {
   notes?: string;
   branch_id?: string;
   dogs?: any[];
+  uses_whatsapp_status: 'yes' | 'no' | 'not_marked';
+  social_media_consent_status: 'yes' | 'no' | 'not_marked';
 }
 
 interface HandlerTableProps {
@@ -57,7 +59,7 @@ export function HandlerTable({
     <div className="rounded-md border">
       <div className="relative overflow-x-auto">
         <Table>
-          <HandlerTableHeader /> {/* Updated from TableHeader */}
+          <HandlerTableHeader /> 
           <TableBody>
             {loading ? (
               <tr>

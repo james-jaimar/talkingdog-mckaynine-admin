@@ -36,8 +36,7 @@ export function useClassHandlers(classId: string) {
         
         const scheduleIdList = scheduleIds.map(s => s.id);
         
-        // Optimized query that fetches booking data, related invoice data, and attendance in a single call
-        // FIXED: Removed 'notes' from attendance selection since it doesn't exist in the class_attendance table
+        // Updated query to remove references to uses_whatsapp and social_media_consent columns
         const { data, error } = await supabase
           .from('bookings')
           .select(`
@@ -47,8 +46,6 @@ export function useClassHandlers(classId: string) {
             proof_of_payment, 
             additional_notes,
             info_eo,
-            uses_whatsapp,
-            social_media_consent,
             info_pg,
             class_schedule_id,
             status,
@@ -56,7 +53,15 @@ export function useClassHandlers(classId: string) {
             dog_id,
             client_id,
             dogs:dog_id(id, name, breed),
-            clients:client_id(id, first_name, last_name, email, phone),
+            clients:client_id(
+              id, 
+              first_name, 
+              last_name, 
+              email, 
+              phone,
+              uses_whatsapp_status,
+              social_media_consent_status
+            ),
             invoice_items(
               invoice_id,
               invoices:invoice_id(
@@ -103,7 +108,10 @@ export function useClassHandlers(classId: string) {
             return {
               ...bookingData,
               computed_payment_status: isUnpaid ? 'unpaid' : 'paid',
-              attendances
+              attendances,
+              // Map client uses_whatsapp_status and social_media_consent_status to the booking
+              uses_whatsapp: booking.clients?.uses_whatsapp_status === 'yes',
+              social_media_consent: booking.clients?.social_media_consent_status === 'yes'
             } as Booking;
           } catch (err) {
             console.error("Error processing booking:", err, booking);
@@ -111,7 +119,9 @@ export function useClassHandlers(classId: string) {
             return {
               ...booking,
               computed_payment_status: 'unknown',
-              attendances: booking.attendances || []
+              attendances: booking.attendances || [],
+              uses_whatsapp: false,
+              social_media_consent: false
             } as Booking;
           }
         });
