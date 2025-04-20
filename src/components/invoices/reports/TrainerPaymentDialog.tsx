@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import {
   Dialog,
@@ -18,21 +19,13 @@ import {
 } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { formatCurrency } from "@/lib/formatters";
-import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { ExtendedBadge } from "@/components/ui/badge-variants";
 import { useMarkTrainerPaymentsPaid } from "@/hooks/useMarkTrainerPaymentsPaid";
-
-interface TrainerClassData {
-  id: string;
-  name: string;
-  revenue: number;
-  bookings: number;
-  commission: number;
-  isPaid: boolean;
-}
+import { TrainerClassDetail } from "@/hooks/useTrainerPaymentData";
+import { format } from "date-fns";
+import { supabase } from "@/integrations/supabase/client";
 
 interface TrainerPaymentDialogProps {
   open: boolean;
@@ -52,18 +45,18 @@ export function TrainerPaymentDialog({
   scheduleIds,
 }: TrainerPaymentDialogProps) {
   const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [trainerClasses, setTrainerClasses] = useState<TrainerClassData[]>([]);
-  const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
   const [trainerName, setTrainerName] = useState("");
+  const [classDetails, setClassDetails] = useState<TrainerClassDetail[]>([]);
+  const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
   const queryClient = useQueryClient();
+  const markAsPaid = useMarkTrainerPaymentsPaid();
 
   // Fetch trainer's classes and payment data when dialog opens
   useEffect(() => {
     if (open && trainerId) {
       fetchTrainerData();
     } else {
-      setTrainerClasses([]);
+      setClassDetails([]);
       setSelectedClasses([]);
     }
   }, [open, trainerId, branchId]);
@@ -83,141 +76,131 @@ export function TrainerPaymentDialog({
       if (trainerData) {
         setTrainerName(`${trainerData.first_name} ${trainerData.last_name}`);
       }
-      
-      // Use the scheduleIds passed in if available, otherwise fetch them
-      const scheduleIdsToUse = scheduleIds || [];
 
-      // If no scheduleIds were provided, fetch class schedules for this trainer
-      if (scheduleIdsToUse.length === 0) {
-        const { data: trainerSchedules } = await supabase
-          .from('class_schedules')
-          .select(`
-            id,
-            classes:class_id (
-              id,
-              name,
-              trainer_fee_value, 
-              trainer_fee_type
-            )
-          `)
-          .eq('trainer_id', trainerId);
-        
-        if (!trainerSchedules || trainerSchedules.length === 0) {
-          setTrainerClasses([]);
+      // Get the trainer payments data from the query cache
+      const queryClient = new useQueryClient();
+      const cachedData = queryClient.getQueryData(['trainer-payments', branchId, dateRange]) as any[];
+      
+      if (cachedData) {
+        const trainerData = cachedData.find(t => t.id === trainerId);
+        if (trainerData && trainerData.classDetails) {
+          setClassDetails(trainerData.classDetails);
+          
+          // Pre-select unpaid classes
+          setSelectedClasses(
+            trainerData.classDetails
+              .filter(c => !c.isPaid)
+              .map(c => c.scheduleId)
+          );
           setLoading(false);
           return;
         }
-        
-        // Update scheduleIdsToUse with fetched schedule IDs
-        scheduleIdsToUse.push(...trainerSchedules.map(s => s.id));
       }
-      
-      if (scheduleIdsToUse.length === 0) {
-        setTrainerClasses([]);
-        setLoading(false);
-        return;
-      }
-      
-      // Get all bookings for these schedules
-      const { data: bookings } = await supabase
-        .from('bookings')
+
+      // If we didn't find cached data, fetch data directly
+      const { data: schedules } = await supabase
+        .from('class_schedules')
         .select(`
           id,
-          class_schedule_id,
-          payment_status,
-          invoice_items:invoice_items (
-            id,
-            amount,
-            invoice_id,
-            invoices:invoice_id (
-              id,
-              status,
-              payment_date
-            )
+          start_time,
+          end_time,
+          classes:class_id (
+            id, 
+            name,
+            trainer_fee_type,
+            trainer_fee_value
           ),
-          class_schedule:class_schedule_id (
+          bookings:bookings!class_schedule_id (
             id,
-            classes:class_id (
+            invoice_items:invoice_items!booking_id (
               id,
-              name,
-              trainer_fee_type,
-              trainer_fee_value
+              amount,
+              invoice_id,
+              invoices:invoice_id (
+                id,
+                status
+              )
             )
           )
         `)
-        .in('class_schedule_id', scheduleIdsToUse);
-      
-      if (!bookings || bookings.length === 0) {
-        setTrainerClasses([]);
+        .eq('trainer_id', trainerId)
+        .gte('start_time', dateRange.from.toISOString())
+        .lte('start_time', dateRange.to.toISOString())
+        .order('start_time');
+
+      if (!schedules || schedules.length === 0) {
+        setClassDetails([]);
         setLoading(false);
         return;
       }
-      
-      // Group bookings by class schedule
-      const classesMap = new Map<string, TrainerClassData>();
-      
-      for (const booking of bookings) {
-        const scheduleId = booking.class_schedule_id;
-        const className = booking.class_schedule?.classes?.name || 'Unknown Class';
+
+      // Get trainer payments to determine which are already paid
+      const { data: trainerPayments } = await supabase
+        .from('trainer_payments')
+        .select('class_schedule_id, status')
+        .eq('trainer_id', trainerId)
+        .in('class_schedule_id', schedules.map(s => s.id));
+
+      // Process class details
+      const details: TrainerClassDetail[] = schedules.map(schedule => {
+        // Check if this schedule is already paid
+        const payment = trainerPayments?.find(p => 
+          p.class_schedule_id === schedule.id && p.status === 'paid'
+        );
+        const isPaid = !!payment;
         
-        if (!classesMap.has(scheduleId)) {
-          classesMap.set(scheduleId, {
-            id: scheduleId,
-            name: className,
-            revenue: 0,
-            bookings: 0,
-            commission: 0,
-            isPaid: true
-          });
-        }
+        // Calculate revenue for this class
+        let revenue = 0;
+        let bookingsCount = 0;
         
-        const classData = classesMap.get(scheduleId)!;
-        classData.bookings++;
-        
-        // Calculate revenue from invoice items
-        if (booking.invoice_items && booking.invoice_items.length > 0) {
-          for (const item of booking.invoice_items) {
-            if (!item.invoices || item.invoices.status === 'cancelled') continue;
+        if (schedule.bookings && schedule.bookings.length > 0) {
+          bookingsCount = schedule.bookings.length;
+          
+          for (const booking of schedule.bookings) {
+            if (!booking.invoice_items || booking.invoice_items.length === 0) continue;
             
-            classData.revenue += item.amount || 0;
-            
-            // Calculate commission based on trainer fee configuration
-            const feeType = booking.class_schedule?.classes?.trainer_fee_type;
-            const feeValue = booking.class_schedule?.classes?.trainer_fee_value || 0;
-            
-            if (feeType === 'percentage') {
-              classData.commission += item.amount * (feeValue / 100);
-            } else {
-              classData.commission += feeValue;
-            }
-            
-            // Check if paid
-            if (item.invoices.status !== 'paid') {
-              classData.isPaid = false;
+            for (const item of booking.invoice_items) {
+              if (!item.invoices || item.invoices.status === 'cancelled') continue;
+              
+              // Calculate trainer's commission
+              if (schedule.classes) {
+                const feeType = schedule.classes.trainer_fee_type;
+                const feeValue = schedule.classes.trainer_fee_value || 0;
+                
+                if (feeType === 'percentage') {
+                  revenue += (item.amount || 0) * (feeValue / 100);
+                } else if (feeType === 'fixed') {
+                  revenue += feeValue;
+                }
+              }
             }
           }
         }
-      }
-      
-      const classesArray = Array.from(classesMap.values());
-      setTrainerClasses(classesArray);
+        
+        return {
+          scheduleId: schedule.id,
+          className: schedule.classes?.name || 'Unknown Class',
+          classDate: schedule.start_time,
+          scheduleDate: new Date(schedule.start_time),
+          revenue,
+          bookings: bookingsCount,
+          isPaid
+        };
+      });
+
+      setClassDetails(details);
       
       // Pre-select unpaid classes
-      setSelectedClasses(classesArray.filter(c => !c.isPaid).map(c => c.id));
-      
+      setSelectedClasses(details.filter(c => !c.isPaid).map(c => c.scheduleId));
     } catch (error) {
       console.error("Error fetching trainer data:", error);
-      toast.error("Failed to load trainer class data");
     } finally {
       setLoading(false);
     }
   };
-
-  const markAsPaid = useMarkTrainerPaymentsPaid();
   
   const handleMarkAsPaid = async () => {
     if (selectedClasses.length === 0) {
-      toast.warning("No classes selected for payment");
       return;
     }
     
@@ -231,13 +214,12 @@ export function TrainerPaymentDialog({
       onOpenChange(false);
     } catch (error) {
       console.error("Error marking payments:", error);
-      toast.error("Failed to update payment status");
     }
   };
 
   const toggleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedClasses(trainerClasses.map(c => c.id));
+      setSelectedClasses(classDetails.filter(c => !c.isPaid).map(c => c.scheduleId));
     } else {
       setSelectedClasses([]);
     }
@@ -251,9 +233,9 @@ export function TrainerPaymentDialog({
     }
   };
 
-  const totalSelectedCommission = trainerClasses
-    .filter(c => selectedClasses.includes(c.id))
-    .reduce((sum, c) => sum + c.commission, 0);
+  const totalSelectedCommission = classDetails
+    .filter(c => selectedClasses.includes(c.scheduleId))
+    .reduce((sum, c) => sum + c.revenue, 0);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -269,7 +251,7 @@ export function TrainerPaymentDialog({
           <div className="flex justify-center items-center h-64">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
-        ) : trainerClasses.length === 0 ? (
+        ) : classDetails.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-muted-foreground">No classes found for this trainer</p>
           </div>
@@ -278,11 +260,11 @@ export function TrainerPaymentDialog({
             <div className="flex items-center gap-2 mb-2">
               <Checkbox 
                 id="select-all" 
-                checked={selectedClasses.length === trainerClasses.length}
+                checked={selectedClasses.length > 0 && selectedClasses.length === classDetails.filter(c => !c.isPaid).length}
                 onCheckedChange={toggleSelectAll}
               />
               <label htmlFor="select-all" className="text-sm font-medium">
-                Select All Classes
+                Select All Unpaid Classes
               </label>
             </div>
             
@@ -292,25 +274,26 @@ export function TrainerPaymentDialog({
                   <TableRow>
                     <TableHead className="w-12"></TableHead>
                     <TableHead>Class</TableHead>
+                    <TableHead>Date</TableHead>
                     <TableHead className="text-right">Bookings</TableHead>
-                    <TableHead className="text-right">Revenue</TableHead>
                     <TableHead className="text-right">Commission</TableHead>
                     <TableHead className="text-right">Status</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {trainerClasses.map(classData => (
-                    <TableRow key={classData.id}>
+                  {classDetails.map(classData => (
+                    <TableRow key={classData.scheduleId}>
                       <TableCell className="px-4 py-2">
                         <Checkbox 
-                          checked={selectedClasses.includes(classData.id)}
-                          onCheckedChange={(checked) => toggleClass(classData.id, !!checked)}
+                          checked={selectedClasses.includes(classData.scheduleId)}
+                          onCheckedChange={(checked) => toggleClass(classData.scheduleId, !!checked)}
+                          disabled={classData.isPaid}
                         />
                       </TableCell>
-                      <TableCell className="font-medium">{classData.name}</TableCell>
+                      <TableCell className="font-medium">{classData.className}</TableCell>
+                      <TableCell>{format(new Date(classData.classDate), 'MMM d, yyyy')}</TableCell>
                       <TableCell className="text-right">{classData.bookings}</TableCell>
                       <TableCell className="text-right">{formatCurrency(classData.revenue)}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(classData.commission)}</TableCell>
                       <TableCell className="text-right">
                         <ExtendedBadge variant={classData.isPaid ? "green" : "amber"}>
                           {classData.isPaid ? "Paid" : "Unpaid"}
@@ -334,15 +317,15 @@ export function TrainerPaymentDialog({
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
-            disabled={saving}
+            disabled={markAsPaid.isPending}
           >
             Cancel
           </Button>
           <Button
             onClick={handleMarkAsPaid}
-            disabled={saving || loading || selectedClasses.length === 0}
+            disabled={markAsPaid.isPending || loading || selectedClasses.length === 0}
           >
-            {saving ? (
+            {markAsPaid.isPending ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 Processing...

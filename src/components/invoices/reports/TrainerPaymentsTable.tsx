@@ -7,11 +7,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ExtendedBadge } from "@/components/ui/badge-variants";
-import { Button } from "@/components/ui/button";
-import { formatCurrency } from "@/lib/formatters";
-import { DollarSign } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { TrainerPaymentsRow } from "./TrainerPaymentsRow";
 
 interface TrainerPaymentsTableProps {
   trainers: Array<{
@@ -23,6 +20,7 @@ interface TrainerPaymentsTableProps {
     classesCount: number;
     clients: number;
     lastPaymentDate?: string;
+    classDetails?: any[];
     invoicesCount?: number;
     scheduleIds?: string[];
   }>;
@@ -58,37 +56,11 @@ export function TrainerPaymentsTable({ trainers, onMarkForPayment }: TrainerPaym
         </TableHeader>
         <TableBody>
           {trainers.map((trainer) => (
-            <TableRow key={trainer.id}>
-              <TableCell className="font-medium">{trainer.trainerName}</TableCell>
-              <TableCell className="text-right">{formatCurrency(trainer.totalEarned)}</TableCell>
-              <TableCell className="text-right">{formatCurrency(trainer.paid)}</TableCell>
-              <TableCell className="text-right">{formatCurrency(trainer.pending)}</TableCell>
-              <TableCell className="text-center">{trainer.classesCount}</TableCell>
-              <TableCell className="text-center">{trainer.clients}</TableCell>
-              <TableCell className="text-right">
-                {trainer.lastPaymentDate 
-                  ? new Date(trainer.lastPaymentDate).toLocaleDateString()
-                  : 'Never'}
-              </TableCell>
-              <TableCell className="text-right">
-                {trainer.pending > 0 ? (
-                  <ExtendedBadge variant="amber">Payment Due</ExtendedBadge>
-                ) : (
-                  <ExtendedBadge variant="green">Paid</ExtendedBadge>
-                )}
-              </TableCell>
-              <TableCell className="text-right">
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => onMarkForPayment(trainer.id)}
-                  disabled={trainer.pending <= 0}
-                >
-                  <DollarSign className="h-4 w-4 mr-1" />
-                  Mark for Payment
-                </Button>
-              </TableCell>
-            </TableRow>
+            <TrainerPaymentsRow 
+              key={trainer.id}
+              trainer={trainer}
+              onMarkForPayment={onMarkForPayment}
+            />
           ))}
         </TableBody>
       </Table>

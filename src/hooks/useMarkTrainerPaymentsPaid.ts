@@ -14,18 +14,27 @@ export function useMarkTrainerPaymentsPaid() {
       trainerId: string; 
       scheduleIds: string[];
     }) => {
+      if (!scheduleIds.length) {
+        throw new Error("No schedules selected");
+      }
+      
       const now = new Date().toISOString();
       
-      const { error } = await supabase
+      // Create trainer payment records for these schedules
+      const { data, error } = await supabase
         .from('trainer_payments')
-        .update({
-          status: 'paid',
-          payment_date: now,
-          updated_at: now
-        })
-        .eq('trainer_id', trainerId)
-        .in('class_schedule_id', scheduleIds)
-        .eq('status', 'pending');
+        .insert(
+          scheduleIds.map(scheduleId => ({
+            trainer_id: trainerId,
+            class_schedule_id: scheduleId,
+            amount: 0, // We'll update this later based on invoice calculations
+            status: 'paid',
+            payment_date: now,
+            created_at: now,
+            updated_at: now
+          }))
+        )
+        .select();
 
       if (error) throw error;
       
