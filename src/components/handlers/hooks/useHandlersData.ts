@@ -1,4 +1,3 @@
-
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
@@ -40,6 +39,7 @@ export interface Handler {
   dogs: Dog[];
   uses_whatsapp_status: 'yes' | 'no' | 'not_marked';
   social_media_consent_status: 'yes' | 'no' | 'not_marked';
+  invoices: any[];
 }
 
 export function useHandlersData() {
@@ -48,7 +48,6 @@ export function useHandlersData() {
   const itemsPerPage = 50;
   const { currentBranch } = useBranch();
 
-  // Enhanced query with proper branch filtering
   const { data: handlers = [], isLoading, refetch } = useQuery({
     queryKey: ['handlers', currentBranch?.id],
     queryFn: async () => {
@@ -85,6 +84,9 @@ export function useHandlersData() {
                 wt_class,
                 yoga_class
               )
+            ),
+            invoices (
+              id
             )
           `);
         
