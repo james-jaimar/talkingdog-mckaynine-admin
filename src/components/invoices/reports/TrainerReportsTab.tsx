@@ -19,14 +19,16 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
   const queryClient = useQueryClient();
   const [selectedTrainerId, setSelectedTrainerId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedScheduleIds, setSelectedScheduleIds] = useState<string[]>([]);
   
   // Pass the dateRange to useTrainerPayments to ensure we get data for the selected date range
-  const { data: trainers, isLoading } = useTrainerPayments(branchId, dateRange);
+  const { data: trainers = [], isLoading, refetch } = useTrainerPayments(branchId, dateRange);
   
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
-      await queryClient.invalidateQueries({ queryKey: ['trainers', branchId, dateRange] });
+      await queryClient.invalidateQueries({ queryKey: ['trainer-payments', branchId, dateRange] });
+      await refetch();
       toast.success("Trainer payment data refreshed");
     } catch (error) {
       toast.error("Failed to refresh trainer data");
@@ -37,7 +39,9 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
   };
   
   const openPaymentDialog = (trainerId: string) => {
+    const trainer = trainers.find(t => t.id === trainerId);
     setSelectedTrainerId(trainerId);
+    setSelectedScheduleIds(trainer?.scheduleIds || []);
     setDialogOpen(true);
   };
 
@@ -78,7 +82,7 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
       </div>
       
       <TrainerPaymentsTable 
-        trainers={trainers || []} 
+        trainers={trainers} 
         onMarkForPayment={openPaymentDialog}
       />
       
@@ -89,6 +93,7 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
           trainerId={selectedTrainerId} 
           branchId={branchId}
           dateRange={dateRange}
+          scheduleIds={selectedScheduleIds}
         />
       )}
     </div>

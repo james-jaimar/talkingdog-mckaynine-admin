@@ -5,7 +5,7 @@ import { toast } from "sonner";
 
 export function useTrainerPayments(branchId: string | undefined, dateRange?: { from: Date; to: Date }) {
   return useQuery({
-    queryKey: ['trainers', branchId, dateRange],
+    queryKey: ['trainer-payments', branchId, dateRange],
     queryFn: async () => {
       if (!branchId) return [];
       
@@ -218,6 +218,6 @@ export function useTrainerPayments(branchId: string | undefined, dateRange?: { f
       }
     },
     enabled: !!branchId,
-    staleTime: 5 * 60 * 1000 // 5 minutes cache
+    staleTime: 1 * 60 * 1000 // 1 minute cache to refresh more frequently
   });
 }

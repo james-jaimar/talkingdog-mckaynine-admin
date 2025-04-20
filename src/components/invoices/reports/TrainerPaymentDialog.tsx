@@ -40,7 +40,7 @@ interface TrainerPaymentDialogProps {
   trainerId: string;
   branchId?: string;
   dateRange: { from: Date; to: Date };
-  scheduleIds?: string[]; // Added this prop to match usage
+  scheduleIds?: string[];
 }
 
 export function TrainerPaymentDialog({
@@ -134,6 +134,15 @@ export function TrainerPaymentDialog({
               status,
               payment_date
             )
+          ),
+          class_schedule:class_schedule_id (
+            id,
+            classes:class_id (
+              id,
+              name,
+              trainer_fee_type,
+              trainer_fee_value
+            )
           )
         `)
         .in('class_schedule_id', scheduleIdsToUse);
@@ -145,59 +154,56 @@ export function TrainerPaymentDialog({
       }
       
       // Group bookings by class schedule
-      const classData = scheduleIdsToUse.map(scheduleId => {
-        const classBookings = bookings.filter(b => b.class_schedule_id === scheduleId);
-        const classRevenue = classBookings.reduce((sum, booking) => {
-          if (booking.invoice_items && booking.invoice_items.length > 0) {
-            return sum + booking.invoice_items.reduce((itemSum, item) => itemSum + (item.amount || 0), 0);
-          }
-          return sum;
-        }, 0);
+      const classesMap = new Map<string, TrainerClassData>();
+      
+      for (const booking of bookings) {
+        const scheduleId = booking.class_schedule_id;
+        const className = booking.class_schedule?.classes?.name || 'Unknown Class';
         
-        // Get the class details for this schedule
-        const classDetails = classBookings.length > 0 
-          ? bookings[0].invoice_items[0].invoices 
-            ? {
-                name: 'Unknown Class', // Default name if not found
-                trainer_fee_value: 0,
-                trainer_fee_type: 'fixed'
-              }
-            : null
-          : null;
-        
-        // Calculate commission based on class settings
-        let commission = 0;
-        if (classDetails) {
-          if (classDetails.trainer_fee_type === 'percentage') {
-            commission = classRevenue * (classDetails.trainer_fee_value / 100);
-          } else {
-            commission = classBookings.length * classDetails.trainer_fee_value;
-          }
+        if (!classesMap.has(scheduleId)) {
+          classesMap.set(scheduleId, {
+            id: scheduleId,
+            name: className,
+            revenue: 0,
+            bookings: 0,
+            commission: 0,
+            isPaid: true
+          });
         }
         
-        // Check if all invoices are marked as paid
-        const allPaid = classBookings.every(booking => 
-          booking.invoice_items && 
-          booking.invoice_items.length > 0 && 
-          booking.invoice_items.every(item => 
-            item.invoices && item.invoices.status === 'paid'
-          )
-        );
+        const classData = classesMap.get(scheduleId)!;
+        classData.bookings++;
         
-        return {
-          id: scheduleId,
-          name: classDetails?.name || 'Unknown Class',
-          revenue: classRevenue,
-          bookings: classBookings.length,
-          commission,
-          isPaid: allPaid
-        };
-      });
+        // Calculate revenue from invoice items
+        if (booking.invoice_items && booking.invoice_items.length > 0) {
+          for (const item of booking.invoice_items) {
+            if (!item.invoices || item.invoices.status === 'cancelled') continue;
+            
+            classData.revenue += item.amount || 0;
+            
+            // Calculate commission based on trainer fee configuration
+            const feeType = booking.class_schedule?.classes?.trainer_fee_type;
+            const feeValue = booking.class_schedule?.classes?.trainer_fee_value || 0;
+            
+            if (feeType === 'percentage') {
+              classData.commission += item.amount * (feeValue / 100);
+            } else {
+              classData.commission += feeValue;
+            }
+            
+            // Check if paid
+            if (item.invoices.status !== 'paid') {
+              classData.isPaid = false;
+            }
+          }
+        }
+      }
       
-      setTrainerClasses(classData);
+      const classesArray = Array.from(classesMap.values());
+      setTrainerClasses(classesArray);
       
       // Pre-select unpaid classes
-      setSelectedClasses(classData.filter(c => !c.isPaid).map(c => c.id));
+      setSelectedClasses(classesArray.filter(c => !c.isPaid).map(c => c.id));
       
     } catch (error) {
       console.error("Error fetching trainer data:", error);
@@ -222,7 +228,7 @@ export function TrainerPaymentDialog({
       toast.success(`Marked ${selectedClasses.length} classes as paid for ${trainerName}`);
       
       // Invalidate relevant queries to refresh the UI
-      queryClient.invalidateQueries({ queryKey: ['trainers', branchId] });
+      queryClient.invalidateQueries({ queryKey: ['trainer-payments', branchId] });
       
       // Close the dialog
       onOpenChange(false);
