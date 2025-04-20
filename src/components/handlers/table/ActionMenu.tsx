@@ -21,6 +21,8 @@ interface ActionMenuProps {
     postal_code?: string;
     notes?: string;
     branch_id?: string | null;
+    uses_whatsapp_status: 'yes' | 'no' | 'not_marked';
+    social_media_consent_status: 'yes' | 'no' | 'not_marked';
   };
 }
 

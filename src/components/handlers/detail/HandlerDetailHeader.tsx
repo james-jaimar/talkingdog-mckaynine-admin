@@ -18,6 +18,8 @@ interface HandlerDetailHeaderProps {
     postal_code?: string;
     notes?: string;
     branch_id?: string;
+    uses_whatsapp_status: 'yes' | 'no' | 'not_marked';
+    social_media_consent_status: 'yes' | 'no' | 'not_marked';
   };
   onHandlerUpdated?: () => void;
 }

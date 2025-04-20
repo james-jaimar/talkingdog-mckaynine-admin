@@ -38,6 +38,8 @@ export interface Handler {
   created_at: string;
   notes?: string;
   dogs: Dog[];
+  uses_whatsapp_status: 'yes' | 'no' | 'not_marked';
+  social_media_consent_status: 'yes' | 'no' | 'not_marked';
 }
 
 export function useHandlersData() {
@@ -63,6 +65,8 @@ export function useHandlersData() {
             branch_id,
             created_at,
             notes,
+            uses_whatsapp_status,
+            social_media_consent_status,
             dogs (
               id,
               name,
