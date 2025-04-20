@@ -23,7 +23,7 @@ interface TrainerPaymentsTableProps {
     classesCount: number;
     clients: number;
     lastPaymentDate?: string;
-    invoicesCount?: number; // Made optional
+    invoicesCount?: number;
     scheduleIds?: string[];
   }>;
   onMarkForPayment: (trainerId: string) => void;
@@ -63,11 +63,11 @@ export function TrainerPaymentsTable({ trainers, onMarkForPayment }: TrainerPaym
               <TableCell className="text-right">{formatCurrency(trainer.totalEarned)}</TableCell>
               <TableCell className="text-right">{formatCurrency(trainer.paid)}</TableCell>
               <TableCell className="text-right">{formatCurrency(trainer.pending)}</TableCell>
-              <TableCell className="text-center">{trainer.classesCount || trainer.invoicesCount || 0}</TableCell>
-              <TableCell className="text-center">{trainer.clients || '—'}</TableCell>
+              <TableCell className="text-center">{trainer.classesCount}</TableCell>
+              <TableCell className="text-center">{trainer.clients}</TableCell>
               <TableCell className="text-right">
                 {trainer.lastPaymentDate 
-                  ? new Date(trainer.lastPaymentDate).toLocaleDateString('en-ZA')
+                  ? new Date(trainer.lastPaymentDate).toLocaleDateString()
                   : 'Never'}
               </TableCell>
               <TableCell className="text-right">

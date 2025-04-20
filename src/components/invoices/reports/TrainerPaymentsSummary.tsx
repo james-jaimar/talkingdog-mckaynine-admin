@@ -15,17 +15,28 @@ interface TrainerPaymentsSummaryProps {
     clients: number;
     lastPaymentDate?: string;
     scheduleIds?: string[];
-    invoicesCount?: number; // Made optional since we're using classesCount now
+    invoicesCount?: number;
   }>;
   isLoading: boolean;
+  dateRange?: { from: Date; to: Date };
+  branchId?: string;
 }
 
-export function TrainerPaymentsSummary({ trainers, isLoading }: TrainerPaymentsSummaryProps) {
+export function TrainerPaymentsSummary({ 
+  trainers, 
+  isLoading, 
+  dateRange = { from: new Date(), to: new Date() },
+  branchId
+}: TrainerPaymentsSummaryProps) {
   const [selectedTrainerId, setSelectedTrainerId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedScheduleIds, setSelectedScheduleIds] = useState<string[]>([]);
   
   const openPaymentDialog = (trainerId: string) => {
+    const trainer = trainers.find(t => t.id === trainerId);
     setSelectedTrainerId(trainerId);
+    // Use the scheduleIds from the trainer data if available
+    setSelectedScheduleIds(trainer?.scheduleIds || []);
     setDialogOpen(true);
   };
 
@@ -48,8 +59,9 @@ export function TrainerPaymentsSummary({ trainers, isLoading }: TrainerPaymentsS
           open={dialogOpen}
           onOpenChange={setDialogOpen}
           trainerId={selectedTrainerId}
-          dateRange={{ from: new Date(), to: new Date() }} // Provide a default date range
-          branchId={undefined} // Set to undefined as default
+          dateRange={dateRange}
+          branchId={branchId}
+          scheduleIds={selectedScheduleIds}
         />
       )}
     </div>

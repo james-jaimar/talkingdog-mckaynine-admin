@@ -3,13 +3,19 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-export function useTrainerPayments(branchId: string | undefined) {
+export function useTrainerPayments(branchId: string | undefined, dateRange?: { from: Date; to: Date }) {
   return useQuery({
-    queryKey: ['trainers', branchId],
+    queryKey: ['trainers', branchId, dateRange],
     queryFn: async () => {
       if (!branchId) return [];
       
       try {
+        console.log("Fetching trainer payments with date range:", dateRange);
+        
+        // Format date range for query if provided
+        const fromDate = dateRange?.from ? dateRange.from.toISOString() : undefined;
+        const toDate = dateRange?.to ? dateRange.to.toISOString() : undefined;
+        
         // Get all trainers for this branch
         const { data: trainers, error: trainersError } = await supabase
           .from('trainers')
@@ -26,11 +32,15 @@ export function useTrainerPayments(branchId: string | undefined) {
           return [];
         }
         
+        console.log(`Found ${trainers?.length} trainers for branch ${branchId}`);
+        
         // For each trainer, fetch their class schedules, bookings, and invoices
         const trainersWithPayments = await Promise.all(trainers.map(async (trainer) => {
           try {
+            console.log(`Processing trainer: ${trainer.first_name} ${trainer.last_name}`);
+            
             // Get all class schedules for this trainer
-            const { data: schedules, error: schedulesError } = await supabase
+            let schedulesQuery = supabase
               .from('class_schedules')
               .select(`
                 id,
@@ -44,10 +54,19 @@ export function useTrainerPayments(branchId: string | undefined) {
               `)
               .eq('trainer_id', trainer.id);
               
+            // Apply date filter if provided
+            if (fromDate && toDate) {
+              schedulesQuery = schedulesQuery.gte('start_time', fromDate).lte('start_time', toDate);
+            }
+            
+            const { data: schedules, error: schedulesError } = await schedulesQuery;
+              
             if (schedulesError) {
               console.error(`Error fetching schedules for trainer ${trainer.id}:`, schedulesError);
               return null;
             }
+            
+            console.log(`Found ${schedules?.length} schedules for trainer ${trainer.id}`);
             
             if (!schedules?.length) {
               return {
@@ -58,22 +77,34 @@ export function useTrainerPayments(branchId: string | undefined) {
                 pending: 0,
                 classesCount: 0,
                 clients: 0,
-                invoicesCount: 0 // Add this to match the expected interface
+                invoicesCount: 0,
+                scheduleIds: []
               };
             }
             
             const scheduleIds = schedules.map(s => s.id);
             
             // Get all bookings for these class schedules
-            const { data: bookings, error: bookingsError } = await supabase
+            let bookingsQuery = supabase
               .from('bookings')
-              .select('id, client_id, class_schedule_id')
-              .in('class_schedule_id', scheduleIds);
+              .select('id, client_id, class_schedule_id, created_at');
+            
+            // Filter by schedule IDs
+            bookingsQuery = bookingsQuery.in('class_schedule_id', scheduleIds);
+            
+            // Apply date filter if provided
+            if (fromDate && toDate) {
+              bookingsQuery = bookingsQuery.gte('created_at', fromDate).lte('created_at', toDate);
+            }
+            
+            const { data: bookings, error: bookingsError } = await bookingsQuery;
               
             if (bookingsError) {
               console.error(`Error fetching bookings for trainer ${trainer.id}:`, bookingsError);
               return null;
             }
+            
+            console.log(`Found ${bookings?.length} bookings for trainer ${trainer.id}`);
             
             const uniqueClients = new Set(bookings?.map(b => b.client_id) || []).size;
             
@@ -86,8 +117,8 @@ export function useTrainerPayments(branchId: string | undefined) {
                 pending: 0,
                 classesCount: schedules.length,
                 clients: uniqueClients,
-                invoicesCount: 0, // Add this to match the expected interface
-                scheduleIds // Add the schedule IDs for use in the payment dialog
+                invoicesCount: 0,
+                scheduleIds
               };
             }
             
@@ -114,6 +145,8 @@ export function useTrainerPayments(branchId: string | undefined) {
               return null;
             }
             
+            console.log(`Found ${invoiceItems?.length} invoice items for trainer ${trainer.id}`);
+            
             // Calculate earnings based on trainer fee configuration
             let totalEarned = 0;
             let paidAmount = 0;
@@ -129,9 +162,12 @@ export function useTrainerPayments(branchId: string | undefined) {
               
               const { trainer_fee_type, trainer_fee_value } = schedule.classes;
               
-              const trainerEarnings = trainer_fee_type === 'percentage' 
-                ? (item.amount * (trainer_fee_value / 100))
-                : trainer_fee_value;
+              let trainerEarnings = 0;
+              if (trainer_fee_type === 'percentage') {
+                trainerEarnings = item.amount * (trainer_fee_value / 100);
+              } else {
+                trainerEarnings = trainer_fee_value;
+              }
               
               totalEarned += trainerEarnings;
               
@@ -158,8 +194,8 @@ export function useTrainerPayments(branchId: string | undefined) {
               classesCount: schedules.length,
               clients: uniqueClients,
               lastPaymentDate,
-              invoicesCount: invoiceItems?.length || 0, // Add this to match the expected interface
-              scheduleIds // Add the schedule IDs for use in the payment dialog
+              invoicesCount: invoiceItems?.length || 0,
+              scheduleIds
             };
           } catch (err) {
             console.error(`Error processing payment data for trainer ${trainer.id}:`, err);
@@ -168,9 +204,12 @@ export function useTrainerPayments(branchId: string | undefined) {
         }));
         
         // Filter out null values and sort by earnings
-        return trainersWithPayments
+        const validTrainers = trainersWithPayments
           .filter(Boolean)
           .sort((a, b) => b!.totalEarned - a!.totalEarned);
+        
+        console.log("Processed trainer payments data:", validTrainers);
+        return validTrainers;
         
       } catch (err) {
         console.error("Failed to process trainer payment data:", err);

@@ -20,12 +20,13 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
   const [selectedTrainerId, setSelectedTrainerId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   
-  const { data: trainers, isLoading } = useTrainerPayments(branchId);
+  // Pass the dateRange to useTrainerPayments to ensure we get data for the selected date range
+  const { data: trainers, isLoading } = useTrainerPayments(branchId, dateRange);
   
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
-      await queryClient.invalidateQueries({ queryKey: ['trainers', branchId] });
+      await queryClient.invalidateQueries({ queryKey: ['trainers', branchId, dateRange] });
       toast.success("Trainer payment data refreshed");
     } catch (error) {
       toast.error("Failed to refresh trainer data");

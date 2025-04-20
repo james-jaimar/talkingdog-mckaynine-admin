@@ -11,12 +11,20 @@ import { useBranch } from "@/context/BranchContext";
 import RequireAdmin from "@/components/auth/RequireAdmin";
 import { FinancialMetricsCards } from "@/components/dashboard/financial/FinancialMetricsCards";
 import { useTrainerPayments } from "@/hooks/useTrainerPayments";
+import { startOfMonth, endOfMonth } from "date-fns";
 
 export default function FinancialDashboard() {
   const [timeframe, setTimeframe] = useState<'monthly' | 'quarterly' | 'yearly'>('monthly');
   const { invoices, isLoading } = useInvoices();
   const { currentBranch } = useBranch();
-  const { data: trainers = [], isLoading: isTrainersLoading } = useTrainerPayments(currentBranch?.id);
+  
+  // Set up a default date range for the trainer payments (current month)
+  const currentDateRange = {
+    from: startOfMonth(new Date()),
+    to: endOfMonth(new Date())
+  };
+  
+  const { data: trainers = [], isLoading: isTrainersLoading } = useTrainerPayments(currentBranch?.id, currentDateRange);
 
   // Filter out any cancelled invoices and include only sent or paid invoices for revenue calculations
   const activeInvoices = invoices ? invoices.filter(invoice => 
@@ -91,7 +99,12 @@ export default function FinancialDashboard() {
 
           {/* Trainer payments summary */}
           <div className="mb-6">
-            <TrainerPaymentsSummary trainers={trainers} isLoading={isTrainersLoading} />
+            <TrainerPaymentsSummary 
+              trainers={trainers} 
+              isLoading={isTrainersLoading} 
+              dateRange={currentDateRange}
+              branchId={currentBranch?.id}
+            />
           </div>
         </div>
       </DashboardLayout>
