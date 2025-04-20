@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import {
   Dialog,
@@ -20,6 +19,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { FormTextField } from "@/components/handlers/form/FormTextField";
 import { Form } from "@/components/ui/form";
 import { FeeFields } from "./form-sections/FeeFields";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
+import { CLASS_TYPES } from "./types/class-types";
 
 interface EditClassModalProps {
   open: boolean;
@@ -38,7 +46,7 @@ export function EditClassModal({ open, onOpenChange, classData, onSuccess }: Edi
     resolver: zodResolver(classFormSchema),
     defaultValues: {
       name: "",
-      level: "",
+      class_type: "Puppy",
       duration: 60,
       course_fee: 0,
       enrollment_fee: 0,
@@ -60,7 +68,7 @@ export function EditClassModal({ open, onOpenChange, classData, onSuccess }: Edi
       console.log("Setting form values with class data:", classData);
       form.reset({
         name: classData.name || "",
-        level: classData.level || "",
+        class_type: classData.class_type || "Puppy",
         duration: classData.duration || 60,
         course_fee: classData.course_fee || 0,
         enrollment_fee: classData.enrollment_fee || 0,
@@ -103,7 +111,7 @@ export function EditClassModal({ open, onOpenChange, classData, onSuccess }: Edi
         .from("classes")
         .update({
           name: values.name,
-          level: values.level,
+          level: values.class_type,
           duration: values.duration,
           course_fee: values.course_fee,
           enrollment_fee: values.enrollment_fee,
@@ -162,11 +170,30 @@ export function EditClassModal({ open, onOpenChange, classData, onSuccess }: Edi
                 label="Name"
                 required
               />
-              <FormTextField
+              
+              <FormField
                 control={form.control}
-                name="level"
-                label="Level"
-                required
+                name="class_type"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Class Type</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select class type" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {CLASS_TYPES.map((type) => (
+                          <SelectItem key={type} value={type}>
+                            {type}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
             </div>
 

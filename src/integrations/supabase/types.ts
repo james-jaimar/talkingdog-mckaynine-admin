@@ -416,13 +416,13 @@ export type Database = {
           admin_fee_value: number
           branch_id: string
           capacity: number
+          class_type: Database["public"]["Enums"]["class_type"]
           course_fee: number
           created_at: string
           description: string
           duration: number
           enrollment_fee: number
           id: string
-          level: string
           mckaynine_commission_type: string
           mckaynine_commission_value: number
           name: string
@@ -435,13 +435,13 @@ export type Database = {
           admin_fee_value?: number
           branch_id: string
           capacity?: number
+          class_type: Database["public"]["Enums"]["class_type"]
           course_fee?: number
           created_at?: string
           description: string
           duration: number
           enrollment_fee?: number
           id?: string
-          level: string
           mckaynine_commission_type?: string
           mckaynine_commission_value?: number
           name: string
@@ -454,13 +454,13 @@ export type Database = {
           admin_fee_value?: number
           branch_id?: string
           capacity?: number
+          class_type?: Database["public"]["Enums"]["class_type"]
           course_fee?: number
           created_at?: string
           description?: string
           duration?: number
           enrollment_fee?: number
           id?: string
-          level?: string
           mckaynine_commission_type?: string
           mckaynine_commission_value?: number
           name?: string
@@ -944,7 +944,16 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      class_type:
+        | "Puppy"
+        | "EO"
+        | "CGC Bronze"
+        | "CGC Silver"
+        | "Beginner"
+        | "Novice"
+        | "WT"
+        | "A-Test"
+        | "Yoga"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1059,6 +1068,18 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      class_type: [
+        "Puppy",
+        "EO",
+        "CGC Bronze",
+        "CGC Silver",
+        "Beginner",
+        "Novice",
+        "WT",
+        "A-Test",
+        "Yoga",
+      ],
+    },
   },
 } as const

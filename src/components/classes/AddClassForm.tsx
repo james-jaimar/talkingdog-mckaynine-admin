@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/select";
 import { useClassForm } from "./hooks/useClassForm";
 import { FeeFields } from "./form-sections/FeeFields";
+import { CLASS_TYPES } from "./types/class-types";
 
 interface AddClassFormProps {
   onSuccess: () => void;
@@ -65,13 +66,24 @@ export function AddClassForm({ onSuccess }: AddClassFormProps) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             control={form.control}
-            name="level"
+            name="class_type"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Level</FormLabel>
-                <FormControl>
-                  <Input placeholder="e.g., Beginner, Intermediate" {...field} />
-                </FormControl>
+                <FormLabel>Class Type</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select class type" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {CLASS_TYPES.map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {type}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <FormMessage />
               </FormItem>
             )}
