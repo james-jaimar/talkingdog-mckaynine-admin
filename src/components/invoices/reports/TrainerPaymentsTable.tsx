@@ -28,6 +28,8 @@ interface TrainerPaymentsTableProps {
 }
 
 export function TrainerPaymentsTable({ trainers, onMarkForPayment }: TrainerPaymentsTableProps) {
+  console.log("TrainerPaymentsTable rendering with trainers:", trainers);
+  
   if (!trainers || trainers.length === 0) {
     return (
       <Card>

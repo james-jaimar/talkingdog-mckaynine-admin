@@ -34,6 +34,8 @@ export function TrainerPaymentsRow({ trainer, onMarkForPayment }: TrainerPayment
   };
 
   const hasClassDetails = trainer.classDetails && trainer.classDetails.length > 0;
+  const classesCount = trainer.classesCount || 0;
+  const classDetailsShown = trainer.classDetails?.length || 0;
 
   return (
     <>
@@ -56,7 +58,7 @@ export function TrainerPaymentsRow({ trainer, onMarkForPayment }: TrainerPayment
         <TableCell className="text-right">{formatCurrency(trainer.totalEarned)}</TableCell>
         <TableCell className="text-right">{formatCurrency(trainer.paid)}</TableCell>
         <TableCell className="text-right">{formatCurrency(trainer.pending)}</TableCell>
-        <TableCell className="text-center">{trainer.classesCount}</TableCell>
+        <TableCell className="text-center">{classesCount}</TableCell>
         <TableCell className="text-center">{trainer.clients}</TableCell>
         <TableCell className="text-right">
           {trainer.lastPaymentDate 
@@ -90,45 +92,51 @@ export function TrainerPaymentsRow({ trainer, onMarkForPayment }: TrainerPayment
         <TableRow className="bg-muted/20 border-t-0">
           <TableCell colSpan={9} className="py-0">
             <div className="py-2">
-              <p className="font-medium mb-2">Classes ({trainer.classDetails.length})</p>
+              <p className="font-medium mb-2">Classes ({classDetailsShown})</p>
               <div className="space-y-2 max-h-64 overflow-y-auto pr-2">
-                {trainer.classDetails.map((classDetail) => (
-                  <div 
-                    key={classDetail.scheduleId}
-                    className="grid grid-cols-5 gap-2 p-2 bg-background rounded-md border text-sm"
-                  >
-                    <div>
-                      <p className="font-medium">{classDetail.className}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {format(new Date(classDetail.classDate), 'PPP p')}
-                      </p>
+                {trainer.classDetails.length > 0 ? (
+                  trainer.classDetails.map((classDetail) => (
+                    <div 
+                      key={classDetail.scheduleId}
+                      className="grid grid-cols-5 gap-2 p-2 bg-background rounded-md border text-sm"
+                    >
+                      <div>
+                        <p className="font-medium">{classDetail.className}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {format(new Date(classDetail.classDate), 'PPP p')}
+                        </p>
+                      </div>
+                      <div className="text-center self-center">
+                        <p>{classDetail.bookings} bookings</p>
+                      </div>
+                      <div className="text-center self-center">
+                        <p>{formatCurrency(classDetail.revenue)}</p>
+                      </div>
+                      <div className="text-center self-center">
+                        <ExtendedBadge variant={classDetail.isPaid ? "green" : "amber"}>
+                          {classDetail.isPaid ? "Paid" : "Unpaid"}
+                        </ExtendedBadge>
+                      </div>
+                      <div className="text-right self-center">
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          disabled={classDetail.isPaid}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onMarkForPayment(trainer.id);
+                          }}
+                        >
+                          Mark Paid
+                        </Button>
+                      </div>
                     </div>
-                    <div className="text-center self-center">
-                      <p>{classDetail.bookings} bookings</p>
-                    </div>
-                    <div className="text-center self-center">
-                      <p>{formatCurrency(classDetail.revenue)}</p>
-                    </div>
-                    <div className="text-center self-center">
-                      <ExtendedBadge variant={classDetail.isPaid ? "green" : "amber"}>
-                        {classDetail.isPaid ? "Paid" : "Unpaid"}
-                      </ExtendedBadge>
-                    </div>
-                    <div className="text-right self-center">
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        disabled={classDetail.isPaid}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onMarkForPayment(trainer.id);
-                        }}
-                      >
-                        Mark Paid
-                      </Button>
-                    </div>
+                  ))
+                ) : (
+                  <div className="text-center p-4 text-muted-foreground">
+                    No class details available
                   </div>
-                ))}
+                )}
               </div>
             </div>
           </TableCell>

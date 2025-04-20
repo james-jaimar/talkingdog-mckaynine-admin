@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTrainerPayments } from "@/hooks/useTrainerPayments";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,10 +24,17 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
   // Pass the dateRange to useTrainerPayments to ensure we get data for the selected date range
   const { data: trainers = [], isLoading, refetch } = useTrainerPayments(branchId, dateRange);
   
+  // Effect to run when dateRange or branchId changes
+  useEffect(() => {
+    console.log("TrainerReportsTab: Date range or branch changed - invalidating queries");
+    queryClient.invalidateQueries({ queryKey: ['trainer-payments'] });
+  }, [dateRange, branchId, queryClient]);
+  
   const handleRefresh = async () => {
+    console.log("TrainerReportsTab: Manually refreshing trainer payment data");
     setRefreshing(true);
     try {
-      await queryClient.invalidateQueries({ queryKey: ['trainer-payments', branchId, dateRange] });
+      await queryClient.invalidateQueries({ queryKey: ['trainer-payments'] });
       await refetch();
       toast.success("Trainer payment data refreshed");
     } catch (error) {
@@ -39,7 +46,9 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
   };
   
   const openPaymentDialog = (trainerId: string) => {
+    console.log("Opening payment dialog for trainer ID:", trainerId);
     const trainer = trainers.find(t => t.id === trainerId);
+    console.log("Selected trainer:", trainer);
     setSelectedTrainerId(trainerId);
     setSelectedScheduleIds(trainer?.scheduleIds || []);
     setDialogOpen(true);
@@ -61,6 +70,9 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
       </Card>
     );
   }
+
+  console.log("TrainerReportsTab: Rendering with trainers:", trainers);
+  console.log("TrainerReportsTab: Date range:", dateRange);
 
   return (
     <div className="space-y-4">

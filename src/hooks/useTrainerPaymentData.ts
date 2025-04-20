@@ -1,4 +1,3 @@
-
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -53,8 +52,11 @@ export function useTrainerPaymentData(branchId?: string, dateRange?: { from: Dat
 
         // For each trainer, get their classes and calculate earnings
         const trainerPayments = await Promise.all(trainers.map(async (trainer) => {
-          // Get class schedules for this trainer within date range
-          const { data: schedules, error: schedulesError } = await supabase
+          console.log(`Processing trainer: ${trainer.first_name} ${trainer.last_name} (${trainer.id})`);
+          
+          // Get ALL class schedules for this trainer, not just within date range
+          // We'll filter by date range later if needed, but first we need to get all schedules
+          const { data: allSchedules, error: schedulesError } = await supabase
             .from('class_schedules')
             .select(`
               id,
@@ -67,16 +69,30 @@ export function useTrainerPaymentData(branchId?: string, dateRange?: { from: Dat
                 trainer_fee_value
               )
             `)
-            .eq('trainer_id', trainer.id)
-            .gte('start_time', fromDate || '')
-            .lte('start_time', toDate || '');
+            .eq('trainer_id', trainer.id);
 
           if (schedulesError) {
             console.error(`Error fetching schedules for trainer ${trainer.id}:`, schedulesError);
             return null;
           }
 
-          if (!schedules || schedules.length === 0) {
+          console.log(`Trainer ${trainer.first_name} has ${allSchedules?.length || 0} total schedules`);
+
+          // Filter schedules by date range only for financial calculations
+          // But keep the total count of all schedules for the classesCount
+          const schedules = allSchedules?.filter(schedule => {
+            if (!fromDate || !toDate) return true;
+            const scheduleDate = new Date(schedule.start_time);
+            return scheduleDate >= new Date(fromDate) && scheduleDate <= new Date(toDate);
+          }) || [];
+
+          // Keep all schedule IDs for reference, but only use filtered ones for financial calculations
+          const allScheduleIds = allSchedules?.map(s => s.id) || [];
+          const filteredScheduleIds = schedules.map(s => s.id);
+
+          console.log(`Trainer ${trainer.first_name} has ${schedules.length} schedules in the date range`);
+          
+          if (!allSchedules || allSchedules.length === 0) {
             // Return basic trainer info with zero values if they have no schedules
             return {
               id: trainer.id,
@@ -91,10 +107,7 @@ export function useTrainerPaymentData(branchId?: string, dateRange?: { from: Dat
             };
           }
 
-          // Collect schedule IDs
-          const scheduleIds = schedules.map(s => s.id);
-
-          // Get all bookings for these schedules
+          // Get all bookings for the filtered schedules for financial calculations
           const { data: bookings, error: bookingsError } = await supabase
             .from('bookings')
             .select(`
@@ -103,31 +116,53 @@ export function useTrainerPaymentData(branchId?: string, dateRange?: { from: Dat
               class_schedule_id,
               payment_status
             `)
-            .in('class_schedule_id', scheduleIds);
+            .in('class_schedule_id', filteredScheduleIds.length > 0 ? filteredScheduleIds : ['no-schedules']);
 
           if (bookingsError) {
             console.error(`Error fetching bookings for trainer ${trainer.id}:`, bookingsError);
             return null;
           }
 
-          // Get invoice items for these bookings to calculate revenue
-          const bookingIds = bookings?.map(b => b.id) || [];
+          console.log(`Trainer ${trainer.first_name} has ${bookings?.length || 0} bookings in the filtered schedules`);
+
+          // Initialize class details tracking for all schedules
+          const classDetailsMap = new Map<string, TrainerClassDetail>();
           
-          // If no bookings, return trainer with zero financial values
-          if (bookingIds.length === 0) {
+          // Group bookings by class schedule for class details
+          allSchedules.forEach(schedule => {
+            const scheduleBookings = bookings?.filter(b => b.class_schedule_id === schedule.id) || [];
+            const scheduleDate = new Date(schedule.start_time);
+            
+            // Add every schedule as a class detail, even if it has no bookings
+            classDetailsMap.set(schedule.id, {
+              scheduleId: schedule.id,
+              className: schedule.classes?.name || 'Unknown Class',
+              classDate: scheduleDate.toISOString(),
+              scheduleDate,
+              revenue: 0,
+              bookings: scheduleBookings.length,
+              isPaid: false
+            });
+          });
+
+          // If no bookings, return trainer with basic financial info but correct class count
+          if (!bookings || bookings.length === 0) {
             return {
               id: trainer.id,
               trainerName: `${trainer.first_name} ${trainer.last_name}`,
               totalEarned: 0,
               paid: 0,
               pending: 0,
-              classesCount: schedules.length,
+              classesCount: allSchedules.length, // Use total schedules count
               clients: 0,
-              scheduleIds,
-              classDetails: []
+              scheduleIds: allScheduleIds, // Keep all schedule IDs
+              classDetails: Array.from(classDetailsMap.values())
             };
           }
 
+          // Get invoice items for these bookings to calculate revenue
+          const bookingIds = bookings?.map(b => b.id) || [];
+          
           const { data: invoiceItems, error: itemsError } = await supabase
             .from('invoice_items')
             .select(`
@@ -141,31 +176,14 @@ export function useTrainerPaymentData(branchId?: string, dateRange?: { from: Dat
                 payment_date
               )
             `)
-            .in('booking_id', bookingIds);
+            .in('booking_id', bookingIds.length > 0 ? bookingIds : ['no-bookings']);
 
           if (itemsError) {
             console.error(`Error fetching invoice items for trainer ${trainer.id}:`, itemsError);
             return null;
           }
 
-          // Initialize class details tracking
-          const classDetailsMap = new Map<string, TrainerClassDetail>();
-          
-          // Group bookings by class schedule for class details
-          schedules.forEach(schedule => {
-            const scheduleBookings = bookings?.filter(b => b.class_schedule_id === schedule.id) || [];
-            const scheduleDate = new Date(schedule.start_time);
-            
-            classDetailsMap.set(schedule.id, {
-              scheduleId: schedule.id,
-              className: schedule.classes?.name || 'Unknown Class',
-              classDate: scheduleDate.toISOString(),
-              scheduleDate,
-              revenue: 0,
-              bookings: scheduleBookings.length,
-              isPaid: false
-            });
-          });
+          console.log(`Trainer ${trainer.first_name} has ${invoiceItems?.length || 0} invoice items`);
 
           // Calculate earnings for each invoice item based on class fee structure
           let totalEarned = 0;
@@ -191,7 +209,7 @@ export function useTrainerPaymentData(branchId?: string, dateRange?: { from: Dat
               let trainerCommission = 0;
               if (feeType === 'percentage') {
                 trainerCommission = invoiceAmount * (feeValue / 100);
-              } else if (feeType === 'fixed') {
+              } else {
                 trainerCommission = feeValue;
               }
               
@@ -221,15 +239,17 @@ export function useTrainerPaymentData(branchId?: string, dateRange?: { from: Dat
           const classDetails = Array.from(classDetailsMap.values())
             .sort((a, b) => a.scheduleDate.getTime() - b.scheduleDate.getTime());
           
+          console.log(`Final data for ${trainer.first_name}: ${allSchedules.length} classes, ${uniqueClientIds.size} clients`);
+          
           return {
             id: trainer.id,
             trainerName: `${trainer.first_name} ${trainer.last_name}`,
             totalEarned,
             paid: paidAmount,
             pending: totalEarned - paidAmount,
-            classesCount: schedules.length,
+            classesCount: allSchedules.length, // Use the total number of schedules
             clients: uniqueClientIds.size,
-            scheduleIds,
+            scheduleIds: allScheduleIds, // Use all schedule IDs
             classDetails
           };
         }));
