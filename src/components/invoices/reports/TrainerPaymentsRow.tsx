@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import {
   TableCell,
@@ -38,11 +37,13 @@ export function TrainerPaymentsRow({ trainer, onMarkForPayment }: TrainerPayment
   const classesCount = trainer.classesCount || 0;
   const classDetailsShown = trainer.classDetails?.length || 0;
   
-  // Determine if we should show potential earnings based on whether any actual payments exist
+  // Always show potential amounts unless we have actual paid transactions
   const showPotentialAmounts = trainer.paid === 0;
   const earnings = showPotentialAmounts 
     ? (trainer.potentialEarnings || 0)
     : trainer.totalEarned;
+  
+  // Only show pending amounts if we have actual payments
   const pendingAmount = showPotentialAmounts 
     ? (trainer.potentialEarnings || 0) 
     : trainer.pending;
@@ -56,11 +57,7 @@ export function TrainerPaymentsRow({ trainer, onMarkForPayment }: TrainerPayment
         <TableCell className="flex items-center gap-2">
           {hasClassDetails && (
             <Button variant="ghost" size="sm" className="p-0 h-6 w-6">
-              {expanded ? (
-                <ChevronUp className="h-4 w-4" />
-              ) : (
-                <ChevronDown className="h-4 w-4" />
-              )}
+              {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             </Button>
           )}
           <span className="font-medium">{trainer.trainerName}</span>

@@ -54,7 +54,7 @@ export function formatTrainerPaymentData(
     }
   });
 
-  // Calculate potential earnings and other class details
+  // Calculate potential earnings and class details
   let totalPotentialEarnings = 0;
 
   const classDetails: TrainerClassDetail[] = allSchedules.map(schedule => {
@@ -82,21 +82,17 @@ export function formatTrainerPaymentData(
       revenue: revenueDetails.revenue,
       potentialRevenue: revenueDetails.potentialRevenue,
       bookings: scheduleBookings.length,
-      isPaid: revenueDetails.isPaid
+      isPaid: totalPaid > 0 && revenueDetails.isPaid // Only mark as paid if we have actual payments
     };
   });
-
-  // Total earned should just be the sum of paid + pending in the system
-  const actualPayments = totalPaid + totalPending;
-  const totalEarned = actualPayments > 0 ? actualPayments : totalPotentialEarnings;
 
   return {
     id: trainer.id,
     trainerName: `${trainer.first_name} ${trainer.last_name}`,
-    totalEarned,
+    totalEarned: totalPotentialEarnings, // Default to potential earnings
     paid: totalPaid,
-    pending: totalPaid > 0 ? totalPending : 0, // If any payment exists, show accurate pending
-    potentialEarnings: totalPotentialEarnings, // Always track potential earnings
+    pending: totalPaid > 0 ? totalPending : 0, // Only show pending if we have actual payments
+    potentialEarnings: totalPotentialEarnings,
     classesCount: allSchedules.length,
     clients: uniqueClientIds.size,
     lastPaymentDate,

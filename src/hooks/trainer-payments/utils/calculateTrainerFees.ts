@@ -1,4 +1,3 @@
-
 import { Schedule, InvoiceItem, Booking } from "../types";
 
 export function calculateTrainerFee(
@@ -63,7 +62,14 @@ export function calculateClassRevenue(
   bookingsCount: number;
   potentialRevenue: number;
 } {
-  if (!schedule.classes) return { revenue: 0, isPaid: false, bookingsCount: 0, potentialRevenue: 0 };
+  if (!schedule.classes) {
+    return { 
+      revenue: 0, 
+      isPaid: false, 
+      bookingsCount: 0, 
+      potentialRevenue: 0 
+    };
+  }
 
   // Get fee values from the class
   const courseFee = schedule.classes.course_fee || 0;
@@ -81,35 +87,28 @@ export function calculateClassRevenue(
   // Calculate total potential revenue based on bookings count
   const potentialRevenue = bookingsCount * potentialRevenuePerBooking;
 
-  // Calculate actual paid revenue from invoice items
-  let actualRevenue = 0;
-  let isPaid = false;
-
   // Filter out cancelled invoices
   const validInvoiceItems = invoiceItems.filter(item => 
     item.invoices && item.invoices.status !== 'cancelled'
   );
+
+  // Calculate actual paid revenue from invoice items
+  let actualRevenue = 0;
   
-  // Check if any invoices are paid
-  if (validInvoiceItems.length > 0) {
-    isPaid = validInvoiceItems.some(item => item.invoices?.status === 'paid');
-    
-    // Calculate the actual revenue based on paid items and trainer fee configuration
-    for (const item of validInvoiceItems) {
-      if (item.invoices?.status === 'paid') {
-        if (trainerFeeType === 'percentage') {
-          actualRevenue += (item.amount || 0) * (trainerFeeValue / 100);
-        } else {
-          // For fixed fee, we add the full fee for each paid invoice item
-          actualRevenue += trainerFeeValue;
-        }
+  // Calculate revenue only from paid invoice items
+  for (const item of validInvoiceItems) {
+    if (item.invoices?.status === 'paid') {
+      if (trainerFeeType === 'percentage') {
+        actualRevenue += (item.amount || 0) * (trainerFeeValue / 100);
+      } else {
+        actualRevenue += trainerFeeValue;
       }
     }
   }
 
   return {
     revenue: actualRevenue,
-    isPaid,
+    isPaid: actualRevenue > 0, // Only mark as paid if we have actual revenue
     bookingsCount,
     potentialRevenue
   };
