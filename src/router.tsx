@@ -6,6 +6,7 @@ import { trainerRoutes } from "./routes/trainerRoutes";
 import { customerRoutes } from "./routes/customerRoutes";
 import Dashboard from "./pages/Dashboard";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
+import Branches from "./pages/Branches";
 
 // Create a dashboard route that ONLY works for staff (admin and trainer) users
 const dashboardRoute = {
@@ -13,6 +14,16 @@ const dashboardRoute = {
   element: (
     <ProtectedRoute requiredRole="trainer">
       <Dashboard />
+    </ProtectedRoute>
+  ),
+};
+
+// Create a branches route that ONLY works for admin users
+const branchesRoute = {
+  path: "/branches",
+  element: (
+    <ProtectedRoute requiredRole="admin">
+      <Branches />
     </ProtectedRoute>
   ),
 };
@@ -29,6 +40,7 @@ const router = createBrowserRouter([
     ),
   })),
   dashboardRoute, // Only accessible to trainers and admins (due to requiredRole="trainer")
+  branchesRoute, // Only accessible to admins
   ...trainerRoutes,
   ...customerRoutes, // Customer routes with handler-specific layouts
 ]);
