@@ -36,6 +36,9 @@ export function TrainerPaymentsTable({ trainers, onMarkForPayment }: TrainerPaym
   // Check if there are any trainers with classes
   const trainersWithClasses = trainers.filter(t => t.classesCount > 0);
   
+  // Check if any trainers have actual paid amounts
+  const anyActualPayments = trainers.some(t => t.paid > 0);
+  
   if (!trainers || trainers.length === 0) {
     return (
       <Card>
@@ -57,12 +60,9 @@ export function TrainerPaymentsTable({ trainers, onMarkForPayment }: TrainerPaym
     );
   }
 
-  // Check if any payments have been made yet
-  const anyPaymentsMade = trainers.some(t => t.paid > 0);
-
   return (
     <div className="space-y-4">
-      {!anyPaymentsMade && (
+      {!anyActualPayments && (
         <Alert variant="default" className="bg-blue-50 border-blue-200">
           <Info className="h-4 w-4 text-blue-600" />
           <AlertDescription className="text-blue-800">

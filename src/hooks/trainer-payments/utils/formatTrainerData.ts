@@ -20,6 +20,9 @@ export function formatTrainerPaymentData(
   const totalPending = trainerPayments
     .filter(payment => payment.status === 'pending')
     .reduce((sum, payment) => sum + (payment.amount || 0), 0);
+    
+  // Determine if there are any actual payments in the system
+  const hasActualPayments = trainerPayments && trainerPayments.length > 0;
 
   // Find last payment date from actual payments
   let lastPaymentDate: string | undefined;
@@ -74,6 +77,11 @@ export function formatTrainerPaymentData(
     // Add to total potential earnings
     totalPotentialEarnings += revenueDetails.potentialRevenue;
 
+    // A class is only considered paid if:
+    // 1. We have actual paid trainer payments in the system
+    // 2. The revenue calculation determined that this specific class has been paid
+    const classIsPaid = totalPaid > 0 && revenueDetails.isPaid;
+
     return {
       scheduleId: schedule.id,
       className: schedule.classes?.name || 'Unknown Class',
@@ -82,16 +90,17 @@ export function formatTrainerPaymentData(
       revenue: revenueDetails.revenue,
       potentialRevenue: revenueDetails.potentialRevenue,
       bookings: scheduleBookings.length,
-      isPaid: totalPaid > 0 && revenueDetails.isPaid // Only mark as paid if we have actual payments
+      isPaid: classIsPaid // Only true if we have actual payments and this class is paid
     };
   });
 
   return {
     id: trainer.id,
     trainerName: `${trainer.first_name} ${trainer.last_name}`,
-    totalEarned: totalPotentialEarnings, // Default to potential earnings
+    totalEarned: hasActualPayments ? totalPaid : totalPotentialEarnings, // Show actual earnings if we have payments, otherwise potential
     paid: totalPaid,
-    pending: totalPaid > 0 ? totalPending : 0, // Only show pending if we have actual payments
+    // Only show pending if we have actual payments, otherwise show potential earnings
+    pending: hasActualPayments ? totalPending : totalPotentialEarnings,
     potentialEarnings: totalPotentialEarnings,
     classesCount: allSchedules.length,
     clients: uniqueClientIds.size,

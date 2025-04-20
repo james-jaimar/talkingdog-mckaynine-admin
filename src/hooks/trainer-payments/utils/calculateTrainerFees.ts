@@ -1,3 +1,4 @@
+
 import { Schedule, InvoiceItem, Booking } from "../types";
 
 export function calculateTrainerFee(
@@ -106,9 +107,13 @@ export function calculateClassRevenue(
     }
   }
 
+  // Important: A class is only considered paid if there is actual revenue
+  // AND if there are valid invoice items that are paid
+  const hasPaidInvoices = validInvoiceItems.some(item => item.invoices?.status === 'paid');
+
   return {
     revenue: actualRevenue,
-    isPaid: actualRevenue > 0, // Only mark as paid if we have actual revenue
+    isPaid: actualRevenue > 0 && hasPaidInvoices, // Only mark as paid if we have actual revenue AND paid invoices
     bookingsCount,
     potentialRevenue
   };

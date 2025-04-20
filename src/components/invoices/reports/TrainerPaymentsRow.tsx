@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import {
   TableCell,
@@ -37,8 +38,11 @@ export function TrainerPaymentsRow({ trainer, onMarkForPayment }: TrainerPayment
   const classesCount = trainer.classesCount || 0;
   const classDetailsShown = trainer.classDetails?.length || 0;
   
+  // Check if there are any actual paid payments
+  const hasActualPayments = trainer.paid > 0;
+  
   // Always show potential amounts unless we have actual paid transactions
-  const showPotentialAmounts = trainer.paid === 0;
+  const showPotentialAmounts = !hasActualPayments;
   const earnings = showPotentialAmounts 
     ? (trainer.potentialEarnings || 0)
     : trainer.totalEarned;
