@@ -1,38 +1,33 @@
 
-import { Table, TableBody } from "@/components/ui/table";
-import { BookingRow } from "./BookingRow";
 import { useClassHandlers } from "./hooks/useClassHandlers";
 import { useScheduleDates } from "./hooks/useScheduleDates";
 import { useHandlerForm } from "./hooks/useHandlerForm";
-import { useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
-import { AttendanceModal } from "./attendance/AttendanceModal";
 import { useAttendanceModal } from "./hooks/useAttendanceModal";
 import { useRemoveHandler } from "./hooks/useRemoveHandler";
-import { RemoveHandlerDialog } from "./RemoveHandlerDialog";
-import { AttendanceStatusCell } from "./attendance/AttendanceStatusCell";
-import { ClassHandlersTableHeader } from "./table/ClassHandlersTableHeader";
-import { Loader2, Users, CalendarRange } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { BatchAttendanceModal } from "./attendance/BatchAttendanceModal";
 import { useIsMobile } from "@/hooks/useIsMobile";
+import { RemoveHandlerDialog } from "./RemoveHandlerDialog";
+import { AttendanceModal } from "./attendance/AttendanceModal";
+import { AttendanceStatusCell } from "./attendance/AttendanceStatusCell";
+import { BatchAttendanceModal } from "./attendance/BatchAttendanceModal";
+import { TableActions } from "./table-actions/TableActions";
+import { HandlersTableContainer } from "./table/HandlersTableContainer";
+import { MobileHandlersList } from "./mobile/MobileHandlersList";
+import { Loader2 } from "lucide-react";
 
 interface ClassHandlersTableProps {
   classId: string;
 }
 
 export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
-  const queryClient = useQueryClient();
   const [initialLoadAttempted, setInitialLoadAttempted] = useState<boolean>(false);
   const [batchAttendanceOpen, setBatchAttendanceOpen] = useState(false);
   const isMobile = useIsMobile();
   
-  // Use our custom hooks
   const { data: handlers, isLoading: isLoadingHandlers, refetch, error } = useClassHandlers(classId);
   const { data: scheduleDates, isLoading: isLoadingDates } = useScheduleDates(classId);
   const { editingBookingId, formData, handleInputChange, startEditing, saveChanges, removeHandler } = useHandlerForm();
   
-  // Use the enhanced hooks
   const { 
     openRemoveDialog, 
     setOpenRemoveDialog, 
@@ -53,7 +48,6 @@ export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
     handleAttendanceUpdated
   } = useAttendanceModal(classId);
 
-  // Track if we've attempted the initial load
   useEffect(() => {
     if (!initialLoadAttempted) {
       refetch().finally(() => setInitialLoadAttempted(true));
@@ -61,21 +55,12 @@ export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
     }
   }, [refetch, initialLoadAttempted]);
 
-  // Ensure the component refetches when it mounts
   useEffect(() => {
-    // Immediate refetch on mount
     refetch();
-    
-    // Set up a periodic refresh
     const refreshInterval = setInterval(() => {
-      refetch().catch(err => {
-        console.error("Error refreshing class handlers:", err);
-      });
-    }, 10000); // Refresh every 10 seconds
-    
-    return () => {
-      clearInterval(refreshInterval);
-    };
+      refetch().catch(console.error);
+    }, 10000);
+    return () => clearInterval(refreshInterval);
   }, [refetch]);
 
   const confirmRemove = async () => {
@@ -93,24 +78,19 @@ export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
     }
   };
 
-  // Render attendance status cell
-  const renderAttendanceStatus = (booking: any, date: string) => {
-    return (
-      <AttendanceStatusCell
-        booking={booking}
-        date={date}
-        onOpenAttendanceModal={handleOpenAttendanceModal}
-      />
-    );
-  };
+  const renderAttendanceStatus = (booking: any, date: string) => (
+    <AttendanceStatusCell
+      booking={booking}
+      date={date}
+      onOpenAttendanceModal={handleOpenAttendanceModal}
+    />
+  );
 
-  // Handle batch attendance updated
   const handleBatchAttendanceUpdated = () => {
     refetch();
     setBatchAttendanceOpen(false);
   };
 
-  // If there's an error loading, show error state
   if (error) {
     return (
       <div className="text-center p-6">
@@ -145,87 +125,34 @@ export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
     );
   }
 
-  // Sort dates for consistency
-  const sortedDates = scheduleDates ? [...scheduleDates].sort((a, b) => new Date(a).getTime() - new Date(b).getTime()) : [];
+  const sortedDates = scheduleDates ? [...scheduleDates].sort((a, b) => 
+    new Date(a).getTime() - new Date(b).getTime()
+  ) : [];
 
   return (
     <>
-      <div className="mb-4 flex justify-end">
-        <Button 
-          onClick={() => setBatchAttendanceOpen(true)}
-          className="flex items-center gap-2"
-          variant="outline"
-        >
-          <CalendarRange className="h-4 w-4" />
-          <span className="hidden sm:inline">Batch Attendance</span>
-          <span className="sm:hidden">Attendance</span>
-        </Button>
-      </div>
+      <TableActions 
+        onBatchAttendanceOpen={() => setBatchAttendanceOpen(true)}
+        isMobile={isMobile}
+      />
       
-      <div className={`overflow-x-auto ${isMobile ? "hidden sm:block" : ""}`}>
-        <Table>
-          <ClassHandlersTableHeader scheduleDates={sortedDates} />
-          <TableBody>
-            {handlers.map(booking => {
-              const isEditing = editingBookingId === booking.id;
-              const bookingData = formData[booking.id] || booking;
-              
-              return (
-                <BookingRow
-                  key={booking.id}
-                  booking={booking}
-                  isEditing={isEditing}
-                  bookingData={bookingData}
-                  handleInputChange={handleInputChange}
-                  startEditing={startEditing}
-                  saveChanges={(bookingId) => {
-                    saveChanges(bookingId, classId);
-                  }}
-                  removeHandler={(bookingId) => handleRemove(bookingId)}
-                  scheduleDates={sortedDates}
-                  renderAttendanceStatus={renderAttendanceStatus}
-                />
-              );
-            })}
-          </TableBody>
-        </Table>
-      </div>
+      <HandlersTableContainer 
+        handlers={handlers}
+        editingBookingId={editingBookingId}
+        formData={formData}
+        handleInputChange={handleInputChange}
+        startEditing={startEditing}
+        saveChanges={saveChanges}
+        handleRemove={handleRemove}
+        scheduleDates={sortedDates}
+        renderAttendanceStatus={renderAttendanceStatus}
+      />
 
-      {/* Mobile view simplified list */}
-      <div className="sm:hidden">
-        <div className="text-sm font-medium text-center mb-3 text-gray-500">
-          Use the Batch Attendance button above for easier mobile attendance tracking
-        </div>
-        {handlers.map(booking => {
-          const handler = booking.clients;
-          const dog = booking.dogs;
-          
-          return (
-            <div key={booking.id} className="border rounded-md p-3 mb-2">
-              <div className="font-medium">{handler?.first_name} {handler?.last_name}</div>
-              <div className="text-sm text-gray-500">{dog?.name} ({dog?.breed})</div>
-              <div className="flex justify-between items-center mt-2">
-                <div className="text-xs">
-                  {booking.computed_payment_status === 'paid' ? (
-                    <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full">Paid</span>
-                  ) : (
-                    <span className="px-2 py-1 bg-red-100 text-red-800 rounded-full">Unpaid</span>
-                  )}
-                </div>
-                <Button 
-                  size="sm" 
-                  variant="outline"
-                  onClick={() => startEditing(booking)}
-                >
-                  Edit
-                </Button>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      <MobileHandlersList 
+        handlers={handlers}
+        startEditing={startEditing}
+      />
 
-      {/* Remove Handler Dialog */}
       <RemoveHandlerDialog
         open={openRemoveDialog}
         onOpenChange={setOpenRemoveDialog}
@@ -233,7 +160,6 @@ export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
         isLoading={isRemoving}
       />
 
-      {/* Individual Attendance Modal */}
       {selectedBooking && selectedDate && (
         <AttendanceModal
           open={attendanceModalOpen}
@@ -246,7 +172,6 @@ export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
         />
       )}
       
-      {/* Batch Attendance Modal */}
       <BatchAttendanceModal
         open={batchAttendanceOpen}
         onOpenChange={setBatchAttendanceOpen}
