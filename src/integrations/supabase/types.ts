@@ -883,6 +883,74 @@ export type Database = {
         }
         Relationships: []
       }
+      trainer_payments: {
+        Row: {
+          amount: number
+          booking_id: string | null
+          class_schedule_id: string
+          created_at: string
+          id: string
+          invoice_item_id: string | null
+          payment_date: string | null
+          status: string
+          trainer_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          booking_id?: string | null
+          class_schedule_id: string
+          created_at?: string
+          id?: string
+          invoice_item_id?: string | null
+          payment_date?: string | null
+          status?: string
+          trainer_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          booking_id?: string | null
+          class_schedule_id?: string
+          created_at?: string
+          id?: string
+          invoice_item_id?: string | null
+          payment_date?: string | null
+          status?: string
+          trainer_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trainer_payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trainer_payments_class_schedule_id_fkey"
+            columns: ["class_schedule_id"]
+            isOneToOne: false
+            referencedRelation: "class_schedules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trainer_payments_invoice_item_id_fkey"
+            columns: ["invoice_item_id"]
+            isOneToOne: false
+            referencedRelation: "invoice_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trainer_payments_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "trainers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trainers: {
         Row: {
           avatar_url: string | null
@@ -941,6 +1009,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calculate_trainer_payment: {
+        Args: { p_booking_id: string }
+        Returns: number
+      }
       check_user_role: {
         Args: { required_role: string }
         Returns: boolean

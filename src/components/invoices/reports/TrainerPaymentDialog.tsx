@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import {
   Dialog,
@@ -24,6 +23,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { ExtendedBadge } from "@/components/ui/badge-variants";
+import { useMarkTrainerPaymentsPaid } from "@/hooks/useMarkTrainerPaymentsPaid";
 
 interface TrainerClassData {
   id: string;
@@ -213,30 +213,25 @@ export function TrainerPaymentDialog({
     }
   };
 
+  const markAsPaid = useMarkTrainerPaymentsPaid();
+  
   const handleMarkAsPaid = async () => {
     if (selectedClasses.length === 0) {
       toast.warning("No classes selected for payment");
       return;
     }
     
-    setSaving(true);
     try {
-      // Implement the marking of payments here
-      // This is a placeholder - in a real implementation you would update the invoice status
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      toast.success(`Marked ${selectedClasses.length} classes as paid for ${trainerName}`);
-      
-      // Invalidate relevant queries to refresh the UI
-      queryClient.invalidateQueries({ queryKey: ['trainer-payments', branchId] });
+      await markAsPaid.mutateAsync({
+        trainerId,
+        scheduleIds: selectedClasses
+      });
       
       // Close the dialog
       onOpenChange(false);
     } catch (error) {
       console.error("Error marking payments:", error);
       toast.error("Failed to update payment status");
-    } finally {
-      setSaving(false);
     }
   };
 
