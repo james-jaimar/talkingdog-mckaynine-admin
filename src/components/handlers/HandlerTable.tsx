@@ -57,7 +57,7 @@ export function HandlerTable({
     <div className="rounded-md border">
       <div className="relative overflow-x-auto">
         <Table>
-          <TableHeader />
+          <HandlerTableHeader /> {/* Updated from TableHeader */}
           <TableBody>
             {loading ? (
               <tr>
