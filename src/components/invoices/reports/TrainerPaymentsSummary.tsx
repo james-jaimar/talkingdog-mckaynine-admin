@@ -15,6 +15,7 @@ interface TrainerPaymentsSummaryProps {
     clients: number;
     lastPaymentDate?: string;
     scheduleIds?: string[];
+    invoicesCount?: number; // Made optional since we're using classesCount now
   }>;
   isLoading: boolean;
 }
@@ -47,7 +48,8 @@ export function TrainerPaymentsSummary({ trainers, isLoading }: TrainerPaymentsS
           open={dialogOpen}
           onOpenChange={setDialogOpen}
           trainerId={selectedTrainerId}
-          scheduleIds={trainers.find(t => t.id === selectedTrainerId)?.scheduleIds}
+          dateRange={{ from: new Date(), to: new Date() }} // Provide a default date range
+          branchId={undefined} // Set to undefined as default
         />
       )}
     </div>

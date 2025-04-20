@@ -1,13 +1,13 @@
 
 import { useState } from "react";
 import { useTrainerPayments } from "@/hooks/useTrainerPayments";
-import { TrainerPaymentsTable } from "./TrainerPaymentsTable";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, RefreshCw } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { TrainerPaymentDialog } from "./TrainerPaymentDialog";
+import { TrainerPaymentsTable } from "./TrainerPaymentsTable";
 
 interface TrainerReportsTabProps {
   dateRange: { from: Date; to: Date };
@@ -81,13 +81,15 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
         onMarkForPayment={openPaymentDialog}
       />
       
-      <TrainerPaymentDialog 
-        open={dialogOpen} 
-        onOpenChange={setDialogOpen} 
-        trainerId={selectedTrainerId} 
-        branchId={branchId}
-        dateRange={dateRange}
-      />
+      {selectedTrainerId && (
+        <TrainerPaymentDialog 
+          open={dialogOpen} 
+          onOpenChange={setDialogOpen} 
+          trainerId={selectedTrainerId} 
+          branchId={branchId}
+          dateRange={dateRange}
+        />
+      )}
     </div>
   );
 }

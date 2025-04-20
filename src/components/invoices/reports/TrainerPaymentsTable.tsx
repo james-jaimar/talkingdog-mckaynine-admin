@@ -10,7 +10,7 @@ import {
 import { ExtendedBadge } from "@/components/ui/badge-variants";
 import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/formatters";
-import { DollarSign, Edit } from "lucide-react";
+import { DollarSign } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
 interface TrainerPaymentsTableProps {
@@ -20,10 +20,11 @@ interface TrainerPaymentsTableProps {
     totalEarned: number;
     paid: number;
     pending: number;
-    invoicesCount: number;
-    classesCount?: number;
-    clients?: number;
+    classesCount: number;
+    clients: number;
     lastPaymentDate?: string;
+    invoicesCount?: number; // Made optional
+    scheduleIds?: string[];
   }>;
   onMarkForPayment: (trainerId: string) => void;
 }

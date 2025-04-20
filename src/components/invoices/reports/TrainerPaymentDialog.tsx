@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import {
   Dialog,
@@ -40,6 +39,7 @@ interface TrainerPaymentDialogProps {
   trainerId: string | null;
   branchId?: string;
   dateRange: { from: Date; to: Date };
+  scheduleIds?: string[]; // Added this prop to match usage
 }
 
 export function TrainerPaymentDialog({
@@ -48,6 +48,7 @@ export function TrainerPaymentDialog({
   trainerId,
   branchId,
   dateRange,
+  scheduleIds,
 }: TrainerPaymentDialogProps) {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -82,29 +83,42 @@ export function TrainerPaymentDialog({
         setTrainerName(`${trainerData.first_name} ${trainerData.last_name}`);
       }
       
-      // Get classes taught by this trainer
-      const { data: schedules } = await supabase
-        .from('class_schedules')
-        .select(`
-          id,
-          classes:class_id (
+      // If scheduleIds were provided, use them, otherwise query for schedules
+      const scheduleIdsToUse = scheduleIds || [];
+
+      // If no scheduleIds were provided or the array is empty, fetch them
+      if (scheduleIdsToUse.length === 0) {
+        // Get classes taught by this trainer
+        const { data: schedules } = await supabase
+          .from('class_schedules')
+          .select(`
             id,
-            name,
-            trainer_fee_value, 
-            trainer_fee_type
-          )
-        `)
-        .eq('trainer_id', trainerId);
+            classes:class_id (
+              id,
+              name,
+              trainer_fee_value, 
+              trainer_fee_type
+            )
+          `)
+          .eq('trainer_id', trainerId);
+        
+        if (!schedules || schedules.length === 0) {
+          setTrainerClasses([]);
+          setLoading(false);
+          return;
+        }
+        
+        // Use the fetched schedule IDs
+        scheduleIdsToUse.push(...schedules.map(s => s.id));
+      }
       
-      if (!schedules || schedules.length === 0) {
+      if (scheduleIdsToUse.length === 0) {
         setTrainerClasses([]);
         setLoading(false);
         return;
       }
       
       // Get all bookings for these schedules
-      const scheduleIds = schedules.map(s => s.id);
-      
       const { data: bookings } = await supabase
         .from('bookings')
         .select(`
@@ -122,7 +136,7 @@ export function TrainerPaymentDialog({
             )
           )
         `)
-        .in('class_schedule_id', scheduleIds);
+        .in('class_schedule_id', scheduleIdsToUse);
       
       if (!bookings || bookings.length === 0) {
         setTrainerClasses([]);

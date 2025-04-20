@@ -56,9 +56,9 @@ export function useTrainerPayments(branchId: string | undefined) {
                 totalEarned: 0,
                 paid: 0,
                 pending: 0,
-                invoicesCount: 0,
                 classesCount: 0,
-                clients: 0
+                clients: 0,
+                invoicesCount: 0 // Add this to match the expected interface
               };
             }
             
@@ -84,9 +84,10 @@ export function useTrainerPayments(branchId: string | undefined) {
                 totalEarned: 0,
                 paid: 0,
                 pending: 0,
-                invoicesCount: 0,
                 classesCount: schedules.length,
-                clients: uniqueClients
+                clients: uniqueClients,
+                invoicesCount: 0, // Add this to match the expected interface
+                scheduleIds // Add the schedule IDs for use in the payment dialog
               };
             }
             
@@ -157,8 +158,8 @@ export function useTrainerPayments(branchId: string | undefined) {
               classesCount: schedules.length,
               clients: uniqueClients,
               lastPaymentDate,
-              // Include schedule IDs for payment marking
-              scheduleIds
+              invoicesCount: invoiceItems?.length || 0, // Add this to match the expected interface
+              scheduleIds // Add the schedule IDs for use in the payment dialog
             };
           } catch (err) {
             console.error(`Error processing payment data for trainer ${trainer.id}:`, err);
