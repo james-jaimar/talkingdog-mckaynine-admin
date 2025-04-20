@@ -7,6 +7,8 @@ import { customerRoutes } from "./routes/customerRoutes";
 import Dashboard from "./pages/Dashboard";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import Branches from "./pages/Branches";
+import UnpaidHandlers from "./pages/UnpaidHandlers";
+import NotFound from "./pages/NotFound";
 
 // Create a dashboard route that ONLY works for staff (admin and trainer) users
 const dashboardRoute = {
@@ -28,6 +30,22 @@ const branchesRoute = {
   ),
 };
 
+// Create an unpaid-handlers route that ONLY works for admin users
+const unpaidHandlersRoute = {
+  path: "/unpaid-handlers",
+  element: (
+    <ProtectedRoute requiredRole="admin">
+      <UnpaidHandlers />
+    </ProtectedRoute>
+  ),
+};
+
+// Create a 404 route for missing pages
+const notFoundRoute = {
+  path: "*", // Catch all unmatched routes
+  element: <NotFound />,
+};
+
 // Combine all routes
 const router = createBrowserRouter([
   ...publicRoutes,
@@ -41,8 +59,10 @@ const router = createBrowserRouter([
   })),
   dashboardRoute, // Only accessible to trainers and admins (due to requiredRole="trainer")
   branchesRoute, // Only accessible to admins
+  unpaidHandlersRoute, // Only accessible to admins
   ...trainerRoutes,
   ...customerRoutes, // Customer routes with handler-specific layouts
+  notFoundRoute, // Must be last to catch all other routes
 ]);
 
 export default router;
