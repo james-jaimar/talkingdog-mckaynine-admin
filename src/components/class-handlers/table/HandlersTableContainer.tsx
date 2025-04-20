@@ -44,7 +44,7 @@ export function HandlersTableContainer({
                 bookingData={bookingData}
                 handleInputChange={handleInputChange}
                 startEditing={startEditing}
-                saveChanges={(bookingId) => saveChanges(bookingId)}
+                saveChanges={saveChanges}
                 removeHandler={handleRemove}
                 scheduleDates={scheduleDates}
                 renderAttendanceStatus={renderAttendanceStatus}

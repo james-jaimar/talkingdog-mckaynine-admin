@@ -26,7 +26,15 @@ export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
   
   const { data: handlers, isLoading: isLoadingHandlers, refetch, error } = useClassHandlers(classId);
   const { data: scheduleDates, isLoading: isLoadingDates } = useScheduleDates(classId);
-  const { editingBookingId, formData, handleInputChange, startEditing, saveChanges, removeHandler } = useHandlerForm();
+  const { 
+    editingBookingId, 
+    formData, 
+    handleInputChange, 
+    startEditing, 
+    saveChanges, 
+    removeHandler,
+    initializeWithClassId
+  } = useHandlerForm();
   
   const { 
     openRemoveDialog, 
@@ -48,6 +56,11 @@ export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
     handleAttendanceUpdated
   } = useAttendanceModal(classId);
 
+  // Initialize the form handler with the current class ID
+  useEffect(() => {
+    initializeWithClassId(classId);
+  }, [classId]);
+
   useEffect(() => {
     if (!initialLoadAttempted) {
       refetch().finally(() => setInitialLoadAttempted(true));
@@ -67,7 +80,7 @@ export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
     if (bookingToRemove) {
       setIsRemoving(true);
       try {
-        await removeHandler(bookingToRemove, classId);
+        await removeHandler(bookingToRemove);
       } catch (error) {
         console.error("Error removing handler:", error);
       } finally {

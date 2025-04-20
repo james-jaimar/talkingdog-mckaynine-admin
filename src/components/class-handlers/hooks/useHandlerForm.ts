@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -9,6 +10,7 @@ export function useHandlerForm() {
   const [editingBookingId, setEditingBookingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<Record<string, any>>({});
   const queryClient = useQueryClient();
+  const [currentClassId, setCurrentClassId] = useState<string | null>(null);
 
   const handleInputChange = (bookingId: string, field: string, value: any) => {
     setFormData(prev => ({
@@ -35,7 +37,21 @@ export function useHandlerForm() {
     }));
   };
 
-  const saveChanges = async (bookingId: string, classId: string) => {
+  // Store the class ID for use in save operations
+  const initializeWithClassId = (classId: string) => {
+    setCurrentClassId(classId);
+  };
+
+  const saveChanges = async (bookingId: string) => {
+    if (!currentClassId) {
+      toast({
+        title: "Error",
+        description: "Class ID not found",
+        variant: "destructive"
+      });
+      return Promise.reject(new Error("Class ID not found"));
+    }
+    
     try {
       const { error } = await supabase
         .from('bookings')
@@ -52,7 +68,7 @@ export function useHandlerForm() {
       setEditingBookingId(null);
       
       // Invalidate the query to refresh data
-      queryClient.invalidateQueries({ queryKey: ['class-handlers', classId] });
+      queryClient.invalidateQueries({ queryKey: ['class-handlers', currentClassId] });
       
       return Promise.resolve();
     } catch (error) {
@@ -67,7 +83,16 @@ export function useHandlerForm() {
     }
   };
 
-  const removeHandler = async (bookingId: string, classId: string) => {
+  const removeHandler = async (bookingId: string) => {
+    if (!currentClassId) {
+      toast({
+        title: "Error",
+        description: "Class ID not found",
+        variant: "destructive"
+      });
+      return Promise.reject(new Error("Class ID not found"));
+    }
+    
     try {
       // Delete the booking record
       const { error } = await supabase
@@ -83,7 +108,7 @@ export function useHandlerForm() {
       });
       
       // Invalidate the query to refresh data
-      queryClient.invalidateQueries({ queryKey: ['class-handlers', classId] });
+      queryClient.invalidateQueries({ queryKey: ['class-handlers', currentClassId] });
       
       return Promise.resolve();
     } catch (error) {
@@ -104,6 +129,7 @@ export function useHandlerForm() {
     handleInputChange,
     startEditing,
     saveChanges,
-    removeHandler
+    removeHandler,
+    initializeWithClassId
   };
 }
