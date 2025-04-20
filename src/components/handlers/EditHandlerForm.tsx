@@ -11,6 +11,8 @@ import { BasicInfoFields } from "./form/BasicInfoFields";
 import { ContactInfoFields } from "./form/ContactInfoFields";
 import { AddressFields } from "./form/AddressFields";
 import { NotesField } from "./form/NotesField";
+import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
+import { ConsentStatusSelect } from "./status/ConsentStatusSelect";
 
 interface HandlerData {
   id: string;
@@ -23,6 +25,8 @@ interface HandlerData {
   postal_code?: string;
   notes?: string;
   branch_id?: string;
+  uses_whatsapp_status: 'yes' | 'no' | 'not_marked';
+  social_media_consent_status: 'yes' | 'no' | 'not_marked';
 }
 
 interface EditHandlerFormProps {
@@ -48,6 +52,8 @@ export function EditHandlerForm({ handler, onSuccess }: EditHandlerFormProps) {
       postal_code: handler.postal_code || "",
       notes: handler.notes || "",
       branch_id: handler.branch_id || "",
+      uses_whatsapp_status: handler.uses_whatsapp_status,
+      social_media_consent_status: handler.social_media_consent_status,
     },
   });
 
@@ -67,6 +73,8 @@ export function EditHandlerForm({ handler, onSuccess }: EditHandlerFormProps) {
           postal_code: values.postal_code,
           notes: values.notes,
           branch_id: values.branch_id || null,
+          uses_whatsapp_status: values.uses_whatsapp_status,
+          social_media_consent_status: values.social_media_consent_status,
         })
         .eq("id", handler.id);
 
@@ -97,6 +105,36 @@ export function EditHandlerForm({ handler, onSuccess }: EditHandlerFormProps) {
         <ContactInfoFields control={form.control} branches={branches} />
         <AddressFields control={form.control} />
         <NotesField control={form.control} />
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="uses_whatsapp_status"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>WhatsApp Status</FormLabel>
+                <FormControl>
+                  <ConsentStatusSelect {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          
+          <FormField
+            control={form.control}
+            name="social_media_consent_status"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Social Media Consent</FormLabel>
+                <FormControl>
+                  <ConsentStatusSelect {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
 
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="outline" onClick={onSuccess}>

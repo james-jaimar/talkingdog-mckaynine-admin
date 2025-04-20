@@ -2,6 +2,7 @@
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Link } from "react-router-dom";
 import { ActionMenu } from "./ActionMenu";
+import { ConsentStatusBadge } from "../status/ConsentStatusBadge";
 
 interface HandlerTableRowProps {
   handler: {
@@ -11,6 +12,8 @@ interface HandlerTableRowProps {
     email: string;
     phone?: string;
     dogs?: any[];
+    uses_whatsapp_status: 'yes' | 'no' | 'not_marked';
+    social_media_consent_status: 'yes' | 'no' | 'not_marked';
   };
 }
 
@@ -28,7 +31,12 @@ export function HandlerTableRow({ handler }: HandlerTableRowProps) {
       <TableCell>{handler.email}</TableCell>
       <TableCell>{handler.phone || "—"}</TableCell>
       <TableCell>{handler.dogs?.length || 0}</TableCell>
-      <TableCell>—</TableCell>
+      <TableCell className="text-center">
+        <ConsentStatusBadge status={handler.uses_whatsapp_status} />
+      </TableCell>
+      <TableCell className="text-center">
+        <ConsentStatusBadge status={handler.social_media_consent_status} />
+      </TableCell>
       <TableCell className="text-right">
         <ActionMenu handler={handler} />
       </TableCell>

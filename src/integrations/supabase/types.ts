@@ -23,10 +23,8 @@ export type Database = {
           notes: string | null
           payment_status: string
           proof_of_payment: string | null
-          social_media_consent: boolean | null
           status: string
           updated_at: string
-          uses_whatsapp: boolean | null
           vaccination_verified: boolean | null
         }
         Insert: {
@@ -42,10 +40,8 @@ export type Database = {
           notes?: string | null
           payment_status?: string
           proof_of_payment?: string | null
-          social_media_consent?: boolean | null
           status?: string
           updated_at?: string
-          uses_whatsapp?: boolean | null
           vaccination_verified?: boolean | null
         }
         Update: {
@@ -61,10 +57,8 @@ export type Database = {
           notes?: string | null
           payment_status?: string
           proof_of_payment?: string | null
-          social_media_consent?: boolean | null
           status?: string
           updated_at?: string
-          uses_whatsapp?: boolean | null
           vaccination_verified?: boolean | null
         }
         Relationships: [
@@ -538,7 +532,9 @@ export type Database = {
           notes: string | null
           phone: string | null
           postal_code: string | null
+          social_media_consent_status: string
           updated_at: string
+          uses_whatsapp_status: string
         }
         Insert: {
           address?: string | null
@@ -552,7 +548,9 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           postal_code?: string | null
+          social_media_consent_status?: string
           updated_at?: string
+          uses_whatsapp_status?: string
         }
         Update: {
           address?: string | null
@@ -566,7 +564,9 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           postal_code?: string | null
+          social_media_consent_status?: string
           updated_at?: string
+          uses_whatsapp_status?: string
         }
         Relationships: [
           {

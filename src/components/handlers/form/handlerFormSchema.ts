@@ -12,6 +12,8 @@ export const handlerFormSchema = z.object({
   postal_code: z.string().optional(),
   notes: z.string().optional(),
   branch_id: z.string().optional(),
+  uses_whatsapp_status: z.enum(['yes', 'no', 'not_marked']),
+  social_media_consent_status: z.enum(['yes', 'no', 'not_marked']),
 });
 
 export type FormValues = z.infer<typeof handlerFormSchema>;
