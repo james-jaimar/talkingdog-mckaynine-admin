@@ -113,8 +113,8 @@ export default function ClassHandlers() {
     );
   }
 
-  // Create a subtitle with branch and level information
-  const subtitle = `${classData.branches?.name || ''} | Level: ${classData.level}`;
+  // Create a subtitle with branch and class_type information
+  const subtitle = `${classData.branches?.name || ''} | Type: ${classData.class_type}`;
 
   return (
     <DashboardLayout>

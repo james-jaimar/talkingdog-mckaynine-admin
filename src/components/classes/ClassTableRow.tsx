@@ -42,7 +42,7 @@ export function ClassTableRow({
       </TableCell>
       <TableCell className="font-medium">{classItem.name}</TableCell>
       <TableCell>
-        <Badge variant="outline">{classItem.level}</Badge>
+        <Badge variant="outline">{classItem.class_type}</Badge>
       </TableCell>
       <ClassMetadataCell
         duration={classItem.duration}
