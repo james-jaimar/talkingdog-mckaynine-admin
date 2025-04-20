@@ -1,9 +1,9 @@
 
-import { TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { TableHead, TableHeader as UITableHeader, TableRow } from "@/components/ui/table";
 
-export function TableHeader() {
+export function HandlerTableHeader() {
   return (
-    <TableHeader>
+    <UITableHeader>
       <TableRow>
         <TableHead>Name</TableHead>
         <TableHead>Email</TableHead>
@@ -12,6 +12,6 @@ export function TableHeader() {
         <TableHead>Invoices</TableHead>
         <TableHead className="text-right">Actions</TableHead>
       </TableRow>
-    </TableHeader>
+    </UITableHeader>
   );
 }

@@ -2,7 +2,7 @@
 import { Table, TableBody } from "@/components/ui/table";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { TableHeader } from "./table/TableHeader";
+import { HandlerTableHeader } from "./table/TableHeader";
 import { HandlerTableRow } from "./table/HandlerTableRow";
 
 interface ClientData {
