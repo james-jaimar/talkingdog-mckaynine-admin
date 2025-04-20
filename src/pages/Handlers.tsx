@@ -39,8 +39,19 @@ export default function Handlers() {
         <div className="flex flex-wrap items-center justify-between gap-4">
           <h1 className="text-3xl font-bold text-gray-900">Handlers</h1>
           <div className="flex flex-wrap gap-2">
-            <AddHandlerModal />
-            <ImportHandlersModal />
+            <Button variant="default" className="flex items-center gap-1" id="add-handler-trigger">
+              <AddHandlerModal>
+                <span className="flex items-center">
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add Handler
+                </span>
+              </AddHandlerModal>
+            </Button>
+            <Button variant="outline" className="flex items-center gap-1">
+              <ImportHandlersModal>
+                <span>Import Handlers</span>
+              </ImportHandlersModal>
+            </Button>
           </div>
         </div>
         

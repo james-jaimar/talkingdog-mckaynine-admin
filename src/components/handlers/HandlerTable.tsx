@@ -25,13 +25,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal } from "lucide-react";
+import { Eye, MoreHorizontal, Pencil } from "lucide-react";
 import { EditHandlerModal } from "./EditHandlerModal";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { deleteHandler } from "@/lib/api/handlers"; // Import from API lib
-import { Checkbox } from "@/components/ui/checkbox";
 import { TablePagination } from "@/components/ui/table-pagination";
 
 interface ClientData {
@@ -45,6 +44,7 @@ interface ClientData {
   postal_code?: string;
   notes?: string;
   branch_id?: string;
+  dogs?: any[];
 }
 
 interface HandlerTableProps {
@@ -60,7 +60,6 @@ export function HandlerTable({ handlers, searchQuery, itemsPerPage, loading }: H
     pageIndex: 0,
     pageSize: itemsPerPage,
   });
-  const [selectedHandlers, setSelectedHandlers] = useState<Record<string, boolean>>({});
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -69,64 +68,21 @@ export function HandlerTable({ handlers, searchQuery, itemsPerPage, loading }: H
     setPagination(prev => ({ ...prev, pageIndex: 0 }));
   }, [handlers, searchQuery]);
 
-  const toggleSelectHandler = (id: string) => {
-    setSelectedHandlers(prev => ({
-      ...prev,
-      [id]: !prev[id]
-    }));
-  };
-
-  const toggleSelectAll = () => {
-    const currentPageHandlers = filteredHandlers
-      .slice(pagination.pageIndex * pagination.pageSize, (pagination.pageIndex + 1) * pagination.pageSize);
-    
-    const allSelected = currentPageHandlers.every(handler => selectedHandlers[handler.id]);
-    
-    const newSelectedHandlers = { ...selectedHandlers };
-    currentPageHandlers.forEach(handler => {
-      newSelectedHandlers[handler.id] = !allSelected;
-    });
-    
-    setSelectedHandlers(newSelectedHandlers);
-  };
-
   const columns: ColumnDef<ClientData>[] = [
     {
-      id: "select",
-      header: ({ table }) => {
-        const currentPageHandlers = filteredHandlers
-          .slice(pagination.pageIndex * pagination.pageSize, (pagination.pageIndex + 1) * pagination.pageSize);
-        const allSelected = currentPageHandlers.length > 0 && 
-          currentPageHandlers.every(handler => selectedHandlers[handler.id]);
-        
-        return (
-          <Checkbox 
-            checked={allSelected}
-            onCheckedChange={toggleSelectAll}
-            aria-label="Select all"
-          />
-        );
-      },
+      accessorKey: "name",
+      header: "Name",
       cell: ({ row }) => {
         const handler = row.original;
-        const isSelected = !!selectedHandlers[handler.id];
-        
         return (
-          <Checkbox 
-            checked={isSelected}
-            onCheckedChange={() => toggleSelectHandler(handler.id)}
-            aria-label={`Select ${handler.first_name}`}
-          />
+          <Link 
+            to={`/handlers/${handler.id}`}
+            className="hover:text-blue-600 font-medium"
+          >
+            {handler.first_name} {handler.last_name}
+          </Link>
         );
-      },
-    },
-    {
-      accessorKey: "first_name",
-      header: "First Name",
-    },
-    {
-      accessorKey: "last_name",
-      header: "Last Name",
+      }
     },
     {
       accessorKey: "email",
@@ -137,7 +93,28 @@ export function HandlerTable({ handlers, searchQuery, itemsPerPage, loading }: H
       header: "Phone",
     },
     {
+      accessorKey: "dogs",
+      header: "Dogs",
+      cell: ({ row }) => {
+        const handler = row.original;
+        return (
+          <span>{handler.dogs?.length || 0}</span>
+        );
+      }
+    },
+    {
+      accessorKey: "invoices",
+      header: "Invoices",
+      cell: () => {
+        // This is a placeholder; in the screenshot it shows either a dash or a document icon with a count
+        return (
+          <span>—</span>
+        );
+      }
+    },
+    {
       id: "actions",
+      header: "Actions",
       cell: ({ row }) => {
         const handler = row.original;
         const [isDeleting, setIsDeleting] = useState(false);
@@ -164,24 +141,45 @@ export function HandlerTable({ handlers, searchQuery, itemsPerPage, loading }: H
         };
 
         return (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0">
-                <span className="sr-only">Open menu</span>
-                <MoreHorizontal className="h-4 w-4" />
+          <div className="flex justify-end items-center space-x-1">
+            <Button variant="ghost" size="icon" asChild>
+              <Link to={`/handlers/${handler.id}`}>
+                <Eye className="h-4 w-4" />
+                <span className="sr-only">View</span>
+              </Link>
+            </Button>
+            
+            <EditHandlerModal handler={handler}>
+              <Button variant="ghost" size="icon">
+                <Pencil className="h-4 w-4" />
+                <span className="sr-only">Edit</span>
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <DropdownMenuItem>
-                <EditHandlerModal handler={handler} />
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleDelete} disabled={isDeleting}>
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+            </EditHandlerModal>
+            
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <span className="sr-only">Open menu</span>
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                <DropdownMenuItem asChild>
+                  <Link to={`/handlers/${handler.id}`}>
+                    View details
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => document.getElementById(`edit-handler-${handler.id}`)?.click()}>
+                  Edit handler
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleDelete} disabled={isDeleting} className="text-red-600">
+                  Delete handler
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         );
       },
     },
@@ -209,57 +207,44 @@ export function HandlerTable({ handlers, searchQuery, itemsPerPage, loading }: H
   });
 
   const totalPages = Math.ceil(filteredHandlers.length / pagination.pageSize);
+  const startItem = pagination.pageIndex * pagination.pageSize + 1;
+  const endItem = Math.min((pagination.pageIndex + 1) * pagination.pageSize, filteredHandlers.length);
 
   return (
     <div className="rounded-md border">
       <div className="relative overflow-x-auto">
         <Table>
           <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => {
-                  return (
-                    <TableHead key={header.id}>
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                    </TableHead>
-                  );
-                })}
-              </TableRow>
-            ))}
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead>Phone</TableHead>
+              <TableHead>Dogs</TableHead>
+              <TableHead>Invoices</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
-              <tr>
-                <td colSpan={columns.length} className="text-center py-4">
+              <TableRow>
+                <TableCell colSpan={columns.length} className="text-center py-4">
                   Loading handlers...
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ) : filteredHandlers.length === 0 ? (
-              <tr>
-                <td colSpan={columns.length} className="text-center py-4">
+              <TableRow>
+                <TableCell colSpan={columns.length} className="text-center py-4">
                   No handlers found.
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ) : (
               filteredHandlers
                 .slice(
                   pagination.pageIndex * pagination.pageSize,
                   (pagination.pageIndex + 1) * pagination.pageSize
                 )
-                .map((handler, index) => (
+                .map((handler) => (
                   <TableRow key={handler.id}>
-                    <TableCell>
-                      <Checkbox 
-                        checked={!!selectedHandlers[handler.id]}
-                        onCheckedChange={() => toggleSelectHandler(handler.id)}
-                        aria-label={`Select ${handler.first_name}`}
-                      />
-                    </TableCell>
                     <TableCell>
                       <Link 
                         to={`/handlers/${handler.id}`}
@@ -269,9 +254,49 @@ export function HandlerTable({ handlers, searchQuery, itemsPerPage, loading }: H
                       </Link>
                     </TableCell>
                     <TableCell>{handler.email}</TableCell>
-                    <TableCell>{handler.phone}</TableCell>
-                    <TableCell>
-                      <EditHandlerModal handler={handler} />
+                    <TableCell>{handler.phone || "—"}</TableCell>
+                    <TableCell>{handler.dogs?.length || 0}</TableCell>
+                    <TableCell>—</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end items-center space-x-1">
+                        <Button variant="ghost" size="icon" asChild>
+                          <Link to={`/handlers/${handler.id}`}>
+                            <Eye className="h-4 w-4" />
+                            <span className="sr-only">View</span>
+                          </Link>
+                        </Button>
+                        
+                        <EditHandlerModal handler={handler}>
+                          <Button variant="ghost" size="icon" id={`edit-handler-${handler.id}`}>
+                            <Pencil className="h-4 w-4" />
+                            <span className="sr-only">Edit</span>
+                          </Button>
+                        </EditHandlerModal>
+                        
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <span className="sr-only">Open menu</span>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuItem asChild>
+                              <Link to={`/handlers/${handler.id}`}>
+                                View details
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => document.getElementById(`edit-handler-${handler.id}`)?.click()}>
+                              Edit handler
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => handleDelete()} disabled={isDeleting} className="text-red-600">
+                              Delete handler
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -280,26 +305,12 @@ export function HandlerTable({ handlers, searchQuery, itemsPerPage, loading }: H
         </Table>
       </div>
       <div className="flex items-center justify-between px-4 py-2">
-        {selectedHandlers && Object.values(selectedHandlers).filter(Boolean).length > 0 && (
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-500">
-              {Object.values(selectedHandlers).filter(Boolean).length} handlers selected
-            </span>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => setSelectedHandlers({})}
-            >
-              Clear selection
-            </Button>
-          </div>
-        )}
+        <div className="text-sm text-gray-500">
+          {filteredHandlers.length > 0 ? 
+            `${startItem} - ${endItem} of ${filteredHandlers.length}` : 
+            'No results'}
+        </div>
         <div className="ml-auto flex items-center space-x-2">
-          <div className="text-sm text-gray-500">
-            {pagination.pageIndex * pagination.pageSize + 1} -{" "}
-            {Math.min((pagination.pageIndex + 1) * pagination.pageSize, filteredHandlers.length)}{" "}
-            of {filteredHandlers.length}
-          </div>
           <Button
             variant="outline"
             size="sm"
