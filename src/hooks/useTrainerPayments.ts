@@ -48,7 +48,9 @@ export function useTrainerPayments(branchId: string | undefined) {
                 totalEarned: 0,
                 paid: 0,
                 pending: 0,
-                invoicesCount: 0
+                invoicesCount: 0,
+                classesCount: 0,
+                clients: 0
               };
             }
             
@@ -57,7 +59,7 @@ export function useTrainerPayments(branchId: string | undefined) {
             // Get all bookings for these class schedules
             const { data: bookings, error: bookingsError } = await supabase
               .from('bookings')
-              .select('id')
+              .select('id, client_id')
               .in('class_schedule_id', scheduleIds);
               
             if (bookingsError) {
@@ -73,11 +75,16 @@ export function useTrainerPayments(branchId: string | undefined) {
                 totalEarned: 0,
                 paid: 0,
                 pending: 0,
-                invoicesCount: 0
+                invoicesCount: 0,
+                classesCount: schedules.length,
+                clients: 0
               };
             }
             
             const bookingIds = bookings.map(b => b.id);
+            
+            // Count unique clients
+            const uniqueClients = new Set(bookings.map(b => b.client_id)).size;
             
             // Get all invoice items related to these bookings
             const { data: invoiceItems, error: itemsError } = await supabase
@@ -107,7 +114,9 @@ export function useTrainerPayments(branchId: string | undefined) {
                 totalEarned: 0,
                 paid: 0,
                 pending: 0,
-                invoicesCount: 0
+                invoicesCount: 0,
+                classesCount: schedules.length,
+                clients: uniqueClients
               };
             }
             
@@ -154,6 +163,8 @@ export function useTrainerPayments(branchId: string | undefined) {
               paid: paidAmount,
               pending: totalEarned - paidAmount,
               invoicesCount: uniqueInvoiceIds,
+              classesCount: schedules.length,
+              clients: uniqueClients,
               lastPaymentDate: lastPaymentDate || undefined
             };
             

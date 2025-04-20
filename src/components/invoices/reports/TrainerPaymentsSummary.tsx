@@ -27,6 +27,7 @@ interface TrainerPaymentsSummaryProps {
   isLoading: boolean;
 }
 
+// This component is kept for backward compatibility but is no longer used in the main Financial Reports page
 export function TrainerPaymentsSummary({ trainers, isLoading }: TrainerPaymentsSummaryProps) {
   if (isLoading) {
     return (

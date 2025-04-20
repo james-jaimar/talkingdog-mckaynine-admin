@@ -7,15 +7,15 @@ import { useBranch } from "@/context/BranchContext";
 import { useQueryClient } from "@tanstack/react-query";
 import RequireAdmin from "@/components/auth/RequireAdmin";
 import { InvoiceRevenueChart } from "@/components/invoices/reports/InvoiceRevenueChart";
-import { TrainerPaymentsSummary } from "@/components/invoices/reports/TrainerPaymentsSummary";
 import { ClassFinancialReport } from "@/components/invoices/reports/ClassFinancialReport";
 import { ClassesListReport } from "@/components/invoices/reports/ClassesListReport";
 import { DateRangePicker } from "@/components/dashboard/financial/DateRangePicker";
 import { startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Info } from "lucide-react"; // Changed from '@radix-ui/react-icons'
+import { Info } from "lucide-react"; 
 import { toast } from "sonner";
+import { TrainerReportsTab } from "@/components/invoices/reports/TrainerReportsTab";
 
 export default function FinancialReports() {
   const queryClient = useQueryClient();
@@ -42,6 +42,7 @@ export default function FinancialReports() {
     // Invalidate all relevant queries first
     queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
     queryClient.invalidateQueries({ queryKey: ['classes-list-data'] });
+    queryClient.invalidateQueries({ queryKey: ['trainer-payments'] });
     
     // Then refresh invoice data
     refreshAllInvoiceQueries();
@@ -74,7 +75,7 @@ export default function FinancialReports() {
           </div>
 
           <Alert className="mb-6">
-            <Info className="h-4 w-4" /> {/* Changed from InfoCircledIcon */}
+            <Info className="h-4 w-4" />
             <AlertTitle>Important Financial Information</AlertTitle>
             <AlertDescription>
               This report includes both booking-associated invoices and general training invoices 
@@ -87,6 +88,7 @@ export default function FinancialReports() {
             <TabsList className="mb-4">
               <TabsTrigger value="financial">Financial Report</TabsTrigger>
               <TabsTrigger value="classes">Classes List</TabsTrigger>
+              <TabsTrigger value="trainers">Trainers</TabsTrigger>
             </TabsList>
 
             <TabsContent value="financial">
@@ -103,15 +105,18 @@ export default function FinancialReports() {
                   invoices={invoices} 
                   timeframe="monthly"
                 />
-                <TrainerPaymentsSummary
-                  trainers={[]} 
-                  isLoading={isLoading}
-                />
               </div>
             </TabsContent>
 
             <TabsContent value="classes">
               <ClassesListReport />
+            </TabsContent>
+            
+            <TabsContent value="trainers">
+              <TrainerReportsTab 
+                dateRange={dateRange}
+                branchId={currentBranch?.id}
+              />
             </TabsContent>
           </Tabs>
         </div>
@@ -119,4 +124,3 @@ export default function FinancialReports() {
     </RequireAdmin>
   );
 }
-
