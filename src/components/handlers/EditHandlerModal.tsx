@@ -18,12 +18,12 @@ interface EditHandlerModalProps {
     city?: string;
     postal_code?: string;
     notes?: string;
-    branch_id?: string | null;
+    branch_id?: string;
     uses_whatsapp_status: 'yes' | 'no' | 'not_marked';
     social_media_consent_status: 'yes' | 'no' | 'not_marked';
   };
   onSuccess?: () => void;
-  children?: ReactNode; // Add children prop
+  children?: ReactNode;
 }
 
 export function EditHandlerModal({ handler, onSuccess, children }: EditHandlerModalProps) {

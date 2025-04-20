@@ -1,3 +1,4 @@
+
 import { Form } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -11,7 +12,7 @@ import { BasicInfoFields } from "./form/BasicInfoFields";
 import { ContactInfoFields } from "./form/ContactInfoFields";
 import { AddressFields } from "./form/AddressFields";
 import { NotesField } from "./form/NotesField";
-import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
+import { FormField, FormItem, FormLabel, FormControl } from "@/components/ui/form";
 import { ConsentStatusSelect } from "./status/ConsentStatusSelect";
 
 interface HandlerData {
@@ -64,7 +65,6 @@ export function EditHandlerForm({ handler, onSuccess }: EditHandlerFormProps) {
         .from("clients")
         .update({
           first_name: values.first_name,
-          // Keep last_name in the database update but don't show it in the UI
           last_name: values.last_name || "",
           email: values.email,
           phone: values.phone,
@@ -116,7 +116,6 @@ export function EditHandlerForm({ handler, onSuccess }: EditHandlerFormProps) {
                 <FormControl>
                   <ConsentStatusSelect {...field} />
                 </FormControl>
-                <FormMessage />
               </FormItem>
             )}
           />
@@ -130,7 +129,6 @@ export function EditHandlerForm({ handler, onSuccess }: EditHandlerFormProps) {
                 <FormControl>
                   <ConsentStatusSelect {...field} />
                 </FormControl>
-                <FormMessage />
               </FormItem>
             )}
           />
