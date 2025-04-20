@@ -53,6 +53,7 @@ export const formSchema = z.object({
   silverCgcClass: z.string().optional(),
   beginnerNoviceClass: z.string().optional(),
   wtClass: z.string().optional(),
+  aTestClass: z.string().optional(), // Added A-Test class
   yogaClass: z.string().optional(),
 });
 

@@ -57,6 +57,7 @@ export function useAddHandlerForm(onSuccess: () => void) {
       silverCgcClass: "",
       beginnerNoviceClass: "",
       wtClass: "",
+      aTestClass: "", // Added A-Test class
       yogaClass: "",
     },
   });

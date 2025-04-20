@@ -17,6 +17,7 @@ export const useEnrollmentCreation = () => {
         silver_cgc_class: data.silverCgcClass || null,
         beginner_novice_class: data.beginnerNoviceClass || null,
         wt_class: data.wtClass || null,
+        a_test_class: data.aTestClass || null, // Added A-Test class
         yoga_class: data.yogaClass || null
       };
 
