@@ -9,7 +9,7 @@ export function formatTrainerPaymentData(
   invoiceItems: InvoiceItem[] = []
 ): TrainerPaymentData {
   const allScheduleIds = allSchedules.map(s => s.id);
-  const uniqueClientIds = new Set(bookings?.map(b => b.client_id));
+  const uniqueClientIds = new Set(bookings?.map(b => b.client_id).filter(Boolean));
 
   // Map class details
   const classDetails: TrainerClassDetail[] = allSchedules.map(schedule => {

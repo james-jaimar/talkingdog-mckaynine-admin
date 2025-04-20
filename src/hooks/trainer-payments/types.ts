@@ -1,4 +1,3 @@
-
 import { Database } from "@/integrations/supabase/types";
 
 export interface TrainerClassDetail {
@@ -45,7 +44,35 @@ export interface Schedule {
   } | null;
 }
 
-export type Booking = Database['public']['Tables']['bookings']['Row'];
+// Update Booking type to make optional fields that might not be returned from some queries
+export type Booking = {
+  id: string;
+  client_id?: string;   // Making optional
+  dog_id?: string;      // Making optional
+  class_schedule_id: string;
+  payment_status: string;
+  // Other fields from the database table
+  created_at?: string;
+  updated_at?: string;
+  is_enrolled?: boolean;
+  vaccination_verified?: boolean;
+  status?: string;
+  notes?: string;
+  proof_of_payment?: string;
+  additional_notes?: string;
+  info_eo?: string;
+  info_pg?: string;
+  // Add a computed field for clients information that may come from a join
+  clients?: {
+    uses_whatsapp_status?: string;
+    social_media_consent_status?: string;
+    first_name?: string;
+    last_name?: string;
+  };
+  // Add a computed field for info statuses
+  info_eo_status?: boolean | null;
+  info_pg_status?: boolean | null;
+};
 
 export type InvoiceItem = {
   id: string;

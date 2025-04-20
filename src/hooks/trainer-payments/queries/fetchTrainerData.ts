@@ -1,6 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { Schedule } from "../types";
+import { Schedule, Booking, InvoiceItem } from "../types";
 
 export async function fetchTrainers(branchId: string) {
   const { data: trainers, error } = await supabase
@@ -51,7 +51,7 @@ export async function fetchSchedules(trainerId: string): Promise<Schedule[]> {
   return schedules as Schedule[];
 }
 
-export async function fetchBookings(scheduleIds: string[], dateRange?: { from: string; to: string }) {
+export async function fetchBookings(scheduleIds: string[], dateRange?: { from: string; to: string }): Promise<Booking[]> {
   if (scheduleIds.length === 0) return [];
 
   const query = supabase
@@ -75,10 +75,10 @@ export async function fetchBookings(scheduleIds: string[], dateRange?: { from: s
     throw error;
   }
 
-  return bookings;
+  return bookings as Booking[];
 }
 
-export async function fetchInvoiceItems(bookingIds: string[]) {
+export async function fetchInvoiceItems(bookingIds: string[]): Promise<InvoiceItem[]> {
   if (bookingIds.length === 0) return [];
 
   const { data: invoiceItems, error } = await supabase
@@ -101,5 +101,5 @@ export async function fetchInvoiceItems(bookingIds: string[]) {
     throw error;
   }
 
-  return invoiceItems;
+  return invoiceItems as InvoiceItem[];
 }
