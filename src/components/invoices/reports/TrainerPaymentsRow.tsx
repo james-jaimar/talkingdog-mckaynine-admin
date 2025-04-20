@@ -18,6 +18,7 @@ interface TrainerPaymentsRowProps {
     totalEarned: number;
     paid: number;
     pending: number;
+    potentialEarnings?: number;
     classesCount: number;
     clients: number;
     lastPaymentDate?: string;
@@ -36,6 +37,15 @@ export function TrainerPaymentsRow({ trainer, onMarkForPayment }: TrainerPayment
   const hasClassDetails = trainer.classDetails && trainer.classDetails.length > 0;
   const classesCount = trainer.classesCount || 0;
   const classDetailsShown = trainer.classDetails?.length || 0;
+  
+  // Show potential earnings if no payments made yet
+  const showPotentialAmounts = trainer.paid === 0 && trainer.pending === 0;
+  const earnings = showPotentialAmounts 
+    ? (trainer.potentialEarnings || 0)
+    : trainer.totalEarned;
+  const pendingAmount = showPotentialAmounts 
+    ? (trainer.potentialEarnings || 0) 
+    : trainer.pending;
 
   return (
     <>
@@ -55,9 +65,19 @@ export function TrainerPaymentsRow({ trainer, onMarkForPayment }: TrainerPayment
           )}
           <span className="font-medium">{trainer.trainerName}</span>
         </TableCell>
-        <TableCell className="text-right">{formatCurrency(trainer.totalEarned)}</TableCell>
+        <TableCell className="text-right">
+          {formatCurrency(earnings)}
+          {showPotentialAmounts && (
+            <span className="text-xs text-muted-foreground ml-1">(Potential)</span>
+          )}
+        </TableCell>
         <TableCell className="text-right">{formatCurrency(trainer.paid)}</TableCell>
-        <TableCell className="text-right">{formatCurrency(trainer.pending)}</TableCell>
+        <TableCell className="text-right">
+          {formatCurrency(pendingAmount)}
+          {showPotentialAmounts && (
+            <span className="text-xs text-muted-foreground ml-1">(Potential)</span>
+          )}
+        </TableCell>
         <TableCell className="text-center">{classesCount}</TableCell>
         <TableCell className="text-center">{trainer.clients}</TableCell>
         <TableCell className="text-right">
@@ -66,7 +86,9 @@ export function TrainerPaymentsRow({ trainer, onMarkForPayment }: TrainerPayment
             : 'Never'}
         </TableCell>
         <TableCell className="text-right">
-          {trainer.pending > 0 ? (
+          {showPotentialAmounts ? (
+            <ExtendedBadge variant="blue">Potential</ExtendedBadge>
+          ) : trainer.pending > 0 ? (
             <ExtendedBadge variant="amber">Payment Due</ExtendedBadge>
           ) : (
             <ExtendedBadge variant="green">Paid</ExtendedBadge>
@@ -80,7 +102,7 @@ export function TrainerPaymentsRow({ trainer, onMarkForPayment }: TrainerPayment
               e.stopPropagation();
               onMarkForPayment(trainer.id);
             }}
-            disabled={trainer.pending <= 0}
+            disabled={!showPotentialAmounts && trainer.pending <= 0}
           >
             <DollarSign className="h-4 w-4 mr-1" />
             Mark for Payment
@@ -98,7 +120,7 @@ export function TrainerPaymentsRow({ trainer, onMarkForPayment }: TrainerPayment
                   trainer.classDetails.map((classDetail) => (
                     <div 
                       key={classDetail.scheduleId}
-                      className="grid grid-cols-5 gap-2 p-2 bg-background rounded-md border text-sm"
+                      className="grid grid-cols-6 gap-2 p-2 bg-background rounded-md border text-sm"
                     >
                       <div>
                         <p className="font-medium">{classDetail.className}</p>
@@ -110,7 +132,12 @@ export function TrainerPaymentsRow({ trainer, onMarkForPayment }: TrainerPayment
                         <p>{classDetail.bookings} bookings</p>
                       </div>
                       <div className="text-center self-center">
+                        <p className="font-semibold">{formatCurrency(classDetail.potentialRevenue)}</p>
+                        <p className="text-xs text-muted-foreground">Potential</p>
+                      </div>
+                      <div className="text-center self-center">
                         <p>{formatCurrency(classDetail.revenue)}</p>
+                        <p className="text-xs text-muted-foreground">Actual</p>
                       </div>
                       <div className="text-center self-center">
                         <ExtendedBadge variant={classDetail.isPaid ? "green" : "amber"}>
@@ -121,7 +148,7 @@ export function TrainerPaymentsRow({ trainer, onMarkForPayment }: TrainerPayment
                         <Button 
                           variant="ghost" 
                           size="sm"
-                          disabled={classDetail.isPaid}
+                          disabled={classDetail.isPaid || classDetail.bookings === 0}
                           onClick={(e) => {
                             e.stopPropagation();
                             onMarkForPayment(trainer.id);

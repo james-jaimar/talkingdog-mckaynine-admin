@@ -1,5 +1,5 @@
 
-import { Schedule, InvoiceItem } from "../types";
+import { Schedule, InvoiceItem, Booking } from "../types";
 
 export function calculateTrainerFee(
   courseFee: number,
@@ -54,30 +54,63 @@ export function calculateAdminFee(
 }
 
 export function calculateClassRevenue(
-  invoiceItems: InvoiceItem[],
-  schedule: Schedule
-): { revenue: number; isPaid: boolean } {
-  if (!schedule.classes) return { revenue: 0, isPaid: false };
+  bookings: Booking[],
+  schedule: Schedule,
+  invoiceItems: InvoiceItem[] = []
+): { 
+  revenue: number; 
+  isPaid: boolean;
+  bookingsCount: number;
+  potentialRevenue: number;
+} {
+  if (!schedule.classes) return { revenue: 0, isPaid: false, bookingsCount: 0, potentialRevenue: 0 };
 
+  // Get fee values from the class
   const courseFee = schedule.classes.course_fee || 0;
-  const enrollmentFee = schedule.classes.enrollment_fee || 0;
+  const trainerFeeType = schedule.classes.trainer_fee_type;
+  const trainerFeeValue = schedule.classes.trainer_fee_value || 0;
+  
+  // Calculate potential revenue per booking based on class configuration
+  const potentialRevenuePerBooking = trainerFeeType === 'percentage' 
+    ? courseFee * (trainerFeeValue / 100) 
+    : trainerFeeValue;
 
-  // Calculate trainer's revenue based on course fee only
-  const trainerFee = calculateTrainerFee(courseFee, schedule);
+  // Count total bookings for this schedule
+  const bookingsCount = bookings.length;
+  
+  // Calculate total potential revenue based on bookings count
+  const potentialRevenue = bookingsCount * potentialRevenuePerBooking;
+
+  // Calculate actual paid revenue from invoice items
+  let actualRevenue = 0;
+  let isPaid = false;
 
   // Filter out cancelled invoices
   const validInvoiceItems = invoiceItems.filter(item => 
     item.invoices && item.invoices.status !== 'cancelled'
   );
-
-  // Calculate total revenue and check payment status
-  let isPaid = false;
+  
+  // Check if any invoices are paid
   if (validInvoiceItems.length > 0) {
     isPaid = validInvoiceItems.some(item => item.invoices?.status === 'paid');
+    
+    // Calculate the actual revenue based on paid items and trainer fee configuration
+    for (const item of validInvoiceItems) {
+      if (item.invoices?.status === 'paid') {
+        if (trainerFeeType === 'percentage') {
+          actualRevenue += (item.amount || 0) * (trainerFeeValue / 100);
+        } else {
+          // For fixed fee, we add the full fee for each paid invoice item
+          actualRevenue += trainerFeeValue;
+        }
+      }
+    }
   }
 
   return {
-    revenue: trainerFee,
-    isPaid
+    revenue: actualRevenue,
+    isPaid,
+    bookingsCount,
+    potentialRevenue
   };
 }

@@ -6,6 +6,7 @@ export interface TrainerClassDetail {
   className: string;
   classDate: string;
   revenue: number;
+  potentialRevenue: number; // Added potential revenue field
   bookings: number;
   isPaid: boolean;
   scheduleDate: Date;
@@ -17,6 +18,7 @@ export interface TrainerPaymentData {
   totalEarned: number;
   paid: number;
   pending: number;
+  potentialEarnings: number; // Added potential earnings field
   classesCount: number;
   clients: number;
   lastPaymentDate?: string;

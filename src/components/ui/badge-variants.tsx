@@ -1,51 +1,51 @@
-
-import { Badge as BaseBadge } from "./badge";
+import * as React from "react";
+import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
-import { BadgeProps } from "./badge";
 
-// Create a type that extends the original variants with our new ones
-export type ExtendedBadgeVariant = 
-  | "default" 
-  | "secondary" 
-  | "destructive" 
-  | "outline" 
-  | "warning" 
-  | "info" 
-  | "success"
-  | "amber"
-  | "green";
-
-// Modify interface to use our extended variant type
-export interface ExtendedBadgeProps extends Omit<BadgeProps, 'variant'> {
-  variant?: ExtendedBadgeVariant;
-}
-
-export function ExtendedBadge({ className, variant = "default", ...props }: ExtendedBadgeProps) {
-  const variantClasses = {
-    warning: "border-transparent bg-amber-500 text-white hover:bg-amber-600",
-    info: "border-transparent bg-blue-500 text-white hover:bg-blue-600",
-    success: "border-transparent bg-green-500 text-white hover:bg-green-600",
-    amber: "border-transparent bg-amber-500 text-white hover:bg-amber-600",
-    green: "border-transparent bg-green-500 text-white hover:bg-green-600",
-  };
-
-  // Use the built-in variants for the standard ones
-  if (["default", "secondary", "destructive", "outline"].includes(variant)) {
-    return <BaseBadge variant={variant as any} className={className} {...props} />;
+const extendedBadgeVariants = cva(
+  "inline-flex items-center rounded-md px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+  {
+    variants: {
+      variant: {
+        default: "bg-primary text-primary-foreground",
+        secondary: "bg-secondary text-secondary-foreground",
+        destructive: "bg-destructive text-destructive-foreground",
+        outline: "text-foreground bg-white border",
+        amber: "bg-amber-100 text-amber-800 border border-amber-200",
+        green: "bg-green-100 text-green-800 border border-green-200",
+        red: "bg-red-100 text-red-800 border border-red-200",
+        purple: "bg-purple-100 text-purple-800 border border-purple-200",
+        indigo: "bg-indigo-100 text-indigo-800 border border-indigo-200",
+        blue: "bg-blue-100 text-blue-800 border border-blue-200", // Added blue variant
+        gray: "bg-gray-100 text-gray-800 border border-gray-200"
+      },
+      size: {
+        default: "px-2.5 py-0.5 text-xs",
+        sm: "px-2 py-0.5 text-[10px]",
+        lg: "px-3 py-0.5 text-sm",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "default",
+    },
   }
+);
 
-  // Use our custom variant
+export interface ExtendedBadgeProps
+  extends React.HTMLAttributes<HTMLDivElement>,
+    VariantProps<typeof extendedBadgeVariants> {}
+
+export function ExtendedBadge({
+  className,
+  variant,
+  size,
+  ...props
+}: ExtendedBadgeProps) {
   return (
-    <BaseBadge 
-      variant="outline"
-      className={cn(
-        variantClasses[variant as keyof typeof variantClasses], 
-        className
-      )} 
-      {...props} 
+    <div
+      className={cn(extendedBadgeVariants({ variant, size }), className)}
+      {...props}
     />
   );
 }
-
-// Export with Badge name for backward compatibility
-export { ExtendedBadge as Badge };
