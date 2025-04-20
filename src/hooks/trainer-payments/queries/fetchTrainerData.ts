@@ -38,7 +38,13 @@ export async function fetchSchedules(trainerId: string): Promise<Schedule[]> {
         id,
         name,
         trainer_fee_type,
-        trainer_fee_value
+        trainer_fee_value,
+        mckaynine_commission_type,
+        mckaynine_commission_value,
+        admin_fee_type,
+        admin_fee_value,
+        course_fee,
+        enrollment_fee
       )
     `)
     .eq('trainer_id', trainerId);

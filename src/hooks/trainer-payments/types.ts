@@ -1,3 +1,4 @@
+
 import { Database } from "@/integrations/supabase/types";
 
 export interface TrainerClassDetail {
@@ -41,6 +42,12 @@ export interface Schedule {
     name: string;
     trainer_fee_type: string;
     trainer_fee_value: number;
+    mckaynine_commission_type: string;
+    mckaynine_commission_value: number;
+    admin_fee_type: string;
+    admin_fee_value: number;
+    course_fee: number;
+    enrollment_fee: number;
   } | null;
 }
 
