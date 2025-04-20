@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import {
   Dialog,
@@ -111,7 +112,7 @@ export function EditClassModal({ open, onOpenChange, classData, onSuccess }: Edi
         .from("classes")
         .update({
           name: values.name,
-          level: values.class_type,
+          class_type: values.class_type,
           duration: values.duration,
           course_fee: values.course_fee,
           enrollment_fee: values.enrollment_fee,

@@ -1,12 +1,13 @@
 
 // Import ClassSchedule type for proper typing
 import { ClassSchedule } from './class-schedule';
+import { ClassType } from './class-types';
 
 export interface Class {
   id: string;
   name: string;
   description: string;
-  level: string;
+  class_type: ClassType;
   course_fee: number;
   enrollment_fee: number;
   mckaynine_commission_type: 'percentage' | 'amount';
@@ -32,7 +33,7 @@ export interface ClassFromDB {
   id: string;
   name: string;
   description: string;
-  level: string;
+  class_type: string;
   course_fee: number;
   enrollment_fee: number;
   mckaynine_commission_type: string;

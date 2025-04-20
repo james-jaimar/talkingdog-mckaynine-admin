@@ -28,7 +28,7 @@ export function ClassesScheduled({ branchId }: ClassesScheduledProps) {
           start_time,
           classes!inner(
             name,
-            level,
+            class_type,
             branch_id
           ),
           trainers(
@@ -88,7 +88,7 @@ export function ClassesScheduled({ branchId }: ClassesScheduledProps) {
                     <div className="text-xs sm:text-sm text-gray-500 flex flex-wrap items-center">
                       <span>{time}</span>
                       <span className="mx-1">•</span>
-                      <span>{classSchedule.classes?.level} Level</span>
+                      <span>{classSchedule.classes?.class_type} Class</span>
                     </div>
                   </div>
                   <div className="flex-shrink-0 ml-2 sm:ml-4">

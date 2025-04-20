@@ -47,7 +47,7 @@ export default function TrainerDashboard() {
           end_time,
           classes:class_id (
             name,
-            level
+            class_type
           ),
           bookings:bookings!class_schedules_id_fkey (
             id
@@ -141,7 +141,7 @@ export default function TrainerDashboard() {
                   <div key={cls.id} className="flex flex-col md:flex-row justify-between p-4 border rounded-md">
                     <div>
                       <h3 className="font-semibold">{cls.classes?.name}</h3>
-                      <p className="text-sm text-muted-foreground">{cls.classes?.level} Level</p>
+                      <p className="text-sm text-muted-foreground">{cls.classes?.class_type} Class</p>
                     </div>
                     <div>
                       <p className="text-sm">

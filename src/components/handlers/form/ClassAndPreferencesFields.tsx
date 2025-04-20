@@ -1,3 +1,4 @@
+
 import { Control } from "react-hook-form";
 import { FormTextField } from "./FormTextField";
 import { FormCheckboxField } from "./FormCheckboxField";
@@ -22,18 +23,18 @@ interface ClassAndPreferencesFieldsProps {
 interface ClassData {
   id: string;
   name: string;
-  level: string;
+  class_type: string;
   description: string;
 }
 
-// Function to get classes by level
-const useClassesByLevel = () => {
+// Function to get classes by type
+const useClassesByType = () => {
   return useQuery({
-    queryKey: ['classes-by-level'],
+    queryKey: ['classes-by-type'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('classes')
-        .select('id, name, level, description')
+        .select('id, name, class_type, description')
         .order('name');
       
       if (error) {
@@ -41,30 +42,30 @@ const useClassesByLevel = () => {
         throw error;
       }
 
-      // Group classes by their level
-      const classesByLevel = (data || []).reduce((acc: Record<string, ClassData[]>, item: ClassData) => {
-        const level = item.level;
-        if (!acc[level]) {
-          acc[level] = [];
+      // Group classes by their type
+      const classesByType = (data || []).reduce((acc: Record<string, ClassData[]>, item: ClassData) => {
+        const type = item.class_type;
+        if (!acc[type]) {
+          acc[type] = [];
         }
-        acc[level].push(item);
+        acc[type].push(item);
         return acc;
       }, {});
 
-      return classesByLevel;
+      return classesByType;
     },
   });
 };
 
-// Mapping of class types to potential level values
-const classTypeLevelMap = {
+// Mapping of class types to potential class_type values
+const classTypeMap = {
   puppyClass: ["Puppy"],
-  eoClass: ["EO", "EO2", "EO3"],
-  bronzeCgcClass: ["Bronze CGC"],
-  silverCgcClass: ["Silver CGC"],
-  beginnerNoviceClass: ["Beginner", "Novice", "Beg & Novice"],
-  wtClass: ["Working Trials", "WT"],
-  aTestClass: ["A TEST"],
+  eoClass: ["EO"],
+  bronzeCgcClass: ["CGC Bronze"],
+  silverCgcClass: ["CGC Silver"],
+  beginnerNoviceClass: ["Beginner", "Novice"],
+  wtClass: ["WT"],
+  aTestClass: ["A-Test"],
   yogaClass: ["Yoga"],
 };
 
@@ -112,16 +113,16 @@ const ClassDropdownField = ({
 };
 
 export function ClassAndPreferencesFields({ control }: ClassAndPreferencesFieldsProps) {
-  const { data: classesByLevel, isLoading, error } = useClassesByLevel();
+  const { data: classesByType, isLoading, error } = useClassesByType();
 
   // Helper function to get classes for a specific class type
   const getClassesForType = (classType: string): ClassData[] => {
-    if (!classesByLevel || isLoading) return [];
+    if (!classesByType || isLoading) return [];
     
-    const levels = classTypeLevelMap[classType as keyof typeof classTypeLevelMap] || [];
+    const types = classTypeMap[classType as keyof typeof classTypeMap] || [];
     
-    // Collect all classes that match any of the relevant levels
-    return levels.flatMap(level => classesByLevel[level] || []);
+    // Collect all classes that match any of the relevant types
+    return types.flatMap(type => classesByType[type] || []);
   };
 
   return (

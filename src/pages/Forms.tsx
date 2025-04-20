@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { useAuth } from "@/context/auth";
@@ -13,6 +14,25 @@ import { Link } from "react-router-dom";
 import { formatCurrency } from "@/lib/formatters";
 import { Class } from "@/components/classes/types/class";
 import { ClassSchedule } from "@/components/classes/types/class-schedule";
+
+interface EnrichedClassSchedule {
+  id: string;
+  class_id: string;
+  name: string;
+  description: string;
+  class_type: string;
+  price: number;
+  branch_id: string;
+  capacity: number;
+  created_at: string;
+  updated_at: string;
+  title: string;
+  start_date: string;
+  time: string;
+  location: string;
+  schedule_id: string;
+  selected_dates?: (string | Date)[];
+}
 
 const staticFormOptions = [
   {
@@ -58,7 +78,7 @@ export default function Forms() {
         const { data: classes, error: classError } = await supabase
           .from('classes')
           .select('*')
-          .eq('level', 'puppy')
+          .eq('class_type', 'Puppy')
           .order('created_at', { ascending: false });
         
         if (classError) {
@@ -67,34 +87,40 @@ export default function Forms() {
         }
         
         // Combine the data to create a more complete representation
-        const enrichedClasses = schedules.map((schedule) => {
-          const classData = schedule.classes as Class;
-          
-          // Calculate total price (course_fee + admin_fee)
-          const adminFeeAmount = classData.admin_fee_type === 'percentage'
-            ? (classData.course_fee * classData.admin_fee_value / 100)
-            : classData.admin_fee_value;
-          const totalPrice = classData.course_fee + adminFeeAmount;
-          
-          return {
-            id: schedule.id,
-            class_id: classData.id,
-            name: classData.name,
-            description: classData.description,
-            level: classData.level,
-            price: totalPrice, // Now using the calculated total price
-            branch_id: classData.branch_id,
-            capacity: classData.capacity,
-            created_at: schedule.created_at,
-            updated_at: schedule.updated_at,
-            title: `${classData.name} - ${classData.description}`,
-            start_date: new Date(schedule.start_time).toLocaleDateString(),
-            time: `${new Date(schedule.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${new Date(schedule.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
-            location: 'Main Branch',
-            schedule_id: schedule.id,
-            selected_dates: schedule.selected_dates
-          };
-        });
+        const enrichedClasses: EnrichedClassSchedule[] = schedules
+          .filter(schedule => {
+            // Only include schedules with classes that have class_type 'Puppy'
+            const classData = schedule.classes as any;
+            return classData && classData.class_type === 'Puppy';
+          })
+          .map((schedule) => {
+            const classData = schedule.classes as Class;
+            
+            // Calculate total price (course_fee + admin_fee)
+            const adminFeeAmount = classData.admin_fee_type === 'percentage'
+              ? (classData.course_fee * classData.admin_fee_value / 100)
+              : classData.admin_fee_value;
+            const totalPrice = classData.course_fee + adminFeeAmount;
+            
+            return {
+              id: schedule.id,
+              class_id: classData.id,
+              name: classData.name,
+              description: classData.description,
+              class_type: classData.class_type,
+              price: totalPrice, // Now using the calculated total price
+              branch_id: classData.branch_id,
+              capacity: classData.capacity,
+              created_at: schedule.created_at,
+              updated_at: schedule.updated_at,
+              title: `${classData.name} - ${classData.description}`,
+              start_date: new Date(schedule.start_time).toLocaleDateString(),
+              time: `${new Date(schedule.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${new Date(schedule.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+              location: 'Main Branch',
+              schedule_id: schedule.id,
+              selected_dates: schedule.selected_dates
+            };
+          });
         
         return enrichedClasses;
       } catch (error) {

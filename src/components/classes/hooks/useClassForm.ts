@@ -26,7 +26,7 @@ export function useClassForm(classData: Class | null, onSuccess: () => void) {
     ? {
         name: classData.name,
         description: classData.description,
-        level: classData.level,
+        class_type: classData.class_type,
         course_fee: classData.course_fee,
         enrollment_fee: classData.enrollment_fee,
         mckaynine_commission_type: classData.mckaynine_commission_type,
@@ -42,7 +42,7 @@ export function useClassForm(classData: Class | null, onSuccess: () => void) {
     : {
         name: "",
         description: "",
-        level: "",
+        class_type: "Puppy",
         course_fee: 0,
         enrollment_fee: 0,
         mckaynine_commission_type: "percentage",
@@ -112,7 +112,7 @@ export function useClassForm(classData: Class | null, onSuccess: () => void) {
           .update({
             name: values.name,
             description: values.description,
-            level: values.level,
+            class_type: values.class_type,
             course_fee: values.course_fee,
             enrollment_fee: values.enrollment_fee,
             mckaynine_commission_type: values.mckaynine_commission_type,
@@ -140,7 +140,7 @@ export function useClassForm(classData: Class | null, onSuccess: () => void) {
           .insert({
             name: values.name,
             description: values.description,
-            level: values.level,
+            class_type: values.class_type,
             course_fee: values.course_fee,
             enrollment_fee: values.enrollment_fee,
             mckaynine_commission_type: values.mckaynine_commission_type,
