@@ -26,13 +26,22 @@ export function useTrainerPayments(branchId: string | undefined) {
           return [];
         }
         
-        // For each trainer, fetch their invoice items and associated invoices
+        // For each trainer, fetch their class schedules, bookings, and invoices
         const trainersWithPayments = await Promise.all(trainers.map(async (trainer) => {
           try {
             // Get all class schedules for this trainer
             const { data: schedules, error: schedulesError } = await supabase
               .from('class_schedules')
-              .select('id')
+              .select(`
+                id,
+                classes (
+                  id,
+                  name,
+                  course_fee,
+                  trainer_fee_type,
+                  trainer_fee_value
+                )
+              `)
               .eq('trainer_id', trainer.id);
               
             if (schedulesError) {
@@ -41,7 +50,6 @@ export function useTrainerPayments(branchId: string | undefined) {
             }
             
             if (!schedules?.length) {
-              // Return trainer with zero earnings if they don't have any schedules
               return {
                 id: trainer.id,
                 trainerName: `${trainer.first_name} ${trainer.last_name}`,
@@ -59,7 +67,7 @@ export function useTrainerPayments(branchId: string | undefined) {
             // Get all bookings for these class schedules
             const { data: bookings, error: bookingsError } = await supabase
               .from('bookings')
-              .select('id, client_id')
+              .select('id, client_id, class_schedule_id')
               .in('class_schedule_id', scheduleIds);
               
             if (bookingsError) {
@@ -67,47 +75,9 @@ export function useTrainerPayments(branchId: string | undefined) {
               return null;
             }
             
+            const uniqueClients = new Set(bookings?.map(b => b.client_id) || []).size;
+            
             if (!bookings?.length) {
-              // Return trainer with zero earnings if they don't have any bookings
-              return {
-                id: trainer.id,
-                trainerName: `${trainer.first_name} ${trainer.last_name}`,
-                totalEarned: 0,
-                paid: 0,
-                pending: 0,
-                invoicesCount: 0,
-                classesCount: schedules.length,
-                clients: 0
-              };
-            }
-            
-            const bookingIds = bookings.map(b => b.id);
-            
-            // Count unique clients
-            const uniqueClients = new Set(bookings.map(b => b.client_id)).size;
-            
-            // Get all invoice items related to these bookings
-            const { data: invoiceItems, error: itemsError } = await supabase
-              .from('invoice_items')
-              .select(`
-                id,
-                amount,
-                invoice_id,
-                invoices:invoice_id (
-                  id, 
-                  status,
-                  payment_date
-                )
-              `)
-              .in('booking_id', bookingIds);
-              
-            if (itemsError) {
-              console.error(`Error fetching invoice items for trainer ${trainer.id}:`, itemsError);
-              return null;
-            }
-            
-            if (!invoiceItems?.length) {
-              // Return trainer with zero earnings if they don't have any invoice items
               return {
                 id: trainer.id,
                 trainerName: `${trainer.first_name} ${trainer.last_name}`,
@@ -120,62 +90,86 @@ export function useTrainerPayments(branchId: string | undefined) {
               };
             }
             
-            // Filter to only active invoice items (invoices that are not cancelled)
-            const activeItems = invoiceItems.filter(item => 
-              item.invoices && item.invoices.status !== 'cancelled'
-            );
+            const bookingIds = bookings.map(b => b.id);
             
-            // Sum up all active invoice items
-            const totalEarned = activeItems.reduce(
-              (sum, item) => sum + (item.amount || 0), 0
-            );
+            // Get all invoice items related to these bookings
+            const { data: invoiceItems, error: itemsError } = await supabase
+              .from('invoice_items')
+              .select(`
+                id,
+                amount,
+                booking_id,
+                invoice_id,
+                invoices (
+                  id,
+                  status,
+                  payment_date
+                )
+              `)
+              .in('booking_id', bookingIds);
+              
+            if (itemsError) {
+              console.error(`Error fetching invoice items for trainer ${trainer.id}:`, itemsError);
+              return null;
+            }
             
-            // Calculate paid amount (from items with paid invoices)
-            const paidItems = activeItems.filter(
-              item => item.invoices?.status === 'paid'
-            );
+            // Calculate earnings based on trainer fee configuration
+            let totalEarned = 0;
+            let paidAmount = 0;
             
-            const paidAmount = paidItems.reduce(
-              (sum, item) => sum + (item.amount || 0), 0
-            );
-            
-            // Get last payment date
-            let lastPaymentDate = null;
-            if (paidItems.length > 0) {
-              const paymentDates = paidItems
-                .map(item => item.invoices?.payment_date ? new Date(item.invoices.payment_date).getTime() : 0)
-                .filter(timestamp => timestamp > 0);
-                
-              if (paymentDates.length > 0) {
-                lastPaymentDate = new Date(Math.max(...paymentDates)).toISOString();
+            for (const item of (invoiceItems || [])) {
+              if (!item.booking_id || !item.invoices || item.invoices.status === 'cancelled') continue;
+              
+              const booking = bookings.find(b => b.id === item.booking_id);
+              if (!booking) continue;
+              
+              const schedule = schedules.find(s => s.id === booking.class_schedule_id);
+              if (!schedule?.classes) continue;
+              
+              const { trainer_fee_type, trainer_fee_value } = schedule.classes;
+              
+              const trainerEarnings = trainer_fee_type === 'percentage' 
+                ? (item.amount * (trainer_fee_value / 100))
+                : trainer_fee_value;
+              
+              totalEarned += trainerEarnings;
+              
+              if (item.invoices.status === 'paid') {
+                paidAmount += trainerEarnings;
               }
             }
             
-            // Get list of unique invoice IDs for counting
-            const uniqueInvoiceIds = new Set(
-              activeItems.map(item => item.invoice_id)
-            ).size;
+            // Get last payment date
+            const paidInvoices = invoiceItems
+              ?.filter(item => item.invoices?.status === 'paid')
+              .map(item => item.invoices?.payment_date)
+              .filter(Boolean)
+              .sort((a, b) => new Date(b!).getTime() - new Date(a!).getTime());
+            
+            const lastPaymentDate = paidInvoices?.length ? paidInvoices[0] : undefined;
             
             return {
               id: trainer.id,
               trainerName: `${trainer.first_name} ${trainer.last_name}`,
-              totalEarned: totalEarned,
+              totalEarned,
               paid: paidAmount,
               pending: totalEarned - paidAmount,
-              invoicesCount: uniqueInvoiceIds,
               classesCount: schedules.length,
               clients: uniqueClients,
-              lastPaymentDate: lastPaymentDate || undefined
+              lastPaymentDate,
+              // Include schedule IDs for payment marking
+              scheduleIds
             };
-            
           } catch (err) {
             console.error(`Error processing payment data for trainer ${trainer.id}:`, err);
             return null;
           }
         }));
         
-        // Filter out null values and return
-        return trainersWithPayments.filter(Boolean);
+        // Filter out null values and sort by earnings
+        return trainersWithPayments
+          .filter(Boolean)
+          .sort((a, b) => b!.totalEarned - a!.totalEarned);
         
       } catch (err) {
         console.error("Failed to process trainer payment data:", err);
@@ -184,12 +178,6 @@ export function useTrainerPayments(branchId: string | undefined) {
       }
     },
     enabled: !!branchId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    meta: {
-      onError: (error: Error) => {
-        console.error("Error in useTrainerPayments hook:", error);
-        toast.error("Failed to load trainer payment data");
-      }
-    }
+    staleTime: 5 * 60 * 1000 // 5 minutes cache
   });
 }
