@@ -19,10 +19,7 @@ export function formatTrainerPaymentData(
     );
     
     const scheduleDate = new Date(schedule.start_time);
-    const revenue = calculateClassRevenue(scheduleInvoiceItems, schedule);
-    const isPaid = scheduleInvoiceItems.some(item => 
-      item.invoices?.status === 'paid'
-    );
+    const { revenue, isPaid } = calculateClassRevenue(scheduleInvoiceItems, schedule);
 
     return {
       scheduleId: schedule.id,
@@ -35,13 +32,12 @@ export function formatTrainerPaymentData(
     };
   });
 
-  // Calculate financial totals
+  // Calculate totals
   const totalEarned = classDetails.reduce((sum, detail) => sum + detail.revenue, 0);
-  const paidAmount = classDetails
-    .filter(detail => detail.isPaid)
-    .reduce((sum, detail) => sum + detail.revenue, 0);
+  const paidClasses = classDetails.filter(detail => detail.isPaid);
+  const paid = paidClasses.reduce((sum, detail) => sum + detail.revenue, 0);
 
-  // Find last payment date
+  // Find last payment date from invoice items
   const paidItems = invoiceItems.filter(item => item.invoices?.status === 'paid');
   let lastPaymentDate: string | undefined;
   if (paidItems.length > 0) {
@@ -57,8 +53,8 @@ export function formatTrainerPaymentData(
     id: trainer.id,
     trainerName: `${trainer.first_name} ${trainer.last_name}`,
     totalEarned,
-    paid: paidAmount,
-    pending: totalEarned - paidAmount,
+    paid,
+    pending: totalEarned - paid,
     classesCount: allSchedules.length,
     clients: uniqueClientIds.size,
     lastPaymentDate,
