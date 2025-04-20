@@ -31,7 +31,6 @@ import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { deleteHandler } from "@/lib/api/handlers"; // Import from API lib
-import { TablePagination } from "@/components/ui/table-pagination";
 
 interface ClientData {
   id: string;
@@ -149,10 +148,29 @@ export function HandlerTable({ handlers, searchQuery, itemsPerPage, loading }: H
               </Link>
             </Button>
             
-            <EditHandlerModal handler={handler}>
-              <Button variant="ghost" size="icon">
-                <Pencil className="h-4 w-4" />
-                <span className="sr-only">Edit</span>
+            <Button 
+              variant="ghost" 
+              size="icon"
+              id={`edit-handler-${handler.id}`}
+              onClick={() => {
+                // Find the modal trigger and open it
+                const modal = document.getElementById(`edit-handler-modal-${handler.id}`) as HTMLButtonElement;
+                if (modal) modal.click();
+              }}
+            >
+              <Pencil className="h-4 w-4" />
+              <span className="sr-only">Edit</span>
+            </Button>
+            
+            <EditHandlerModal handler={handler} onSuccess={() => {
+              queryClient.invalidateQueries({ queryKey: ["handlers"] });
+            }}>
+              <Button 
+                variant="outline" 
+                id={`edit-handler-modal-${handler.id}`}
+                className="hidden" // Hide this button, it's just used as a trigger
+              >
+                Open Edit Modal
               </Button>
             </EditHandlerModal>
             
@@ -170,7 +188,10 @@ export function HandlerTable({ handlers, searchQuery, itemsPerPage, loading }: H
                     View details
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => document.getElementById(`edit-handler-${handler.id}`)?.click()}>
+                <DropdownMenuItem onClick={() => {
+                  const editButton = document.getElementById(`edit-handler-${handler.id}`) as HTMLButtonElement;
+                  if (editButton) editButton.click();
+                }}>
                   Edit handler
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
@@ -266,10 +287,28 @@ export function HandlerTable({ handlers, searchQuery, itemsPerPage, loading }: H
                           </Link>
                         </Button>
                         
-                        <EditHandlerModal handler={handler}>
-                          <Button variant="ghost" size="icon" id={`edit-handler-${handler.id}`}>
-                            <Pencil className="h-4 w-4" />
-                            <span className="sr-only">Edit</span>
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          id={`edit-handler-${handler.id}`}
+                          onClick={() => {
+                            const modal = document.getElementById(`edit-handler-modal-${handler.id}`) as HTMLButtonElement;
+                            if (modal) modal.click();
+                          }}
+                        >
+                          <Pencil className="h-4 w-4" />
+                          <span className="sr-only">Edit</span>
+                        </Button>
+                        
+                        <EditHandlerModal handler={handler} onSuccess={() => {
+                          queryClient.invalidateQueries({ queryKey: ["handlers"] });
+                        }}>
+                          <Button 
+                            variant="outline" 
+                            id={`edit-handler-modal-${handler.id}`}
+                            className="hidden"
+                          >
+                            Open Edit Modal
                           </Button>
                         </EditHandlerModal>
                         
@@ -287,11 +326,40 @@ export function HandlerTable({ handlers, searchQuery, itemsPerPage, loading }: H
                                 View details
                               </Link>
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => document.getElementById(`edit-handler-${handler.id}`)?.click()}>
+                            <DropdownMenuItem onClick={() => {
+                              const editButton = document.getElementById(`edit-handler-${handler.id}`) as HTMLButtonElement;
+                              if (editButton) editButton.click();
+                            }}>
                               Edit handler
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => handleDelete()} disabled={isDeleting} className="text-red-600">
+                            <DropdownMenuItem 
+                              onClick={() => {
+                                const [isDeleting, setIsDeleting] = useState(false);
+                                const handleDelete = async () => {
+                                  setIsDeleting(true);
+                                  try {
+                                    await deleteHandler(handler.id);
+                                    toast({
+                                      title: "Handler deleted",
+                                      description: "The handler has been deleted successfully",
+                                    });
+                                    queryClient.invalidateQueries({ queryKey: ["handlers"] });
+                                  } catch (error) {
+                                    console.error("Error deleting handler:", error);
+                                    toast({
+                                      variant: "destructive",
+                                      title: "Failed to delete handler",
+                                      description: "There was an error deleting the handler",
+                                    });
+                                  } finally {
+                                    setIsDeleting(false);
+                                  }
+                                };
+                                handleDelete();
+                              }} 
+                              className="text-red-600"
+                            >
                               Delete handler
                             </DropdownMenuItem>
                           </DropdownMenuContent>

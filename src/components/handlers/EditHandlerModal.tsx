@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { Edit } from "lucide-react";
-import { useState } from "react";
+import { useState, ReactNode } from "react";
 import { EditHandlerForm } from "./EditHandlerForm";
 import { useIsMobile } from "@/hooks/useIsMobile";
 
@@ -21,19 +21,24 @@ interface EditHandlerModalProps {
     branch_id?: string | null;
   };
   onSuccess?: () => void;
+  children?: ReactNode; // Add children prop
 }
 
-export function EditHandlerModal({ handler, onSuccess }: EditHandlerModalProps) {
+export function EditHandlerModal({ handler, onSuccess, children }: EditHandlerModalProps) {
   const [open, setOpen] = useState(false);
   const isMobile = useIsMobile();
 
   if (isMobile) {
     return (
       <>
-        <Button variant="outline" onClick={() => setOpen(true)} className="w-full sm:w-auto">
-          <Edit className="h-4 w-4 mr-2" />
-          Edit Handler
-        </Button>
+        {children ? (
+          <span onClick={() => setOpen(true)}>{children}</span>
+        ) : (
+          <Button variant="outline" onClick={() => setOpen(true)} className="w-full sm:w-auto">
+            <Edit className="h-4 w-4 mr-2" />
+            Edit Handler
+          </Button>
+        )}
         <Drawer open={open} onOpenChange={setOpen}>
           <DrawerContent className="max-h-[90vh] overflow-auto">
             <DrawerHeader>
@@ -56,10 +61,14 @@ export function EditHandlerModal({ handler, onSuccess }: EditHandlerModalProps) 
 
   return (
     <>
-      <Button variant="outline" onClick={() => setOpen(true)}>
-        <Edit className="h-4 w-4 mr-2" />
-        Edit Handler
-      </Button>
+      {children ? (
+        <span onClick={() => setOpen(true)}>{children}</span>
+      ) : (
+        <Button variant="outline" onClick={() => setOpen(true)}>
+          <Edit className="h-4 w-4 mr-2" />
+          Edit Handler
+        </Button>
+      )}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-auto">
           <DialogHeader>
