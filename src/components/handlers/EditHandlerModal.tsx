@@ -30,32 +30,55 @@ export function EditHandlerModal({ handler, onSuccess, children }: EditHandlerMo
   const [open, setOpen] = useState(false);
   const isMobile = useIsMobile();
 
+  const handleOpen = (event: React.MouseEvent) => {
+    event.stopPropagation();
+    setOpen(true);
+  };
+
+  const renderEditButton = () => (
+    <Button 
+      variant="outline" 
+      onClick={handleOpen} 
+      className="w-full sm:w-auto"
+    >
+      <Edit className="h-4 w-4 mr-2" />
+      Edit Handler
+    </Button>
+  );
+
+  const renderModalContent = (isDrawer: boolean) => {
+    const ModalContainer = isDrawer ? DrawerContent : DialogContent;
+    const ModalHeader = isDrawer ? DrawerHeader : DialogHeader;
+    const ModalTitle = isDrawer ? DrawerTitle : DialogTitle;
+
+    return (
+      <ModalContainer className="max-h-[90vh] overflow-auto">
+        <ModalHeader>
+          <ModalTitle>Edit Handler</ModalTitle>
+        </ModalHeader>
+        <div className="px-4 pb-4">
+          <EditHandlerForm 
+            handler={handler} 
+            onSuccess={() => {
+              setOpen(false);
+              if (onSuccess) onSuccess();
+            }} 
+          />
+        </div>
+      </ModalContainer>
+    );
+  };
+
   if (isMobile) {
     return (
       <>
         {children ? (
-          <span onClick={() => setOpen(true)}>{children}</span>
+          <span onClick={handleOpen}>{children}</span>
         ) : (
-          <Button variant="outline" onClick={() => setOpen(true)} className="w-full sm:w-auto">
-            <Edit className="h-4 w-4 mr-2" />
-            Edit Handler
-          </Button>
+          renderEditButton()
         )}
         <Drawer open={open} onOpenChange={setOpen}>
-          <DrawerContent className="max-h-[90vh] overflow-auto">
-            <DrawerHeader>
-              <DrawerTitle>Edit Handler</DrawerTitle>
-            </DrawerHeader>
-            <div className="px-4 pb-4">
-              <EditHandlerForm 
-                handler={handler} 
-                onSuccess={() => {
-                  setOpen(false);
-                  if (onSuccess) onSuccess();
-                }} 
-              />
-            </div>
-          </DrawerContent>
+          {renderModalContent(true)}
         </Drawer>
       </>
     );
@@ -64,26 +87,12 @@ export function EditHandlerModal({ handler, onSuccess, children }: EditHandlerMo
   return (
     <>
       {children ? (
-        <span onClick={() => setOpen(true)}>{children}</span>
+        <span onClick={handleOpen}>{children}</span>
       ) : (
-        <Button variant="outline" onClick={() => setOpen(true)}>
-          <Edit className="h-4 w-4 mr-2" />
-          Edit Handler
-        </Button>
+        renderEditButton()
       )}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-auto">
-          <DialogHeader>
-            <DialogTitle>Edit Handler</DialogTitle>
-          </DialogHeader>
-          <EditHandlerForm 
-            handler={handler} 
-            onSuccess={() => {
-              setOpen(false);
-              if (onSuccess) onSuccess();
-            }} 
-          />
-        </DialogContent>
+        {renderModalContent(false)}
       </Dialog>
     </>
   );
