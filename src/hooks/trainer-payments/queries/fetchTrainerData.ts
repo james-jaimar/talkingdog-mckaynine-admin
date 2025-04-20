@@ -1,5 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
+import { Schedule } from "../types";
 
 export async function fetchTrainers(branchId: string) {
   const { data: trainers, error } = await supabase
@@ -19,13 +20,20 @@ export async function fetchTrainers(branchId: string) {
   return trainers;
 }
 
-export async function fetchSchedules(trainerId: string) {
+export async function fetchSchedules(trainerId: string): Promise<Schedule[]> {
   const { data: schedules, error } = await supabase
     .from('class_schedules')
     .select(`
       id,
+      class_id,
+      trainer_id,
       start_time,
       end_time,
+      recurring,
+      recurrence_pattern,
+      selected_dates,
+      created_at,
+      updated_at,
       classes:class_id (
         id,
         name,
@@ -40,7 +48,7 @@ export async function fetchSchedules(trainerId: string) {
     throw error;
   }
 
-  return schedules;
+  return schedules as Schedule[];
 }
 
 export async function fetchBookings(scheduleIds: string[], dateRange?: { from: string; to: string }) {

@@ -25,9 +25,25 @@ export interface TrainerPaymentData {
   expanded?: boolean;
 }
 
-export type Schedule = Database['public']['Tables']['class_schedules']['Row'] & {
-  classes: Database['public']['Tables']['classes']['Row'] | null;
-};
+// Update the Schedule type to match the actual data structure from fetchSchedules
+export interface Schedule {
+  id: string;
+  class_id?: string;
+  trainer_id?: string;
+  start_time: string;
+  end_time: string;
+  recurring?: boolean;
+  recurrence_pattern?: string | null;
+  selected_dates?: string[] | null;
+  created_at?: string;
+  updated_at?: string;
+  classes?: {
+    id: string;
+    name: string;
+    trainer_fee_type: string;
+    trainer_fee_value: number;
+  } | null;
+}
 
 export type Booking = Database['public']['Tables']['bookings']['Row'];
 

@@ -7,7 +7,7 @@ import {
   fetchInvoiceItems 
 } from "./queries/fetchTrainerData";
 import { formatTrainerPaymentData } from "./utils/formatTrainerData";
-import { TrainerPaymentData } from "./types";
+import { TrainerPaymentData, Schedule } from "./types";
 
 export function useTrainerPaymentData(branchId?: string, dateRange?: { from: Date; to: Date }) {
   return useQuery({
