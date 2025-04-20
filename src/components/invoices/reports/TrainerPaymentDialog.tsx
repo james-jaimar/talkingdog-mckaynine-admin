@@ -78,7 +78,7 @@ export function TrainerPaymentDialog({
       }
 
       // Get the trainer payments data from the query cache
-      const queryClient = new useQueryClient();
+      // Fix: Don't use 'new' with useQueryClient
       const cachedData = queryClient.getQueryData(['trainer-payments', branchId, dateRange]) as any[];
       
       if (cachedData) {
