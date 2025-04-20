@@ -1,4 +1,3 @@
-
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Booking } from "../types/booking";
@@ -7,8 +6,6 @@ export function useClassHandlers(classId: string) {
   return useQuery({
     queryKey: ['class-handlers', classId],
     queryFn: async () => {
-      console.log("Fetching handlers for class:", classId);
-      
       // Validate classId
       if (!classId) {
         console.error("Missing classId in useClassHandlers");
@@ -27,8 +24,6 @@ export function useClassHandlers(classId: string) {
           throw scheduleError;
         }
         
-        console.log("Found schedule IDs:", scheduleIds);
-        
         if (!scheduleIds || scheduleIds.length === 0) {
           console.log("No schedules found for class:", classId);
           return [];
@@ -36,7 +31,6 @@ export function useClassHandlers(classId: string) {
         
         const scheduleIdList = scheduleIds.map(s => s.id);
         
-        // Updated query to remove references to uses_whatsapp and social_media_consent columns
         const { data, error } = await supabase
           .from('bookings')
           .select(`
@@ -81,64 +75,23 @@ export function useClassHandlers(classId: string) {
           console.error("Error fetching bookings:", error);
           throw error;
         }
-        
-        console.log("Found bookings:", data?.length || 0);
-        
-        // Ensure data is an array
-        if (!data) return [];
-        
-        // Process bookings to determine payment status
-        const processedBookings = data.map(booking => {
-          try {
-            // Check if any associated invoice is paid
-            const hasPaidInvoice = booking.invoice_items?.some(item => 
-              item?.invoices && item?.invoices?.payment_received
-            );
-            
-            // Flag bookings as unpaid if they have no proof of payment and no paid invoice
-            const isUnpaid = (!booking.proof_of_payment || booking.proof_of_payment === '') && !hasPaidInvoice;
-            
-            // Clean up the structure by removing the invoice_items array which is no longer needed
-            const { invoice_items, ...bookingData } = booking;
-            
-            // Process attendance data to ensure it's properly formatted
-            const attendances = booking.attendances || [];
-            
-            // Return the booking with the computed payment status
-            return {
-              ...bookingData,
-              computed_payment_status: isUnpaid ? 'unpaid' : 'paid',
-              attendances,
-              // Map client uses_whatsapp_status and social_media_consent_status to the booking
-              uses_whatsapp: booking.clients?.uses_whatsapp_status === 'yes',
-              social_media_consent: booking.clients?.social_media_consent_status === 'yes'
-            } as Booking;
-          } catch (err) {
-            console.error("Error processing booking:", err, booking);
-            // Return a fallback version of the booking to prevent the entire query from failing
-            return {
-              ...booking,
-              computed_payment_status: 'unknown',
-              attendances: booking.attendances || [],
-              uses_whatsapp: false,
-              social_media_consent: false
-            } as Booking;
-          }
-        });
-        
-        return processedBookings;
+
+        return data.map(booking => ({
+          ...booking,
+          computed_payment_status: booking.payment_status,
+          info_eo_status: booking.info_eo ? true : null,
+          info_pg_status: booking.info_pg ? true : null,
+          uses_whatsapp: booking.clients?.uses_whatsapp_status,
+          social_media_consent: booking.clients?.social_media_consent_status
+        }));
       } catch (err) {
-        console.error("Critical error in useClassHandlers:", err);
+        console.error("Error in useClassHandlers:", err);
         throw err;
       }
     },
-    // Reduced refetch interval to prevent excessive API calls
     refetchInterval: 30000,
-    // Enable refetching when window gets focus
     refetchOnWindowFocus: true,
-    // Stale time of 15 seconds to reduce unnecessary refetches
     staleTime: 15000,
-    // Retry failed requests 3 times with exponential backoff
     retry: 3,
     retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
   });

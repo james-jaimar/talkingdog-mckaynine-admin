@@ -6,12 +6,10 @@ export interface Booking {
   proof_of_payment: string | null;
   additional_notes: string | null;
   info_eo: string | null;
-  uses_whatsapp: boolean; // Still using boolean for internal compatibility
-  social_media_consent: boolean; // Still using boolean for internal compatibility
   info_pg: string | null;
   class_schedule_id: string;
-  dog_id?: string;  
-  client_id?: string; 
+  dog_id?: string;
+  client_id?: string;
   status: string;
   payment_status: string;
   dogs?: {
@@ -29,5 +27,7 @@ export interface Booking {
     social_media_consent_status: 'yes' | 'no' | 'not_marked';
   };
   computed_payment_status?: string;
+  info_eo_status?: boolean | null;
+  info_pg_status?: boolean | null;
   attendances?: any[];
 }

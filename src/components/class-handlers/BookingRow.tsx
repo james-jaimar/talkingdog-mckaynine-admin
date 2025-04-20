@@ -1,4 +1,3 @@
-
 import { TableRow, TableCell } from "@/components/ui/table";
 import { Booking } from "./types/booking";
 import { BookingHandlerInfo } from "./booking-row/BookingHandlerInfo";
@@ -7,6 +6,8 @@ import { EditableCell } from "./booking-row/EditableCell";
 import { PaymentStatusBadge } from "./booking-row/PaymentStatusBadge";
 import { BookingActionButtons } from "./booking-row/BookingActionButtons";
 import { useInvoiceStatus } from "./booking-row/useInvoiceStatus";
+import { ConsentStatusBadge } from "@/components/handlers/status/ConsentStatusBadge";
+import { Check, Minus } from "lucide-react";
 
 interface BookingRowProps {
   booking: Booking;
@@ -33,6 +34,13 @@ export function BookingRow({
 }: BookingRowProps) {
   // Use the extracted hook for invoice status
   const { data: invoiceData, isLoading: isLoadingInvoice } = useInvoiceStatus(booking.id);
+
+  const renderInfoStatus = (hasInfo: boolean | null) => {
+    if (hasInfo === true) {
+      return <Check className="h-4 w-4 text-green-500" />;
+    }
+    return <Minus className="h-4 w-4 text-gray-400" />;
+  };
 
   return (
     <TableRow key={booking.id}>
@@ -73,41 +81,21 @@ export function BookingRow({
       <TableCell>
         <EditableCell
           isEditing={isEditing}
-          value={bookingData.additional_notes || ''}
-          onChange={(value) => handleInputChange(booking.id, 'additional_notes', value)}
-        />
-      </TableCell>
-      
-      <TableCell>
-        <EditableCell
-          isEditing={isEditing}
           value={bookingData.info_eo || ''}
           onChange={(value) => handleInputChange(booking.id, 'info_eo', value)}
         />
       </TableCell>
       
       <TableCell className="text-center">
-        <CheckableCell
-          isEditing={isEditing}
-          checked={bookingData.uses_whatsapp}
-          onChange={(checked) => handleInputChange(booking.id, 'uses_whatsapp', checked)}
-        />
+        <ConsentStatusBadge status={booking.clients?.uses_whatsapp_status || 'not_marked'} />
       </TableCell>
       
       <TableCell className="text-center">
-        <CheckableCell
-          isEditing={isEditing}
-          checked={bookingData.social_media_consent}
-          onChange={(checked) => handleInputChange(booking.id, 'social_media_consent', checked)}
-        />
+        <ConsentStatusBadge status={booking.clients?.social_media_consent_status || 'not_marked'} />
       </TableCell>
       
-      <TableCell>
-        <EditableCell
-          isEditing={isEditing}
-          value={bookingData.info_pg || ''}
-          onChange={(value) => handleInputChange(booking.id, 'info_pg', value)}
-        />
+      <TableCell className="text-center">
+        {renderInfoStatus(booking.info_pg_status)}
       </TableCell>
       
       <TableCell>
