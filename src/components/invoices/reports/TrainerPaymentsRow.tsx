@@ -38,8 +38,8 @@ export function TrainerPaymentsRow({ trainer, onMarkForPayment }: TrainerPayment
   const classesCount = trainer.classesCount || 0;
   const classDetailsShown = trainer.classDetails?.length || 0;
   
-  // Show potential earnings if no payments made yet
-  const showPotentialAmounts = trainer.paid === 0 && trainer.pending === 0;
+  // Determine if we should show potential earnings based on whether any actual payments exist
+  const showPotentialAmounts = trainer.paid === 0;
   const earnings = showPotentialAmounts 
     ? (trainer.potentialEarnings || 0)
     : trainer.totalEarned;
@@ -102,7 +102,6 @@ export function TrainerPaymentsRow({ trainer, onMarkForPayment }: TrainerPayment
               e.stopPropagation();
               onMarkForPayment(trainer.id);
             }}
-            disabled={!showPotentialAmounts && trainer.pending <= 0}
           >
             <DollarSign className="h-4 w-4 mr-1" />
             Mark for Payment

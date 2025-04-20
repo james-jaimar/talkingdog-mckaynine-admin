@@ -86,18 +86,17 @@ export function formatTrainerPaymentData(
     };
   });
 
-  // Calculate total earned (sum of paid + pending, or potential earnings if there are no payments)
-  const totalEarned = totalPaid + totalPending > 0 
-    ? totalPaid + totalPending 
-    : totalPotentialEarnings;
+  // Total earned should just be the sum of paid + pending in the system
+  const actualPayments = totalPaid + totalPending;
+  const totalEarned = actualPayments > 0 ? actualPayments : totalPotentialEarnings;
 
   return {
     id: trainer.id,
     trainerName: `${trainer.first_name} ${trainer.last_name}`,
-    totalEarned, // This is now the potential earnings if no actual payments exist
+    totalEarned,
     paid: totalPaid,
-    pending: totalPaid + totalPending > 0 ? totalPending : totalPotentialEarnings, // If no payments, show potential as pending
-    potentialEarnings: totalPotentialEarnings, // New field to track potential earnings
+    pending: totalPaid > 0 ? totalPending : 0, // If any payment exists, show accurate pending
+    potentialEarnings: totalPotentialEarnings, // Always track potential earnings
     classesCount: allSchedules.length,
     clients: uniqueClientIds.size,
     lastPaymentDate,

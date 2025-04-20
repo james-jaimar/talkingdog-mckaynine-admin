@@ -66,7 +66,8 @@ export function TrainerPaymentsTable({ trainers, onMarkForPayment }: TrainerPaym
         <Alert variant="default" className="bg-blue-50 border-blue-200">
           <Info className="h-4 w-4 text-blue-600" />
           <AlertDescription className="text-blue-800">
-            No payments have been processed yet. Showing potential earnings based on class configurations and bookings.
+            Displaying potential earnings based on class configurations and bookings. 
+            No actual payments have been processed in this system yet.
           </AlertDescription>
         </Alert>
       )}
