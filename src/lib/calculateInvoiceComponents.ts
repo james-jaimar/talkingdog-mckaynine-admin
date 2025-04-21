@@ -1,9 +1,10 @@
 
 /**
- * Helper to calculate invoice, discount, and expense breakdowns.
+ * Canonical Helper to calculate invoice, discount, and expense breakdowns.
+ * Used absolutely everywhere for invoicing calculations.
  * 
- * @param courseFee Number - main course price or subtotal
- * @param enrollmentFee Number - only applied on first class
+ * @param courseFee Number - main course price (not including enrollment fee)
+ * @param enrollmentFee Number - only applied if >0
  * @param discount Amount (number) - discount value
  * @param discountType "fixed" | "percentage"
  * @param adminFeeRate Number (as percentage, default 0)
@@ -29,7 +30,7 @@ export interface InvoiceCalculationResult {
 
 export function calculateInvoiceComponents({
   courseFee,
-  enrollmentFee,
+  enrollmentFee = 0,
   discount = 0,
   discountType = "fixed",
   adminFeeRate = 0,
@@ -44,7 +45,17 @@ export function calculateInvoiceComponents({
   trainerFeeRate?: number;
   franchiseFeeRate?: number;
 }): InvoiceCalculationResult {
-  const subtotal = Number(courseFee || 0) + Number(enrollmentFee || 0);
+  if (typeof courseFee !== "number" || isNaN(courseFee)) courseFee = 0;
+  if (typeof enrollmentFee !== "number" || isNaN(enrollmentFee)) enrollmentFee = 0;
+
+  const subtotal = Number(courseFee) + Number(enrollmentFee);
+
+  // DEV LOG: Confirm that input args are clean and explicit
+  if (process.env.NODE_ENV === "development" || typeof window !== "undefined") {
+    console.log("CALC-INVOICE breakdown inputs:", {
+      courseFee, enrollmentFee, discount, discountType, adminFeeRate, trainerFeeRate, franchiseFeeRate
+    });
+  }
 
   let monetaryDiscount = 0;
   if (discountType === "percentage") {
@@ -76,3 +87,4 @@ export function calculateInvoiceComponents({
     }
   };
 }
+

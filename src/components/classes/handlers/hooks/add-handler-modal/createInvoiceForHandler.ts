@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { InvoiceStatus } from "@/types/invoice";
 import { UseMutationResult } from "@tanstack/react-query";
@@ -39,11 +40,10 @@ export const createInvoiceForHandler = async ({
   franchiseFeeRate = 0,
 }: CreateInvoiceProps): Promise<boolean> => {
   try {
-    let invoiceNumber;
+    let invoiceNumber: string | undefined;
     try {
       invoiceNumber = await generateInvoiceNumber();
     } catch (error) {
-      // fallback as before
       const now = new Date();
       const year = now.getFullYear().toString().slice(-2);
       const month = (now.getMonth() + 1).toString().padStart(2, '0');
@@ -69,7 +69,7 @@ export const createInvoiceForHandler = async ({
       invoiceNumber = `${invoiceNumber}-${uniqueSuffix}`;
     }
 
-    // Always: item 1 = course, item 2 = enrollment fee, if any
+    // Compose items
     const items = [
       {
         description: `${className} training class for ${dogName}`,
@@ -87,10 +87,10 @@ export const createInvoiceForHandler = async ({
       });
     }
 
-    // Calculate all components (subtotal, discount, total, expense breakdowns)
+    // Calculate amounts using the canonical utility, with explicit separation of fees
     const breakdown = calculateInvoiceComponents({
-      courseFee: classPrice + (enrollmentFee || 0),
-      enrollmentFee: 0, // Already included above
+      courseFee: classPrice,
+      enrollmentFee,
       discount: discountAmount,
       discountType,
       adminFeeRate,
@@ -98,7 +98,16 @@ export const createInvoiceForHandler = async ({
       franchiseFeeRate,
     });
 
-    console.log("createInvoiceForHandler -- calculated breakdown:", breakdown);
+    console.log("CREATE-INVOICE: Invoice calculation breakdown", {
+      courseFee: classPrice, enrollmentFee, discountType, discountAmount,
+      adminFeeRate, trainerFeeRate, franchiseFeeRate, breakdown
+    });
+
+    if (breakdown.subtotal === 0) {
+      console.error("CREATE-INVOICE: Subtotal is zero - check input arguments!", {
+        classPrice, enrollmentFee
+      });
+    }
 
     const invoiceData = {
       client_id: handlerId,
@@ -124,11 +133,11 @@ export const createInvoiceForHandler = async ({
       await createInvoice.mutateAsync(invoiceData);
       return true;
     } catch (error) {
-      console.error("Failed to create invoice:", error);
+      console.error("CREATE-INVOICE: Failed to create invoice with mutateAsync", error, invoiceData);
       return false;
     }
   } catch (error) {
-    console.error("Error in createInvoiceForHandler:", error);
+    console.error("Error in createInvoiceForHandler OUTER catch:", error);
     return false;
   }
 };
