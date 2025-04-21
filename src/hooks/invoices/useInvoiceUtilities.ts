@@ -32,70 +32,32 @@ export const generateInvoiceNumber = async (): Promise<string> => {
           else branchCode = branchName.charAt(0).toUpperCase();
         }
       }
-      if (!branchCode) {
-        const { data: authData } = await supabase.auth.getUser();
-        if (authData?.user) {
-          const { data: branchData, error: branchError } = await supabase.rpc('get_default_branch_name');
-          if (!branchError && branchData) {
-            const branchName = String(branchData);
-            if (branchName.toLowerCase().includes('delta')) branchCode = "D";
-            else if (branchName.toLowerCase().includes('randburg')) branchCode = "R";
-            else branchCode = branchName.charAt(0).toUpperCase();
-          }
-        }
-      }
-      if (!branchCode) branchCode = "X";
+      if (!branchCode) branchCode = "D"; // Default to Delta if no branch found
     } catch (err) {
-      branchCode = "X";
+      branchCode = "D"; // Default to Delta on error
     }
 
     const invoicePrefix = `INV-Mc${branchCode}-${yearMonth}-`;
-    let nextSequentialNumber = 1;
-    let candidateInvoiceNumber = "";
+    
+    // Get the last invoice number for this prefix
+    const { data: lastInvoice } = await supabase
+      .from('invoices')
+      .select('invoice_number')
+      .ilike('invoice_number', `${invoicePrefix}%`)
+      .order('invoice_number', { ascending: false })
+      .limit(1);
 
-    try {
-      // Always try to use the RPC first
-      const { data: count, error: countError } = await supabase.rpc('count_invoices_with_prefix', { prefix: invoicePrefix });
-      if (!countError && count !== null) {
-        nextSequentialNumber = count + 1;
-      } else {
-        // fallback - manual count in case RPC fails
-        const { data: invoices, error: queryError } = await supabase
-          .from('invoices')
-          .select('invoice_number')
-          .ilike('invoice_number', `${invoicePrefix}%`);
-        if (!queryError && invoices) {
-          nextSequentialNumber = invoices.length + 1;
-        }
-      }
-      const sequentialNumber = String(nextSequentialNumber).padStart(4, '0');
-      candidateInvoiceNumber = `${invoicePrefix}${sequentialNumber}`;
-
-      // Check for collision and add suffix *only* if really needed
-      const { data: existingInvoice } = await supabase
-        .from('invoices')
-        .select('id')
-        .eq('invoice_number', candidateInvoiceNumber)
-        .maybeSingle();
-
-      if (!existingInvoice) {
-        return candidateInvoiceNumber;
-      } else {
-        // If by tiny chance there is a real collision, append a unique 4-digit suffix
-        const uniqueSuffix = Math.floor(Math.random()*9000 + 1000).toString();
-        return `${invoicePrefix}${sequentialNumber}-${uniqueSuffix}`;
-      }
-    } catch (error) {
-      // Fallback - timestamp
-      const timestamp = now.getTime().toString().slice(-4);
-      return `INV-Mc${branchCode}-${yearMonth}-${timestamp}`;
+    let nextNumber = 1;
+    if (lastInvoice && lastInvoice.length > 0) {
+      const lastNumber = parseInt(lastInvoice[0].invoice_number.split('-').pop() || '0', 10);
+      nextNumber = lastNumber + 1;
     }
+
+    return `${invoicePrefix}${nextNumber.toString().padStart(4, '0')}`;
   } catch (error) {
-    // Ultimate fallback again if something majorly breaks
-    const now = new Date();
-    const year = now.getFullYear().toString().slice(-2);
-    const month = (now.getMonth() + 1).toString().padStart(2, '0');
-    const timestamp = now.getTime().toString().slice(-4);
-    return `INV-McX-${year}${month}-${timestamp}`;
+    console.error("Error generating invoice number:", error);
+    // Fallback with timestamp
+    const timestamp = new Date().getTime().toString().slice(-4);
+    return `INV-McD-${yearMonth}-${timestamp}`;
   }
 };
