@@ -8,45 +8,43 @@ import { Invoice } from "@/hooks/invoices/types";
 export const addInvoiceFooter = (doc: jsPDF, invoice: Invoice, startY: number, pageWidth: number, pageHeight: number) => {
   let currentY = startY;
   
-  // Notes at the bottom if present
-  if (invoice.notes) {
-    doc.setFontSize(11);
-    doc.setFont(undefined, "bold");
-    doc.text("Notes:", 14, currentY);
-    doc.setFontSize(9);
-    doc.setFont(undefined, "normal");
-    
-    // For longer notes, handle wrapping
-    const splitNotes = doc.splitTextToSize(invoice.notes, pageWidth - 28);
-    splitNotes.forEach((line, index) => {
-      doc.text(line, 14, currentY + 7 + (index * 5));
-    });
-    
-    currentY += 7 + (splitNotes.length * 5) + 5; // Reduced from 10 to tighten spacing
-  }
-
-  // Banking details in the footer - always at bottom of page
-  const footerY = pageHeight - 30; // Moved up from 40 to tighten spacing
-  
-  doc.setDrawColor(200, 200, 200);
+  // Line before banking details
   doc.setLineWidth(0.5);
-  doc.line(14, footerY - 10, pageWidth - 14, footerY - 10);
+  doc.line(pageWidth / 4, currentY, pageWidth - pageWidth / 4, currentY);
+  currentY += 10;
   
+  // Banking details section
   doc.setFontSize(10);
-  doc.setFont(undefined, "bold");
-  doc.text("BANKING DETAILS:", pageWidth / 2, footerY, { align: 'center' });
-  doc.setFont(undefined, "normal");
-  doc.setFontSize(9);
+  doc.text("BANKING DETAILS:", pageWidth / 2, currentY, { align: 'center' });
+  currentY += 6;
+  
   doc.text(
-    "Adrienne Hawkins. FNB, Sandton City (26095400). Account Number: 6212 7520 189",
+    "Adrienne Hawkins, FNB, Sandton City (26095400), Account Number: 6212 7520 189",
     pageWidth / 2, 
-    footerY + 6, 
+    currentY, 
     { align: 'center' }
   );
-  doc.text("Please use your name as reference.", pageWidth / 2, footerY + 12, { align: 'center' });
+  currentY += 6;
   
-  // Thank you message
+  doc.text("Please use your name as reference.", pageWidth / 2, currentY, { align: 'center' });
+  currentY += 10;
+  
+  // Line after banking details
+  doc.setLineWidth(0.5);
+  doc.line(pageWidth / 4, currentY, pageWidth - pageWidth / 4, currentY);
+  currentY += 15;
+  
+  // Display the total amount
+  if (invoice.total) {
+    doc.setFontSize(11);
+    doc.setFont(undefined, 'bold');
+    doc.text("Total:", pageWidth / 2 - 25, currentY);
+    doc.text(`R ${invoice.total.toFixed(2)}`, pageWidth / 2 + 25, currentY);
+  }
+  
+  // Thank you message at the very bottom
   doc.setFontSize(8);
+  doc.setFont(undefined, 'normal');
   doc.setTextColor(120, 120, 120);
   doc.text("Thank you for your business!", pageWidth / 2, pageHeight - 15, { align: "center" });
 };
