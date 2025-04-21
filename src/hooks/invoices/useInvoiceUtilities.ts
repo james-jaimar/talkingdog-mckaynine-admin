@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { useBranch } from "@/context/BranchContext";
@@ -56,8 +57,12 @@ export const generateInvoiceNumber = async (): Promise<string> => {
     return `${invoicePrefix}${nextNumber.toString().padStart(4, '0')}`;
   } catch (error) {
     console.error("Error generating invoice number:", error);
-    // Fallback with timestamp
+    // Fallback with timestamp - ensure yearMonth is defined in this scope too
     const timestamp = new Date().getTime().toString().slice(-4);
+    const now = new Date();
+    const year = now.getFullYear().toString().slice(-2);
+    const month = (now.getMonth() + 1).toString().padStart(2, '0');
+    const yearMonth = `${year}${month}`;
     return `INV-McD-${yearMonth}-${timestamp}`;
   }
 };
