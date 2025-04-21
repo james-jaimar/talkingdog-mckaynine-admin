@@ -28,19 +28,18 @@ export async function generateInvoicePDF(invoice: Invoice, returnBase64: boolean
     const xPosition = (pageWidth - imgWidth) / 2;
     doc.addImage(logoPath, "PNG", xPosition, 15, imgWidth, imgHeight);
     
-    // Add company details with centered layout
-    let startY = imgHeight + 25; // Start text below logo with padding
+    // Add company details with correct 4-line layout
+    let startY = imgHeight + 20; // Start text below logo with padding
     
     doc.setFontSize(10);
     doc.text("McKaynine Training Centre", pageWidth / 2, startY, { align: 'center' });
-    doc.text("Delta Park Branch", pageWidth / 2, startY + 6, { align: 'center' });
-    doc.text("Camp Delta (SA Boyscouts), Delta Park Main Entrance,", pageWidth / 2, startY + 12, { align: 'center' });
-    doc.text("Craighall Road, Delta Park", pageWidth / 2, startY + 18, { align: 'center' });
-    doc.text("Tel: 082 560-5100", pageWidth / 2, startY + 24, { align: 'center' });
-    doc.text("www.mckaynine.co.za", pageWidth / 2, startY + 30, { align: 'center' });
+    doc.text("Delta Park Branch", pageWidth / 2, startY + 5, { align: 'center' });
+    doc.text("Camp Delta (SA Boyscouts), Delta Park Main Entrance, Craighall Road, Delta Park. Tel: 082 560-5100", 
+             pageWidth / 2, startY + 10, { align: 'center' });
+    doc.text("www.mckaynine.co.za", pageWidth / 2, startY + 15, { align: 'center' });
     
     // Adjust the starting position for invoice content
-    startY += 40;
+    startY += 25;
 
     // Add invoice header
     const headerEndY = addInvoiceHeader(doc, invoice, startY, pageWidth);
@@ -54,19 +53,8 @@ export async function generateInvoicePDF(invoice: Invoice, returnBase64: boolean
     // Add invoice summary
     const summaryEndY = addInvoiceSummary(doc, invoice, tableEndY + 10);
     
-    // Add notes if present with better spacing
-    let currentY = summaryEndY + 20;
-    if (invoice.notes) {
-      doc.setFontSize(11);
-      doc.text("Notes:", 14, currentY);
-      doc.setFontSize(10);
-      const splitNotes = doc.splitTextToSize(invoice.notes, pageWidth - 28);
-      doc.text(splitNotes, 14, currentY + 7);
-      currentY += (splitNotes.length * 5) + 20;
-    }
-
-    // Add footer with adjusted spacing
-    addInvoiceFooter(doc, invoice, currentY, pageWidth, doc.internal.pageSize.height);
+    // Add footer with banking details
+    addInvoiceFooter(doc, invoice, summaryEndY + 15, pageWidth, doc.internal.pageSize.height);
     
     if (returnBase64) {
       return doc.output('datauristring').split(',')[1];
