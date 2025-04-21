@@ -59,7 +59,7 @@ export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
   // Initialize the form handler with the current class ID
   useEffect(() => {
     initializeWithClassId(classId);
-  }, [classId]);
+  }, [classId, initializeWithClassId]);
 
   useEffect(() => {
     if (!initialLoadAttempted) {
@@ -69,10 +69,13 @@ export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
   }, [refetch, initialLoadAttempted]);
 
   useEffect(() => {
+    // Initial fetch
     refetch();
+    
     const refreshInterval = setInterval(() => {
       refetch().catch(console.error);
     }, 10000);
+    
     return () => clearInterval(refreshInterval);
   }, [refetch]);
 
@@ -80,7 +83,11 @@ export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
     if (bookingToRemove) {
       setIsRemoving(true);
       try {
+        console.log(`Attempting to remove booking with ID: ${bookingToRemove}`);
         await removeHandler(bookingToRemove);
+        console.log("Handler removed successfully");
+        // Force a refresh of the data
+        await refetch();
       } catch (error) {
         console.error("Error removing handler:", error);
       } finally {
@@ -149,22 +156,26 @@ export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
         isMobile={isMobile}
       />
       
-      <HandlersTableContainer 
-        handlers={handlers}
-        editingBookingId={editingBookingId}
-        formData={formData}
-        handleInputChange={handleInputChange}
-        startEditing={startEditing}
-        saveChanges={saveChanges}
-        handleRemove={handleRemove}
-        scheduleDates={sortedDates}
-        renderAttendanceStatus={renderAttendanceStatus}
-      />
+      {!isMobile && (
+        <HandlersTableContainer 
+          handlers={handlers}
+          editingBookingId={editingBookingId}
+          formData={formData}
+          handleInputChange={handleInputChange}
+          startEditing={startEditing}
+          saveChanges={saveChanges}
+          handleRemove={handleRemove}
+          scheduleDates={sortedDates}
+          renderAttendanceStatus={renderAttendanceStatus}
+        />
+      )}
 
-      <MobileHandlersList 
-        handlers={handlers}
-        startEditing={startEditing}
-      />
+      {isMobile && (
+        <MobileHandlersList 
+          handlers={handlers}
+          startEditing={startEditing}
+        />
+      )}
 
       <RemoveHandlerDialog
         open={openRemoveDialog}

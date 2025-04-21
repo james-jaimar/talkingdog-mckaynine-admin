@@ -26,7 +26,11 @@ export function RemoveHandlerDialog({
   isLoading = false
 }: RemoveHandlerDialogProps) {
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
+    <AlertDialog open={open} onOpenChange={(value) => {
+      // Prevent dialog from closing while operation is in progress
+      if (isLoading && !value) return;
+      onOpenChange(value);
+    }}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Are you sure?</AlertDialogTitle>
@@ -38,7 +42,10 @@ export function RemoveHandlerDialog({
         <AlertDialogFooter>
           <AlertDialogCancel disabled={isLoading}>Cancel</AlertDialogCancel>
           <AlertDialogAction 
-            onClick={onConfirm} 
+            onClick={(e) => {
+              e.preventDefault();
+              onConfirm();
+            }}
             className="bg-red-600 hover:bg-red-700"
             disabled={isLoading}
           >

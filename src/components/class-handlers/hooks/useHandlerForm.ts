@@ -94,13 +94,67 @@ export function useHandlerForm() {
     }
     
     try {
-      // Delete the booking record
-      const { error } = await supabase
+      console.log('Starting removal of handler with booking ID:', bookingId);
+      
+      // First, delete any attendance records that reference this booking
+      // This resolves the foreign key constraint issue
+      const { error: attendanceError } = await supabase
+        .from('class_attendance')
+        .delete()
+        .eq('booking_id', bookingId);
+      
+      if (attendanceError) {
+        console.error('Error deleting attendance records:', attendanceError);
+        throw attendanceError;
+      }
+      
+      // Check for invoice items that reference this booking and handle them
+      const { data: invoiceItems, error: invoiceItemsError } = await supabase
+        .from('invoice_items')
+        .select('id, invoice_id')
+        .eq('booking_id', bookingId);
+      
+      if (invoiceItemsError) {
+        console.error('Error checking invoice items:', invoiceItemsError);
+        throw invoiceItemsError;
+      }
+      
+      // If invoice items exist, just nullify the booking_id reference instead of deleting them
+      if (invoiceItems && invoiceItems.length > 0) {
+        const { error: updateError } = await supabase
+          .from('invoice_items')
+          .update({ booking_id: null })
+          .eq('booking_id', bookingId);
+        
+        if (updateError) {
+          console.error('Error updating invoice items:', updateError);
+          throw updateError;
+        }
+      }
+      
+      // Check for trainer payments referencing this booking
+      const { error: trainerPaymentsError } = await supabase
+        .from('trainer_payments')
+        .update({ booking_id: null })
+        .eq('booking_id', bookingId);
+      
+      if (trainerPaymentsError) {
+        console.error('Error updating trainer payments:', trainerPaymentsError);
+        // Non-critical, we can continue even if this fails
+      }
+      
+      // Now finally delete the booking record
+      const { error: bookingError } = await supabase
         .from('bookings')
         .delete()
         .eq('id', bookingId);
       
-      if (error) throw error;
+      if (bookingError) {
+        console.error('Error deleting booking:', bookingError);
+        throw bookingError;
+      }
+      
+      console.log('Successfully removed handler with booking ID:', bookingId);
       
       toast({
         title: "Success",
@@ -115,7 +169,9 @@ export function useHandlerForm() {
       console.error('Error removing handler:', error);
       toast({
         title: "Error",
-        description: "Failed to remove handler from class",
+        description: error instanceof Error ? 
+          `Failed to remove handler: ${error.message}` : 
+          "Failed to remove handler from class",
         variant: "destructive"
       });
       
