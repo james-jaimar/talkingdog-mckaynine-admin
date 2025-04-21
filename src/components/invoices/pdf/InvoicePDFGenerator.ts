@@ -1,7 +1,7 @@
+
 import { Invoice } from "@/hooks/invoices/types";
 import { jsPDF } from "jspdf";
 import 'jspdf-autotable';
-import { addLogoToPdf } from "./utils/pdfHelpers";
 import { addInvoiceHeader } from "./sections/InvoiceHeader";
 import { addClientInfo } from "./sections/ClientInfo";
 import { addInvoiceItemsTable } from "./sections/InvoiceItems";
@@ -14,26 +14,27 @@ export async function generateInvoicePDF(invoice: Invoice, returnBase64: boolean
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.width;
   
-  // Load new logo with no text
-  const logoPath = "/lovable-uploads/d535ed81-9434-47c6-9813-6015d71fe908.png";
+  // Use the new McKaynine logo with paws
+  const logoPath = "/lovable-uploads/16e080f8-98b8-46b6-91cd-19a0d0157348.png";
   
   try {
-    // Add logo with specific dimensions
+    // Add logo with specific dimensions for better visibility
     const imgWidth = 170;
     const imgHeight = 55;
     const xPosition = (pageWidth - imgWidth) / 2;
     doc.addImage(logoPath, "PNG", xPosition, 10, imgWidth, imgHeight);
     
-    // Add company details
+    // Add company details centered below logo
     let startY = 70;
     doc.setFontSize(10);
     doc.text("McKaynine Training Centre", pageWidth / 2, startY, { align: 'center' });
     doc.text("Delta Park Branch", pageWidth / 2, startY + 6, { align: 'center' });
-    doc.text("Camp Delta (SA Boyscouts), Delta Park Main Entrance, Craighall Road, Delta Park", pageWidth / 2, startY + 12, { align: 'center' });
-    doc.text("Tel: 082 560-5100", pageWidth / 2, startY + 18, { align: 'center' });
-    doc.text("www.mckaynine.co.za", pageWidth / 2, startY + 24, { align: 'center' });
+    doc.text("Camp Delta (SA Boyscouts), Delta Park Main Entrance,", pageWidth / 2, startY + 12, { align: 'center' });
+    doc.text("Craighall Road, Delta Park", pageWidth / 2, startY + 18, { align: 'center' });
+    doc.text("Tel: 082 560-5100", pageWidth / 2, startY + 24, { align: 'center' });
+    doc.text("www.mckaynine.co.za", pageWidth / 2, startY + 30, { align: 'center' });
 
-    startY += 35;
+    startY += 40;
 
     // Add invoice header
     const headerEndY = addInvoiceHeader(doc, invoice, startY, pageWidth);
@@ -54,9 +55,7 @@ export async function generateInvoicePDF(invoice: Invoice, returnBase64: boolean
       doc.text("Notes:", 14, currentY);
       doc.setFontSize(10);
       const splitNotes = doc.splitTextToSize(invoice.notes, pageWidth - 28);
-      splitNotes.forEach((line: string, index: number) => {
-        doc.text(line, 14, currentY + 7 + (index * 5));
-      });
+      doc.text(splitNotes, 14, currentY + 7);
       currentY += (splitNotes.length * 5) + 20;
     }
 
