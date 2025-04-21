@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useInvoices } from "@/hooks/useInvoices";
+import { useMarkInvoiceAsSent } from "@/hooks/invoices/status"; // Direct import instead of through useInvoices
 
 interface EmailInvoiceDialogProps {
   open: boolean;
@@ -21,8 +22,8 @@ export function EmailInvoiceDialog({
 }: EmailInvoiceDialogProps) {
   const [emailRecipient, setEmailRecipient] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { emailInvoice, useMarkInvoiceAsSent } = useInvoices();
-  const markAsSent = useMarkInvoiceAsSent();
+  const { emailInvoice } = useInvoices();
+  const markAsSent = useMarkInvoiceAsSent(); // Using the direct import
   
   // Update email recipient when selected invoice changes
   useEffect(() => {

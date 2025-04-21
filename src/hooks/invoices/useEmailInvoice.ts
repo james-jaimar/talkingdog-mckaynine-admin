@@ -26,8 +26,9 @@ export function useEmailInvoice() {
         
         console.log("PDF generated successfully, preparing to send email");
 
-        // Get the Supabase URL
-        const supabaseUrl = supabase.supabaseUrl;
+        // Use the hardcoded URL from the client file instead of accessing the protected property
+        // This URL is already available in the src/integrations/supabase/client.ts file
+        const supabaseUrl = "https://vsgsagbpfclbuyqrepvf.supabase.co";
         
         // Call the send-invoice edge function
         const { data, error } = await supabase.functions.invoke('send-invoice', {
