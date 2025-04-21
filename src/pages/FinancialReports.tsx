@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Helmet } from "react-helmet";
@@ -16,6 +15,10 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Info } from "lucide-react"; 
 import { toast } from "sonner";
 import { TrainerReportsTab } from "@/components/invoices/reports/TrainerReportsTab";
+import { ExpenseBreakdownCards } from "@/components/dashboard/financial/ExpenseBreakdownCards";
+import { ClassExpenseBreakdownTable } from "@/components/invoices/reports/ClassExpenseBreakdownTable";
+import { TotalExpenseBreakdownSummary } from "@/components/invoices/reports/TotalExpenseBreakdownSummary";
+import { useClassFinancialData } from "@/hooks/useClassFinancialData";
 
 export default function FinancialReports() {
   const queryClient = useQueryClient();
@@ -28,7 +31,32 @@ export default function FinancialReports() {
   
   const { currentBranch } = useBranch();
   const { invoices, isLoading, refreshAllInvoiceQueries } = useInvoices();
-  
+
+  // --- Gather expense breakdown data from invoices for summary cards ---
+  const activeInvoices = invoices
+    ? invoices.filter(invoice => 
+        invoice.status !== 'cancelled' && 
+        (invoice.status === 'sent' || invoice.status === 'paid' || invoice.status === 'overdue')
+      )
+    : [];
+
+  const totalAdmin = activeInvoices.reduce((sum, inv) => sum + (inv.admin_fee || 0), 0);
+  const totalTrainer = activeInvoices.reduce((sum, inv) => sum + (inv.trainer_fee || 0), 0);
+  const totalFranchise = activeInvoices.reduce((sum, inv) => sum + (inv.franchise_fee || 0), 0);
+  const totalRevenue = activeInvoices.reduce((sum, inv) => sum + (inv.total || 0), 0);
+
+  // --- Gather class-level breakdowns via useClassFinancialData ---
+  const { classFinances } = useClassFinancialData(currentBranch?.id, dateRange.from?.toISOString(), dateRange.to?.toISOString());
+
+  // Prepare for the table
+  const classBreakdowns = (classFinances ?? []).map((c) => ({
+    className: c.className,
+    adminFee: c.adminFee,
+    trainerFee: c.instructorFee,
+    franchiseFee: c.franchiseFee,
+    totalRevenue: c.totalRevenue,
+  }));
+
   // Refresh data when component mounts, branch changes or date range changes
   useEffect(() => {
     if (currentBranch) {
@@ -84,6 +112,21 @@ export default function FinancialReports() {
             </AlertDescription>
           </Alert>
 
+          {/* Global expense breakdown summary cards */}
+          <ExpenseBreakdownCards
+            totalAdmin={totalAdmin}
+            totalTrainer={totalTrainer}
+            totalFranchise={totalFranchise}
+            totalRevenue={totalRevenue}
+          />
+
+          {/* Expense summary block */}
+          <TotalExpenseBreakdownSummary 
+            admin={totalAdmin} 
+            trainer={totalTrainer} 
+            franchise={totalFranchise}
+          />
+
           <Tabs defaultValue="financial" className="w-full">
             <TabsList className="mb-4">
               <TabsTrigger value="financial">Financial Report</TabsTrigger>
@@ -101,6 +144,8 @@ export default function FinancialReports() {
                     toast.success("Financial data refreshed");
                   }} 
                 />
+                {/* Per-class expense breakdown table */}
+                <ClassExpenseBreakdownTable breakdowns={classBreakdowns} />
                 <InvoiceRevenueChart 
                   invoices={invoices} 
                   timeframe="monthly"

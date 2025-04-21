@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Helmet } from "react-helmet";
@@ -12,6 +11,7 @@ import RequireAdmin from "@/components/auth/RequireAdmin";
 import { FinancialMetricsCards } from "@/components/dashboard/financial/FinancialMetricsCards";
 import { useTrainerPayments } from "@/hooks/useTrainerPayments";
 import { startOfMonth, endOfMonth } from "date-fns";
+import { ExpenseBreakdownCards } from "@/components/dashboard/financial/ExpenseBreakdownCards";
 
 export default function FinancialDashboard() {
   const [timeframe, setTimeframe] = useState<'monthly' | 'quarterly' | 'yearly'>('monthly');
@@ -48,6 +48,11 @@ export default function FinancialDashboard() {
     overdueRevenue: activeInvoices.filter(invoice => invoice.status === 'overdue')
       .reduce((sum, invoice) => sum + invoice.total, 0)
   };
+
+  // Calculate total fees for all active invoices
+  const totalAdmin = activeInvoices.reduce((sum, inv) => sum + (inv.admin_fee || 0), 0);
+  const totalTrainer = activeInvoices.reduce((sum, inv) => sum + (inv.trainer_fee || 0), 0);
+  const totalFranchise = activeInvoices.reduce((sum, inv) => sum + (inv.franchise_fee || 0), 0);
 
   // Log detailed breakdown of invoices for debugging
   console.log("Active invoices count:", activeInvoices.length);
@@ -90,6 +95,14 @@ export default function FinancialDashboard() {
 
           {/* Financial metrics cards - pass the filtered active invoices */}
           <FinancialMetricsCards metrics={financialMetrics} />
+
+          {/* New: Expense breakdown cards */}
+          <ExpenseBreakdownCards
+            totalAdmin={totalAdmin}
+            totalTrainer={totalTrainer}
+            totalFranchise={totalFranchise}
+            totalRevenue={financialMetrics.totalRevenue}
+          />
 
           {/* Charts - pass the filtered active invoices */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
