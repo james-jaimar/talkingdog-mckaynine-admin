@@ -5,15 +5,18 @@ import { useToast } from "@/hooks/use-toast";
 import { useInvoices } from "@/hooks/useInvoices";
 import { useBranch } from "@/context/BranchContext";
 import { addHandlerToClass } from "./addHandlerToClass";
+import { Class } from "@/components/classes/types/class";
 
 interface UseAddHandlerModalProps {
   classId: string;
+  classData?: Class | null;
   onSuccess: () => void;
   onOpenChange: (open: boolean) => void;
 }
 
 export function useAddHandlerModal({ 
   classId, 
+  classData,
   onSuccess, 
   onOpenChange 
 }: UseAddHandlerModalProps) {
@@ -25,6 +28,16 @@ export function useAddHandlerModal({
   const { currentBranch } = useBranch();
 
   const handleAddHandlerToClass = async (handlerId: string, dogId: string) => {
+    // Calculate fee rates based on class data
+    const adminFeeRate = classData?.admin_fee_type === 'percentage' ? 
+      classData.admin_fee_value : 0;
+      
+    const trainerFeeRate = classData?.trainer_fee_type === 'percentage' ? 
+      classData.trainer_fee_value : 0;
+      
+    const franchiseFeeRate = classData?.mckaynine_commission_type === 'percentage' ? 
+      classData.mckaynine_commission_value : 0;
+
     await addHandlerToClass({
       handlerId,
       dogId,
@@ -40,7 +53,10 @@ export function useAddHandlerModal({
         dogId,
         generateInvoiceNumber,
         createInvoice,
-        currentBranch
+        currentBranch,
+        adminFeeRate,
+        trainerFeeRate,
+        franchiseFeeRate
       }
     });
   };

@@ -16,7 +16,7 @@ interface AddHandlerToClassProps {
   onSuccess: () => void;
   queryClient: QueryClient;
   toast: any;
-  createInvoiceProps: Omit<CreateInvoiceProps, 'bookingId' | 'className' | 'classPrice' | 'dogName'>;
+  createInvoiceProps: Omit<CreateInvoiceProps, 'bookingId' | 'className' | 'classPrice' | 'dogName' | 'enrollmentFee'>;
 }
 
 export const addHandlerToClass = async ({
@@ -52,7 +52,8 @@ export const addHandlerToClass = async ({
     console.log("Adding handler to class schedule:", { 
       handlerId, 
       dogId, 
-      scheduleId
+      scheduleId,
+      classDetails // Now includes all fee information
     });
     
     // First check if this handler-dog combination is already booked for this class schedule
@@ -93,12 +94,13 @@ export const addHandlerToClass = async ({
     // Get dog name for the invoice
     const dogName = await fetchDogName(dogId);
     
-    // Create an invoice for this booking
+    // Create an invoice for this booking with all needed details
     const invoiceCreated = await createInvoiceForHandler({
       ...createInvoiceProps,
       bookingId: booking.id, 
       className: classDetails.name, 
-      classPrice: classDetails.price,
+      classPrice: classDetails.courseFee, // Use courseFee directly
+      enrollmentFee: classDetails.enrollmentFee, // Pass enrollment fee separately
       dogName
     });
     

@@ -69,6 +69,17 @@ export const createInvoiceForHandler = async ({
       invoiceNumber = `${invoiceNumber}-${uniqueSuffix}`;
     }
 
+    // Check that we have valid pricing inputs
+    if (typeof classPrice !== 'number' || isNaN(classPrice)) {
+      console.error("CREATE-INVOICE: Invalid classPrice:", classPrice);
+      classPrice = 0;
+    }
+    
+    if (typeof enrollmentFee !== 'number' || isNaN(enrollmentFee)) {
+      console.error("CREATE-INVOICE: Invalid enrollmentFee:", enrollmentFee);
+      enrollmentFee = 0;
+    }
+
     // Compose items
     const items = [
       {
@@ -78,6 +89,7 @@ export const createInvoiceForHandler = async ({
         booking_id: bookingId,
       }
     ];
+    
     if (enrollmentFee > 0) {
       items.push({
         description: `Enrollment fee for ${className}`,
@@ -87,7 +99,7 @@ export const createInvoiceForHandler = async ({
       });
     }
 
-    // Calculate amounts using the canonical utility, with explicit separation of fees
+    // Calculate amounts using the canonical utility
     const breakdown = calculateInvoiceComponents({
       courseFee: classPrice,
       enrollmentFee,
@@ -99,8 +111,14 @@ export const createInvoiceForHandler = async ({
     });
 
     console.log("CREATE-INVOICE: Invoice calculation breakdown", {
-      courseFee: classPrice, enrollmentFee, discountType, discountAmount,
-      adminFeeRate, trainerFeeRate, franchiseFeeRate, breakdown
+      courseFee: classPrice, 
+      enrollmentFee, 
+      discountType, 
+      discountAmount,
+      adminFeeRate, 
+      trainerFeeRate, 
+      franchiseFeeRate, 
+      breakdown
     });
 
     if (breakdown.subtotal === 0) {

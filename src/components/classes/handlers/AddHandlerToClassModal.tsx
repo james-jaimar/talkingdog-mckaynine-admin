@@ -4,15 +4,16 @@ import {
   DialogContent,
 } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useAddHandlerModal } from "./hooks/add-handler-modal"; // Updated import path
+import { useAddHandlerModal } from "./hooks/add-handler-modal"; 
 import { ModalHeader } from "./modal/ModalHeader";
 import { HandlerSelectionTab } from "./modal/HandlerSelectionTab";
+import { Class } from "../types/class";
 
 interface AddHandlerToClassModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   classId: string;
-  classData: any;
+  classData: Class;
   onSuccess: () => void;
 }
 
@@ -31,6 +32,7 @@ export function AddHandlerToClassModal({
     handleOpenChange
   } = useAddHandlerModal({
     classId,
+    classData,
     onSuccess,
     onOpenChange
   });
