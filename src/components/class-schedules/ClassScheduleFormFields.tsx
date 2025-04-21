@@ -20,7 +20,8 @@ import { Calendar } from "@/components/ui/calendar";
 import { Switch } from "@/components/ui/switch";
 import { ClassScheduleFormValues } from "./schemas/classScheduleFormSchema";
 import { Separator } from "@/components/ui/separator";
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { subMonths, addMonths, isBefore, isAfter, startOfDay, endOfDay } from "date-fns";
 
 interface ClassScheduleFormFieldsProps {
   control: Control<ClassScheduleFormValues>;
@@ -34,6 +35,11 @@ export function ClassScheduleFormFields({
   isLoadingTrainers 
 }: ClassScheduleFormFieldsProps) {
   const [selectedDates, setSelectedDates] = useState<Date[]>([]);
+
+  // Calculate min/max selectable dates
+  const today = new Date();
+  const minDate = startOfDay(subMonths(today, 2));
+  const maxDate = endOfDay(addMonths(today, 6));
 
   return (
     <div className="space-y-6">
@@ -107,6 +113,8 @@ export function ClassScheduleFormFields({
             <FormLabel>Select Class Days</FormLabel>
             <FormDescription>
               Click on days to select multiple dates for this class.
+              <br />
+              You may select dates up to 2 months in the past and up to 6 months into the future.
             </FormDescription>
             <FormControl>
               <Calendar
@@ -120,7 +128,7 @@ export function ClassScheduleFormFields({
                   console.log("Selected dates in calendar:", selectedDatesArray);
                 }}
                 numberOfMonths={3}
-                disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                disabled={(date) => isBefore(date, minDate) || isAfter(date, maxDate)}
                 className="rounded-md border"
               />
             </FormControl>
@@ -178,3 +186,4 @@ export function ClassScheduleFormFields({
     </div>
   );
 }
+
