@@ -1,7 +1,7 @@
 
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Eye, MoreHorizontal, Pencil } from "lucide-react";
 import { useState } from "react";
 import { EditHandlerModal } from "../EditHandlerModal";
@@ -30,6 +30,7 @@ export function ActionMenu({ handler }: ActionMenuProps) {
   const [isDeleting, setIsDeleting] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const handleDelete = async () => {
     setIsDeleting(true);
@@ -52,13 +53,20 @@ export function ActionMenu({ handler }: ActionMenuProps) {
     }
   };
 
+  const handleViewHandler = () => {
+    console.log("Navigating to handler detail:", `/handlers/${handler.id}`);
+    navigate(`/handlers/${handler.id}`);
+  };
+
   return (
     <div className="flex justify-end items-center space-x-1">
-      <Button variant="ghost" size="icon" asChild>
-        <Link to={`/handlers/${handler.id}`}>
-          <Eye className="h-4 w-4" />
-          <span className="sr-only">View</span>
-        </Link>
+      <Button 
+        variant="ghost" 
+        size="icon" 
+        onClick={handleViewHandler}
+      >
+        <Eye className="h-4 w-4" />
+        <span className="sr-only">View</span>
       </Button>
       
       <Button 
@@ -82,10 +90,8 @@ export function ActionMenu({ handler }: ActionMenuProps) {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuLabel>Actions</DropdownMenuLabel>
-          <DropdownMenuItem asChild>
-            <Link to={`/handlers/${handler.id}`}>
-              View details
-            </Link>
+          <DropdownMenuItem onClick={handleViewHandler}>
+            View details
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => {
             const editButton = document.getElementById(`edit-handler-${handler.id}`) as HTMLButtonElement;
