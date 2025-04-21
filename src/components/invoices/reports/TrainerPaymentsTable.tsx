@@ -77,7 +77,7 @@ export function TrainerPaymentsTable({ trainers, onMarkForPayment }: TrainerPaym
           <TableHeader>
             <TableRow>
               <TableHead>Trainer</TableHead>
-              <TableHead className="text-right">Total Revenue</TableHead>
+              <TableHead className="text-right">Total Commission</TableHead> {/* Renamed here */}
               <TableHead className="text-right">Paid</TableHead>
               <TableHead className="text-right">Outstanding</TableHead>
               <TableHead className="text-center">Classes</TableHead>

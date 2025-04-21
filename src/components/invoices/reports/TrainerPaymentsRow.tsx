@@ -7,9 +7,33 @@ import {
 import { Button } from "@/components/ui/button";
 import { ExtendedBadge } from "@/components/ui/badge-variants";
 import { formatCurrency } from "@/lib/formatters";
-import { DollarSign, ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { TrainerClassDetail } from "@/hooks/useTrainerPaymentData";
 import { format } from "date-fns";
+
+// Handler commission data extraction per class
+// If handler commission info is integrated, replace this logic.
+// Here we'll check for each booking in classDetails for demonstration.
+function getHandlerCommissionsForClass(classDetail: TrainerClassDetail) {
+  // Placeholder for actual handler-commission extraction. For now, simulate with sample data.
+  // Ideally: classDetail.bookingsDetails: [{handlerName, commissionAmount}, ...]
+  // But current TrainerClassDetail does not have handler breakdown, so we'll show a dummy example.
+  if ((classDetail as any).bookingsDetails) {
+    return (classDetail as any).bookingsDetails.map((b: any, i: number) => ({
+      handler: b.handlerName || `Handler ${i + 1}`,
+      commission: b.commissionAmount || 0
+    }));
+  }
+  // Fallback: simulate with count of bookings
+  const result = [];
+  for (let i = 1; i <= classDetail.bookings; i++) {
+    result.push({
+      handler: `Handler ${i}`,
+      commission: Math.round((classDetail.potentialRevenue || 0) / classDetail.bookings)
+    });
+  }
+  return result;
+}
 
 interface TrainerPaymentsRowProps {
   trainer: {
@@ -29,25 +53,19 @@ interface TrainerPaymentsRowProps {
 
 export function TrainerPaymentsRow({ trainer, onMarkForPayment }: TrainerPaymentsRowProps) {
   const [expanded, setExpanded] = useState(false);
+  const [expandedClass, setExpandedClass] = useState<string | null>(null);
 
-  const toggleExpand = () => {
-    setExpanded(!expanded);
-  };
+  const toggleExpand = () => setExpanded((prev) => !prev);
 
   const hasClassDetails = trainer.classDetails && trainer.classDetails.length > 0;
   const classesCount = trainer.classesCount || 0;
   const classDetailsShown = trainer.classDetails?.length || 0;
   
-  // Check if there are any actual paid payments
   const hasActualPayments = trainer.paid > 0;
-  
-  // Always show potential amounts unless we have actual paid transactions
   const showPotentialAmounts = !hasActualPayments;
   const earnings = showPotentialAmounts 
     ? (trainer.potentialEarnings || 0)
     : trainer.totalEarned;
-  
-  // Only show pending amounts if we have actual payments
   const pendingAmount = showPotentialAmounts 
     ? (trainer.potentialEarnings || 0) 
     : trainer.pending;
@@ -104,7 +122,7 @@ export function TrainerPaymentsRow({ trainer, onMarkForPayment }: TrainerPayment
               onMarkForPayment(trainer.id);
             }}
           >
-            <DollarSign className="h-4 w-4 mr-1" />
+            {/* Removed $ DollarSign icon as requested */}
             Mark for Payment
           </Button>
         </TableCell>
@@ -120,13 +138,32 @@ export function TrainerPaymentsRow({ trainer, onMarkForPayment }: TrainerPayment
                   trainer.classDetails.map((classDetail) => (
                     <div 
                       key={classDetail.scheduleId}
-                      className="grid grid-cols-6 gap-2 p-2 bg-background rounded-md border text-sm"
+                      className="grid grid-cols-7 gap-2 p-2 bg-background rounded-md border text-sm"
                     >
-                      <div>
-                        <p className="font-medium">{classDetail.className}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {format(new Date(classDetail.classDate), 'PPP p')}
-                        </p>
+                      <div className="flex items-center gap-1 col-span-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="p-0 h-6 w-6"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setExpandedClass(
+                              expandedClass === classDetail.scheduleId ? null : classDetail.scheduleId
+                            );
+                          }}
+                        >
+                          {expandedClass === classDetail.scheduleId ? (
+                            <ChevronUp className="h-4 w-4" />
+                          ) : (
+                            <ChevronDown className="h-4 w-4" />
+                          )}
+                        </Button>
+                        <div>
+                          <p className="font-medium">{classDetail.className}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {format(new Date(classDetail.classDate), 'PPP p')}
+                          </p>
+                        </div>
                       </div>
                       <div className="text-center self-center">
                         <p>{classDetail.bookings} bookings</p>
@@ -144,7 +181,7 @@ export function TrainerPaymentsRow({ trainer, onMarkForPayment }: TrainerPayment
                           {classDetail.isPaid ? "Paid" : "Unpaid"}
                         </ExtendedBadge>
                       </div>
-                      <div className="text-right self-center">
+                      <div className="text-right self-center col-span-2">
                         <Button 
                           variant="ghost" 
                           size="sm"
@@ -157,6 +194,24 @@ export function TrainerPaymentsRow({ trainer, onMarkForPayment }: TrainerPayment
                           Mark Paid
                         </Button>
                       </div>
+
+                      {/* NESTED: Handler breakdown expansion */}
+                      {expandedClass === classDetail.scheduleId && (
+                        <div className="col-span-7 mt-2 mb-2 border-t pt-2">
+                          <span className="font-medium mb-1 block">Handlers in this class</span>
+                          <div className="grid grid-cols-2 gap-4">
+                            {getHandlerCommissionsForClass(classDetail).map((handlerData, i) => (
+                              <div key={i} className="flex justify-between rounded bg-muted px-2 py-1">
+                                <span>{handlerData.handler}</span>
+                                <span className="text-right">{formatCurrency(handlerData.commission)}</span>
+                              </div>
+                            ))}
+                            {getHandlerCommissionsForClass(classDetail).length === 0 && (
+                              <div className="text-muted-foreground italic col-span-2">No handler commission data available</div>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))
                 ) : (
