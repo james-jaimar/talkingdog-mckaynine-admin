@@ -43,6 +43,7 @@ export function HandlerInvoices({ clientData }: HandlerInvoicesProps) {
 
   const handleViewInvoice = (invoiceId: string) => {
     console.log("Viewing invoice from handler page:", invoiceId);
+    // Fix: Navigate directly to the specific invoice detail page
     navigate(`/invoices/${invoiceId}`);
   };
 
@@ -116,6 +117,7 @@ export function HandlerInvoices({ clientData }: HandlerInvoicesProps) {
                         size="sm" 
                         className="h-8 w-8 p-0"
                         onClick={() => handleViewInvoice(invoice.id)}
+                        aria-label={`View invoice ${invoice.invoice_number}`}
                       >
                         <Eye className="h-4 w-4" />
                       </Button>

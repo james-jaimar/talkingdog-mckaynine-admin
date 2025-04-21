@@ -20,6 +20,7 @@ export default function InvoiceDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
+  // Make sure we're properly using the query
   const { data: invoice, isLoading, error, isError } = useInvoiceDetails(id);
 
   useEffect(() => {
