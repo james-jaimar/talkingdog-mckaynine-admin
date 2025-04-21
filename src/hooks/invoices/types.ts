@@ -87,4 +87,8 @@ export interface Invoice {
   original_discount_type?: 'fixed' | 'percentage';
   computed_payment_status?: PaymentStatus;
   computed_days_overdue?: number;
+  // Add the new expense fee properties
+  admin_fee?: number;
+  trainer_fee?: number;
+  franchise_fee?: number;
 }

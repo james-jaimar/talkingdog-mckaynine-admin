@@ -88,7 +88,7 @@ export const createInvoiceForHandler = async ({
       });
     }
 
-    // New: calculate all components (subtotal, discount, total, expense breakdowns)
+    // Calculate all components (subtotal, discount, total, expense breakdowns)
     const breakdown = calculateInvoiceComponents({
       courseFee: classPrice,
       enrollmentFee,
@@ -116,7 +116,7 @@ export const createInvoiceForHandler = async ({
       subtotal: breakdown.subtotal,
       total: breakdown.total,
       monetary_discount: breakdown.monetaryDiscount,
-      // Optionally: store fee breakdowns for accounting use
+      // Store fee breakdowns for accounting use
       admin_fee: breakdown.adminFee,
       trainer_fee: breakdown.trainerFee,
       franchise_fee: breakdown.franchiseFee
