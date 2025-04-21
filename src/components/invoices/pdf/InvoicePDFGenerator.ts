@@ -14,27 +14,32 @@ export async function generateInvoicePDF(invoice: Invoice, returnBase64: boolean
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.width;
   
-  // Use the new McKaynine logo with paws
+  // Use the McKaynine logo with paws
   const logoPath = "/lovable-uploads/16e080f8-98b8-46b6-91cd-19a0d0157348.png";
   
   try {
-    // Add logo with specific dimensions for better visibility
-    const imgWidth = 170;
-    const imgHeight = 55;
-    const xPosition = (pageWidth - imgWidth) / 2;
-    doc.addImage(logoPath, "PNG", xPosition, 10, imgWidth, imgHeight);
+    // Calculate logo dimensions to fit 60% of page width while maintaining aspect ratio
+    const maxWidth = pageWidth * 0.6; // 60% of page width
+    const aspectRatio = 1040 / 337; // Original image aspect ratio
+    const imgWidth = maxWidth;
+    const imgHeight = maxWidth / aspectRatio;
     
-    // Add company details centered below logo
-    let startY = 70;
-    doc.setFontSize(10);
+    // Center the logo horizontally
+    const xPosition = (pageWidth - imgWidth) / 2;
+    doc.addImage(logoPath, "PNG", xPosition, 15, imgWidth, imgHeight);
+    
+    // Add company details with updated layout
+    let startY = imgHeight + 25; // Start text below logo with padding
+    doc.setFontSize(11);
     doc.text("McKaynine Training Centre", pageWidth / 2, startY, { align: 'center' });
+    doc.setFontSize(10);
     doc.text("Delta Park Branch", pageWidth / 2, startY + 6, { align: 'center' });
-    doc.text("Camp Delta (SA Boyscouts), Delta Park Main Entrance,", pageWidth / 2, startY + 12, { align: 'center' });
-    doc.text("Craighall Road, Delta Park", pageWidth / 2, startY + 18, { align: 'center' });
-    doc.text("Tel: 082 560-5100", pageWidth / 2, startY + 24, { align: 'center' });
-    doc.text("www.mckaynine.co.za", pageWidth / 2, startY + 30, { align: 'center' });
+    doc.text("Camp Delta (SA Boyscouts), Delta Park Main Entrance, Craighall Road, Delta Park. Tel: 082 560 5100", 
+             pageWidth / 2, startY + 12, { align: 'center', maxWidth: pageWidth - 40 });
+    doc.text("www.mckaynine.co.za", pageWidth / 2, startY + 18, { align: 'center' });
 
-    startY += 40;
+    // Adjust starting position for invoice content with more padding for flexibility
+    startY += 30;
 
     // Add invoice header
     const headerEndY = addInvoiceHeader(doc, invoice, startY, pageWidth);
@@ -48,7 +53,7 @@ export async function generateInvoicePDF(invoice: Invoice, returnBase64: boolean
     // Add invoice summary
     const summaryEndY = addInvoiceSummary(doc, invoice, tableEndY + 10);
     
-    // Add notes if present
+    // Add notes if present with better spacing
     let currentY = summaryEndY + 20;
     if (invoice.notes) {
       doc.setFontSize(11);
@@ -59,7 +64,7 @@ export async function generateInvoicePDF(invoice: Invoice, returnBase64: boolean
       currentY += (splitNotes.length * 5) + 20;
     }
 
-    // Add footer
+    // Add footer with adjusted spacing
     addInvoiceFooter(doc, invoice, currentY, pageWidth, doc.internal.pageSize.height);
     
     if (returnBase64) {
