@@ -1,38 +1,43 @@
 
-import React, { useMemo } from 'react';
+import React from 'react';
 import { formatCurrency } from '@/lib/formatters';
 import { Invoice } from '@/hooks/invoices/types';
+import { calculateInvoiceTotals } from "@/lib/invoiceMath";
 
 interface InvoiceSummaryProps {
   invoice: Invoice;
 }
 
 export function InvoiceSummary({ invoice }: InvoiceSummaryProps) {
-  // Calculate the correct subtotal from invoice items if available
-  const calculatedSubtotal = useMemo(() => {
-    if (invoice.items && invoice.items.length > 0) {
-      return invoice.items.reduce((sum, item) => {
-        const itemAmount = item.amount || (item.quantity * item.unit_price);
-        return sum + itemAmount;
-      }, 0);
-    }
-    return invoice.subtotal;
-  }, [invoice]);
+  // Calculate totals using canonical helper
+  const itemsInput = (invoice.items || []).map(item => ({
+    quantity: item.quantity,
+    unit_price: item.unit_price,
+  }));
 
-  // Log if there's a discrepancy between stored and calculated subtotal
-  // This helps with debugging, but doesn't affect the displayed values
-  useMemo(() => {
-    if (Math.abs(calculatedSubtotal - invoice.subtotal) > 0.01) {
-      console.warn(`Warning: Calculated subtotal (${calculatedSubtotal}) doesn't match invoice subtotal (${invoice.subtotal})`);
-    }
-  }, [calculatedSubtotal, invoice.subtotal]);
-  
-  // Format the discount display label
+  const {
+    subtotal,
+    monetaryDiscount,
+    discountType,
+    discountAmount,
+    taxRate,
+    tax,
+    total,
+  } = calculateInvoiceTotals({
+    items: itemsInput,
+    discountType: invoice.discount_type as "fixed" | "percentage",
+    discountAmount: invoice.discount_type === "percentage"
+      ? invoice.original_discount_amount ?? invoice.discount_amount
+      : invoice.discount_amount,
+    taxRate: invoice.tax_rate,
+  });
+
+  // Label: Show (N%) or (Fixed)
   const renderDiscountLabel = () => {
-    if (invoice.discount_type === 'percentage') {
+    if (discountType === 'percentage') {
       return (
         <span className="flex items-center">
-          Discount <span className="font-medium ml-1">({invoice.original_discount_amount || invoice.discount_amount}%)</span>
+          Discount <span className="font-medium ml-1">({discountAmount}%)</span>
         </span>
       );
     }
@@ -43,28 +48,28 @@ export function InvoiceSummary({ invoice }: InvoiceSummaryProps) {
     <div className="space-y-2">
       <div className="flex justify-between">
         <span className="text-muted-foreground">Subtotal:</span>
-        <span className="font-medium">{formatCurrency(invoice.subtotal)}</span>
+        <span className="font-medium">{formatCurrency(subtotal)}</span>
       </div>
       
-      {(invoice.monetary_discount || invoice.discount_amount > 0) && (
+      {monetaryDiscount > 0 && (
         <div className="flex justify-between text-red-600">
           {renderDiscountLabel()}
           <span className="font-medium">
-            -{formatCurrency(invoice.monetary_discount || invoice.discount_amount)}
+            -{formatCurrency(monetaryDiscount)}
           </span>
         </div>
       )}
       
       <div className="flex justify-between">
-        <span className="text-muted-foreground">Tax ({invoice.tax_rate}%):</span>
-        <span className="font-medium">{formatCurrency(invoice.tax_amount)}</span>
+        <span className="text-muted-foreground">Tax ({taxRate}%):</span>
+        <span className="font-medium">{formatCurrency(tax)}</span>
       </div>
       
       <div className="h-px bg-border my-2"></div>
       
       <div className="flex justify-between font-bold">
         <span>Total:</span>
-        <span>{formatCurrency(invoice.total)}</span>
+        <span>{formatCurrency(total)}</span>
       </div>
     </div>
   );

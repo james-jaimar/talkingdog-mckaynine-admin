@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useForm, useFieldArray } from "react-hook-form";
@@ -22,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { ArrowLeft, Plus, Trash2, CalendarIcon, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { DiscountFields } from "@/components/invoices/discount/DiscountFields";
+import { calculateInvoiceTotals } from "@/lib/invoiceMath";
 
 // Validation schema updated to include discount fields
 const invoiceSchema = z.object({
@@ -111,35 +111,17 @@ export default function InvoiceEdit() {
     }
   }, [invoice, form, isLoaded]);
   
-  // Calculate total with discount
-  const calculateSubtotal = () => {
-    const items = form.getValues("items");
-    return items.reduce((sum, item) => sum + ((item.quantity || 0) * (item.unit_price || 0)), 0);
+  // Use central invoice summary function
+  const getSummary = () => {
+    const values = form.getValues();
+    return calculateInvoiceTotals({
+      items: values.items,
+      discountType: values.discount_type,
+      discountAmount: values.discount_amount,
+      taxRate: values.tax_rate,
+    });
   };
-  
-  const calculateDiscount = () => {
-    const discountType = form.getValues("discount_type");
-    const discountAmount = form.getValues("discount_amount") || 0;
-    const subtotal = calculateSubtotal();
 
-    if (discountType === "percentage") {
-      return (subtotal * discountAmount) / 100;
-    } else {
-      return discountAmount;
-    }
-  };
-  
-  const calculateTax = () => {
-    const taxRate = form.getValues("tax_rate") || 0;
-    const subtotal = calculateSubtotal();
-    const discount = calculateDiscount();
-    return (subtotal - discount) * (taxRate / 100);
-  };
-  
-  const calculateTotal = () => {
-    return calculateSubtotal() - calculateDiscount() + calculateTax();
-  };
-  
   const onSubmit = async (values: InvoiceFormValues) => {
     if (!id) {
       toast.error("Missing invoice ID");
@@ -556,31 +538,36 @@ export default function InvoiceEdit() {
                   />
                 </div>
                 
-                {/* Updated totals calculation with discount */}
                 <div className="ml-auto space-y-2 text-right">
                   <div className="flex justify-end space-x-4">
                     <span className="text-sm">Subtotal:</span>
-                    <span className="text-sm font-medium">ZAR {calculateSubtotal().toFixed(2)}</span>
+                    <span className="text-sm font-medium">
+                      ZAR {getSummary().subtotal.toFixed(2)}
+                    </span>
                   </div>
-                  {form.watch("discount_amount") > 0 && (
+                  {getSummary().monetaryDiscount > 0 && (
                     <div className="flex justify-end space-x-4 text-red-600">
                       <span className="text-sm">
-                        Discount {form.watch("discount_type") === "percentage" ? 
-                          `(${form.watch("discount_amount")}%)` : 
-                          "(ZAR)"}:
+                        Discount {getSummary().discountType === "percentage"
+                          ? `(${getSummary().discountAmount}%)`
+                          : "(ZAR)"}:
                       </span>
                       <span className="text-sm font-medium">
-                        -ZAR {calculateDiscount().toFixed(2)}
+                        -ZAR {getSummary().monetaryDiscount.toFixed(2)}
                       </span>
                     </div>
                   )}
                   <div className="flex justify-end space-x-4">
-                    <span className="text-sm">Tax ({form.watch("tax_rate")}%):</span>
-                    <span className="text-sm font-medium">ZAR {calculateTax().toFixed(2)}</span>
+                    <span className="text-sm">Tax ({getSummary().taxRate}%):</span>
+                    <span className="text-sm font-medium">
+                      ZAR {getSummary().tax.toFixed(2)}
+                    </span>
                   </div>
                   <div className="flex justify-end space-x-4">
                     <span className="text-base font-bold">Total:</span>
-                    <span className="text-base font-bold">ZAR {calculateTotal().toFixed(2)}</span>
+                    <span className="text-base font-bold">
+                      ZAR {getSummary().total.toFixed(2)}
+                    </span>
                   </div>
                 </div>
                 

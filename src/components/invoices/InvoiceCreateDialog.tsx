@@ -18,6 +18,7 @@ import { format, addDays } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useBranch } from "@/context/BranchContext";
 import { DiscountFields } from "./discount/DiscountFields";
+import { calculateInvoiceTotals } from "@/lib/invoiceMath";
 
 interface InvoiceCreateDialogProps {
   open: boolean;
@@ -101,31 +102,15 @@ export function InvoiceCreateDialog({ open, onOpenChange }: InvoiceCreateDialogP
     }
   }, [open, form, generateInvoiceNumber, currentBranch]);
   
-  // Calculate total
-  const calculateSubtotal = () => {
-    const items = form.getValues("items");
-    return items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
-  };
-
-  const calculateDiscount = () => {
-    const discountType = form.getValues("discount_type");
-    const discountAmount = form.getValues("discount_amount");
-    const subtotal = calculateSubtotal();
-
-    if (discountType === "percentage") {
-      return (subtotal * discountAmount) / 100;
-    } else {
-      return discountAmount;
-    }
-  };
-  
-  const calculateTax = () => {
-    const taxRate = form.getValues("tax_rate");
-    return calculateSubtotal() * (taxRate / 100);
-  };
-  
-  const calculateTotal = () => {
-    return calculateSubtotal() + calculateTax() - calculateDiscount();
+  // Calculate total, now using the canonical logic
+  const getSummary = () => {
+    const values = form.getValues();
+    return calculateInvoiceTotals({
+      items: values.items || [],
+      discountType: values.discount_type,
+      discountAmount: values.discount_amount,
+      taxRate: values.tax_rate,
+    });
   };
   
   const onSubmit = (values: InvoiceFormValues) => {
@@ -470,31 +455,37 @@ export function InvoiceCreateDialog({ open, onOpenChange }: InvoiceCreateDialogP
               />
             </div>
             
-            {/* Update totals calculation */}
+            {/* Update totals display using getSummary() */}
             <div className="ml-auto space-y-2 text-right">
               <div className="flex justify-end space-x-4">
                 <span className="text-sm">Subtotal:</span>
-                <span className="text-sm font-medium">ZAR {calculateSubtotal().toFixed(2)}</span>
+                <span className="text-sm font-medium">
+                  ZAR {getSummary().subtotal.toFixed(2)}
+                </span>
               </div>
-              {form.watch("discount_amount") > 0 && (
+              {getSummary().monetaryDiscount > 0 && (
                 <div className="flex justify-end space-x-4 text-red-600">
                   <span className="text-sm">
-                    Discount {form.watch("discount_type") === "percentage" ? 
-                      `(${form.watch("discount_amount")}%)` : 
-                      "(ZAR)"}:
+                    Discount {getSummary().discountType === "percentage"
+                      ? `(${getSummary().discountAmount}%)`
+                      : "(ZAR)"}:
                   </span>
                   <span className="text-sm font-medium">
-                    -ZAR {calculateDiscount().toFixed(2)}
+                    -ZAR {getSummary().monetaryDiscount.toFixed(2)}
                   </span>
                 </div>
               )}
               <div className="flex justify-end space-x-4">
-                <span className="text-sm">Tax ({form.watch("tax_rate")}%):</span>
-                <span className="text-sm font-medium">ZAR {calculateTax().toFixed(2)}</span>
+                <span className="text-sm">Tax ({getSummary().taxRate}%):</span>
+                <span className="text-sm font-medium">
+                  ZAR {getSummary().tax.toFixed(2)}
+                </span>
               </div>
               <div className="flex justify-end space-x-4">
                 <span className="text-base font-bold">Total:</span>
-                <span className="text-base font-bold">ZAR {calculateTotal().toFixed(2)}</span>
+                <span className="text-base font-bold">
+                  ZAR {getSummary().total.toFixed(2)}
+                </span>
               </div>
             </div>
             
