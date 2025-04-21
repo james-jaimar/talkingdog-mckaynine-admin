@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { InvoiceStatus } from "@/types/invoice";
@@ -29,6 +30,7 @@ export const createInvoiceForHandler = async ({
   enrollmentFee = 0
 }: CreateInvoiceProps): Promise<boolean> => {
   try {
+    // Generate invoice number
     let invoiceNumber;
     try {
       invoiceNumber = await generateInvoiceNumber();
@@ -89,7 +91,10 @@ export const createInvoiceForHandler = async ({
       });
     }
 
-    // Prepare invoice data (let the createInvoice hook do calculation from items)
+    console.log("Creating invoice with items:", items);
+    console.log(`Total amount should be: ${classPrice + (enrollmentFee || 0)}`);
+
+    // Prepare invoice data with correct calculation
     const invoiceData = {
       client_id: handlerId,
       invoice_number: invoiceNumber,
@@ -107,10 +112,12 @@ export const createInvoiceForHandler = async ({
     try {
       await createInvoice.mutateAsync(invoiceData);
       return true;
-    } catch {
+    } catch (error) {
+      console.error("Failed to create invoice:", error);
       return false;
     }
-  } catch {
+  } catch (error) {
+    console.error("Error in createInvoiceForHandler:", error);
     return false;
   }
 };

@@ -1,3 +1,4 @@
+
 import { TableCell, TableRow } from "@/components/ui/table";
 import { InvoiceItem } from "@/hooks/invoices/types";
 import { formatCurrency } from "@/lib/formatters";
@@ -51,6 +52,9 @@ export function InvoiceItemRow({ item, index }: InvoiceItemRowProps) {
     }
   }
   
+  // Calculate the item amount correctly
+  const itemAmount = item.amount || (item.quantity * item.unit_price);
+  
   // Extract booking ID for display - show just the first 8 characters
   const shortBookingId = item.booking_id ? 
     item.booking_id.substring(0, 8) : null;
@@ -100,7 +104,7 @@ export function InvoiceItemRow({ item, index }: InvoiceItemRowProps) {
       <TableCell className="text-center">{item.quantity}</TableCell>
       <TableCell className="text-right">{formatCurrency(item.unit_price)}</TableCell>
       <TableCell className="text-right">
-        {formatCurrency(item.amount || (item.quantity * item.unit_price))}
+        {formatCurrency(itemAmount)}
       </TableCell>
     </TableRow>
   );

@@ -1,50 +1,51 @@
 
-import { useFormContext } from "react-hook-form";
+import { useFormContext, useWatch } from "react-hook-form";
 import { formatCurrency } from "@/lib/formatters";
 import { FormValues } from "./InvoiceFormProvider";
+import { useMemo } from "react";
 
 export function InvoiceTotalSummary() {
   const form = useFormContext<FormValues>();
+  
+  // Watch for changes in items, discount type, discount amount, and tax rate
+  const items = useWatch({ control: form.control, name: "items" });
+  const discountType = useWatch({ control: form.control, name: "discount_type" });
+  const discountAmount = useWatch({ control: form.control, name: "discount_amount" });
+  const taxRate = useWatch({ control: form.control, name: "tax_rate" });
 
-  // Calculate the total amount
-  const calculateTotal = () => {
-    const items = form.getValues("items");
+  // Calculate the total amount using useMemo to prevent unnecessary recalculations
+  const totals = useMemo(() => {
+    // Calculate subtotal as sum of quantity * unit_price for all items
     const subtotal = items.reduce((total, item) => {
-      return total + (item.quantity * item.unit_price);
+      const itemAmount = (item.quantity || 0) * (item.unit_price || 0);
+      return total + itemAmount;
     }, 0);
     
-    // Get discount details
-    const discountType = form.getValues("discount_type");
-    const discountValue = Number(form.getValues("discount_amount") || 0);
-    
-    // Calculate the actual discount amount in currency
+    // Calculate discount based on type
     let monetaryDiscount = 0;
-    
     if (discountType === "percentage") {
-      monetaryDiscount = subtotal * (discountValue / 100);
+      monetaryDiscount = subtotal * (Number(discountAmount) / 100);
     } else {
-      monetaryDiscount = Math.min(discountValue, subtotal);
+      monetaryDiscount = Math.min(Number(discountAmount) || 0, subtotal);
     }
     
     // Calculate tax on the amount after discount
-    const taxRate = Number(form.getValues("tax_rate") || 0);
     const taxableAmount = subtotal - monetaryDiscount;
-    const tax = taxableAmount * (taxRate / 100);
+    const tax = taxableAmount * (Number(taxRate) / 100);
+    
+    // Calculate final total
+    const total = subtotal - monetaryDiscount + tax;
     
     return {
       subtotal,
       discountType,
-      discountValue,
+      discountAmount: Number(discountAmount) || 0,
       monetaryDiscount,
-      taxRate,
+      taxRate: Number(taxRate) || 0,
       tax,
-      total: subtotal - monetaryDiscount + tax
+      total
     };
-  };
-
-  const totals = calculateTotal();
-  const discountType = form.watch("discount_type");
-  const discountAmount = form.watch("discount_amount");
+  }, [items, discountType, discountAmount, taxRate]);
 
   return (
     <div className="border-t pt-4 space-y-1">

@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { formatCurrency } from '@/lib/formatters';
 import { Invoice } from '@/hooks/invoices/types';
 
@@ -8,6 +8,25 @@ interface InvoiceSummaryProps {
 }
 
 export function InvoiceSummary({ invoice }: InvoiceSummaryProps) {
+  // Calculate the correct subtotal from invoice items if available
+  const calculatedSubtotal = useMemo(() => {
+    if (invoice.items && invoice.items.length > 0) {
+      return invoice.items.reduce((sum, item) => {
+        const itemAmount = item.amount || (item.quantity * item.unit_price);
+        return sum + itemAmount;
+      }, 0);
+    }
+    return invoice.subtotal;
+  }, [invoice]);
+
+  // Log if there's a discrepancy between stored and calculated subtotal
+  // This helps with debugging, but doesn't affect the displayed values
+  useMemo(() => {
+    if (Math.abs(calculatedSubtotal - invoice.subtotal) > 0.01) {
+      console.warn(`Warning: Calculated subtotal (${calculatedSubtotal}) doesn't match invoice subtotal (${invoice.subtotal})`);
+    }
+  }, [calculatedSubtotal, invoice.subtotal]);
+  
   // Format the discount display label
   const renderDiscountLabel = () => {
     if (invoice.discount_type === 'percentage') {
