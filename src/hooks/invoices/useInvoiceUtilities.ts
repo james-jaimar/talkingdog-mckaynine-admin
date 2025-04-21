@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { useBranch } from "@/context/BranchContext";
@@ -45,24 +44,23 @@ export const generateInvoiceNumber = async (): Promise<string> => {
       .from('invoices')
       .select('invoice_number')
       .ilike('invoice_number', `${invoicePrefix}%`)
-      .order('invoice_number', { ascending: false })
+      .order('created_at', { ascending: false })
       .limit(1);
 
     let nextNumber = 1;
     if (lastInvoice && lastInvoice.length > 0) {
-      const lastNumber = parseInt(lastInvoice[0].invoice_number.split('-').pop() || '0', 10);
-      nextNumber = lastNumber + 1;
+      const lastSequence = lastInvoice[0].invoice_number.split('-').pop();
+      nextNumber = parseInt(lastSequence, 10) + 1;
     }
 
     return `${invoicePrefix}${nextNumber.toString().padStart(4, '0')}`;
   } catch (error) {
     console.error("Error generating invoice number:", error);
-    // Fallback with timestamp - ensure yearMonth is defined in this scope too
-    const timestamp = new Date().getTime().toString().slice(-4);
     const now = new Date();
     const year = now.getFullYear().toString().slice(-2);
     const month = (now.getMonth() + 1).toString().padStart(2, '0');
     const yearMonth = `${year}${month}`;
+    const timestamp = new Date().getTime().toString().slice(-4);
     return `INV-McD-${yearMonth}-${timestamp}`;
   }
 };

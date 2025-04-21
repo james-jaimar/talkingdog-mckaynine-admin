@@ -1,4 +1,3 @@
-
 import { Invoice } from "@/hooks/invoices/types";
 import { jsPDF } from "jspdf";
 import 'jspdf-autotable';
@@ -14,53 +13,64 @@ export async function generateInvoicePDF(invoice: Invoice, returnBase64: boolean
   
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.width;
-  const pageHeight = doc.internal.pageSize.height;
   
-  // Add McKaynine logo and header text
-  const logoAdded = await addLogoToPdf(doc, pageWidth);
-  let startY = logoAdded ? 50 : 30;
-
-  // Add company details
-  doc.setFontSize(10);
-  doc.text("McKaynine Training Centre", pageWidth / 2, startY, { align: 'center' });
-  doc.text("Delta Park Branch", pageWidth / 2, startY + 5, { align: 'center' });
-  doc.text("Camp Delta (SA Boyscouts), Delta Park Main Entrance, Craighall Road, Delta Park", pageWidth / 2, startY + 10, { align: 'center' });
-  doc.text("Tel: 082 560-5100", pageWidth / 2, startY + 15, { align: 'center' });
-  doc.text("www.mckaynine.co.za", pageWidth / 2, startY + 20, { align: 'center' });
-
-  startY += 35;
-
-  // Add invoice header (invoice number, dates, status)
-  const headerEndY = addInvoiceHeader(doc, invoice, startY, pageWidth);
+  // Load new logo with no text
+  const logoPath = "/lovable-uploads/d535ed81-9434-47c6-9813-6015d71fe908.png";
   
-  // Add client information
-  const clientInfoEndY = addClientInfo(doc, invoice, headerEndY + 10);
-  
-  // Add invoice items table
-  const tableEndY = addInvoiceItemsTable(doc, invoice, clientInfoEndY + 10);
-  
-  // Add invoice summary
-  const summaryEndY = addInvoiceSummary(doc, invoice, tableEndY + 10);
-  
-  // Add notes if present
-  let currentY = summaryEndY + 20;
-  if (invoice.notes) {
-    doc.setFontSize(11);
-    doc.text("Notes:", 14, currentY);
+  try {
+    // Add logo with specific dimensions
+    const imgWidth = 170;
+    const imgHeight = 55;
+    const xPosition = (pageWidth - imgWidth) / 2;
+    doc.addImage(logoPath, "PNG", xPosition, 10, imgWidth, imgHeight);
+    
+    // Add company details
+    let startY = 70;
     doc.setFontSize(10);
-    const splitNotes = doc.splitTextToSize(invoice.notes, pageWidth - 28);
-    splitNotes.forEach((line: string, index: number) => {
-      doc.text(line, 14, currentY + 7 + (index * 5));
-    });
-    currentY += (splitNotes.length * 5) + 20;
-  }
+    doc.text("McKaynine Training Centre", pageWidth / 2, startY, { align: 'center' });
+    doc.text("Delta Park Branch", pageWidth / 2, startY + 6, { align: 'center' });
+    doc.text("Camp Delta (SA Boyscouts), Delta Park Main Entrance, Craighall Road, Delta Park", pageWidth / 2, startY + 12, { align: 'center' });
+    doc.text("Tel: 082 560-5100", pageWidth / 2, startY + 18, { align: 'center' });
+    doc.text("www.mckaynine.co.za", pageWidth / 2, startY + 24, { align: 'center' });
 
-  // Add footer
-  addInvoiceFooter(doc, invoice, currentY, pageWidth, pageHeight);
-  
-  if (returnBase64) {
-    return doc.output('datauristring').split(',')[1];
-  } else {
-    doc.save(`Invoice-${invoice.invoice_number}.pdf`);
+    startY += 35;
+
+    // Add invoice header
+    const headerEndY = addInvoiceHeader(doc, invoice, startY, pageWidth);
+    
+    // Add client information
+    const clientInfoEndY = addClientInfo(doc, invoice, headerEndY + 10);
+    
+    // Add invoice items table
+    const tableEndY = addInvoiceItemsTable(doc, invoice, clientInfoEndY + 10);
+    
+    // Add invoice summary
+    const summaryEndY = addInvoiceSummary(doc, invoice, tableEndY + 10);
+    
+    // Add notes if present
+    let currentY = summaryEndY + 20;
+    if (invoice.notes) {
+      doc.setFontSize(11);
+      doc.text("Notes:", 14, currentY);
+      doc.setFontSize(10);
+      const splitNotes = doc.splitTextToSize(invoice.notes, pageWidth - 28);
+      splitNotes.forEach((line: string, index: number) => {
+        doc.text(line, 14, currentY + 7 + (index * 5));
+      });
+      currentY += (splitNotes.length * 5) + 20;
+    }
+
+    // Add footer
+    addInvoiceFooter(doc, invoice, currentY, pageWidth, doc.internal.pageSize.height);
+    
+    if (returnBase64) {
+      return doc.output('datauristring').split(',')[1];
+    } else {
+      doc.save(`Invoice-${invoice.invoice_number}.pdf`);
+    }
+    
+  } catch (error) {
+    console.error("Error generating PDF:", error);
+    throw error;
   }
 }
