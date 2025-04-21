@@ -1,4 +1,3 @@
-
 import { TableCell, TableRow } from "@/components/ui/table";
 import { InvoiceItem } from "@/hooks/invoices/types";
 import { formatCurrency } from "@/lib/formatters";
@@ -56,7 +55,7 @@ export function InvoiceItemRow({ item, index }: InvoiceItemRowProps) {
   const shortBookingId = item.booking_id ? 
     item.booking_id.substring(0, 8) : null;
   
-  // Determine if we need to show the booking data warning
+  // Only show the warning if booking_id exists but booking details are actually missing
   const shouldShowWarning = !!item.booking_id && !hasBookingData;
   
   return (

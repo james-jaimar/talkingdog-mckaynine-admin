@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { useBranch } from "@/context/BranchContext";
@@ -10,134 +9,89 @@ import { useBranch } from "@/context/BranchContext";
  */
 export const generateInvoiceNumber = async (): Promise<string> => {
   try {
-    // Get current date info for the prefix
     const now = new Date();
-    const year = now.getFullYear().toString().slice(-2); // Get last 2 digits of year
-    const month = (now.getMonth() + 1).toString().padStart(2, '0'); // Month as 2 digits
-    const yearMonth = `${year}${month}`; // Combined as YYMM format
-    
-    // Get branch information to determine the prefix
-    let branchPrefix = "Mc"; // Default prefix if we can't determine branch
-    let branchCode = ""; // First letter of branch name
-    
+    const year = now.getFullYear().toString().slice(-2);
+    const month = (now.getMonth() + 1).toString().padStart(2, '0');
+    const yearMonth = `${year}${month}`;
+    let branchPrefix = "Mc";
+    let branchCode = "";
+
     try {
-      // Try to get the current branch from localStorage first (most reliable)
       const branchId = localStorage.getItem('currentBranchId');
-      
       if (branchId) {
-        // Use query with explicit return type
         const { data, error } = await supabase
           .from('branches')
           .select('name')
           .eq('id', branchId)
           .limit(1);
-          
+
         if (!error && data && data.length > 0) {
           const branchName = data[0].name;
-          console.log("Invoice: Using branch from localStorage:", branchName);
-          
-          // Use explicit branch code for known branches
-          if (branchName.toLowerCase().includes('delta')) {
-            branchCode = "D";
-            console.log("Using Delta branch code");
-          } else if (branchName.toLowerCase().includes('randburg')) {
-            branchCode = "R";
-            console.log("Using Randburg branch code");
-          } else {
-            // Get first letter of branch name for other branches
-            branchCode = branchName.charAt(0).toUpperCase();
-            console.log("Using first letter branch code:", branchCode);
-          }
+          if (branchName.toLowerCase().includes('delta')) branchCode = "D";
+          else if (branchName.toLowerCase().includes('randburg')) branchCode = "R";
+          else branchCode = branchName.charAt(0).toUpperCase();
         }
       }
-      
-      // If we couldn't get from localStorage, try querying directly
       if (!branchCode) {
-        // Get auth user first
         const { data: authData } = await supabase.auth.getUser();
-        
         if (authData?.user) {
-          // Use the RPC function for getting the default branch name
-          const { data: branchData, error: branchError } = await supabase
-            .rpc('get_default_branch_name');
-            
+          const { data: branchData, error: branchError } = await supabase.rpc('get_default_branch_name');
           if (!branchError && branchData) {
             const branchName = String(branchData);
-            console.log("Invoice: Using default branch:", branchName);
-            
-            // Explicit handling for known branches
-            if (branchName.toLowerCase().includes('delta')) {
-              branchCode = "D";
-              console.log("Using Delta branch code from default");
-            } else if (branchName.toLowerCase().includes('randburg')) {
-              branchCode = "R";
-              console.log("Using Randburg branch code from default");
-            } else {
-              // Get first letter of branch name
-              branchCode = branchName.charAt(0).toUpperCase();
-              console.log("Using first letter branch code from default:", branchCode);
-            }
+            if (branchName.toLowerCase().includes('delta')) branchCode = "D";
+            else if (branchName.toLowerCase().includes('randburg')) branchCode = "R";
+            else branchCode = branchName.charAt(0).toUpperCase();
           }
         }
       }
-      
-      // If we still don't have a branch code, use X as fallback
-      if (!branchCode) {
-        branchCode = "X";
-        console.log("Using fallback branch code X");
-      }
+      if (!branchCode) branchCode = "X";
     } catch (err) {
-      console.warn("Error fetching branch info, using default branch code:", err);
-      branchCode = "X"; // Fallback branch code
+      branchCode = "X";
     }
-    
-    // Generate the prefix for the invoice number
-    // Format: INV-McD-2504-#### for Delta
-    // Format: INV-McR-2504-#### for Randburg
+
     const invoicePrefix = `INV-Mc${branchCode}-${yearMonth}-`;
-    
-    // Get count of invoices with the same prefix
     let nextSequentialNumber = 1;
-    
+    let candidateInvoiceNumber = "";
+
     try {
-      console.log("Querying invoices with prefix:", invoicePrefix);
-      
-      // Use built-in RPC function for counting invoices with prefix
-      const { data: count, error: countError } = await supabase
-        .rpc('count_invoices_with_prefix', { prefix: invoicePrefix });
-      
+      // Always try to use the RPC first
+      const { data: count, error: countError } = await supabase.rpc('count_invoices_with_prefix', { prefix: invoicePrefix });
       if (!countError && count !== null) {
         nextSequentialNumber = count + 1;
-        console.log(`Found ${count} existing invoices with prefix ${invoicePrefix}`);
       } else {
-        // Fallback: direct query to count invoices
+        // fallback - manual count in case RPC fails
         const { data: invoices, error: queryError } = await supabase
           .from('invoices')
           .select('invoice_number')
           .ilike('invoice_number', `${invoicePrefix}%`);
-        
         if (!queryError && invoices) {
           nextSequentialNumber = invoices.length + 1;
-          console.log(`Direct query found ${invoices.length} invoices with prefix ${invoicePrefix}`);
         }
       }
-    } catch (err) {
-      console.error("Error counting invoices:", err);
-      nextSequentialNumber = 1; // Default to 1 if we can't count
+      const sequentialNumber = String(nextSequentialNumber).padStart(4, '0');
+      candidateInvoiceNumber = `${invoicePrefix}${sequentialNumber}`;
+
+      // Check for collision and add suffix *only* if really needed
+      const { data: existingInvoice } = await supabase
+        .from('invoices')
+        .select('id')
+        .eq('invoice_number', candidateInvoiceNumber)
+        .maybeSingle();
+
+      if (!existingInvoice) {
+        return candidateInvoiceNumber;
+      } else {
+        // If by tiny chance there is a real collision, append a unique 4-digit suffix
+        const uniqueSuffix = Math.floor(Math.random()*9000 + 1000).toString();
+        return `${invoicePrefix}${sequentialNumber}-${uniqueSuffix}`;
+      }
+    } catch (error) {
+      // Fallback - timestamp
+      const timestamp = now.getTime().toString().slice(-4);
+      return `INV-Mc${branchCode}-${yearMonth}-${timestamp}`;
     }
-    
-    // Format the sequential number with leading zeros
-    const sequentialNumber = String(nextSequentialNumber).padStart(4, '0');
-    
-    // Format the final invoice number
-    const invoiceNumber = `${invoicePrefix}${sequentialNumber}`;
-    
-    console.log("Generated invoice number:", invoiceNumber);
-    return invoiceNumber;
   } catch (error) {
-    console.error("Error generating invoice number:", error);
-    
-    // Ultimate fallback - timestamp-based number
+    // Ultimate fallback again if something majorly breaks
     const now = new Date();
     const year = now.getFullYear().toString().slice(-2);
     const month = (now.getMonth() + 1).toString().padStart(2, '0');

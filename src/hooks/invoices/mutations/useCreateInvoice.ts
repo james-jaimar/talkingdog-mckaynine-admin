@@ -1,4 +1,3 @@
-
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { InvoiceFormValues } from "../types";
@@ -14,59 +13,30 @@ export function useCreateInvoice() {
   return useMutation({
     mutationFn: async (values: InvoiceFormValues) => {
       try {
-        console.log("Creating invoice with values:", values);
-        console.log("Using invoice number:", values.invoice_number);
-        
         // Check if this invoice number already exists
-        const { data: existingInvoice, error: checkError } = await supabase
+        const { data: existingInvoice } = await supabase
           .from('invoices')
           .select('id')
           .eq('invoice_number', values.invoice_number)
           .maybeSingle();
-        
-        if (checkError) {
-          console.error("Error checking for existing invoice:", checkError);
-        }
-        
         if (existingInvoice) {
           throw new Error(`Invoice number ${values.invoice_number} already exists. Please use a different number.`);
         }
-        
-        // Calculate subtotal - sum of all items
+        // Ensure subtotal is sum of all item quantities * unit_prices (course + enrollment fees etc)
         const subtotal = values.items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
-        console.log("Calculated subtotal from all items:", subtotal);
-        
         let discount_amount = 0;
         const original_discount_input = values.discount_amount || 0;
-        
-        // Calculate the actual monetary discount amount for saving
         if (values.discount_type === 'percentage') {
-          // For percentage type, calculate the monetary value
           const percentage = Math.min(Math.max(original_discount_input, 0), 100);
           discount_amount = (subtotal * percentage) / 100;
         } else {
-          // For fixed type, use the input directly
           discount_amount = Math.min(original_discount_input, subtotal);
         }
-        
-        // Calculate tax on the amount after discount
         const taxable_amount = subtotal - discount_amount;
         const tax_amount = taxable_amount * (values.tax_rate / 100);
-        
-        // Calculate total: subtotal - discount + tax
         const total = subtotal - discount_amount + tax_amount;
-        
-        console.log("Invoice calculations:", {
-          subtotal,
-          discount_type: values.discount_type,
-          discount_input: values.discount_amount,
-          discount_amount,
-          tax_rate: values.tax_rate,
-          tax_amount,
-          total
-        });
 
-        // Insert invoice - store the original discount input for percentage discounts
+        // Insert invoice; store correct discount (if percentage, it's the percent; if fixed, the amount)
         const { data: invoice, error: invoiceError } = await supabase
           .from('invoices')
           .insert({
@@ -80,23 +50,19 @@ export function useCreateInvoice() {
             tax_rate: values.tax_rate,
             tax_amount,
             total,
-            discount_amount: values.discount_type === 'percentage' ? 
-              original_discount_input : // Store percentage for percentage type
-              discount_amount, // Store actual amount for fixed type
+            discount_amount: values.discount_type === 'percentage'
+              ? original_discount_input
+              : discount_amount,
             discount_type: values.discount_type,
             discount_reason: values.discount_reason || null
           })
           .select('*')
           .single();
-
         if (invoiceError) {
-          console.error("Error creating invoice:", invoiceError);
           throw invoiceError;
         }
 
-        console.log("Invoice created successfully:", invoice);
-
-        // Insert invoice items
+        // Always use the values.items for invoice items
         const itemsToInsert = values.items.map(item => ({
           invoice_id: invoice.id,
           description: item.description,
@@ -106,23 +72,15 @@ export function useCreateInvoice() {
           booking_id: item.booking_id || null
         }));
 
-        console.log("Inserting invoice items:", itemsToInsert);
-
         const { error: itemsError } = await supabase
           .from('invoice_items')
           .insert(itemsToInsert);
-
         if (itemsError) {
-          console.error("Error creating invoice items:", itemsError);
           throw itemsError;
         }
 
-        // Log success message
-        console.log("Invoice items inserted successfully");
-
         return invoice;
       } catch (error) {
-        console.error("Error creating invoice:", error);
         throw error;
       }
     },
