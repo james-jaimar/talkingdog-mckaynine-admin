@@ -1,3 +1,4 @@
+
 import { useState, ReactNode } from "react";
 import { useInvoices } from "@/hooks/useInvoices";
 import { InvoiceFormValues } from "@/types/invoice";
@@ -88,7 +89,32 @@ export function BookingToInvoiceProvider({
       // Log selected booking data for debugging
       console.log("Creating invoice with selected bookings:", selectedBookingData);
       
-      const items = selectedBookingData.map(booking => {
+      if (selectedBookingData.length === 0) {
+        throw new Error("Failed to find selected bookings data");
+      }
+      
+      // Validate booking data
+      const validBookings = selectedBookingData.filter(booking => {
+        const price = booking.class_schedules?.classes?.price || 0;
+        const className = booking.class_schedules?.classes?.name || '';
+        const dogName = booking.dogs?.name || '';
+        
+        if (!className) {
+          console.warn(`Booking ${booking.id} has no class name`);
+        }
+        
+        if (!dogName) {
+          console.warn(`Booking ${booking.id} has no dog name`);
+        }
+        
+        return price > 0 && className && dogName;
+      });
+      
+      if (validBookings.length === 0) {
+        throw new Error("No valid bookings found with complete information");
+      }
+      
+      const items = validBookings.map(booking => {
         const className = booking.class_schedules?.classes?.name || 'Training Class';
         const price = booking.class_schedules?.classes?.price || 0;
         const dogName = booking.dogs?.name || 'Unknown Dog';
@@ -103,6 +129,9 @@ export function BookingToInvoiceProvider({
         };
       });
       
+      // Calculate totals
+      const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
+      
       // Prepare invoice data
       const invoice: InvoiceFormValues = {
         client_id: clientId,
@@ -110,12 +139,14 @@ export function BookingToInvoiceProvider({
         status: status,
         issued_date: new Date(),
         due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
-        notes: `Invoice for training classes. Includes ${selectedBookings.length} booking(s).`,
+        notes: `Invoice for training classes. Includes ${items.length} booking(s).`,
         tax_rate: 0,
         items,
-        discount_amount: 0, // Default value for discount
-        discount_type: 'fixed', // Default discount type
-        discount_reason: '' // Default empty string for discount reason
+        subtotal,
+        total: subtotal, // No discount or tax applied
+        discount_amount: 0,
+        discount_type: 'fixed',
+        discount_reason: ''
       };
       
       // Log complete invoice data before submission
@@ -129,8 +160,14 @@ export function BookingToInvoiceProvider({
       if (onSuccess) onSuccess();
       
     } catch (error) {
-      console.error("Error creating invoice:", error);
-      toast.error("Failed to create invoice");
+      console.error("Error creating invoice from bookings:", error);
+      
+      // Provide more detailed error message
+      if (error instanceof Error) {
+        toast.error(`Failed to create invoice: ${error.message}`);
+      } else {
+        toast.error("Failed to create invoice");
+      }
     } finally {
       setIsProcessing(false);
     }

@@ -1,8 +1,7 @@
 
-import { supabase } from "@/integrations/supabase/client";
-import { InvoiceStatus } from "@/types/invoice";
 import { UseMutationResult } from "@tanstack/react-query";
 import { calculateInvoiceComponents } from "@/lib/calculateInvoiceComponents";
+import { createInvoice } from "@/lib/invoices/createInvoiceUtils";
 
 export interface CreateInvoiceProps {
   handlerId: string;
@@ -40,7 +39,7 @@ export const createInvoiceForHandler = async ({
   classPrice,
   dogName,
   generateInvoiceNumber,
-  createInvoice,
+  createInvoice: createInvoiceMutation,
   currentBranch,
   enrollmentFee = 0,
   discountType = "fixed",
@@ -58,7 +57,8 @@ export const createInvoiceForHandler = async ({
   try {
     console.log("CREATE-INVOICE: Starting invoice creation with params:", {
       handlerId, dogId, bookingId, className, classPrice, enrollmentFee,
-      discountType, discountAmount, adminFeeRate, trainerFeeRate, franchiseFeeRate
+      discountType, discountAmount, adminFeeRate, trainerFeeRate, franchiseFeeRate,
+      adminFeeType, adminFeeValue, trainerFeeType, trainerFeeValue, franchiseFeeType, franchiseFeeValue
     });
 
     // Generate invoice number with fallback
@@ -80,18 +80,6 @@ export const createInvoiceForHandler = async ({
       }
       
       invoiceNumber = `INV-Mc${branchCode}-${year}${month}-${timestamp.padStart(4, '0')}`;
-    }
-
-    // Check for invoice number uniqueness
-    const { data: existingInvoice } = await supabase
-      .from('invoices')
-      .select('id')
-      .eq('invoice_number', invoiceNumber)
-      .maybeSingle();
-      
-    if (existingInvoice) {
-      const uniqueSuffix = Math.floor(Math.random() * 9000 + 1000).toString();
-      invoiceNumber = `${invoiceNumber}-${uniqueSuffix}`;
     }
 
     // Validate input parameters
@@ -148,7 +136,7 @@ export const createInvoiceForHandler = async ({
     const invoiceData = {
       client_id: handlerId,
       invoice_number: invoiceNumber,
-      status: "draft" as InvoiceStatus,
+      status: "draft",
       issued_date: new Date(),
       due_date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
       notes: `Invoice for ${className} training class for ${dogName}.`,
@@ -167,25 +155,24 @@ export const createInvoiceForHandler = async ({
 
     console.log("CREATE-INVOICE: About to create invoice with data:", invoiceData);
 
-    // Create the invoice
     try {
-      await createInvoice.mutateAsync(invoiceData);
+      // Use the mutation function to create the invoice through our centralized utility
+      await createInvoiceMutation.mutateAsync(invoiceData);
       console.log("CREATE-INVOICE: Invoice created successfully");
       return true;
     } catch (error) {
       console.error("CREATE-INVOICE: Failed to create invoice with mutateAsync", error);
       
-      // More detailed error logging for debugging
-      if (error instanceof Error) {
-        console.error("Error details:", error.message);
-        if ('cause' in error) {
-          console.error("Error cause:", error.cause);
-        }
-      } else {
-        console.error("Unknown error type:", typeof error);
+      // Try direct creation as a fallback (bypass React Query)
+      try {
+        console.log("CREATE-INVOICE: Attempting direct invoice creation as fallback");
+        await createInvoice(invoiceData);
+        console.log("CREATE-INVOICE: Direct invoice creation successful");
+        return true;
+      } catch (directError) {
+        console.error("CREATE-INVOICE: Direct invoice creation also failed:", directError);
+        return false;
       }
-      
-      return false;
     }
   } catch (error) {
     console.error("Error in createInvoiceForHandler OUTER catch:", error);

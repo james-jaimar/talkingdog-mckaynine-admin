@@ -94,15 +94,45 @@ export const addHandlerToClass = async ({
     // Get dog name for the invoice
     const dogName = await fetchDogName(dogId);
     
-    // Pass through all fee types and values for invoice creation
-    const invoiceCreated = await createInvoiceForHandler({
-      ...createInvoiceProps,
-      bookingId: booking.id, 
-      className: classDetails.name, 
-      classPrice: classDetails.courseFee,
-      enrollmentFee: classDetails.enrollmentFee,
-      dogName
-    });
+    // Only create an invoice if class price is greater than zero
+    const classPrice = classDetails.courseFee || 0;
+    const enrollmentFee = classDetails.enrollmentFee || 0;
+    const totalInvoiceAmount = classPrice + enrollmentFee;
+
+    let invoiceCreated = false;
+    
+    if (totalInvoiceAmount > 0) {
+      // Attempt to create an invoice for the booking
+      try {
+        invoiceCreated = await createInvoiceForHandler({
+          ...createInvoiceProps,
+          bookingId: booking.id, 
+          className: classDetails.name, 
+          classPrice,
+          enrollmentFee,
+          dogName
+        });
+        
+        if (!invoiceCreated) {
+          console.warn("Invoice creation failed for booking", booking.id);
+          toast({
+            title: "Warning",
+            description: "Handler was added but invoice creation failed. Please create the invoice manually.",
+            variant: "warning"
+          });
+        }
+      } catch (invoiceError) {
+        console.error("Error creating invoice:", invoiceError);
+        toast({
+          title: "Warning",
+          description: "Handler was added but invoice creation failed. Please create the invoice manually.",
+          variant: "warning"
+        });
+      }
+    } else {
+      console.log("Skipping invoice creation as class price and enrollment fee are zero");
+      invoiceCreated = true; // No need for invoice in this case
+    }
     
     // Invalidate relevant queries to refresh data
     await Promise.all([
@@ -116,8 +146,10 @@ export const addHandlerToClass = async ({
     toast({
       title: "Success",
       description: invoiceCreated 
-        ? "Handler added to class and invoice created."
-        : "Handler added to class, but invoice creation failed. Please create it manually.",
+        ? "Handler added to class and invoice created." 
+        : totalInvoiceAmount > 0 
+          ? "Handler added to class, but invoice creation failed. Please create it manually."
+          : "Handler added to class. No invoice needed (class has no fee).",
     });
     
     // Close modal

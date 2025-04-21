@@ -27,6 +27,20 @@ export function AddHandlerToClassModal({
   // Ensure we have class data by logging it
   console.log("AddHandlerToClassModal - classData received:", classData);
   
+  // Verify all required fee data exists
+  if (classData) {
+    console.log("Class fee information:", {
+      courseFee: classData.course_fee,
+      enrollmentFee: classData.enrollment_fee,
+      adminFeeType: classData.admin_fee_type,
+      adminFeeValue: classData.admin_fee_value,
+      trainerFeeType: classData.trainer_fee_type,
+      trainerFeeValue: classData.trainer_fee_value,
+      franchiseFeeType: classData.mckaynine_commission_type,
+      franchiseFeeValue: classData.mckaynine_commission_value,
+    });
+  }
+  
   const { 
     isProcessing,
     searchQuery,

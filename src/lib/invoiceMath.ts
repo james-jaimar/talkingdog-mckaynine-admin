@@ -1,77 +1,52 @@
 
 /**
- * Canonical calculation utility for all invoice totals math.
- * Always returns: subtotal (from items), tax, final total, and the true monetary discount,
- * based on the discount type/value (ZAR or %).
+ * Utility for calculating invoice totals from invoice items
  */
-export interface InvoiceItemInput {
+
+interface InvoiceItem {
   quantity: number;
   unit_price: number;
 }
 
-export type DiscountType = "fixed" | "percentage";
-
-export function calculateInvoiceTotals({
-  items,
-  discountType,
-  discountAmount,
-  taxRate
-}: {
-  items: InvoiceItemInput[];
-  discountType: DiscountType;
+interface InvoiceTotalParams {
+  items: InvoiceItem[];
+  discountType: 'fixed' | 'percentage';
   discountAmount: number;
   taxRate: number;
-}) {
-  // Safeguard against invalid inputs with defaults
-  const safeItems = items || [];
-  const safeDiscountType = discountType || "fixed";
-  const safeDiscountAmount = Number(discountAmount || 0);
-  const safeTaxRate = Number(taxRate || 0);
+}
 
-  // Calculate subtotal with safe handling of nulls
-  const subtotal = safeItems.reduce(
-    (sum, item) => {
-      // Check for valid quantity and price, or default to zero contribution
-      const quantity = Number(item?.quantity || 0);
-      const unitPrice = Number(item?.unit_price || 0);
-      return sum + (quantity * unitPrice);
-    },
-    0
-  );
+export function calculateInvoiceTotals({ 
+  items, 
+  discountType = 'fixed',
+  discountAmount = 0,
+  taxRate = 0
+}: InvoiceTotalParams) {
+  // Calculate subtotal from items
+  const subtotal = items.reduce((sum, item) => {
+    return sum + (item.quantity * item.unit_price);
+  }, 0);
 
-  // Enhanced logging for debugging
-  console.log(`Invoice Math: Raw subtotal calculated as ${subtotal} from ${safeItems.length} items`);
-
+  // Calculate discount
   let monetaryDiscount = 0;
-  // discountType === 'percentage' means discountAmount is PERCENT not ZAR
-  if (safeDiscountType === "percentage") {
-    // Ensure percentage is correctly applied (0-100%)
-    const percentageRate = Math.min(Math.max(safeDiscountAmount, 0), 100) / 100;
-    monetaryDiscount = subtotal * percentageRate;
-    console.log(`Invoice Math: Percentage discount ${safeDiscountAmount}% = ${monetaryDiscount} ZAR`);
+  if (discountType === 'percentage') {
+    monetaryDiscount = subtotal * (discountAmount / 100);
   } else {
-    // For fixed discount, ensure we don't discount more than the subtotal
-    monetaryDiscount = Math.min(safeDiscountAmount, subtotal);
-    console.log(`Invoice Math: Fixed discount ${monetaryDiscount} ZAR (capped at subtotal)`);
+    monetaryDiscount = Math.min(discountAmount, subtotal); // Don't allow negative totals
   }
 
+  // Calculate tax (applied after discount)
   const taxableAmount = subtotal - monetaryDiscount;
-  const tax = taxableAmount * (safeTaxRate / 100);
-  const total = taxableAmount + tax;
+  const tax = taxableAmount * (taxRate / 100);
 
-  console.log(`Invoice Math: Final calculation:
-    - Subtotal: ${subtotal}
-    - Discount: ${monetaryDiscount} (${safeDiscountType})
-    - Taxable amount: ${taxableAmount}
-    - Tax (${safeTaxRate}%): ${tax}
-    - Total: ${total}`);
+  // Calculate final total
+  const total = taxableAmount + tax;
 
   return {
     subtotal,
+    discountType,
+    discountAmount,
     monetaryDiscount,
-    discountType: safeDiscountType,
-    discountAmount: safeDiscountAmount,
-    taxRate: safeTaxRate,
+    taxRate,
     tax,
     total
   };
