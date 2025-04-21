@@ -1,3 +1,4 @@
+
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { InvoiceFormValues } from "../types";
@@ -36,9 +37,6 @@ export function useUpdateInvoice() {
           enrollmentFee: 0,
           discount: original_discount_amount,
           discountType: discount_type,
-          adminFeeRate: 0,
-          trainerFeeRate: 0,
-          franchiseFeeRate: 0,
         });
 
         // For percentage discounts, ensure the value is between 0-100
@@ -59,7 +57,8 @@ export function useUpdateInvoice() {
         const tax_amount = taxable_amount * (values.tax_rate / 100);
         const total = subtotal - monetary_discount + tax_amount;
 
-        // Update invoice with all calculated fields (include expense breakdown)
+        // Update invoice with all calculated fields 
+        // (removed expense breakdown fields that don't exist in DB)
         const updateData = {
           client_id: values.client_id,
           invoice_number: values.invoice_number,
@@ -77,10 +76,7 @@ export function useUpdateInvoice() {
           monetary_discount,
           original_discount_amount,
           original_discount_type: discount_type,
-          // EXPENSE BREAKDOWN - ALWAYS present (even if zero)
-          admin_fee: breakdown.adminFee,
-          trainer_fee: breakdown.trainerFee,
-          franchise_fee: breakdown.franchiseFee,
+          // Removed expense breakdown fields that don't exist in the DB schema
         };
 
         const { error: invoiceError, data: updatedInvoice } = await supabase
