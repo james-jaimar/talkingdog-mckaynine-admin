@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Invoice } from "@/types/invoice";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -21,16 +21,17 @@ export function EmailInvoiceDialog({
 }: EmailInvoiceDialogProps) {
   const [emailRecipient, setEmailRecipient] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { emailInvoice } = useInvoices();
-
+  const { emailInvoice, useMarkInvoiceAsSent } = useInvoices();
+  const markAsSent = useMarkInvoiceAsSent();
+  
   // Update email recipient when selected invoice changes
-  useState(() => {
+  useEffect(() => {
     if (selectedInvoice?.client?.email) {
       setEmailRecipient(selectedInvoice.client.email);
     } else {
       setEmailRecipient("");
     }
-  });
+  }, [selectedInvoice]);
 
   const confirmSendEmail = async () => {
     if (!selectedInvoice || !emailRecipient.trim()) {
@@ -41,10 +42,23 @@ export function EmailInvoiceDialog({
     setIsSubmitting(true);
     
     try {
+      console.log(`Sending invoice ${selectedInvoice.invoice_number} to ${emailRecipient}`);
+      
       await emailInvoice.mutateAsync({
         invoice: selectedInvoice,
         email: emailRecipient
       });
+      
+      // Mark the invoice as sent after successful email
+      if (selectedInvoice.status === 'draft') {
+        try {
+          await markAsSent.mutateAsync(selectedInvoice.id);
+          console.log(`Invoice ${selectedInvoice.invoice_number} marked as sent`);
+        } catch (error) {
+          console.error("Error marking invoice as sent:", error);
+          // Don't show an error as the email was successfully sent
+        }
+      }
       
       onOpenChange(false);
     } catch (error) {

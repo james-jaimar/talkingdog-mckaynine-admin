@@ -1,22 +1,23 @@
 
 /**
- * Helper function to format currency
+ * Format a number as currency
  */
 export function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('en-ZA', {
     style: 'currency',
-    currency: 'ZAR'
-  }).format(amount).replace('R', 'R '); // Ensure space after R
+    currency: 'ZAR',
+    minimumFractionDigits: 2
+  }).format(amount);
 }
 
 /**
- * Helper function to format date
+ * Format a date string to a human-readable format
  */
 export function formatDate(dateString: string): string {
   const date = new Date(dateString);
-  return new Intl.DateTimeFormat('en-ZA', {
-    day: 'numeric',
+  return date.toLocaleDateString('en-ZA', {
+    year: 'numeric',
     month: 'long',
-    year: 'numeric'
-  }).format(date);
+    day: 'numeric'
+  });
 }

@@ -1,93 +1,77 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
 import { Invoice } from "./types";
-import { getInvoiceAsBase64 } from "@/components/invoices/pdf/InvoicePDFGenerator";
+import { generateInvoicePDF } from "@/components/invoices/pdf/InvoicePDFGenerator";
+import { toast } from "sonner";
+
+interface EmailInvoiceParams {
+  invoice: Invoice;
+  email: string;
+}
 
 export function useEmailInvoice() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: async ({ invoice, email }: { invoice: Invoice; email: string }) => {
+    mutationFn: async ({ invoice, email }: EmailInvoiceParams) => {
       try {
-        console.log(`Sending invoice ${invoice.invoice_number} to ${email}...`);
-        console.log("Invoice status:", invoice.status);
+        toast.info("Preparing invoice for email...");
         
-        // Generate PDF using the client-side PDF generator
-        console.log("Generating PDF for email attachment...");
-        const pdfBase64 = await getInvoiceAsBase64(invoice);
-        console.log("PDF generation completed successfully");
+        // First generate the PDF
+        const pdfBase64 = await generateInvoicePDF(invoice, true);
+        if (!pdfBase64) {
+          throw new Error("Failed to generate invoice PDF");
+        }
         
-        // Make sure invoice status is lowercase for consistency
-        const normalizedInvoice = {
-          ...invoice,
-          status: invoice.status ? invoice.status.toLowerCase() : 'draft'
-        };
+        console.log("PDF generated successfully, preparing to send email");
+
+        // Get the Supabase URL
+        const supabaseUrl = supabase.supabaseUrl;
         
-        // Send the invoice email with the PDF attachment
+        // Call the send-invoice edge function
         const { data, error } = await supabase.functions.invoke('send-invoice', {
-          body: { 
-            invoice: normalizedInvoice, 
+          body: {
+            invoice,
             email,
             pdfBase64
-          }
+          },
         });
 
         if (error) {
-          console.error("Supabase function error:", error);
-          throw new Error(`Function error: ${error.message}`);
+          console.error("Error invoking send-invoice function:", error);
+          throw new Error(`Failed to send invoice: ${error.message}`);
         }
-        
-        if (!data || data.success === false) {
-          console.error("Function returned error:", data?.error || "Unknown error");
-          throw new Error(data?.error || "Unknown error sending invoice");
-        }
-        
-        // If function succeeds, update the invoice as sent
-        if (data.success && invoice.status === 'draft') {
-          const { error: updateError } = await supabase
-            .from('invoices')
-            .update({
-              status: 'sent',
-              email_sent: true
-            })
-            .eq('id', invoice.id);
-            
-          if (updateError) {
-            console.error("Error updating invoice status:", updateError);
-            throw updateError;
-          }
+
+        if (!data.success) {
+          console.error("Email sending failed:", data.error);
+          throw new Error(data.error || "Failed to send email");
         }
 
         return data;
       } catch (error) {
-        console.error("Error sending invoice email:", error);
+        console.error("Error in useEmailInvoice:", error);
         throw error;
       }
     },
     onSuccess: (_, variables) => {
-      toast.success("Invoice email sent successfully");
+      console.log(`Email sent to ${variables.email}`);
+      toast.success(`Invoice ${variables.invoice.invoice_number} sent to ${variables.email}`);
       
-      // Invalidate relevant queries to ensure UI updates
+      // Invalidate relevant queries to refresh UI
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       queryClient.invalidateQueries({ queryKey: ['invoice', variables.invoice.id] });
+      
+      // If we have the client_id, invalidate client-specific queries
+      if (variables.invoice.client_id) {
+        queryClient.invalidateQueries({ 
+          queryKey: ['client-invoices', variables.invoice.client_id] 
+        });
+      }
     },
     onError: (error: Error) => {
-      console.error("Failed to send invoice email:", error);
-      
-      // Show a more user-friendly error message
-      if (error.message.includes("domain is not verified")) {
-        toast.error("Email domain not verified in Resend. Please verify your domain or update the sender email address.");
-      } else if (error.message.includes("PDF generation failed")) {
-        toast.error("Failed to generate invoice PDF. Please try again later or contact support.");
-      } else if (error.message.includes("Email sending failed")) {
-        toast.error("Failed to send email. Please check the recipient's email address and that the Resend API is configured.");
-      } else if (error.message.includes("RESEND_API_KEY")) {
-        toast.error("Missing Resend API Key. Please configure the RESEND_API_KEY in your Supabase project.");
-      } else {
-        toast.error(`Failed to send invoice: ${error.message}`);
-      }
+      console.error("Email sending error:", error);
+      toast.error(`Failed to send email: ${error.message}`);
     },
   });
 }

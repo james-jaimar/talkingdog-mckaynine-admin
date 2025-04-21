@@ -24,7 +24,7 @@ export async function sendInvoiceEmail(invoice: Invoice, email: string, pdfBuffe
     
     // Create email message based on invoice status
     const emailSubject = `Invoice ${invoice.invoice_number} from McKaynine Training Centre`;
-    const emailMessage = createEmailMessage(invoice, `${invoice.client.first_name} ${invoice.client.last_name}`);
+    const emailMessage = createEmailMessage(invoice, `${invoice.client.first_name} ${invoice.client.last_name || ''}`);
     const htmlMessage = formatEmailHtml(emailMessage);
     
     console.log("Using send-with-resend function to deliver email");
