@@ -1,9 +1,9 @@
-
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { InvoiceFormValues } from "../types";
 import { toast } from "sonner";
 import { handleMutationError } from "./useMutationUtils";
+import { calculateInvoiceComponents } from "@/lib/calculateInvoiceComponents";
 
 /**
  * Hook to update an existing invoice
@@ -15,7 +15,7 @@ export function useUpdateInvoice() {
     mutationFn: async ({ invoiceId, values }: { invoiceId: string, values: InvoiceFormValues }) => {
       console.log("Starting invoice update for ID:", invoiceId);
       console.log("Update values:", values);
-      
+
       if (!invoiceId) {
         throw new Error("Invoice ID is required for update");
       }
@@ -27,18 +27,25 @@ export function useUpdateInvoice() {
           console.log(`Item: ${item.description}, Amount: ${itemAmount}`);
           return sum + itemAmount;
         }, 0);
-        
-        console.log(`Calculated subtotal from items: ${subtotal}`);
-        
-        // Normalize discount values
+
+        // Calculate discount and expenses using canonical utility
         const discount_type = values.discount_type || 'fixed';
         const original_discount_amount = Number(values.discount_amount || 0);
-        
+        const breakdown = calculateInvoiceComponents({
+          courseFee: subtotal,
+          enrollmentFee: 0,
+          discount: original_discount_amount,
+          discountType: discount_type,
+          adminFeeRate: 0,
+          trainerFeeRate: 0,
+          franchiseFeeRate: 0,
+        });
+
         // For percentage discounts, ensure the value is between 0-100
         if (discount_type === 'percentage' && (original_discount_amount < 0 || original_discount_amount > 100)) {
           throw new Error("Percentage discount must be between 0 and 100");
         }
-        
+
         // Calculate monetary discount
         let monetary_discount = 0;
         if (discount_type === 'percentage') {
@@ -46,21 +53,13 @@ export function useUpdateInvoice() {
         } else {
           monetary_discount = Math.min(original_discount_amount, subtotal);
         }
-        
-        console.log(`Discount: ${monetary_discount} (${discount_type}, original: ${original_discount_amount})`);
-        
+
         // Calculate tax and total
         const taxable_amount = subtotal - monetary_discount;
         const tax_amount = taxable_amount * (values.tax_rate / 100);
         const total = subtotal - monetary_discount + tax_amount;
-        
-        console.log(`Final calculations:
-          - Subtotal: ${subtotal}
-          - Taxable amount: ${taxable_amount}
-          - Tax amount (${values.tax_rate}%): ${tax_amount}
-          - Total: ${total}`);
-          
-        // Update invoice with all calculated fields
+
+        // Update invoice with all calculated fields (include expense breakdown)
         const updateData = {
           client_id: values.client_id,
           invoice_number: values.invoice_number,
@@ -75,13 +74,15 @@ export function useUpdateInvoice() {
           discount_type,
           discount_amount: discount_type === 'percentage' ? original_discount_amount : monetary_discount,
           discount_reason: values.discount_reason || null,
-          // Explicitly add these fields to ensure correct values
           monetary_discount,
           original_discount_amount,
-          original_discount_type: discount_type
+          original_discount_type: discount_type,
+          // EXPENSE BREAKDOWN - ALWAYS present (even if zero)
+          admin_fee: breakdown.adminFee,
+          trainer_fee: breakdown.trainerFee,
+          franchise_fee: breakdown.franchiseFee,
         };
 
-        // Update invoice
         const { error: invoiceError, data: updatedInvoice } = await supabase
           .from('invoices')
           .update(updateData)
@@ -116,7 +117,7 @@ export function useUpdateInvoice() {
           amount: (item.quantity || 1) * (item.unit_price || 0),
           booking_id: item.booking_id || null
         }));
-        
+
         console.log("Inserting updated invoice items:", itemsToInsert);
 
         const { error: itemsError } = await supabase
@@ -127,17 +128,16 @@ export function useUpdateInvoice() {
           console.error("Error inserting invoice items:", itemsError);
           throw itemsError;
         }
-        
+
         // Verify the final invoice total matches our calculated total
         const { data: finalInvoice, error: finalInvoiceError } = await supabase
           .from('invoices')
           .select('*')
           .eq('id', invoiceId)
           .single();
-          
+
         if (finalInvoiceError) {
           console.error("Error fetching final updated invoice:", finalInvoiceError);
-          // Continue anyway
         } else if (finalInvoice && Math.abs(finalInvoice.total - total) > 0.01) {
           console.warn(`Warning: Final updated invoice total (${finalInvoice.total}) doesn't match calculated total (${total})`);
         }

@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { InvoiceStatus } from "@/types/invoice";
 import { UseMutationResult } from "@tanstack/react-query";
@@ -90,8 +89,8 @@ export const createInvoiceForHandler = async ({
 
     // Calculate all components (subtotal, discount, total, expense breakdowns)
     const breakdown = calculateInvoiceComponents({
-      courseFee: classPrice,
-      enrollmentFee,
+      courseFee: classPrice + (enrollmentFee || 0),
+      enrollmentFee: 0, // Already included above
       discount: discountAmount,
       discountType,
       adminFeeRate,
@@ -116,10 +115,9 @@ export const createInvoiceForHandler = async ({
       subtotal: breakdown.subtotal,
       total: breakdown.total,
       monetary_discount: breakdown.monetaryDiscount,
-      // Store fee breakdowns for accounting use
       admin_fee: breakdown.adminFee,
       trainer_fee: breakdown.trainerFee,
-      franchise_fee: breakdown.franchiseFee
+      franchise_fee: breakdown.franchiseFee,
     };
 
     try {

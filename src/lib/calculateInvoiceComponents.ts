@@ -2,13 +2,13 @@
 /**
  * Helper to calculate invoice, discount, and expense breakdowns.
  * 
- * @param courseFee Number - main course price
+ * @param courseFee Number - main course price or subtotal
  * @param enrollmentFee Number - only applied on first class
  * @param discount Amount (number) - discount value
  * @param discountType "fixed" | "percentage"
- * @param adminFeeRate Number (optional; as percentage)
- * @param trainerFeeRate Number (optional; as percentage)
- * @param franchiseFeeRate Number (optional; as percentage)
+ * @param adminFeeRate Number (as percentage, default 0)
+ * @param trainerFeeRate Number (as percentage, default 0)
+ * @param franchiseFeeRate Number (as percentage, default 0)
  * @returns InvoiceCalculationResult
  */
 export interface InvoiceCalculationResult {
@@ -37,7 +37,7 @@ export function calculateInvoiceComponents({
   franchiseFeeRate = 0,
 }: {
   courseFee: number;
-  enrollmentFee: number;
+  enrollmentFee?: number;
   discount?: number;
   discountType?: "fixed" | "percentage";
   adminFeeRate?: number;
@@ -55,7 +55,7 @@ export function calculateInvoiceComponents({
 
   const total = subtotal - monetaryDiscount;
 
-  // Expense breakdowns (for accounting only, not deducted from invoiced total)
+  // Expense breakdowns (for accounting only)
   const adminFee = total * (adminFeeRate / 100);
   const trainerFee = total * (trainerFeeRate / 100);
   const franchiseFee = total * (franchiseFeeRate / 100);
