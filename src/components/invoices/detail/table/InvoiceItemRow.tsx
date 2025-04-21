@@ -4,6 +4,7 @@ import { InvoiceItem } from "@/hooks/invoices/types";
 import { formatCurrency } from "@/lib/formatters";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Info } from "lucide-react";
+import { useEffect } from "react";
 
 interface InvoiceItemRowProps {
   item: InvoiceItem;
@@ -11,7 +12,19 @@ interface InvoiceItemRowProps {
 }
 
 export function InvoiceItemRow({ item, index }: InvoiceItemRowProps) {
-  console.log(`Rendering invoice item row #${index}:`, item);
+  // Detailed debug logging to trace invoice item structure
+  useEffect(() => {
+    console.log(`InvoiceItemRow #${index} data:`, {
+      id: item.id,
+      description: item.description,
+      quantity: item.quantity, 
+      unit_price: item.unit_price,
+      amount: item.amount,
+      calculatedAmount: item.quantity * item.unit_price,
+      booking_id: item.booking_id,
+      hasBookingData: !!item.bookings
+    });
+  }, [item, index]);
   
   // Extract booking information if available
   const booking = item.bookings;
@@ -35,13 +48,11 @@ export function InvoiceItemRow({ item, index }: InvoiceItemRowProps) {
     // If there's both class and dog info, ensure it's the primary description
     if (className && dogName) {
       primaryDescription = `${className} - ${dogName}`;
-      console.log(`Using primary description from booking data: ${primaryDescription}`);
     } 
     
     // Add class description as tertiary info if available and different from name
     if (classInfo?.description && classInfo.description !== className && classInfo.description.trim() !== '') {
       tertiaryDescription = classInfo.description;
-      console.log(`Using class description as tertiary info: ${tertiaryDescription}`);
     }
   } 
   // If no booking but the description seems to contain class-dog info (format: "Class - Dog")
@@ -52,8 +63,13 @@ export function InvoiceItemRow({ item, index }: InvoiceItemRowProps) {
     }
   }
   
-  // Calculate the item amount correctly
-  const itemAmount = item.amount || (item.quantity * item.unit_price);
+  // Calculate the item amount correctly with null/undefined safety
+  const quantity = Number(item.quantity || 0);
+  const unitPrice = Number(item.unit_price || 0);
+  const calculatedAmount = quantity * unitPrice;
+  
+  // Use pre-calculated amount if available, otherwise use our calculation
+  const itemAmount = item.amount || calculatedAmount;
   
   // Extract booking ID for display - show just the first 8 characters
   const shortBookingId = item.booking_id ? 
@@ -101,8 +117,8 @@ export function InvoiceItemRow({ item, index }: InvoiceItemRowProps) {
           )}
         </div>
       </TableCell>
-      <TableCell className="text-center">{item.quantity}</TableCell>
-      <TableCell className="text-right">{formatCurrency(item.unit_price)}</TableCell>
+      <TableCell className="text-center">{quantity}</TableCell>
+      <TableCell className="text-right">{formatCurrency(unitPrice)}</TableCell>
       <TableCell className="text-right">
         {formatCurrency(itemAmount)}
       </TableCell>

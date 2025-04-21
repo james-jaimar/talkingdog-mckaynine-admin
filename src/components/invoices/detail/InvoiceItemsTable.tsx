@@ -14,18 +14,39 @@ interface InvoiceItemsTableProps {
 }
 
 export function InvoiceItemsTable({ items }: InvoiceItemsTableProps) {
-  // Log whenever items change
+  // Enhanced logging to audit invoice items
   useEffect(() => {
     console.log("InvoiceItemsTable received items:", items);
+    
+    if (items && items.length > 0) {
+      // Calculate expected subtotal for verification
+      const calculatedSubtotal = items.reduce((sum, item) => 
+        sum + (Number(item.quantity || 0) * Number(item.unit_price || 0)), 0
+      );
+      
+      console.log(`Expected subtotal from ${items.length} items: ${calculatedSubtotal}`);
+      
+      // Log any items with potential issues
+      const potentialIssues = items.filter(item => 
+        !item.description || !item.quantity || !item.unit_price || 
+        (item.amount && Math.abs(item.amount - (item.quantity * item.unit_price)) > 0.01)
+      );
+      
+      if (potentialIssues.length > 0) {
+        console.warn(`Found ${potentialIssues.length} items with potential issues:`, potentialIssues);
+      }
+    }
   }, [items]);
 
-  // Check if there are any valid items to display
+  // Check if there are any valid items to display with better validation
   const hasValidItems = items && items.length > 0 && items.some(item => 
-    item.description || item.unit_price || item.quantity || item.bookings
+    item.description || 
+    (item.quantity && item.quantity > 0) || 
+    (item.unit_price && item.unit_price > 0) || 
+    item.bookings
   );
 
   if (!hasValidItems) {
-    console.log("No valid items to display, showing empty state");
     return <InvoiceItemEmptyState />;
   }
 

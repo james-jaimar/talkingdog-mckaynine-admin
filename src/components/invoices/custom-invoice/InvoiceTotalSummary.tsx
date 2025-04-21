@@ -12,12 +12,21 @@ export function InvoiceTotalSummary() {
   const discountAmount = useWatch({ control: form.control, name: "discount_amount" });
   const taxRate = useWatch({ control: form.control, name: "tax_rate" });
 
-  // Calculate the total using the new central utility
+  // Calculate the total using the central utility with robust defaults
   const totals = calculateInvoiceTotals({
     items: items || [],
     discountType: discountType || "fixed",
-    discountAmount: discountAmount || 0,
-    taxRate: taxRate || 0,
+    discountAmount: Number(discountAmount || 0),
+    taxRate: Number(taxRate || 0),
+  });
+
+  // Log for debugging
+  console.log("InvoiceTotalSummary rendering with values:", {
+    itemCount: items?.length || 0,
+    discountType,
+    discountAmount,
+    taxRate,
+    calculatedTotals: totals
   });
 
   return (
