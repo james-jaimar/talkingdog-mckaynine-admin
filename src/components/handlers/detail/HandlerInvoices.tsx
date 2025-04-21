@@ -41,6 +41,11 @@ export function HandlerInvoices({ clientData }: HandlerInvoicesProps) {
     }
   };
 
+  const handleViewInvoice = (invoiceId: string) => {
+    console.log("Viewing invoice from handler page:", invoiceId);
+    navigate(`/invoices/${invoiceId}`);
+  };
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -110,7 +115,7 @@ export function HandlerInvoices({ clientData }: HandlerInvoicesProps) {
                         variant="ghost" 
                         size="sm" 
                         className="h-8 w-8 p-0"
-                        onClick={() => navigate(`/invoices/${invoice.id}`)}
+                        onClick={() => handleViewInvoice(invoice.id)}
                       >
                         <Eye className="h-4 w-4" />
                       </Button>

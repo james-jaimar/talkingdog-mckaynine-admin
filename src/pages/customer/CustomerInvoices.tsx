@@ -10,8 +10,10 @@ import { formatCurrency } from "@/lib/formatters";
 import { FileText, Download, Eye } from "lucide-react";
 import { Helmet } from "react-helmet";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 export default function CustomerInvoices() {
+  const navigate = useNavigate();
   const { useMyInvoices } = useInvoices();
   const { data: invoices, isLoading } = useMyInvoices();
   const [filterStatus, setFilterStatus] = useState<string>("all");
@@ -37,6 +39,11 @@ export default function CustomerInvoices() {
   const filteredInvoices = invoices?.filter(invoice => 
     filterStatus === "all" || invoice.status === filterStatus
   );
+  
+  const handleViewInvoice = (invoiceId: string) => {
+    console.log("Customer viewing invoice:", invoiceId);
+    navigate(`/customer/invoices/${invoiceId}`);
+  };
 
   return (
     <CustomerDashboardLayout>
@@ -128,7 +135,12 @@ export default function CustomerInvoices() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end space-x-2">
-                            <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
+                            <Button 
+                              size="sm" 
+                              variant="ghost" 
+                              className="h-8 w-8 p-0"
+                              onClick={() => handleViewInvoice(invoice.id)}
+                            >
                               <Eye className="h-4 w-4" />
                             </Button>
                             <Button size="sm" variant="ghost" className="h-8 w-8 p-0">

@@ -12,18 +12,15 @@ import { TrainerClassDetail } from "@/hooks/useTrainerPaymentData";
 import { format } from "date-fns";
 
 // Handler commission data extraction per class
-// If handler commission info is integrated, replace this logic.
-// Here we'll check for each booking in classDetails for demonstration.
 function getHandlerCommissionsForClass(classDetail: TrainerClassDetail) {
-  // Placeholder for actual handler-commission extraction. For now, simulate with sample data.
-  // Ideally: classDetail.bookingsDetails: [{handlerName, commissionAmount}, ...]
-  // But current TrainerClassDetail does not have handler breakdown, so we'll show a dummy example.
+  // If we have bookingsDetails with handler information
   if ((classDetail as any).bookingsDetails) {
     return (classDetail as any).bookingsDetails.map((b: any, i: number) => ({
       handler: b.handlerName || `Handler ${i + 1}`,
       commission: b.commissionAmount || 0
     }));
   }
+  
   // Fallback: simulate with count of bookings
   const result = [];
   for (let i = 1; i <= classDetail.bookings; i++) {
@@ -122,7 +119,6 @@ export function TrainerPaymentsRow({ trainer, onMarkForPayment }: TrainerPayment
               onMarkForPayment(trainer.id);
             }}
           >
-            {/* Removed $ DollarSign icon as requested */}
             Mark for Payment
           </Button>
         </TableCell>
@@ -195,7 +191,7 @@ export function TrainerPaymentsRow({ trainer, onMarkForPayment }: TrainerPayment
                         </Button>
                       </div>
 
-                      {/* NESTED: Handler breakdown expansion */}
+                      {/* Handler breakdown expansion */}
                       {expandedClass === classDetail.scheduleId && (
                         <div className="col-span-7 mt-2 mb-2 border-t pt-2">
                           <span className="font-medium mb-1 block">Handlers in this class</span>

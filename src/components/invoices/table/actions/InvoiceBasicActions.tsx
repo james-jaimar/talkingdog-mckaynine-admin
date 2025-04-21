@@ -15,9 +15,8 @@ export function InvoiceBasicActions({ invoice, isPending, onCloseDropdown }: Inv
 
   const handleView = () => {
     onCloseDropdown();
-    // Fixed navigation path to ensure it goes to the invoice detail view
+    console.log("Viewing invoice with ID:", invoice.id);
     navigate(`/invoices/${invoice.id}`);
-    console.log("Navigating to invoice detail:", invoice.id);
   };
 
   const handleEdit = () => {
