@@ -49,11 +49,11 @@ export const addHandlerToClass = async ({
       throw new Error("Could not fetch class details");
     }
     
-    console.log("Adding handler to class schedule:", { 
+    console.log("Adding handler to class schedule with details:", { 
       handlerId, 
       dogId, 
       scheduleId,
-      classDetails // Now includes all fee information
+      classDetails
     });
     
     // First check if this handler-dog combination is already booked for this class schedule
@@ -94,13 +94,13 @@ export const addHandlerToClass = async ({
     // Get dog name for the invoice
     const dogName = await fetchDogName(dogId);
     
-    // Create an invoice for this booking with all needed details
+    // Pass through all fee types and values for invoice creation
     const invoiceCreated = await createInvoiceForHandler({
       ...createInvoiceProps,
       bookingId: booking.id, 
       className: classDetails.name, 
-      classPrice: classDetails.courseFee, // Use courseFee directly
-      enrollmentFee: classDetails.enrollmentFee, // Pass enrollment fee separately
+      classPrice: classDetails.courseFee,
+      enrollmentFee: classDetails.enrollmentFee,
       dogName
     });
     

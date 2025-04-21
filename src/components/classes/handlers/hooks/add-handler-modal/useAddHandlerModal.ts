@@ -28,15 +28,42 @@ export function useAddHandlerModal({
   const { currentBranch } = useBranch();
 
   const handleAddHandlerToClass = async (handlerId: string, dogId: string) => {
-    // Calculate fee rates based on class data
-    const adminFeeRate = classData?.admin_fee_type === 'percentage' ? 
-      classData.admin_fee_value : 0;
+    if (!classData) {
+      console.error("Missing class data, cannot add handler");
+      toast({
+        title: "Error",
+        description: "Could not load class data. Please refresh and try again.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    console.log("Adding handler to class with fee data:", {
+      adminFeeType: classData.admin_fee_type,
+      adminFeeValue: classData.admin_fee_value,
+      trainerFeeType: classData.trainer_fee_type,
+      trainerFeeValue: classData.trainer_fee_value,
+      franchiseFeeType: classData.mckaynine_commission_type,
+      franchiseFeeValue: classData.mckaynine_commission_value,
+    });
       
-    const trainerFeeRate = classData?.trainer_fee_type === 'percentage' ? 
-      classData.trainer_fee_value : 0;
-      
-    const franchiseFeeRate = classData?.mckaynine_commission_type === 'percentage' ? 
-      classData.mckaynine_commission_value : 0;
+    // Calculate fee rates correctly based on fee types
+    let adminFeeRate = 0;
+    let trainerFeeRate = 0;
+    let franchiseFeeRate = 0;
+    
+    // Only convert to percentage rates if the type is percentage
+    if (classData.admin_fee_type === 'percentage') {
+      adminFeeRate = classData.admin_fee_value;
+    }
+    
+    if (classData.trainer_fee_type === 'percentage') {
+      trainerFeeRate = classData.trainer_fee_value;
+    }
+    
+    if (classData.mckaynine_commission_type === 'percentage') {
+      franchiseFeeRate = classData.mckaynine_commission_value;
+    }
 
     await addHandlerToClass({
       handlerId,
@@ -56,7 +83,15 @@ export function useAddHandlerModal({
         currentBranch,
         adminFeeRate,
         trainerFeeRate,
-        franchiseFeeRate
+        franchiseFeeRate,
+        adminFeeType: classData.admin_fee_type,
+        trainerFeeType: classData.trainer_fee_type,
+        franchiseFeeType: classData.mckaynine_commission_type,
+        adminFeeValue: classData.admin_fee_value,
+        trainerFeeValue: classData.trainer_fee_value,
+        franchiseFeeValue: classData.mckaynine_commission_value,
+        discountType: "fixed",
+        discountAmount: 0
       }
     });
   };

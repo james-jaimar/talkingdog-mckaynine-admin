@@ -7,14 +7,16 @@ export const fetchClassDetails = async (classId: string): Promise<{
   price: number;
   courseFee: number;
   enrollmentFee: number;
-  adminFeeType: string;
+  adminFeeType: 'percentage' | 'amount';
   adminFeeValue: number;
-  trainerFeeType: string;
+  trainerFeeType: 'percentage' | 'amount';
   trainerFeeValue: number;
-  franchiseFeeType: string;
+  franchiseFeeType: 'percentage' | 'amount';
   franchiseFeeValue: number;
 } | null> => {
   try {
+    console.log(`Fetching class details for class ID: ${classId}`);
+    
     const { data, error } = await supabase
       .from('classes')
       .select(`
@@ -31,24 +33,35 @@ export const fetchClassDetails = async (classId: string): Promise<{
       .eq('id', classId)
       .single();
     
-    if (error) throw error;
-    
-    if (data) {
-      return {
-        name: data.name,
-        price: data.course_fee, // Base price - now just the course fee
-        courseFee: data.course_fee,
-        enrollmentFee: data.enrollment_fee || 0,
-        adminFeeType: data.admin_fee_type,
-        adminFeeValue: data.admin_fee_value,
-        trainerFeeType: data.trainer_fee_type,
-        trainerFeeValue: data.trainer_fee_value,
-        franchiseFeeType: data.mckaynine_commission_type,
-        franchiseFeeValue: data.mckaynine_commission_value
-      };
+    if (error) {
+      console.error("Error fetching class details:", error);
+      throw error;
     }
     
-    return null;
+    if (!data) {
+      console.error("No class data found for ID:", classId);
+      return null;
+    }
+    
+    console.log("Fetched class details:", data);
+    
+    // Validate fee types
+    const adminFeeType = data.admin_fee_type === 'percentage' ? 'percentage' : 'amount';
+    const trainerFeeType = data.trainer_fee_type === 'percentage' ? 'percentage' : 'amount';
+    const franchiseFeeType = data.mckaynine_commission_type === 'percentage' ? 'percentage' : 'amount';
+    
+    return {
+      name: data.name,
+      price: data.course_fee, // Base price - now just the course fee
+      courseFee: data.course_fee,
+      enrollmentFee: data.enrollment_fee || 0,
+      adminFeeType,
+      adminFeeValue: data.admin_fee_value,
+      trainerFeeType,
+      trainerFeeValue: data.trainer_fee_value,
+      franchiseFeeType,
+      franchiseFeeValue: data.mckaynine_commission_value
+    };
   } catch (err) {
     console.error("Error fetching class details:", err);
     return null;

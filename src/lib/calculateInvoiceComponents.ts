@@ -45,18 +45,23 @@ export function calculateInvoiceComponents({
   trainerFeeRate?: number;
   franchiseFeeRate?: number;
 }): InvoiceCalculationResult {
+  // Validate and sanitize inputs to prevent NaN errors
   if (typeof courseFee !== "number" || isNaN(courseFee)) courseFee = 0;
   if (typeof enrollmentFee !== "number" || isNaN(enrollmentFee)) enrollmentFee = 0;
+  if (typeof discount !== "number" || isNaN(discount)) discount = 0;
+  if (typeof adminFeeRate !== "number" || isNaN(adminFeeRate)) adminFeeRate = 0;
+  if (typeof trainerFeeRate !== "number" || isNaN(trainerFeeRate)) trainerFeeRate = 0;
+  if (typeof franchiseFeeRate !== "number" || isNaN(franchiseFeeRate)) franchiseFeeRate = 0;
 
+  // Calculate subtotal (course fee + enrollment fee)
   const subtotal = Number(courseFee) + Number(enrollmentFee);
 
   // DEV LOG: Confirm that input args are clean and explicit
-  if (process.env.NODE_ENV === "development" || typeof window !== "undefined") {
-    console.log("CALC-INVOICE breakdown inputs:", {
-      courseFee, enrollmentFee, discount, discountType, adminFeeRate, trainerFeeRate, franchiseFeeRate
-    });
-  }
+  console.log("CALC-INVOICE breakdown inputs:", {
+    courseFee, enrollmentFee, discount, discountType, adminFeeRate, trainerFeeRate, franchiseFeeRate
+  });
 
+  // Calculate monetary discount based on discount type
   let monetaryDiscount = 0;
   if (discountType === "percentage") {
     monetaryDiscount = subtotal * Math.min(Math.max(discount, 0), 100) / 100;
@@ -64,12 +69,23 @@ export function calculateInvoiceComponents({
     monetaryDiscount = Math.min(Number(discount || 0), subtotal);
   }
 
+  // Calculate total after discount
   const total = subtotal - monetaryDiscount;
 
-  // Expense breakdowns (for accounting only)
+  // Calculate expense breakdowns (for accounting only)
   const adminFee = total * (adminFeeRate / 100);
   const trainerFee = total * (trainerFeeRate / 100);
   const franchiseFee = total * (franchiseFeeRate / 100);
+
+  // Log the final calculations for debugging
+  console.log("CALC-INVOICE final results:", {
+    subtotal,
+    monetaryDiscount,
+    total,
+    adminFee,
+    trainerFee,
+    franchiseFee
+  });
 
   return {
     subtotal,
@@ -87,4 +103,3 @@ export function calculateInvoiceComponents({
     }
   };
 }
-

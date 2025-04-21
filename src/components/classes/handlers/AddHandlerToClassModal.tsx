@@ -24,6 +24,9 @@ export function AddHandlerToClassModal({
   classData,
   onSuccess,
 }: AddHandlerToClassModalProps) {
+  // Ensure we have class data by logging it
+  console.log("AddHandlerToClassModal - classData received:", classData);
+  
   const { 
     isProcessing,
     searchQuery,
@@ -32,7 +35,7 @@ export function AddHandlerToClassModal({
     handleOpenChange
   } = useAddHandlerModal({
     classId,
-    classData,
+    classData, // Pass the complete classData object
     onSuccess,
     onOpenChange
   });
