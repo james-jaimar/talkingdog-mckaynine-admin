@@ -1,8 +1,8 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { format } from "date-fns";
 import { InvoiceStatus } from "@/types/invoice";
 import { UseMutationResult } from "@tanstack/react-query";
+import { calculateInvoiceComponents } from "@/lib/calculateInvoiceComponents";
 
 export interface CreateInvoiceProps {
   handlerId: string;
@@ -15,6 +15,11 @@ export interface CreateInvoiceProps {
   createInvoice: UseMutationResult<any, Error, any, unknown>;
   currentBranch?: { id: string; name: string } | null;
   enrollmentFee?: number;
+  discountType?: "fixed" | "percentage";
+  discountAmount?: number;
+  adminFeeRate?: number;      // e.g., 0.05 for 5%
+  trainerFeeRate?: number;    // e.g., 0.25 for 25%
+  franchiseFeeRate?: number;  // e.g., 0.1 for 10%
 }
 
 export const createInvoiceForHandler = async ({
@@ -27,15 +32,19 @@ export const createInvoiceForHandler = async ({
   generateInvoiceNumber,
   createInvoice,
   currentBranch,
-  enrollmentFee = 0
+  enrollmentFee = 0,
+  discountType = "fixed",
+  discountAmount = 0,
+  adminFeeRate = 0,
+  trainerFeeRate = 0,
+  franchiseFeeRate = 0,
 }: CreateInvoiceProps): Promise<boolean> => {
   try {
-    // Generate invoice number
     let invoiceNumber;
     try {
       invoiceNumber = await generateInvoiceNumber();
     } catch (error) {
-      // fallback logic remains
+      // fallback as before
       const now = new Date();
       const year = now.getFullYear().toString().slice(-2);
       const month = (now.getMonth() + 1).toString().padStart(2, '0');
@@ -46,34 +55,22 @@ export const createInvoiceForHandler = async ({
           if (currentBranch.name.toLowerCase().includes('delta')) branchCode = "D";
           else if (currentBranch.name.toLowerCase().includes('randburg')) branchCode = "R";
           else branchCode = currentBranch.name.charAt(0).toUpperCase();
-        } else {
-          const branchId = localStorage.getItem('currentBranchId');
-          if (branchId) {
-            const { data: branchData } = await supabase.from('branches').select('name').eq('id', branchId).maybeSingle();
-            if (branchData?.name) {
-              if (branchData.name.toLowerCase().includes('delta')) branchCode = "D";
-              else if (branchData.name.toLowerCase().includes('randburg')) branchCode = "R";
-              else branchCode = branchData.name.charAt(0).toUpperCase();
-            }
-          }
         }
       } catch {}
       invoiceNumber = `INV-Mc${branchCode}-${year}${month}-${timestamp.padStart(4, '0')}`;
     }
 
-    // Validate uniqueness (rare collision)
     const { data: existingInvoice } = await supabase
       .from('invoices')
       .select('id')
       .eq('invoice_number', invoiceNumber)
       .maybeSingle();
     if (existingInvoice) {
-      // If collision, append unique and log
       const uniqueSuffix = Math.floor(Math.random() * 9000 + 1000).toString();
       invoiceNumber = `${invoiceNumber}-${uniqueSuffix}`;
     }
 
-    // ITEMS: Always Course Fee + Enrollment Fee combined as separate items
+    // Always: item 1 = course, item 2 = enrollment fee, if any
     const items = [
       {
         description: `${className} training class for ${dogName}`,
@@ -82,7 +79,7 @@ export const createInvoiceForHandler = async ({
         booking_id: bookingId,
       }
     ];
-    if (enrollmentFee && enrollmentFee > 0) {
+    if (enrollmentFee > 0) {
       items.push({
         description: `Enrollment fee for ${className}`,
         quantity: 1,
@@ -91,22 +88,38 @@ export const createInvoiceForHandler = async ({
       });
     }
 
-    console.log("Creating invoice with items:", items);
-    console.log(`Total amount should be: ${classPrice + (enrollmentFee || 0)}`);
+    // New: calculate all components (subtotal, discount, total, expense breakdowns)
+    const breakdown = calculateInvoiceComponents({
+      courseFee: classPrice,
+      enrollmentFee,
+      discount: discountAmount,
+      discountType,
+      adminFeeRate,
+      trainerFeeRate,
+      franchiseFeeRate,
+    });
 
-    // Prepare invoice data with correct calculation
+    console.log("createInvoiceForHandler -- calculated breakdown:", breakdown);
+
     const invoiceData = {
       client_id: handlerId,
       invoice_number: invoiceNumber,
       status: "draft" as InvoiceStatus,
       issued_date: new Date(),
-      due_date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 days from now
+      due_date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
       notes: `Invoice for ${className} training class for ${dogName}.`,
       tax_rate: 0,
       items,
-      discount_type: "fixed",
-      discount_amount: 0,
-      discount_reason: ""
+      discount_type: discountType,
+      discount_amount: discountAmount,
+      discount_reason: "",
+      subtotal: breakdown.subtotal,
+      total: breakdown.total,
+      monetary_discount: breakdown.monetaryDiscount,
+      // Optionally: store fee breakdowns for accounting use
+      admin_fee: breakdown.adminFee,
+      trainer_fee: breakdown.trainerFee,
+      franchise_fee: breakdown.franchiseFee
     };
 
     try {
