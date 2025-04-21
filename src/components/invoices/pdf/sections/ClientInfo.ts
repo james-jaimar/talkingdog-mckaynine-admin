@@ -17,7 +17,7 @@ export const addClientInfo = (doc: jsPDF, invoice: Invoice, startY: number) => {
   
   if (invoice.client) {
     let currentY = startY + 7;
-    const lineHeight = 7;
+    const lineHeight = 5; // Reduced from 7 to match example
     
     // Client name
     const clientName = `${invoice.client.first_name} ${invoice.client.last_name}`;

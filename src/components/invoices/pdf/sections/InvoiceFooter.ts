@@ -5,6 +5,18 @@ import { Invoice } from "@/hooks/invoices/types";
 export const addInvoiceFooter = (doc: jsPDF, invoice: Invoice, startY: number, pageWidth: number, pageHeight: number) => {
   let currentY = startY;
   
+  // Notes field (if needed)
+  if (invoice.notes) {
+    doc.setFontSize(10);
+    doc.setFont(undefined, 'bold');
+    doc.text("Notes:", 14, currentY);
+    doc.setFont(undefined, 'normal');
+    currentY += 6;
+    
+    doc.text(invoice.notes, 14, currentY);
+    currentY += 15;
+  }
+  
   // Add horizontal line before banking details
   doc.setLineWidth(0.5);
   doc.setDrawColor(200, 200, 200);
@@ -12,7 +24,7 @@ export const addInvoiceFooter = (doc: jsPDF, invoice: Invoice, startY: number, p
   currentY += 10;
   
   // Banking details section
-  doc.setFontSize(10);
+  doc.setFontSize(9);
   doc.setFont(undefined, 'normal');
   doc.text("BANKING DETAILS:", pageWidth / 2, currentY, { align: 'center' });
   currentY += 6;
@@ -27,15 +39,6 @@ export const addInvoiceFooter = (doc: jsPDF, invoice: Invoice, startY: number, p
   
   doc.text("Please use your name as reference.", pageWidth / 2, currentY, { align: 'center' });
   currentY += 10;
-  
-  // Add horizontal line after banking details
-  doc.line(pageWidth / 4, currentY, pageWidth - pageWidth / 4, currentY);
-  currentY += 10;
-  
-  // Display total
-  doc.setFont(undefined, 'bold');
-  doc.text("Total:", pageWidth / 2 - 15, currentY);
-  doc.text(`R ${invoice.total.toFixed(2)}`, pageWidth / 2 + 15, currentY);
   
   // Thank you message at the bottom
   doc.setFontSize(8);

@@ -22,24 +22,25 @@ export async function generateInvoicePDF(invoice: Invoice, returnBase64: boolean
     const maxWidth = pageWidth * 0.6; // 60% of page width
     const aspectRatio = 1040 / 337; // Original image aspect ratio
     const imgWidth = maxWidth;
-    const imgHeight = maxWidth / aspectRatio;
+    const imgHeight = imgWidth / aspectRatio;
     
     // Center the logo horizontally
     const xPosition = (pageWidth - imgWidth) / 2;
     doc.addImage(logoPath, "PNG", xPosition, 15, imgWidth, imgHeight);
     
     // Add company details with correct 4-line layout
-    let startY = imgHeight + 20; // Start text below logo with padding
+    let startY = imgHeight + 25; // Start text below logo with padding
     
     doc.setFontSize(10);
     doc.text("McKaynine Training Centre", pageWidth / 2, startY, { align: 'center' });
     doc.text("Delta Park Branch", pageWidth / 2, startY + 5, { align: 'center' });
-    doc.text("Camp Delta (SA Boyscouts), Delta Park Main Entrance, Craighall Road, Delta Park. Tel: 082 560-5100", 
+    doc.text("Camp Delta (SA Boyscouts), Delta Park Main Entrance, Craighall Road, Delta Park.", 
              pageWidth / 2, startY + 10, { align: 'center' });
-    doc.text("www.mckaynine.co.za", pageWidth / 2, startY + 15, { align: 'center' });
+    doc.text("Tel: 082 560-5100", pageWidth / 2, startY + 15, { align: 'center' });
+    doc.text("www.mckaynine.co.za", pageWidth / 2, startY + 20, { align: 'center' });
     
     // Adjust the starting position for invoice content
-    startY += 25;
+    startY += 30;
 
     // Add invoice header
     const headerEndY = addInvoiceHeader(doc, invoice, startY, pageWidth);

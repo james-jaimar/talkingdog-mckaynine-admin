@@ -15,17 +15,18 @@ export function addInvoiceSummary(doc: any, invoice: Invoice, startY: number): n
   
   let currentY = startY + 10;
   
-  // Line before summary
-  doc.setLineWidth(0.1);
-  doc.line(labelX - 10, currentY - 5, valueX + 30, currentY - 5);
-  currentY += 10;  // Increased spacing
+  // Add horizontal line before summary
+  doc.setLineWidth(0.5);
+  doc.setDrawColor(0, 0, 0);
+  doc.line(pageWidth / 4, currentY - 5, pageWidth - pageWidth / 4, currentY - 5);
+  currentY += 10;
   
   // Subtotal
   doc.setFont(undefined, 'normal');
   doc.setFontSize(10);
   doc.text('Subtotal:', labelX, currentY);
   doc.text(formatCurrency(subtotal), valueX, currentY, { align: 'right' });
-  currentY += 8;  // Slightly reduced vertical spacing
+  currentY += 8;
   
   // Discount (if applicable)
   if (monetary_discount > 0) {
@@ -44,17 +45,18 @@ export function addInvoiceSummary(doc: any, invoice: Invoice, startY: number): n
   // Tax
   doc.text(`Tax (${tax_rate}%):`, labelX, currentY);
   doc.text(formatCurrency(tax_amount), valueX, currentY, { align: 'right' });
-  currentY += 10;  // Increased spacing
+  currentY += 10;
   
-  // Line before total
-  doc.setLineWidth(0.1);
-  doc.line(labelX - 10, currentY, valueX + 30, currentY);
+  // Add horizontal line before total
+  doc.setLineWidth(0.5);
+  doc.setDrawColor(0, 0, 0);
+  doc.line(pageWidth / 4, currentY, pageWidth - pageWidth / 4, currentY);
   currentY += 6;
   
   // Total
   doc.setFont(undefined, 'bold');
-  doc.setFontSize(12);
-  doc.text('Total:', labelX, currentY + 2);
+  doc.setFontSize(10);
+  doc.text('Total:', labelX - 10, currentY + 2);
   doc.text(formatCurrency(total), valueX, currentY + 2, { align: 'right' });
   
   return currentY + 10;

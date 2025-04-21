@@ -30,7 +30,7 @@ export const addInvoiceItemsTable = (doc: jsPDF, invoice: Invoice, startY: numbe
       ]) || [['No items found for this invoice', '', '', '']],
       styles: {
         fontSize: 9,
-        cellPadding: 4, // Reduced from 5 to tighten spacing
+        cellPadding: 4,
         lineWidth: 0.5,
         overflow: 'linebreak'
       },
