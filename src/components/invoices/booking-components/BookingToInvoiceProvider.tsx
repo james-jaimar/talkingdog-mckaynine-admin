@@ -4,6 +4,7 @@ import { useInvoices } from "@/hooks/useInvoices";
 import { InvoiceFormValues } from "@/types/invoice";
 import { toast } from "sonner";
 import { useBookings } from "./useBookings";
+import { calculateInvoiceTotals } from "@/lib/invoiceMath";
 
 interface BookingToInvoiceProviderProps {
   children: (props: BookingToInvoiceContextProps) => ReactNode;
@@ -129,8 +130,13 @@ export function BookingToInvoiceProvider({
         };
       });
       
-      // Calculate totals
-      const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
+      // Calculate totals using our utility
+      const invoiceTotals = calculateInvoiceTotals({
+        items,
+        discountType: 'fixed',
+        discountAmount: 0,
+        taxRate: 0
+      });
       
       // Prepare invoice data
       const invoice: InvoiceFormValues = {
@@ -142,8 +148,6 @@ export function BookingToInvoiceProvider({
         notes: `Invoice for training classes. Includes ${items.length} booking(s).`,
         tax_rate: 0,
         items,
-        subtotal,
-        total: subtotal, // No discount or tax applied
         discount_amount: 0,
         discount_type: 'fixed',
         discount_reason: ''
