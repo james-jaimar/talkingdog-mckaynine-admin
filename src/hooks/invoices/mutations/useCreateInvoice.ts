@@ -32,8 +32,9 @@ export function useCreateInvoice() {
           throw new Error(`Invoice number ${values.invoice_number} already exists. Please use a different number.`);
         }
         
-        // Calculate subtotal
+        // Calculate subtotal - sum of all items
         const subtotal = values.items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
+        console.log("Calculated subtotal from all items:", subtotal);
         
         let discount_amount = 0;
         const original_discount_input = values.discount_amount || 0;

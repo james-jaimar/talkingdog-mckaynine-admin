@@ -32,6 +32,7 @@ export const createInvoiceForHandler = async ({
 }: CreateInvoiceProps): Promise<boolean> => {
   try {
     console.log("Creating invoice with branch context:", currentBranch?.name);
+    console.log(`Class price: ${classPrice}, Enrollment fee: ${enrollmentFee}`);
     
     // Generate invoice number, with improved fallback handling
     let invoiceNumber;
@@ -105,11 +106,13 @@ export const createInvoiceForHandler = async ({
     
     if (existingInvoice) {
       console.warn("Invoice number already exists, generating a new unique number");
-      // Append a random suffix to make unique
-      invoiceNumber = `${invoiceNumber}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+      // Append a random suffix to make unique, but in a predictable format
+      const uniqueSuffix = Math.floor(Math.random() * 9000 + 1000).toString(); // 1000-9999
+      invoiceNumber = `${invoiceNumber.split('-').slice(0, 3).join('-')}-${uniqueSuffix}`;
+      console.log("Modified invoice number to avoid duplicate:", invoiceNumber);
     }
     
-    // Create items array with course fee and enrollment fee
+    // Create items array with separate course fee and enrollment fee
     const items = [];
     
     // Add course fee item
@@ -129,6 +132,10 @@ export const createInvoiceForHandler = async ({
         booking_id: bookingId,
       });
     }
+    
+    // Calculate total price correctly including both fees
+    const totalAmount = classPrice + (enrollmentFee || 0);
+    console.log(`Total invoice amount: ${totalAmount} (Course: ${classPrice} + Enrollment: ${enrollmentFee || 0})`);
     
     // Prepare invoice data
     const invoiceData = {

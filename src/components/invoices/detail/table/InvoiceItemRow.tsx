@@ -52,8 +52,12 @@ export function InvoiceItemRow({ item, index }: InvoiceItemRowProps) {
     }
   }
   
-  // Add details about the booking connection for debugging
-  const hasMissingBooking = !!item.booking_id && !hasBookingData;
+  // Extract booking ID for display - show just the first 8 characters
+  const shortBookingId = item.booking_id ? 
+    item.booking_id.substring(0, 8) : null;
+  
+  // Determine if we need to show the booking data warning
+  const shouldShowWarning = !!item.booking_id && !hasBookingData;
   
   return (
     <TableRow>
@@ -61,14 +65,14 @@ export function InvoiceItemRow({ item, index }: InvoiceItemRowProps) {
         <div>
           <div className="flex items-center">
             <p className="font-medium">{primaryDescription}</p>
-            {hasMissingBooking && (
+            {shouldShowWarning && (
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Info className="h-4 w-4 ml-2 text-amber-500" />
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p className="text-xs w-48">This item references booking ID {item.booking_id} but the booking data couldn't be fully loaded</p>
+                    <p className="text-xs w-48">This item references booking ID {shortBookingId} but its data couldn't be fully loaded</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -87,9 +91,9 @@ export function InvoiceItemRow({ item, index }: InvoiceItemRowProps) {
             </p>
           )}
           
-          {item.booking_id && (
+          {shortBookingId && (
             <p className="text-xs text-gray-400 mt-1">
-              Booking #{item.booking_id.substring(0, 8)}
+              Booking #{shortBookingId}
             </p>
           )}
         </div>
