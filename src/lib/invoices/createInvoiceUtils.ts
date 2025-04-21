@@ -44,9 +44,6 @@ export async function createInvoice(invoiceData: any) {
         enrollmentFee: 0, // No enrollment fee for manual invoices
         discount: invoiceData.discount_amount || 0,
         discountType: invoiceData.discount_type || 'fixed',
-        adminFeeRate: invoiceData.adminFeeRate || 0,
-        trainerFeeRate: invoiceData.trainerFeeRate || 0,
-        franchiseFeeRate: invoiceData.franchiseFeeRate || 0,
       });
 
       calculatedData = {
@@ -54,41 +51,41 @@ export async function createInvoice(invoiceData: any) {
         subtotal: breakdown.subtotal,
         total: breakdown.total,
         monetary_discount: breakdown.monetaryDiscount,
-        admin_fee: breakdown.adminFee,
-        trainer_fee: breakdown.trainerFee,
-        franchise_fee: breakdown.franchiseFee
       };
       
       console.log("Final calculated invoice data:", calculatedData);
     }
 
+    // Only include fields that exist in the database schema
+    // Remove admin_fee, trainer_fee, and franchise_fee from the payload
+    const insertData = {
+      client_id: calculatedData.client_id,
+      invoice_number: calculatedData.invoice_number,
+      status: calculatedData.status,
+      issued_date: calculatedData.issued_date,
+      due_date: calculatedData.due_date,
+      notes: calculatedData.notes,
+      tax_rate: calculatedData.tax_rate || 0,
+      discount_type: calculatedData.discount_type || 'fixed',
+      discount_amount: calculatedData.discount_amount || 0,
+      discount_reason: calculatedData.discount_reason || '',
+      subtotal: calculatedData.subtotal,
+      total: calculatedData.total,
+      monetary_discount: calculatedData.monetary_discount,
+    };
+
+    console.log("Inserting invoice with sanitized data:", insertData);
+
     // First, insert the invoice
     const { data: invoice, error } = await supabase
       .from('invoices')
-      .insert({
-        client_id: calculatedData.client_id,
-        invoice_number: calculatedData.invoice_number,
-        status: calculatedData.status,
-        issued_date: calculatedData.issued_date,
-        due_date: calculatedData.due_date,
-        notes: calculatedData.notes,
-        tax_rate: calculatedData.tax_rate || 0,
-        discount_type: calculatedData.discount_type || 'fixed',
-        discount_amount: calculatedData.discount_amount || 0,
-        discount_reason: calculatedData.discount_reason || '',
-        subtotal: calculatedData.subtotal,
-        total: calculatedData.total,
-        monetary_discount: calculatedData.monetary_discount,
-        admin_fee: calculatedData.admin_fee || 0,
-        trainer_fee: calculatedData.trainer_fee || 0,
-        franchise_fee: calculatedData.franchise_fee || 0
-      })
+      .insert(insertData)
       .select()
       .single();
     
     if (error) {
       console.error("Invoice creation error:", error);
-      console.error("Error creating invoice with data:", calculatedData);
+      console.error("Error creating invoice with data:", insertData);
       throw new Error(`Failed to create invoice: ${error.message}`);
     }
     

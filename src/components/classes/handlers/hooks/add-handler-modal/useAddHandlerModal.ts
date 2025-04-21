@@ -38,32 +38,7 @@ export function useAddHandlerModal({
       return;
     }
 
-    console.log("Adding handler to class with fee data:", {
-      adminFeeType: classData.admin_fee_type,
-      adminFeeValue: classData.admin_fee_value,
-      trainerFeeType: classData.trainer_fee_type,
-      trainerFeeValue: classData.trainer_fee_value,
-      franchiseFeeType: classData.mckaynine_commission_type,
-      franchiseFeeValue: classData.mckaynine_commission_value,
-    });
-      
-    // Calculate fee rates correctly based on fee types
-    let adminFeeRate = 0;
-    let trainerFeeRate = 0;
-    let franchiseFeeRate = 0;
-    
-    // Only convert to percentage rates if the type is percentage
-    if (classData.admin_fee_type === 'percentage') {
-      adminFeeRate = classData.admin_fee_value;
-    }
-    
-    if (classData.trainer_fee_type === 'percentage') {
-      trainerFeeRate = classData.trainer_fee_value;
-    }
-    
-    if (classData.mckaynine_commission_type === 'percentage') {
-      franchiseFeeRate = classData.mckaynine_commission_value;
-    }
+    console.log("Adding handler to class with class data:", classData);
 
     await addHandlerToClass({
       handlerId,
@@ -81,15 +56,6 @@ export function useAddHandlerModal({
         generateInvoiceNumber,
         createInvoice,
         currentBranch,
-        adminFeeRate,
-        trainerFeeRate,
-        franchiseFeeRate,
-        adminFeeType: classData.admin_fee_type,
-        trainerFeeType: classData.trainer_fee_type,
-        franchiseFeeType: classData.mckaynine_commission_type,
-        adminFeeValue: classData.admin_fee_value,
-        trainerFeeValue: classData.trainer_fee_value,
-        franchiseFeeValue: classData.mckaynine_commission_value,
         discountType: "fixed",
         discountAmount: 0
       }

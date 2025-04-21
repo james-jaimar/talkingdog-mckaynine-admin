@@ -16,19 +16,6 @@ export interface CreateInvoiceProps {
   enrollmentFee?: number;
   discountType?: "fixed" | "percentage";
   discountAmount?: number;
-  
-  // Fee rates for percentage-based calculations
-  adminFeeRate?: number;
-  trainerFeeRate?: number;
-  franchiseFeeRate?: number;
-  
-  // Complete fee information
-  adminFeeType?: 'percentage' | 'amount';
-  adminFeeValue?: number;
-  trainerFeeType?: 'percentage' | 'amount';
-  trainerFeeValue?: number;
-  franchiseFeeType?: 'percentage' | 'amount';
-  franchiseFeeValue?: number;
 }
 
 export const createInvoiceForHandler = async ({
@@ -44,21 +31,11 @@ export const createInvoiceForHandler = async ({
   enrollmentFee = 0,
   discountType = "fixed",
   discountAmount = 0,
-  adminFeeRate = 0,
-  trainerFeeRate = 0,
-  franchiseFeeRate = 0,
-  adminFeeType = 'percentage',
-  adminFeeValue = 0,
-  trainerFeeType = 'percentage',
-  trainerFeeValue = 0,
-  franchiseFeeType = 'percentage',
-  franchiseFeeValue = 0
 }: CreateInvoiceProps): Promise<boolean> => {
   try {
     console.log("CREATE-INVOICE: Starting invoice creation with params:", {
       handlerId, dogId, bookingId, className, classPrice, enrollmentFee,
-      discountType, discountAmount, adminFeeRate, trainerFeeRate, franchiseFeeRate,
-      adminFeeType, adminFeeValue, trainerFeeType, trainerFeeValue, franchiseFeeType, franchiseFeeValue
+      discountType, discountAmount
     });
 
     // Generate invoice number with fallback
@@ -118,9 +95,6 @@ export const createInvoiceForHandler = async ({
       enrollmentFee,
       discount: discountAmount,
       discountType,
-      adminFeeRate,
-      trainerFeeRate,
-      franchiseFeeRate,
     });
 
     console.log("CREATE-INVOICE: Calculated breakdown:", breakdown);
@@ -132,7 +106,7 @@ export const createInvoiceForHandler = async ({
       });
     }
 
-    // Create the invoice data object
+    // Create the invoice data object - removed fields that don't exist in the database
     const invoiceData = {
       client_id: handlerId,
       invoice_number: invoiceNumber,
@@ -148,9 +122,6 @@ export const createInvoiceForHandler = async ({
       subtotal: breakdown.subtotal,
       total: breakdown.total,
       monetary_discount: breakdown.monetaryDiscount,
-      admin_fee: breakdown.adminFee,
-      trainer_fee: breakdown.trainerFee,
-      franchise_fee: breakdown.franchiseFee,
     };
 
     console.log("CREATE-INVOICE: About to create invoice with data:", invoiceData);
