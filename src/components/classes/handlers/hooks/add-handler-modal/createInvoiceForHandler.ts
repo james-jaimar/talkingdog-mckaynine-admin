@@ -14,6 +14,7 @@ export interface CreateInvoiceProps {
   generateInvoiceNumber: () => Promise<string>;
   createInvoice: UseMutationResult<any, Error, any, unknown>;
   currentBranch?: { id: string; name: string } | null;
+  enrollmentFee?: number;
 }
 
 // Create an invoice for the handler based on the class details
@@ -26,7 +27,8 @@ export const createInvoiceForHandler = async ({
   dogName,
   generateInvoiceNumber,
   createInvoice,
-  currentBranch
+  currentBranch,
+  enrollmentFee = 0
 }: CreateInvoiceProps): Promise<boolean> => {
   try {
     console.log("Creating invoice with branch context:", currentBranch?.name);
@@ -90,6 +92,44 @@ export const createInvoiceForHandler = async ({
     
     console.log("Generated invoice number:", invoiceNumber);
     
+    // Check if this invoice number already exists
+    const { data: existingInvoice, error: checkError } = await supabase
+      .from('invoices')
+      .select('id')
+      .eq('invoice_number', invoiceNumber)
+      .maybeSingle();
+      
+    if (checkError) {
+      console.error("Error checking for existing invoice:", checkError);
+    }
+    
+    if (existingInvoice) {
+      console.warn("Invoice number already exists, generating a new unique number");
+      // Append a random suffix to make unique
+      invoiceNumber = `${invoiceNumber}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+    }
+    
+    // Create items array with course fee and enrollment fee
+    const items = [];
+    
+    // Add course fee item
+    items.push({
+      description: `${className} training class for ${dogName}`,
+      quantity: 1,
+      unit_price: classPrice,
+      booking_id: bookingId,
+    });
+    
+    // Add enrollment fee item if it exists and is greater than 0
+    if (enrollmentFee && enrollmentFee > 0) {
+      items.push({
+        description: `Enrollment fee for ${className}`,
+        quantity: 1,
+        unit_price: enrollmentFee,
+        booking_id: bookingId,
+      });
+    }
+    
     // Prepare invoice data
     const invoiceData = {
       client_id: handlerId,
@@ -99,12 +139,7 @@ export const createInvoiceForHandler = async ({
       due_date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 days from now
       notes: `Invoice for ${className} training class for ${dogName}.`,
       tax_rate: 0, // Default tax rate set to 0%
-      items: [{
-        description: `${className} training class for ${dogName}`,
-        quantity: 1,
-        unit_price: classPrice,
-        booking_id: bookingId,
-      }],
+      items: items,
     };
     
     // Create the invoice through the mutation

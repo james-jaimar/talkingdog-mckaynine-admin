@@ -17,7 +17,7 @@ import { TransferInvoiceDialog } from "./dialogs/TransferInvoiceDialog";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useBranch } from "@/context/BranchContext";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { GitBranch } from "lucide-react";
+import { GitBranch, AlertTriangle } from "lucide-react";
 
 interface InvoicesListProps {
   invoices: Invoice[];
@@ -39,6 +39,7 @@ export function InvoicesList({
   const [transferDialogOpen, setTransferDialogOpen] = useState(false);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [duplicateInvoiceNumbers, setDuplicateInvoiceNumbers] = useState<string[]>([]);
 
   // Add effect to refresh data when component mounts or branch changes
   useEffect(() => {
@@ -46,6 +47,31 @@ export function InvoicesList({
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
     }
   }, [queryClient, currentBranch]);
+
+  // Check for duplicate invoice numbers when invoices change
+  useEffect(() => {
+    if (invoices && invoices.length > 0) {
+      const invoiceNumberCounts = new Map<string, number>();
+      const duplicates: string[] = [];
+
+      // Count occurrences of each invoice number
+      invoices.forEach(invoice => {
+        const currentCount = invoiceNumberCounts.get(invoice.invoice_number) || 0;
+        invoiceNumberCounts.set(invoice.invoice_number, currentCount + 1);
+      });
+
+      // Check for duplicates
+      invoiceNumberCounts.forEach((count, invoiceNumber) => {
+        if (count > 1) {
+          duplicates.push(invoiceNumber);
+        }
+      });
+
+      setDuplicateInvoiceNumbers(duplicates);
+    } else {
+      setDuplicateInvoiceNumbers([]);
+    }
+  }, [invoices]);
 
   // Filter invoices by search term
   const filteredInvoices = invoices.filter(
@@ -97,6 +123,16 @@ export function InvoicesList({
             </Alert>
           ) : (
             <>
+              {duplicateInvoiceNumbers.length > 0 && (
+                <Alert className="mb-4 bg-red-50 text-red-800 border-red-200">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>
+                    Warning: Duplicate invoice numbers detected: {duplicateInvoiceNumbers.join(', ')}. 
+                    Please contact your system administrator to resolve this issue.
+                  </AlertDescription>
+                </Alert>
+              )}
+              
               <SearchInvoices 
                 searchTerm={searchTerm} 
                 onSearchChange={setSearchTerm} 

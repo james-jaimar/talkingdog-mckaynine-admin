@@ -17,6 +17,21 @@ export function useCreateInvoice() {
         console.log("Creating invoice with values:", values);
         console.log("Using invoice number:", values.invoice_number);
         
+        // Check if this invoice number already exists
+        const { data: existingInvoice, error: checkError } = await supabase
+          .from('invoices')
+          .select('id')
+          .eq('invoice_number', values.invoice_number)
+          .maybeSingle();
+        
+        if (checkError) {
+          console.error("Error checking for existing invoice:", checkError);
+        }
+        
+        if (existingInvoice) {
+          throw new Error(`Invoice number ${values.invoice_number} already exists. Please use a different number.`);
+        }
+        
         // Calculate subtotal
         const subtotal = values.items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
         
