@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useBranch } from "@/context/BranchContext";
@@ -13,6 +12,7 @@ import { TrainerNavigation } from "./header/TrainerNavigation";
 import { HandlerNavigation } from "./header/HandlerNavigation";
 import { UserSection } from "./header/UserSection";
 import { Branch } from "@/context/BranchContext";
+import { TermSelectorRow } from "./header/TermSelectorRow";
 
 export function Header() {
   const { user, logout, isAdmin, isTrainer, isHandler, role } = useAuth();
@@ -123,6 +123,9 @@ export function Header() {
           </div>
         </div>
       )}
+      
+      {/* Term Selector Row */}
+      {user && !isMobile && <TermSelectorRow />}
       
       {/* Mobile Menu */}
       {isMobile && mobileMenuOpen && user && (

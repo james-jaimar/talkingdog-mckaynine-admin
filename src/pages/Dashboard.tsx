@@ -2,7 +2,6 @@
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { RecentBookings } from "@/components/dashboard/RecentBookings";
 import { ClassesScheduled } from "@/components/dashboard/ClassesScheduled";
-import { TermDisplay } from "@/components/dashboard/TermDisplay";
 import { useBranch } from "@/context/BranchContext";
 
 export default function Dashboard() {
@@ -13,11 +12,6 @@ export default function Dashboard() {
       <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
         <div className="flex items-center justify-between">
           <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
-        </div>
-
-        {/* Term Display */}
-        <div className="mb-8">
-          <TermDisplay />
         </div>
 
         {/* Grid layout for dashboard cards */}
