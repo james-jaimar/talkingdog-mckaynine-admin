@@ -1,4 +1,3 @@
-
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,6 +18,8 @@ export function ClassesScheduled({ branchId }: ClassesScheduledProps) {
     queryFn: async () => {
       // Don't fetch data if no branch is selected
       if (!branchId) return [];
+      
+      console.log('Fetching upcoming classes with term ID:', termData?.id);
       
       // Use today's date as the default start date if no term is selected
       const startDate = new Date().toISOString();
@@ -53,6 +54,7 @@ export function ClassesScheduled({ branchId }: ClassesScheduledProps) {
         .limit(5);
       
       if (error) throw error;
+      console.log('Upcoming classes fetched:', data?.length || 0);
       return data;
     },
     enabled: !!branchId // Only run query when branchId is available
@@ -117,7 +119,9 @@ export function ClassesScheduled({ branchId }: ClassesScheduledProps) {
             })}
           </div>
         ) : (
-          <div className="text-center py-4 text-gray-500 text-sm sm:text-base">No upcoming classes scheduled</div>
+          <div className="text-center py-4 text-gray-500 text-sm sm:text-base">
+            {termData?.id ? `No upcoming classes scheduled for Term ${termData.term_number}` : 'No upcoming classes scheduled'}
+          </div>
         )}
       </CardContent>
     </Card>

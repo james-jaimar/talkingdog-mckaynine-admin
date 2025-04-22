@@ -1,3 +1,4 @@
+
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useBranch } from "@/context/BranchContext";
@@ -36,7 +37,7 @@ export function useClassOrdering() {
 
       console.log("Fetching classes for branch:", currentBranch.id, "and term:", termData?.id);
 
-      let query = supabase
+      const { data, error } = await supabase
         .from('classes')
         .select(`
           id,
@@ -54,19 +55,22 @@ export function useClassOrdering() {
           )
         `)
         .eq('branch_id', currentBranch.id);
-
-      const { data, error } = await query;
       
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching classes:", error);
+        throw error;
+      }
+      
+      console.log("Retrieved classes:", data?.length || 0);
       
       // Filter class schedules to only include those for the selected term
       const filteredClasses = data?.map(classItem => {
-        classItem.class_schedules = classItem.class_schedules.filter(schedule => {
-          // If no term is selected, show all schedules
-          if (!termData?.id) return true;
-          // Otherwise, only show schedules for the selected term
-          return schedule.term_id === termData.id;
-        });
+        if (termData?.id) {
+          console.log(`Filtering schedules for class ${classItem.name} by term ${termData.id}`);
+          classItem.class_schedules = classItem.class_schedules.filter(schedule => {
+            return schedule.term_id === termData.id;
+          });
+        }
         
         return classItem;
       });
@@ -76,12 +80,12 @@ export function useClassOrdering() {
         classItem => classItem.class_schedules.length > 0
       );
       
-      console.log("Filtered classes:", classesWithSchedules?.length);
+      console.log("Filtered classes with schedules for term:", classesWithSchedules?.length);
       
       return classesWithSchedules || [];
     },
     enabled: !!currentBranch,
-    staleTime: 60000,
+    staleTime: 30000, // 30 seconds cache time to prevent excessive refetching
   });
 
   // Use hook to order classes

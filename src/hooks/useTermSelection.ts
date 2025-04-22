@@ -42,10 +42,12 @@ export function useTermSelection() {
     }
   }, [selectedYear, selectedTermNumber]);
 
-  const { data: termData, isLoading: isTermLoading } = useQuery({
+  const { data: termData, isLoading: isTermLoading, error } = useQuery({
     queryKey: ['term', selectedYear, selectedTermNumber],
     queryFn: async () => {
-      // Instead of using .single(), we'll use .eq() and handle the results manually
+      console.log(`Fetching term data for year ${selectedYear} and term ${selectedTermNumber}`);
+      
+      // Use proper filter syntax for Supabase
       const { data, error } = await supabase
         .from('terms')
         .select(`
@@ -70,7 +72,7 @@ export function useTermSelection() {
         return null;
       }
       
-      // Return the first matching term
+      console.log('Term data fetched successfully:', data[0]);
       return data[0];
     },
     staleTime: 60000, // 1 minute cache
@@ -92,6 +94,15 @@ export function useTermSelection() {
     };
   };
 
+  const termDateRange = getTermDateRange();
+  
+  console.log('Current term selection:', { 
+    selectedYear, 
+    selectedTermNumber, 
+    termData, 
+    dateRange: termDateRange 
+  });
+
   return {
     selectedYear,
     setSelectedYear,
@@ -99,7 +110,8 @@ export function useTermSelection() {
     setSelectedTermNumber,
     termData,
     isTermLoading,
-    termDateRange: getTermDateRange(),
+    error,
+    termDateRange,
     years,
     terms,
   };

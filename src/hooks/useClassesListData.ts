@@ -22,14 +22,14 @@ export interface ClassGroup {
 
 export function useClassesListData() {
   const { currentBranch } = useBranch();
-  const { termDateRange } = useTermSelection();
+  const { termData, termDateRange } = useTermSelection();
 
   return useQuery({
-    queryKey: ['classes-list-data', currentBranch?.id, termDateRange?.startDate, termDateRange?.endDate],
+    queryKey: ['classes-list-data', currentBranch?.id, termData?.id],
     queryFn: async () => {
       if (!currentBranch?.id) return [];
 
-      console.log(`Fetching classes list data for branch ${currentBranch.name} within term period:`, termDateRange);
+      console.log(`Fetching classes list data for branch ${currentBranch.name} with term:`, termData?.id);
 
       let query = supabase
         .from('classes')
@@ -40,6 +40,7 @@ export function useClassesListData() {
             id,
             selected_dates,
             start_time,
+            term_id,
             bookings(
               id,
               payment_status,
@@ -58,11 +59,6 @@ export function useClassesListData() {
         `)
         .eq('branch_id', currentBranch.id);
 
-      // Apply term date filtering if available
-      if (termDateRange?.startDate && termDateRange?.endDate) {
-        query = query.or(`class_schedules.start_time.gte.${termDateRange.startDate},class_schedules.start_time.is.null`);
-      }
-
       const { data: classes, error: classesError } = await query;
 
       if (classesError) {
@@ -72,16 +68,11 @@ export function useClassesListData() {
 
       console.log(`Retrieved ${classes?.length || 0} classes for branch ${currentBranch.name}`);
 
-      // Filter schedules to only include those within the term date range
+      // Filter schedules to only include those for the selected term
       const filteredClasses = classes.map(classItem => {
-        if (termDateRange?.startDate && termDateRange?.endDate) {
-          const startDate = new Date(termDateRange.startDate);
-          const endDate = new Date(termDateRange.endDate);
-          
+        if (termData?.id) {
           classItem.class_schedules = classItem.class_schedules.filter(schedule => {
-            if (!schedule.start_time) return true;
-            const scheduleDate = new Date(schedule.start_time);
-            return scheduleDate >= startDate && scheduleDate <= endDate;
+            return schedule.term_id === termData.id;
           });
         }
         
@@ -129,7 +120,7 @@ export function useClassesListData() {
           className: classItem.name,
           handlers
         };
-      });
+      }).filter(group => group.handlers.length > 0); // Only include classes with handlers
 
       console.log(`Processed ${classGroups.length} class groups with handler information`);
       return classGroups;

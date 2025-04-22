@@ -14,6 +14,18 @@ export function TermSelectorRow() {
     terms
   } = useTermSelection();
 
+  const handleYearChange = (value: string) => {
+    console.log('Changing year to:', value);
+    setSelectedYear(parseInt(value));
+  };
+
+  const handleTermChange = (value: string) => {
+    console.log('Changing term to:', value);
+    if (value === '1' || value === '2' || value === '3' || value === '4') {
+      setSelectedTermNumber(value);
+    }
+  };
+
   return (
     <div className="border-b border-mckaynine-700 bg-mckaynine-600">
       <div className="container mx-auto px-4 py-2">
@@ -37,7 +49,7 @@ export function TermSelectorRow() {
             <div>
               <Select
                 value={selectedYear.toString()}
-                onValueChange={(value) => setSelectedYear(parseInt(value))}
+                onValueChange={handleYearChange}
               >
                 <SelectTrigger className="w-[120px] bg-white text-gray-800">
                   <SelectValue placeholder="Select year" />
@@ -55,11 +67,7 @@ export function TermSelectorRow() {
             <div>
               <Select
                 value={selectedTermNumber}
-                onValueChange={(value) => {
-                  if (value === '1' || value === '2' || value === '3' || value === '4') {
-                    setSelectedTermNumber(value);
-                  }
-                }}
+                onValueChange={handleTermChange}
               >
                 <SelectTrigger className="w-[120px] bg-white text-gray-800">
                   <SelectValue placeholder="Select term" />

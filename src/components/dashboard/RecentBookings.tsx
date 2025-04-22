@@ -1,3 +1,4 @@
+
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
@@ -17,6 +18,8 @@ export function RecentBookings({ branchId }: RecentBookingsProps) {
     queryFn: async () => {
       // Don't fetch data if no branch is selected
       if (!branchId) return [];
+      
+      console.log('Fetching recent bookings with term date range:', termDateRange);
       
       // Build the query with branch filter
       let query = supabase
@@ -49,9 +52,10 @@ export function RecentBookings({ branchId }: RecentBookingsProps) {
         .limit(5);
       
       if (error) throw error;
+      console.log('Recent bookings fetched:', data?.length || 0);
       return data;
     },
-    enabled: !!branchId // Only run query when branchId is available
+    enabled: !!branchId && !!termDateRange // Only run query when branchId and termDateRange are available
   });
 
   const getStatusColor = (status: string) => {
@@ -125,7 +129,7 @@ export function RecentBookings({ branchId }: RecentBookingsProps) {
             </TableBody>
           </Table>
         ) : (
-          <div className="text-center py-4 text-gray-500">No recent bookings found</div>
+          <div className="text-center py-4 text-gray-500">No recent bookings found for this term</div>
         )}
       </CardContent>
     </Card>
