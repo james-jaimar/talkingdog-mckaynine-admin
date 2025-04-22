@@ -50,7 +50,12 @@ export function TermDisplay() {
               </label>
               <Select
                 value={selectedTermNumber}
-                onValueChange={(value) => setSelectedTermNumber(value)}
+                onValueChange={(value) => {
+                  // Ensure value is of type TermNumber before setting it
+                  if (value === '1' || value === '2' || value === '3' || value === '4') {
+                    setSelectedTermNumber(value);
+                  }
+                }}
               >
                 <SelectTrigger id="term-select">
                   <SelectValue placeholder="Select term" />
