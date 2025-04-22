@@ -2,29 +2,23 @@
 export interface ClassSchedule {
   id: string;
   class_id: string;
-  trainer_id?: string;
+  trainer_id: string;
+  term_id: string | null;
   start_time: string;
   end_time: string;
-  recurring: boolean | null;
+  recurring: boolean;
   recurrence_pattern: string | null;
-  selected_dates: string[] | null;
+  selected_dates: string[];
   created_at: string;
   updated_at: string;
-  // Additional display fields
-  title?: string;
-  description?: string;
-  start_date?: string;
-  time?: string;
-  location?: string;
-  schedule_id?: string;
-  // Additional class data
-  classes?: any;
   trainer?: {
     first_name: string;
     last_name: string;
   };
-  // Additional fields that might be needed
-  reference_title?: string;
-  // Bookings field for relationship data
-  bookings?: { id: string }[];
+  term?: {
+    term_number: string;
+    academic_year: {
+      year: number;
+    };
+  };
 }

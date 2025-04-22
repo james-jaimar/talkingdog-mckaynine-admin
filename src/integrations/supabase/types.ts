@@ -9,6 +9,30 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      academic_years: {
+        Row: {
+          created_at: string | null
+          current: boolean | null
+          id: string
+          updated_at: string | null
+          year: number
+        }
+        Insert: {
+          created_at?: string | null
+          current?: boolean | null
+          id?: string
+          updated_at?: string | null
+          year: number
+        }
+        Update: {
+          created_at?: string | null
+          current?: boolean | null
+          id?: string
+          updated_at?: string | null
+          year?: number
+        }
+        Relationships: []
+      }
       bookings: {
         Row: {
           additional_notes: string | null
@@ -325,6 +349,7 @@ export type Database = {
           recurring: boolean | null
           selected_dates: string[] | null
           start_time: string
+          term_id: string | null
           trainer_id: string
           updated_at: string
         }
@@ -337,6 +362,7 @@ export type Database = {
           recurring?: boolean | null
           selected_dates?: string[] | null
           start_time: string
+          term_id?: string | null
           trainer_id: string
           updated_at?: string
         }
@@ -349,6 +375,7 @@ export type Database = {
           recurring?: boolean | null
           selected_dates?: string[] | null
           start_time?: string
+          term_id?: string | null
           trainer_id?: string
           updated_at?: string
         }
@@ -358,6 +385,13 @@ export type Database = {
             columns: ["class_id"]
             isOneToOne: false
             referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "class_schedules_term_id_fkey"
+            columns: ["term_id"]
+            isOneToOne: false
+            referencedRelation: "terms"
             referencedColumns: ["id"]
           },
           {
@@ -883,6 +917,47 @@ export type Database = {
         }
         Relationships: []
       }
+      terms: {
+        Row: {
+          academic_year_id: string
+          created_at: string | null
+          current: boolean | null
+          end_date: string
+          id: string
+          start_date: string
+          term_number: Database["public"]["Enums"]["term_number"]
+          updated_at: string | null
+        }
+        Insert: {
+          academic_year_id: string
+          created_at?: string | null
+          current?: boolean | null
+          end_date: string
+          id?: string
+          start_date: string
+          term_number: Database["public"]["Enums"]["term_number"]
+          updated_at?: string | null
+        }
+        Update: {
+          academic_year_id?: string
+          created_at?: string | null
+          current?: boolean | null
+          end_date?: string
+          id?: string
+          start_date?: string
+          term_number?: Database["public"]["Enums"]["term_number"]
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "terms_academic_year_id_fkey"
+            columns: ["academic_year_id"]
+            isOneToOne: false
+            referencedRelation: "academic_years"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trainer_payments: {
         Row: {
           amount: number
@@ -1021,6 +1096,16 @@ export type Database = {
         Args: { prefix: string }
         Returns: number
       }
+      get_current_term: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          term_id: string
+          term_number: Database["public"]["Enums"]["term_number"]
+          year: number
+          start_date: string
+          end_date: string
+        }[]
+      }
       get_default_branch_name: {
         Args: Record<PropertyKey, never>
         Returns: string
@@ -1064,6 +1149,7 @@ export type Database = {
         | "WT"
         | "A-Test"
         | "Yoga"
+      term_number: "1" | "2" | "3" | "4"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1190,6 +1276,7 @@ export const Constants = {
         "A-Test",
         "Yoga",
       ],
+      term_number: ["1", "2", "3", "4"],
     },
   },
 } as const
