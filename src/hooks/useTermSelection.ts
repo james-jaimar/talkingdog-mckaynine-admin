@@ -3,9 +3,11 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
+type TermNumber = '1' | '2' | '3' | '4';
+
 export function useTermSelection() {
   const [selectedYear, setSelectedYear] = useState(2025);
-  const [selectedTermNumber, setSelectedTermNumber] = useState<string>('2');
+  const [selectedTermNumber, setSelectedTermNumber] = useState<TermNumber>('2');
 
   const { data: termData } = useQuery({
     queryKey: ['term', selectedYear, selectedTermNumber],
@@ -33,8 +35,8 @@ export function useTermSelection() {
   // Generate years array (2025 to 2029)
   const years = Array.from({ length: 5 }, (_, i) => 2025 + i);
   
-  // Generate terms array (1 to 4)
-  const terms = Array.from({ length: 4 }, (_, i) => String(i + 1) as '1' | '2' | '3' | '4');
+  // Generate terms array (1 to 4) with proper typing
+  const terms: TermNumber[] = ['1', '2', '3', '4'];
 
   return {
     selectedYear,
