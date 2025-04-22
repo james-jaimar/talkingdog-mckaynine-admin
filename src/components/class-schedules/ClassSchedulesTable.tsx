@@ -1,3 +1,4 @@
+
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useState, useEffect, useRef } from "react";
@@ -8,6 +9,7 @@ import { useBranch } from "@/context/BranchContext";
 import { ClassSchedule } from "./types/classSchedule";
 import { ScheduleTableAlert } from "./ScheduleTableAlert";
 import { SchedulesTableContent } from "./SchedulesTableContent";
+import { useTermSelection } from "@/hooks/useTermSelection";
 import {
   Table,
   TableBody,
@@ -29,28 +31,35 @@ export function ClassSchedulesTable({ classId }: ClassSchedulesTableProps) {
   const { currentBranch } = useBranch();
   const queryClient = useQueryClient();
   const previousInvalidationRef = useRef<number>(0);
+  const { termData } = useTermSelection();
 
   // Add a state to track if a refresh is needed
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const { data: schedules, isLoading, error, refetch } = useQuery({
-    queryKey: ["class-schedules", classId, refreshTrigger],
+    queryKey: ["class-schedules", classId, refreshTrigger, termData?.id],
     queryFn: async () => {
-      console.log("Fetching class schedules for classId:", classId);
+      console.log("Fetching class schedules for classId:", classId, "term:", termData?.id);
       
       if (!user || !session) {
         console.log("User not authenticated, aborting fetch");
         return [];
       }
       
-      const { data, error } = await supabase
+      let query = supabase
         .from("class_schedules")
         .select(`
           *,
           trainer:trainer_id (first_name, last_name)
         `)
-        .eq("class_id", classId)
-        .order("start_time");
+        .eq("class_id", classId);
+      
+      // Filter by term if a term is selected
+      if (termData?.id) {
+        query = query.eq("term_id", termData.id);
+      }
+      
+      const { data, error } = await query.order("start_time");
       
       if (error) {
         console.error("Error fetching class schedules:", error);
@@ -125,6 +134,14 @@ export function ClassSchedulesTable({ classId }: ClassSchedulesTableProps) {
       unsubscribe();
     };
   }, [queryClient, refetch]);
+
+  // Effect to refetch when term changes
+  useEffect(() => {
+    if (termData?.id) {
+      console.log("Term changed, refetching schedules");
+      refetch();
+    }
+  }, [termData?.id, refetch]);
 
   const handleDeleteSchedule = async (id: string) => {
     try {

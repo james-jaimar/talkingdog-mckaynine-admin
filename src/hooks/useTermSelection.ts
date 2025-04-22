@@ -42,9 +42,10 @@ export function useTermSelection() {
     }
   }, [selectedYear, selectedTermNumber]);
 
-  const { data: termData } = useQuery({
+  const { data: termData, isLoading: isTermLoading } = useQuery({
     queryKey: ['term', selectedYear, selectedTermNumber],
     queryFn: async () => {
+      // Instead of using .single(), we'll use .eq() and handle the results manually
       const { data, error } = await supabase
         .from('terms')
         .select(`
@@ -57,12 +58,22 @@ export function useTermSelection() {
           )
         `)
         .eq('academic_years.year', selectedYear)
-        .eq('term_number', selectedTermNumber)
-        .single();
+        .eq('term_number', selectedTermNumber);
 
-      if (error) throw error;
-      return data;
-    }
+      if (error) {
+        console.error('Error fetching term data:', error);
+        throw error;
+      }
+      
+      if (!data || data.length === 0) {
+        console.log(`No term found for year ${selectedYear} and term ${selectedTermNumber}`);
+        return null;
+      }
+      
+      // Return the first matching term
+      return data[0];
+    },
+    staleTime: 60000, // 1 minute cache
   });
 
   // Generate years array (2025 to 2029)
@@ -87,6 +98,7 @@ export function useTermSelection() {
     selectedTermNumber,
     setSelectedTermNumber,
     termData,
+    isTermLoading,
     termDateRange: getTermDateRange(),
     years,
     terms,

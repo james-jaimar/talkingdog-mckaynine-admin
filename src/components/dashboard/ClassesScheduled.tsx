@@ -1,3 +1,4 @@
+
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,19 +12,19 @@ interface ClassesScheduledProps {
 
 export function ClassesScheduled({ branchId }: ClassesScheduledProps) {
   const isMobile = useIsMobile();
-  const { termDateRange } = useTermSelection();
+  const { termData } = useTermSelection();
   
   const { data: classes, isLoading } = useQuery({
-    queryKey: ['upcoming-classes', branchId, termDateRange?.startDate, termDateRange?.endDate],
+    queryKey: ['upcoming-classes', branchId, termData?.id],
     queryFn: async () => {
       // Don't fetch data if no branch is selected
       if (!branchId) return [];
       
       // Use today's date as the default start date if no term is selected
-      const startDate = termDateRange?.startDate || new Date().toISOString();
+      const startDate = new Date().toISOString();
       
       // Build the query with branch filter and date range
-      const query = supabase
+      let query = supabase
         .from('class_schedules')
         .select(`
           id,
@@ -42,9 +43,9 @@ export function ClassesScheduled({ branchId }: ClassesScheduledProps) {
         .eq('classes.branch_id', branchId)
         .gte('start_time', startDate);
       
-      // Add end date filter if available from term selection
-      if (termDateRange?.endDate) {
-        query.lte('start_time', termDateRange.endDate);
+      // Add term filter if a term is selected
+      if (termData?.id) {
+        query = query.eq('term_id', termData.id);
       }
       
       const { data, error } = await query
