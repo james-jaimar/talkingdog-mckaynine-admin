@@ -73,7 +73,7 @@ export function ClassesTable() {
               {orderedClasses.map((classItem, index) => (
                 <ClassTableRow
                   key={classItem.id}
-                  classItem={classItem}
+                  classItem={classItem as any}
                   index={index}
                   totalClasses={orderedClasses.length}
                   onMoveUp={moveClassUp}

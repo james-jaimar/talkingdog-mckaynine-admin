@@ -52,7 +52,7 @@ export function ClassesTabs({ alwaysShow = false }) {
     <div className="mt-4 overflow-x-auto bg-gray-100 rounded-md p-1">
       <Tabs value={currentClassId || ""} className="w-full">
         <ClassTabsList
-          classes={classesWithSchedules}
+          classes={classesWithSchedules as any}
           currentClassId={currentClassId}
           onTabClick={handleTabClick}
         />
