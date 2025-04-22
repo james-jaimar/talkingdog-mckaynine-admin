@@ -2,6 +2,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Booking } from "../types/booking";
+import { useTermSelection } from "@/hooks/useTermSelection";
 
 /**
  * Validates if a status string matches the expected consent status values
@@ -13,8 +14,10 @@ const validateConsentStatus = (status: string | null): "yes" | "no" | "not_marke
 };
 
 export function useClassHandlers(classId: string) {
+  const { termDateRange } = useTermSelection();
+
   return useQuery({
-    queryKey: ['class-handlers', classId],
+    queryKey: ['class-handlers', classId, termDateRange?.startDate, termDateRange?.endDate],
     queryFn: async () => {
       // Validate classId
       if (!classId) {
@@ -24,10 +27,19 @@ export function useClassHandlers(classId: string) {
       
       try {
         // Get all schedule IDs for this class
-        const { data: scheduleIds, error: scheduleError } = await supabase
+        let schedulesQuery = supabase
           .from('class_schedules')
           .select('id')
           .eq('class_id', classId);
+        
+        // Apply term date filtering if available
+        if (termDateRange?.startDate && termDateRange?.endDate) {
+          schedulesQuery = schedulesQuery
+            .gte('start_time', termDateRange.startDate)
+            .lte('start_time', termDateRange.endDate);
+        }
+        
+        const { data: scheduleIds, error: scheduleError } = await schedulesQuery;
         
         if (scheduleError) {
           console.error("Error fetching schedule IDs:", scheduleError);

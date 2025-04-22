@@ -39,7 +39,7 @@ export function TermSelectorRow() {
                 value={selectedYear.toString()}
                 onValueChange={(value) => setSelectedYear(parseInt(value))}
               >
-                <SelectTrigger className="w-[120px] bg-white">
+                <SelectTrigger className="w-[120px] bg-white text-gray-800">
                   <SelectValue placeholder="Select year" />
                 </SelectTrigger>
                 <SelectContent>
@@ -61,7 +61,7 @@ export function TermSelectorRow() {
                   }
                 }}
               >
-                <SelectTrigger className="w-[120px] bg-white">
+                <SelectTrigger className="w-[120px] bg-white text-gray-800">
                   <SelectValue placeholder="Select term" />
                 </SelectTrigger>
                 <SelectContent>

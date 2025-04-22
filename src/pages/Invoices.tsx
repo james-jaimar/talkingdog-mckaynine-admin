@@ -12,6 +12,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { startOfMonth, endOfMonth, subMonths, format } from "date-fns";
 import { InvoiceFinancialSummary } from "@/components/invoices/summary/InvoiceFinancialSummary";
 import { InvoiceFilterTabs } from "@/components/invoices/filters/InvoiceFilterTabs";
+import { useTermSelection } from "@/hooks/useTermSelection";
 
 export default function Invoices() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -19,6 +20,14 @@ export default function Invoices() {
   const [monthFilter, setMonthFilter] = useState<string>("current");
   const { invoices, isLoading, refreshAllInvoiceQueries } = useInvoices();
   const queryClient = useQueryClient();
+  const { termDateRange } = useTermSelection();
+
+  // Set the month filter to "term" if a term is selected
+  useEffect(() => {
+    if (termDateRange) {
+      setMonthFilter("term");
+    }
+  }, [termDateRange?.startDate, termDateRange?.endDate]);
 
   // Auto-refresh data when component mounts
   useEffect(() => {
@@ -53,11 +62,19 @@ export default function Invoices() {
     };
   };
 
+  // Add term date range to the options
   const monthRanges = {
     "current": getCurrentMonthRange(),
     "prev1": getPreviousMonthRange(1),
     "prev2": getPreviousMonthRange(2),
     "prev3": getPreviousMonthRange(3),
+    "term": termDateRange 
+      ? { 
+          start: new Date(termDateRange.startDate), 
+          end: new Date(termDateRange.endDate), 
+          label: `Term Period ${format(new Date(termDateRange.startDate), "dd MMM")} - ${format(new Date(termDateRange.endDate), "dd MMM yyyy")}` 
+        }
+      : getCurrentMonthRange(),
     "all": { start: new Date(0), end: new Date(8640000000000000), label: "All Time" }
   };
 
@@ -99,6 +116,7 @@ export default function Invoices() {
         <InvoiceFilterTabs 
           onMonthFilterChange={setMonthFilter}
           onStatusFilterChange={setStatusFilter}
+          showTermOption={!!termDateRange}
         />
         
         <InvoicesList 

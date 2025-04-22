@@ -1,9 +1,9 @@
-
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useIsMobile } from '@/hooks/useIsMobile';
+import { useTermSelection } from '@/hooks/useTermSelection';
 
 interface ClassesScheduledProps {
   branchId?: string;
@@ -11,17 +11,19 @@ interface ClassesScheduledProps {
 
 export function ClassesScheduled({ branchId }: ClassesScheduledProps) {
   const isMobile = useIsMobile();
+  const { termDateRange } = useTermSelection();
   
   const { data: classes, isLoading } = useQuery({
-    queryKey: ['upcoming-classes', branchId],
+    queryKey: ['upcoming-classes', branchId, termDateRange?.startDate, termDateRange?.endDate],
     queryFn: async () => {
       // Don't fetch data if no branch is selected
       if (!branchId) return [];
       
-      const today = new Date();
+      // Use today's date as the default start date if no term is selected
+      const startDate = termDateRange?.startDate || new Date().toISOString();
       
-      // Build the query with branch filter
-      const { data, error } = await supabase
+      // Build the query with branch filter and date range
+      const query = supabase
         .from('class_schedules')
         .select(`
           id,
@@ -38,7 +40,14 @@ export function ClassesScheduled({ branchId }: ClassesScheduledProps) {
           )
         `)
         .eq('classes.branch_id', branchId)
-        .gte('start_time', today.toISOString())
+        .gte('start_time', startDate);
+      
+      // Add end date filter if available from term selection
+      if (termDateRange?.endDate) {
+        query.lte('start_time', termDateRange.endDate);
+      }
+      
+      const { data, error } = await query
         .order('start_time', { ascending: true })
         .limit(5);
       
@@ -48,6 +57,7 @@ export function ClassesScheduled({ branchId }: ClassesScheduledProps) {
     enabled: !!branchId // Only run query when branchId is available
   });
 
+  // Rest of the component remains the same
   const getInitials = (firstName: string, lastName: string) => {
     return `${firstName?.[0] || ''}${lastName?.[0] || ''}`;
   };

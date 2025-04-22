@@ -2,6 +2,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useBranch } from '@/context/BranchContext';
+import { useTermSelection } from '@/hooks/useTermSelection';
 
 export interface Handler {
   clientId: string;
@@ -21,15 +22,16 @@ export interface ClassGroup {
 
 export function useClassesListData() {
   const { currentBranch } = useBranch();
+  const { termDateRange } = useTermSelection();
 
   return useQuery({
-    queryKey: ['classes-list-data', currentBranch?.id],
+    queryKey: ['classes-list-data', currentBranch?.id, termDateRange?.startDate, termDateRange?.endDate],
     queryFn: async () => {
       if (!currentBranch?.id) return [];
 
-      console.log(`Fetching classes list data for branch ${currentBranch.name}`);
+      console.log(`Fetching classes list data for branch ${currentBranch.name} within term period:`, termDateRange);
 
-      const { data: classes, error: classesError } = await supabase
+      let query = supabase
         .from('classes')
         .select(`
           id,
@@ -37,6 +39,7 @@ export function useClassesListData() {
           class_schedules(
             id,
             selected_dates,
+            start_time,
             bookings(
               id,
               payment_status,
@@ -55,6 +58,13 @@ export function useClassesListData() {
         `)
         .eq('branch_id', currentBranch.id);
 
+      // Apply term date filtering if available
+      if (termDateRange?.startDate && termDateRange?.endDate) {
+        query = query.or(`class_schedules.start_time.gte.${termDateRange.startDate},class_schedules.start_time.is.null`);
+      }
+
+      const { data: classes, error: classesError } = await query;
+
       if (classesError) {
         console.error("Error fetching classes data:", classesError);
         throw classesError;
@@ -62,7 +72,23 @@ export function useClassesListData() {
 
       console.log(`Retrieved ${classes?.length || 0} classes for branch ${currentBranch.name}`);
 
-      const classGroups: ClassGroup[] = classes.map(classItem => {
+      // Filter schedules to only include those within the term date range
+      const filteredClasses = classes.map(classItem => {
+        if (termDateRange?.startDate && termDateRange?.endDate) {
+          const startDate = new Date(termDateRange.startDate);
+          const endDate = new Date(termDateRange.endDate);
+          
+          classItem.class_schedules = classItem.class_schedules.filter(schedule => {
+            if (!schedule.start_time) return true;
+            const scheduleDate = new Date(schedule.start_time);
+            return scheduleDate >= startDate && scheduleDate <= endDate;
+          });
+        }
+        
+        return classItem;
+      });
+
+      const classGroups: ClassGroup[] = filteredClasses.map(classItem => {
         const handlers: Handler[] = [];
         
         classItem.class_schedules?.forEach(schedule => {

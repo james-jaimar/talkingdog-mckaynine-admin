@@ -4,14 +4,17 @@ import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useTermSelection } from '@/hooks/useTermSelection';
 
 interface RecentBookingsProps {
   branchId?: string;
 }
 
 export function RecentBookings({ branchId }: RecentBookingsProps) {
+  const { termDateRange } = useTermSelection();
+
   const { data: bookings, isLoading } = useQuery({
-    queryKey: ['recent-bookings', branchId],
+    queryKey: ['recent-bookings', branchId, termDateRange?.startDate, termDateRange?.endDate],
     queryFn: async () => {
       // Don't fetch data if no branch is selected
       if (!branchId) return [];
@@ -31,11 +34,20 @@ export function RecentBookings({ branchId }: RecentBookingsProps) {
             classes(name)
           )
         `)
-        .eq('clients.branch_id', branchId)
+        .eq('clients.branch_id', branchId);
+      
+      // Add date filters if term is selected
+      if (termDateRange?.startDate) {
+        query = query.gte('created_at', termDateRange.startDate);
+      }
+      
+      if (termDateRange?.endDate) {
+        query = query.lte('created_at', termDateRange.endDate);
+      }
+      
+      const { data, error } = await query
         .order('created_at', { ascending: false })
         .limit(5);
-      
-      const { data, error } = await query;
       
       if (error) throw error;
       return data;

@@ -1,13 +1,46 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
 type TermNumber = '1' | '2' | '3' | '4';
 
+// Create a key for storing the selected term information in localStorage
+const TERM_STORAGE_KEY = 'mckaynine-selected-term';
+
 export function useTermSelection() {
-  const [selectedYear, setSelectedYear] = useState(2025);
-  const [selectedTermNumber, setSelectedTermNumber] = useState<TermNumber>('2');
+  // Initialize from localStorage if available
+  const getStoredTermData = () => {
+    try {
+      const storedData = localStorage.getItem(TERM_STORAGE_KEY);
+      if (storedData) {
+        const parsed = JSON.parse(storedData);
+        return {
+          year: parsed.year || 2025,
+          termNumber: parsed.termNumber || '2'
+        };
+      }
+    } catch (error) {
+      console.error('Error reading term data from localStorage:', error);
+    }
+    return { year: 2025, termNumber: '2' as TermNumber };
+  };
+
+  const storedData = getStoredTermData();
+  const [selectedYear, setSelectedYear] = useState<number>(storedData.year);
+  const [selectedTermNumber, setSelectedTermNumber] = useState<TermNumber>(storedData.termNumber as TermNumber);
+
+  // Save to localStorage when selections change
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        TERM_STORAGE_KEY, 
+        JSON.stringify({ year: selectedYear, termNumber: selectedTermNumber })
+      );
+    } catch (error) {
+      console.error('Error saving term data to localStorage:', error);
+    }
+  }, [selectedYear, selectedTermNumber]);
 
   const { data: termData } = useQuery({
     queryKey: ['term', selectedYear, selectedTermNumber],
@@ -37,6 +70,16 @@ export function useTermSelection() {
   
   // Generate terms array (1 to 4) with proper typing
   const terms: TermNumber[] = ['1', '2', '3', '4'];
+  
+  // Get date range for the selected term
+  const getTermDateRange = () => {
+    if (!termData) return null;
+    
+    return {
+      startDate: termData.start_date,
+      endDate: termData.end_date
+    };
+  };
 
   return {
     selectedYear,
@@ -44,6 +87,7 @@ export function useTermSelection() {
     selectedTermNumber,
     setSelectedTermNumber,
     termData,
+    termDateRange: getTermDateRange(),
     years,
     terms,
   };
