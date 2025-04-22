@@ -1,4 +1,3 @@
-
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useBranch } from "@/context/BranchContext";
@@ -18,21 +17,24 @@ export interface ClassWithSchedules {
     start_time?: string;
     end_time?: string;
     selected_dates?: string[];
+    term_id?: string;
   }[];
 }
 
 export function useClassOrdering() {
   const { currentBranch } = useBranch();
-  const { termDateRange } = useTermSelection();
+  const { termData } = useTermSelection();
   const [isMoving, setIsMoving] = useState(false);
   const [pendingMovements, setPendingMovements] = useState(0);
   const [itemMoving, setItemMoving] = useState<string | null>(null);
 
   // Fetch all active classes with their schedules
   const { data: originalClasses, isLoading, error, refetch } = useQuery({
-    queryKey: ['classes', currentBranch?.id, termDateRange?.startDate, termDateRange?.endDate],
+    queryKey: ['classes', currentBranch?.id, termData?.id],
     queryFn: async () => {
       if (!currentBranch) return [];
+
+      console.log("Fetching classes for branch:", currentBranch.id, "and term:", termData?.id);
 
       let query = supabase
         .from('classes')
@@ -47,37 +49,36 @@ export function useClassOrdering() {
             id,
             start_time,
             end_time,
-            selected_dates
+            selected_dates,
+            term_id
           )
         `)
         .eq('branch_id', currentBranch.id);
-
-      // If we have term date range, filter class schedules
-      if (termDateRange?.startDate && termDateRange?.endDate) {
-        query = query.or(`class_schedules.start_time.gte.${termDateRange.startDate},class_schedules.start_time.is.null`);
-      }
 
       const { data, error } = await query;
       
       if (error) throw error;
       
-      // Filter class schedules to only include those within the term date range
+      // Filter class schedules to only include those for the selected term
       const filteredClasses = data?.map(classItem => {
-        if (termDateRange?.startDate && termDateRange?.endDate) {
-          const startDate = new Date(termDateRange.startDate);
-          const endDate = new Date(termDateRange.endDate);
-          
-          classItem.class_schedules = classItem.class_schedules.filter(schedule => {
-            if (!schedule.start_time) return true;
-            const scheduleDate = new Date(schedule.start_time);
-            return scheduleDate >= startDate && scheduleDate <= endDate;
-          });
-        }
+        classItem.class_schedules = classItem.class_schedules.filter(schedule => {
+          // If no term is selected, show all schedules
+          if (!termData?.id) return true;
+          // Otherwise, only show schedules for the selected term
+          return schedule.term_id === termData.id;
+        });
         
         return classItem;
       });
       
-      return filteredClasses || [];
+      // Only include classes that have schedules for the selected term
+      const classesWithSchedules = filteredClasses?.filter(
+        classItem => classItem.class_schedules.length > 0
+      );
+      
+      console.log("Filtered classes:", classesWithSchedules?.length);
+      
+      return classesWithSchedules || [];
     },
     enabled: !!currentBranch,
     staleTime: 60000,
