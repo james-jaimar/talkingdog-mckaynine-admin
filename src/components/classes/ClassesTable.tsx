@@ -46,6 +46,22 @@ export function ClassesTable() {
     handleCloseModal();
   };
   
+  // Function to handle moving a class up based on index
+  const handleMoveClassUp = (index: number) => {
+    if (orderedClasses && index >= 0 && index < orderedClasses.length) {
+      const classId = orderedClasses[index].id;
+      moveClassUp(classId);
+    }
+  };
+  
+  // Function to handle moving a class down based on index
+  const handleMoveClassDown = (index: number) => {
+    if (orderedClasses && index >= 0 && index < orderedClasses.length) {
+      const classId = orderedClasses[index].id;
+      moveClassDown(classId);
+    }
+  };
+  
   if (isLoading) {
     return <ClassesTableLoading />;
   }
@@ -76,8 +92,8 @@ export function ClassesTable() {
                   classItem={classItem as any}
                   index={index}
                   totalClasses={orderedClasses.length}
-                  onMoveUp={moveClassUp}
-                  onMoveDown={moveClassDown}
+                  onMoveUp={handleMoveClassUp}
+                  onMoveDown={handleMoveClassDown}
                   onEdit={() => handleEdit(classItem)}
                   isLoading={isMoving}
                   isMoving={isItemMoving(classItem.id)}
