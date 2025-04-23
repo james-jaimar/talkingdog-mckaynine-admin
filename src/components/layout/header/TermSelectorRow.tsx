@@ -3,6 +3,7 @@ import { format } from "date-fns";
 import { useTermSelection } from "@/hooks/useTermSelection";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export function TermSelectorRow() {
   const {
@@ -12,6 +13,7 @@ export function TermSelectorRow() {
     setSelectedTermNumber,
     termData,
     isTermLoading,
+    error,
     years,
     terms
   } = useTermSelection();
@@ -27,6 +29,21 @@ export function TermSelectorRow() {
       setSelectedTermNumber(value);
     }
   };
+
+  // Show error state if term fetch failed
+  if (error) {
+    return (
+      <div className="border-b border-mckaynine-700 bg-mckaynine-600">
+        <div className="container mx-auto px-4 py-2">
+          <Alert variant="destructive">
+            <AlertDescription>
+              Error loading term data. Please try again.
+            </AlertDescription>
+          </Alert>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="border-b border-mckaynine-700 bg-mckaynine-600">

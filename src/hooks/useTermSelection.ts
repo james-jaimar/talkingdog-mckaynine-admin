@@ -4,13 +4,10 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
 type TermNumber = '1' | '2' | '3' | '4';
-
-// Create a key for storing the selected term information in localStorage
 const TERM_STORAGE_KEY = 'mckaynine-selected-term';
 
 export function useTermSelection() {
   const queryClient = useQueryClient();
-  const termChangeEventRef = useRef<CustomEvent | null>(null);
   
   // Initialize from localStorage if available
   const getStoredTermData = () => {
@@ -37,37 +34,26 @@ export function useTermSelection() {
   const setSelectedYear = useCallback((year: number) => {
     console.log('Setting selected year to:', year);
     setSelectedYearState(year);
-    
-    try {
-      localStorage.setItem(
-        TERM_STORAGE_KEY, 
-        JSON.stringify({ year: year, termNumber: selectedTermNumber })
-      );
-    } catch (error) {
-      console.error('Error saving year to localStorage:', error);
-    }
+    localStorage.setItem(
+      TERM_STORAGE_KEY, 
+      JSON.stringify({ year, termNumber: selectedTermNumber })
+    );
   }, [selectedTermNumber]);
   
   const setSelectedTermNumber = useCallback((termNumber: TermNumber) => {
     console.log('Setting selected term number to:', termNumber);
     setSelectedTermNumberState(termNumber);
-    
-    try {
-      localStorage.setItem(
-        TERM_STORAGE_KEY, 
-        JSON.stringify({ year: selectedYear, termNumber: termNumber })
-      );
-    } catch (error) {
-      console.error('Error saving term number to localStorage:', error);
-    }
+    localStorage.setItem(
+      TERM_STORAGE_KEY, 
+      JSON.stringify({ year: selectedYear, termNumber })
+    );
   }, [selectedYear]);
 
   // Fetch term data based on selected year and term number
   const { 
     data: termData, 
-    isLoading: isTermLoading, 
-    error, 
-    refetch: refetchTermData 
+    isLoading: isTermLoading,
+    error
   } = useQuery({
     queryKey: ['term', selectedYear, selectedTermNumber],
     queryFn: async () => {
@@ -86,6 +72,7 @@ export function useTermSelection() {
         `)
         .eq('academic_years.year', selectedYear)
         .eq('term_number', selectedTermNumber)
+        .limit(1)
         .single();
 
       if (error) {
@@ -98,37 +85,26 @@ export function useTermSelection() {
         return null;
       }
       
-      console.log('Term data fetched successfully:', data);
       return data;
     },
     staleTime: 60 * 1000, // Cache term data for 60 seconds
   });
-  
-  // When term data changes, invalidate specific dependent queries
+
+  // When term data changes, dispatch a custom event
   useEffect(() => {
     if (termData?.id) {
-      console.log('Term data updated, invalidating specific dependent queries');
-      
-      // Create a custom event to signal term change
-      if (!termChangeEventRef.current) {
-        termChangeEventRef.current = new CustomEvent('term-changed', { 
-          detail: { termId: termData.id } 
-        });
-        window.dispatchEvent(termChangeEventRef.current);
-      }
-      
-      // Only invalidate specific queries that depend on term
-      queryClient.invalidateQueries({ queryKey: ['dashboard-stats-bookings'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard-stats-classes'] });
-      queryClient.invalidateQueries({ queryKey: ['recent-bookings'] });
-      queryClient.invalidateQueries({ queryKey: ['upcoming-classes'] });
+      console.log('Term data updated, dispatching term-changed event');
+      const event = new CustomEvent('term-changed', { 
+        detail: { termId: termData.id } 
+      });
+      window.dispatchEvent(event);
     }
-  }, [termData, queryClient]);
+  }, [termData]);
 
   // Generate years array (2025 to 2029)
   const years = Array.from({ length: 5 }, (_, i) => 2025 + i);
   
-  // Generate terms array (1 to 4) with proper typing
+  // Generate terms array (1 to 4)
   const terms: TermNumber[] = ['1', '2', '3', '4'];
   
   // Get date range for the selected term
@@ -136,16 +112,6 @@ export function useTermSelection() {
     startDate: termData.start_date,
     endDate: termData.end_date
   } : null;
-
-  // Function to invalidate term-dependent queries in a controlled way
-  const invalidateTermDependentQueries = useCallback(() => {
-    console.log('Invalidating term-dependent queries in a controlled manner');
-    
-    queryClient.invalidateQueries({ queryKey: ['dashboard-stats-bookings'] });
-    queryClient.invalidateQueries({ queryKey: ['dashboard-stats-classes'] });
-    queryClient.invalidateQueries({ queryKey: ['recent-bookings'] });
-    queryClient.invalidateQueries({ queryKey: ['upcoming-classes'] });
-  }, [queryClient]);
 
   return {
     selectedYear,
@@ -157,8 +123,6 @@ export function useTermSelection() {
     error,
     termDateRange,
     years,
-    terms,
-    invalidateTermDependentQueries,
-    refetchTermData
+    terms
   };
 }

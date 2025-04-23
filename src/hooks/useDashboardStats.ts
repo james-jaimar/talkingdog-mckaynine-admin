@@ -67,19 +67,11 @@ export function useDashboardStats() {
         .select('id, clients!inner(branch_id), class_schedules(term_id)', { count: 'exact', head: true })
         .eq('clients.branch_id', currentBranch.id);
       
-      // Apply term filter if term is selected
       if (termData?.id) {
-        // Filter bookings by the selected term
         query = query.eq('class_schedules.term_id', termData.id);
       }
       
-      const { count, error } = await query;
-      
-      if (error) {
-        console.error('Error fetching bookings count:', error);
-        return 0;
-      }
-      
+      const { count } = await query;
       return count || 0;
     },
     enabled: !!currentBranch?.id,
@@ -100,18 +92,11 @@ export function useDashboardStats() {
         .eq('classes.branch_id', currentBranch.id)
         .gte('start_time', today);
       
-      // Apply term filter if term is selected
       if (termData?.id) {
         query = query.eq('term_id', termData.id);
       }
       
-      const { count, error } = await query;
-      
-      if (error) {
-        console.error('Error fetching class count:', error);
-        return 0;
-      }
-      
+      const { count } = await query;
       return count || 0;
     },
     enabled: !!currentBranch?.id,
