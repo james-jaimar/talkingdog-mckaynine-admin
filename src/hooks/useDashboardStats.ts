@@ -20,15 +20,29 @@ export function useDashboardStats() {
     enabled: !!currentBranch?.id,
   });
 
-  // Dogs count - fixed query with proper join
+  // Dogs count - completely reworked query
   const { data: dogCount } = useQuery({
     queryKey: ['dashboard-stats-dogs', currentBranch?.id],
     queryFn: async () => {
       if (!currentBranch?.id) return 0;
+      
+      // Use a different approach: first get all clients from this branch
+      const { data: branchClients } = await supabase
+        .from('clients')
+        .select('id')
+        .eq('branch_id', currentBranch.id);
+      
+      if (!branchClients || branchClients.length === 0) return 0;
+      
+      // Then count dogs belonging to these clients
+      const clientIds = branchClients.map(client => client.id);
+      
       const { count } = await supabase
         .from('dogs')
-        .select('dogs.id, clients!inner(branch_id)', { count: 'exact', head: true })
-        .eq('clients.branch_id', currentBranch.id);
+        .select('id', { count: 'exact', head: true })
+        .in('client_id', clientIds);
+      
+      console.log('Dog count:', count, 'for branch:', currentBranch.name);
       return count || 0;
     },
     enabled: !!currentBranch?.id,
