@@ -1,12 +1,14 @@
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useBranch } from "@/context/BranchContext";
 import { useTermSelection } from "@/hooks/useTermSelection";
+import { useCallback } from "react";
 
 export function useDashboardStats() {
   const { currentBranch } = useBranch();
   const { termData } = useTermSelection();
+  const queryClient = useQueryClient();
   
   // Clients count
   const { data: clientCount, refetch: refetchClients } = useQuery({
@@ -109,14 +111,20 @@ export function useDashboardStats() {
     enabled: !!currentBranch?.id,
   });
 
-  // Refetch all data when term changes
-  /* This is redundant as we've added termData.id to query keys,
-     but keeping it as a safeguard */
+  // Function to refetch all stats
+  const refetchAllStats = useCallback(() => {
+    console.log("Refetching all dashboard stats");
+    refetchClients();
+    refetchDogs();
+    refetchBookings();
+    refetchClasses();
+  }, [refetchClients, refetchDogs, refetchBookings, refetchClasses]);
 
   return {
     clientCount,
     dogCount,
     bookingCount,
-    upcomingClassCount
+    upcomingClassCount,
+    refetchAllStats
   };
 }

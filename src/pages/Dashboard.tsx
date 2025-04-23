@@ -8,6 +8,7 @@ import { useDashboardStats } from "@/hooks/useDashboardStats";
 import { Users, Dog, Book, Calendar } from "lucide-react";
 import { useTermSelection } from "@/hooks/useTermSelection";
 import { TermDisplay } from "@/components/dashboard/TermDisplay";
+import { useEffect } from "react";
 
 export default function Dashboard() {
   const { currentBranch } = useBranch();
@@ -16,8 +17,17 @@ export default function Dashboard() {
     clientCount,
     dogCount,
     bookingCount,
-    upcomingClassCount
+    upcomingClassCount,
+    refetchAllStats
   } = useDashboardStats();
+
+  // Force refetch when term changes
+  useEffect(() => {
+    if (termData) {
+      console.log("Dashboard detected term change, refetching stats");
+      refetchAllStats();
+    }
+  }, [termData, refetchAllStats]);
 
   return (
     <DashboardLayout>

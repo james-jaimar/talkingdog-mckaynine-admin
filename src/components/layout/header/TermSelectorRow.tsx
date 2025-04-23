@@ -3,6 +3,8 @@ import { format } from "date-fns";
 import { useTermSelection } from "@/hooks/useTermSelection";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
 export function TermSelectorRow() {
   const {
@@ -15,6 +17,8 @@ export function TermSelectorRow() {
     years,
     terms
   } = useTermSelection();
+  
+  const queryClient = useQueryClient();
 
   const handleYearChange = (value: string) => {
     console.log('Changing year to:', value);
@@ -27,6 +31,20 @@ export function TermSelectorRow() {
       setSelectedTermNumber(value);
     }
   };
+
+  // Force an immediate refetch when term data changes
+  useEffect(() => {
+    if (termData) {
+      console.log('Term data updated, invalidating queries');
+      // Invalidate all dependent queries
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats-clients'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats-dogs'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats-bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats-classes'] });
+      queryClient.invalidateQueries({ queryKey: ['recent-bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['upcoming-classes'] });
+    }
+  }, [termData, queryClient]);
 
   return (
     <div className="border-b border-mckaynine-700 bg-mckaynine-600">

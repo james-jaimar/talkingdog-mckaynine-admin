@@ -1,8 +1,7 @@
 
 import { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { queryClient } from '@/lib/query-client';
 
 type TermNumber = '1' | '2' | '3' | '4';
 
@@ -10,6 +9,8 @@ type TermNumber = '1' | '2' | '3' | '4';
 const TERM_STORAGE_KEY = 'mckaynine-selected-term';
 
 export function useTermSelection() {
+  const queryClient = useQueryClient();
+  
   // Initialize from localStorage if available
   const getStoredTermData = () => {
     try {
@@ -28,29 +29,25 @@ export function useTermSelection() {
   };
 
   const storedData = getStoredTermData();
-  const [selectedYear, setSelectedYear] = useState<number>(storedData.year);
-  const [selectedTermNumber, setSelectedTermNumber] = useState<TermNumber>(storedData.termNumber as TermNumber);
+  const [selectedYear, setSelectedYearState] = useState<number>(storedData.year);
+  const [selectedTermNumber, setSelectedTermNumberState] = useState<TermNumber>(storedData.termNumber as TermNumber);
 
   // Wrapper functions to update state and invalidate queries
-  const updateSelectedYear = (year: number) => {
-    setSelectedYear(year);
-    // Invalidate relevant queries when term changes
+  const setSelectedYear = (year: number) => {
+    setSelectedYearState(year);
+    
+    // We'll invalidate queries after the state update is complete
     setTimeout(() => {
-      queryClient.invalidateQueries({ queryKey: ['dashboard-stats-bookings'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard-stats-classes'] });
-      queryClient.invalidateQueries({ queryKey: ['recent-bookings'] });
-      queryClient.invalidateQueries({ queryKey: ['upcoming-classes'] });
+      queryClient.invalidateQueries();
     }, 100);
   };
   
-  const updateSelectedTermNumber = (termNumber: TermNumber) => {
-    setSelectedTermNumber(termNumber);
-    // Invalidate relevant queries when term changes
+  const setSelectedTermNumber = (termNumber: TermNumber) => {
+    setSelectedTermNumberState(termNumber);
+    
+    // We'll invalidate queries after the state update is complete
     setTimeout(() => {
-      queryClient.invalidateQueries({ queryKey: ['dashboard-stats-bookings'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard-stats-classes'] });
-      queryClient.invalidateQueries({ queryKey: ['recent-bookings'] });
-      queryClient.invalidateQueries({ queryKey: ['upcoming-classes'] });
+      queryClient.invalidateQueries();
     }, 100);
   };
 
@@ -129,9 +126,9 @@ export function useTermSelection() {
 
   return {
     selectedYear,
-    setSelectedYear: updateSelectedYear,
+    setSelectedYear,
     selectedTermNumber,
-    setSelectedTermNumber: updateSelectedTermNumber,
+    setSelectedTermNumber,
     termData,
     isTermLoading,
     error,
