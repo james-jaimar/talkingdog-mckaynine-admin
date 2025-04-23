@@ -20,14 +20,14 @@ export function useDashboardStats() {
     enabled: !!currentBranch?.id,
   });
 
-  // Dogs count
+  // Dogs count - fixed query with proper join
   const { data: dogCount } = useQuery({
     queryKey: ['dashboard-stats-dogs', currentBranch?.id],
     queryFn: async () => {
       if (!currentBranch?.id) return 0;
       const { count } = await supabase
         .from('dogs')
-        .select('*', { count: 'exact', head: true })
+        .select('dogs.id, clients!inner(branch_id)', { count: 'exact', head: true })
         .eq('clients.branch_id', currentBranch.id);
       return count || 0;
     },
