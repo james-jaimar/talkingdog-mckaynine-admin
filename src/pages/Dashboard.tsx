@@ -10,12 +10,14 @@ import { useTermSelection } from "@/hooks/useTermSelection";
 import { TermDisplay } from "@/components/dashboard/TermDisplay";
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/components/ui/use-toast";
 
 export default function Dashboard() {
   const { currentBranch } = useBranch();
   const queryClient = useQueryClient();
   const { termData, termDateRange, isTermLoading } = useTermSelection();
   const [termId, setTermId] = useState<string | null>(null);
+  const { toast } = useToast();
   
   const {
     clientCount,
@@ -36,15 +38,12 @@ export default function Dashboard() {
       setTermId(termData?.id || null);
       
       // Invalidate all relevant queries
-      queryClient.invalidateQueries({ queryKey: ['dashboard-stats-clients'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard-stats-dogs'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard-stats-bookings'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard-stats-classes'] });
-      queryClient.invalidateQueries({ queryKey: ['recent-bookings'] });
-      queryClient.invalidateQueries({ queryKey: ['upcoming-classes'] });
+      queryClient.invalidateQueries();
       
-      // Also call our refetch function
-      refetchAllStats();
+      // Also call our refetch function with a short delay
+      setTimeout(() => {
+        refetchAllStats();
+      }, 50);
     }
   }, [termData, termId, refetchAllStats, queryClient]);
 

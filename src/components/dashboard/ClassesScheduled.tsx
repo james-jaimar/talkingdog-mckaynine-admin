@@ -1,4 +1,3 @@
-
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,24 +15,26 @@ export function ClassesScheduled({ branchId }: ClassesScheduledProps) {
   const isMobile = useIsMobile();
   const { termData } = useTermSelection();
   const [currentTermId, setCurrentTermId] = useState<string | null>(null);
+  const [forceRefresh, setForceRefresh] = useState(0);
 
-  // Track term changes
+  // Track term changes and force refresh
   useEffect(() => {
     if (termData?.id !== currentTermId) {
       console.log("ClassesScheduled detected term change from", currentTermId, "to", termData?.id);
       setCurrentTermId(termData?.id || null);
+      setForceRefresh(prev => prev + 1);
     }
   }, [termData?.id, currentTermId]);
   
   const { data: classes, isLoading, refetch } = useQuery({
-    queryKey: ['upcoming-classes', branchId, termData?.id],
+    queryKey: ['upcoming-classes', branchId, termData?.id, forceRefresh],
     queryFn: async () => {
       // Don't fetch data if no branch is selected
       if (!branchId) return [];
       
       console.log('Fetching upcoming classes with term ID:', termData?.id);
       
-      // Use today's date as the default start date if no term is selected
+      // Use today's date as the default start date
       const startDate = new Date().toISOString();
       
       // Build the query with branch filter and date range
@@ -71,14 +72,15 @@ export function ClassesScheduled({ branchId }: ClassesScheduledProps) {
       return data;
     },
     enabled: !!branchId, // Only run query when branchId is available
-    staleTime: 0 // Disable stale time to force refetch
+    staleTime: 0, // Always fetch fresh data
+    refetchOnWindowFocus: true, // Refetch when window regains focus
   });
 
-  // Refetch when term changes
+  // Force refetch when term changes
   useEffect(() => {
     console.log("ClassesScheduled triggering refetch due to term change");
     refetch();
-  }, [termData?.id, refetch]);
+  }, [termData?.id, forceRefresh, refetch]);
 
   // Rest of the component remains the same
   const getInitials = (firstName: string, lastName: string) => {

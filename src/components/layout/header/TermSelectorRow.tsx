@@ -4,6 +4,8 @@ import { useTermSelection } from "@/hooks/useTermSelection";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useEffect } from "react";
+import { useToast } from "@/components/ui/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
 
 export function TermSelectorRow() {
   const {
@@ -17,27 +19,49 @@ export function TermSelectorRow() {
     terms,
     invalidateTermDependentQueries
   } = useTermSelection();
+  
+  const toast = useToast();
+  const queryClient = useQueryClient();
 
   const handleYearChange = (value: string) => {
     console.log('TermSelector - Changing year to:', value);
     setSelectedYear(parseInt(value));
+    
+    // Force immediate invalidation
+    setTimeout(() => {
+      invalidateTermDependentQueries();
+    }, 10);
   };
 
   const handleTermChange = (value: string) => {
     console.log('TermSelector - Changing term to:', value);
     if (value === '1' || value === '2' || value === '3' || value === '4') {
       setSelectedTermNumber(value);
+      
+      // Force immediate invalidation
+      setTimeout(() => {
+        invalidateTermDependentQueries();
+      }, 10);
     }
   };
 
   // Force an immediate refetch when term data changes
   useEffect(() => {
     if (termData) {
-      console.log('TermSelector - Term data updated, invalidating queries');
-      // Use the explicit invalidation function
-      invalidateTermDependentQueries();
+      console.log('TermSelector - Term data updated, aggressively invalidating queries');
+      
+      // Use a short timeout to ensure state updates have settled
+      setTimeout(() => {
+        // Forcefully invalidate and refetch every query in the cache
+        queryClient.invalidateQueries({ type: 'all' });
+        
+        toast.toast({
+          description: `Term updated to Term ${termData.term_number}, ${selectedYear}`,
+          duration: 2000,
+        });
+      }, 100);
     }
-  }, [termData, invalidateTermDependentQueries]);
+  }, [termData?.id, queryClient, toast, termData, selectedYear]);
 
   return (
     <div className="border-b border-mckaynine-700 bg-mckaynine-600">

@@ -13,19 +13,21 @@ interface RecentBookingsProps {
 }
 
 export function RecentBookings({ branchId }: RecentBookingsProps) {
-  const { termData, termDateRange } = useTermSelection();
+  const { termData, termDateRange, invalidateTermDependentQueries } = useTermSelection();
   const [currentTermId, setCurrentTermId] = useState<string | null>(null);
+  const [forceRefresh, setForceRefresh] = useState(0);
   
-  // Update current term ID for comparison
+  // Update current term ID for comparison and force refresh
   useEffect(() => {
     if (termData?.id !== currentTermId) {
       console.log("Recent bookings detected term change from", currentTermId, "to", termData?.id);
       setCurrentTermId(termData?.id || null);
+      setForceRefresh(prev => prev + 1);
     }
   }, [termData?.id, currentTermId]);
 
   const { data: bookings, isLoading, refetch } = useQuery({
-    queryKey: ['recent-bookings', branchId, termData?.id],
+    queryKey: ['recent-bookings', branchId, termData?.id, forceRefresh],
     queryFn: async () => {
       // Don't fetch data if no branch is selected
       if (!branchId) return [];
@@ -72,14 +74,30 @@ export function RecentBookings({ branchId }: RecentBookingsProps) {
       return data;
     },
     enabled: !!branchId,
-    staleTime: 0 // Disable stale time to always refetch
+    staleTime: 0, // Disable stale time to always refetch
+    refetchOnWindowFocus: true, // Refetch when window regains focus
   });
 
   // Force refetch when term changes
   useEffect(() => {
     console.log("RecentBookings triggering refetch due to term change");
     refetch();
-  }, [termData?.id, refetch]);
+  }, [termData?.id, forceRefresh, refetch]);
+
+  // Also listen for term dependent query invalidations
+  useEffect(() => {
+    const handleInvalidation = () => {
+      console.log("RecentBookings responding to query invalidation");
+      refetch();
+    };
+    
+    // Setup listener for global term change events
+    window.addEventListener('term-changed', handleInvalidation);
+    
+    return () => {
+      window.removeEventListener('term-changed', handleInvalidation);
+    };
+  }, [refetch]);
 
   const getStatusColor = (status: string) => {
     switch(status) {
@@ -132,7 +150,7 @@ export function RecentBookings({ branchId }: RecentBookingsProps) {
                   <TableCell>
                     {booking.class_schedules?.classes?.name}
                     <div className="text-xs text-gray-500">
-                      {new Date(booking.class_schedules?.start_time).toLocaleString(undefined, {
+                      {booking.class_schedules?.start_time && new Date(booking.class_schedules?.start_time).toLocaleString(undefined, {
                         month: 'short',
                         day: 'numeric',
                         hour: '2-digit',

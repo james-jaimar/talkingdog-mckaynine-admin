@@ -10,6 +10,7 @@ export function useDashboardStats() {
   const { termData } = useTermSelection();
   const queryClient = useQueryClient();
   const [isLoading, setIsLoading] = useState(false);
+  const [refetchCounter, setRefetchCounter] = useState(0);
   
   // Track when refetches are happening to show loading states
   useEffect(() => {
@@ -26,7 +27,7 @@ export function useDashboardStats() {
   
   // Clients count
   const { data: clientCount, refetch: refetchClients } = useQuery({
-    queryKey: ['dashboard-stats-clients', currentBranch?.id, termData?.id],
+    queryKey: ['dashboard-stats-clients', currentBranch?.id, termData?.id, refetchCounter],
     queryFn: async () => {
       console.log("Fetching clients count for branch:", currentBranch?.id);
       if (!currentBranch?.id) return 0;
@@ -37,11 +38,12 @@ export function useDashboardStats() {
       return count || 0;
     },
     enabled: !!currentBranch?.id,
+    staleTime: 0, // Always fetch fresh data
   });
 
   // Dogs count - completely reworked query
   const { data: dogCount, refetch: refetchDogs } = useQuery({
-    queryKey: ['dashboard-stats-dogs', currentBranch?.id, termData?.id],
+    queryKey: ['dashboard-stats-dogs', currentBranch?.id, termData?.id, refetchCounter],
     queryFn: async () => {
       console.log("Fetching dogs count for branch:", currentBranch?.id);
       if (!currentBranch?.id) return 0;
@@ -66,11 +68,12 @@ export function useDashboardStats() {
       return count || 0;
     },
     enabled: !!currentBranch?.id,
+    staleTime: 0, // Always fetch fresh data
   });
 
   // Bookings count - updated to filter by term
   const { data: bookingCount, refetch: refetchBookings } = useQuery({
-    queryKey: ['dashboard-stats-bookings', currentBranch?.id, termData?.id],
+    queryKey: ['dashboard-stats-bookings', currentBranch?.id, termData?.id, refetchCounter],
     queryFn: async () => {
       console.log("Fetching bookings count for branch:", currentBranch?.id, "and term:", termData?.id);
       if (!currentBranch?.id) return 0;
@@ -97,11 +100,12 @@ export function useDashboardStats() {
       return count || 0;
     },
     enabled: !!currentBranch?.id,
+    staleTime: 0, // Always fetch fresh data
   });
 
   // Classes scheduled count - updated to filter by term
   const { data: upcomingClassCount, refetch: refetchClasses } = useQuery({
-    queryKey: ['dashboard-stats-classes', currentBranch?.id, termData?.id],
+    queryKey: ['dashboard-stats-classes', currentBranch?.id, termData?.id, refetchCounter],
     queryFn: async () => {
       console.log("Fetching upcoming classes for branch:", currentBranch?.id, "and term:", termData?.id);
       if (!currentBranch?.id) return 0;
@@ -129,12 +133,16 @@ export function useDashboardStats() {
       return count || 0;
     },
     enabled: !!currentBranch?.id,
+    staleTime: 0, // Always fetch fresh data
   });
 
-  // Function to refetch all stats
+  // Function to refetch all stats with a force refresh mechanism
   const refetchAllStats = useCallback(() => {
-    console.log("Refetching all dashboard stats");
+    console.log("Forcefully refetching all dashboard stats");
     setIsLoading(true);
+    
+    // Increment counter to force query key change
+    setRefetchCounter(prev => prev + 1);
     
     // Force refetch of all stats
     Promise.all([
