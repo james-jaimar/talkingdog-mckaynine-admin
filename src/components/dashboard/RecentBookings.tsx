@@ -1,3 +1,4 @@
+
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
@@ -5,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useTermSelection } from '@/hooks/useTermSelection';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 interface RecentBookingsProps {
   branchId?: string;
@@ -13,6 +14,15 @@ interface RecentBookingsProps {
 
 export function RecentBookings({ branchId }: RecentBookingsProps) {
   const { termData, termDateRange } = useTermSelection();
+  const [currentTermId, setCurrentTermId] = useState<string | null>(null);
+  
+  // Update current term ID for comparison
+  useEffect(() => {
+    if (termData?.id !== currentTermId) {
+      console.log("Recent bookings detected term change from", currentTermId, "to", termData?.id);
+      setCurrentTermId(termData?.id || null);
+    }
+  }, [termData?.id, currentTermId]);
 
   const { data: bookings, isLoading, refetch } = useQuery({
     queryKey: ['recent-bookings', branchId, termData?.id],
@@ -20,7 +30,7 @@ export function RecentBookings({ branchId }: RecentBookingsProps) {
       // Don't fetch data if no branch is selected
       if (!branchId) return [];
       
-      console.log('Fetching recent bookings with term date range:', termDateRange);
+      console.log('Fetching recent bookings with term ID:', termData?.id);
       
       // Build the query with branch filter
       let query = supabase
@@ -62,11 +72,12 @@ export function RecentBookings({ branchId }: RecentBookingsProps) {
       return data;
     },
     enabled: !!branchId,
-    staleTime: 30000 // 30 seconds cache time
+    staleTime: 0 // Disable stale time to always refetch
   });
 
-  // Refetch when term changes
+  // Force refetch when term changes
   useEffect(() => {
+    console.log("RecentBookings triggering refetch due to term change");
     refetch();
   }, [termData?.id, refetch]);
 

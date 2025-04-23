@@ -8,26 +8,48 @@ import { useDashboardStats } from "@/hooks/useDashboardStats";
 import { Users, Dog, Book, Calendar } from "lucide-react";
 import { useTermSelection } from "@/hooks/useTermSelection";
 import { TermDisplay } from "@/components/dashboard/TermDisplay";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function Dashboard() {
   const { currentBranch } = useBranch();
-  const { termData } = useTermSelection();
+  const queryClient = useQueryClient();
+  const { termData, termDateRange, isTermLoading } = useTermSelection();
+  const [termId, setTermId] = useState<string | null>(null);
+  
   const {
     clientCount,
     dogCount,
     bookingCount,
     upcomingClassCount,
-    refetchAllStats
+    refetchAllStats,
+    isLoading: statsLoading
   } = useDashboardStats();
 
-  // Force refetch when term changes
+  // Track term changes and force refetch
   useEffect(() => {
-    if (termData) {
-      console.log("Dashboard detected term change, refetching stats");
+    console.log("Dashboard detected term data change:", termData?.id);
+    
+    // Only trigger refetch if term ID actually changed
+    if (termData?.id !== termId) {
+      console.log("Term ID changed from", termId, "to", termData?.id, "- refetching stats");
+      setTermId(termData?.id || null);
+      
+      // Invalidate all relevant queries
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats-clients'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats-dogs'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats-bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats-classes'] });
+      queryClient.invalidateQueries({ queryKey: ['recent-bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['upcoming-classes'] });
+      
+      // Also call our refetch function
       refetchAllStats();
     }
-  }, [termData, refetchAllStats]);
+  }, [termData, termId, refetchAllStats, queryClient]);
+
+  // Determine if we're in a loading state
+  const isLoading = isTermLoading || statsLoading || !termId;
 
   return (
     <DashboardLayout>
@@ -45,25 +67,25 @@ export default function Dashboard() {
         <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-4">
           <StatsCard
             title="Clients"
-            value={clientCount ?? "-"}
+            value={isLoading ? "Loading..." : clientCount ?? "-"}
             icon={Users}
             description="Registered clients"
           />
           <StatsCard
             title="Dogs"
-            value={dogCount ?? "-"}
+            value={isLoading ? "Loading..." : dogCount ?? "-"}
             icon={Dog}
             description="Total dogs"
           />
           <StatsCard
             title="Bookings"
-            value={bookingCount ?? "-"}
+            value={isLoading ? "Loading..." : bookingCount ?? "-"}
             icon={Book}
             description={`Bookings ${termData ? `in Term ${termData.term_number}` : ''}`}
           />
           <StatsCard
             title="Upcoming Classes"
-            value={upcomingClassCount ?? "-"}
+            value={isLoading ? "Loading..." : upcomingClassCount ?? "-"}
             icon={Calendar}
             description={`Classes ${termData ? `in Term ${termData.term_number}` : 'scheduled'}`}
           />

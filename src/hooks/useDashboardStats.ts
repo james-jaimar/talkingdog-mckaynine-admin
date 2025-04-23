@@ -3,17 +3,32 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useBranch } from "@/context/BranchContext";
 import { useTermSelection } from "@/hooks/useTermSelection";
-import { useCallback } from "react";
+import { useCallback, useState, useEffect } from "react";
 
 export function useDashboardStats() {
   const { currentBranch } = useBranch();
   const { termData } = useTermSelection();
   const queryClient = useQueryClient();
+  const [isLoading, setIsLoading] = useState(false);
+  
+  // Track when refetches are happening to show loading states
+  useEffect(() => {
+    // Reset loading state when term data changes
+    setIsLoading(true);
+    
+    // Clear loading state after a short delay
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1000);
+    
+    return () => clearTimeout(timer);
+  }, [termData?.id]);
   
   // Clients count
   const { data: clientCount, refetch: refetchClients } = useQuery({
     queryKey: ['dashboard-stats-clients', currentBranch?.id, termData?.id],
     queryFn: async () => {
+      console.log("Fetching clients count for branch:", currentBranch?.id);
       if (!currentBranch?.id) return 0;
       const { count } = await supabase
         .from('clients')
@@ -28,6 +43,7 @@ export function useDashboardStats() {
   const { data: dogCount, refetch: refetchDogs } = useQuery({
     queryKey: ['dashboard-stats-dogs', currentBranch?.id, termData?.id],
     queryFn: async () => {
+      console.log("Fetching dogs count for branch:", currentBranch?.id);
       if (!currentBranch?.id) return 0;
       
       // Use a different approach: first get all clients from this branch
@@ -56,6 +72,7 @@ export function useDashboardStats() {
   const { data: bookingCount, refetch: refetchBookings } = useQuery({
     queryKey: ['dashboard-stats-bookings', currentBranch?.id, termData?.id],
     queryFn: async () => {
+      console.log("Fetching bookings count for branch:", currentBranch?.id, "and term:", termData?.id);
       if (!currentBranch?.id) return 0;
       
       let query = supabase
@@ -76,6 +93,7 @@ export function useDashboardStats() {
         return 0;
       }
       
+      console.log("Found bookings:", count);
       return count || 0;
     },
     enabled: !!currentBranch?.id,
@@ -85,6 +103,7 @@ export function useDashboardStats() {
   const { data: upcomingClassCount, refetch: refetchClasses } = useQuery({
     queryKey: ['dashboard-stats-classes', currentBranch?.id, termData?.id],
     queryFn: async () => {
+      console.log("Fetching upcoming classes for branch:", currentBranch?.id, "and term:", termData?.id);
       if (!currentBranch?.id) return 0;
       const today = new Date().toISOString();
       
@@ -106,6 +125,7 @@ export function useDashboardStats() {
         return 0;
       }
       
+      console.log("Found upcoming classes:", count);
       return count || 0;
     },
     enabled: !!currentBranch?.id,
@@ -114,10 +134,17 @@ export function useDashboardStats() {
   // Function to refetch all stats
   const refetchAllStats = useCallback(() => {
     console.log("Refetching all dashboard stats");
-    refetchClients();
-    refetchDogs();
-    refetchBookings();
-    refetchClasses();
+    setIsLoading(true);
+    
+    // Force refetch of all stats
+    Promise.all([
+      refetchClients(),
+      refetchDogs(),
+      refetchBookings(),
+      refetchClasses()
+    ]).finally(() => {
+      setTimeout(() => setIsLoading(false), 500);
+    });
   }, [refetchClients, refetchDogs, refetchBookings, refetchClasses]);
 
   return {
@@ -125,6 +152,7 @@ export function useDashboardStats() {
     dogCount,
     bookingCount,
     upcomingClassCount,
-    refetchAllStats
+    refetchAllStats,
+    isLoading
   };
 }

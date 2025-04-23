@@ -1,3 +1,4 @@
+
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -5,7 +6,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useTermSelection } from '@/hooks/useTermSelection';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 interface ClassesScheduledProps {
   branchId?: string;
@@ -14,6 +15,15 @@ interface ClassesScheduledProps {
 export function ClassesScheduled({ branchId }: ClassesScheduledProps) {
   const isMobile = useIsMobile();
   const { termData } = useTermSelection();
+  const [currentTermId, setCurrentTermId] = useState<string | null>(null);
+
+  // Track term changes
+  useEffect(() => {
+    if (termData?.id !== currentTermId) {
+      console.log("ClassesScheduled detected term change from", currentTermId, "to", termData?.id);
+      setCurrentTermId(termData?.id || null);
+    }
+  }, [termData?.id, currentTermId]);
   
   const { data: classes, isLoading, refetch } = useQuery({
     queryKey: ['upcoming-classes', branchId, termData?.id],
@@ -61,11 +71,12 @@ export function ClassesScheduled({ branchId }: ClassesScheduledProps) {
       return data;
     },
     enabled: !!branchId, // Only run query when branchId is available
-    staleTime: 30000 // 30 seconds
+    staleTime: 0 // Disable stale time to force refetch
   });
 
   // Refetch when term changes
   useEffect(() => {
+    console.log("ClassesScheduled triggering refetch due to term change");
     refetch();
   }, [termData?.id, refetch]);
 

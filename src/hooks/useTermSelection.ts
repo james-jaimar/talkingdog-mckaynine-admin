@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -32,24 +32,33 @@ export function useTermSelection() {
   const [selectedYear, setSelectedYearState] = useState<number>(storedData.year);
   const [selectedTermNumber, setSelectedTermNumberState] = useState<TermNumber>(storedData.termNumber as TermNumber);
 
-  // Wrapper functions to update state and invalidate queries
-  const setSelectedYear = (year: number) => {
+  // Wrapper functions to update state and invalidate queries - completely rewritten for better reactivity
+  const setSelectedYear = useCallback((year: number) => {
+    console.log('Setting selected year to:', year);
     setSelectedYearState(year);
     
-    // We'll invalidate queries after the state update is complete
-    setTimeout(() => {
-      queryClient.invalidateQueries();
-    }, 100);
-  };
+    // Invalidate immediately to trigger updates
+    queryClient.invalidateQueries({ type: 'all' });
+  }, [queryClient]);
   
-  const setSelectedTermNumber = (termNumber: TermNumber) => {
+  const setSelectedTermNumber = useCallback((termNumber: TermNumber) => {
+    console.log('Setting selected term number to:', termNumber);
     setSelectedTermNumberState(termNumber);
     
-    // We'll invalidate queries after the state update is complete
-    setTimeout(() => {
-      queryClient.invalidateQueries();
-    }, 100);
-  };
+    // Invalidate immediately to trigger updates
+    queryClient.invalidateQueries({ type: 'all' });
+  }, [queryClient]);
+
+  // Explicit function to invalidate all term-dependent queries
+  const invalidateTermDependentQueries = useCallback(() => {
+    console.log('Invalidating all term-dependent queries');
+    queryClient.invalidateQueries({ queryKey: ['dashboard-stats-clients'] });
+    queryClient.invalidateQueries({ queryKey: ['dashboard-stats-dogs'] });
+    queryClient.invalidateQueries({ queryKey: ['dashboard-stats-bookings'] });
+    queryClient.invalidateQueries({ queryKey: ['dashboard-stats-classes'] });
+    queryClient.invalidateQueries({ queryKey: ['recent-bookings'] });
+    queryClient.invalidateQueries({ queryKey: ['upcoming-classes'] });
+  }, [queryClient]);
 
   // Save to localStorage when selections change
   useEffect(() => {
@@ -99,6 +108,14 @@ export function useTermSelection() {
     staleTime: 60000, // 1 minute cache
   });
 
+  // When term data changes, invalidate all dependent queries
+  useEffect(() => {
+    if (termData) {
+      console.log('Term data changed, invalidating all dependent queries');
+      invalidateTermDependentQueries();
+    }
+  }, [termData, invalidateTermDependentQueries]);
+
   // Generate years array (2025 to 2029)
   const years = Array.from({ length: 5 }, (_, i) => 2025 + i);
   
@@ -135,5 +152,6 @@ export function useTermSelection() {
     termDateRange,
     years,
     terms,
+    invalidateTermDependentQueries
   };
 }

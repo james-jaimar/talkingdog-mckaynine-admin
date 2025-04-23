@@ -4,7 +4,6 @@ import { useTermSelection } from "@/hooks/useTermSelection";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useEffect } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 
 export function TermSelectorRow() {
   const {
@@ -15,18 +14,17 @@ export function TermSelectorRow() {
     termData,
     isTermLoading,
     years,
-    terms
+    terms,
+    invalidateTermDependentQueries
   } = useTermSelection();
-  
-  const queryClient = useQueryClient();
 
   const handleYearChange = (value: string) => {
-    console.log('Changing year to:', value);
+    console.log('TermSelector - Changing year to:', value);
     setSelectedYear(parseInt(value));
   };
 
   const handleTermChange = (value: string) => {
-    console.log('Changing term to:', value);
+    console.log('TermSelector - Changing term to:', value);
     if (value === '1' || value === '2' || value === '3' || value === '4') {
       setSelectedTermNumber(value);
     }
@@ -35,16 +33,11 @@ export function TermSelectorRow() {
   // Force an immediate refetch when term data changes
   useEffect(() => {
     if (termData) {
-      console.log('Term data updated, invalidating queries');
-      // Invalidate all dependent queries
-      queryClient.invalidateQueries({ queryKey: ['dashboard-stats-clients'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard-stats-dogs'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard-stats-bookings'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard-stats-classes'] });
-      queryClient.invalidateQueries({ queryKey: ['recent-bookings'] });
-      queryClient.invalidateQueries({ queryKey: ['upcoming-classes'] });
+      console.log('TermSelector - Term data updated, invalidating queries');
+      // Use the explicit invalidation function
+      invalidateTermDependentQueries();
     }
-  }, [termData, queryClient]);
+  }, [termData, invalidateTermDependentQueries]);
 
   return (
     <div className="border-b border-mckaynine-700 bg-mckaynine-600">
