@@ -1,3 +1,4 @@
+
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,20 +15,10 @@ interface ClassesScheduledProps {
 export function ClassesScheduled({ branchId }: ClassesScheduledProps) {
   const isMobile = useIsMobile();
   const { termData } = useTermSelection();
-  const [currentTermId, setCurrentTermId] = useState<string | null>(null);
-  const [forceRefresh, setForceRefresh] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Track term changes and force refresh
-  useEffect(() => {
-    if (termData?.id !== currentTermId) {
-      console.log("ClassesScheduled detected term change from", currentTermId, "to", termData?.id);
-      setCurrentTermId(termData?.id || null);
-      setForceRefresh(prev => prev + 1);
-    }
-  }, [termData?.id, currentTermId]);
-  
   const { data: classes, isLoading, refetch } = useQuery({
-    queryKey: ['upcoming-classes', branchId, termData?.id, forceRefresh],
+    queryKey: ['upcoming-classes', branchId, termData?.id],
     queryFn: async () => {
       // Don't fetch data if no branch is selected
       if (!branchId) return [];
@@ -71,18 +62,24 @@ export function ClassesScheduled({ branchId }: ClassesScheduledProps) {
       console.log('Upcoming classes fetched:', data?.length || 0);
       return data;
     },
-    enabled: !!branchId, // Only run query when branchId is available
-    staleTime: 0, // Always fetch fresh data
-    refetchOnWindowFocus: true, // Refetch when window regains focus
+    enabled: !!branchId,
+    staleTime: 30 * 1000, // Cache for 30 seconds
   });
 
-  // Force refetch when term changes
+  // Listen for global term change events
   useEffect(() => {
-    console.log("ClassesScheduled triggering refetch due to term change");
-    refetch();
-  }, [termData?.id, forceRefresh, refetch]);
+    const handleTermChanged = () => {
+      console.log("ClassesScheduled responding to term change event");
+      setIsRefreshing(true);
+      refetch().finally(() => setIsRefreshing(false));
+    };
+    
+    window.addEventListener('term-changed', handleTermChanged);
+    return () => {
+      window.removeEventListener('term-changed', handleTermChanged);
+    };
+  }, [refetch]);
 
-  // Rest of the component remains the same
   const getInitials = (firstName: string, lastName: string) => {
     return `${firstName?.[0] || ''}${lastName?.[0] || ''}`;
   };
@@ -104,7 +101,7 @@ export function ClassesScheduled({ branchId }: ClassesScheduledProps) {
       <CardContent>
         {!branchId ? (
           <div className="text-center py-4 text-gray-500">Please select a branch</div>
-        ) : isLoading ? (
+        ) : isLoading || isRefreshing ? (
           <div className="space-y-3">
             <Skeleton className="h-20 w-full" />
             <Skeleton className="h-20 w-full" />
@@ -146,7 +143,7 @@ export function ClassesScheduled({ branchId }: ClassesScheduledProps) {
           </div>
         ) : (
           <div className="text-center py-4 text-gray-500 text-sm sm:text-base">
-            {termData?.id ? `No upcoming classes scheduled for Term ${termData.term_number}` : 'No upcoming classes scheduled'}
+            {termData ? `No upcoming classes scheduled for Term ${termData.term_number}` : 'No upcoming classes scheduled'}
           </div>
         )}
       </CardContent>

@@ -13,21 +13,11 @@ interface RecentBookingsProps {
 }
 
 export function RecentBookings({ branchId }: RecentBookingsProps) {
-  const { termData, termDateRange, invalidateTermDependentQueries } = useTermSelection();
-  const [currentTermId, setCurrentTermId] = useState<string | null>(null);
-  const [forceRefresh, setForceRefresh] = useState(0);
-  
-  // Update current term ID for comparison and force refresh
-  useEffect(() => {
-    if (termData?.id !== currentTermId) {
-      console.log("Recent bookings detected term change from", currentTermId, "to", termData?.id);
-      setCurrentTermId(termData?.id || null);
-      setForceRefresh(prev => prev + 1);
-    }
-  }, [termData?.id, currentTermId]);
+  const { termData } = useTermSelection();
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const { data: bookings, isLoading, refetch } = useQuery({
-    queryKey: ['recent-bookings', branchId, termData?.id, forceRefresh],
+    queryKey: ['recent-bookings', branchId, termData?.id],
     queryFn: async () => {
       // Don't fetch data if no branch is selected
       if (!branchId) return [];
@@ -56,14 +46,6 @@ export function RecentBookings({ branchId }: RecentBookingsProps) {
       if (termData?.id) {
         query = query.eq('class_schedules.term_id', termData.id);
       }
-      // Otherwise use date filters if term range is available
-      else if (termDateRange?.startDate) {
-        query = query.gte('created_at', termDateRange.startDate);
-        
-        if (termDateRange?.endDate) {
-          query = query.lte('created_at', termDateRange.endDate);
-        }
-      }
       
       const { data, error } = await query
         .order('created_at', { ascending: false })
@@ -74,28 +56,20 @@ export function RecentBookings({ branchId }: RecentBookingsProps) {
       return data;
     },
     enabled: !!branchId,
-    staleTime: 0, // Disable stale time to always refetch
-    refetchOnWindowFocus: true, // Refetch when window regains focus
+    staleTime: 30 * 1000, // Cache for 30 seconds
   });
 
-  // Force refetch when term changes
+  // Listen for global term change events
   useEffect(() => {
-    console.log("RecentBookings triggering refetch due to term change");
-    refetch();
-  }, [termData?.id, forceRefresh, refetch]);
-
-  // Also listen for term dependent query invalidations
-  useEffect(() => {
-    const handleInvalidation = () => {
-      console.log("RecentBookings responding to query invalidation");
-      refetch();
+    const handleTermChanged = () => {
+      console.log("RecentBookings responding to term change event");
+      setIsRefreshing(true);
+      refetch().finally(() => setIsRefreshing(false));
     };
     
-    // Setup listener for global term change events
-    window.addEventListener('term-changed', handleInvalidation);
-    
+    window.addEventListener('term-changed', handleTermChanged);
     return () => {
-      window.removeEventListener('term-changed', handleInvalidation);
+      window.removeEventListener('term-changed', handleTermChanged);
     };
   }, [refetch]);
 
@@ -125,7 +99,7 @@ export function RecentBookings({ branchId }: RecentBookingsProps) {
       <CardContent>
         {!branchId ? (
           <div className="text-center py-4 text-gray-500">Please select a branch</div>
-        ) : isLoading ? (
+        ) : isLoading || isRefreshing ? (
           <div className="space-y-2">
             <Skeleton className="h-12 w-full" />
             <Skeleton className="h-12 w-full" />

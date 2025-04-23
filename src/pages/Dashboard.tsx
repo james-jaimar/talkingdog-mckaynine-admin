@@ -8,16 +8,11 @@ import { useDashboardStats } from "@/hooks/useDashboardStats";
 import { Users, Dog, Book, Calendar } from "lucide-react";
 import { useTermSelection } from "@/hooks/useTermSelection";
 import { TermDisplay } from "@/components/dashboard/TermDisplay";
-import { useEffect, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { useToast } from "@/components/ui/use-toast";
+import { useEffect } from "react";
 
 export default function Dashboard() {
   const { currentBranch } = useBranch();
-  const queryClient = useQueryClient();
-  const { termData, termDateRange, isTermLoading } = useTermSelection();
-  const [termId, setTermId] = useState<string | null>(null);
-  const { toast } = useToast();
+  const { termData, isTermLoading } = useTermSelection();
   
   const {
     clientCount,
@@ -28,27 +23,26 @@ export default function Dashboard() {
     isLoading: statsLoading
   } = useDashboardStats();
 
-  // Track term changes and force refetch
+  // Track term changes and force refetch once
   useEffect(() => {
-    console.log("Dashboard detected term data change:", termData?.id);
+    // Listen for term change events globally
+    const handleTermChanged = () => {
+      console.log("Dashboard detected global term change event");
+      refetchAllStats();
+    };
     
-    // Only trigger refetch if term ID actually changed
-    if (termData?.id !== termId) {
-      console.log("Term ID changed from", termId, "to", termData?.id, "- refetching stats");
-      setTermId(termData?.id || null);
-      
-      // Invalidate all relevant queries
-      queryClient.invalidateQueries();
-      
-      // Also call our refetch function with a short delay
-      setTimeout(() => {
-        refetchAllStats();
-      }, 50);
-    }
-  }, [termData, termId, refetchAllStats, queryClient]);
+    window.addEventListener('term-changed', handleTermChanged);
+    
+    // Initial refetch on mount
+    refetchAllStats();
+    
+    return () => {
+      window.removeEventListener('term-changed', handleTermChanged);
+    };
+  }, [refetchAllStats]);
 
   // Determine if we're in a loading state
-  const isLoading = isTermLoading || statsLoading || !termId;
+  const isLoading = isTermLoading || statsLoading;
 
   return (
     <DashboardLayout>

@@ -2,7 +2,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/components/ui/use-toast';
 
 type TermNumber = '1' | '2' | '3' | '4';
 
@@ -11,7 +10,7 @@ const TERM_STORAGE_KEY = 'mckaynine-selected-term';
 
 export function useTermSelection() {
   const queryClient = useQueryClient();
-  const previousTermId = useRef<string | null>(null);
+  const termChangeEventRef = useRef<CustomEvent | null>(null);
   
   // Initialize from localStorage if available
   const getStoredTermData = () => {
@@ -33,72 +32,47 @@ export function useTermSelection() {
   const storedData = getStoredTermData();
   const [selectedYear, setSelectedYearState] = useState<number>(storedData.year);
   const [selectedTermNumber, setSelectedTermNumberState] = useState<TermNumber>(storedData.termNumber as TermNumber);
-  const [forceUpdate, setForceUpdate] = useState<number>(0);
 
-  // Force reactivity by incrementing this counter whenever selections change
-  const triggerRefetch = useCallback(() => {
-    setForceUpdate(prev => prev + 1);
-  }, []);
-
-  // Wrapper functions to update state and invalidate queries
+  // Wrapper functions to update state and persist to localStorage
   const setSelectedYear = useCallback((year: number) => {
     console.log('Setting selected year to:', year);
     setSelectedYearState(year);
-    triggerRefetch();
     
-    // Invalidate immediately to trigger updates
-    setTimeout(() => {
-      queryClient.invalidateQueries({ type: 'all' });
-    }, 10);
-  }, [queryClient, triggerRefetch]);
+    try {
+      localStorage.setItem(
+        TERM_STORAGE_KEY, 
+        JSON.stringify({ year: year, termNumber: selectedTermNumber })
+      );
+    } catch (error) {
+      console.error('Error saving year to localStorage:', error);
+    }
+  }, [selectedTermNumber]);
   
   const setSelectedTermNumber = useCallback((termNumber: TermNumber) => {
     console.log('Setting selected term number to:', termNumber);
     setSelectedTermNumberState(termNumber);
-    triggerRefetch();
     
-    // Invalidate immediately to trigger updates
-    setTimeout(() => {
-      queryClient.invalidateQueries({ type: 'all' });
-    }, 10);
-  }, [queryClient, triggerRefetch]);
-
-  // Explicit function to invalidate all term-dependent queries
-  const invalidateTermDependentQueries = useCallback(() => {
-    console.log('FORCE INVALIDATING all term-dependent queries');
-    
-    queryClient.invalidateQueries({ type: 'all' });
-    
-    // Specific invalidations for important queries
-    queryClient.invalidateQueries({ queryKey: ['dashboard-stats-clients'] });
-    queryClient.invalidateQueries({ queryKey: ['dashboard-stats-dogs'] });
-    queryClient.invalidateQueries({ queryKey: ['dashboard-stats-bookings'] });
-    queryClient.invalidateQueries({ queryKey: ['dashboard-stats-classes'] });
-    queryClient.invalidateQueries({ queryKey: ['recent-bookings'] });
-    queryClient.invalidateQueries({ queryKey: ['upcoming-classes'] });
-    queryClient.invalidateQueries({ queryKey: ['classes'] });
-    
-    triggerRefetch();
-  }, [queryClient, triggerRefetch]);
-
-  // Save to localStorage when selections change
-  useEffect(() => {
     try {
       localStorage.setItem(
         TERM_STORAGE_KEY, 
-        JSON.stringify({ year: selectedYear, termNumber: selectedTermNumber })
+        JSON.stringify({ year: selectedYear, termNumber: termNumber })
       );
     } catch (error) {
-      console.error('Error saving term data to localStorage:', error);
+      console.error('Error saving term number to localStorage:', error);
     }
-  }, [selectedYear, selectedTermNumber]);
+  }, [selectedYear]);
 
-  const { data: termData, isLoading: isTermLoading, error, refetch: refetchTermData } = useQuery({
-    queryKey: ['term', selectedYear, selectedTermNumber, forceUpdate],
+  // Fetch term data based on selected year and term number
+  const { 
+    data: termData, 
+    isLoading: isTermLoading, 
+    error, 
+    refetch: refetchTermData 
+  } = useQuery({
+    queryKey: ['term', selectedYear, selectedTermNumber],
     queryFn: async () => {
-      console.log(`Fetching term data for year ${selectedYear} and term ${selectedTermNumber} (forceUpdate: ${forceUpdate})`);
+      console.log(`Fetching term data for year ${selectedYear} and term ${selectedTermNumber}`);
       
-      // Use proper filter syntax for Supabase
       const { data, error } = await supabase
         .from('terms')
         .select(`
@@ -111,37 +85,45 @@ export function useTermSelection() {
           )
         `)
         .eq('academic_years.year', selectedYear)
-        .eq('term_number', selectedTermNumber);
+        .eq('term_number', selectedTermNumber)
+        .single();
 
       if (error) {
         console.error('Error fetching term data:', error);
-        throw error;
+        return null;
       }
       
-      if (!data || data.length === 0) {
+      if (!data) {
         console.log(`No term found for year ${selectedYear} and term ${selectedTermNumber}`);
         return null;
       }
       
-      console.log('Term data fetched successfully:', data[0]);
-      return data[0];
+      console.log('Term data fetched successfully:', data);
+      return data;
     },
-    staleTime: 0, // Always fetch fresh data
-    retry: false, // Don't retry on failure
+    staleTime: 60 * 1000, // Cache term data for 60 seconds
   });
-
-  // When term data changes, detect actual changes in term ID
+  
+  // When term data changes, invalidate specific dependent queries
   useEffect(() => {
-    if (termData?.id && termData.id !== previousTermId.current) {
-      console.log(`Term ID changed from ${previousTermId.current} to ${termData.id} - triggering updates`);
-      previousTermId.current = termData.id;
+    if (termData?.id) {
+      console.log('Term data updated, invalidating specific dependent queries');
       
-      // Short delay to ensure state has propagated
-      setTimeout(() => {
-        invalidateTermDependentQueries();
-      }, 10);
+      // Create a custom event to signal term change
+      if (!termChangeEventRef.current) {
+        termChangeEventRef.current = new CustomEvent('term-changed', { 
+          detail: { termId: termData.id } 
+        });
+        window.dispatchEvent(termChangeEventRef.current);
+      }
+      
+      // Only invalidate specific queries that depend on term
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats-bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats-classes'] });
+      queryClient.invalidateQueries({ queryKey: ['recent-bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['upcoming-classes'] });
     }
-  }, [termData?.id, invalidateTermDependentQueries]);
+  }, [termData, queryClient]);
 
   // Generate years array (2025 to 2029)
   const years = Array.from({ length: 5 }, (_, i) => 2025 + i);
@@ -150,16 +132,20 @@ export function useTermSelection() {
   const terms: TermNumber[] = ['1', '2', '3', '4'];
   
   // Get date range for the selected term
-  const getTermDateRange = useCallback(() => {
-    if (!termData) return null;
-    
-    return {
-      startDate: termData.start_date,
-      endDate: termData.end_date
-    };
-  }, [termData]);
+  const termDateRange = termData ? {
+    startDate: termData.start_date,
+    endDate: termData.end_date
+  } : null;
 
-  const termDateRange = getTermDateRange();
+  // Function to invalidate term-dependent queries in a controlled way
+  const invalidateTermDependentQueries = useCallback(() => {
+    console.log('Invalidating term-dependent queries in a controlled manner');
+    
+    queryClient.invalidateQueries({ queryKey: ['dashboard-stats-bookings'] });
+    queryClient.invalidateQueries({ queryKey: ['dashboard-stats-classes'] });
+    queryClient.invalidateQueries({ queryKey: ['recent-bookings'] });
+    queryClient.invalidateQueries({ queryKey: ['upcoming-classes'] });
+  }, [queryClient]);
 
   return {
     selectedYear,

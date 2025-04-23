@@ -2,7 +2,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 import { corsHeaders } from '../_shared/cors.ts';
 
-const APP_ID = 'mckaynine'; // Match the APP_ID from your constants
+const APP_ID = 'mckaynine-training'; // Match the APP_ID from constants
 
 Deno.serve(async (req) => {
   // Handle CORS
@@ -153,7 +153,7 @@ Deno.serve(async (req) => {
     }
 
     // Handle trainer table synchronization
-    if (isBecomingTrainer) {
+    if (isBecomingTrainer && !wasTrainer) {
       console.log(`[manage-user-role] User is becoming a trainer, ensuring trainer record exists`);
       await syncTrainerRecord(userId, supabaseAdmin, username, fullName);
     } else if (wasTrainer && !isBecomingTrainer) {
