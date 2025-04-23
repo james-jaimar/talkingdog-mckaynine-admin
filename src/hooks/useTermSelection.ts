@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { queryClient } from '@/lib/query-client';
 
 type TermNumber = '1' | '2' | '3' | '4';
 
@@ -29,6 +30,29 @@ export function useTermSelection() {
   const storedData = getStoredTermData();
   const [selectedYear, setSelectedYear] = useState<number>(storedData.year);
   const [selectedTermNumber, setSelectedTermNumber] = useState<TermNumber>(storedData.termNumber as TermNumber);
+
+  // Wrapper functions to update state and invalidate queries
+  const updateSelectedYear = (year: number) => {
+    setSelectedYear(year);
+    // Invalidate relevant queries when term changes
+    setTimeout(() => {
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats-bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats-classes'] });
+      queryClient.invalidateQueries({ queryKey: ['recent-bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['upcoming-classes'] });
+    }, 100);
+  };
+  
+  const updateSelectedTermNumber = (termNumber: TermNumber) => {
+    setSelectedTermNumber(termNumber);
+    // Invalidate relevant queries when term changes
+    setTimeout(() => {
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats-bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats-classes'] });
+      queryClient.invalidateQueries({ queryKey: ['recent-bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['upcoming-classes'] });
+    }, 100);
+  };
 
   // Save to localStorage when selections change
   useEffect(() => {
@@ -105,9 +129,9 @@ export function useTermSelection() {
 
   return {
     selectedYear,
-    setSelectedYear,
+    setSelectedYear: updateSelectedYear,
     selectedTermNumber,
-    setSelectedTermNumber,
+    setSelectedTermNumber: updateSelectedTermNumber,
     termData,
     isTermLoading,
     error,

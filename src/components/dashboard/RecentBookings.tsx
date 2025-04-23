@@ -1,20 +1,21 @@
-
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useTermSelection } from '@/hooks/useTermSelection';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useEffect } from 'react';
 
 interface RecentBookingsProps {
   branchId?: string;
 }
 
 export function RecentBookings({ branchId }: RecentBookingsProps) {
-  const { termDateRange } = useTermSelection();
+  const { termData, termDateRange } = useTermSelection();
 
-  const { data: bookings, isLoading } = useQuery({
-    queryKey: ['recent-bookings', branchId, termDateRange?.startDate, termDateRange?.endDate],
+  const { data: bookings, isLoading, refetch } = useQuery({
+    queryKey: ['recent-bookings', branchId, termData?.id],
     queryFn: async () => {
       // Don't fetch data if no branch is selected
       if (!branchId) return [];
@@ -33,18 +34,23 @@ export function RecentBookings({ branchId }: RecentBookingsProps) {
           dogs(name),
           class_schedules(
             start_time,
+            term_id,
             classes(name)
           )
         `)
         .eq('clients.branch_id', branchId);
       
-      // Add date filters if term is selected
-      if (termDateRange?.startDate) {
-        query = query.gte('created_at', termDateRange.startDate);
+      // Filter by term if selected
+      if (termData?.id) {
+        query = query.eq('class_schedules.term_id', termData.id);
       }
-      
-      if (termDateRange?.endDate) {
-        query = query.lte('created_at', termDateRange.endDate);
+      // Otherwise use date filters if term range is available
+      else if (termDateRange?.startDate) {
+        query = query.gte('created_at', termDateRange.startDate);
+        
+        if (termDateRange?.endDate) {
+          query = query.lte('created_at', termDateRange.endDate);
+        }
       }
       
       const { data, error } = await query
@@ -55,8 +61,14 @@ export function RecentBookings({ branchId }: RecentBookingsProps) {
       console.log('Recent bookings fetched:', data?.length || 0);
       return data;
     },
-    enabled: !!branchId && !!termDateRange // Only run query when branchId and termDateRange are available
+    enabled: !!branchId,
+    staleTime: 30000 // 30 seconds cache time
   });
+
+  // Refetch when term changes
+  useEffect(() => {
+    refetch();
+  }, [termData?.id, refetch]);
 
   const getStatusColor = (status: string) => {
     switch(status) {
@@ -85,7 +97,11 @@ export function RecentBookings({ branchId }: RecentBookingsProps) {
         {!branchId ? (
           <div className="text-center py-4 text-gray-500">Please select a branch</div>
         ) : isLoading ? (
-          <div className="flex justify-center p-4">Loading bookings...</div>
+          <div className="space-y-2">
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+          </div>
         ) : bookings && bookings.length > 0 ? (
           <Table>
             <TableHeader>
@@ -129,7 +145,9 @@ export function RecentBookings({ branchId }: RecentBookingsProps) {
             </TableBody>
           </Table>
         ) : (
-          <div className="text-center py-4 text-gray-500">No recent bookings found for this term</div>
+          <div className="text-center py-4 text-gray-500">
+            {termData ? `No recent bookings found for Term ${termData.term_number}` : 'No recent bookings found'}
+          </div>
         )}
       </CardContent>
     </Card>

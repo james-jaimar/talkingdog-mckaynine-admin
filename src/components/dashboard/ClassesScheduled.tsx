@@ -4,6 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useTermSelection } from '@/hooks/useTermSelection';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useEffect } from 'react';
 
 interface ClassesScheduledProps {
   branchId?: string;
@@ -13,7 +15,7 @@ export function ClassesScheduled({ branchId }: ClassesScheduledProps) {
   const isMobile = useIsMobile();
   const { termData } = useTermSelection();
   
-  const { data: classes, isLoading } = useQuery({
+  const { data: classes, isLoading, refetch } = useQuery({
     queryKey: ['upcoming-classes', branchId, termData?.id],
     queryFn: async () => {
       // Don't fetch data if no branch is selected
@@ -30,6 +32,7 @@ export function ClassesScheduled({ branchId }: ClassesScheduledProps) {
         .select(`
           id,
           start_time,
+          term_id,
           classes!inner(
             name,
             class_type,
@@ -57,8 +60,14 @@ export function ClassesScheduled({ branchId }: ClassesScheduledProps) {
       console.log('Upcoming classes fetched:', data?.length || 0);
       return data;
     },
-    enabled: !!branchId // Only run query when branchId is available
+    enabled: !!branchId, // Only run query when branchId is available
+    staleTime: 30000 // 30 seconds
   });
+
+  // Refetch when term changes
+  useEffect(() => {
+    refetch();
+  }, [termData?.id, refetch]);
 
   // Rest of the component remains the same
   const getInitials = (firstName: string, lastName: string) => {
@@ -83,7 +92,11 @@ export function ClassesScheduled({ branchId }: ClassesScheduledProps) {
         {!branchId ? (
           <div className="text-center py-4 text-gray-500">Please select a branch</div>
         ) : isLoading ? (
-          <div className="flex justify-center p-4">Loading classes...</div>
+          <div className="space-y-3">
+            <Skeleton className="h-20 w-full" />
+            <Skeleton className="h-20 w-full" />
+            <Skeleton className="h-20 w-full" />
+          </div>
         ) : classes && classes.length > 0 ? (
           <div className="space-y-3">
             {classes.map((classSchedule) => {

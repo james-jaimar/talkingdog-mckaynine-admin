@@ -6,9 +6,12 @@ import { useBranch } from "@/context/BranchContext";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
 import { Users, Dog, Book, Calendar } from "lucide-react";
+import { useTermSelection } from "@/hooks/useTermSelection";
+import { TermDisplay } from "@/components/dashboard/TermDisplay";
 
 export default function Dashboard() {
   const { currentBranch } = useBranch();
+  const { termData } = useTermSelection();
   const {
     clientCount,
     dogCount,
@@ -21,6 +24,11 @@ export default function Dashboard() {
       <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
         <div className="flex items-center justify-between">
           <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
+        </div>
+
+        {/* Term Display */}
+        <div className="mb-4">
+          <TermDisplay />
         </div>
 
         {/* Stats Cards */}
@@ -41,13 +49,13 @@ export default function Dashboard() {
             title="Bookings"
             value={bookingCount ?? "-"}
             icon={Book}
-            description="All bookings"
+            description={`Bookings ${termData ? `in Term ${termData.term_number}` : ''}`}
           />
           <StatsCard
             title="Upcoming Classes"
             value={upcomingClassCount ?? "-"}
             icon={Calendar}
-            description="Scheduled classes"
+            description={`Classes ${termData ? `in Term ${termData.term_number}` : 'scheduled'}`}
           />
         </div>
 

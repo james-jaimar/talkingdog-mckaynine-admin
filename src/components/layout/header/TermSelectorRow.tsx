@@ -2,6 +2,7 @@
 import { format } from "date-fns";
 import { useTermSelection } from "@/hooks/useTermSelection";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export function TermSelectorRow() {
   const {
@@ -10,6 +11,7 @@ export function TermSelectorRow() {
     selectedTermNumber,
     setSelectedTermNumber,
     termData,
+    isTermLoading,
     years,
     terms
   } = useTermSelection();
@@ -31,7 +33,12 @@ export function TermSelectorRow() {
       <div className="container mx-auto px-4 py-2">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center space-x-4 text-white">
-            {termData ? (
+            {isTermLoading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-6 w-32 bg-mckaynine-500" />
+                <Skeleton className="h-4 w-48 bg-mckaynine-500" />
+              </div>
+            ) : termData ? (
               <>
                 <p className="text-lg font-semibold">
                   Term {termData.term_number}, {selectedYear}
@@ -50,6 +57,7 @@ export function TermSelectorRow() {
               <Select
                 value={selectedYear.toString()}
                 onValueChange={handleYearChange}
+                disabled={isTermLoading}
               >
                 <SelectTrigger className="w-[120px] bg-white text-gray-800">
                   <SelectValue placeholder="Select year" />
@@ -68,6 +76,7 @@ export function TermSelectorRow() {
               <Select
                 value={selectedTermNumber}
                 onValueChange={handleTermChange}
+                disabled={isTermLoading}
               >
                 <SelectTrigger className="w-[120px] bg-white text-gray-800">
                   <SelectValue placeholder="Select term" />
