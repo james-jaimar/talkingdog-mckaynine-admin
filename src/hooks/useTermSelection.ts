@@ -28,19 +28,30 @@ export function useTermSelection() {
       if (storedData) {
         const parsed = JSON.parse(storedData);
         return {
-          year: parsed.year || 2025,
-          termNumber: parsed.termNumber || '2'
+          year: parsed.year || new Date().getFullYear(),
+          termNumber: parsed.termNumber || getCurrentTermNumber()
         };
       }
     } catch (error) {
       console.error('Error reading term data from localStorage:', error);
     }
-    return { year: 2025, termNumber: '2' as TermNumber };
+    return { 
+      year: new Date().getFullYear(), 
+      termNumber: getCurrentTermNumber() 
+    };
+  };
+
+  const getCurrentTermNumber = (): TermNumber => {
+    const month = new Date().getMonth() + 1; // getMonth() returns 0-11
+    if (month <= 3) return '1';
+    if (month <= 6) return '2';
+    if (month <= 9) return '3';
+    return '4';
   };
 
   const storedData = getStoredTermData();
   const [selectedYear, setSelectedYearState] = useState<number>(storedData.year);
-  const [selectedTermNumber, setSelectedTermNumberState] = useState<TermNumber>(storedData.termNumber as TermNumber);
+  const [selectedTermNumber, setSelectedTermNumberState] = useState<TermNumber>(storedData.termNumber);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Wrapper functions to update state and persist to localStorage
@@ -95,7 +106,7 @@ export function useTermSelection() {
           `, { count: 'exact' })
           .eq('academic_years.year', selectedYear)
           .eq('term_number', selectedTermNumber)
-          .limit(10);
+          .limit(1);
 
         if (error) {
           console.error('Error fetching term data:', error);
@@ -109,12 +120,6 @@ export function useTermSelection() {
           return null;
         }
 
-        // Log if we got multiple results (which would be unexpected)
-        if (data.length > 1) {
-          console.warn(`Multiple terms (${data.length}) found for year ${selectedYear} and term ${selectedTermNumber}, using the first one`);
-        }
-        
-        // Always use the first result if we have multiple
         return data[0] as TermData;
       } catch (err) {
         console.error('Exception fetching term data:', err);
@@ -188,9 +193,12 @@ export function useTermSelection() {
     isTermLoading,
     error,
     errorMessage,
-    termDateRange,
-    years,
-    terms,
+    termDateRange: termData ? {
+      startDate: termData.start_date,
+      endDate: termData.end_date
+    } : null,
+    years: Array.from({ length: 5 }, (_, i) => new Date().getFullYear() + i),
+    terms: ['1', '2', '3', '4'] as TermNumber[],
     refetch
   };
 }

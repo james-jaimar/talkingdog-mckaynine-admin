@@ -341,6 +341,7 @@ export type Database = {
       }
       class_schedules: {
         Row: {
+          academic_year: number | null
           class_id: string
           created_at: string
           end_time: string
@@ -350,10 +351,12 @@ export type Database = {
           selected_dates: string[] | null
           start_time: string
           term_id: string | null
+          term_number: Database["public"]["Enums"]["term_number"] | null
           trainer_id: string
           updated_at: string
         }
         Insert: {
+          academic_year?: number | null
           class_id: string
           created_at?: string
           end_time: string
@@ -363,10 +366,12 @@ export type Database = {
           selected_dates?: string[] | null
           start_time: string
           term_id?: string | null
+          term_number?: Database["public"]["Enums"]["term_number"] | null
           trainer_id: string
           updated_at?: string
         }
         Update: {
+          academic_year?: number | null
           class_id?: string
           created_at?: string
           end_time?: string
@@ -376,6 +381,7 @@ export type Database = {
           selected_dates?: string[] | null
           start_time?: string
           term_id?: string | null
+          term_number?: Database["public"]["Enums"]["term_number"] | null
           trainer_id?: string
           updated_at?: string
         }
@@ -1095,6 +1101,13 @@ export type Database = {
       count_invoices_with_prefix: {
         Args: { prefix: string }
         Returns: number
+      }
+      determine_term_from_date: {
+        Args: { date_to_check: string }
+        Returns: {
+          academic_year: number
+          term_number: Database["public"]["Enums"]["term_number"]
+        }[]
       }
       get_current_term: {
         Args: Record<PropertyKey, never>

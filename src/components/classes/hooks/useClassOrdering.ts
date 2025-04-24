@@ -57,9 +57,9 @@ export function useClassOrdering() {
     queryFn: async () => {
       if (!currentBranch) return [];
 
-      console.log("Fetching classes for branch:", currentBranch.id, "and term:", termData?.id);
+      console.log("Fetching classes for branch:", currentBranch.id);
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('classes')
         .select(`
           id,
@@ -75,11 +75,15 @@ export function useClassOrdering() {
             start_time,
             end_time,
             term_id,
+            academic_year,
+            term_number,
             selected_dates,
             bookings(id)
           )
         `)
         .eq('branch_id', currentBranch.id);
+      
+      const { data, error } = await query;
       
       if (error) {
         console.error("Error fetching classes:", error);
@@ -88,12 +92,13 @@ export function useClassOrdering() {
       
       console.log("Retrieved classes:", data?.length || 0);
       
-      // Filter class schedules to only include those for the selected term
+      // Filter class schedules based on selected term
       const filteredClasses = data?.map(classItem => {
-        if (termData?.id) {
-          console.log(`Filtering schedules for class ${classItem.name} by term ${termData.id}`);
+        if (termData) {
+          console.log(`Filtering schedules for class ${classItem.name} by term ${termData.term_number} and year ${termData.academic_years?.year}`);
           classItem.class_schedules = classItem.class_schedules.filter(schedule => {
-            return schedule.term_id === termData.id;
+            return schedule.term_number === termData.term_number && 
+                   schedule.academic_year === termData.academic_years?.year;
           });
         }
         
@@ -101,8 +106,7 @@ export function useClassOrdering() {
       });
       
       // Only include classes that have schedules for the selected term
-      // if there is a term filter applied
-      const classesWithSchedules = termData?.id 
+      const classesWithSchedules = termData
         ? filteredClasses?.filter(classItem => classItem.class_schedules.length > 0)
         : filteredClasses;
       
@@ -111,7 +115,7 @@ export function useClassOrdering() {
       return classesWithSchedules || [];
     },
     enabled: !!currentBranch,
-    staleTime: 30000, // 30 seconds cache time to prevent excessive refetching
+    staleTime: 30000, // 30 seconds cache time
   });
 
   // Use hook to order classes
