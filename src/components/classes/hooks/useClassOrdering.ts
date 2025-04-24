@@ -4,8 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useBranch } from "@/context/BranchContext";
 import { useClassTabOrder } from "./useClassTabOrder";
 import { useTermSelection } from "@/hooks/useTermSelection";
-import { useState } from "react";
-import { Class } from "../types/class";
+import { useState, useEffect } from "react";
 
 export interface ClassWithSchedules {
   id: string;
@@ -13,12 +12,17 @@ export interface ClassWithSchedules {
   branches: { name: string };
   class_type?: string; 
   course_fee?: number;
+  duration?: number;
+  capacity?: number;
   class_schedules: {
     id: string;
     start_time?: string;
     end_time?: string;
     selected_dates?: string[];
     term_id?: string;
+    bookings?: {
+      id: string;
+    }[];
   }[];
 }
 
@@ -28,10 +32,22 @@ export function useClassOrdering() {
   const [isMoving, setIsMoving] = useState(false);
   const [pendingMovements, setPendingMovements] = useState(0);
   const [itemMoving, setItemMoving] = useState<string | null>(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  // Listen for term changes and update
+  useEffect(() => {
+    const handleTermChange = () => {
+      console.log("ClassOrdering detected term change, refreshing");
+      setRefreshTrigger(prev => prev + 1);
+    };
+    
+    window.addEventListener('term-changed', handleTermChange);
+    return () => window.removeEventListener('term-changed', handleTermChange);
+  }, []);
 
   // Fetch all active classes with their schedules
   const { data: originalClasses, isLoading, error, refetch } = useQuery({
-    queryKey: ['classes', currentBranch?.id, termData?.id],
+    queryKey: ['classes', currentBranch?.id, termData?.id, refreshTrigger],
     queryFn: async () => {
       if (!currentBranch) return [];
 
@@ -44,6 +60,8 @@ export function useClassOrdering() {
           name,
           class_type,
           course_fee,
+          duration,
+          capacity,
           branch_id,
           branches:branch_id(name),
           class_schedules(
@@ -51,7 +69,8 @@ export function useClassOrdering() {
             start_time,
             end_time,
             selected_dates,
-            term_id
+            term_id,
+            bookings(id)
           )
         `)
         .eq('branch_id', currentBranch.id);
@@ -76,9 +95,10 @@ export function useClassOrdering() {
       });
       
       // Only include classes that have schedules for the selected term
-      const classesWithSchedules = filteredClasses?.filter(
-        classItem => classItem.class_schedules.length > 0
-      );
+      // if there is a term filter applied
+      const classesWithSchedules = termData?.id 
+        ? filteredClasses?.filter(classItem => classItem.class_schedules.length > 0)
+        : filteredClasses;
       
       console.log("Filtered classes with schedules for term:", classesWithSchedules?.length);
       
@@ -126,6 +146,12 @@ export function useClassOrdering() {
     return itemMoving === classId;
   };
 
+  // Manually force a refresh
+  const forceRefresh = () => {
+    console.log("Forcing class data refresh");
+    setRefreshTrigger(prev => prev + 1);
+  };
+
   return {
     orderedClasses,
     originalClasses,
@@ -136,6 +162,7 @@ export function useClassOrdering() {
     refetch,
     moveClassUp,
     moveClassDown,
-    pendingMovements
+    pendingMovements,
+    forceRefresh
   };
 }

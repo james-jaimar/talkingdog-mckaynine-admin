@@ -31,6 +31,7 @@ export function ClassTableRow({
     <TableRow 
       className={rowBackground}
     >
+      {/* Order column */}
       <TableCell>
         <ClassSortControls 
           index={index}
@@ -40,23 +41,35 @@ export function ClassTableRow({
           isLoading={isLoading || isMoving}
         />
       </TableCell>
+      
+      {/* Class name column */}
       <TableCell className="font-medium">{classItem.name}</TableCell>
+      
+      {/* Level column */}
       <TableCell>
         <Badge variant="outline">{classItem.class_type}</Badge>
       </TableCell>
+      
+      {/* Duration, Price, Capacity through ClassMetadataCell */}
       <ClassMetadataCell
         duration={classItem.duration}
         courseFee={classItem.course_fee}
         capacity={classItem.capacity}
-        branchName={classItem.branches?.name}
       />
+      
+      {/* Location column */}
+      <TableCell>{classItem.branches?.name || "-"}</TableCell>
+      
+      {/* Availability column */}
       <TableCell>
         <ClassAvailabilityBadge 
           availableSlots={availableSlots} 
           capacity={classItem.capacity} 
         />
       </TableCell>
-      <TableCell>
+      
+      {/* Actions column */}
+      <TableCell className="text-right">
         <ClassActionButtons 
           classId={classItem.id} 
           onEdit={() => onEdit(classItem)} 

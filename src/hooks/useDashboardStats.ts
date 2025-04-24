@@ -3,12 +3,18 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useBranch } from '@/context/BranchContext';
 import { useTermSelection } from '@/hooks/useTermSelection';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 export function useDashboardStats() {
   const { currentBranch } = useBranch();
   const { termData } = useTermSelection();
   const [isLoading, setIsLoading] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  
+  // Force a refresh function
+  const forceRefresh = useCallback(() => {
+    setRefreshTrigger(prev => prev + 1);
+  }, []);
   
   // Clients count - no change needed as it's branch-specific but not term-specific
   const { data: clientCount, refetch: refetchClients } = useQuery({
@@ -57,21 +63,27 @@ export function useDashboardStats() {
 
   // Bookings count - term-specific
   const { data: bookingCount, refetch: refetchBookings } = useQuery({
-    queryKey: ['dashboard-stats-bookings', currentBranch?.id, termData?.id],
+    queryKey: ['dashboard-stats-bookings', currentBranch?.id, termData?.id, refreshTrigger],
     queryFn: async () => {
       console.log("Fetching bookings count for branch:", currentBranch?.id, "and term:", termData?.id);
       if (!currentBranch?.id) return 0;
       
       let query = supabase
         .from('bookings')
-        .select('id, clients!inner(branch_id), class_schedules(term_id)', { count: 'exact', head: true })
+        .select('id, clients!inner(branch_id), class_schedules!inner(term_id)', { count: 'exact', head: true })
         .eq('clients.branch_id', currentBranch.id);
       
       if (termData?.id) {
         query = query.eq('class_schedules.term_id', termData.id);
       }
       
-      const { count } = await query;
+      const { count, error } = await query;
+      
+      if (error) {
+        console.error("Error fetching bookings count:", error);
+        return 0;
+      }
+      
       return count || 0;
     },
     enabled: !!currentBranch?.id,
@@ -80,7 +92,7 @@ export function useDashboardStats() {
 
   // Classes scheduled count - term-specific
   const { data: upcomingClassCount, refetch: refetchClasses } = useQuery({
-    queryKey: ['dashboard-stats-classes', currentBranch?.id, termData?.id],
+    queryKey: ['dashboard-stats-classes', currentBranch?.id, termData?.id, refreshTrigger],
     queryFn: async () => {
       console.log("Fetching upcoming classes for branch:", currentBranch?.id, "and term:", termData?.id);
       if (!currentBranch?.id) return 0;
@@ -96,7 +108,13 @@ export function useDashboardStats() {
         query = query.eq('term_id', termData.id);
       }
       
-      const { count } = await query;
+      const { count, error } = await query;
+      
+      if (error) {
+        console.error("Error fetching upcoming classes count:", error);
+        return 0;
+      }
+      
       return count || 0;
     },
     enabled: !!currentBranch?.id,
@@ -118,12 +136,27 @@ export function useDashboardStats() {
     });
   }, [refetchClients, refetchDogs, refetchBookings, refetchClasses]);
 
+  // Listen for term changes
+  useEffect(() => {
+    const handleTermChanged = (event: any) => {
+      console.log("Dashboard stats detected term change event", event.detail);
+      forceRefresh();
+      refetchAllStats();
+    };
+    
+    window.addEventListener('term-changed', handleTermChanged);
+    return () => {
+      window.removeEventListener('term-changed', handleTermChanged);
+    };
+  }, [forceRefresh, refetchAllStats]);
+
   return {
     clientCount,
     dogCount,
     bookingCount,
     upcomingClassCount,
     refetchAllStats,
-    isLoading
+    isLoading,
+    termData
   };
 }

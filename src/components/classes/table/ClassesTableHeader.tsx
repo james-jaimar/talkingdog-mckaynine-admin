@@ -11,8 +11,8 @@ export function ClassesTableHeader() {
         <TableHead>Duration</TableHead>
         <TableHead>Price</TableHead>
         <TableHead>Capacity</TableHead>
-        <TableHead>Availability</TableHead>
         <TableHead>Location</TableHead>
+        <TableHead>Availability</TableHead>
         <TableHead className="text-right">Actions</TableHead>
       </TableRow>
     </TableHeader>

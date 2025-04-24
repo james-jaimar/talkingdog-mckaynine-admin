@@ -4,6 +4,7 @@ import { useTermSelection } from "@/hooks/useTermSelection";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Loader2 } from "lucide-react";
 
 export function TermSelectorRow() {
   const {
@@ -14,6 +15,7 @@ export function TermSelectorRow() {
     termData,
     isTermLoading,
     error,
+    errorMessage,
     years,
     terms
   } = useTermSelection();
@@ -31,13 +33,13 @@ export function TermSelectorRow() {
   };
 
   // Show error state if term fetch failed
-  if (error) {
+  if (error || errorMessage) {
     return (
       <div className="border-b border-mckaynine-700 bg-mckaynine-600">
         <div className="container mx-auto px-4 py-2">
           <Alert variant="destructive">
             <AlertDescription>
-              Error loading term data. Please try again.
+              {errorMessage || (error instanceof Error ? error.message : "Error loading term data. Please try again.")}
             </AlertDescription>
           </Alert>
         </div>
@@ -51,9 +53,12 @@ export function TermSelectorRow() {
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center space-x-4 text-white">
             {isTermLoading ? (
-              <div className="space-y-2">
-                <Skeleton className="h-6 w-32 bg-mckaynine-500" />
-                <Skeleton className="h-4 w-48 bg-mckaynine-500" />
+              <div className="flex items-center space-x-2">
+                <Loader2 className="h-4 w-4 animate-spin text-white" />
+                <div className="space-y-2">
+                  <Skeleton className="h-6 w-32 bg-mckaynine-500" />
+                  <Skeleton className="h-4 w-48 bg-mckaynine-500" />
+                </div>
               </div>
             ) : termData ? (
               <>

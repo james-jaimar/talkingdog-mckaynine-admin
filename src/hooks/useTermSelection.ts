@@ -2,12 +2,24 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/components/ui/use-toast';
 
 type TermNumber = '1' | '2' | '3' | '4';
 const TERM_STORAGE_KEY = 'mckaynine-selected-term';
 
+interface TermData {
+  id: string;
+  term_number: TermNumber;
+  start_date: string;
+  end_date: string;
+  academic_years?: {
+    year: number;
+  };
+}
+
 export function useTermSelection() {
   const queryClient = useQueryClient();
+  const eventFiredRef = useRef(false);
   
   // Initialize from localStorage if available
   const getStoredTermData = () => {
@@ -29,6 +41,7 @@ export function useTermSelection() {
   const storedData = getStoredTermData();
   const [selectedYear, setSelectedYearState] = useState<number>(storedData.year);
   const [selectedTermNumber, setSelectedTermNumberState] = useState<TermNumber>(storedData.termNumber as TermNumber);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Wrapper functions to update state and persist to localStorage
   const setSelectedYear = useCallback((year: number) => {
@@ -38,7 +51,11 @@ export function useTermSelection() {
       TERM_STORAGE_KEY, 
       JSON.stringify({ year, termNumber: selectedTermNumber })
     );
-  }, [selectedTermNumber]);
+    // Reset any previous errors
+    setErrorMessage(null);
+    // Invalidate queries that depend on term data
+    queryClient.invalidateQueries({ queryKey: ['term'] });
+  }, [selectedTermNumber, queryClient]);
   
   const setSelectedTermNumber = useCallback((termNumber: TermNumber) => {
     console.log('Setting selected term number to:', termNumber);
@@ -47,45 +64,63 @@ export function useTermSelection() {
       TERM_STORAGE_KEY, 
       JSON.stringify({ year: selectedYear, termNumber })
     );
-  }, [selectedYear]);
+    // Reset any previous errors
+    setErrorMessage(null);
+    // Invalidate queries that depend on term data
+    queryClient.invalidateQueries({ queryKey: ['term'] });
+  }, [selectedYear, queryClient]);
 
   // Fetch term data based on selected year and term number
   const { 
     data: termData, 
     isLoading: isTermLoading,
-    error
+    error,
+    refetch
   } = useQuery({
     queryKey: ['term', selectedYear, selectedTermNumber],
     queryFn: async () => {
       console.log(`Fetching term data for year ${selectedYear} and term ${selectedTermNumber}`);
       
-      const { data, error } = await supabase
-        .from('terms')
-        .select(`
-          id,
-          term_number,
-          start_date,
-          end_date,
-          academic_years!inner (
-            year
-          )
-        `)
-        .eq('academic_years.year', selectedYear)
-        .eq('term_number', selectedTermNumber)
-        .limit(1)
-        .single();
+      try {
+        const { data, error, count } = await supabase
+          .from('terms')
+          .select(`
+            id,
+            term_number,
+            start_date,
+            end_date,
+            academic_years!inner (
+              year
+            )
+          `, { count: 'exact' })
+          .eq('academic_years.year', selectedYear)
+          .eq('term_number', selectedTermNumber)
+          .limit(10);
 
-      if (error) {
-        console.error('Error fetching term data:', error);
+        if (error) {
+          console.error('Error fetching term data:', error);
+          setErrorMessage(`Error fetching term: ${error.message}`);
+          return null;
+        }
+        
+        if (!data || data.length === 0) {
+          console.log(`No term found for year ${selectedYear} and term ${selectedTermNumber}`);
+          setErrorMessage(`No term found for ${selectedYear}, Term ${selectedTermNumber}`);
+          return null;
+        }
+
+        // Log if we got multiple results (which would be unexpected)
+        if (data.length > 1) {
+          console.warn(`Multiple terms (${data.length}) found for year ${selectedYear} and term ${selectedTermNumber}, using the first one`);
+        }
+        
+        // Always use the first result if we have multiple
+        return data[0] as TermData;
+      } catch (err) {
+        console.error('Exception fetching term data:', err);
+        setErrorMessage(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`);
         return null;
       }
-      
-      if (!data) {
-        console.log(`No term found for year ${selectedYear} and term ${selectedTermNumber}`);
-        return null;
-      }
-      
-      return data;
     },
     staleTime: 60 * 1000, // Cache term data for 60 seconds
   });
@@ -94,12 +129,36 @@ export function useTermSelection() {
   useEffect(() => {
     if (termData?.id) {
       console.log('Term data updated, dispatching term-changed event');
-      const event = new CustomEvent('term-changed', { 
-        detail: { termId: termData.id } 
-      });
-      window.dispatchEvent(event);
+      
+      // Set timeout to ensure this happens after the component has rendered
+      setTimeout(() => {
+        const event = new CustomEvent('term-changed', { 
+          detail: { termId: termData.id, termNumber: termData.term_number, year: selectedYear } 
+        });
+        window.dispatchEvent(event);
+        
+        // Invalidate all queries that might depend on term data
+        queryClient.invalidateQueries({ 
+          predicate: (query) => {
+            const key = query.queryKey[0];
+            return typeof key === 'string' && 
+              (key.includes('class') || 
+               key.includes('booking') || 
+               key.includes('schedule') ||
+               key.includes('dashboard'));
+          }
+        });
+        
+        // Show a toast when term changes
+        toast({
+          title: `Term Changed`,
+          description: `Now viewing Term ${termData.term_number}, ${selectedYear}`,
+        });
+
+        eventFiredRef.current = true;
+      }, 0);
     }
-  }, [termData]);
+  }, [termData, selectedYear, queryClient]);
 
   // Generate years array (2025 to 2029)
   const years = Array.from({ length: 5 }, (_, i) => 2025 + i);
@@ -121,8 +180,10 @@ export function useTermSelection() {
     termData,
     isTermLoading,
     error,
+    errorMessage,
     termDateRange,
     years,
-    terms
+    terms,
+    refetch
   };
 }

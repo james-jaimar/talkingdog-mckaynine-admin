@@ -1,15 +1,24 @@
 
 // Calculate available slots
 export const calculateAvailableSlots = (classItem: any) => {
-  if (!classItem.class_schedules) return classItem.capacity;
+  if (!classItem) return 0;
+  if (!classItem.capacity) return 0;
+  
+  // If no class_schedules, return full capacity
+  if (!classItem.class_schedules || classItem.class_schedules.length === 0) {
+    return classItem.capacity;
+  }
   
   // Count total bookings across all schedules
   const totalBookings = classItem.class_schedules.reduce((total: number, schedule: any) => {
-    return total + (schedule.bookings ? schedule.bookings.length : 0);
+    if (!schedule.bookings) return total;
+    return total + schedule.bookings.length;
   }, 0);
   
   // Available slots = capacity - total bookings
-  return Math.max(0, classItem.capacity - totalBookings);
+  const availableSlots = Math.max(0, classItem.capacity - totalBookings);
+  console.log(`Class ${classItem.name}: capacity=${classItem.capacity}, bookings=${totalBookings}, available=${availableSlots}`);
+  return availableSlots;
 };
 
 // Get badge color based on available slots
