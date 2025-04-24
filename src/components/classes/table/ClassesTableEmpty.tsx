@@ -1,7 +1,6 @@
 
-import { TermSelectorRow } from "@/components/layout/header/TermSelectorRow";
-import { useTermSelection } from "@/hooks/useTermSelection";
 import { Card, CardContent } from "@/components/ui/card";
+import { useTermSelection } from "@/hooks/useTermSelection";
 
 export function ClassesTableEmpty() {
   const { termData } = useTermSelection();
