@@ -127,7 +127,7 @@ export function useTermSelection() {
 
   // When term data changes, dispatch a custom event
   useEffect(() => {
-    if (termData?.id) {
+    if (termData?.id && !eventFiredRef.current) {
       console.log('Term data updated, dispatching term-changed event');
       
       // Set timeout to ensure this happens after the component has rendered
@@ -158,6 +158,13 @@ export function useTermSelection() {
         eventFiredRef.current = true;
       }, 0);
     }
+    
+    // Reset the event fired ref when term changes
+    return () => {
+      if (termData?.id) {
+        eventFiredRef.current = false;
+      }
+    };
   }, [termData, selectedYear, queryClient]);
 
   // Generate years array (2025 to 2029)

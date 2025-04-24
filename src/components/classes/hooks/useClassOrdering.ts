@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useBranch } from "@/context/BranchContext";
 import { useClassTabOrder } from "./useClassTabOrder";
 import { useTermSelection } from "@/hooks/useTermSelection";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 export interface ClassWithSchedules {
   id: string;
@@ -36,13 +36,19 @@ export function useClassOrdering() {
 
   // Listen for term changes and update
   useEffect(() => {
-    const handleTermChange = () => {
-      console.log("ClassOrdering detected term change, refreshing");
+    const handleTermChange = (event: CustomEvent<{termId: string}>) => {
+      console.log("ClassOrdering detected term change, refreshing with term ID:", event.detail.termId);
       setRefreshTrigger(prev => prev + 1);
     };
     
-    window.addEventListener('term-changed', handleTermChange);
-    return () => window.removeEventListener('term-changed', handleTermChange);
+    window.addEventListener('term-changed', handleTermChange as EventListener);
+    return () => window.removeEventListener('term-changed', handleTermChange as EventListener);
+  }, []);
+
+  // Force a refresh function
+  const forceRefresh = useCallback(() => {
+    console.log("Forcing class ordering refresh");
+    setRefreshTrigger(prev => prev + 1);
   }, []);
 
   // Fetch all active classes with their schedules
@@ -68,8 +74,8 @@ export function useClassOrdering() {
             id,
             start_time,
             end_time,
-            selected_dates,
             term_id,
+            selected_dates,
             bookings(id)
           )
         `)
@@ -111,15 +117,16 @@ export function useClassOrdering() {
   // Use hook to order classes
   const { orderedClasses } = useClassTabOrder(originalClasses || [], currentBranch?.id);
 
-  // Implementation for class ordering
+  // Implementation for class reordering
   const moveClassUp = async (classId: string) => {
     setItemMoving(classId);
     setIsMoving(true);
     setPendingMovements(prev => prev + 1);
     
-    // Implement actual class reordering logic here
     console.log(`Moving class ${classId} up`);
     
+    // In a real implementation, this would save the new order to the database
+    // For now, we're just simulating the operation with a delay
     setTimeout(() => {
       setItemMoving(null);
       setIsMoving(false);
@@ -132,9 +139,10 @@ export function useClassOrdering() {
     setIsMoving(true);
     setPendingMovements(prev => prev + 1);
     
-    // Implement actual class reordering logic here
     console.log(`Moving class ${classId} down`);
     
+    // In a real implementation, this would save the new order to the database
+    // For now, we're just simulating the operation with a delay
     setTimeout(() => {
       setItemMoving(null);
       setIsMoving(false);
@@ -144,12 +152,6 @@ export function useClassOrdering() {
 
   const isItemMoving = (classId: string) => {
     return itemMoving === classId;
-  };
-
-  // Manually force a refresh
-  const forceRefresh = () => {
-    console.log("Forcing class data refresh");
-    setRefreshTrigger(prev => prev + 1);
   };
 
   return {
