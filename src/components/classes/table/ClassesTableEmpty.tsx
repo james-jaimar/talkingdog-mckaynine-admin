@@ -1,10 +1,10 @@
 
 import { Card, CardContent } from "@/components/ui/card";
-import { useTermSelection } from "@/hooks/useTermSelection";
+import { useTerm } from "@/context/TermContext";
 import { Calendar } from "lucide-react";
 
 export function ClassesTableEmpty() {
-  const { termData } = useTermSelection();
+  const { termData } = useTerm();
 
   return (
     <Card>

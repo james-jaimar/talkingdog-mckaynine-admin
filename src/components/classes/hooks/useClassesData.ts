@@ -2,13 +2,13 @@
 import { useClassOrdering } from "./useClassOrdering";
 import { useBranch } from "@/context/BranchContext";
 import { useAuth } from "@/context/auth";
-import { useTermSelection } from "@/hooks/useTermSelection";
+import { useTerm } from "@/context/TermContext";
 import { useEffect, useMemo } from "react";
 
 export function useClassesData() {
   const { currentBranch } = useBranch();
   const { user, session } = useAuth();
-  const { termData, termDateRange } = useTermSelection();
+  const { termData } = useTerm();
   
   // Use our centralized hook for class ordering and data
   const { 

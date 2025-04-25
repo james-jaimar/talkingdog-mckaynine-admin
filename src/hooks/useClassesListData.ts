@@ -2,7 +2,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useBranch } from '@/context/BranchContext';
-import { useTermSelection } from '@/hooks/useTermSelection';
+import { useTerm } from '@/context/TermContext';
 
 export interface Handler {
   clientId: string;
@@ -22,7 +22,7 @@ export interface ClassGroup {
 
 export function useClassesListData() {
   const { currentBranch } = useBranch();
-  const { termData, termDateRange } = useTermSelection();
+  const { termData, termDateRange } = useTerm();
 
   return useQuery({
     queryKey: ['classes-list-data', currentBranch?.id, termData?.id],
@@ -79,7 +79,14 @@ export function useClassesListData() {
         return classItem;
       });
 
-      const classGroups: ClassGroup[] = filteredClasses.map(classItem => {
+      // Only include classes that have schedules for the selected term
+      const classesWithSchedules = termData
+        ? filteredClasses?.filter(classItem => classItem.class_schedules.length > 0)
+        : filteredClasses;
+      
+      console.log(`Filtered to ${classesWithSchedules?.length || 0} classes with schedules for term`);
+      
+      const classGroups: ClassGroup[] = classesWithSchedules.map(classItem => {
         const handlers: Handler[] = [];
         
         classItem.class_schedules?.forEach(schedule => {

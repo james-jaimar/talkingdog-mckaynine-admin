@@ -12,7 +12,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { startOfMonth, endOfMonth, subMonths, format } from "date-fns";
 import { InvoiceFinancialSummary } from "@/components/invoices/summary/InvoiceFinancialSummary";
 import { InvoiceFilterTabs } from "@/components/invoices/filters/InvoiceFilterTabs";
-import { useTermSelection } from "@/hooks/useTermSelection";
+import { useTerm } from "@/context/TermContext";
 
 export default function Invoices() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -20,7 +20,7 @@ export default function Invoices() {
   const [monthFilter, setMonthFilter] = useState<string>("current");
   const { invoices, isLoading, refreshAllInvoiceQueries } = useInvoices();
   const queryClient = useQueryClient();
-  const { termDateRange } = useTermSelection();
+  const { termDateRange } = useTerm();
 
   // Set the month filter to "term" if a term is selected
   useEffect(() => {
