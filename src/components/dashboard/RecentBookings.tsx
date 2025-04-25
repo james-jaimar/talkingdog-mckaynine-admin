@@ -4,16 +4,16 @@ import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { useTermSelection } from '@/hooks/useTermSelection';
+import { useTerm } from '@/context/TermContext';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface RecentBookingsProps {
   branchId?: string;
 }
 
 export function RecentBookings({ branchId }: RecentBookingsProps) {
-  const { termData } = useTermSelection();
+  const { termData } = useTerm();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const { data: bookings, isLoading, refetch } = useQuery({
@@ -59,19 +59,14 @@ export function RecentBookings({ branchId }: RecentBookingsProps) {
     staleTime: 30 * 1000, // Cache for 30 seconds
   });
 
-  // Listen for global term change events
+  // Refresh when term changes
   useEffect(() => {
-    const handleTermChanged = () => {
-      console.log("RecentBookings responding to term change event");
+    if (termData?.id) {
+      console.log("RecentBookings responding to term change");
       setIsRefreshing(true);
       refetch().finally(() => setIsRefreshing(false));
-    };
-    
-    window.addEventListener('term-changed', handleTermChanged);
-    return () => {
-      window.removeEventListener('term-changed', handleTermChanged);
-    };
-  }, [refetch]);
+    }
+  }, [termData?.id, refetch]);
 
   const getStatusColor = (status: string) => {
     switch(status) {

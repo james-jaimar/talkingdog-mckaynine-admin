@@ -9,7 +9,7 @@ import { useBranch } from "@/context/BranchContext";
 import { ClassSchedule } from "./types/classSchedule";
 import { ScheduleTableAlert } from "./ScheduleTableAlert";
 import { SchedulesTableContent } from "./SchedulesTableContent";
-import { useTermSelection } from "@/hooks/useTermSelection";
+import { useTerm } from "@/context/TermContext";
 import {
   Table,
   TableBody,
@@ -31,7 +31,7 @@ export function ClassSchedulesTable({ classId }: ClassSchedulesTableProps) {
   const { currentBranch } = useBranch();
   const queryClient = useQueryClient();
   const previousInvalidationRef = useRef<number>(0);
-  const { termData } = useTermSelection();
+  const { termData } = useTerm();
 
   // Add a state to track if a refresh is needed
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -57,6 +57,7 @@ export function ClassSchedulesTable({ classId }: ClassSchedulesTableProps) {
       
       // Filter by term if a term is selected
       if (termData?.id) {
+        console.log(`Adding term filter: ${termData.id}`);
         query = query.eq("term_id", termData.id);
       }
       
@@ -73,7 +74,7 @@ export function ClassSchedulesTable({ classId }: ClassSchedulesTableProps) {
         class: item.classes  // Map 'classes' to 'class'
       }));
       
-      console.log("Class schedules data:", transformedData);
+      console.log(`Retrieved ${transformedData.length} class schedules`);
       return transformedData as ClassSchedule[];
     },
     enabled: !!classId && !!user && !!session && !!currentBranch,
@@ -112,35 +113,6 @@ export function ClassSchedulesTable({ classId }: ClassSchedulesTableProps) {
       supabase.removeChannel(channel);
     };
   }, [classId, user, session]);
-
-  // Listen to invalidations from the query client with debounce and recursion prevention
-  useEffect(() => {
-    const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
-      if (!event.query) return;
-      
-      // Check if any query with the class-schedules prefix was invalidated
-      if (Array.isArray(event.query.queryKey) && 
-          event.query.queryKey[0] === 'class-schedules' && 
-          event.query.state.isInvalidated) {
-        
-        // Get current timestamp
-        const now = Date.now();
-        
-        // Prevent multiple rapid invalidations (debounce)
-        if (now - previousInvalidationRef.current > 1000) {
-          console.log("Schedule query was invalidated, refreshing");
-          previousInvalidationRef.current = now;
-          refetch();
-        } else {
-          console.log("Skipping rapid invalidation to prevent recursion");
-        }
-      }
-    });
-
-    return () => {
-      unsubscribe();
-    };
-  }, [queryClient, refetch]);
 
   // Effect to refetch when term changes
   useEffect(() => {

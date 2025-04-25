@@ -3,8 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useBranch } from "@/context/BranchContext";
 import { useClassTabOrder } from "./useClassTabOrder";
-import { useTermSelection } from "@/hooks/useTermSelection";
-import { useState, useEffect, useCallback } from "react";
+import { useTerm } from "@/context/TermContext";
+import { useState, useCallback } from "react";
 
 export interface ClassWithSchedules {
   id: string;
@@ -28,22 +28,11 @@ export interface ClassWithSchedules {
 
 export function useClassOrdering() {
   const { currentBranch } = useBranch();
-  const { termData } = useTermSelection();
+  const { termData } = useTerm();
   const [isMoving, setIsMoving] = useState(false);
   const [pendingMovements, setPendingMovements] = useState(0);
   const [itemMoving, setItemMoving] = useState<string | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-
-  // Listen for term changes and update
-  useEffect(() => {
-    const handleTermChange = (event: CustomEvent<{termId: string}>) => {
-      console.log("ClassOrdering detected term change, refreshing with term ID:", event.detail.termId);
-      setRefreshTrigger(prev => prev + 1);
-    };
-    
-    window.addEventListener('term-changed', handleTermChange as EventListener);
-    return () => window.removeEventListener('term-changed', handleTermChange as EventListener);
-  }, []);
 
   // Force a refresh function
   const forceRefresh = useCallback(() => {
@@ -57,7 +46,7 @@ export function useClassOrdering() {
     queryFn: async () => {
       if (!currentBranch) return [];
 
-      console.log("Fetching classes for branch:", currentBranch.id);
+      console.log(`Fetching classes for branch: ${currentBranch.id}, term: ${termData?.id || 'none'}`);
 
       let query = supabase
         .from('classes')
@@ -90,20 +79,25 @@ export function useClassOrdering() {
         throw error;
       }
       
-      console.log("Retrieved classes:", data?.length || 0);
+      console.log(`Retrieved ${data?.length || 0} classes before term filtering`);
       
       // Filter class schedules based on selected term
       const filteredClasses = data?.map(classItem => {
+        // Make a copy of the class item
+        const filteredClass = {...classItem};
+        
         if (termData?.id) {
           console.log(`Filtering schedules for class ${classItem.name} by term ID ${termData.id}`);
           
-          // Filter by term_id instead of term_number and academic_year
-          classItem.class_schedules = classItem.class_schedules.filter(schedule => {
-            return schedule.term_id === termData.id;
-          });
+          // Filter by term_id
+          filteredClass.class_schedules = classItem.class_schedules.filter(schedule => 
+            schedule.term_id === termData.id
+          );
+          
+          console.log(`Class ${classItem.name} has ${filteredClass.class_schedules.length} schedules after filtering`);
         }
         
-        return classItem;
+        return filteredClass;
       });
       
       // Only include classes that have schedules for the selected term
@@ -111,7 +105,7 @@ export function useClassOrdering() {
         ? filteredClasses?.filter(classItem => classItem.class_schedules.length > 0)
         : filteredClasses;
       
-      console.log("Filtered classes with schedules for term:", classesWithSchedules?.length);
+      console.log(`Filtered to ${classesWithSchedules?.length || 0} classes with schedules for term`);
       
       return classesWithSchedules || [];
     },

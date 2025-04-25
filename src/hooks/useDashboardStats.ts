@@ -2,12 +2,12 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useBranch } from '@/context/BranchContext';
-import { useTermSelection } from '@/hooks/useTermSelection';
-import { useCallback, useEffect, useState } from 'react';
+import { useTerm } from '@/context/TermContext';
+import { useCallback, useState } from 'react';
 
 export function useDashboardStats() {
   const { currentBranch } = useBranch();
-  const { termData } = useTermSelection();
+  const { termData } = useTerm();
   const [isLoading, setIsLoading] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   
@@ -135,20 +135,6 @@ export function useDashboardStats() {
       setTimeout(() => setIsLoading(false), 500);
     });
   }, [refetchClients, refetchDogs, refetchBookings, refetchClasses]);
-
-  // Listen for term changes
-  useEffect(() => {
-    const handleTermChanged = (event: any) => {
-      console.log("Dashboard stats detected term change event", event.detail);
-      forceRefresh();
-      refetchAllStats();
-    };
-    
-    window.addEventListener('term-changed', handleTermChanged);
-    return () => {
-      window.removeEventListener('term-changed', handleTermChanged);
-    };
-  }, [forceRefresh, refetchAllStats]);
 
   return {
     clientCount,

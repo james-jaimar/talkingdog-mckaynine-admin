@@ -1,8 +1,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Booking } from "../types/booking";
-import { useTermSelection } from "@/hooks/useTermSelection";
+import { useTerm } from "@/context/TermContext";
 
 /**
  * Validates if a status string matches the expected consent status values
@@ -14,7 +13,7 @@ const validateConsentStatus = (status: string | null): "yes" | "no" | "not_marke
 };
 
 export function useClassHandlers(classId: string) {
-  const { termData } = useTermSelection();
+  const { termData } = useTerm();
 
   return useQuery({
     queryKey: ['class-handlers', classId, termData?.id],
@@ -30,8 +29,12 @@ export function useClassHandlers(classId: string) {
         const { data: scheduleIds, error: scheduleError } = await supabase
           .from('class_schedules')
           .select('id')
-          .eq('class_id', classId)
-          .eq('term_id', termData?.id);
+          .eq('class_id', classId);
+          
+        if (termData?.id) {
+          // Add term filter if term is selected
+          console.log(`Filtering schedules to those with term_id: ${termData.id}`);
+        }
         
         if (scheduleError) {
           console.error("Error fetching schedule IDs:", scheduleError);
@@ -39,11 +42,35 @@ export function useClassHandlers(classId: string) {
         }
         
         if (!scheduleIds || scheduleIds.length === 0) {
-          console.log(`No schedules found for class: ${classId} in term: ${termData?.id}`);
+          console.log(`No schedules found for class: ${classId}`);
           return [];
         }
         
-        const scheduleIdList = scheduleIds.map(s => s.id);
+        let filteredScheduleIds = scheduleIds;
+        
+        // Filter schedules by term if a term is selected
+        if (termData?.id) {
+          const { data: termSchedules, error: termError } = await supabase
+            .from('class_schedules')
+            .select('id')
+            .eq('class_id', classId)
+            .eq('term_id', termData.id);
+            
+          if (termError) {
+            console.error("Error fetching term schedules:", termError);
+            throw termError;
+          }
+          
+          if (termSchedules && termSchedules.length > 0) {
+            filteredScheduleIds = termSchedules;
+            console.log(`Filtered down to ${filteredScheduleIds.length} schedules for term ${termData.id}`);
+          } else {
+            console.log(`No schedules found for class: ${classId} in term: ${termData.id}`);
+            return [];
+          }
+        }
+        
+        const scheduleIdList = filteredScheduleIds.map(s => s.id);
         
         const { data, error } = await supabase
           .from('bookings')
@@ -90,7 +117,7 @@ export function useClassHandlers(classId: string) {
           throw error;
         }
 
-        console.log(`Found ${data.length} handlers for class ${classId} in term ${termData?.id}`);
+        console.log(`Found ${data.length} handlers for class ${classId}`);
 
         return data.map(booking => {
           // Ensure consent statuses conform to the expected type

@@ -1,6 +1,6 @@
 
 import { format } from "date-fns";
-import { useTermSelection } from "@/hooks/useTermSelection";
+import { useTerm } from "@/context/TermContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -16,10 +16,9 @@ export function TermSelectorRow() {
     termData,
     isTermLoading,
     error,
-    errorMessage,
     years,
     terms
-  } = useTermSelection();
+  } = useTerm();
 
   const handleYearChange = (value: string) => {
     console.log('TermSelector - Changing year to:', value);
@@ -29,17 +28,19 @@ export function TermSelectorRow() {
   const handleTermChange = (value: string) => {
     console.log('TermSelector - Changing term to:', value);
     if (value === '1' || value === '2' || value === '3' || value === '4') {
-      setSelectedTermNumber(value);
+      setSelectedTermNumber(value as '1' | '2' | '3' | '4');
     }
   };
 
-  if (error || errorMessage) {
+  const errorMessage = error?.message || '';
+
+  if (error) {
     return (
       <div className="border-b border-mckaynine-700 bg-mckaynine-600">
         <div className="container mx-auto px-4 py-2">
           <Alert variant="destructive">
             <AlertDescription>
-              {errorMessage || (error instanceof Error ? error.message : "Error loading term data. Please try again.")}
+              {errorMessage || "Error loading term data. Please try again."}
             </AlertDescription>
           </Alert>
         </div>

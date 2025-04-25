@@ -6,14 +6,13 @@ import { useBranch } from "@/context/BranchContext";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
 import { Users, Dog, Book, Calendar } from "lucide-react";
-import { useTermSelection } from "@/hooks/useTermSelection";
+import { useTerm } from "@/context/TermContext";
 import { TermDisplay } from "@/components/dashboard/TermDisplay";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
 export default function Dashboard() {
   const { currentBranch } = useBranch();
-  const { termData, isTermLoading } = useTermSelection();
-  const [lastTermId, setLastTermId] = useState<string | null>(null);
+  const { termData, isTermLoading } = useTerm();
   
   const {
     clientCount,
@@ -24,27 +23,11 @@ export default function Dashboard() {
     isLoading: statsLoading
   } = useDashboardStats();
 
-  // Track term changes and force refetch
+  // Fetch stats when component mounts or term changes
   useEffect(() => {
-    // Initial fetch on mount
+    console.log("Dashboard detected term change, refetching stats");
     refetchAllStats();
-
-    // Listen for term change events globally
-    const handleTermChanged = (event: CustomEvent<{ termId: string }>) => {
-      console.log("Dashboard detected global term change event", event.detail);
-      if (event.detail.termId !== lastTermId) {
-        console.log("Term ID changed, refetching stats");
-        setLastTermId(event.detail.termId);
-        refetchAllStats();
-      }
-    };
-    
-    window.addEventListener('term-changed', handleTermChanged as EventListener);
-    
-    return () => {
-      window.removeEventListener('term-changed', handleTermChanged as EventListener);
-    };
-  }, [refetchAllStats, lastTermId]);
+  }, [termData?.id, refetchAllStats]);
 
   // Determine if we're in a loading state
   const isLoading = isTermLoading || statsLoading;

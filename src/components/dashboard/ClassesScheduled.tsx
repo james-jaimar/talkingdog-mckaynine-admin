@@ -4,9 +4,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useIsMobile } from '@/hooks/useIsMobile';
-import { useTermSelection } from '@/hooks/useTermSelection';
+import { useTerm } from '@/context/TermContext';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface ClassesScheduledProps {
   branchId?: string;
@@ -14,7 +14,7 @@ interface ClassesScheduledProps {
 
 export function ClassesScheduled({ branchId }: ClassesScheduledProps) {
   const isMobile = useIsMobile();
-  const { termData } = useTermSelection();
+  const { termData } = useTerm();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const { data: classes, isLoading, refetch } = useQuery({
@@ -66,19 +66,14 @@ export function ClassesScheduled({ branchId }: ClassesScheduledProps) {
     staleTime: 30 * 1000, // Cache for 30 seconds
   });
 
-  // Listen for global term change events
+  // Refresh when term changes
   useEffect(() => {
-    const handleTermChanged = () => {
-      console.log("ClassesScheduled responding to term change event");
+    if (termData?.id) {
+      console.log("ClassesScheduled responding to term change");
       setIsRefreshing(true);
       refetch().finally(() => setIsRefreshing(false));
-    };
-    
-    window.addEventListener('term-changed', handleTermChanged);
-    return () => {
-      window.removeEventListener('term-changed', handleTermChanged);
-    };
-  }, [refetch]);
+    }
+  }, [termData?.id, refetch]);
 
   const getInitials = (firstName: string, lastName: string) => {
     return `${firstName?.[0] || ''}${lastName?.[0] || ''}`;

@@ -1,12 +1,13 @@
 
-import { useTermSelection } from "@/hooks/useTermSelection";
+import { useTerm } from "@/context/TermContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { format } from "date-fns";
 import { CalendarDays, Clock, Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export function TermDisplay() {
-  const { termData, isTermLoading, errorMessage } = useTermSelection();
+  const { termData, isTermLoading, error } = useTerm();
+  const errorMessage = error?.message || null;
 
   if (isTermLoading) {
     return (
