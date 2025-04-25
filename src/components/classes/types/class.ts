@@ -50,7 +50,11 @@ export interface ClassFromDB {
   };
   class_schedules?: {
     id: string;
-    bookings?: { id: string }[];
+    bookings?: { 
+      id: string;
+      client_id?: string;
+      dog_id?: string;
+    }[];
     // Add other fields that might be fetched but aren't used directly
     class_id?: string;
     start_time?: string;

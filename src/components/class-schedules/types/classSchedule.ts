@@ -26,4 +26,9 @@ export interface ClassSchedule {
   class?: {
     name: string;
   };
+  bookings?: {
+    id: string;
+    client_id?: string;
+    dog_id?: string;
+  }[];
 }

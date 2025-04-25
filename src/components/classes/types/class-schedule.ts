@@ -21,4 +21,9 @@ export interface ClassSchedule {
       year: number;
     };
   };
+  bookings?: {
+    id: string;
+    client_id?: string;
+    dog_id?: string;
+  }[];
 }
