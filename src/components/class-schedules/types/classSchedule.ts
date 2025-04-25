@@ -23,4 +23,7 @@ export interface ClassSchedule {
       year: number;
     };
   };
+  class?: {
+    name: string;
+  };
 }

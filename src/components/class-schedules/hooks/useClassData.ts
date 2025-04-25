@@ -71,7 +71,8 @@ export function useClassData({ classId, scheduleId }: UseClassDataProps) {
         .from('class_schedules')
         .select(`
           *,
-          trainer:trainer_id (first_name, last_name)
+          trainer:trainer_id (first_name, last_name),
+          classes:class_id (name)
         `)
         .eq('id', scheduleId)
         .maybeSingle();
@@ -86,8 +87,14 @@ export function useClassData({ classId, scheduleId }: UseClassDataProps) {
         return null;
       }
       
-      console.log("Found schedule data:", data);
-      return data as ClassSchedule;
+      // Transform the response to match the ClassSchedule type with class property
+      const transformedData = {
+        ...data,
+        class: data.classes  // Map 'classes' to 'class' to match the expected type
+      };
+      
+      console.log("Found schedule data:", transformedData);
+      return transformedData as ClassSchedule;
     },
     enabled: !!scheduleId,
     staleTime: 1000 * 60 * 5, // 5 minutes

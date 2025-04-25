@@ -50,7 +50,8 @@ export function ClassSchedulesTable({ classId }: ClassSchedulesTableProps) {
         .from("class_schedules")
         .select(`
           *,
-          trainer:trainer_id (first_name, last_name)
+          trainer:trainer_id (first_name, last_name),
+          classes:class_id (name)
         `)
         .eq("class_id", classId);
       
@@ -66,8 +67,14 @@ export function ClassSchedulesTable({ classId }: ClassSchedulesTableProps) {
         throw error;
       }
       
-      console.log("Class schedules data:", data);
-      return data as ClassSchedule[];
+      // Transform the data to match the ClassSchedule type with class property
+      const transformedData = data.map(item => ({
+        ...item,
+        class: item.classes  // Map 'classes' to 'class'
+      }));
+      
+      console.log("Class schedules data:", transformedData);
+      return transformedData as ClassSchedule[];
     },
     enabled: !!classId && !!user && !!session && !!currentBranch,
     staleTime: 10000, // Add staleTime to prevent excessive refetches

@@ -29,7 +29,7 @@ export function EditClassScheduleForm({
   // Extract values for conditional logic
   const startTime = form.watch("startTime");
   
-  // Update reference title when schedule.class.name or start time changes
+  // Update reference title when schedule.class?.name or start time changes
   useEffect(() => {
     if (schedule.class?.name && startTime) {
       const formattedTime = startTime.split(":")[0].padStart(2, "0") + "h" + startTime.split(":")[1].padStart(2, "0");
