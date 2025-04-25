@@ -21,6 +21,11 @@ export function ClassTableRow({
 }: ClassRowProps) {
   const availableSlots = calculateAvailableSlots(classItem);
   
+  // Count unique handlers (client-dog pairs)
+  const handlerCount = classItem.class_schedules.reduce((count, schedule) => {
+    return count + (schedule.bookings?.length || 0);
+  }, 0);
+  
   // Add alternate row coloring
   const rowBackground = cn(
     index % 2 === 0 ? "bg-gray-50" : "bg-white", 
@@ -62,10 +67,15 @@ export function ClassTableRow({
       
       {/* Availability column */}
       <TableCell>
-        <ClassAvailabilityBadge 
-          availableSlots={availableSlots} 
-          capacity={classItem.capacity} 
-        />
+        <div className="flex flex-col">
+          <ClassAvailabilityBadge 
+            availableSlots={availableSlots} 
+            capacity={classItem.capacity} 
+          />
+          <span className="text-xs text-gray-500 mt-1">
+            {handlerCount} {handlerCount === 1 ? 'handler' : 'handlers'}
+          </span>
+        </div>
       </TableCell>
       
       {/* Actions column */}

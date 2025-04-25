@@ -14,10 +14,10 @@ const validateConsentStatus = (status: string | null): "yes" | "no" | "not_marke
 };
 
 export function useClassHandlers(classId: string) {
-  const { termDateRange } = useTermSelection();
+  const { termData } = useTermSelection();
 
   return useQuery({
-    queryKey: ['class-handlers', classId, termDateRange?.startDate, termDateRange?.endDate],
+    queryKey: ['class-handlers', classId, termData?.id],
     queryFn: async () => {
       // Validate classId
       if (!classId) {
@@ -26,20 +26,12 @@ export function useClassHandlers(classId: string) {
       }
       
       try {
-        // Get all schedule IDs for this class
-        let schedulesQuery = supabase
+        // Get all schedule IDs for this class and term
+        const { data: scheduleIds, error: scheduleError } = await supabase
           .from('class_schedules')
           .select('id')
-          .eq('class_id', classId);
-        
-        // Apply term date filtering if available
-        if (termDateRange?.startDate && termDateRange?.endDate) {
-          schedulesQuery = schedulesQuery
-            .gte('start_time', termDateRange.startDate)
-            .lte('start_time', termDateRange.endDate);
-        }
-        
-        const { data: scheduleIds, error: scheduleError } = await schedulesQuery;
+          .eq('class_id', classId)
+          .eq('term_id', termData?.id);
         
         if (scheduleError) {
           console.error("Error fetching schedule IDs:", scheduleError);
@@ -47,7 +39,7 @@ export function useClassHandlers(classId: string) {
         }
         
         if (!scheduleIds || scheduleIds.length === 0) {
-          console.log("No schedules found for class:", classId);
+          console.log(`No schedules found for class: ${classId} in term: ${termData?.id}`);
           return [];
         }
         
@@ -97,6 +89,8 @@ export function useClassHandlers(classId: string) {
           console.error("Error fetching bookings:", error);
           throw error;
         }
+
+        console.log(`Found ${data.length} handlers for class ${classId} in term ${termData?.id}`);
 
         return data.map(booking => {
           // Ensure consent statuses conform to the expected type

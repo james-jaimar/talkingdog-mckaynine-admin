@@ -78,7 +78,7 @@ export function useClassOrdering() {
             academic_year,
             term_number,
             selected_dates,
-            bookings(id)
+            bookings(id, client_id, dog_id)
           )
         `)
         .eq('branch_id', currentBranch.id);
@@ -94,11 +94,12 @@ export function useClassOrdering() {
       
       // Filter class schedules based on selected term
       const filteredClasses = data?.map(classItem => {
-        if (termData) {
-          console.log(`Filtering schedules for class ${classItem.name} by term ${termData.term_number} and year ${termData.academic_years?.year}`);
+        if (termData?.id) {
+          console.log(`Filtering schedules for class ${classItem.name} by term ID ${termData.id}`);
+          
+          // Filter by term_id instead of term_number and academic_year
           classItem.class_schedules = classItem.class_schedules.filter(schedule => {
-            return schedule.term_number === termData.term_number && 
-                   schedule.academic_year === termData.academic_years?.year;
+            return schedule.term_id === termData.id;
           });
         }
         
