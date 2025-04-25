@@ -12,6 +12,7 @@ interface TermData {
   term_number: TermNumber;
   start_date: string;
   end_date: string;
+  current?: boolean; // Added optional current property
   academic_years?: {
     year: number;
   };
