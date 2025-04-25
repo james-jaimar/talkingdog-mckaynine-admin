@@ -2,7 +2,8 @@
 import { useTermSelection } from "@/hooks/useTermSelection";
 import { Card, CardContent } from "@/components/ui/card";
 import { format } from "date-fns";
-import { CalendarDays, Loader2 } from "lucide-react";
+import { CalendarDays, Clock, Loader2 } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export function TermDisplay() {
   const { termData, isTermLoading, errorMessage } = useTermSelection();
@@ -20,11 +21,9 @@ export function TermDisplay() {
 
   if (errorMessage) {
     return (
-      <Card className="bg-red-50">
-        <CardContent className="p-4 text-red-600">
-          <p>{errorMessage}</p>
-        </CardContent>
-      </Card>
+      <Alert variant="destructive">
+        <AlertDescription>{errorMessage}</AlertDescription>
+      </Alert>
     );
   }
 
@@ -40,13 +39,18 @@ export function TermDisplay() {
 
   return (
     <Card>
-      <CardContent className="flex items-center p-4">
-        <CalendarDays className="h-5 w-5 mr-3 text-mckaynine-600" />
-        <div>
-          <h3 className="font-medium">Term {termData.term_number}</h3>
-          <p className="text-sm text-gray-500">
+      <CardContent className="p-4">
+        <div className="flex items-center mb-3">
+          <CalendarDays className="h-5 w-5 mr-3 text-mckaynine-600" />
+          <h3 className="text-lg font-semibold">
+            Term {termData.term_number}, {termData.academic_years?.year || "Unknown Year"}
+          </h3>
+        </div>
+        <div className="flex items-center text-sm text-gray-600 ml-8">
+          <Clock className="h-4 w-4 mr-2" />
+          <span>
             {format(new Date(termData.start_date), 'dd MMM yyyy')} - {format(new Date(termData.end_date), 'dd MMM yyyy')}
-          </p>
+          </span>
         </div>
       </CardContent>
     </Card>

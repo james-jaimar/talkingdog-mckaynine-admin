@@ -4,7 +4,8 @@ import { useTermSelection } from "@/hooks/useTermSelection";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2 } from "lucide-react";
+import { Loader2, Calendar } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 export function TermSelectorRow() {
   const {
@@ -32,7 +33,6 @@ export function TermSelectorRow() {
     }
   };
 
-  // Show error state if term fetch failed
   if (error || errorMessage) {
     return (
       <div className="border-b border-mckaynine-700 bg-mckaynine-600">
@@ -61,14 +61,22 @@ export function TermSelectorRow() {
                 </div>
               </div>
             ) : termData ? (
-              <>
-                <p className="text-lg font-semibold">
-                  Term {termData.term_number}, {selectedYear}
-                </p>
-                <p className="text-sm text-gray-200">
-                  {format(new Date(termData.start_date), 'dd MMM yyyy')} - {format(new Date(termData.end_date), 'dd MMM yyyy')}
-                </p>
-              </>
+              <div className="flex items-center">
+                <Calendar className="h-5 w-5 mr-2" />
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-lg font-semibold">
+                      Term {termData.term_number}, {selectedYear}
+                    </p>
+                    {termData.current && (
+                      <Badge variant="secondary" className="bg-green-500 text-white">Current</Badge>
+                    )}
+                  </div>
+                  <p className="text-sm text-gray-200">
+                    {format(new Date(termData.start_date), 'dd MMM yyyy')} - {format(new Date(termData.end_date), 'dd MMM yyyy')}
+                  </p>
+                </div>
+              </div>
             ) : (
               <p className="text-sm">Select a term</p>
             )}
