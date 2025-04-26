@@ -6,10 +6,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { useBranch } from "@/context/BranchContext";
@@ -25,9 +22,6 @@ interface EditClassModalProps {
 }
 
 export function EditClassModal({ open, onOpenChange, classData, onSuccess }: EditClassModalProps) {
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const { currentBranch } = useBranch();
   const [processedClassData, setProcessedClassData] = useState<Class | null>(null);
 
   // Process class data when the modal opens or classData changes
@@ -60,21 +54,6 @@ export function EditClassModal({ open, onOpenChange, classData, onSuccess }: Edi
     }
   }, [open, classData]);
 
-  // Handle successful form submission
-  const handleSuccess = () => {
-    if (onSuccess) {
-      onSuccess();
-    }
-    
-    // Invalidate any relevant queries
-    if (currentBranch) {
-      queryClient.invalidateQueries({ queryKey: ["classes", currentBranch.id] });
-      queryClient.invalidateQueries({ queryKey: ["active-classes", currentBranch.id] });
-    }
-    
-    onOpenChange(false);
-  };
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
@@ -88,7 +67,7 @@ export function EditClassModal({ open, onOpenChange, classData, onSuccess }: Edi
         {processedClassData && (
           <EditClassForm 
             classData={processedClassData} 
-            onSuccess={handleSuccess} 
+            onSuccess={onSuccess} 
           />
         )}
       </DialogContent>
