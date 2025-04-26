@@ -1,7 +1,8 @@
 
 import { Control } from "react-hook-form";
-import { FormField } from "@/components/ui/form";
+import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { FormTextField } from "@/components/handlers/form/FormTextField";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -10,6 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ClassFormValues } from "../schemas/classFormSchema";
+import { useEffect } from "react";
 
 interface FeeFieldsProps {
   control: Control<ClassFormValues>;
@@ -20,21 +22,68 @@ export function FeeFields({ control }: FeeFieldsProps) {
     { value: 'percentage', label: 'Percentage' },
     { value: 'amount', label: 'Fixed Amount' },
   ];
+  
+  // Log the form values for debugging
+  useEffect(() => {
+    const subscription = control._formState.subjects.values.subscribe(values => {
+      console.log("FeeFields - Current fee values:", {
+        course_fee: values.course_fee,
+        enrollment_fee: values.enrollment_fee,
+        mckaynine_commission_type: values.mckaynine_commission_type,
+        mckaynine_commission_value: values.mckaynine_commission_value,
+        admin_fee_type: values.admin_fee_type,
+        admin_fee_value: values.admin_fee_value,
+        trainer_fee_type: values.trainer_fee_type,
+        trainer_fee_value: values.trainer_fee_value,
+      });
+    });
+    
+    return () => subscription.unsubscribe();
+  }, [control]);
 
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <FormTextField
+        <FormField
           control={control}
           name="course_fee"
-          label="Course Fee (R)"
-          type="number"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Course Fee (R)</FormLabel>
+              <FormControl>
+                <Input 
+                  type="number" 
+                  min="0" 
+                  step="0.01" 
+                  placeholder="0.00" 
+                  {...field}
+                  onChange={(e) => field.onChange(Number(e.target.value))}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
         />
-        <FormTextField
+        
+        <FormField
           control={control}
           name="enrollment_fee"
-          label="Enrollment Fee (R)"
-          type="number"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Enrollment Fee (R)</FormLabel>
+              <FormControl>
+                <Input 
+                  type="number" 
+                  min="0" 
+                  step="0.01"
+                  placeholder="0.00"
+                  {...field}
+                  onChange={(e) => field.onChange(Number(e.target.value))}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
         />
       </div>
 
@@ -43,12 +92,14 @@ export function FeeFields({ control }: FeeFieldsProps) {
           control={control}
           name="mckaynine_commission_type"
           render={({ field }) => (
-            <div className="space-y-2">
-              <label className="text-sm font-medium">McKaynine Commission Type</label>
+            <FormItem>
+              <FormLabel>McKaynine Commission Type</FormLabel>
               <Select onValueChange={field.onChange} value={field.value}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select type" />
-                </SelectTrigger>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                </FormControl>
                 <SelectContent>
                   {feeTypes.map((type) => (
                     <SelectItem key={type.value} value={type.value}>
@@ -57,14 +108,30 @@ export function FeeFields({ control }: FeeFieldsProps) {
                   ))}
                 </SelectContent>
               </Select>
-            </div>
+              <FormMessage />
+            </FormItem>
           )}
         />
-        <FormTextField
+        
+        <FormField
           control={control}
           name="mckaynine_commission_value"
-          label="Commission Value"
-          type="number"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Commission Value</FormLabel>
+              <FormControl>
+                <Input 
+                  type="number" 
+                  min="0" 
+                  step="0.01"
+                  placeholder="0.00"
+                  {...field}
+                  onChange={(e) => field.onChange(Number(e.target.value))}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
         />
       </div>
 
@@ -73,12 +140,14 @@ export function FeeFields({ control }: FeeFieldsProps) {
           control={control}
           name="admin_fee_type"
           render={({ field }) => (
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Admin Fee Type</label>
+            <FormItem>
+              <FormLabel>Admin Fee Type</FormLabel>
               <Select onValueChange={field.onChange} value={field.value}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select type" />
-                </SelectTrigger>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                </FormControl>
                 <SelectContent>
                   {feeTypes.map((type) => (
                     <SelectItem key={type.value} value={type.value}>
@@ -87,14 +156,30 @@ export function FeeFields({ control }: FeeFieldsProps) {
                   ))}
                 </SelectContent>
               </Select>
-            </div>
+              <FormMessage />
+            </FormItem>
           )}
         />
-        <FormTextField
+        
+        <FormField
           control={control}
           name="admin_fee_value"
-          label="Admin Fee Value"
-          type="number"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Admin Fee Value</FormLabel>
+              <FormControl>
+                <Input 
+                  type="number" 
+                  min="0" 
+                  step="0.01"
+                  placeholder="0.00"
+                  {...field}
+                  onChange={(e) => field.onChange(Number(e.target.value))}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
         />
       </div>
 
@@ -103,12 +188,14 @@ export function FeeFields({ control }: FeeFieldsProps) {
           control={control}
           name="trainer_fee_type"
           render={({ field }) => (
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Trainer Fee Type</label>
+            <FormItem>
+              <FormLabel>Trainer Fee Type</FormLabel>
               <Select onValueChange={field.onChange} value={field.value}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select type" />
-                </SelectTrigger>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                </FormControl>
                 <SelectContent>
                   {feeTypes.map((type) => (
                     <SelectItem key={type.value} value={type.value}>
@@ -117,14 +204,30 @@ export function FeeFields({ control }: FeeFieldsProps) {
                   ))}
                 </SelectContent>
               </Select>
-            </div>
+              <FormMessage />
+            </FormItem>
           )}
         />
-        <FormTextField
+        
+        <FormField
           control={control}
           name="trainer_fee_value"
-          label="Trainer Fee Value"
-          type="number"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Trainer Fee Value</FormLabel>
+              <FormControl>
+                <Input 
+                  type="number" 
+                  min="0" 
+                  step="0.01"
+                  placeholder="0.00"
+                  {...field}
+                  onChange={(e) => field.onChange(Number(e.target.value))}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
         />
       </div>
     </div>
