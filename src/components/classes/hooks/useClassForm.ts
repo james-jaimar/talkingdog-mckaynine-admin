@@ -27,16 +27,16 @@ export function useClassForm(classData: Class | null, onSuccess: () => void) {
         name: classData.name,
         description: classData.description || "",
         class_type: classData.class_type,
-        course_fee: classData.course_fee || 0,
-        enrollment_fee: classData.enrollment_fee || 0,
+        course_fee: parseFloat(String(classData.course_fee)) || 0,
+        enrollment_fee: parseFloat(String(classData.enrollment_fee)) || 0,
         mckaynine_commission_type: classData.mckaynine_commission_type || "percentage",
-        mckaynine_commission_value: classData.mckaynine_commission_value || 0,
+        mckaynine_commission_value: parseFloat(String(classData.mckaynine_commission_value)) || 0,
         admin_fee_type: classData.admin_fee_type || "percentage",
-        admin_fee_value: classData.admin_fee_value || 0,
+        admin_fee_value: parseFloat(String(classData.admin_fee_value)) || 0,
         trainer_fee_type: classData.trainer_fee_type || "percentage",
-        trainer_fee_value: classData.trainer_fee_value || 0,
-        duration: classData.duration || 60,
-        capacity: classData.capacity || 8,
+        trainer_fee_value: parseFloat(String(classData.trainer_fee_value)) || 0,
+        duration: parseInt(String(classData.duration)) || 60,
+        capacity: parseInt(String(classData.capacity)) || 8,
         branchId: classData.branch_id,
       }
     : {
@@ -64,8 +64,18 @@ export function useClassForm(classData: Class | null, onSuccess: () => void) {
   // Log form values to verify they're correct
   useEffect(() => {
     if (classData) {
-      console.log("useClassForm initial data:", classData);
-      console.log("useClassForm initial form values:", form.getValues());
+      console.log("useClassForm - original class data:", classData);
+      console.log("useClassForm - fee values in class data:", {
+        course_fee: classData.course_fee,
+        enrollment_fee: classData.enrollment_fee,
+        mckaynine_commission_type: classData.mckaynine_commission_type,
+        mckaynine_commission_value: classData.mckaynine_commission_value,
+        admin_fee_type: classData.admin_fee_type,
+        admin_fee_value: classData.admin_fee_value,
+        trainer_fee_type: classData.trainer_fee_type,
+        trainer_fee_value: classData.trainer_fee_value,
+      });
+      console.log("useClassForm - initial form values:", form.getValues());
     }
   }, [classData, form]);
   
@@ -111,6 +121,7 @@ export function useClassForm(classData: Class | null, onSuccess: () => void) {
   
   const onSubmit = async (values: ClassFormValues) => {
     setIsSubmitting(true);
+    console.log("Submitting form with values:", values);
     
     try {
       if (classData) {

@@ -67,31 +67,47 @@ export function EditClassModal({ open, onOpenChange, classData, onSuccess }: Edi
   // Reset the form with fresh data when the modal is opened or classData changes
   useEffect(() => {
     if (open && classData) {
-      console.log("Setting form values with class data:", classData);
+      console.log("EditClassModal - Setting form values with class data:", classData);
       
-      // Use the actual values from classData
+      // Ensure all fee values are properly converted to numbers
+      const courseFee = typeof classData.course_fee === 'number' ? classData.course_fee : 
+                        parseFloat(classData.course_fee) || 0;
+                        
+      const enrollmentFee = typeof classData.enrollment_fee === 'number' ? classData.enrollment_fee : 
+                           parseFloat(classData.enrollment_fee) || 0;
+                           
+      const mckaynineValue = typeof classData.mckaynine_commission_value === 'number' ? classData.mckaynine_commission_value :
+                            parseFloat(classData.mckaynine_commission_value) || 0;
+                            
+      const adminValue = typeof classData.admin_fee_value === 'number' ? classData.admin_fee_value :
+                        parseFloat(classData.admin_fee_value) || 0;
+                        
+      const trainerValue = typeof classData.trainer_fee_value === 'number' ? classData.trainer_fee_value :
+                          parseFloat(classData.trainer_fee_value) || 0;
+      
+      // Use the actual values from classData with proper type conversion
       form.reset({
         name: classData.name || "",
         class_type: classData.class_type || "Puppy",
-        duration: classData.duration || 60,
-        capacity: classData.capacity || 8,
+        duration: parseInt(classData.duration) || 60,
+        capacity: parseInt(classData.capacity) || 8,
         description: classData.description || "",
         
-        // Course and enrollment fees
-        course_fee: classData.course_fee || 0,
-        enrollment_fee: classData.enrollment_fee || 0,
+        // Course and enrollment fees with proper type conversion
+        course_fee: courseFee,
+        enrollment_fee: enrollmentFee,
         
-        // McKaynine commission
+        // McKaynine commission with proper type conversion
         mckaynine_commission_type: classData.mckaynine_commission_type || 'percentage',
-        mckaynine_commission_value: classData.mckaynine_commission_value || 0,
+        mckaynine_commission_value: mckaynineValue,
         
-        // Admin fee
+        // Admin fee with proper type conversion
         admin_fee_type: classData.admin_fee_type || 'percentage',
-        admin_fee_value: classData.admin_fee_value || 0,
+        admin_fee_value: adminValue,
         
-        // Trainer fee
+        // Trainer fee with proper type conversion
         trainer_fee_type: classData.trainer_fee_type || 'percentage',
-        trainer_fee_value: classData.trainer_fee_value || 0,
+        trainer_fee_value: trainerValue,
         
         // Branch ID
         branchId: classData.branch_id || currentBranch?.id || "",
@@ -122,6 +138,7 @@ export function EditClassModal({ open, onOpenChange, classData, onSuccess }: Edi
     }
 
     setIsSubmitting(true);
+    console.log("Submitting form with values:", values);
 
     try {
       const { error } = await supabase

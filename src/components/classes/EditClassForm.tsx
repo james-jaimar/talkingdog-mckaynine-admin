@@ -33,8 +33,18 @@ export function EditClassForm({ classData, onSuccess }: EditClassFormProps) {
 
   // Log the classData and form values to verify they are correct
   useEffect(() => {
-    console.log("EditClassForm - classData:", classData);
-    console.log("EditClassForm - current form values:", form.getValues());
+    console.log("EditClassForm - Original class data:", classData);
+    console.log("EditClassForm - Fee values in class data:", {
+      course_fee: classData.course_fee,
+      enrollment_fee: classData.enrollment_fee,
+      mckaynine_commission_type: classData.mckaynine_commission_type,
+      mckaynine_commission_value: classData.mckaynine_commission_value,
+      admin_fee_type: classData.admin_fee_type,
+      admin_fee_value: classData.admin_fee_value,
+      trainer_fee_type: classData.trainer_fee_type,
+      trainer_fee_value: classData.trainer_fee_value,
+    });
+    console.log("EditClassForm - Current form values:", form.getValues());
   }, [classData, form]);
 
   return (
