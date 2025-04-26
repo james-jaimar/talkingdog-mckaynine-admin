@@ -1,5 +1,5 @@
 
-import { Control } from "react-hook-form";
+import { Control, useWatch } from "react-hook-form";
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { FormTextField } from "@/components/handlers/form/FormTextField";
 import { Input } from "@/components/ui/input";
@@ -23,23 +23,22 @@ export function FeeFields({ control }: FeeFieldsProps) {
     { value: 'amount', label: 'Fixed Amount' },
   ];
   
+  // Use useWatch to log the form values instead of subscribing to the internal subject
+  const formValues = useWatch({ control });
+  
   // Log the form values for debugging
   useEffect(() => {
-    const subscription = control._formState.subjects.values.subscribe(values => {
-      console.log("FeeFields - Current fee values:", {
-        course_fee: values.course_fee,
-        enrollment_fee: values.enrollment_fee,
-        mckaynine_commission_type: values.mckaynine_commission_type,
-        mckaynine_commission_value: values.mckaynine_commission_value,
-        admin_fee_type: values.admin_fee_type,
-        admin_fee_value: values.admin_fee_value,
-        trainer_fee_type: values.trainer_fee_type,
-        trainer_fee_value: values.trainer_fee_value,
-      });
+    console.log("FeeFields - Current fee values:", {
+      course_fee: formValues.course_fee,
+      enrollment_fee: formValues.enrollment_fee,
+      mckaynine_commission_type: formValues.mckaynine_commission_type,
+      mckaynine_commission_value: formValues.mckaynine_commission_value,
+      admin_fee_type: formValues.admin_fee_type,
+      admin_fee_value: formValues.admin_fee_value,
+      trainer_fee_type: formValues.trainer_fee_type,
+      trainer_fee_value: formValues.trainer_fee_value,
     });
-    
-    return () => subscription.unsubscribe();
-  }, [control]);
+  }, [formValues]);
 
   return (
     <div className="space-y-4">
