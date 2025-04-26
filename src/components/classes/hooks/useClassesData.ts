@@ -28,12 +28,14 @@ export function useClassesData() {
   const activeClasses = useMemo(() => {
     if (!orderedClasses) return [];
     
-    console.log(`Filtering ${orderedClasses.length} classes to show only active ones`);
+    console.log(`Filtering ${orderedClasses.length} classes to show only active ones with term: ${termData?.id}`);
     
     return orderedClasses.filter(c => 
-      c.class_schedules && c.class_schedules.length > 0
+      c.class_schedules && 
+      c.class_schedules.length > 0 && 
+      c.class_schedules.some(schedule => schedule.term_id === termData?.id)
     );
-  }, [orderedClasses]);
+  }, [orderedClasses, termData?.id]);
   
   return {
     activeClasses,

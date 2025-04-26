@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Table, TableBody } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,6 +12,7 @@ import { ClassesTableError } from "./table/ClassesTableError";
 import { ClassesTableEmpty } from "./table/ClassesTableEmpty";
 import { ClassesTableHeader } from "./table/ClassesTableHeader";
 import { useTerm } from "@/context/TermContext";
+import { toast } from "@/components/ui/use-toast";
 
 export function ClassesTable() {
   const { 
@@ -21,7 +23,8 @@ export function ClassesTable() {
     error, 
     moveClassUp, 
     moveClassDown,
-    pendingMovements
+    pendingMovements,
+    refetch
   } = useClassOrdering();
   const [editingClass, setEditingClass] = useState<any>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -63,12 +66,21 @@ export function ClassesTable() {
     }
   };
   
+  // Handle retry when there's an error
+  const handleRetry = () => {
+    toast({
+      title: "Retrying...",
+      description: "Attempting to load classes again.",
+    });
+    refetch();
+  };
+  
   if (isLoading) {
     return <ClassesTableLoading />;
   }
   
   if (error) {
-    return <ClassesTableError error={error} />;
+    return <ClassesTableError error={error} onRetry={handleRetry} />;
   }
 
   const displayClasses = orderedClasses?.filter(classItem => 
