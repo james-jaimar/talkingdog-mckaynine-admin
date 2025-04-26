@@ -1,7 +1,9 @@
+
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
 import { useBranch } from "@/context/BranchContext";
+import { useTerm } from "@/context/TermContext";
 
 export interface ClassWithSchedules {
   id: string;
@@ -32,6 +34,7 @@ export interface ClassWithSchedules {
 
 export function useClassOrdering() {
   const { currentBranch } = useBranch();
+  const { termData } = useTerm();
   const [isMoving, setIsMoving] = useState(false);
   const [pendingMovements, setPendingMovements] = useState(0);
   const [movingClassIds, setMovingClassIds] = useState<Set<string>>(new Set());
@@ -39,13 +42,14 @@ export function useClassOrdering() {
 
   // Fetch classes with their schedules
   const { data: originalClasses, isLoading, error, refetch } = useQuery({
-    queryKey: ['classes', currentBranch?.id],
+    queryKey: ['classes', currentBranch?.id, termData?.id],
     queryFn: async () => {
       if (!currentBranch?.id) return [];
 
-      console.log('Fetching classes for branch:', currentBranch.id);
+      console.log('Fetching classes for branch:', currentBranch.id, 'and term:', termData?.id);
       
-      const { data, error } = await supabase
+      // Build the base query
+      const query = supabase
         .from('classes')
         .select(`
           id, 
@@ -71,15 +75,21 @@ export function useClassOrdering() {
             bookings(id)
           )
         `)
-        .eq('branch_id', currentBranch.id)
-        .order('name');
+        .eq('branch_id', currentBranch.id);
+
+      // If term is selected, filter class schedules by term
+      if (termData?.id) {
+        query.contains('class_schedules', [{ term_id: termData.id }]);
+      }
+
+      const { data, error } = await query.order('name');
 
       if (error) {
         console.error('Error fetching classes:', error);
         throw error;
       }
       
-      console.log(`Fetched ${data?.length || 0} classes`);
+      console.log(`Fetched ${data?.length || 0} classes for term ${termData?.id || 'none'}`);
       return data as ClassWithSchedules[];
     },
     enabled: !!currentBranch?.id,

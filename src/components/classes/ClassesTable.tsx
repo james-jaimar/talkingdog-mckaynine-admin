@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Table, TableBody } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,6 +10,7 @@ import { ClassesTableLoading } from "./table/ClassesTableLoading";
 import { ClassesTableError } from "./table/ClassesTableError";
 import { ClassesTableEmpty } from "./table/ClassesTableEmpty";
 import { ClassesTableHeader } from "./table/ClassesTableHeader";
+import { useTerm } from "@/context/TermContext";
 
 export function ClassesTable() {
   const { 
@@ -27,6 +27,7 @@ export function ClassesTable() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const queryClient = useQueryClient();
   const { currentBranch } = useBranch();
+  const { termData } = useTerm();
   
   const handleEdit = (classItem: any) => {
     setEditingClass(classItem);
@@ -69,8 +70,12 @@ export function ClassesTable() {
   if (error) {
     return <ClassesTableError error={error} />;
   }
+
+  const displayClasses = orderedClasses?.filter(classItem => 
+    classItem.class_schedules?.some(schedule => schedule.term_id === termData?.id)
+  );
   
-  if (!orderedClasses || orderedClasses.length === 0) {
+  if (!displayClasses || displayClasses.length === 0) {
     return <ClassesTableEmpty />;
   }
 
@@ -86,12 +91,12 @@ export function ClassesTable() {
           <Table>
             <ClassesTableHeader />
             <TableBody>
-              {orderedClasses.map((classItem, index) => (
+              {displayClasses.map((classItem, index) => (
                 <ClassTableRow
                   key={classItem.id}
                   classItem={classItem as any}
                   index={index}
-                  totalClasses={orderedClasses.length}
+                  totalClasses={displayClasses.length}
                   onMoveUp={handleMoveClassUp}
                   onMoveDown={handleMoveClassDown}
                   onEdit={() => handleEdit(classItem)}
