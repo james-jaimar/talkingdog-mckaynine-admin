@@ -21,6 +21,7 @@ import { useClassForm } from "./hooks/useClassForm";
 import { Class } from "./types/class";
 import { FeeFields } from "./form-sections/FeeFields";
 import { CLASS_TYPES } from "./types/class-types";
+import { useEffect } from "react";
 
 interface EditClassFormProps {
   classData: Class;
@@ -29,6 +30,12 @@ interface EditClassFormProps {
 
 export function EditClassForm({ classData, onSuccess }: EditClassFormProps) {
   const { form, isSubmitting, branches, isLoadingBranches, onSubmit } = useClassForm(classData, onSuccess);
+
+  // Log the classData and form values to verify they are correct
+  useEffect(() => {
+    console.log("EditClassForm - classData:", classData);
+    console.log("EditClassForm - current form values:", form.getValues());
+  }, [classData, form]);
 
   return (
     <Form {...form}>

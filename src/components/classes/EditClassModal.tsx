@@ -43,6 +43,7 @@ export function EditClassModal({ open, onOpenChange, classData, onSuccess }: Edi
   const queryClient = useQueryClient();
   const { currentBranch } = useBranch();
 
+  // Initialize with empty defaults
   const form = useForm<ClassFormValues>({
     resolver: zodResolver(classFormSchema),
     defaultValues: {
@@ -67,24 +68,39 @@ export function EditClassModal({ open, onOpenChange, classData, onSuccess }: Edi
   useEffect(() => {
     if (open && classData) {
       console.log("Setting form values with class data:", classData);
+      
+      // Use the actual values from classData
       form.reset({
         name: classData.name || "",
         class_type: classData.class_type || "Puppy",
         duration: classData.duration || 60,
-        course_fee: classData.course_fee || 0,
-        enrollment_fee: classData.enrollment_fee || 0,
-        mckaynine_commission_type: classData.mckaynine_commission_type || 'percentage',
-        mckaynine_commission_value: classData.mckaynine_commission_value || 0,
-        admin_fee_type: classData.admin_fee_type || 'percentage',
-        admin_fee_value: classData.admin_fee_value || 0,
-        trainer_fee_type: classData.trainer_fee_type || 'percentage',
-        trainer_fee_value: classData.trainer_fee_value || 0,
         capacity: classData.capacity || 8,
         description: classData.description || "",
-        branchId: currentBranch?.id || "",
+        
+        // Course and enrollment fees
+        course_fee: classData.course_fee || 0,
+        enrollment_fee: classData.enrollment_fee || 0,
+        
+        // McKaynine commission
+        mckaynine_commission_type: classData.mckaynine_commission_type || 'percentage',
+        mckaynine_commission_value: classData.mckaynine_commission_value || 0,
+        
+        // Admin fee
+        admin_fee_type: classData.admin_fee_type || 'percentage',
+        admin_fee_value: classData.admin_fee_value || 0,
+        
+        // Trainer fee
+        trainer_fee_type: classData.trainer_fee_type || 'percentage',
+        trainer_fee_value: classData.trainer_fee_value || 0,
+        
+        // Branch ID
+        branchId: classData.branch_id || currentBranch?.id || "",
       });
+      
+      // Log the values to confirm they're being set correctly
+      console.log("Form values after reset:", form.getValues());
     }
-  }, [form, classData, open]);
+  }, [form, classData, open, currentBranch?.id]);
 
   const onSubmit = async (values: ClassFormValues) => {
     if (!currentBranch) {
@@ -124,7 +140,7 @@ export function EditClassModal({ open, onOpenChange, classData, onSuccess }: Edi
           trainer_fee_value: values.trainer_fee_value,
           capacity: values.capacity,
           description: values.description,
-          branch_id: currentBranch.id,
+          branch_id: values.branchId,
           updated_at: new Date().toISOString(),
         })
         .eq("id", classData.id);
