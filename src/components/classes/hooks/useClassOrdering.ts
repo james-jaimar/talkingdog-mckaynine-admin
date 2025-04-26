@@ -3,6 +3,7 @@ import { useBranch } from "@/context/BranchContext";
 import { useClassQuery } from "./class-ordering/useClassQuery";
 import { useOptimisticUpdate } from "./class-ordering/useOptimisticUpdate";
 import { useOrderMutations } from "./class-ordering/useOrderMutations";
+import { ClassWithSchedules } from "./types/class-with-schedules";
 
 export function useClassOrdering() {
   const { currentBranch } = useBranch();

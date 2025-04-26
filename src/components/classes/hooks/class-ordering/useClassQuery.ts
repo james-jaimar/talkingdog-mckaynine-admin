@@ -1,7 +1,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { ClassWithSchedules } from "../types/class";
+import { ClassWithSchedules } from "../types/class-with-schedules";
 import { useBranch } from "@/context/BranchContext";
 import { useTerm } from "@/context/TermContext";
 

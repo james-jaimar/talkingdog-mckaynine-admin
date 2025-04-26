@@ -4,6 +4,7 @@ import { useBranch } from "@/context/BranchContext";
 import { useAuth } from "@/context/auth";
 import { useTerm } from "@/context/TermContext";
 import { useEffect, useMemo } from "react";
+import { ClassWithSchedules } from "./types/class-with-schedules";
 
 export function useClassesData() {
   const { currentBranch } = useBranch();
@@ -30,7 +31,7 @@ export function useClassesData() {
     
     console.log(`Filtering ${orderedClasses.length} classes to show only active ones with term: ${termData?.id}`);
     
-    return orderedClasses.filter(c => 
+    return orderedClasses.filter((c: ClassWithSchedules) => 
       c.class_schedules && 
       c.class_schedules.length > 0 && 
       c.class_schedules.some(schedule => schedule.term_id === termData?.id)
