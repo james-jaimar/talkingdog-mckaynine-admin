@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { saveOrderToDatabase } from "./saveOrderToDatabase";
 import { useToast } from "@/components/ui/use-toast";
 
-export function useOrderMutations(branchId: string | undefined, onOrderSaved?: () => void) {
+export function useOrderMutations(branchId: string | undefined) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -17,15 +17,11 @@ export function useOrderMutations(branchId: string | undefined, onOrderSaved?: (
     onSuccess: () => {
       toast({
         title: "Order saved",
-        description: "Class order has been saved successfully.",
+        description: "Class order has been saved successfully."
       });
       
       if (branchId) {
         queryClient.invalidateQueries({ queryKey: ['class-tab-order', branchId] });
-      }
-      
-      if (onOrderSaved) {
-        onOrderSaved();
       }
     },
     onError: (error) => {
@@ -33,7 +29,7 @@ export function useOrderMutations(branchId: string | undefined, onOrderSaved?: (
       toast({
         title: "Save failed",
         description: "Failed to save class order. Please try again.",
-        variant: "destructive",
+        variant: "destructive"
       });
     }
   });

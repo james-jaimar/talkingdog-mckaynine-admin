@@ -1,18 +1,8 @@
 
 import { supabase } from "@/integrations/supabase/client";
 
-/**
- * Saves the class ordering to the database
- * @param classIds Array of class IDs in the desired order
- * @param branchId Current branch ID
- */
 export async function saveOrderToDatabase(classIds: string[], branchId: string) {
-  if (!classIds.length || !branchId) {
-    throw new Error("Invalid parameters for saving class order");
-  }
-  
   try {
-    // First check if an order already exists
     const { data: existingOrder, error: checkError } = await supabase
       .from('class_tab_order')
       .select('id')
@@ -25,8 +15,7 @@ export async function saveOrderToDatabase(classIds: string[], branchId: string) 
     }
 
     if (existingOrder) {
-      // Update existing order
-      const { error: updateError } = await supabase
+      const { error } = await supabase
         .from('class_tab_order')
         .update({ 
           class_ids: classIds,
@@ -34,23 +23,16 @@ export async function saveOrderToDatabase(classIds: string[], branchId: string) 
         })
         .eq('id', existingOrder.id);
         
-      if (updateError) {
-        console.error("Error updating class order:", updateError);
-        throw updateError;
-      }
+      if (error) throw error;
     } else {
-      // Create new order
-      const { error: insertError } = await supabase
+      const { error } = await supabase
         .from('class_tab_order')
         .insert({
           branch_id: branchId,
           class_ids: classIds
         });
         
-      if (insertError) {
-        console.error("Error creating class order:", insertError);
-        throw insertError;
-      }
+      if (error) throw error;
     }
     
     return classIds;
