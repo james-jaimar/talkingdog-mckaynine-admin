@@ -1,13 +1,8 @@
 
 import { Class } from "../../types/class";
+import { ClassSchedule } from "../../types/class-schedule";
 
 export interface ClassWithSchedules extends Class {
-  class_schedules?: {
-    id: string;
-    start_time: string;
-    end_time: string;
-    selected_dates?: string[];
-    term_id?: string;
-    bookings?: { id: string }[];
-  }[];
+  // Using the actual ClassSchedule type but making it compatible with what we need
+  class_schedules?: Partial<ClassSchedule>[];
 }
