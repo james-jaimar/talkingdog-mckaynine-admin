@@ -7,7 +7,6 @@ import { StatsCard } from "@/components/dashboard/StatsCard";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
 import { Users, Dog, Book, Calendar } from "lucide-react";
 import { useTerm } from "@/context/TermContext";
-import { TermDisplay } from "@/components/dashboard/TermDisplay";
 import { useEffect } from "react";
 
 export default function Dashboard() {
@@ -37,11 +36,6 @@ export default function Dashboard() {
       <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
         <div className="flex items-center justify-between">
           <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
-        </div>
-
-        {/* Term Display */}
-        <div className="mb-4">
-          <TermDisplay />
         </div>
 
         {/* Stats Cards */}
@@ -81,3 +75,4 @@ export default function Dashboard() {
     </DashboardLayout>
   );
 }
+

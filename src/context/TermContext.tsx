@@ -1,8 +1,8 @@
-
 import React, { createContext, useState, useContext, useEffect, useCallback, ReactNode } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
+import { startOfDay, endOfDay } from 'date-fns';
 
 // Define types
 type TermNumber = '1' | '2' | '3' | '4';
@@ -136,7 +136,12 @@ export function TermProvider({ children }: { children: ReactNode }) {
           return null;
         }
 
-        return data[0] as TermData;
+        // Adjust the dates to start of first day and end of last day of the term
+        const termData = data[0];
+        termData.start_date = startOfDay(new Date(selectedYear, getTermMonths(selectedTermNumber as TermNumber)[0], 1)).toISOString();
+        termData.end_date = endOfDay(new Date(selectedYear, getTermMonths(selectedTermNumber as TermNumber)[1] + 1, 0)).toISOString();
+
+        return termData as TermData;
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : 'Unknown error';
         console.error('Exception fetching term data:', err);
@@ -206,6 +211,16 @@ export function TermProvider({ children }: { children: ReactNode }) {
       {children}
     </TermContext.Provider>
   );
+}
+
+// Add a utility function to get start and end months for each term
+function getTermMonths(termNumber: TermNumber): [number, number] {
+  switch(termNumber) {
+    case '1': return [0, 2];   // Jan, Feb, Mar
+    case '2': return [3, 5];   // Apr, May, Jun
+    case '3': return [6, 8];   // Jul, Aug, Sep
+    case '4': return [9, 11];  // Oct, Nov, Dec
+  }
 }
 
 export const useTerm = () => {
