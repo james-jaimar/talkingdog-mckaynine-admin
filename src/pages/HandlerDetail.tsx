@@ -16,6 +16,7 @@ import { EditDogModal } from "@/components/handlers/detail/EditDogModal";
 import { HandlerDetailSkeleton } from "@/components/handlers/detail/HandlerDetailSkeleton";
 import { HandlerNotFound } from "@/components/handlers/detail/HandlerNotFound";
 import { useToast } from "@/components/ui/use-toast";
+import { Client } from "@/hooks/useClientsData";
 
 // Define a type for the consent status values
 type ConsentStatus = 'yes' | 'no' | 'not_marked';
@@ -129,6 +130,12 @@ export default function HandlerDetail() {
     );
   }
 
+  // Convert HandlerData to Client type for HandlerInvoices component
+  const clientForInvoices: Client = {
+    ...clientData,
+    phone: clientData.phone || '', // Ensure phone is not optional
+  };
+
   return (
     <DashboardLayout>
       <Helmet>
@@ -163,7 +170,7 @@ export default function HandlerDetail() {
           <div className="md:col-span-2 space-y-6">
             {/* Invoices */}
             {clientData && (
-              <HandlerInvoices clientData={clientData} />
+              <HandlerInvoices clientData={clientForInvoices} />
             )}
             
             {/* Dogs list */}
