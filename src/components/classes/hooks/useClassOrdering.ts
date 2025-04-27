@@ -42,6 +42,7 @@ export function useClassOrdering() {
   const hasInitialized = useRef(false);
   const lastTermId = useRef<string | undefined>(termData?.id);
   const lastReorderTimestamp = useRef(0);
+  const optimisticUpdateInProgress = useRef(false);
   
   // Debug logging
   useEffect(() => {
@@ -54,7 +55,8 @@ export function useClassOrdering() {
       isMoving,
       isDragging,
       pendingMovements,
-      hasInitialized: hasInitialized.current
+      hasInitialized: hasInitialized.current,
+      optimisticUpdateInProgress: optimisticUpdateInProgress.current
     });
   }, [
     branchId, 
@@ -75,6 +77,7 @@ export function useClassOrdering() {
         to: termData?.id 
       });
       hasInitialized.current = false;
+      optimisticUpdateInProgress.current = false;
       resetMovingState();
       lastTermId.current = termData?.id;
     }
@@ -84,11 +87,12 @@ export function useClassOrdering() {
   useEffect(() => {
     // Only update if:
     // 1. We have fetched classes
-    // 2. Either we haven't initialized yet or we're not in the middle of a drag operation
-    if (fetchedClasses && (!hasInitialized.current || !isDragging)) {
+    // 2. Either we haven't initialized yet or we're not in the middle of a drag/optimistic update
+    if (fetchedClasses && (!hasInitialized.current || (!isDragging && !optimisticUpdateInProgress.current))) {
       console.log("Syncing ordered classes from fetched data", {
         count: fetchedClasses.length,
         isDragging,
+        optimisticUpdate: optimisticUpdateInProgress.current,
         hasInitialized: hasInitialized.current
       });
       
@@ -123,6 +127,7 @@ export function useClassOrdering() {
       // Track this operation
       const now = Date.now();
       lastReorderTimestamp.current = now;
+      optimisticUpdateInProgress.current = true;
       
       // Identify the moving class
       const movingClassId = orderedClasses[sourceIndex].id;
@@ -147,11 +152,18 @@ export function useClassOrdering() {
           // Only unmark if this is still the most recent reorder
           if (lastReorderTimestamp.current === now) {
             unmarkAsMoving(movingClassId);
+            // Wait before allowing fetchedClasses to overwrite our optimistic update
+            setTimeout(() => {
+              if (lastReorderTimestamp.current === now) {
+                optimisticUpdateInProgress.current = false;
+              }
+            }, 1000);
           }
         },
         onError: () => {
           if (lastReorderTimestamp.current === now) {
             unmarkAsMoving(movingClassId);
+            optimisticUpdateInProgress.current = false;
           }
         }
       });
@@ -163,6 +175,7 @@ export function useClassOrdering() {
         variant: "destructive"
       });
       resetMovingState();
+      optimisticUpdateInProgress.current = false;
     } finally {
       setIsDragging(false);
     }

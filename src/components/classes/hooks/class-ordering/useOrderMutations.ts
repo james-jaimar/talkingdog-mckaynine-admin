@@ -76,7 +76,7 @@ export function useOrderMutations(branchId: string | undefined) {
       });
     },
     
-    // Always refetch after error or success to ensure data consistency
+    // Don't refetch after a successful update - rely on our optimistic update
     onSettled: () => {
       console.log("Order mutation settled, invalidating queries");
       // Don't trigger immediate refetch but mark as stale
