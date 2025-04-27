@@ -1,7 +1,7 @@
 
-import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableHead, TableHeader } from "@/components/ui/table";
 import { HandlerTableRow } from "./table/HandlerTableRow";
-import { TableHeader as CustomTableHeader } from "./table/TableHeader";
+import { HandlerTableHeader } from "./table/TableHeader";
 import { useState } from "react";
 import { TablePagination } from "@/components/ui/table-pagination";
 
@@ -34,7 +34,7 @@ export function HandlerTable({
     <div className="w-full">
       <Table>
         <TableHeader>
-          <CustomTableHeader />
+          <HandlerTableHeader />
         </TableHeader>
         <TableBody>
           {loading ? (
