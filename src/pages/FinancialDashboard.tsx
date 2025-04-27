@@ -32,22 +32,22 @@ export default function FinancialDashboard() {
       .reduce((sum, invoice) => sum + invoice.total, 0)
   };
 
-  // Calculate total fees only from paid invoices
+  // Calculate fees using correct percentages
   const paidInvoices = activeInvoices.filter(invoice => invoice.status === 'paid');
   const totalAdmin = paidInvoices.reduce((sum, inv) => {
-    // Calculate admin fee based on invoice items
-    const adminFee = inv.total * 0.05; // 5% admin fee
+    // Calculate admin fee based on correct percentage
+    const adminFee = inv.total * 0.10; // 10% admin fee
     return sum + adminFee;
   }, 0);
   
-  const totalTrainer = paidInvoices.reduce((sum, inv) => {
-    // Calculate trainer fee based on invoice items
-    const trainerFee = inv.total * 0.60; // 60% trainer fee
-    return sum + trainerFee;
+  const totalHandler = paidInvoices.reduce((sum, inv) => {
+    // Calculate handler fee based on correct percentage
+    const handlerFee = inv.total * 0.40; // 40% handler fee
+    return sum + handlerFee;
   }, 0);
   
   const totalFranchise = paidInvoices.reduce((sum, inv) => {
-    // Calculate franchise fee based on invoice items
+    // Calculate franchise fee based on correct percentage
     const franchiseFee = inv.total * 0.15; // 15% franchise fee
     return sum + franchiseFee;
   }, 0);
@@ -75,10 +75,10 @@ export default function FinancialDashboard() {
           {/* Financial metrics cards */}
           <FinancialMetricsCards metrics={financialMetrics} />
 
-          {/* Expense breakdown cards */}
+          {/* Expense breakdown cards with correct fee names */}
           <ExpenseBreakdownCards
             totalAdmin={totalAdmin}
-            totalTrainer={totalTrainer}
+            totalTrainer={totalHandler} // Renamed to Handler Fee in display
             totalFranchise={totalFranchise}
             totalRevenue={financialMetrics.collectedRevenue}
           />

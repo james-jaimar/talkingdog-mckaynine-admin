@@ -4,7 +4,7 @@ import { formatCurrency, formatPercentage } from "@/lib/formatters";
 
 interface ExpenseBreakdownCardsProps {
   totalAdmin: number;
-  totalTrainer: number;
+  totalTrainer: number; // Will display as Handler Fee
   totalFranchise: number;
   totalRevenue: number;
 }
@@ -38,7 +38,7 @@ export function ExpenseBreakdownCards({
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium">
-            Trainer Fee
+            Handler Fee
           </CardTitle>
         </CardHeader>
         <CardContent>

@@ -12,7 +12,7 @@ export function useAllocationChartData(invoices: Invoice[], showOnlyPaid: boolea
   const [allocationData, setAllocationData] = useState<AllocationCategory[]>([]);
   const [totalRevenue, setTotalRevenue] = useState<number>(0);
 
-  const COLORS = ["#10B981", "#6366F1", "#F59E0B", "#EC4899"];
+  const COLORS = ["#10B981", "#6366F1", "#F59E0B"];
 
   useEffect(() => {
     if (!invoices?.length) {
@@ -36,27 +36,22 @@ export function useAllocationChartData(invoices: Invoice[], showOnlyPaid: boolea
     const total = filteredInvoices.reduce((sum, invoice) => sum + invoice.total, 0);
     setTotalRevenue(total);
 
-    // Using fixed percentages of total revenue for allocation categories based on business logic
+    // Using correct percentages from the system
     const data: AllocationCategory[] = [
       { 
-        name: 'Trainer Compensation', 
-        value: total * 0.60, // 60% trainer fee
+        name: 'Handler Fee', 
+        value: total * 0.40, // 40% handler fee
         color: COLORS[0]
       },
       { 
-        name: 'Franchise Royalties', 
+        name: 'Franchise Fee', 
         value: total * 0.15, // 15% franchise fee
         color: COLORS[1]
       },
       { 
-        name: 'Admin Fees', 
-        value: total * 0.05, // 5% admin fee
+        name: 'Admin Fee', 
+        value: total * 0.10, // 10% admin fee
         color: COLORS[2]
-      },
-      { 
-        name: 'Branch Operations', 
-        value: total * 0.20, // 20% operations
-        color: COLORS[3]
       }
     ];
 
