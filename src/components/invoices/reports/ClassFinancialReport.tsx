@@ -22,12 +22,18 @@ export function ClassFinancialReport({ dateRange, onRefreshSuccess }: ClassFinan
   const fromDate = dateRange?.from?.toISOString();
   const toDate = dateRange?.to?.toISOString();
 
-  const { classFinances, isLoading, refreshData } = useClassFinancialData(
+  const { classFinances, isLoading, refreshData, totalInvoiceCount } = useClassFinancialData(
     currentBranch?.id,
     fromDate,
     toDate
   );
 
+  // Calculate summary statistics
+  const totalRevenue = classFinances.reduce((sum, item) => sum + item.totalRevenue, 0);
+  const totalBookings = classFinances.reduce((sum, item) => sum + item.bookingsCount, 0);
+  const totalProfit = classFinances.reduce((sum, item) => sum + item.profit, 0);
+  const profitPercentage = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
+  
   const handleRefresh = async () => {
     setRefreshing(true);
     
@@ -101,13 +107,6 @@ export function ClassFinancialReport({ dateRange, onRefreshSuccess }: ClassFinan
       </Card>
     );
   }
-
-  // Calculate summary statistics
-  const totalRevenue = classFinances.reduce((sum, item) => sum + item.totalRevenue, 0);
-  const totalInvoiceCount = classFinances.reduce((sum, item) => sum + item.invoiceCount, 0);
-  const totalBookings = classFinances.reduce((sum, item) => sum + item.bookingsCount, 0);
-  const totalProfit = classFinances.reduce((sum, item) => sum + item.profit, 0);
-  const profitPercentage = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
 
   return (
     <Card className="w-full">

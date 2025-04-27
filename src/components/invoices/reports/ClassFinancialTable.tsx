@@ -63,7 +63,7 @@ export function ClassFinancialTable({ classFinances, showInvoiceCount = true }: 
             <TableCell className="text-right">{formatCurrency(classItem.franchiseFee)}</TableCell>
             <TableCell className="text-right">{formatCurrency(classItem.adminFee)}</TableCell>
             <TableCell className="text-right">{formatCurrency(classItem.instructorFee)}</TableCell>
-            <TableCell className={`text-right ${classItem.profit < 0 ? 'text-red-600 font-semibold' : ''}`}>
+            <TableCell className={`text-right font-medium ${classItem.profit < 0 ? 'text-red-600' : ''}`}>
               {formatCurrency(classItem.profit)}
             </TableCell>
           </TableRow>

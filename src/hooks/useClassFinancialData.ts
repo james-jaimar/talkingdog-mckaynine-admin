@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,6 +17,7 @@ export interface ClassFinance {
 export function useClassFinancialData(branchId?: string, fromDate?: string, toDate?: string) {
   const [classFinances, setClassFinances] = useState<ClassFinance[]>([]);
   const [unassociatedRevenue, setUnassociatedRevenue] = useState<number>(0);
+  const [totalInvoiceCount, setTotalInvoiceCount] = useState<number>(0);
   const queryClient = useQueryClient();
   
   // Track invoices data to trigger refetch when invoices change
@@ -26,7 +28,7 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
   const { data: financialData, isLoading } = useQuery({
     queryKey: ['financial-bookings', branchId, fromDate, toDate, invoicesData],
     queryFn: async () => {
-      if (!branchId) return { bookingsWithInvoices: [], unassociatedInvoices: [] };
+      if (!branchId) return { bookingsWithInvoices: [], unassociatedInvoices: [], allInvoicesCount: 0 };
 
       console.log(`Fetching financial data for branch ${branchId} from ${fromDate} to ${toDate}`);
       
@@ -64,6 +66,31 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
         console.error("Error fetching booking data for financial report:", bookingsError);
         throw bookingsError;
       }
+      
+      // Get a count of all non-cancelled invoices for the branch within date range
+      let countQuery = supabase
+        .from('invoices')
+        .select(`
+          id,
+          client:client_id (
+            branch_id
+          )
+        `, { count: 'exact' })
+        .eq('client.branch_id', branchId)
+        .neq('status', 'cancelled');
+        
+      // Apply date filtering if dates are provided
+      if (fromDate && toDate) {
+        countQuery = countQuery.gte('issued_date', fromDate).lte('issued_date', toDate);
+      }
+      
+      const { count: allInvoicesCount, error: countError } = await countQuery;
+      
+      if (countError) {
+        console.error("Error counting invoices:", countError);
+      }
+      
+      console.log(`Total invoice count for branch ${branchId}: ${allInvoicesCount}`);
       
       // Also fetch invoice items to get accurate revenue data
       let invoiceQuery = supabase
@@ -116,8 +143,15 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
       // Track invoice items without booking associations
       const unassociatedInvoiceItems: any[] = [];
       
+      // Track all unique invoice IDs to verify our total count
+      const allInvoiceIds = new Set<string>();
+      
       if (branchInvoiceItems && branchInvoiceItems.length > 0) {
         branchInvoiceItems.forEach(item => {
+          if (item.invoices?.id) {
+            allInvoiceIds.add(item.invoices.id);
+          }
+          
           if (item.booking_id) {
             bookingInvoiceMap.set(item.booking_id, {
               amount: item.amount || (item.unit_price * item.quantity),
@@ -139,6 +173,7 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
       console.log(`Retrieved ${bookings?.length || 0} bookings and ${branchInvoiceItems?.length || 0} invoice items`);
       console.log(`Mapped ${bookingInvoiceMap.size} bookings to invoices`);
       console.log(`Found ${unassociatedInvoiceItems.length} invoice items without booking associations`);
+      console.log(`Unique invoice IDs found: ${allInvoiceIds.size}`);
       
       // Enhance bookings with invoice data
       const bookingsWithInvoices = bookings?.map(booking => {
@@ -162,7 +197,8 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
       
       return { 
         bookingsWithInvoices, 
-        unassociatedInvoices: unassociatedInvoiceItems 
+        unassociatedInvoices: unassociatedInvoiceItems,
+        allInvoicesCount: allInvoicesCount || allInvoiceIds.size
       };
     },
     enabled: !!branchId,
@@ -176,10 +212,14 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
     if (!financialData) {
       setClassFinances([]);
       setUnassociatedRevenue(0);
+      setTotalInvoiceCount(0);
       return;
     }
 
-    const { bookingsWithInvoices, unassociatedInvoices } = financialData;
+    const { bookingsWithInvoices, unassociatedInvoices, allInvoicesCount } = financialData;
+    
+    // Update the total invoice count state
+    setTotalInvoiceCount(allInvoicesCount);
     
     // Calculate total revenue from unassociated invoice items
     const unassociatedTotal = unassociatedInvoices.reduce((sum, item) => sum + (item.amount || 0), 0);
@@ -267,11 +307,8 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
         summary.invoiceCount = invoiceSet.size;
       }
 
-      // For fee calculations, use the class's defined percentages
-      // but apply them to the actual revenue collected (from invoice if available)
-      const feeBaseAmount = booking.calculatedFee || courseRevenue;
-
-      // Calculate fees based on course fee
+      // For fee calculations, use the actual revenue collected
+      // Calculate fees based on actual revenue, not just the class fee
       if (classData.mckaynine_commission_type === 'percentage') {
         summary.franchiseFee += (courseRevenue * (classData.mckaynine_commission_value / 100));
       } else {
@@ -306,6 +343,7 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
     console.log(`Processed ${sortedFinances.length} class financial summaries`);
     console.log(`Total revenue across classes: ${sortedFinances.reduce((sum, curr) => sum + curr.totalRevenue, 0)}`);
     console.log(`Total invoices across classes: ${sortedFinances.reduce((sum, curr) => sum + curr.invoiceCount, 0)}`);
+    console.log(`Expected total invoices: ${allInvoicesCount}`);
     console.log(`Unassociated revenue: ${unassociatedTotal}`);
     
     setClassFinances(sortedFinances);
@@ -322,6 +360,7 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
     classFinances, 
     unassociatedRevenue,
     isLoading, 
-    refreshData 
+    refreshData,
+    totalInvoiceCount 
   };
 }
