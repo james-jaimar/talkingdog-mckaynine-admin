@@ -35,8 +35,8 @@ export function ClassTableRow({
           ref={provided.innerRef}
           {...provided.draggableProps}
           className={cn(
-            // Darken alternate rows by 10% more
-            index % 2 === 0 ? "bg-gray-50" : "bg-gray-100", 
+            // Increased contrast: darker gray for alternate rows, more noticeable separation
+            index % 2 === 0 ? "bg-gray-50" : "bg-gray-200", 
             isMoving && "bg-yellow-50 transition-colors duration-300",
             snapshot.isDragging && "shadow-lg bg-blue-50 border border-blue-200"
           )}
