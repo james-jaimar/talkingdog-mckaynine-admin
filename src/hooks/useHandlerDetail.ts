@@ -1,7 +1,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { HandlerData } from "@/types/handler";
+import { HandlerData, ConsentStatus } from "@/types/handler";
 import { useToast } from "@/components/ui/use-toast";
 
 export function useHandlerDetail(id: string | undefined) {
