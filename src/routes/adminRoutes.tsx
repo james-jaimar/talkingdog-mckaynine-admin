@@ -8,10 +8,6 @@ import Classes from "@/pages/Classes";
 import ClassDetail from "@/pages/ClassDetail";
 import Handlers from "@/pages/Handlers";
 import HandlerDetail from "@/pages/HandlerDetail";
-import Messages from "@/pages/Messages";
-import Settings from "@/pages/Settings";
-import ClassSessions from "@/pages/ClassSessions";
-import Reports from "@/pages/Reports";
 import FinancialReports from "@/pages/FinancialReports";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import RequireAdmin from "@/components/auth/RequireAdmin";
@@ -31,28 +27,12 @@ export const adminRoutes = [
     element: <ClassDetail />,
   },
   {
-    path: "/admin/classes/:id/sessions",
-    element: <ClassSessions />,
-  },
-  {
     path: "/admin/handlers",
     element: <Handlers />,
   },
   {
     path: "/admin/handlers/:id",
     element: <HandlerDetail />,
-  },
-  {
-    path: "/admin/messages",
-    element: <Messages />,
-  },
-  {
-    path: "/admin/settings",
-    element: <Settings />,
-  },
-  {
-    path: "/admin/reports",
-    element: <Reports />,
   },
   {
     path: "/admin/financial-reports",
