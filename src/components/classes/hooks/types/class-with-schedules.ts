@@ -2,7 +2,7 @@
 import { Class } from "../../types/class";
 import { ClassSchedule } from "../../types/class-schedule";
 
-export interface ClassWithSchedules extends Class {
+export interface ClassWithSchedules extends Omit<Class, 'class_schedules'> {
   // Using a specific type that matches what we actually get from the database
   class_schedules?: {
     id: string;
