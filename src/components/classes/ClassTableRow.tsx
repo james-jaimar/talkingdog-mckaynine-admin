@@ -26,7 +26,7 @@ export function ClassTableRow({
     return count + (schedule.bookings?.length || 0);
   }, 0) || 0;
   
-  // Add alternate row coloring
+  // Add alternate row coloring and highlight when moving
   const rowBackground = cn(
     index % 2 === 0 ? "bg-gray-50" : "bg-white", 
     isMoving ? "bg-yellow-50 transition-colors duration-300" : ""
@@ -36,6 +36,7 @@ export function ClassTableRow({
     <TableRow 
       className={rowBackground}
       key={classItem.id}
+      data-testid={`class-row-${classItem.id}`}
     >
       {/* Order column */}
       <TableCell>
@@ -44,7 +45,8 @@ export function ClassTableRow({
           totalClasses={totalClasses}
           onMoveUp={onMoveUp}
           onMoveDown={onMoveDown}
-          isLoading={isLoading || isMoving}
+          isLoading={isLoading}
+          isMoving={isMoving}
         />
       </TableCell>
       

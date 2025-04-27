@@ -15,8 +15,8 @@ export function useOrderMutations(branchId: string | undefined) {
       console.log(`Mutation starting for branch ${branchId} with class IDs:`, classIds);
       return saveOrderToDatabase(classIds, branchId);
     },
-    onSuccess: (_, variables) => {
-      console.log("Order mutation succeeded with variables:", variables);
+    onSuccess: (result, variables) => {
+      console.log("Order mutation succeeded:", result);
       toast({
         title: "Order saved",
         description: "Class order has been saved successfully."

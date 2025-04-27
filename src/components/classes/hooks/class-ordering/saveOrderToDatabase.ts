@@ -5,6 +5,13 @@ export async function saveOrderToDatabase(classIds: string[], branchId: string) 
   try {
     console.log(`Saving order for branch ${branchId} with class IDs:`, classIds);
     
+    // Make sure we're not trying to save an empty array
+    if (!Array.isArray(classIds) || classIds.length === 0) {
+      console.error("Cannot save empty class order");
+      throw new Error("Cannot save empty class order");
+    }
+    
+    // Check if an order record already exists for this branch
     const { data: existingOrder, error: checkError } = await supabase
       .from('class_tab_order')
       .select('id')
@@ -33,6 +40,7 @@ export async function saveOrderToDatabase(classIds: string[], branchId: string) 
       }
       
       console.log("Order updated successfully:", data);
+      return data;
     } else {
       console.log("Creating new order record");
       const { data, error } = await supabase
@@ -49,9 +57,8 @@ export async function saveOrderToDatabase(classIds: string[], branchId: string) 
       }
       
       console.log("Order created successfully:", data);
+      return data;
     }
-    
-    return classIds;
   } catch (error) {
     console.error("Database operation failed:", error);
     throw error;

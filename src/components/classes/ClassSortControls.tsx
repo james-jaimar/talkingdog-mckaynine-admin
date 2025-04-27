@@ -8,6 +8,7 @@ interface ClassSortControlsProps {
   onMoveUp: (index: number) => void;
   onMoveDown: (index: number) => void;
   isLoading?: boolean;
+  isMoving?: boolean;
 }
 
 export function ClassSortControls({ 
@@ -15,12 +16,15 @@ export function ClassSortControls({
   totalClasses, 
   onMoveUp, 
   onMoveDown,
-  isLoading = false
+  isLoading = false,
+  isMoving = false
 }: ClassSortControlsProps) {
+  const isDisabled = isLoading || isMoving;
+  
   const handleMoveUp = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!isLoading) {
+    if (!isDisabled) {
       console.log(`ClassSortControls: Moving up index ${index}`);
       onMoveUp(index);
     }
@@ -29,7 +33,7 @@ export function ClassSortControls({
   const handleMoveDown = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!isLoading) {
+    if (!isDisabled) {
       console.log(`ClassSortControls: Moving down index ${index}`);
       onMoveDown(index);
     }
@@ -37,7 +41,7 @@ export function ClassSortControls({
 
   return (
     <div className="flex flex-col gap-1 relative">
-      {isLoading && (
+      {(isLoading || isMoving) && (
         <div className="absolute -left-6 top-1/2 -translate-y-1/2">
           <Loader2 className="h-4 w-4 animate-spin text-primary" />
         </div>
@@ -45,9 +49,9 @@ export function ClassSortControls({
       <Button 
         variant="ghost" 
         size="icon" 
-        className={`h-7 w-7 transition-opacity ${isLoading ? 'opacity-50' : ''}`}
+        className={`h-7 w-7 transition-opacity ${isDisabled ? 'opacity-50' : 'hover:bg-gray-100'}`}
         onClick={handleMoveUp}
-        disabled={index === 0 || isLoading}
+        disabled={index === 0 || isDisabled}
         title="Move up"
         aria-label="Move class up in order"
         type="button"
@@ -57,9 +61,9 @@ export function ClassSortControls({
       <Button 
         variant="ghost" 
         size="icon" 
-        className={`h-7 w-7 transition-opacity ${isLoading ? 'opacity-50' : ''}`}
+        className={`h-7 w-7 transition-opacity ${isDisabled ? 'opacity-50' : 'hover:bg-gray-100'}`}
         onClick={handleMoveDown}
-        disabled={index === totalClasses - 1 || isLoading}
+        disabled={index === totalClasses - 1 || isDisabled}
         title="Move down"
         aria-label="Move class down in order"
         type="button"
