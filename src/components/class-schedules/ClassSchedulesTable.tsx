@@ -1,23 +1,18 @@
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
-import { EditClassScheduleModal } from "./EditClassScheduleModal";
 import { useAuth } from "@/context/AuthContext";
 import { useBranch } from "@/context/BranchContext";
 import { ClassSchedule } from "./types/classSchedule";
 import { ScheduleTableAlert } from "./ScheduleTableAlert";
 import { SchedulesTableContent } from "./SchedulesTableContent";
 import { useTerm } from "@/context/TermContext";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
-} from "@/components/ui/table";
+import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { SchedulesTableLoading } from "./table/SchedulesTableLoading";
+import { SchedulesTableError } from "./table/SchedulesTableError";
+import { SchedulesEditModal } from "./table/SchedulesEditModal";
 
 interface ClassSchedulesTableProps {
   classId: string;
@@ -29,15 +24,10 @@ export function ClassSchedulesTable({ classId }: ClassSchedulesTableProps) {
   const { toast } = useToast();
   const { user, session } = useAuth();
   const { currentBranch } = useBranch();
-  const queryClient = useQueryClient();
-  const previousInvalidationRef = useRef<number>(0);
   const { termData } = useTerm();
 
-  // Add a state to track if a refresh is needed
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
-
   const { data: schedules, isLoading, error, refetch } = useQuery({
-    queryKey: ["class-schedules", classId, refreshTrigger, termData?.id],
+    queryKey: ["class-schedules", classId, termData?.id],
     queryFn: async () => {
       console.log("Fetching class schedules for classId:", classId, "term:", termData?.id);
       
@@ -55,7 +45,6 @@ export function ClassSchedulesTable({ classId }: ClassSchedulesTableProps) {
         `)
         .eq("class_id", classId);
       
-      // Filter by term if a term is selected
       if (termData?.id) {
         console.log(`Adding term filter: ${termData.id}`);
         query = query.eq("term_id", termData.id);
@@ -68,59 +57,17 @@ export function ClassSchedulesTable({ classId }: ClassSchedulesTableProps) {
         throw error;
       }
       
-      // Transform the data to match the ClassSchedule type with class property
       const transformedData = data.map(item => ({
         ...item,
-        class: item.classes  // Map 'classes' to 'class'
+        class: item.classes
       }));
       
       console.log(`Retrieved ${transformedData.length} class schedules`);
       return transformedData as ClassSchedule[];
     },
     enabled: !!classId && !!user && !!session && !!currentBranch,
-    staleTime: 10000, // Add staleTime to prevent excessive refetches
+    staleTime: 10000,
   });
-
-  // Function to manually trigger a refresh
-  const forceRefresh = () => {
-    console.log("Forcing schedules refresh");
-    setRefreshTrigger(prev => prev + 1);
-  };
-
-  // Subscribe to realtime changes on class_schedules table
-  useEffect(() => {
-    if (!classId || !user || !session) return;
-
-    console.log("Setting up class schedules subscription");
-    const channel = supabase
-      .channel('table-db-changes')
-      .on('postgres_changes', 
-        { 
-          event: '*', 
-          schema: 'public', 
-          table: 'class_schedules',
-          filter: `class_id=eq.${classId}`
-        }, 
-        (payload) => {
-          console.log("Received class_schedules change:", payload);
-          forceRefresh();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      console.log("Cleaning up class schedules subscription");
-      supabase.removeChannel(channel);
-    };
-  }, [classId, user, session]);
-
-  // Effect to refetch when term changes
-  useEffect(() => {
-    if (termData?.id) {
-      console.log("Term changed, refetching schedules");
-      refetch();
-    }
-  }, [termData?.id, refetch]);
 
   const handleDeleteSchedule = async (id: string) => {
     try {
@@ -136,7 +83,7 @@ export function ClassSchedulesTable({ classId }: ClassSchedulesTableProps) {
         description: "The class schedule has been successfully deleted.",
       });
       
-      forceRefresh();
+      refetch();
     } catch (error) {
       console.error("Error deleting schedule:", error);
       toast({
@@ -148,20 +95,16 @@ export function ClassSchedulesTable({ classId }: ClassSchedulesTableProps) {
   };
 
   const handleEditSchedule = (schedule: ClassSchedule) => {
-    // Set the schedule to edit first
     setScheduleToEdit(schedule);
-    // Then open the modal
     setTimeout(() => {
       setIsEditModalOpen(true);
     }, 10);
   };
 
   const handleEditSuccess = () => {
-    // Clear the edit state
     setScheduleToEdit(null);
-    // Refresh data after a short delay
     setTimeout(() => {
-      forceRefresh();
+      refetch();
     }, 300);
   };
 
@@ -184,16 +127,20 @@ export function ClassSchedulesTable({ classId }: ClassSchedulesTableProps) {
   }
 
   if (error) {
-    return (
-      <ScheduleTableAlert 
-        message={`Error loading schedules: ${error instanceof Error ? error.message : "Unknown error"}`} 
-        variant="error"
-      />
-    );
+    return <SchedulesTableError error={error} />;
   }
 
   if (isLoading) {
-    return <div className="py-10 text-center">Loading schedules...</div>;
+    return <SchedulesTableLoading />;
+  }
+
+  if (!schedules || schedules.length === 0) {
+    return (
+      <div className="text-center p-8 bg-gray-50 rounded-md border">
+        <p className="text-muted-foreground">No handlers found for this class.</p>
+        <p className="text-sm mt-2">Add handlers to this class to start tracking attendance.</p>
+      </div>
+    );
   }
 
   return (
@@ -212,7 +159,7 @@ export function ClassSchedulesTable({ classId }: ClassSchedulesTableProps) {
           </TableHeader>
           <TableBody>
             <SchedulesTableContent 
-              schedules={schedules || []} 
+              schedules={schedules} 
               onEdit={handleEditSchedule} 
               onDelete={handleDeleteSchedule} 
             />
@@ -220,23 +167,13 @@ export function ClassSchedulesTable({ classId }: ClassSchedulesTableProps) {
         </Table>
       </div>
 
-      {scheduleToEdit && (
-        <EditClassScheduleModal 
-          open={isEditModalOpen} 
-          onOpenChange={(open) => {
-            setIsEditModalOpen(open);
-            // If modal is closing, clear the schedule to edit after a short delay
-            if (!open) {
-              setTimeout(() => {
-                setScheduleToEdit(null);
-              }, 100);
-            }
-          }} 
-          classId={classId}
-          schedule={scheduleToEdit}
-          onSuccess={handleEditSuccess}
-        />
-      )}
+      <SchedulesEditModal
+        isOpen={isEditModalOpen}
+        onOpenChange={setIsEditModalOpen}
+        classId={classId}
+        schedule={scheduleToEdit}
+        onSuccess={handleEditSuccess}
+      />
     </div>
   );
 }
