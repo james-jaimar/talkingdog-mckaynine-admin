@@ -27,21 +27,26 @@ interface HandlerDetailHeaderProps {
 export function HandlerDetailHeader({ isLoading, handler, onHandlerUpdated }: HandlerDetailHeaderProps) {
   const isMobile = useIsMobile();
 
+  console.log("HandlerDetailHeader received handler:", handler);
+
   return (
     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
       <div className="flex items-center space-x-2">
         <Button variant="outline" size="icon" asChild>
-          <Link to="/handlers">
+          <Link to="/admin/handlers">
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>
-        <h1 className={`text-2xl ${isMobile ? 'text-xl' : 'text-3xl'} font-bold text-gray-900`}>
+        <h1 className={`${isMobile ? 'text-xl' : 'text-3xl'} font-bold text-gray-900`}>
           {isLoading ? 'Loading...' : `${handler?.first_name || ''} ${handler?.last_name || ''}`}
         </h1>
       </div>
       {!isLoading && handler && (
         <div className="mt-2 sm:mt-0">
-          <EditHandlerModal handler={handler} onSuccess={onHandlerUpdated} />
+          <EditHandlerModal 
+            handler={handler} 
+            onSuccess={onHandlerUpdated} 
+          />
         </div>
       )}
     </div>

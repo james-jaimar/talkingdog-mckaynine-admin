@@ -12,7 +12,7 @@ interface EditHandlerModalProps {
     id: string;
     first_name: string;
     last_name?: string;
-    email?: string; // Made email optional to match HandlerTableRow
+    email?: string; 
     phone?: string;
     address?: string;
     city?: string;
@@ -29,6 +29,8 @@ interface EditHandlerModalProps {
 export function EditHandlerModal({ handler, onSuccess, children }: EditHandlerModalProps) {
   const [open, setOpen] = useState(false);
   const isMobile = useIsMobile();
+
+  console.log("EditHandlerModal received handler:", handler);
 
   const handleOpen = (event: React.MouseEvent) => {
     event.stopPropagation();
@@ -52,11 +54,11 @@ export function EditHandlerModal({ handler, onSuccess, children }: EditHandlerMo
     const ModalTitle = isDrawer ? DrawerTitle : DialogTitle;
 
     return (
-      <ModalContainer className="max-h-[90vh] overflow-auto">
+      <ModalContainer className={`max-h-[90vh] overflow-auto ${isDrawer ? '' : 'sm:max-w-[500px]'}`}>
         <ModalHeader>
           <ModalTitle>Edit Handler</ModalTitle>
         </ModalHeader>
-        <div className="px-4 pb-4">
+        <div className={isDrawer ? "px-4 pb-4" : "p-1"}>
           <EditHandlerForm 
             handler={handler} 
             onSuccess={() => {

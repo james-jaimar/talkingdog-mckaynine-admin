@@ -1,8 +1,9 @@
+
 import { Form } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useBranch } from "@/context/BranchContext";
@@ -18,7 +19,7 @@ interface HandlerData {
   id: string;
   first_name: string;
   last_name?: string;
-  email?: string; // Make email optional to match HandlerTableRow
+  email?: string;
   phone?: string;
   address?: string;
   city?: string;
@@ -39,26 +40,51 @@ export function EditHandlerForm({ handler, onSuccess }: EditHandlerFormProps) {
   const { toast } = useToast();
   const { branches } = useBranch();
 
+  console.log("EditHandlerForm received handler:", handler);
+
   // Initialize form with handler data
   const form = useForm<FormValues>({
     resolver: zodResolver(handlerFormSchema),
     defaultValues: {
-      first_name: handler.first_name,
-      last_name: handler.last_name || "",
-      email: handler.email || "", // Provide a default empty string if email is undefined
-      phone: handler.phone || "",
-      address: handler.address || "",
-      city: handler.city || "",
-      postal_code: handler.postal_code || "",
-      notes: handler.notes || "",
-      branch_id: handler.branch_id || "",
-      uses_whatsapp_status: handler.uses_whatsapp_status,
-      social_media_consent_status: handler.social_media_consent_status,
+      first_name: handler?.first_name || "",
+      last_name: handler?.last_name || "",
+      email: handler?.email || "",
+      phone: handler?.phone || "",
+      address: handler?.address || "",
+      city: handler?.city || "",
+      postal_code: handler?.postal_code || "",
+      notes: handler?.notes || "",
+      branch_id: handler?.branch_id || "",
+      uses_whatsapp_status: handler?.uses_whatsapp_status || 'not_marked',
+      social_media_consent_status: handler?.social_media_consent_status || 'not_marked',
     },
   });
 
+  // Update form when handler data changes
+  useEffect(() => {
+    if (handler) {
+      console.log("Resetting form with handler data:", handler);
+      form.reset({
+        first_name: handler.first_name,
+        last_name: handler.last_name || "",
+        email: handler.email || "",
+        phone: handler.phone || "",
+        address: handler.address || "",
+        city: handler.city || "",
+        postal_code: handler.postal_code || "",
+        notes: handler.notes || "",
+        branch_id: handler.branch_id || "",
+        uses_whatsapp_status: handler.uses_whatsapp_status,
+        social_media_consent_status: handler.social_media_consent_status,
+      });
+    }
+  }, [handler, form]);
+
   const onSubmit = async (values: FormValues) => {
     setIsSubmitting(true);
+    console.log("Submitting form with values:", values);
+    console.log("Handler ID:", handler.id);
+    
     try {
       const { error } = await supabase
         .from("clients")
@@ -134,7 +160,7 @@ export function EditHandlerForm({ handler, onSuccess }: EditHandlerFormProps) {
         </div>
 
         <div className="flex justify-end gap-2 pt-2">
-          <Button type="button" variant="outline" onClick={onSuccess}>
+          <Button type="button" variant="outline" onClick={() => onSuccess?.()}>
             Cancel
           </Button>
           <Button type="submit" disabled={isSubmitting}>

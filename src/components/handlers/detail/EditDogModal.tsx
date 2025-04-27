@@ -22,11 +22,24 @@ interface EditDogModalProps {
   clientId: string;
   onSuccess?: () => void;
   isNew?: boolean;
+  // Add these required props
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function EditDogModal({ dog, clientId, onSuccess, isNew = false }: EditDogModalProps) {
-  const [open, setOpen] = useState(false);
+export function EditDogModal({ dog, clientId, onSuccess, isNew = false, open: controlledOpen, onOpenChange }: EditDogModalProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
   const isMobile = useIsMobile();
+
+  // Use either controlled or internal state
+  const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
+  const setOpen = (value: boolean) => {
+    if (onOpenChange) {
+      onOpenChange(value);
+    } else {
+      setInternalOpen(value);
+    }
+  };
 
   console.log("EditDogModal received dog:", dog);
 
@@ -36,9 +49,11 @@ export function EditDogModal({ dog, clientId, onSuccess, isNew = false }: EditDo
   if (isMobile) {
     return (
       <>
-        <Button variant="outline" onClick={() => setOpen(true)} className="w-full sm:w-auto">
-          {buttonText}
-        </Button>
+        {controlledOpen === undefined && (
+          <Button variant="outline" onClick={() => setOpen(true)} className="w-full sm:w-auto">
+            {buttonText}
+          </Button>
+        )}
         <Drawer open={open} onOpenChange={setOpen}>
           <DrawerContent className="max-h-[90vh] overflow-auto">
             <DrawerHeader>
@@ -63,9 +78,11 @@ export function EditDogModal({ dog, clientId, onSuccess, isNew = false }: EditDo
 
   return (
     <>
-      <Button variant="outline" onClick={() => setOpen(true)}>
-        {buttonText}
-      </Button>
+      {controlledOpen === undefined && (
+        <Button variant="outline" onClick={() => setOpen(true)}>
+          {buttonText}
+        </Button>
+      )}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-auto">
           <DialogHeader>
