@@ -1,4 +1,3 @@
-
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { ClassWithSchedules } from "../types/class-with-schedules";
@@ -70,19 +69,9 @@ export function useClassQuery() {
         
         let allClasses = data as ClassWithSchedules[];
         
-        // Filter the class schedules to only include those for the selected term
-        if (termData?.id) {
-          allClasses = allClasses.map(classItem => ({
-            ...classItem,
-            class_schedules: classItem.class_schedules?.filter(
-              schedule => schedule.term_id === termData.id
-            ) || []
-          }));
-        }
+        console.log(`Fetched ${allClasses.length || 0} classes before filtering and ordering`);
         
-        console.log(`Fetched ${allClasses.length || 0} classes before ordering`);
-        
-        // Apply saved order if available
+        // Apply saved order if available - keep all classes, but order them according to saved order
         if (savedOrder.length > 0) {
           // Create a map for faster lookups
           const classMap = new Map(allClasses.map(c => [c.id, c]));
@@ -105,10 +94,21 @@ export function useClassQuery() {
           });
           
           console.log(`Applied saved order: ${orderedClasses.length} classes ordered`);
-          return orderedClasses;
+          allClasses = orderedClasses;
         }
         
-        console.log(`No saved order applied, returning ${allClasses.length} classes in default order`);
+        // AFTER ordering, filter the class schedules to only include those for the selected term
+        if (termData?.id) {
+          allClasses = allClasses.map(classItem => ({
+            ...classItem,
+            class_schedules: classItem.class_schedules?.filter(
+              schedule => schedule.term_id === termData.id
+            ) || []
+          }));
+          
+          console.log(`Filtered schedules by term: ${termData.id}`);
+        }
+        
         return allClasses;
       } catch (error) {
         console.error("Error fetching classes:", error);

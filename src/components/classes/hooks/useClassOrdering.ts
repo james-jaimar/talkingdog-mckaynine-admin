@@ -1,3 +1,4 @@
+
 import { useBranch } from "@/context/BranchContext";
 import { useClassQuery } from "./class-ordering/useClassQuery";
 import { useOptimisticUpdate } from "./class-ordering/useOptimisticUpdate";
@@ -5,21 +6,31 @@ import { useOrderMutations } from "./class-ordering/useOrderMutations";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "@/components/ui/use-toast";
 import { useTerm } from "@/context/TermContext";
+import { ClassWithSchedules } from "./types/class-with-schedules";
 
 export function useClassOrdering() {
   const { currentBranch } = useBranch();
   const { termData } = useTerm();
   const { data: originalClasses, isLoading, error, refetch } = useClassQuery();
-  const { isMoving, isItemMoving, pendingMovements, markAsMoving, unmarkAsMoving } = useOptimisticUpdate();
+  const { 
+    isMoving, 
+    isItemMoving, 
+    pendingMovements, 
+    markAsMoving, 
+    unmarkAsMoving, 
+    resetMovingState 
+  } = useOptimisticUpdate();
   const mutation = useOrderMutations(currentBranch?.id);
+  
+  // Reordering state
   const [isReordering, setIsReordering] = useState(false);
+  const [orderedClasses, setOrderedClasses] = useState<ClassWithSchedules[]>([]);
   
-  // Keep a local copy of ordered classes that we can modify optimistically
-  const [orderedClasses, setOrderedClasses] = useState<any[]>([]);
-  
-  // Use refs to track state changes and prevent unnecessary resets
+  // Tracking state
   const hasInitialized = useRef(false);
   const lastTermId = useRef<string | undefined>(termData?.id);
+  const isDragging = useRef(false);
+  const lastReorderTimestamp = useRef(0);
   
   console.log("useClassOrdering: Current state", { 
     hasInitialized: hasInitialized.current,
@@ -40,19 +51,23 @@ export function useClassOrdering() {
         to: termData?.id 
       });
       hasInitialized.current = false;
+      resetMovingState();
       lastTermId.current = termData?.id;
     }
-  }, [termData?.id]);
+  }, [termData?.id, resetMovingState]);
 
   // Sync orderedClasses with originalClasses when they load or change
   useEffect(() => {
     // Only update if we have original classes and either:
     // 1. We haven't initialized yet
     // 2. We're not currently in the middle of a reordering operation
-    if (originalClasses && (!hasInitialized.current || !isReordering)) {
+    // 3. We're not currently dragging
+    if (originalClasses && 
+        (!hasInitialized.current || (!isReordering && !isDragging.current))) {
       console.log("Syncing ordered classes from original classes", {
         count: originalClasses.length,
         isReordering,
+        isDragging: isDragging.current,
         hasInitialized: hasInitialized.current
       });
       
@@ -67,24 +82,29 @@ export function useClassOrdering() {
       return;
     }
     
-    if (isMoving || isReordering) {
-      console.log("Already reordering, ignoring request");
+    if (sourceIndex === destinationIndex) {
+      console.log("Source and destination indices are the same, ignoring");
       return;
     }
     
-    if (sourceIndex === destinationIndex) {
-      console.log("Source and destination indices are the same, ignoring");
+    if (isReordering) {
+      console.log("Already reordering, ignoring request");
       return;
     }
 
     try {
       setIsReordering(true);
+      isDragging.current = false;
+      const now = Date.now();
+      lastReorderTimestamp.current = now;
+      
       const movingClassId = orderedClasses[sourceIndex].id;
       markAsMoving(movingClassId);
       
       console.log(`Reordering class from index ${sourceIndex} to ${destinationIndex}`, {
         movingClassId,
-        totalClasses: orderedClasses.length
+        totalClasses: orderedClasses.length,
+        timestamp: now
       });
       
       // Create new array with reordered items for optimistic update
@@ -97,13 +117,18 @@ export function useClassOrdering() {
       
       // Get just the IDs for saving
       const newOrderIds = newOrder.map(c => c.id);
-      console.log('New order IDs:', newOrderIds);
+      console.log('New order IDs to save:', newOrderIds);
       
       // Save the new order to the database
       await mutation.mutateAsync(newOrderIds);
       
       // We won't refetch immediately as that could cause UI flicker
-      console.log("Reordering successful, optimistic update applied");
+      console.log("Reordering successful, optimistic update applied", {timestamp: now});
+      
+      // Check if this is still the most recent reorder operation
+      if (lastReorderTimestamp.current === now) {
+        unmarkAsMoving(movingClassId);
+      }
     } catch (error) {
       console.error('Error reordering class:', error);
       // Revert to original order on error
@@ -116,13 +141,25 @@ export function useClassOrdering() {
         description: "Could not save the new class order",
         variant: "destructive"
       });
+      resetMovingState();
     } finally {
-      if (orderedClasses.length > sourceIndex) {
-        unmarkAsMoving(orderedClasses[sourceIndex].id);
-      }
       setIsReordering(false);
     }
-  }, [orderedClasses, isMoving, isReordering, markAsMoving, unmarkAsMoving, mutation, originalClasses]);
+  }, [orderedClasses, isReordering, markAsMoving, unmarkAsMoving, mutation, originalClasses, resetMovingState]);
+
+  const handleDragStart = useCallback(() => {
+    isDragging.current = true;
+    console.log("Drag started");
+  }, []);
+  
+  const handleDragEnd = useCallback((sourceIndex: number, destinationIndex: number | null) => {
+    console.log(`Drag ended: from ${sourceIndex} to ${destinationIndex}`);
+    if (destinationIndex !== null && sourceIndex !== destinationIndex) {
+      handleReorder(sourceIndex, destinationIndex);
+    } else {
+      isDragging.current = false;
+    }
+  }, [handleReorder]);
 
   return {
     originalClasses,
@@ -132,6 +169,8 @@ export function useClassOrdering() {
     isItemMoving,
     error,
     handleReorder,
+    handleDragStart,
+    handleDragEnd,
     pendingMovements,
     refetch
   };

@@ -11,6 +11,13 @@ export async function saveOrderToDatabase(classIds: string[], branchId: string) 
       throw new Error("Cannot save empty class order");
     }
     
+    // Check for duplicates in the order array
+    const uniqueIds = new Set(classIds);
+    if (uniqueIds.size !== classIds.length) {
+      console.error("Duplicate class IDs in order array");
+      throw new Error("Duplicate class IDs in order array");
+    }
+    
     // Check if an order record already exists for this branch
     const { data: existingOrder, error: checkError } = await supabase
       .from('class_tab_order')
@@ -18,9 +25,11 @@ export async function saveOrderToDatabase(classIds: string[], branchId: string) 
       .eq('branch_id', branchId)
       .maybeSingle();
       
-    if (checkError && checkError.code !== 'PGRST116') {
-      console.error("Error checking order existence:", checkError);
-      throw checkError;
+    if (checkError) {
+      if (checkError.code !== 'PGRST116') {
+        console.error("Error checking order existence:", checkError);
+        throw checkError;
+      }
     }
 
     if (existingOrder) {

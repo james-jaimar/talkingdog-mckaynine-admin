@@ -22,10 +22,12 @@ export function ClassesTable() {
     isMoving,
     isItemMoving,
     error, 
-    handleReorder,
+    handleDragStart,
+    handleDragEnd,
     pendingMovements,
     refetch
   } = useClassOrdering();
+  
   const [editingClass, setEditingClass] = useState<any>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const queryClient = useQueryClient();
@@ -67,25 +69,17 @@ export function ClassesTable() {
     handleCloseModal();
   };
   
+  const onDragStart = () => {
+    handleDragStart();
+  };
+  
   const onDragEnd = (result: DropResult) => {
     // Check if we have a valid destination
-    if (!result.destination) {
-      console.log('No valid destination');
-      return;
-    }
-    
+    const destinationIndex = result.destination?.index;
     const sourceIndex = result.source.index;
-    const destinationIndex = result.destination.index;
     
-    // Skip if the item is dropped in the same position
-    if (sourceIndex === destinationIndex) {
-      console.log('Dropped in the same position');
-      return;
-    }
-    
-    console.log(`Drag ended: from ${sourceIndex} to ${destinationIndex}`);
-    // Use the handleReorder function which performs optimistic updates
-    handleReorder(sourceIndex, destinationIndex);
+    console.log(`Drag ended: from ${sourceIndex} to ${destinationIndex ?? 'nowhere'}`);
+    handleDragEnd(sourceIndex, destinationIndex !== undefined ? destinationIndex : null);
   };
 
   if (isLoading) {
@@ -114,7 +108,7 @@ export function ClassesTable() {
               Saving class order...
             </div>
           )}
-          <DragDropContext onDragEnd={onDragEnd}>
+          <DragDropContext onDragStart={onDragStart} onDragEnd={onDragEnd}>
             <Table>
               <ClassesTableHeader />
               <Droppable droppableId="classes">
@@ -131,7 +125,7 @@ export function ClassesTable() {
                         index={index}
                         totalClasses={displayClasses.length}
                         onEdit={() => handleEdit(classItem)}
-                        isLoading={isMoving}
+                        isLoading={isLoading}
                         isMoving={isItemMoving(classItem.id)}
                       />
                     ))}
