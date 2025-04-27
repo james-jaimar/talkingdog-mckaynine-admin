@@ -36,51 +36,26 @@ export function useAllocationChartData(invoices: Invoice[], showOnlyPaid: boolea
     const total = filteredInvoices.reduce((sum, invoice) => sum + invoice.total, 0);
     setTotalRevenue(total);
 
-    // Using fixed percentages of total revenue for allocation categories
-    // These percentages MUST add up to exactly 100% (1.0)
-    const targetPercentages = {
-      trainerCompensation: 0.60, // 60%
-      franchiseRoyalties: 0.15,  // 15%
-      branchOperations: 0.20,    // 20%
-      adminFees: 0.05            // 5%
-    };
-    
-    // Verify that target percentages add up to 100%
-    const percentageSum = Object.values(targetPercentages).reduce((sum, p) => sum + p, 0);
-    console.assert(
-      Math.abs(percentageSum - 1) < 0.001, 
-      `Allocation percentages must add to 100%, got ${percentageSum * 100}%`
-    );
-    
-    // Calculate values based on percentages
-    const trainerCompensation = total * targetPercentages.trainerCompensation;
-    const franchiseRoyalties = total * targetPercentages.franchiseRoyalties;
-    const branchOperations = total * targetPercentages.branchOperations;
-    const adminFees = total * targetPercentages.adminFees;
-    
-    // Verify that all categories sum to total (accounting for potential floating point precision issues)
-    const sum = trainerCompensation + franchiseRoyalties + branchOperations + adminFees;
-    const adjustment = total - sum;
-    
+    // Using fixed percentages of total revenue for allocation categories based on business logic
     const data: AllocationCategory[] = [
       { 
         name: 'Trainer Compensation', 
-        value: trainerCompensation,
+        value: total * 0.60, // 60% trainer fee
         color: COLORS[0]
       },
       { 
         name: 'Franchise Royalties', 
-        value: franchiseRoyalties,
+        value: total * 0.15, // 15% franchise fee
         color: COLORS[1]
       },
       { 
-        name: 'Branch Operations', 
-        value: branchOperations,
+        name: 'Admin Fees', 
+        value: total * 0.05, // 5% admin fee
         color: COLORS[2]
       },
       { 
-        name: 'Admin Fees', 
-        value: adminFees + adjustment, // Add any rounding adjustment to the smallest category
+        name: 'Branch Operations', 
+        value: total * 0.20, // 20% operations
         color: COLORS[3]
       }
     ];
