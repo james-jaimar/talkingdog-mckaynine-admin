@@ -5,59 +5,55 @@ import { formatCurrency } from '@/lib/formatters';
 export function addInvoiceSummary(doc: any, invoice: Invoice, startY: number): number {
   const { subtotal, tax_rate, tax_amount, total, monetary_discount, discount_type, original_discount_amount, discount_amount } = invoice;
   
-  // Calculate available width
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const rightColumnWidth = 60;
-  
   // Calculate positions
-  const labelX = pageWidth - rightColumnWidth - 50;
-  const valueX = pageWidth - rightColumnWidth;
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const rightEdge = pageWidth - 20; // Right margin
+  const labelX = rightEdge - 80; // Labels start position
+  const valueX = rightEdge - 15; // Values end position
   
-  let currentY = startY + 10;
+  let currentY = startY + 5;
   
-  // Add horizontal line before summary
+  // Add horizontal line before summary with adjusted width
   doc.setLineWidth(0.5);
-  doc.setDrawColor(0, 0, 0);
-  doc.line(pageWidth / 4, currentY - 5, pageWidth - pageWidth / 4, currentY - 5);
-  currentY += 10;
+  doc.setDrawColor(200, 200, 200);
+  doc.line(labelX - 20, currentY, rightEdge, currentY);
+  currentY += 8;
   
   // Subtotal
   doc.setFont(undefined, 'normal');
   doc.setFontSize(10);
   doc.text('Subtotal:', labelX, currentY);
   doc.text(formatCurrency(subtotal), valueX, currentY, { align: 'right' });
-  currentY += 8;
+  currentY += 6;
   
   // Discount (if applicable)
   if (monetary_discount > 0) {
-    // Format the discount label based on type
     const discountLabel = discount_type === 'percentage'
       ? `Discount (${original_discount_amount || discount_amount}%):`
       : 'Discount:';
     
-    doc.setTextColor(220, 53, 69); // Red color for discount
+    doc.setTextColor(220, 53, 69);
     doc.text(discountLabel, labelX, currentY);
     doc.text(`-${formatCurrency(monetary_discount)}`, valueX, currentY, { align: 'right' });
-    doc.setTextColor(0, 0, 0); // Reset to black
-    currentY += 8;
+    doc.setTextColor(0, 0, 0);
+    currentY += 6;
   }
   
   // Tax
   doc.text(`Tax (${tax_rate}%):`, labelX, currentY);
   doc.text(formatCurrency(tax_amount), valueX, currentY, { align: 'right' });
-  currentY += 10;
+  currentY += 8;
   
-  // Add horizontal line before total
+  // Line before total
   doc.setLineWidth(0.5);
-  doc.setDrawColor(0, 0, 0);
-  doc.line(pageWidth / 4, currentY, pageWidth - pageWidth / 4, currentY);
-  currentY += 6;
+  doc.setDrawColor(200, 200, 200);
+  doc.line(labelX - 20, currentY, rightEdge, currentY);
+  currentY += 8;
   
   // Total
   doc.setFont(undefined, 'bold');
-  doc.setFontSize(10);
-  doc.text('Total:', labelX - 10, currentY + 2);
-  doc.text(formatCurrency(total), valueX, currentY + 2, { align: 'right' });
+  doc.text('Total:', labelX, currentY);
+  doc.text(formatCurrency(total), valueX, currentY, { align: 'right' });
   
   return currentY + 10;
 }
