@@ -23,7 +23,6 @@ export default function FinancialDashboard() {
   
   // Filter out only paid invoices for fee calculations
   const paidInvoices = activeInvoices.filter(invoice => invoice.status === 'paid');
-  const totalPaidRevenue = paidInvoices.reduce((sum, invoice) => sum + invoice.total, 0);
   
   // Calculate financial metrics from filtered invoice data
   const financialMetrics = {
@@ -35,10 +34,12 @@ export default function FinancialDashboard() {
       .reduce((sum, invoice) => sum + invoice.total, 0)
   };
 
-  // Calculate fees using correct percentages of the actual paid revenue
-  const totalAdmin = totalPaidRevenue * 0.10; // 10% admin fee
-  const totalHandler = totalPaidRevenue * 0.40; // 40% handler fee
-  const totalFranchise = totalPaidRevenue * 0.15; // 15% franchise fee
+  // Calculate fees based on actual invoice values
+  const totalAdmin = paidInvoices.reduce((sum, inv) => sum + (inv.admin_fee || inv.total * 0.10), 0);
+  const totalTrainer = paidInvoices.reduce((sum, inv) => sum + (inv.trainer_fee || inv.total * 0.40), 0);
+  const totalFranchise = paidInvoices.reduce((sum, inv) => sum + (inv.franchise_fee || inv.total * 0.15), 0);
+  const totalFees = totalAdmin + totalTrainer + totalFranchise;
+  const profit = financialMetrics.collectedRevenue - totalFees;
 
   return (
     <RequireAdmin>
@@ -63,11 +64,12 @@ export default function FinancialDashboard() {
           {/* Financial metrics cards */}
           <FinancialMetricsCards metrics={financialMetrics} />
 
-          {/* Expense breakdown cards with correct fee names */}
+          {/* Expense breakdown cards with profit included */}
           <ExpenseBreakdownCards
             totalAdmin={totalAdmin}
-            totalTrainer={totalHandler} // This is actually the Handler Fee
+            totalTrainer={totalTrainer}
             totalFranchise={totalFranchise}
+            profit={profit}
             totalRevenue={financialMetrics.collectedRevenue}
           />
 

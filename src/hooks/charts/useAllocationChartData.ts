@@ -12,7 +12,7 @@ export function useAllocationChartData(invoices: Invoice[], showOnlyPaid: boolea
   const [allocationData, setAllocationData] = useState<AllocationCategory[]>([]);
   const [totalRevenue, setTotalRevenue] = useState<number>(0);
 
-  const COLORS = ["#10B981", "#6366F1", "#F59E0B"];
+  const COLORS = ["#10B981", "#6366F1", "#F59E0B", "#8B5CF6"];
 
   useEffect(() => {
     if (!invoices?.length) {
@@ -36,30 +36,47 @@ export function useAllocationChartData(invoices: Invoice[], showOnlyPaid: boolea
     const total = filteredInvoices.reduce((sum, invoice) => sum + invoice.total, 0);
     setTotalRevenue(total);
 
-    // Calculate actual fee amounts based on the defined percentages
-    const handlerFee = total * 0.40; // 40% handler fee
-    const franchiseFee = total * 0.15; // 15% franchise fee
-    const adminFee = total * 0.10; // 10% admin fee
+    // Sum the actual fee amounts from invoice data
+    const handlerFeeTotal = filteredInvoices.reduce((sum, invoice) => 
+      sum + (invoice.trainer_fee || invoice.total * 0.40), 0);
+    
+    const franchiseFeeTotal = filteredInvoices.reduce((sum, invoice) => 
+      sum + (invoice.franchise_fee || invoice.total * 0.15), 0);
+    
+    const adminFeeTotal = filteredInvoices.reduce((sum, invoice) => 
+      sum + (invoice.admin_fee || invoice.total * 0.10), 0);
+    
+    // Calculate profit (remaining revenue after all fees)
+    const totalFees = handlerFeeTotal + franchiseFeeTotal + adminFeeTotal;
+    const profitTotal = total - totalFees;
 
-    // Create allocation data with actual monetary values rather than percentages
+    // Create allocation data with actual monetary values
     const data: AllocationCategory[] = [
       { 
         name: 'Handler Fee', 
-        value: handlerFee,
+        value: handlerFeeTotal,
         color: COLORS[0]
       },
       { 
         name: 'Franchise Fee', 
-        value: franchiseFee,
+        value: franchiseFeeTotal,
         color: COLORS[1]
       },
       { 
         name: 'Admin Fee', 
-        value: adminFee,
+        value: adminFeeTotal,
         color: COLORS[2]
+      },
+      { 
+        name: 'Profit', 
+        value: profitTotal,
+        color: COLORS[3]
       }
     ];
 
+    // Sort by value descending to make the chart clearer
+    data.sort((a, b) => b.value - a.value);
+    
     setAllocationData(data);
   }, [invoices, showOnlyPaid]);
 
