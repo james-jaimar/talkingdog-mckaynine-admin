@@ -5,15 +5,15 @@ import { formatCurrency } from '@/lib/formatters';
 export function addInvoiceSummary(doc: any, invoice: Invoice, startY: number): number {
   const { subtotal, tax_rate, tax_amount, total, monetary_discount, discount_type, original_discount_amount, discount_amount } = invoice;
   
-  // Calculate positions
+  // Calculate positions - align with the rightmost column of the items table
   const pageWidth = doc.internal.pageSize.getWidth();
-  const rightEdge = pageWidth - 20; // Right margin
+  const rightEdge = pageWidth - 14; // Align with table's right edge
   const labelX = rightEdge - 80; // Labels start position
-  const valueX = rightEdge - 15; // Values end position
+  const valueX = rightEdge - 14; // Values end position
   
   let currentY = startY + 5;
   
-  // Add horizontal line before summary with adjusted width
+  // Add horizontal line before summary
   doc.setLineWidth(0.5);
   doc.setDrawColor(200, 200, 200);
   doc.line(labelX - 20, currentY, rightEdge, currentY);
@@ -32,10 +32,8 @@ export function addInvoiceSummary(doc: any, invoice: Invoice, startY: number): n
       ? `Discount (${original_discount_amount || discount_amount}%):`
       : 'Discount:';
     
-    doc.setTextColor(220, 53, 69);
     doc.text(discountLabel, labelX, currentY);
     doc.text(`-${formatCurrency(monetary_discount)}`, valueX, currentY, { align: 'right' });
-    doc.setTextColor(0, 0, 0);
     currentY += 6;
   }
   

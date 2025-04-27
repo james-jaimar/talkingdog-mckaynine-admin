@@ -14,38 +14,20 @@ export async function generateInvoicePDF(invoice: Invoice, returnBase64: boolean
   const pageWidth = doc.internal.pageSize.width;
   const pageHeight = doc.internal.pageSize.height;
 
-  // Add McKaynine logo at original size
-  const logoPath = "/lovable-uploads/6ae95232-1c8d-4ab8-8413-5f228888fe0c.png";
+  // Add new McKaynine logo at original size (210mm wide)
+  const logoPath = "/lovable-uploads/3647f206-d732-423e-91db-6a150b7df9b6.png";
   
   try {
-    // Use actual image dimensions
-    const imgWidth = 1920;  // Original image width
-    const imgHeight = 249;  // Original image height
-    
-    // Scale to fit page width while maintaining aspect ratio
-    const scaleFactor = pageWidth / imgWidth;
-    const finalWidth = imgWidth * scaleFactor;
-    const finalHeight = imgHeight * scaleFactor;
-    
-    // Center the logo horizontally
-    const xPosition = (pageWidth - finalWidth) / 2;
-    doc.addImage(logoPath, "PNG", xPosition, 15, finalWidth, finalHeight);
+    // Set coordinates to place the logo at the top of the page
+    // The logo is exactly 210mm wide (A4 page width)
+    const yPosition = 10; // Start 10mm from top
+    doc.addImage(logoPath, "PNG", 0, yPosition, pageWidth, 25); // Height set to 25mm for proportion
 
-    // Company details below logo with adjusted spacing
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
+    // Start content after logo
+    const startY = 40; // Adjusted spacing after logo
     
-    const startY = finalHeight + 20; // Adjusted spacing after scaled logo
-    
-    // Company details centered
-    doc.text("McKaynine Training Centre", pageWidth / 2, startY, { align: 'center' });
-    doc.text("Delta Park Branch", pageWidth / 2, startY + 5, { align: 'center' });
-    doc.text("Camp Delta (SA Boyscouts), Delta Park Main Entrance, Craighall Road, Delta Park. Tel: 082 560-5100", 
-             pageWidth / 2, startY + 10, { align: 'center' });
-    doc.text("www.mckaynine.co.za", pageWidth / 2, startY + 15, { align: 'center' });
-
-    // Add invoice sections with improved spacing
-    const headerEndY = addInvoiceHeader(doc, invoice, startY + 25, pageWidth);
+    // Add invoice sections
+    const headerEndY = addInvoiceHeader(doc, invoice, startY, pageWidth);
     const clientInfoEndY = addClientInfo(doc, invoice, headerEndY + 5);
     const tableEndY = addInvoiceItemsTable(doc, invoice, clientInfoEndY + 10);
     const summaryEndY = addInvoiceSummary(doc, invoice, tableEndY + 5);
