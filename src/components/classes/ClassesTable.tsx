@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Table, TableBody } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
 import { ClassTableRow } from "./ClassTableRow";
@@ -32,6 +32,12 @@ export function ClassesTable() {
   const { currentBranch } = useBranch();
   const { termData } = useTerm();
   
+  // Make sure we refetch classes when the term changes
+  useEffect(() => {
+    console.log("Term changed, refreshing classes");
+    refetch();
+  }, [termData?.id, refetch]);
+  
   const handleEdit = (classItem: any) => {
     setEditingClass(classItem);
     setIsEditModalOpen(true);
@@ -53,6 +59,7 @@ export function ClassesTable() {
   // Function to handle moving a class up based on index
   const handleMoveClassUp = (index: number) => {
     if (orderedClasses && index >= 0 && index < orderedClasses.length) {
+      console.log(`Moving class at index ${index} up`);
       const classId = orderedClasses[index].id;
       moveClassUp(classId);
     }
@@ -61,6 +68,7 @@ export function ClassesTable() {
   // Function to handle moving a class down based on index
   const handleMoveClassDown = (index: number) => {
     if (orderedClasses && index >= 0 && index < orderedClasses.length) {
+      console.log(`Moving class at index ${index} down`);
       const classId = orderedClasses[index].id;
       moveClassDown(classId);
     }
@@ -83,8 +91,9 @@ export function ClassesTable() {
     return <ClassesTableError error={error} onRetry={handleRetry} />;
   }
 
+  // Filter classes to only show those that have schedules matching the current term
   const displayClasses = orderedClasses?.filter(classItem => 
-    classItem.class_schedules?.some(schedule => schedule.term_id === termData?.id)
+    !termData?.id || classItem.class_schedules?.some(schedule => schedule.term_id === termData?.id)
   );
   
   if (!displayClasses || displayClasses.length === 0) {

@@ -22,9 +22,9 @@ export function ClassTableRow({
   const availableSlots = calculateAvailableSlots(classItem);
   
   // Count unique handlers (client-dog pairs)
-  const handlerCount = classItem.class_schedules.reduce((count, schedule) => {
+  const handlerCount = classItem.class_schedules?.reduce((count, schedule) => {
     return count + (schedule.bookings?.length || 0);
-  }, 0);
+  }, 0) || 0;
   
   // Add alternate row coloring
   const rowBackground = cn(
@@ -35,6 +35,7 @@ export function ClassTableRow({
   return (
     <TableRow 
       className={rowBackground}
+      key={classItem.id}
     >
       {/* Order column */}
       <TableCell>

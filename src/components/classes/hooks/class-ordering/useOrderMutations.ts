@@ -8,20 +8,24 @@ export function useOrderMutations(branchId: string | undefined) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (classIds: string[]) => {
+    mutationFn: async (classIds: string[]) => {
       if (!branchId) {
         throw new Error("No branch selected");
       }
+      console.log(`Mutation starting for branch ${branchId} with class IDs:`, classIds);
       return saveOrderToDatabase(classIds, branchId);
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
+      console.log("Order mutation succeeded with variables:", variables);
       toast({
         title: "Order saved",
         description: "Class order has been saved successfully."
       });
       
       if (branchId) {
+        // Invalidate relevant queries to ensure UI is updated
         queryClient.invalidateQueries({ queryKey: ['class-tab-order', branchId] });
+        queryClient.invalidateQueries({ queryKey: ['classes', branchId] });
       }
     },
     onError: (error) => {

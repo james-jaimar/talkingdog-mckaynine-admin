@@ -17,14 +17,20 @@ export function ClassSortControls({
   onMoveDown,
   isLoading = false
 }: ClassSortControlsProps) {
-  const handleMoveUp = () => {
+  const handleMoveUp = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     if (!isLoading) {
+      console.log(`ClassSortControls: Moving up index ${index}`);
       onMoveUp(index);
     }
   };
   
-  const handleMoveDown = () => {
+  const handleMoveDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     if (!isLoading) {
+      console.log(`ClassSortControls: Moving down index ${index}`);
       onMoveDown(index);
     }
   };
@@ -44,6 +50,7 @@ export function ClassSortControls({
         disabled={index === 0 || isLoading}
         title="Move up"
         aria-label="Move class up in order"
+        type="button"
       >
         <ChevronUp className="h-4 w-4" />
       </Button>
@@ -55,6 +62,7 @@ export function ClassSortControls({
         disabled={index === totalClasses - 1 || isLoading}
         title="Move down"
         aria-label="Move class down in order"
+        type="button"
       >
         <ChevronDown className="h-4 w-4" />
       </Button>
