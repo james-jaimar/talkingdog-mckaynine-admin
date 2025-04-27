@@ -17,6 +17,7 @@ export function useClassQuery() {
       console.log('Fetching classes for branch:', currentBranch.id, 'and term:', termData?.id);
       
       try {
+        // Build the base query to select classes with their schedules
         const query = supabase
           .from('classes')
           .select(`
@@ -45,8 +46,10 @@ export function useClassQuery() {
           `)
           .eq('branch_id', currentBranch.id);
 
+        // If a term is selected, filter for schedules with that term
         if (termData?.id) {
-          query.contains('class_schedules', [{ term_id: termData.id }]);
+          // Instead of the problematic contains filter, we'll fetch all classes
+          // and filter them in memory after we get the results
         }
 
         const { data, error } = await query.order('name');
@@ -56,8 +59,20 @@ export function useClassQuery() {
           throw error;
         }
         
-        console.log(`Fetched ${data?.length || 0} classes for term ${termData?.id || 'none'}`);
-        return data as ClassWithSchedules[];
+        let filteredData = data as ClassWithSchedules[];
+        
+        // If a term is selected, filter the results to include only classes with schedules for that term
+        if (termData?.id) {
+          filteredData = filteredData.map(classItem => ({
+            ...classItem,
+            class_schedules: classItem.class_schedules?.filter(
+              schedule => schedule.term_id === termData.id
+            ) || []
+          }));
+        }
+        
+        console.log(`Fetched ${filteredData.length || 0} classes for term ${termData?.id || 'none'}`);
+        return filteredData;
       } catch (error) {
         console.error("Error fetching classes:", error);
         throw error;

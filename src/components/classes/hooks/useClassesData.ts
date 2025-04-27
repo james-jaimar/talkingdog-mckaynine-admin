@@ -31,10 +31,10 @@ export function useClassesData() {
     
     console.log(`Filtering ${orderedClasses.length} classes to show only active ones with term: ${termData?.id}`);
     
+    // Since we've already filtered schedules by term in useClassQuery,
+    // we just need to filter out classes with no schedules
     return orderedClasses.filter((c: ClassWithSchedules) => 
-      c.class_schedules && 
-      c.class_schedules.length > 0 && 
-      c.class_schedules.some(schedule => schedule.term_id === termData?.id)
+      c.class_schedules && c.class_schedules.length > 0
     );
   }, [orderedClasses, termData?.id]);
   
