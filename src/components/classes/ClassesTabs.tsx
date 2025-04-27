@@ -38,13 +38,14 @@ export function ClassesTabs({ alwaysShow = false }) {
     return null;
   }
   
-  // Filter classes with schedules
-  const classesWithSchedules = orderedClasses.filter(
+  // When on the classes page or alwaysShow is true, show all classes
+  // This ensures we can see newly added classes even without schedules
+  const displayClasses = alwaysShow ? orderedClasses : orderedClasses.filter(
     c => c.class_schedules && c.class_schedules.length > 0
   );
   
   // Don't render if no valid classes and not forced to show
-  if (classesWithSchedules.length === 0 && !isClassRelatedPath) {
+  if (displayClasses.length === 0 && !isClassRelatedPath) {
     return null;
   }
   
@@ -52,7 +53,7 @@ export function ClassesTabs({ alwaysShow = false }) {
     <div className="mt-4 overflow-x-auto bg-gray-100 rounded-md p-1">
       <Tabs value={currentClassId || ""} className="w-full">
         <ClassTabsList
-          classes={classesWithSchedules as any}
+          classes={displayClasses as any}
           currentClassId={currentClassId}
           onTabClick={handleTabClick}
         />

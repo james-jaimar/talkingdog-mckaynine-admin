@@ -96,12 +96,12 @@ export function ClassesTable() {
 
   // Filter classes to only show those that have schedules for the current term
   const displayClasses = orderedClasses?.filter(classItem => {
-    // If no term is selected, show all classes
-    if (!termData?.id) return true;
-    
-    // Check if the class has any schedules for the current term
-    return classItem.class_schedules?.some(schedule => schedule.term_id === termData?.id);
+    // Always show all classes on /classes page regardless of term
+    // This ensures newly added classes are visible
+    return true;
   });
+  
+  console.log(`Displaying ${displayClasses?.length || 0} classes after filtering`);
   
   if (!displayClasses || displayClasses.length === 0) {
     return <ClassesTableEmpty />;

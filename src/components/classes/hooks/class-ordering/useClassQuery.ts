@@ -96,17 +96,16 @@ export function useClassQuery() {
           classes = orderedClasses;
         }
         
-        // Filter class schedules by term if a term is selected
-        // We do this AFTER ordering to preserve the order
-        if (termData?.id) {
-          console.log(`Filtering schedules by term ${termData.id}`);
-          classes = classes.map(classItem => ({
-            ...classItem,
-            class_schedules: classItem.class_schedules?.filter(
-              schedule => schedule.term_id === termData.id
-            ) || []
-          }));
-        }
+        // DEBUG: Before filtering, let's log all class schedules
+        classes.forEach(classItem => {
+          console.log(`Class ${classItem.name} has ${classItem.class_schedules?.length || 0} schedules:`);
+          classItem.class_schedules?.forEach(schedule => {
+            console.log(`  Schedule ID: ${schedule.id}, Term ID: ${schedule.term_id}`);
+          });
+        });
+        
+        // Don't filter by term at this level - we will do it at the display level
+        // This ensures we have all classes available and can show them based on different criteria
         
         return classes;
       } catch (error) {
