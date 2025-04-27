@@ -63,7 +63,9 @@ export function ClassFinancialTable({ classFinances, showInvoiceCount = true }: 
             <TableCell className="text-right">{formatCurrency(classItem.franchiseFee)}</TableCell>
             <TableCell className="text-right">{formatCurrency(classItem.adminFee)}</TableCell>
             <TableCell className="text-right">{formatCurrency(classItem.instructorFee)}</TableCell>
-            <TableCell className="text-right">{formatCurrency(classItem.profit)}</TableCell>
+            <TableCell className={`text-right ${classItem.profit < 0 ? 'text-red-600 font-semibold' : ''}`}>
+              {formatCurrency(classItem.profit)}
+            </TableCell>
           </TableRow>
         ))}
         <TableRow className="font-bold bg-muted/50">
@@ -76,7 +78,9 @@ export function ClassFinancialTable({ classFinances, showInvoiceCount = true }: 
           <TableCell className="text-right">{formatCurrency(totals.franchise)}</TableCell>
           <TableCell className="text-right">{formatCurrency(totals.admin)}</TableCell>
           <TableCell className="text-right">{formatCurrency(totals.instructor)}</TableCell>
-          <TableCell className="text-right">{formatCurrency(totals.profit)}</TableCell>
+          <TableCell className={`text-right ${totals.profit < 0 ? 'text-red-600 font-semibold' : ''}`}>
+            {formatCurrency(totals.profit)}
+          </TableCell>
         </TableRow>
       </TableBody>
     </Table>

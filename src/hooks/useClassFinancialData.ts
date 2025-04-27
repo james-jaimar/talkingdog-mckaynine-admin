@@ -52,9 +52,36 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
           )
         `)
         .eq('class_schedules.classes.branch_id', branchId)
-        .eq('status', 'confirmed')
-        .gte('created_at', fromDate)
-        .lte('created_at', toDate);
+        .eq('status', 'confirmed');
+      
+      // Apply date filtering if dates are provided
+      let query = supabase
+        .from('bookings')
+        .select(`
+          id,
+          payment_status,
+          class_schedules:class_schedule_id (
+            classes:class_id (
+              id,
+              name,
+              course_fee,
+              mckaynine_commission_value,
+              mckaynine_commission_type,
+              admin_fee_value,
+              admin_fee_type,
+              trainer_fee_value,
+              trainer_fee_type
+            )
+          )
+        `)
+        .eq('class_schedules.classes.branch_id', branchId)
+        .eq('status', 'confirmed');
+        
+      if (fromDate && toDate) {
+        query = query.gte('created_at', fromDate).lte('created_at', toDate);
+      }
+      
+      const { data: bookings, error: bookingsError } = await query;
 
       if (bookingsError) {
         console.error("Error fetching booking data for financial report:", bookingsError);
@@ -62,7 +89,7 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
       }
       
       // Also fetch invoice items to get accurate revenue data
-      const { data: invoiceItems, error: invoiceItemsError } = await supabase
+      let invoiceQuery = supabase
         .from('invoice_items')
         .select(`
           id,
@@ -84,19 +111,25 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
             )
           )
         `)
-        .gte('invoices.issued_date', fromDate)
-        .lte('invoices.issued_date', toDate)
         .neq('invoices.status', 'cancelled');
         
+      // Apply date filtering if dates are provided
+      if (fromDate && toDate) {
+        invoiceQuery = invoiceQuery.gte('invoices.issued_date', fromDate)
+                                   .lte('invoices.issued_date', toDate);
+      }
+        
+      const { data: invoiceItems, error: invoiceItemsError } = await invoiceQuery;
+      
       if (invoiceItemsError) {
         console.error("Error fetching invoice items:", invoiceItemsError);
         throw invoiceItemsError;
       }
 
       // Filter invoice items by the specified branch
-      const branchInvoiceItems = invoiceItems.filter(item => 
+      const branchInvoiceItems = invoiceItems?.filter(item => 
         item.invoices?.client?.branch_id === branchId
-      );
+      ) || [];
       
       console.log(`Filtered to ${branchInvoiceItems.length} invoice items for branch ${branchId}`);
         
@@ -155,7 +188,7 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
         unassociatedInvoices: unassociatedInvoiceItems 
       };
     },
-    enabled: !!branchId && !!fromDate && !!toDate,
+    enabled: !!branchId,
     staleTime: 30000, // 30 seconds
     refetchOnWindowFocus: true,
     gcTime: 10 * 60 * 1000, // 10 minutes - using gcTime instead of cacheTime
@@ -177,9 +210,20 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
     
     // Process the class finances
     const classSummaries = new Map<string, ClassFinance>();
+    
+    // Track unique invoice IDs for accurate invoice counting
+    const invoicesCountByClass = new Map<string, Set<string>>();
 
     // Create a "General Training" entry for unassociated revenue if it exists
     if (unassociatedTotal > 0) {
+      // Create a set of unique invoice IDs for general training
+      const generalTrainingInvoiceIds = new Set<string>();
+      unassociatedInvoices.forEach(item => {
+        if (item.invoice_id) {
+          generalTrainingInvoiceIds.add(item.invoice_id);
+        }
+      });
+      
       const generalTraining: ClassFinance = {
         className: "General Training Services",
         totalRevenue: unassociatedTotal,
@@ -188,12 +232,34 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
         adminFee: 0,     // Default admin fee (can be customized)
         instructorFee: 0, // Default trainer fee (can be customized)
         profit: unassociatedTotal, // All profit since no fees are deducted
-        invoiceCount: unassociatedInvoices.length
+        invoiceCount: generalTrainingInvoiceIds.size // Count unique invoices
       };
       
       classSummaries.set("General Training Services", generalTraining);
     }
 
+    // Initialize invoice counting mechanism
+    bookingsWithInvoices.forEach(booking => {
+      const classData = booking.class_schedules?.classes;
+      if (!classData) return;
+      
+      const className = classData.name;
+      
+      // Initialize the set for this class if it doesn't exist
+      if (!invoicesCountByClass.has(className)) {
+        invoicesCountByClass.set(className, new Set<string>());
+      }
+      
+      // Add the invoice ID to the set if it exists
+      if (booking.invoiceInfo && booking.invoiceInfo.invoiceId) {
+        const invoiceSet = invoicesCountByClass.get(className);
+        if (invoiceSet) {
+          invoiceSet.add(booking.invoiceInfo.invoiceId);
+        }
+      }
+    });
+
+    // Now process financial data with accurate invoice counting
     bookingsWithInvoices.forEach(booking => {
       const classData = booking.class_schedules?.classes;
       if (!classData) return;
@@ -218,9 +284,10 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
       summary.bookingsCount++;
       summary.totalRevenue += courseRevenue;
       
-      // Track invoice count
-      if (booking.invoiceInfo && booking.invoiceInfo.invoiceId) {
-        summary.invoiceCount++;
+      // Set invoice count based on unique invoice IDs
+      const invoiceSet = invoicesCountByClass.get(className);
+      if (invoiceSet) {
+        summary.invoiceCount = invoiceSet.size;
       }
 
       // For fee calculations, use the class's defined percentages
@@ -229,27 +296,30 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
 
       // Calculate fees based on course fee
       if (classData.mckaynine_commission_type === 'percentage') {
-        summary.franchiseFee += feeBaseAmount * (classData.mckaynine_commission_value / 100);
+        summary.franchiseFee += (courseRevenue * (classData.mckaynine_commission_value / 100));
       } else {
         summary.franchiseFee += classData.mckaynine_commission_value;
       }
 
       if (classData.admin_fee_type === 'percentage') {
-        summary.adminFee += feeBaseAmount * (classData.admin_fee_value / 100);
+        summary.adminFee += (courseRevenue * (classData.admin_fee_value / 100));
       } else {
         summary.adminFee += classData.admin_fee_value;
       }
 
       if (classData.trainer_fee_type === 'percentage') {
-        summary.instructorFee += feeBaseAmount * (classData.trainer_fee_value / 100);
+        summary.instructorFee += (courseRevenue * (classData.trainer_fee_value / 100));
       } else {
         summary.instructorFee += classData.trainer_fee_value;
       }
 
-      // Calculate profit
-      summary.profit = summary.totalRevenue - summary.franchiseFee - summary.adminFee - summary.instructorFee;
-
       classSummaries.set(className, summary);
+    });
+
+    // Calculate profits after all fees are computed
+    classSummaries.forEach(summary => {
+      // Use actual revenue for profit calculation
+      summary.profit = summary.totalRevenue - summary.franchiseFee - summary.adminFee - summary.instructorFee;
     });
 
     // Convert to array and sort by class name
@@ -258,6 +328,7 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
       
     console.log(`Processed ${sortedFinances.length} class financial summaries`);
     console.log(`Total revenue across classes: ${sortedFinances.reduce((sum, curr) => sum + curr.totalRevenue, 0)}`);
+    console.log(`Total invoices across classes: ${sortedFinances.reduce((sum, curr) => sum + curr.invoiceCount, 0)}`);
     console.log(`Unassociated revenue: ${unassociatedTotal}`);
     
     setClassFinances(sortedFinances);

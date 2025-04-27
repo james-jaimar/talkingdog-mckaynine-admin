@@ -102,10 +102,23 @@ export function ClassFinancialReport({ dateRange, onRefreshSuccess }: ClassFinan
     );
   }
 
+  // Calculate summary statistics
+  const totalRevenue = classFinances.reduce((sum, item) => sum + item.totalRevenue, 0);
+  const totalInvoiceCount = classFinances.reduce((sum, item) => sum + item.invoiceCount, 0);
+  const totalBookings = classFinances.reduce((sum, item) => sum + item.bookingsCount, 0);
+  const totalProfit = classFinances.reduce((sum, item) => sum + item.profit, 0);
+  const profitPercentage = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
+
   return (
     <Card className="w-full">
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Class Financial Report</CardTitle>
+        <div>
+          <CardTitle>Class Financial Report</CardTitle>
+          <p className="text-sm text-muted-foreground mt-1">
+            {totalInvoiceCount} invoices | {totalBookings} bookings | 
+            Profit margin: {profitPercentage.toFixed(1)}%
+          </p>
+        </div>
         <Button 
           variant="outline" 
           size="sm" 
