@@ -11,10 +11,7 @@ interface HandlerTableRowProps {
     id: string;
     first_name: string;
     last_name?: string;
-    email: string;
-    phone?: string;
     dogs?: any[];
-    invoices?: any[];
     uses_whatsapp_status: 'yes' | 'no' | 'not_marked';
     social_media_consent_status: 'yes' | 'no' | 'not_marked';
     class_statuses?: {
@@ -28,7 +25,6 @@ interface HandlerTableRowProps {
 
 export function HandlerTableRow({ handler, index = 0 }: HandlerTableRowProps) {
   const fullName = `${handler.first_name} ${handler.last_name || ''}`.trim();
-  const invoiceCount = handler.invoices?.length || 0;
 
   // Helper function to find the class status for a specific class type
   const getClassStatus = (classType: string) => {
@@ -40,7 +36,6 @@ export function HandlerTableRow({ handler, index = 0 }: HandlerTableRowProps) {
       className={index % 2 === 0 ? "bg-gray-50" : "bg-gray-200"}
       key={handler.id}
     >
-      
       <TableCell className="w-[180px] font-medium">
         <Link 
           to={`/handlers/${handler.id}`}
@@ -49,20 +44,14 @@ export function HandlerTableRow({ handler, index = 0 }: HandlerTableRowProps) {
           {fullName}
         </Link>
       </TableCell>
-      <TableCell className="w-[180px]">{handler.email}</TableCell>
-      <TableCell className="w-[120px]">{handler.phone || "—"}</TableCell>
+      
       <TableCell className="text-center w-[60px]">
         <span className="inline-flex items-center justify-center h-6 min-w-6 bg-gray-100 text-gray-700 text-xs font-medium rounded-full px-1.5">
           {handler.dogs?.length || 0}
         </span>
       </TableCell>
-      <TableCell className="text-center w-[80px]">
-        <span className="inline-flex items-center justify-center h-6 min-w-6 bg-gray-100 text-gray-700 text-xs font-medium rounded-full px-1.5">
-          {invoiceCount}
-        </span>
-      </TableCell>
       
-      {/* Class Type Columns - Consistent widths */}
+      {/* Class Type Columns */}
       {CLASS_TYPES.map((classType) => {
         const classStatus = getClassStatus(classType);
         return (
@@ -72,7 +61,7 @@ export function HandlerTableRow({ handler, index = 0 }: HandlerTableRowProps) {
             clientId={handler.id}
             initialStatus={classStatus?.status || null}
             initialPeriod={classStatus?.period || ''}
-            className="w-[90px]" // Add width here
+            className="w-[90px]"
           />
         );
       })}

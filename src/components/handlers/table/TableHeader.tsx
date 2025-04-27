@@ -6,10 +6,7 @@ export function HandlerTableHeader() {
   return (
     <TableRow>
       <TableHead className="w-[180px]">Name</TableHead>
-      <TableHead className="w-[180px]">Email</TableHead>
-      <TableHead className="w-[120px]">Phone</TableHead>
       <TableHead className="text-center w-[60px]">Dogs</TableHead>
-      <TableHead className="text-center w-[80px]">Invoices</TableHead>
       
       {/* Class Type Columns - Fixed widths */}
       {CLASS_TYPES.map((classType) => (
