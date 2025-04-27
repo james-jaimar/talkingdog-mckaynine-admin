@@ -1,3 +1,4 @@
+
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
@@ -136,8 +137,8 @@ export function ClassSchedulesTable({ classId }: ClassSchedulesTableProps) {
   if (!schedules || schedules.length === 0) {
     return (
       <div className="text-center p-8 bg-gray-50 rounded-md border">
-        <p className="text-muted-foreground">No handlers found for this class.</p>
-        <p className="text-sm mt-2">Add handlers to this class to start tracking attendance.</p>
+        <p className="text-muted-foreground">No schedules found for this class.</p>
+        <p className="text-sm mt-2">Add schedules to this class to start tracking attendance.</p>
       </div>
     );
   }

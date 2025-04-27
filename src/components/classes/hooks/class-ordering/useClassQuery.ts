@@ -99,14 +99,13 @@ export function useClassQuery() {
         // Filter class schedules by term if a term is selected
         // We do this AFTER ordering to preserve the order
         if (termData?.id) {
+          console.log(`Filtering schedules by term ${termData.id}`);
           classes = classes.map(classItem => ({
             ...classItem,
             class_schedules: classItem.class_schedules?.filter(
               schedule => schedule.term_id === termData.id
             ) || []
           }));
-          
-          console.log(`Filtered schedules by term ${termData.id}`);
         }
         
         return classes;

@@ -80,8 +80,11 @@ export function useClassOrdering() {
       optimisticUpdateInProgress.current = false;
       resetMovingState();
       lastTermId.current = termData?.id;
+      
+      // Force a refetch when term changes
+      refetch();
     }
-  }, [termData?.id, resetMovingState]);
+  }, [termData?.id, resetMovingState, refetch]);
 
   // Sync orderedClasses with fetchedClasses
   useEffect(() => {
@@ -93,13 +96,14 @@ export function useClassOrdering() {
         count: fetchedClasses.length,
         isDragging,
         optimisticUpdate: optimisticUpdateInProgress.current,
-        hasInitialized: hasInitialized.current
+        hasInitialized: hasInitialized.current,
+        term: termData?.id
       });
       
       setOrderedClasses(fetchedClasses);
       hasInitialized.current = true;
     }
-  }, [fetchedClasses, isDragging]);
+  }, [fetchedClasses, isDragging, termData?.id]);
   
   // Handle the start of drag operations
   const handleDragStart = useCallback(() => {

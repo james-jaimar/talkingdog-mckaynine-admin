@@ -58,6 +58,12 @@ export function ClassesTable() {
       exact: false
     });
     handleCloseModal();
+    
+    // Also invalidate any related queries to ensure we see the latest data
+    queryClient.invalidateQueries({
+      queryKey: ['class-schedules'],
+      exact: false
+    });
   };
   
   // Handle drag and drop events from react-beautiful-dnd
@@ -89,9 +95,13 @@ export function ClassesTable() {
   }
 
   // Filter classes to only show those that have schedules for the current term
-  const displayClasses = orderedClasses?.filter(classItem => 
-    !termData?.id || classItem.class_schedules?.some(schedule => schedule.term_id === termData?.id)
-  );
+  const displayClasses = orderedClasses?.filter(classItem => {
+    // If no term is selected, show all classes
+    if (!termData?.id) return true;
+    
+    // Check if the class has any schedules for the current term
+    return classItem.class_schedules?.some(schedule => schedule.term_id === termData?.id);
+  });
   
   if (!displayClasses || displayClasses.length === 0) {
     return <ClassesTableEmpty />;
