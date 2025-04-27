@@ -131,9 +131,15 @@ export default function HandlerDetail() {
   }
 
   // Convert HandlerData to Client type for HandlerInvoices component
+  // Ensure all required properties are provided with default values if needed
   const clientForInvoices: Client = {
     ...clientData,
     phone: clientData.phone || '', // Ensure phone is not optional
+    address: clientData.address || '', // Ensure address is not optional
+    city: clientData.city || '', // Ensure city is not optional
+    postal_code: clientData.postal_code || '', // Ensure postal_code is not optional
+    branch_id: clientData.branch_id || null, // Ensure branch_id is set correctly
+    notes: clientData.notes || null, // Set notes to null if not provided
   };
 
   return (
