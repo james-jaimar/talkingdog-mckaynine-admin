@@ -2,6 +2,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { saveOrderToDatabase } from "./saveOrderToDatabase";
 import { useToast } from "@/components/ui/use-toast";
+import { ClassWithSchedules } from "../types/class-with-schedules";
 
 export function useOrderMutations(branchId: string | undefined) {
   const { toast } = useToast();
@@ -12,56 +13,83 @@ export function useOrderMutations(branchId: string | undefined) {
       if (!branchId) {
         throw new Error("No branch selected");
       }
-      console.log(`Mutation starting for branch ${branchId} with class IDs:`, classIds);
+      console.log(`Mutation starting for branch ${branchId} with ${classIds.length} class IDs`);
       return saveOrderToDatabase(classIds, branchId);
     },
-    onMutate: async (variables) => {
-      // This runs before the mutation, variables are the classIds
-      console.log('Starting mutation with variables:', variables);
-      
-      // Prevent any immediate refetching of queries that might
-      // interfere with our optimistic update
+    
+    // Optimistic update handling
+    onMutate: async (newClassIds) => {
+      // Cancel any outgoing refetches to avoid overwriting our optimistic update
       await queryClient.cancelQueries({ 
         queryKey: ['classes', branchId]
       });
-      await queryClient.cancelQueries({ 
-        queryKey: ['class-tab-order', branchId]
-      });
       
-      return { classIds: variables };
-    },
-    onSuccess: (result, variables) => {
-      console.log("Order mutation succeeded:", result);
-      toast({
-        title: "Order saved",
-        description: "Class order has been saved successfully."
-      });
+      // Snapshot the previous value
+      const previousClasses = queryClient.getQueryData<ClassWithSchedules[]>(['classes', branchId]);
       
-      // Silently mark the queries as stale so they'll refresh
-      // on the next refetch, but don't trigger an immediate refresh
-      if (branchId) {
-        queryClient.invalidateQueries({ 
-          queryKey: ['class-tab-order', branchId],
-          refetchType: 'none'
+      // Apply optimistic update - reorder the classes based on the new order
+      if (previousClasses && previousClasses.length > 0) {
+        console.log("Applying optimistic update to class order");
+        
+        // Create a map for quick lookup
+        const classMap = new Map(previousClasses.map(c => [c.id, c]));
+        
+        // Create optimistically updated array
+        const optimisticClasses = newClassIds
+          .map(id => classMap.get(id))
+          .filter(Boolean) as ClassWithSchedules[];
+          
+        // Add any classes that weren't in the newClassIds
+        previousClasses.forEach(c => {
+          if (!newClassIds.includes(c.id)) {
+            optimisticClasses.push(c);
+          }
         });
         
-        queryClient.invalidateQueries({ 
-          queryKey: ['classes', branchId],
-          refetchType: 'none'
-        });
+        // Update the cache with our optimistic value
+        queryClient.setQueryData(['classes', branchId], optimisticClasses);
       }
+      
+      return { previousClasses };
     },
-    onError: (error, variables, context) => {
+    
+    onSuccess: (_, variables) => {
+      console.log("Order saved successfully with", variables.length, "classes");
+      toast({
+        title: "Order saved",
+        description: "Class order has been updated"
+      });
+    },
+    
+    onError: (error, _, context) => {
       console.error("Failed to save class order:", error);
+      
+      // Revert back to the previous state if available
+      if (context?.previousClasses) {
+        queryClient.setQueryData(['classes', branchId], context.previousClasses);
+      }
+      
       toast({
         title: "Save failed",
         description: "Failed to save class order. Please try again.",
         variant: "destructive"
       });
-      
-      // If we have the previous state, we can use it to refresh the data
-      if (context) {
-        console.log("Error occurred, should refresh data");
+    },
+    
+    // Always refetch after error or success to ensure data consistency
+    onSettled: () => {
+      console.log("Order mutation settled, invalidating queries");
+      // Don't trigger immediate refetch but mark as stale
+      if (branchId) {
+        queryClient.invalidateQueries({ 
+          queryKey: ['classes', branchId],
+          refetchType: 'none'
+        });
+        
+        queryClient.invalidateQueries({ 
+          queryKey: ['class-tab-order', branchId],
+          refetchType: 'none'
+        });
       }
     }
   });

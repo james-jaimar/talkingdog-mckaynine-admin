@@ -21,8 +21,8 @@ export function useOptimisticUpdate() {
       return newSet;
     });
     setPendingMovements(prev => {
-      const newCount = Math.max(0, prev - 1); // Ensure we don't go below 0
-      if (newCount <= 0) {
+      const newCount = Math.max(0, prev - 1); 
+      if (newCount === 0) {
         setIsMoving(false);
       }
       return newCount;

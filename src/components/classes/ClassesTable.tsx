@@ -34,20 +34,9 @@ export function ClassesTable() {
   const { currentBranch } = useBranch();
   const { termData } = useTerm();
   
-  // Log important state for debugging
+  // Refresh data when the term changes
   useEffect(() => {
-    console.log("ClassesTable state:", {
-      orderedClassesCount: orderedClasses?.length || 0,
-      isLoading,
-      isMoving,
-      pendingMovements,
-      termId: termData?.id
-    });
-  }, [orderedClasses, isLoading, isMoving, pendingMovements, termData?.id]);
-  
-  // Make sure we refetch classes when the term changes
-  useEffect(() => {
-    console.log("Term changed, refreshing classes");
+    console.log("ClassesTable: Term changed, refreshing data", termData?.id);
     refetch();
   }, [termData?.id, refetch]);
   
@@ -64,22 +53,31 @@ export function ClassesTable() {
   };
   
   const handleEditSuccess = () => {
-    queryClient.invalidateQueries({ queryKey: ['classes', currentBranch?.id] });
-    queryClient.invalidateQueries({ queryKey: ['class-tab-order', currentBranch?.id] });
+    queryClient.invalidateQueries({ 
+      queryKey: ['classes', currentBranch?.id],
+      exact: false
+    });
     handleCloseModal();
   };
   
+  // Handle drag and drop events from react-beautiful-dnd
   const onDragStart = () => {
     handleDragStart();
   };
   
   const onDragEnd = (result: DropResult) => {
     // Check if we have a valid destination
-    const destinationIndex = result.destination?.index;
-    const sourceIndex = result.source.index;
+    if (!result.destination) {
+      console.log("Dropped outside valid area");
+      handleDragEnd(result.source.index, null);
+      return;
+    }
     
-    console.log(`Drag ended: from ${sourceIndex} to ${destinationIndex ?? 'nowhere'}`);
-    handleDragEnd(sourceIndex, destinationIndex !== undefined ? destinationIndex : null);
+    const sourceIndex = result.source.index;
+    const destinationIndex = result.destination.index;
+    
+    console.log(`Drag complete: from ${sourceIndex} to ${destinationIndex}`);
+    handleDragEnd(sourceIndex, destinationIndex);
   };
 
   if (isLoading) {
@@ -90,7 +88,7 @@ export function ClassesTable() {
     return <ClassesTableError error={error} onRetry={() => refetch()} />;
   }
 
-  // Filter classes to only show those that have schedules matching the current term
+  // Filter classes to only show those that have schedules for the current term
   const displayClasses = orderedClasses?.filter(classItem => 
     !termData?.id || classItem.class_schedules?.some(schedule => schedule.term_id === termData?.id)
   );
@@ -102,20 +100,21 @@ export function ClassesTable() {
   return (
     <>
       <Card>
-        <CardContent className="p-0 overflow-auto">
+        <CardContent className="p-0 overflow-auto relative">
           {(isMoving || pendingMovements > 0) && (
-            <div className="bg-yellow-50 text-yellow-800 p-2 text-xs text-center">
+            <div className="bg-yellow-50 text-yellow-800 p-2 text-xs text-center sticky top-0 z-10 border-b border-yellow-100">
               Saving class order...
             </div>
           )}
           <DragDropContext onDragStart={onDragStart} onDragEnd={onDragEnd}>
             <Table>
               <ClassesTableHeader />
-              <Droppable droppableId="classes">
+              <Droppable droppableId="classes-table-body">
                 {(provided) => (
                   <TableBody
                     {...provided.droppableProps}
                     ref={provided.innerRef}
+                    className="relative"
                     data-testid="classes-drag-container"
                   >
                     {displayClasses.map((classItem, index) => (

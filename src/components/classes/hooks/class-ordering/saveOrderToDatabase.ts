@@ -3,9 +3,13 @@ import { supabase } from "@/integrations/supabase/client";
 
 export async function saveOrderToDatabase(classIds: string[], branchId: string) {
   try {
-    console.log(`Saving order for branch ${branchId} with class IDs:`, classIds);
+    console.log(`Saving order for branch ${branchId} with ${classIds.length} class IDs`);
     
-    // Make sure we're not trying to save an empty array
+    // Validation checks
+    if (!branchId) {
+      throw new Error("Branch ID is required");
+    }
+    
     if (!Array.isArray(classIds) || classIds.length === 0) {
       console.error("Cannot save empty class order");
       throw new Error("Cannot save empty class order");
@@ -26,14 +30,12 @@ export async function saveOrderToDatabase(classIds: string[], branchId: string) 
       .maybeSingle();
       
     if (checkError) {
-      if (checkError.code !== 'PGRST116') {
-        console.error("Error checking order existence:", checkError);
-        throw checkError;
-      }
+      console.error("Error checking order existence:", checkError);
+      throw checkError;
     }
 
     if (existingOrder) {
-      console.log(`Updating existing order record ${existingOrder.id}`);
+      console.log(`Updating existing order record ${existingOrder.id} with ${classIds.length} classes`);
       const { data, error } = await supabase
         .from('class_tab_order')
         .update({ 
@@ -51,7 +53,7 @@ export async function saveOrderToDatabase(classIds: string[], branchId: string) 
       console.log("Order updated successfully:", data);
       return data;
     } else {
-      console.log("Creating new order record");
+      console.log(`Creating new order record for branch ${branchId} with ${classIds.length} classes`);
       const { data, error } = await supabase
         .from('class_tab_order')
         .insert({

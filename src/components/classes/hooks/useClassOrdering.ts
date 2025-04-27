@@ -11,7 +11,17 @@ import { ClassWithSchedules } from "./types/class-with-schedules";
 export function useClassOrdering() {
   const { currentBranch } = useBranch();
   const { termData } = useTerm();
-  const { data: originalClasses, isLoading, error, refetch } = useClassQuery();
+  const branchId = currentBranch?.id;
+  
+  // Fetch classes with the saved order
+  const { 
+    data: fetchedClasses, 
+    isLoading, 
+    error, 
+    refetch 
+  } = useClassQuery();
+  
+  // Optimistic update state handling
   const { 
     isMoving, 
     isItemMoving, 
@@ -20,33 +30,47 @@ export function useClassOrdering() {
     unmarkAsMoving, 
     resetMovingState 
   } = useOptimisticUpdate();
-  const mutation = useOrderMutations(currentBranch?.id);
   
-  // Reordering state
-  const [isReordering, setIsReordering] = useState(false);
+  // Order mutation hook
+  const mutation = useOrderMutations(branchId);
+  
+  // Local state for ordered classes
   const [orderedClasses, setOrderedClasses] = useState<ClassWithSchedules[]>([]);
   
-  // Tracking state
+  // State tracking
+  const [isDragging, setIsDragging] = useState(false);
   const hasInitialized = useRef(false);
   const lastTermId = useRef<string | undefined>(termData?.id);
-  const isDragging = useRef(false);
   const lastReorderTimestamp = useRef(0);
   
-  console.log("useClassOrdering: Current state", { 
-    hasInitialized: hasInitialized.current,
-    originalClassesCount: originalClasses?.length || 0,
-    orderedClassesCount: orderedClasses.length,
-    isReordering,
-    isMoving,
-    pendingMovements,
-    termId: termData?.id,
-    lastTermId: lastTermId.current
-  });
+  // Debug logging
+  useEffect(() => {
+    console.log("useClassOrdering state:", { 
+      branchId,
+      termId: termData?.id,
+      fetchedClassesCount: fetchedClasses?.length || 0,
+      orderedClassesCount: orderedClasses.length,
+      isLoading,
+      isMoving,
+      isDragging,
+      pendingMovements,
+      hasInitialized: hasInitialized.current
+    });
+  }, [
+    branchId, 
+    termData?.id, 
+    fetchedClasses, 
+    orderedClasses, 
+    isLoading, 
+    isMoving, 
+    isDragging, 
+    pendingMovements
+  ]);
   
-  // Reset ordering when term changes
+  // Reset when term changes to get fresh data
   useEffect(() => {
     if (termData?.id !== lastTermId.current) {
-      console.log("Term changed, resetting ordered classes", { 
+      console.log("Term changed, resetting state", { 
         from: lastTermId.current, 
         to: termData?.id 
       });
@@ -56,122 +80,118 @@ export function useClassOrdering() {
     }
   }, [termData?.id, resetMovingState]);
 
-  // Sync orderedClasses with originalClasses when they load or change
+  // Sync orderedClasses with fetchedClasses
   useEffect(() => {
-    // Only update if we have original classes and either:
-    // 1. We haven't initialized yet
-    // 2. We're not currently in the middle of a reordering operation
-    // 3. We're not currently dragging
-    if (originalClasses && 
-        (!hasInitialized.current || (!isReordering && !isDragging.current))) {
-      console.log("Syncing ordered classes from original classes", {
-        count: originalClasses.length,
-        isReordering,
-        isDragging: isDragging.current,
+    // Only update if:
+    // 1. We have fetched classes
+    // 2. Either we haven't initialized yet or we're not in the middle of a drag operation
+    if (fetchedClasses && (!hasInitialized.current || !isDragging)) {
+      console.log("Syncing ordered classes from fetched data", {
+        count: fetchedClasses.length,
+        isDragging,
         hasInitialized: hasInitialized.current
       });
       
-      setOrderedClasses([...originalClasses]);
+      setOrderedClasses(fetchedClasses);
       hasInitialized.current = true;
     }
-  }, [originalClasses, isReordering]);
-
-  const handleReorder = useCallback(async (sourceIndex: number, destinationIndex: number) => {
-    if (!orderedClasses || orderedClasses.length === 0) {
-      console.log("Cannot reorder: No ordered classes available");
+  }, [fetchedClasses, isDragging]);
+  
+  // Handle the start of drag operations
+  const handleDragStart = useCallback(() => {
+    console.log("Drag started");
+    setIsDragging(true);
+  }, []);
+  
+  // Process the completion of a drag operation
+  const handleDragEnd = useCallback((sourceIndex: number, destinationIndex: number | null) => {
+    console.log(`Drag ended: from ${sourceIndex} to ${destinationIndex ?? 'nowhere'}`);
+    
+    // If no valid destination, just cancel the drag
+    if (destinationIndex === null || sourceIndex === destinationIndex) {
+      setIsDragging(false);
       return;
     }
     
-    if (sourceIndex === destinationIndex) {
-      console.log("Source and destination indices are the same, ignoring");
+    if (!orderedClasses || !branchId) {
+      console.error("Cannot reorder: missing classes or branch ID");
+      setIsDragging(false);
       return;
     }
     
-    if (isReordering) {
-      console.log("Already reordering, ignoring request");
-      return;
-    }
-
     try {
-      setIsReordering(true);
-      isDragging.current = false;
+      // Track this operation
       const now = Date.now();
       lastReorderTimestamp.current = now;
       
+      // Identify the moving class
       const movingClassId = orderedClasses[sourceIndex].id;
+      console.log(`Reordering class ${movingClassId} from index ${sourceIndex} to ${destinationIndex}`);
+      
       markAsMoving(movingClassId);
       
-      console.log(`Reordering class from index ${sourceIndex} to ${destinationIndex}`, {
-        movingClassId,
-        totalClasses: orderedClasses.length,
-        timestamp: now
-      });
-      
-      // Create new array with reordered items for optimistic update
-      const newOrder = [...orderedClasses];
+      // Create new array with reordered items
+      const newOrder = Array.from(orderedClasses);
       const [removed] = newOrder.splice(sourceIndex, 1);
       newOrder.splice(destinationIndex, 0, removed);
       
-      // Update the UI immediately with our optimistic update
+      // Apply optimistic update immediately
       setOrderedClasses(newOrder);
       
-      // Get just the IDs for saving
+      // Get the IDs for saving to database
       const newOrderIds = newOrder.map(c => c.id);
-      console.log('New order IDs to save:', newOrderIds);
       
-      // Save the new order to the database
-      await mutation.mutateAsync(newOrderIds);
-      
-      // We won't refetch immediately as that could cause UI flicker
-      console.log("Reordering successful, optimistic update applied", {timestamp: now});
-      
-      // Check if this is still the most recent reorder operation
-      if (lastReorderTimestamp.current === now) {
-        unmarkAsMoving(movingClassId);
-      }
+      // Save the new order
+      mutation.mutate(newOrderIds, {
+        onSuccess: () => {
+          // Only unmark if this is still the most recent reorder
+          if (lastReorderTimestamp.current === now) {
+            unmarkAsMoving(movingClassId);
+          }
+        },
+        onError: () => {
+          if (lastReorderTimestamp.current === now) {
+            unmarkAsMoving(movingClassId);
+          }
+        }
+      });
     } catch (error) {
-      console.error('Error reordering class:', error);
-      // Revert to original order on error
-      if (originalClasses) {
-        console.log("Error occurred, reverting to original order");
-        setOrderedClasses([...originalClasses]);
-      }
+      console.error("Error processing drag operation:", error);
       toast({
-        title: "Reordering failed",
-        description: "Could not save the new class order",
+        title: "Error",
+        description: "Failed to update class order",
         variant: "destructive"
       });
       resetMovingState();
     } finally {
-      setIsReordering(false);
+      setIsDragging(false);
     }
-  }, [orderedClasses, isReordering, markAsMoving, unmarkAsMoving, mutation, originalClasses, resetMovingState]);
-
-  const handleDragStart = useCallback(() => {
-    isDragging.current = true;
-    console.log("Drag started");
-  }, []);
-  
-  const handleDragEnd = useCallback((sourceIndex: number, destinationIndex: number | null) => {
-    console.log(`Drag ended: from ${sourceIndex} to ${destinationIndex}`);
-    if (destinationIndex !== null && sourceIndex !== destinationIndex) {
-      handleReorder(sourceIndex, destinationIndex);
-    } else {
-      isDragging.current = false;
-    }
-  }, [handleReorder]);
+  }, [
+    orderedClasses, 
+    branchId, 
+    markAsMoving,
+    unmarkAsMoving, 
+    mutation, 
+    resetMovingState
+  ]);
 
   return {
-    originalClasses,
-    orderedClasses: orderedClasses.length > 0 ? orderedClasses : originalClasses,
+    // Data
+    originalClasses: fetchedClasses,
+    orderedClasses,
+    
+    // Loading and error states
     isLoading,
-    isMoving: isMoving || isReordering,
-    isItemMoving,
     error,
-    handleReorder,
+    
+    // Movement tracking
+    isMoving: isMoving || mutation.isPending,
+    isItemMoving,
+    pendingMovements,
+    
+    // Actions
     handleDragStart,
     handleDragEnd,
-    pendingMovements,
     refetch
   };
 }

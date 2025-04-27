@@ -23,26 +23,25 @@ export function ClassTableRow({
   const handlerCount = classItem.class_schedules?.reduce((count, schedule) => {
     return count + (schedule.bookings?.length || 0);
   }, 0) || 0;
-  
-  // Add alternate row coloring and highlight when moving
-  const rowBackground = cn(
-    index % 2 === 0 ? "bg-gray-50" : "bg-white", 
-    isMoving ? "bg-yellow-50 transition-colors duration-300" : ""
-  );
 
   return (
-    <Draggable draggableId={classItem.id} index={index}>
+    <Draggable 
+      draggableId={classItem.id} 
+      index={index} 
+      isDragDisabled={isLoading || isMoving}
+    >
       {(provided, snapshot) => (
         <TableRow 
           ref={provided.innerRef}
           {...provided.draggableProps}
           className={cn(
-            rowBackground,
-            snapshot.isDragging && "shadow-lg bg-white"
+            index % 2 === 0 ? "bg-gray-50" : "bg-white", 
+            isMoving && "bg-yellow-50 transition-colors duration-300",
+            snapshot.isDragging && "shadow-lg bg-blue-50 border border-blue-200"
           )}
           data-testid={`class-row-${classItem.id}`}
         >
-          {/* Drag handle column */}
+          {/* Drag handle */}
           <TableCell width="40" className="w-[40px]">
             <div
               {...provided.dragHandleProps}
@@ -50,8 +49,14 @@ export function ClassTableRow({
                 "flex items-center justify-center h-full cursor-grab active:cursor-grabbing",
                 (isLoading || isMoving) && "opacity-50 cursor-not-allowed"
               )}
+              aria-label="Drag to reorder class"
             >
-              <GripVertical className="h-5 w-5 text-gray-400" />
+              <GripVertical 
+                className={cn(
+                  "h-5 w-5 text-gray-400",
+                  snapshot.isDragging ? "text-blue-500" : ""
+                )} 
+              />
             </div>
           </TableCell>
           

@@ -1,3 +1,4 @@
+
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { ClassWithSchedules } from "../types/class-with-schedules";
@@ -7,32 +8,32 @@ import { useTerm } from "@/context/TermContext";
 export function useClassQuery() {
   const { currentBranch } = useBranch();
   const { termData } = useTerm();
+  const branchId = currentBranch?.id;
 
   return useQuery({
-    queryKey: ['classes', currentBranch?.id, termData?.id],
+    queryKey: ['classes', branchId, termData?.id],
     queryFn: async () => {
-      if (!currentBranch?.id) return [];
+      if (!branchId) return [];
 
-      console.log('Fetching classes for branch:', currentBranch.id, 'and term:', termData?.id);
+      console.log('Fetching classes for branch:', branchId, 'and term:', termData?.id);
       
       try {
         // First, fetch the saved order for this branch if it exists
         const { data: orderData, error: orderError } = await supabase
           .from('class_tab_order')
           .select('class_ids')
-          .eq('branch_id', currentBranch.id)
+          .eq('branch_id', branchId)
           .maybeSingle();
           
-        if (orderError && orderError.code !== 'PGRST116') {
+        if (orderError) {
           console.error('Error fetching class order:', orderError);
-          // Continue without order, we'll just use default sorting
         }
         
         const savedOrder = orderData?.class_ids || [];
-        console.log('Retrieved saved order:', savedOrder.length > 0 ? `${savedOrder.length} classes` : 'No saved order');
+        console.log('Retrieved saved order with', savedOrder.length, 'classes');
         
-        // Build the base query to select classes with their schedules
-        const query = supabase
+        // Fetch all classes with their schedules
+        const { data: allClasses, error: classError } = await supabase
           .from('classes')
           .select(`
             id, 
@@ -58,28 +59,26 @@ export function useClassQuery() {
               bookings(id)
             )
           `)
-          .eq('branch_id', currentBranch.id);
+          .eq('branch_id', branchId)
+          .order('name');
 
-        const { data, error } = await query.order('name');
-
-        if (error) {
-          console.error('Error fetching classes:', error);
-          throw error;
+        if (classError) {
+          console.error('Error fetching classes:', classError);
+          throw classError;
         }
         
-        let allClasses = data as ClassWithSchedules[];
+        let classes = allClasses as ClassWithSchedules[];
+        console.log(`Fetched ${classes.length} classes before ordering`);
         
-        console.log(`Fetched ${allClasses.length || 0} classes before filtering and ordering`);
-        
-        // Apply saved order if available - keep all classes, but order them according to saved order
+        // Apply the saved order if available
         if (savedOrder.length > 0) {
-          // Create a map for faster lookups
-          const classMap = new Map(allClasses.map(c => [c.id, c]));
+          // Create a map for efficient lookups
+          const classMap = new Map(classes.map(c => [c.id, c]));
           
-          // Build ordered list from saved order, adding any classes not in the order at the end
+          // Build the ordered list based on saved order
           const orderedClasses: ClassWithSchedules[] = [];
           
-          // First add all classes in the saved order (if they exist in our fetched data)
+          // First add all classes in the saved order (if they exist)
           savedOrder.forEach(id => {
             const classItem = classMap.get(id);
             if (classItem) {
@@ -88,34 +87,35 @@ export function useClassQuery() {
             }
           });
           
-          // Then add any remaining classes that weren't in the saved order
+          // Then add any remaining classes
           classMap.forEach(classItem => {
             orderedClasses.push(classItem);
           });
           
           console.log(`Applied saved order: ${orderedClasses.length} classes ordered`);
-          allClasses = orderedClasses;
+          classes = orderedClasses;
         }
         
-        // AFTER ordering, filter the class schedules to only include those for the selected term
+        // Filter class schedules by term if a term is selected
+        // We do this AFTER ordering to preserve the order
         if (termData?.id) {
-          allClasses = allClasses.map(classItem => ({
+          classes = classes.map(classItem => ({
             ...classItem,
             class_schedules: classItem.class_schedules?.filter(
               schedule => schedule.term_id === termData.id
             ) || []
           }));
           
-          console.log(`Filtered schedules by term: ${termData.id}`);
+          console.log(`Filtered schedules by term ${termData.id}`);
         }
         
-        return allClasses;
+        return classes;
       } catch (error) {
         console.error("Error fetching classes:", error);
         throw error;
       }
     },
-    enabled: !!currentBranch?.id,
+    enabled: !!branchId,
     staleTime: 30000, // Cache for 30 seconds
   });
 }
