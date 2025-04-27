@@ -9,6 +9,7 @@ import ClassDetail from "@/pages/ClassDetail";
 import Handlers from "@/pages/Handlers";
 import HandlerDetail from "@/pages/HandlerDetail";
 import FinancialReports from "@/pages/FinancialReports";
+import FinancialDashboard from "@/pages/FinancialDashboard";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import RequireAdmin from "@/components/auth/RequireAdmin";
 
@@ -39,6 +40,10 @@ export const adminRoutes = [
     element: <FinancialReports />,
   },
   {
+    path: "/admin/financial-dashboard",
+    element: <FinancialDashboard />,
+  },
+  {
     path: "/invoices",
     element: <AdminInvoices />,
   },
@@ -49,5 +54,13 @@ export const adminRoutes = [
   {
     path: "/invoices/:id/edit",
     element: <InvoiceEdit />,
+  },
+  {
+    path: "/financial-dashboard",
+    element: <FinancialDashboard />,
+  },
+  {
+    path: "/financial-reports",
+    element: <FinancialReports />,
   },
 ];

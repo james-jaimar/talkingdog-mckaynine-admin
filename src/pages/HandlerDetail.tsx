@@ -6,6 +6,7 @@ import { HandlerDetailLayout } from "@/components/handlers/detail/HandlerDetailL
 import { useHandlerDetail } from "@/hooks/useHandlerDetail";
 
 export default function HandlerDetail() {
+  // Make sure we use the correct parameter name that matches the route definition
   const { id } = useParams<{ id: string }>();
   const { data: clientData, isLoading, refetch } = useHandlerDetail(id);
 

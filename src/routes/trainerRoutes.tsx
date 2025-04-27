@@ -15,14 +15,6 @@ import BranchManagement from "@/pages/BranchManagement";
 
 export const trainerRoutes = [
   {
-    path: "/dashboard",
-    element: (
-      <ProtectedRoute requiredRole="trainer">
-        <Dashboard />
-      </ProtectedRoute>
-    ),
-  },
-  {
     path: "/classes",
     element: (
       <ProtectedRoute requiredRole="trainer">
@@ -55,7 +47,7 @@ export const trainerRoutes = [
     ),
   },
   {
-    path: "/class-schedules",
+    path: "/schedules",
     element: (
       <ProtectedRoute requiredRole="trainer">
         <ClassSchedules />
@@ -75,6 +67,14 @@ export const trainerRoutes = [
     element: (
       <ProtectedRoute requiredRole="trainer">
         <ClassHandlers />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/classes/:id",
+    element: (
+      <ProtectedRoute requiredRole="trainer">
+        <ClassDetail />
       </ProtectedRoute>
     ),
   },
