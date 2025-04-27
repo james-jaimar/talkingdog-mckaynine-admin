@@ -48,6 +48,8 @@ interface HandlerData {
     medical_notes?: string;
     avatar_url?: string;
     date_of_birth?: string;
+    created_at?: string;
+    updated_at?: string;
   }>;
 }
 
@@ -145,8 +147,8 @@ export default function HandlerDetail() {
     dogs: clientData.dogs ? clientData.dogs.map(dog => ({
       ...dog,
       client_id: clientData.id, // Add required client_id
-      created_at: dog.created_at || clientData.created_at, // Provide created_at fallback
-      updated_at: dog.updated_at || clientData.updated_at, // Provide updated_at fallback
+      created_at: clientData.created_at, // Use client's created_at as fallback
+      updated_at: clientData.updated_at, // Use client's updated_at as fallback
     })) as Dog[] : undefined,
   };
 
