@@ -64,6 +64,7 @@ export function ClassesTable() {
     
     if (sourceIndex === destinationIndex) return;
     
+    console.log(`Drag ended: from ${sourceIndex} to ${destinationIndex}`);
     handleReorder(sourceIndex, destinationIndex);
   };
 
