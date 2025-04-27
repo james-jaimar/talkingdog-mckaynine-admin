@@ -16,7 +16,7 @@ import { EditDogModal } from "@/components/handlers/detail/EditDogModal";
 import { HandlerDetailSkeleton } from "@/components/handlers/detail/HandlerDetailSkeleton";
 import { HandlerNotFound } from "@/components/handlers/detail/HandlerNotFound";
 import { useToast } from "@/components/ui/use-toast";
-import { Client } from "@/hooks/useClientsData";
+import { Client, Dog } from "@/hooks/useClientsData";
 
 // Define a type for the consent status values
 type ConsentStatus = 'yes' | 'no' | 'not_marked';
@@ -132,6 +132,7 @@ export default function HandlerDetail() {
 
   // Convert HandlerData to Client type for HandlerInvoices component
   // Ensure all required properties are provided with default values if needed
+  // and properly transform the dogs array to match the Dog type
   const clientForInvoices: Client = {
     ...clientData,
     phone: clientData.phone || '', // Ensure phone is not optional
@@ -140,6 +141,13 @@ export default function HandlerDetail() {
     postal_code: clientData.postal_code || '', // Ensure postal_code is not optional
     branch_id: clientData.branch_id || null, // Ensure branch_id is set correctly
     notes: clientData.notes || null, // Set notes to null if not provided
+    // Transform dogs array to match the Dog type required by Client interface
+    dogs: clientData.dogs ? clientData.dogs.map(dog => ({
+      ...dog,
+      client_id: clientData.id, // Add required client_id
+      created_at: dog.created_at || clientData.created_at, // Provide created_at fallback
+      updated_at: dog.updated_at || clientData.updated_at, // Provide updated_at fallback
+    })) as Dog[] : undefined,
   };
 
   return (
