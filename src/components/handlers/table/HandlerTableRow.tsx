@@ -1,4 +1,3 @@
-
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Link } from "react-router-dom";
 import { ActionMenu } from "./ActionMenu";
@@ -23,9 +22,10 @@ interface HandlerTableRowProps {
       period?: string;
     }[];
   };
+  index?: number;
 }
 
-export function HandlerTableRow({ handler }: HandlerTableRowProps) {
+export function HandlerTableRow({ handler, index = 0 }: HandlerTableRowProps) {
   const fullName = `${handler.first_name} ${handler.last_name || ''}`.trim();
   const invoiceCount = handler.invoices?.length || 0;
 
@@ -35,7 +35,11 @@ export function HandlerTableRow({ handler }: HandlerTableRowProps) {
   };
 
   return (
-    <TableRow key={handler.id}>
+    <TableRow 
+      className={index % 2 === 0 ? "bg-gray-50" : "bg-gray-200"}
+      key={handler.id}
+    >
+      
       <TableCell>
         <Link 
           to={`/handlers/${handler.id}`}
