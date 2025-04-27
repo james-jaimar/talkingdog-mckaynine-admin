@@ -23,9 +23,16 @@ export function useOrderMutations(branchId: string | undefined) {
       });
       
       if (branchId) {
-        // Invalidate relevant queries to ensure UI is updated
-        queryClient.invalidateQueries({ queryKey: ['class-tab-order', branchId] });
-        queryClient.invalidateQueries({ queryKey: ['classes', branchId] });
+        // Invalidate relevant queries to ensure UI is updated on next fetch
+        // but don't trigger an immediate refetch as we're using optimistic updates
+        queryClient.invalidateQueries({ 
+          queryKey: ['class-tab-order', branchId],
+          refetchType: 'none'
+        });
+        queryClient.invalidateQueries({ 
+          queryKey: ['classes', branchId],
+          refetchType: 'none'
+        });
       }
     },
     onError: (error) => {

@@ -57,14 +57,23 @@ export function ClassesTable() {
   };
   
   const onDragEnd = (result: DropResult) => {
-    if (!result.destination) return;
+    // Check if we have a valid destination
+    if (!result.destination) {
+      console.log('No valid destination');
+      return;
+    }
     
     const sourceIndex = result.source.index;
     const destinationIndex = result.destination.index;
     
-    if (sourceIndex === destinationIndex) return;
+    // Skip if the item is dropped in the same position
+    if (sourceIndex === destinationIndex) {
+      console.log('Dropped in the same position');
+      return;
+    }
     
     console.log(`Drag ended: from ${sourceIndex} to ${destinationIndex}`);
+    // Use the handleReorder function which performs optimistic updates
     handleReorder(sourceIndex, destinationIndex);
   };
 

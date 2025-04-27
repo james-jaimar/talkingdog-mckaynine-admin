@@ -1,8 +1,10 @@
+
 import { useBranch } from "@/context/BranchContext";
 import { useClassQuery } from "./class-ordering/useClassQuery";
 import { useOptimisticUpdate } from "./class-ordering/useOptimisticUpdate";
 import { useOrderMutations } from "./class-ordering/useOrderMutations";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { toast } from "@/components/ui/use-toast";
 
 export function useClassOrdering() {
   const { currentBranch } = useBranch();
@@ -15,12 +17,12 @@ export function useClassOrdering() {
 
   // Sync orderedClasses with originalClasses when they load or change
   useEffect(() => {
-    if (originalClasses) {
+    if (originalClasses && !isReordering) {
       setOrderedClasses([...originalClasses]);
     }
-  }, [originalClasses]);
+  }, [originalClasses, isReordering]);
 
-  const handleReorder = async (sourceIndex: number, destinationIndex: number) => {
+  const handleReorder = useCallback(async (sourceIndex: number, destinationIndex: number) => {
     if (!orderedClasses || isMoving || isReordering || sourceIndex === destinationIndex) return;
 
     setIsReordering(true);
@@ -35,7 +37,7 @@ export function useClassOrdering() {
       const [removed] = newOrder.splice(sourceIndex, 1);
       newOrder.splice(destinationIndex, 0, removed);
       
-      // Update the UI immediately 
+      // Update the UI immediately with our optimistic update
       setOrderedClasses(newOrder);
       
       // Get just the IDs for saving
@@ -45,19 +47,25 @@ export function useClassOrdering() {
       // Save the new order to the database
       await mutation.mutateAsync(newOrderIds);
       
-      // Force a refresh to ensure the server data is up to date
-      await refetch();
+      // We won't refetch immediately as that could cause UI flicker
+      // The optimistic update should be enough until the next natural refetch
+      console.log("Reordering successful");
     } catch (error) {
       console.error('Error reordering class:', error);
       // Revert to original order on error
       if (originalClasses) {
         setOrderedClasses([...originalClasses]);
       }
+      toast({
+        title: "Reordering failed",
+        description: "Could not save the new class order",
+        variant: "destructive"
+      });
     } finally {
       unmarkAsMoving(movingClassId);
       setIsReordering(false);
     }
-  };
+  }, [orderedClasses, isMoving, isReordering, markAsMoving, unmarkAsMoving, mutation, originalClasses]);
 
   return {
     originalClasses,
