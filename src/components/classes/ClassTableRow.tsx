@@ -1,20 +1,18 @@
 
 import { TableRow, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { ClassSortControls } from "./ClassSortControls";
 import { ClassAvailabilityBadge } from "./ClassAvailabilityBadge";
 import { ClassActionButtons } from "./ClassActionButtons";
 import { calculateAvailableSlots } from "./utils/classSlotUtils";
 import { ClassMetadataCell } from "./table/cells/ClassMetadataCell";
 import { ClassRowProps } from "./types/class-row";
 import { cn } from "@/lib/utils";
+import { Draggable } from "react-beautiful-dnd";
+import { GripVertical } from "lucide-react";
 
 export function ClassTableRow({
   classItem,
   index,
-  totalClasses,
-  onMoveUp,
-  onMoveDown,
   onEdit,
   isLoading = false,
   isMoving = false,
@@ -31,63 +29,72 @@ export function ClassTableRow({
     index % 2 === 0 ? "bg-gray-50" : "bg-white", 
     isMoving ? "bg-yellow-50 transition-colors duration-300" : ""
   );
-  
+
   return (
-    <TableRow 
-      className={rowBackground}
-      key={classItem.id}
-      data-testid={`class-row-${classItem.id}`}
-    >
-      {/* Order column */}
-      <TableCell>
-        <ClassSortControls 
-          index={index}
-          totalClasses={totalClasses}
-          onMoveUp={onMoveUp}
-          onMoveDown={onMoveDown}
-          isLoading={isLoading}
-          isMoving={isMoving}
-        />
-      </TableCell>
-      
-      {/* Class name column */}
-      <TableCell className="font-medium">{classItem.name}</TableCell>
-      
-      {/* Level column */}
-      <TableCell>
-        <Badge variant="outline">{classItem.class_type}</Badge>
-      </TableCell>
-      
-      {/* Duration, Price, Capacity through ClassMetadataCell */}
-      <ClassMetadataCell
-        duration={classItem.duration}
-        courseFee={classItem.course_fee}
-        capacity={classItem.capacity}
-      />
-      
-      {/* Location column */}
-      <TableCell>{classItem.branches?.name || "-"}</TableCell>
-      
-      {/* Availability column */}
-      <TableCell>
-        <div className="flex flex-col">
-          <ClassAvailabilityBadge 
-            availableSlots={availableSlots} 
-            capacity={classItem.capacity} 
+    <Draggable draggableId={classItem.id} index={index}>
+      {(provided, snapshot) => (
+        <TableRow 
+          ref={provided.innerRef}
+          {...provided.draggableProps}
+          className={cn(
+            rowBackground,
+            snapshot.isDragging && "shadow-lg bg-white"
+          )}
+          data-testid={`class-row-${classItem.id}`}
+        >
+          {/* Drag handle column */}
+          <TableCell width="40" className="w-[40px]">
+            <div
+              {...provided.dragHandleProps}
+              className={cn(
+                "flex items-center justify-center h-full cursor-grab active:cursor-grabbing",
+                (isLoading || isMoving) && "opacity-50 cursor-not-allowed"
+              )}
+            >
+              <GripVertical className="h-5 w-5 text-gray-400" />
+            </div>
+          </TableCell>
+          
+          {/* Class name column */}
+          <TableCell className="font-medium">{classItem.name}</TableCell>
+          
+          {/* Level column */}
+          <TableCell>
+            <Badge variant="outline">{classItem.class_type}</Badge>
+          </TableCell>
+          
+          {/* Duration, Price, Capacity through ClassMetadataCell */}
+          <ClassMetadataCell
+            duration={classItem.duration}
+            courseFee={classItem.course_fee}
+            capacity={classItem.capacity}
           />
-          <span className="text-xs text-gray-500 mt-1">
-            {handlerCount} {handlerCount === 1 ? 'handler' : 'handlers'}
-          </span>
-        </div>
-      </TableCell>
-      
-      {/* Actions column */}
-      <TableCell className="text-right">
-        <ClassActionButtons 
-          classId={classItem.id} 
-          onEdit={() => onEdit(classItem)} 
-        />
-      </TableCell>
-    </TableRow>
+          
+          {/* Location column */}
+          <TableCell>{classItem.branches?.name || "-"}</TableCell>
+          
+          {/* Availability column */}
+          <TableCell>
+            <div className="flex flex-col">
+              <ClassAvailabilityBadge 
+                availableSlots={availableSlots} 
+                capacity={classItem.capacity} 
+              />
+              <span className="text-xs text-gray-500 mt-1">
+                {handlerCount} {handlerCount === 1 ? 'handler' : 'handlers'}
+              </span>
+            </div>
+          </TableCell>
+          
+          {/* Actions column */}
+          <TableCell className="text-right">
+            <ClassActionButtons 
+              classId={classItem.id} 
+              onEdit={() => onEdit(classItem)} 
+            />
+          </TableCell>
+        </TableRow>
+      )}
+    </Draggable>
   );
 }

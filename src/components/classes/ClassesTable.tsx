@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Table, TableBody } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,6 +12,7 @@ import { ClassesTableEmpty } from "./table/ClassesTableEmpty";
 import { ClassesTableHeader } from "./table/ClassesTableHeader";
 import { useTerm } from "@/context/TermContext";
 import { toast } from "@/components/ui/use-toast";
+import { DragDropContext, Droppable, DropResult } from "react-beautiful-dnd";
 
 export function ClassesTable() {
   const { 
@@ -21,8 +21,7 @@ export function ClassesTable() {
     isMoving,
     isItemMoving,
     error, 
-    moveClassUp, 
-    moveClassDown,
+    handleReorder,
     pendingMovements,
     refetch
   } = useClassOrdering();
@@ -56,33 +55,17 @@ export function ClassesTable() {
     handleCloseModal();
   };
   
-  // Function to handle moving a class up based on index
-  const handleMoveClassUp = (index: number) => {
-    if (orderedClasses && index >= 0 && index < orderedClasses.length) {
-      console.log(`Moving class at index ${index} up`);
-      const classId = orderedClasses[index].id;
-      moveClassUp(classId);
-    }
+  const onDragEnd = (result: DropResult) => {
+    if (!result.destination) return;
+    
+    const sourceIndex = result.source.index;
+    const destinationIndex = result.destination.index;
+    
+    if (sourceIndex === destinationIndex) return;
+    
+    handleReorder(sourceIndex, destinationIndex);
   };
-  
-  // Function to handle moving a class down based on index
-  const handleMoveClassDown = (index: number) => {
-    if (orderedClasses && index >= 0 && index < orderedClasses.length) {
-      console.log(`Moving class at index ${index} down`);
-      const classId = orderedClasses[index].id;
-      moveClassDown(classId);
-    }
-  };
-  
-  // Handle retry when there's an error
-  const handleRetry = () => {
-    toast({
-      title: "Retrying...",
-      description: "Attempting to load classes again.",
-    });
-    refetch();
-  };
-  
+
   if (isLoading) {
     return <ClassesTableLoading />;
   }
@@ -109,24 +92,32 @@ export function ClassesTable() {
               Saving class order...
             </div>
           )}
-          <Table>
-            <ClassesTableHeader />
-            <TableBody>
-              {displayClasses.map((classItem, index) => (
-                <ClassTableRow
-                  key={classItem.id}
-                  classItem={classItem as any}
-                  index={index}
-                  totalClasses={displayClasses.length}
-                  onMoveUp={handleMoveClassUp}
-                  onMoveDown={handleMoveClassDown}
-                  onEdit={() => handleEdit(classItem)}
-                  isLoading={isMoving}
-                  isMoving={isItemMoving(classItem.id)}
-                />
-              ))}
-            </TableBody>
-          </Table>
+          <DragDropContext onDragEnd={onDragEnd}>
+            <Table>
+              <ClassesTableHeader />
+              <Droppable droppableId="classes">
+                {(provided) => (
+                  <TableBody
+                    {...provided.droppableProps}
+                    ref={provided.innerRef}
+                  >
+                    {displayClasses.map((classItem, index) => (
+                      <ClassTableRow
+                        key={classItem.id}
+                        classItem={classItem as any}
+                        index={index}
+                        totalClasses={displayClasses.length}
+                        onEdit={() => handleEdit(classItem)}
+                        isLoading={isMoving}
+                        isMoving={isItemMoving(classItem.id)}
+                      />
+                    ))}
+                    {provided.placeholder}
+                  </TableBody>
+                )}
+              </Droppable>
+            </Table>
+          </DragDropContext>
         </CardContent>
       </Card>
       

@@ -12,25 +12,20 @@ export function useClassOrdering() {
   const mutation = useOrderMutations(currentBranch?.id);
   const [isReordering, setIsReordering] = useState(false);
 
-  // Move a class up in order
-  const moveClassUp = async (classId: string) => {
+  const handleReorder = async (sourceIndex: number, destinationIndex: number) => {
     if (!originalClasses || isMoving || isReordering) return;
 
-    // Find the index of the class to move
-    const index = originalClasses.findIndex(c => c.id === classId);
-    if (index <= 0) return;
-
     setIsReordering(true);
-    markAsMoving(classId);
+    const movingClassId = originalClasses[sourceIndex].id;
+    markAsMoving(movingClassId);
 
     try {
-      console.log(`Moving class ${classId} up from index ${index}`);
+      console.log(`Reordering class from index ${sourceIndex} to ${destinationIndex}`);
       
-      // Create a new array with the item moved up
+      // Create new array with reordered items
       const newOrder = [...originalClasses];
-      const temp = newOrder[index];
-      newOrder[index] = newOrder[index - 1];
-      newOrder[index - 1] = temp;
+      const [removed] = newOrder.splice(sourceIndex, 1);
+      newOrder.splice(destinationIndex, 0, removed);
       
       // Get just the IDs for saving
       const newOrderIds = newOrder.map(c => c.id);
@@ -42,46 +37,9 @@ export function useClassOrdering() {
       // Force a refresh to ensure the UI reflects the new order
       await refetch();
     } catch (error) {
-      console.error('Error moving class up:', error);
+      console.error('Error reordering class:', error);
     } finally {
-      unmarkAsMoving(classId);
-      setIsReordering(false);
-    }
-  };
-
-  // Move a class down in order
-  const moveClassDown = async (classId: string) => {
-    if (!originalClasses || isMoving || isReordering) return;
-
-    // Find the index of the class to move
-    const index = originalClasses.findIndex(c => c.id === classId);
-    if (index < 0 || index >= originalClasses.length - 1) return;
-
-    setIsReordering(true);
-    markAsMoving(classId);
-
-    try {
-      console.log(`Moving class ${classId} down from index ${index}`);
-      
-      // Create a new array with the item moved down
-      const newOrder = [...originalClasses];
-      const temp = newOrder[index];
-      newOrder[index] = newOrder[index + 1];
-      newOrder[index + 1] = temp;
-      
-      // Get just the IDs for saving
-      const newOrderIds = newOrder.map(c => c.id);
-      console.log('New order IDs:', newOrderIds);
-      
-      // Save the new order
-      await mutation.mutateAsync(newOrderIds);
-      
-      // Force a refresh to ensure the UI reflects the new order
-      await refetch();
-    } catch (error) {
-      console.error('Error moving class down:', error);
-    } finally {
-      unmarkAsMoving(classId);
+      unmarkAsMoving(movingClassId);
       setIsReordering(false);
     }
   };
@@ -93,8 +51,7 @@ export function useClassOrdering() {
     isMoving: isMoving || isReordering,
     isItemMoving,
     error,
-    moveClassUp,
-    moveClassDown,
+    handleReorder,
     pendingMovements,
     refetch
   };
