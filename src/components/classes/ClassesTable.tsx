@@ -54,7 +54,7 @@ export function ClassesTable() {
   
   const handleEditSuccess = () => {
     queryClient.invalidateQueries({ 
-      queryKey: ['classes', currentBranch?.id],
+      queryKey: ['classes'],
       exact: false
     });
     handleCloseModal();
@@ -94,14 +94,11 @@ export function ClassesTable() {
     return <ClassesTableError error={error} onRetry={() => refetch()} />;
   }
 
-  // Filter classes to only show those that have schedules for the current term
-  const displayClasses = orderedClasses?.filter(classItem => {
-    // Always show all classes on /classes page regardless of term
-    // This ensures newly added classes are visible
-    return true;
-  });
+  // In the classes management page, always show ALL classes regardless of term
+  // This ensures newly added classes are visible
+  const displayClasses = orderedClasses;
   
-  console.log(`Displaying ${displayClasses?.length || 0} classes after filtering`);
+  console.log(`ClassesTable: Displaying ${displayClasses?.length || 0} classes, with term: ${termData?.id || 'none'}`);
   
   if (!displayClasses || displayClasses.length === 0) {
     return <ClassesTableEmpty />;

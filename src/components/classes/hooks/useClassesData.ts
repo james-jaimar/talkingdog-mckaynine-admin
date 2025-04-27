@@ -4,7 +4,6 @@ import { useBranch } from "@/context/BranchContext";
 import { useAuth } from "@/context/auth";
 import { useTerm } from "@/context/TermContext";
 import { useEffect, useMemo } from "react";
-import { ClassWithSchedules } from "./types/class-with-schedules";
 
 export function useClassesData() {
   const { currentBranch } = useBranch();
@@ -21,25 +20,30 @@ export function useClassesData() {
   
   // Refetch when term changes
   useEffect(() => {
-    console.log("Term selection changed, refetching classes data");
+    console.log("Term selection changed in useClassesData, refetching");
     refetch();
   }, [termData?.id, refetch]);
   
-  // Filter to only include classes that have schedules for active classes
+  // For active classes, filter to show only those with schedules for the current term
   const activeClasses = useMemo(() => {
     if (!orderedClasses) return [];
     
-    console.log(`Filtering ${orderedClasses.length} classes to show only active ones with term: ${termData?.id}`);
+    console.log(`Filtering ${orderedClasses.length} classes for active classes with term: ${termData?.id || 'none'}`);
     
-    // Since we've already filtered schedules by term in useClassQuery,
-    // we just need to filter out classes with no schedules
-    return orderedClasses.filter((c: ClassWithSchedules) => 
-      c.class_schedules && c.class_schedules.length > 0
+    if (!termData?.id) {
+      // If no term is selected, show all classes that have any schedules
+      return orderedClasses.filter(c => c.class_schedules && c.class_schedules.length > 0);
+    }
+    
+    // With term: show classes that have schedules for this term
+    return orderedClasses.filter(c => 
+      c.class_schedules && c.class_schedules.some(s => s.term_id === termData.id)
     );
   }, [orderedClasses, termData?.id]);
   
   return {
     activeClasses,
+    allClasses: orderedClasses, // Provide access to all classes (even without schedules)
     isLoading,
     hasBranch: !!currentBranch,
     isAuthenticated: !!user && !!session,

@@ -13,7 +13,7 @@ export function useClassOrdering() {
   const { termData } = useTerm();
   const branchId = currentBranch?.id;
   
-  // Fetch classes with the saved order
+  // Fetch classes with the saved order - without term filtering
   const { 
     data: fetchedClasses, 
     isLoading, 
@@ -44,35 +44,21 @@ export function useClassOrdering() {
   const lastReorderTimestamp = useRef(0);
   const optimisticUpdateInProgress = useRef(false);
   
-  // Debug logging
+  // Debug logging for state changes
   useEffect(() => {
     console.log("useClassOrdering state:", { 
       branchId,
       termId: termData?.id,
       fetchedClassesCount: fetchedClasses?.length || 0,
       orderedClassesCount: orderedClasses.length,
-      isLoading,
-      isMoving,
-      isDragging,
-      pendingMovements,
-      hasInitialized: hasInitialized.current,
-      optimisticUpdateInProgress: optimisticUpdateInProgress.current
+      hasInitialized: hasInitialized.current
     });
-  }, [
-    branchId, 
-    termData?.id, 
-    fetchedClasses, 
-    orderedClasses, 
-    isLoading, 
-    isMoving, 
-    isDragging, 
-    pendingMovements
-  ]);
+  }, [branchId, termData?.id, fetchedClasses, orderedClasses]);
   
   // Reset when term changes to get fresh data
   useEffect(() => {
     if (termData?.id !== lastTermId.current) {
-      console.log("Term changed, resetting state", { 
+      console.log("Term changed in useClassOrdering, resetting state", { 
         from: lastTermId.current, 
         to: termData?.id 
       });
@@ -96,14 +82,13 @@ export function useClassOrdering() {
         count: fetchedClasses.length,
         isDragging,
         optimisticUpdate: optimisticUpdateInProgress.current,
-        hasInitialized: hasInitialized.current,
-        term: termData?.id
+        hasInitialized: hasInitialized.current
       });
       
       setOrderedClasses(fetchedClasses);
       hasInitialized.current = true;
     }
-  }, [fetchedClasses, isDragging, termData?.id]);
+  }, [fetchedClasses, isDragging]);
   
   // Handle the start of drag operations
   const handleDragStart = useCallback(() => {

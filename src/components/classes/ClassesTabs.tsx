@@ -38,13 +38,15 @@ export function ClassesTabs({ alwaysShow = false }) {
     return null;
   }
   
-  // When on the classes page or alwaysShow is true, show all classes
-  // This ensures we can see newly added classes even without schedules
-  const displayClasses = alwaysShow ? orderedClasses : orderedClasses.filter(
-    c => c.class_schedules && c.class_schedules.length > 0
-  );
+  // Always show all classes in the classes management page (alwaysShow=true)
+  // For other pages, only show classes with schedules
+  const displayClasses = alwaysShow 
+    ? orderedClasses 
+    : orderedClasses.filter(c => c.class_schedules && c.class_schedules.length > 0);
   
-  // Don't render if no valid classes and not forced to show
+  console.log(`ClassesTabs: Showing ${displayClasses.length} classes out of ${orderedClasses.length} total classes`);
+  
+  // Don't render if no valid classes to display and not forced to show
   if (displayClasses.length === 0 && !isClassRelatedPath) {
     return null;
   }

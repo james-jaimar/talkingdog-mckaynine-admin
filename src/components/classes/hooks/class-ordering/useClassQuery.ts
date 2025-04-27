@@ -11,11 +11,11 @@ export function useClassQuery() {
   const branchId = currentBranch?.id;
 
   return useQuery({
-    queryKey: ['classes', branchId, termData?.id],
+    queryKey: ['classes', branchId],
     queryFn: async () => {
       if (!branchId) return [];
 
-      console.log('Fetching classes for branch:', branchId, 'and term:', termData?.id);
+      console.log('Fetching classes for branch:', branchId);
       
       try {
         // First, fetch the saved order for this branch if it exists
@@ -32,7 +32,7 @@ export function useClassQuery() {
         const savedOrder = orderData?.class_ids || [];
         console.log('Retrieved saved order with', savedOrder.length, 'classes');
         
-        // Fetch all classes with their schedules
+        // Fetch all classes with their schedules - without term filtering at data fetch level
         const { data: allClasses, error: classError } = await supabase
           .from('classes')
           .select(`
@@ -87,7 +87,7 @@ export function useClassQuery() {
             }
           });
           
-          // Then add any remaining classes
+          // Then add any remaining classes (including newly created ones)
           classMap.forEach(classItem => {
             orderedClasses.push(classItem);
           });
@@ -96,16 +96,10 @@ export function useClassQuery() {
           classes = orderedClasses;
         }
         
-        // DEBUG: Before filtering, let's log all class schedules
+        // Debug logging: Log all classes after ordering
         classes.forEach(classItem => {
-          console.log(`Class ${classItem.name} has ${classItem.class_schedules?.length || 0} schedules:`);
-          classItem.class_schedules?.forEach(schedule => {
-            console.log(`  Schedule ID: ${schedule.id}, Term ID: ${schedule.term_id}`);
-          });
+          console.log(`Class "${classItem.name}" (${classItem.id}): ${classItem.class_schedules?.length || 0} schedules`);
         });
-        
-        // Don't filter by term at this level - we will do it at the display level
-        // This ensures we have all classes available and can show them based on different criteria
         
         return classes;
       } catch (error) {

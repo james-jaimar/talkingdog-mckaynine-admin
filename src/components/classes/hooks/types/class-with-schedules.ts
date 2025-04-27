@@ -11,4 +11,7 @@ export interface ClassWithSchedules extends Omit<Class, 'class_schedules'> {
     term_id?: string;
     bookings?: { id: string }[];
   }[];
+  
+  // Visual indicator for UI - will be set by components as needed
+  isMoving?: boolean;
 }
