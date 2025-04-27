@@ -7,19 +7,19 @@ import { useClassOrdering } from "./useClassOrdering";
 export function useClassOrder() {
   const {
     isMoving,
-    handleReorder
+    handleDragEnd
   } = useClassOrdering();
   
   // Provide backward compatibility methods
   const moveClassUp = (index: number) => {
     if (index > 0) {
-      handleReorder(index, index - 1);
+      handleDragEnd(index, index - 1);
     }
   };
   
   const moveClassDown = (index: number) => {
-    // The destination index is handled within handleReorder
-    handleReorder(index, index + 1);
+    // The destination index is handled within handleDragEnd
+    handleDragEnd(index, index + 1);
   };
   
   return {
