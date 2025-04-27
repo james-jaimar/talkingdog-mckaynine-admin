@@ -5,6 +5,8 @@ import { formatPhoneNumber } from "../utils/handlerUtils";
 import { useBranch } from "@/context/BranchContext";
 import { useEffect, useState } from "react";
 
+type ConsentStatus = 'yes' | 'no' | 'not_marked';
+
 interface HandlerInfoProps {
   handler: {
     id: string;
@@ -18,6 +20,8 @@ interface HandlerInfoProps {
     postal_code?: string;
     notes?: string;
     created_at: string;
+    uses_whatsapp_status?: ConsentStatus;
+    social_media_consent_status?: ConsentStatus;
   };
 }
 

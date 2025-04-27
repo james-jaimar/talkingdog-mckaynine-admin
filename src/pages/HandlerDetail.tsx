@@ -17,6 +17,39 @@ import { HandlerDetailSkeleton } from "@/components/handlers/detail/HandlerDetai
 import { HandlerNotFound } from "@/components/handlers/detail/HandlerNotFound";
 import { useToast } from "@/components/ui/use-toast";
 
+// Define a type for the consent status values
+type ConsentStatus = 'yes' | 'no' | 'not_marked';
+
+// Define a type for the handler/client data
+interface HandlerData {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  postal_code?: string;
+  notes?: string;
+  branch_id?: string;
+  uses_whatsapp_status: ConsentStatus;
+  social_media_consent_status: ConsentStatus;
+  created_at: string;
+  updated_at: string;
+  dogs?: Array<{
+    id: string;
+    name: string;
+    breed: string;
+    age?: number;
+    weight?: number;
+    notes?: string;
+    behavior_notes?: string;
+    medical_notes?: string;
+    avatar_url?: string;
+    date_of_birth?: string;
+  }>;
+}
+
 export default function HandlerDetail() {
   // Change from handlerId to id to match the route parameter
   const { id } = useParams<{ id: string }>();
@@ -50,7 +83,14 @@ export default function HandlerDetail() {
         throw error;
       }
 
-      return data;
+      // Ensure consent statuses are properly typed
+      const typedData: HandlerData = {
+        ...data,
+        uses_whatsapp_status: (data.uses_whatsapp_status as ConsentStatus) || 'not_marked',
+        social_media_consent_status: (data.social_media_consent_status as ConsentStatus) || 'not_marked'
+      };
+
+      return typedData;
     },
     enabled: !!id,
   });
@@ -109,13 +149,13 @@ export default function HandlerDetail() {
           <div className="space-y-6">
             {/* Handler info card */}
             <HandlerInfo 
-              clientData={clientData} 
-              isLoading={isLoading} 
+              handler={clientData} 
             />
             
             {/* Communications card */}
             <HandlerCommunications 
-              clientData={clientData} 
+              clientId={clientData.id}
+              clientName={`${clientData.first_name} ${clientData.last_name || ''}`}
             />
           </div>
           
@@ -128,11 +168,9 @@ export default function HandlerDetail() {
             
             {/* Dogs list */}
             <DogsList 
-              clientId={id} 
-              clientData={clientData}
-              isLoading={isLoading} 
-              onAddDog={openAddDogModal}
-              onEditDog={openEditDogModal}
+              clientId={id || ''}
+              dogs={clientData.dogs || []}
+              onDogsUpdated={handleHandlerUpdated}
             />
           </div>
         </div>

@@ -5,6 +5,7 @@ import { DogCard } from "./DogCard";
 import { EditDogModal } from "./EditDogModal";
 
 interface DogsListProps {
+  clientId: string;
   dogs: Array<{
     id: string;
     name: string;
@@ -15,8 +16,8 @@ interface DogsListProps {
     behavior_notes?: string;
     medical_notes?: string;
     avatar_url?: string;
+    date_of_birth?: string;
   }>;
-  clientId: string;
   onDogsUpdated?: () => void;
 }
 
