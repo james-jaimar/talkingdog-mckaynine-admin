@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Table, TableBody } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
@@ -71,7 +72,7 @@ export function ClassesTable() {
   }
   
   if (error) {
-    return <ClassesTableError error={error} onRetry={handleRetry} />;
+    return <ClassesTableError error={error} onRetry={() => refetch()} />;
   }
 
   // Filter classes to only show those that have schedules matching the current term
