@@ -1,5 +1,5 @@
 
-import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableHeader } from "@/components/ui/table";
 import { HandlerTableRow } from "./table/HandlerTableRow";
 import { HandlerTableHeader } from "./table/TableHeader";
 import { useState } from "react";
@@ -39,21 +39,21 @@ export function HandlerTable({
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableRow>
-                <td colSpan={10} className="p-4 text-center">Loading handlers...</td>
-              </TableRow>
+              <tr>
+                <td colSpan={9} className="p-4 text-center">Loading handlers...</td>
+              </tr>
             ) : currentHandlers.length === 0 ? (
-              <TableRow>
-                <td colSpan={10} className="p-4 text-center">
+              <tr>
+                <td colSpan={9} className="p-4 text-center">
                   {searchQuery ? `No handlers found matching "${searchQuery}"` : "No handlers found"}
                 </td>
-              </TableRow>
+              </tr>
             ) : (
               currentHandlers.map((handler, index) => (
                 <HandlerTableRow 
                   key={handler.id} 
                   handler={handler} 
-                  index={index + startIndex} // Pass the actual index in the full list for correct alternating colors
+                  index={index + startIndex}
                 />
               ))
             )}

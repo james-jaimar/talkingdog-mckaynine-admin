@@ -19,6 +19,11 @@ interface HandlerTableRowProps {
       status: 'completed' | 'interested' | 'not-interested';
       period?: string;
     }[];
+    // Include email field for compatibility with ActionMenu component
+    email?: string;
+    phone?: string;
+    branch_id?: string | null;
+    notes?: string;
   };
   index?: number;
 }
