@@ -1,5 +1,5 @@
 
-import { Table, TableBody, TableHead, TableHeader } from "@/components/ui/table";
+import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { HandlerTableRow } from "./table/HandlerTableRow";
 import { HandlerTableHeader } from "./table/TableHeader";
 import { useState } from "react";
