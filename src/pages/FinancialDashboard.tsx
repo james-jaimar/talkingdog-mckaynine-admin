@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Helmet } from "react-helmet";
@@ -20,36 +21,24 @@ export default function FinancialDashboard() {
     invoice.status !== 'cancelled' && (invoice.status === 'sent' || invoice.status === 'paid' || invoice.status === 'overdue')
   ) : [];
   
+  // Filter out only paid invoices for fee calculations
+  const paidInvoices = activeInvoices.filter(invoice => invoice.status === 'paid');
+  const totalPaidRevenue = paidInvoices.reduce((sum, invoice) => sum + invoice.total, 0);
+  
   // Calculate financial metrics from filtered invoice data
   const financialMetrics = {
     totalRevenue: activeInvoices.reduce((sum, invoice) => sum + invoice.total, 0),
-    collectedRevenue: activeInvoices.filter(invoice => invoice.status === 'paid')
-      .reduce((sum, invoice) => sum + invoice.total, 0),
+    collectedRevenue: paidInvoices.reduce((sum, invoice) => sum + invoice.total, 0),
     pendingRevenue: activeInvoices.filter(invoice => invoice.status === 'sent')
       .reduce((sum, invoice) => sum + invoice.total, 0),
     overdueRevenue: activeInvoices.filter(invoice => invoice.status === 'overdue')
       .reduce((sum, invoice) => sum + invoice.total, 0)
   };
 
-  // Calculate fees using correct percentages
-  const paidInvoices = activeInvoices.filter(invoice => invoice.status === 'paid');
-  const totalAdmin = paidInvoices.reduce((sum, inv) => {
-    // Calculate admin fee based on correct percentage
-    const adminFee = inv.total * 0.10; // 10% admin fee
-    return sum + adminFee;
-  }, 0);
-  
-  const totalHandler = paidInvoices.reduce((sum, inv) => {
-    // Calculate handler fee based on correct percentage
-    const handlerFee = inv.total * 0.40; // 40% handler fee
-    return sum + handlerFee;
-  }, 0);
-  
-  const totalFranchise = paidInvoices.reduce((sum, inv) => {
-    // Calculate franchise fee based on correct percentage
-    const franchiseFee = inv.total * 0.15; // 15% franchise fee
-    return sum + franchiseFee;
-  }, 0);
+  // Calculate fees using correct percentages of the actual paid revenue
+  const totalAdmin = totalPaidRevenue * 0.10; // 10% admin fee
+  const totalHandler = totalPaidRevenue * 0.40; // 40% handler fee
+  const totalFranchise = totalPaidRevenue * 0.15; // 15% franchise fee
 
   return (
     <RequireAdmin>
@@ -77,7 +66,7 @@ export default function FinancialDashboard() {
           {/* Expense breakdown cards with correct fee names */}
           <ExpenseBreakdownCards
             totalAdmin={totalAdmin}
-            totalTrainer={totalHandler} // Renamed to Handler Fee in display
+            totalTrainer={totalHandler} // This is actually the Handler Fee
             totalFranchise={totalFranchise}
             totalRevenue={financialMetrics.collectedRevenue}
           />

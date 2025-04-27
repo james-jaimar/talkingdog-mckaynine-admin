@@ -32,25 +32,30 @@ export function useAllocationChartData(invoices: Invoice[], showOnlyPaid: boolea
       return;
     }
 
-    // Calculate total revenue
+    // Calculate total revenue from filtered invoices
     const total = filteredInvoices.reduce((sum, invoice) => sum + invoice.total, 0);
     setTotalRevenue(total);
 
-    // Using correct percentages from the system
+    // Calculate actual fee amounts based on the defined percentages
+    const handlerFee = total * 0.40; // 40% handler fee
+    const franchiseFee = total * 0.15; // 15% franchise fee
+    const adminFee = total * 0.10; // 10% admin fee
+
+    // Create allocation data with actual monetary values rather than percentages
     const data: AllocationCategory[] = [
       { 
         name: 'Handler Fee', 
-        value: total * 0.40, // 40% handler fee
+        value: handlerFee,
         color: COLORS[0]
       },
       { 
         name: 'Franchise Fee', 
-        value: total * 0.15, // 15% franchise fee
+        value: franchiseFee,
         color: COLORS[1]
       },
       { 
         name: 'Admin Fee', 
-        value: total * 0.10, // 10% admin fee
+        value: adminFee,
         color: COLORS[2]
       }
     ];
