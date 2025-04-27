@@ -12,7 +12,7 @@ interface EditHandlerModalProps {
     id: string;
     first_name: string;
     last_name?: string;
-    email: string;
+    email?: string; // Made email optional to match HandlerTableRow
     phone?: string;
     address?: string;
     city?: string;
