@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -31,30 +30,7 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
 
       console.log(`Fetching financial data for branch ${branchId} from ${fromDate} to ${toDate}`);
       
-      // First get all confirmed bookings with their class information
-      const { data: bookings, error: bookingsError } = await supabase
-        .from('bookings')
-        .select(`
-          id,
-          payment_status,
-          class_schedules:class_schedule_id (
-            classes:class_id (
-              id,
-              name,
-              course_fee,
-              mckaynine_commission_value,
-              mckaynine_commission_type,
-              admin_fee_value,
-              admin_fee_type,
-              trainer_fee_value,
-              trainer_fee_type
-            )
-          )
-        `)
-        .eq('class_schedules.classes.branch_id', branchId)
-        .eq('status', 'confirmed');
-      
-      // Apply date filtering if dates are provided
+      // Set up query for confirmed bookings with their class information
       let query = supabase
         .from('bookings')
         .select(`
@@ -77,6 +53,7 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
         .eq('class_schedules.classes.branch_id', branchId)
         .eq('status', 'confirmed');
         
+      // Apply date filtering if dates are provided
       if (fromDate && toDate) {
         query = query.gte('created_at', fromDate).lte('created_at', toDate);
       }
