@@ -23,6 +23,28 @@ interface EditClassModalProps {
 
 export function EditClassModal({ open, onOpenChange, classData, onSuccess }: EditClassModalProps) {
   const [processedClassData, setProcessedClassData] = useState<Class | null>(null);
+  const [branchName, setBranchName] = useState<string | null>(null);
+  
+  // Fetch the branch name when the modal opens
+  useEffect(() => {
+    if (open && classData && classData.branch_id) {
+      const fetchBranchName = async () => {
+        const { data, error } = await supabase
+          .from('branches')
+          .select('name')
+          .eq('id', classData.branch_id)
+          .single();
+        
+        if (data && !error) {
+          setBranchName(data.name);
+        } else {
+          console.error("Error fetching branch name:", error);
+        }
+      };
+      
+      fetchBranchName();
+    }
+  }, [open, classData]);
 
   // Process class data when the modal opens or classData changes
   useEffect(() => {
@@ -66,7 +88,8 @@ export function EditClassModal({ open, onOpenChange, classData, onSuccess }: Edi
         
         {processedClassData && (
           <EditClassForm 
-            classData={processedClassData} 
+            classData={processedClassData}
+            currentBranchName={branchName}
             onSuccess={onSuccess} 
           />
         )}

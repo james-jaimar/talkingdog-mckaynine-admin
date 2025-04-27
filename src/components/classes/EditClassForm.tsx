@@ -25,10 +25,11 @@ import { useEffect } from "react";
 
 interface EditClassFormProps {
   classData: Class;
+  currentBranchName?: string | null;
   onSuccess: () => void;
 }
 
-export function EditClassForm({ classData, onSuccess }: EditClassFormProps) {
+export function EditClassForm({ classData, currentBranchName, onSuccess }: EditClassFormProps) {
   const { form, isSubmitting, branches, isLoadingBranches, onSubmit } = useClassForm(classData, onSuccess);
 
   // Log the classData and form values to verify they are correct
@@ -45,7 +46,8 @@ export function EditClassForm({ classData, onSuccess }: EditClassFormProps) {
       trainer_fee_value: classData.trainer_fee_value,
     });
     console.log("EditClassForm - Current form values:", form.getValues());
-  }, [classData, form]);
+    console.log("EditClassForm - Current branch name:", currentBranchName);
+  }, [classData, form, currentBranchName]);
 
   return (
     <Form {...form}>
@@ -124,7 +126,7 @@ export function EditClassForm({ classData, onSuccess }: EditClassFormProps) {
                 >
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select branch" />
+                      <SelectValue placeholder={currentBranchName || "Select branch"} />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
