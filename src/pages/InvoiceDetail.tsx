@@ -17,18 +17,18 @@ import { InvoiceError } from "@/components/invoices/detail/InvoiceError";
 import { InvoiceMissingIdError } from "@/components/invoices/detail/InvoiceMissingIdError";
 
 export default function InvoiceDetail() {
-  // Fix: extract invoiceId (not id) to match the route in adminRoutes and router
-  const { invoiceId } = useParams<{ invoiceId: string }>();
+  // Using id instead of invoiceId to match the parameter name in the route
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  // Now correctly use invoiceId
-  const { data: invoice, isLoading, error, isError } = useInvoiceDetails(invoiceId);
+  // Updated to use id instead of invoiceId
+  const { data: invoice, isLoading, error, isError } = useInvoiceDetails(id);
 
   useEffect(() => {
-    if (!invoiceId) {
+    if (!id) {
       navigate('/invoices');
     }
-  }, [invoiceId, navigate]);
+  }, [id, navigate]);
 
   const handleGeneratePDF = async () => {
     if (!invoice) return;
@@ -42,7 +42,7 @@ export default function InvoiceDetail() {
     }
   };
 
-  if (!invoiceId) {
+  if (!id) {
     return (
       <DashboardLayout>
         <InvoiceMissingIdError />
@@ -90,7 +90,7 @@ export default function InvoiceDetail() {
             backPath="/invoices" 
           />
           {canEdit && (
-            <Button variant="outline" onClick={() => navigate(`/invoices/${invoiceId}/edit`)}>
+            <Button variant="outline" onClick={() => navigate(`/invoices/${id}/edit`)}>
               <Edit className="mr-2 h-4 w-4" />
               Edit Invoice
             </Button>

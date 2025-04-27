@@ -21,6 +21,7 @@ export function InvoiceBasicActions({ invoice, isPending, onCloseDropdown }: Inv
 
   const handleEdit = () => {
     onCloseDropdown();
+    // Using the same URL structure as the view action for consistency
     navigate(`/invoices/${invoice.id}/edit`);
   };
 

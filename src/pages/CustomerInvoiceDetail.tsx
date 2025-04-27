@@ -12,12 +12,13 @@ import { InvoiceLoadingState } from "@/components/invoices/detail/InvoiceLoading
 import { InvoiceNotFound } from "@/components/invoices/detail/InvoiceNotFound";
 import { InvoiceDetailsPanel } from "@/components/invoices/detail/InvoiceDetailsPanel";
 import { ClientInfoCard } from "@/components/invoices/detail/ClientInfoCard";
+import { InvoiceError } from "@/components/invoices/detail/InvoiceError";
 
 export default function CustomerInvoiceDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   
-  const { data: invoice, isLoading, error } = useInvoiceDetails(id);
+  const { data: invoice, isLoading, error, isError } = useInvoiceDetails(id);
 
   useEffect(() => {
     if (!id) {
@@ -41,6 +42,14 @@ export default function CustomerInvoiceDetail() {
     return (
       <DashboardLayout>
         <InvoiceLoadingState />
+      </DashboardLayout>
+    );
+  }
+
+  if (isError) {
+    return (
+      <DashboardLayout>
+        <InvoiceError error={error} navigatePath="/customer/invoices" />
       </DashboardLayout>
     );
   }
