@@ -32,39 +32,43 @@ export function HandlerTable({
 
   return (
     <div className="w-full">
-      <Table>
-        <TableHeader>
-          <HandlerTableHeader />
-        </TableHeader>
-        <TableBody>
-          {loading ? (
-            <TableRow>
-              <td colSpan={10} className="p-4 text-center">Loading handlers...</td>
-            </TableRow>
-          ) : currentHandlers.length === 0 ? (
-            <TableRow>
-              <td colSpan={10} className="p-4 text-center">
-                {searchQuery ? `No handlers found matching "${searchQuery}"` : "No handlers found"}
-              </td>
-            </TableRow>
-          ) : (
-            currentHandlers.map((handler, index) => (
-              <HandlerTableRow 
-                key={handler.id} 
-                handler={handler} 
-                index={index + startIndex} // Pass the actual index in the full list for correct alternating colors
-              />
-            ))
-          )}
-        </TableBody>
-      </Table>
+      <div className="overflow-x-auto">
+        <Table className="border-collapse table-fixed min-w-full">
+          <TableHeader>
+            <HandlerTableHeader />
+          </TableHeader>
+          <TableBody>
+            {loading ? (
+              <TableRow>
+                <td colSpan={10} className="p-4 text-center">Loading handlers...</td>
+              </TableRow>
+            ) : currentHandlers.length === 0 ? (
+              <TableRow>
+                <td colSpan={10} className="p-4 text-center">
+                  {searchQuery ? `No handlers found matching "${searchQuery}"` : "No handlers found"}
+                </td>
+              </TableRow>
+            ) : (
+              currentHandlers.map((handler, index) => (
+                <HandlerTableRow 
+                  key={handler.id} 
+                  handler={handler} 
+                  index={index + startIndex} // Pass the actual index in the full list for correct alternating colors
+                />
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
       
       {handlers.length > itemsPerPage && (
-        <TablePagination 
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={handlePageChange}
-        />
+        <div className="mt-4">
+          <TablePagination 
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={handlePageChange}
+          />
+        </div>
       )}
     </div>
   );

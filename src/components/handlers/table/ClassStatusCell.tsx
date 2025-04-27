@@ -18,13 +18,15 @@ interface ClassStatusCellProps {
   clientId: string;
   initialStatus?: 'completed' | 'interested' | 'not-interested' | null;
   initialPeriod?: string;
+  className?: string;
 }
 
 export function ClassStatusCell({ 
   classType, 
   clientId,
   initialStatus = null,
-  initialPeriod = ''
+  initialPeriod = '',
+  className
 }: ClassStatusCellProps) {
   const [status, setStatus] = useState<string | null>(initialStatus);
   const [period, setPeriod] = useState<string>(initialPeriod);
@@ -73,7 +75,7 @@ export function ClassStatusCell({
 
   if (!status) {
     return (
-      <TableCell className="text-center">
+      <TableCell className={cn("text-center p-1", className)}>
         <Popover>
           <PopoverTrigger asChild>
             <Button 
@@ -112,7 +114,7 @@ export function ClassStatusCell({
   }
 
   return (
-    <TableCell className="text-center p-1">
+    <TableCell className={cn("text-center p-1", className)}>
       <Popover>
         <PopoverTrigger asChild>
           <button

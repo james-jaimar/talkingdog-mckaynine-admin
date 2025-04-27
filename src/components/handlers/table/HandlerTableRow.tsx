@@ -41,28 +41,28 @@ export function HandlerTableRow({ handler, index = 0 }: HandlerTableRowProps) {
       key={handler.id}
     >
       
-      <TableCell>
+      <TableCell className="w-[180px] font-medium">
         <Link 
           to={`/handlers/${handler.id}`}
-          className="hover:text-blue-600 font-medium"
+          className="hover:text-blue-600"
         >
           {fullName}
         </Link>
       </TableCell>
-      <TableCell>{handler.email}</TableCell>
-      <TableCell>{handler.phone || "—"}</TableCell>
-      <TableCell className="text-center">
+      <TableCell className="w-[180px]">{handler.email}</TableCell>
+      <TableCell className="w-[120px]">{handler.phone || "—"}</TableCell>
+      <TableCell className="text-center w-[60px]">
         <span className="inline-flex items-center justify-center h-6 min-w-6 bg-gray-100 text-gray-700 text-xs font-medium rounded-full px-1.5">
           {handler.dogs?.length || 0}
         </span>
       </TableCell>
-      <TableCell className="text-center">
+      <TableCell className="text-center w-[80px]">
         <span className="inline-flex items-center justify-center h-6 min-w-6 bg-gray-100 text-gray-700 text-xs font-medium rounded-full px-1.5">
           {invoiceCount}
         </span>
       </TableCell>
       
-      {/* Class Type Columns */}
+      {/* Class Type Columns - Consistent widths */}
       {CLASS_TYPES.map((classType) => {
         const classStatus = getClassStatus(classType);
         return (
@@ -72,17 +72,18 @@ export function HandlerTableRow({ handler, index = 0 }: HandlerTableRowProps) {
             clientId={handler.id}
             initialStatus={classStatus?.status || null}
             initialPeriod={classStatus?.period || ''}
+            className="w-[90px]" // Add width here
           />
         );
       })}
       
-      <TableCell className="text-center">
+      <TableCell className="text-center w-[60px]">
         <ConsentStatusBadge status={handler.uses_whatsapp_status} />
       </TableCell>
-      <TableCell className="text-center">
+      <TableCell className="text-center w-[60px]">
         <ConsentStatusBadge status={handler.social_media_consent_status} />
       </TableCell>
-      <TableCell className="text-right">
+      <TableCell className="text-right w-[80px]">
         <ActionMenu handler={handler} />
       </TableCell>
     </TableRow>
