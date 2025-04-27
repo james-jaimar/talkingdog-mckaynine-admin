@@ -25,53 +25,36 @@ export function useClassHandlers(classId: string) {
       }
       
       try {
-        // Get all schedule IDs for this class and term
-        const { data: scheduleIds, error: scheduleError } = await supabase
+        console.log(`Fetching handlers for class ${classId} with term: ${termData?.id || 'none'}`);
+        
+        // First, get all schedule IDs for this class
+        let scheduleQuery = supabase
           .from('class_schedules')
           .select('id')
           .eq('class_id', classId);
-          
+        
+        // Filter by term if term is selected
         if (termData?.id) {
-          // Add term filter if term is selected
+          scheduleQuery = scheduleQuery.eq('term_id', termData.id);
           console.log(`Filtering schedules to those with term_id: ${termData.id}`);
         }
         
+        const { data: scheduleIds, error: scheduleError } = await scheduleQuery;
+          
         if (scheduleError) {
           console.error("Error fetching schedule IDs:", scheduleError);
           throw scheduleError;
         }
         
         if (!scheduleIds || scheduleIds.length === 0) {
-          console.log(`No schedules found for class: ${classId}`);
+          console.log(`No schedules found for class: ${classId}${termData?.id ? ` in term: ${termData.id}` : ''}`);
           return [];
         }
         
-        let filteredScheduleIds = scheduleIds;
+        const scheduleIdList = scheduleIds.map(s => s.id);
+        console.log(`Found ${scheduleIdList.length} schedules for class: ${classId}`);
         
-        // Filter schedules by term if a term is selected
-        if (termData?.id) {
-          const { data: termSchedules, error: termError } = await supabase
-            .from('class_schedules')
-            .select('id')
-            .eq('class_id', classId)
-            .eq('term_id', termData.id);
-            
-          if (termError) {
-            console.error("Error fetching term schedules:", termError);
-            throw termError;
-          }
-          
-          if (termSchedules && termSchedules.length > 0) {
-            filteredScheduleIds = termSchedules;
-            console.log(`Filtered down to ${filteredScheduleIds.length} schedules for term ${termData.id}`);
-          } else {
-            console.log(`No schedules found for class: ${classId} in term: ${termData.id}`);
-            return [];
-          }
-        }
-        
-        const scheduleIdList = filteredScheduleIds.map(s => s.id);
-        
+        // Then fetch bookings for these schedules
         const { data, error } = await supabase
           .from('bookings')
           .select(`

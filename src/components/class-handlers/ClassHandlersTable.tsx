@@ -61,19 +61,20 @@ export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
     initializeWithClassId(classId);
   }, [classId, initializeWithClassId]);
 
+  // Ensure we attempt to load data at least once
   useEffect(() => {
     if (!initialLoadAttempted) {
+      console.log("Initial load of class handlers");
       refetch().finally(() => setInitialLoadAttempted(true));
       setInitialLoadAttempted(true);
     }
   }, [refetch, initialLoadAttempted]);
 
+  // Set up periodic refresh
   useEffect(() => {
-    // Initial fetch
-    refetch();
-    
+    console.log("Setting up refresh interval for handlers");
     const refreshInterval = setInterval(() => {
-      refetch().catch(console.error);
+      refetch().catch(err => console.error("Error refreshing handlers:", err));
     }, 10000);
     
     return () => clearInterval(refreshInterval);
