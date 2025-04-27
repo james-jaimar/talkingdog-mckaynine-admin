@@ -1,76 +1,73 @@
 
-import { createBrowserRouter } from "react-router-dom";
-import Dashboard from "@/pages/Dashboard";
-import ClassDetail from "@/pages/ClassDetail";
-import BranchManagement from "@/pages/BranchManagement";
-import Classes from "@/pages/Classes";
-import Trainers from "@/pages/Trainers";
-import Handlers from "@/pages/Handlers";
-import HandlerDetail from "@/pages/HandlerDetail";
-import ClassSchedules from "@/pages/ClassSchedules";
-import Invoices from "@/pages/Invoices";
+import { Routes, Route } from "react-router-dom";
+import AdminInvoices from "@/pages/Invoices";
 import InvoiceDetail from "@/pages/InvoiceDetail";
 import InvoiceEdit from "@/pages/InvoiceEdit";
-import UserAdmin from "@/pages/UserAdmin";
-import FinancialDashboard from "@/pages/FinancialDashboard";
+import Dashboard from "@/pages/Dashboard";
+import Classes from "@/pages/Classes";
+import ClassDetail from "@/pages/ClassDetail";
+import Handlers from "@/pages/Handlers";
+import HandlerDetail from "@/pages/HandlerDetail";
+import Messages from "@/pages/Messages";
+import Settings from "@/pages/Settings";
+import ClassSessions from "@/pages/ClassSessions";
+import Reports from "@/pages/Reports";
 import FinancialReports from "@/pages/FinancialReports";
+import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import RequireAdmin from "@/components/auth/RequireAdmin";
 
+// Each route is protected with RequireAdmin component
 export const adminRoutes = [
   {
-    path: "/dashboard",
-    element: <Dashboard />
+    path: "/admin/dashboard",
+    element: <Dashboard />,
   },
   {
-    path: "/classes",
-    element: <Classes />
+    path: "/admin/classes",
+    element: <Classes />,
   },
   {
-    path: "/classes/:classId",
-    element: <ClassDetail />
+    path: "/admin/classes/:id",
+    element: <ClassDetail />,
   },
   {
-    path: "/schedules",
-    element: <ClassSchedules />
+    path: "/admin/classes/:id/sessions",
+    element: <ClassSessions />,
   },
   {
-    path: "/trainers",
-    element: <Trainers />
+    path: "/admin/handlers",
+    element: <Handlers />,
   },
   {
-    path: "/branch-management",
-    element: <BranchManagement />
+    path: "/admin/handlers/:id",
+    element: <HandlerDetail />,
   },
   {
-    path: "/handlers",
-    element: <Handlers />
+    path: "/admin/messages",
+    element: <Messages />,
   },
   {
-    path: "/handlers/:handlerId",
-    element: <RequireAdmin><HandlerDetail /></RequireAdmin>
+    path: "/admin/settings",
+    element: <Settings />,
+  },
+  {
+    path: "/admin/reports",
+    element: <Reports />,
+  },
+  {
+    path: "/admin/financial-reports",
+    element: <FinancialReports />,
   },
   {
     path: "/invoices",
-    element: <Invoices />
+    element: <AdminInvoices />,
   },
   {
-    path: "/invoices/:invoiceId",
-    element: <InvoiceDetail />
+    path: "/invoices/:id",
+    element: <InvoiceDetail />,
   },
   {
-    path: "/invoices/:invoiceId/edit",
-    element: <InvoiceEdit />
+    path: "/invoices/:id/edit",
+    element: <InvoiceEdit />,
   },
-  {
-    path: "/user-admin",
-    element: <UserAdmin />
-  },
-  {
-    path: "/financial-dashboard",
-    element: <FinancialDashboard />
-  },
-  {
-    path: "/financial-reports",
-    element: <FinancialReports />
-  }
 ];
