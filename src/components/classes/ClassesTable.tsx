@@ -32,6 +32,17 @@ export function ClassesTable() {
   const { currentBranch } = useBranch();
   const { termData } = useTerm();
   
+  // Log important state for debugging
+  useEffect(() => {
+    console.log("ClassesTable state:", {
+      orderedClassesCount: orderedClasses?.length || 0,
+      isLoading,
+      isMoving,
+      pendingMovements,
+      termId: termData?.id
+    });
+  }, [orderedClasses, isLoading, isMoving, pendingMovements, termData?.id]);
+  
   // Make sure we refetch classes when the term changes
   useEffect(() => {
     console.log("Term changed, refreshing classes");
@@ -111,6 +122,7 @@ export function ClassesTable() {
                   <TableBody
                     {...provided.droppableProps}
                     ref={provided.innerRef}
+                    data-testid="classes-drag-container"
                   >
                     {displayClasses.map((classItem, index) => (
                       <ClassTableRow
