@@ -1,4 +1,3 @@
-
 import { Form } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -19,7 +18,7 @@ interface HandlerData {
   id: string;
   first_name: string;
   last_name?: string;
-  email: string;
+  email?: string; // Make email optional to match HandlerTableRow
   phone?: string;
   address?: string;
   city?: string;
@@ -46,7 +45,7 @@ export function EditHandlerForm({ handler, onSuccess }: EditHandlerFormProps) {
     defaultValues: {
       first_name: handler.first_name,
       last_name: handler.last_name || "",
-      email: handler.email,
+      email: handler.email || "", // Provide a default empty string if email is undefined
       phone: handler.phone || "",
       address: handler.address || "",
       city: handler.city || "",

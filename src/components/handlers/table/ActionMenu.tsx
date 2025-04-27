@@ -14,7 +14,7 @@ interface ActionMenuProps {
     id: string;
     first_name: string;
     last_name?: string;
-    email: string;
+    email?: string; // Make email optional to match HandlerTableRow
     phone?: string;
     address?: string;
     city?: string;
