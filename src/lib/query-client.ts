@@ -11,8 +11,6 @@ export const queryClient = new QueryClient({
       refetchOnReconnect: true,
       refetchOnMount: true, // Changed from 'always' to reduce refetches
       gcTime: 1000 * 60 * 5, // 5 minutes for garbage collection
-      // Silence debug logs in production
-      logging: process.env.NODE_ENV === 'development',
     },
     mutations: {
       retry: 1,
