@@ -805,6 +805,13 @@ export type Database = {
             referencedRelation: "invoices"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "invoice_items_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "problematic_invoices"
+            referencedColumns: ["id"]
+          },
         ]
       }
       invoices: {
@@ -1087,7 +1094,27 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      problematic_invoices: {
+        Row: {
+          bookings_count: number | null
+          client_id: string | null
+          created_at: string | null
+          id: string | null
+          invoice_number: string | null
+          items_count: number | null
+          status: string | null
+          total: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       calculate_trainer_payment: {

@@ -1,13 +1,13 @@
-
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, RefreshCw } from "lucide-react";
+import { Loader2, RefreshCw, AlertTriangle } from "lucide-react";
 import { useState } from "react";
 import { useBranch } from "@/context/BranchContext";
 import { useClassFinancialData } from "@/hooks/useClassFinancialData";
 import { ClassFinancialTable } from "./ClassFinancialTable";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface ClassFinancialReportProps {
   dateRange?: { from: Date; to: Date };
@@ -22,7 +22,13 @@ export function ClassFinancialReport({ dateRange, onRefreshSuccess }: ClassFinan
   const fromDate = dateRange?.from?.toISOString();
   const toDate = dateRange?.to?.toISOString();
 
-  const { classFinances, isLoading, refreshData, totalInvoiceCount } = useClassFinancialData(
+  const { 
+    classFinances, 
+    isLoading, 
+    refreshData, 
+    totalInvoiceCount,
+    invalidInvoicesCount 
+  } = useClassFinancialData(
     currentBranch?.id,
     fromDate,
     toDate
@@ -109,7 +115,7 @@ export function ClassFinancialReport({ dateRange, onRefreshSuccess }: ClassFinan
   }
 
   return (
-    <Card className="w-full">
+    <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
           <CardTitle>Class Financial Report</CardTitle>
@@ -132,8 +138,21 @@ export function ClassFinancialReport({ dateRange, onRefreshSuccess }: ClassFinan
           Refresh
         </Button>
       </CardHeader>
-      <CardContent className="overflow-x-auto">
-        <ClassFinancialTable classFinances={classFinances} />
+      <CardContent className="space-y-4">
+        {invalidInvoicesCount > 0 && (
+          <Alert variant="warning">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              Found {invalidInvoicesCount} invalid or problematic {invalidInvoicesCount === 1 ? 'invoice' : 'invoices'} 
+              that {invalidInvoicesCount === 1 ? 'has' : 'have'} been excluded from calculations.
+              These are invoices without items or without associated bookings.
+            </AlertDescription>
+          </Alert>
+        )}
+        
+        <div className="overflow-x-auto">
+          <ClassFinancialTable classFinances={classFinances} />
+        </div>
       </CardContent>
     </Card>
   );

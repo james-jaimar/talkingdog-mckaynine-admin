@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,6 +17,7 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
   const [classFinances, setClassFinances] = useState<ClassFinance[]>([]);
   const [unassociatedRevenue, setUnassociatedRevenue] = useState<number>(0);
   const [totalInvoiceCount, setTotalInvoiceCount] = useState<number>(0);
+  const [invalidInvoicesCount, setInvalidInvoicesCount] = useState<number>(0);
   const queryClient = useQueryClient();
   
   // Track invoices data to trigger refetch when invoices change
@@ -28,7 +28,12 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
   const { data: financialData, isLoading } = useQuery({
     queryKey: ['financial-bookings', branchId, fromDate, toDate, invoicesData],
     queryFn: async () => {
-      if (!branchId) return { bookingsWithInvoices: [], unassociatedInvoices: [], allInvoicesCount: 0 };
+      if (!branchId) return { 
+        bookingsWithInvoices: [], 
+        unassociatedInvoices: [], 
+        allInvoicesCount: 0,
+        invalidInvoicesCount: 0 
+      };
 
       console.log(`Fetching financial data for branch ${branchId} from ${fromDate} to ${toDate}`);
       
@@ -195,10 +200,29 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
         };
       }) || [];
       
+      // Get invalid invoices count
+      let invalidQuery = supabase
+        .from('invoices')
+        .select('*', { count: 'exact' })
+        .eq('status', 'invalid')
+        .eq('client.branch_id', branchId);
+        
+      // Apply date filtering if dates are provided
+      if (fromDate && toDate) {
+        invalidQuery = invalidQuery.gte('issued_date', fromDate).lte('issued_date', toDate);
+      }
+        
+      const { count: invalidCount, error: invalidError } = await invalidQuery;
+      
+      if (invalidError) {
+        console.error("Error counting invalid invoices:", invalidError);
+      }
+      
       return { 
         bookingsWithInvoices, 
         unassociatedInvoices: unassociatedInvoiceItems,
-        allInvoicesCount: allInvoicesCount || allInvoiceIds.size
+        allInvoicesCount: allInvoicesCount || allInvoiceIds.size,
+        invalidInvoicesCount: invalidCount || 0
       };
     },
     enabled: !!branchId,
@@ -213,13 +237,20 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
       setClassFinances([]);
       setUnassociatedRevenue(0);
       setTotalInvoiceCount(0);
+      setInvalidInvoicesCount(0);
       return;
     }
 
-    const { bookingsWithInvoices, unassociatedInvoices, allInvoicesCount } = financialData;
+    const { 
+      bookingsWithInvoices, 
+      unassociatedInvoices, 
+      allInvoicesCount,
+      invalidInvoicesCount 
+    } = financialData;
     
     // Update the total invoice count state
     setTotalInvoiceCount(allInvoicesCount);
+    setInvalidInvoicesCount(invalidInvoicesCount);
     
     // Calculate total revenue from unassociated invoice items
     const unassociatedTotal = unassociatedInvoices.reduce((sum, item) => sum + (item.amount || 0), 0);
@@ -361,6 +392,7 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
     unassociatedRevenue,
     isLoading, 
     refreshData,
-    totalInvoiceCount 
+    totalInvoiceCount,
+    invalidInvoicesCount
   };
 }
