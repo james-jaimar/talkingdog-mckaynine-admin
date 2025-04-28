@@ -13,7 +13,6 @@ import { startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { TrainerReportsTab } from "@/components/invoices/reports/TrainerReportsTab";
-import { useClassFinancialData } from "@/hooks/useClassFinancialData";
 
 export default function FinancialReports() {
   const queryClient = useQueryClient();
@@ -32,16 +31,24 @@ export default function FinancialReports() {
 
   // Clear all caches on first render to ensure fresh data
   useEffect(() => {
-    // On first mount, clear all caches to ensure fresh data
-    queryClient.invalidateQueries({ queryKey: ['invoices'] });
-    queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
-    queryClient.removeQueries({ queryKey: ['financial-bookings'] });
-    queryClient.removeQueries({ queryKey: ['classes-list-data'] });
-    queryClient.removeQueries({ queryKey: ['trainer-payments'] });
+    const clearAllCaches = async () => {
+      console.log("FinancialReports: Initial mount - clearing all caches");
+      
+      // Invalidate all queries to clear stale data
+      await queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      await queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
+      
+      // Reset queries to clear cache completely
+      await queryClient.resetQueries({ queryKey: ['financial-bookings'] });
+      await queryClient.resetQueries({ queryKey: ['classes-list-data'] });
+      await queryClient.resetQueries({ queryKey: ['trainer-payments'] });
+      
+      // Force a refresh after clearing cache
+      await refreshFinancialData();
+    };
     
-    // Force a refresh after clearing cache
-    setTimeout(() => refreshFinancialData(), 100);
-  }, []); // Empty dependency array ensures this runs once on mount
+    clearAllCaches();
+  }, []); 
 
   // Refresh data when component mounts, branch changes or date range changes
   useEffect(() => {
@@ -52,23 +59,23 @@ export default function FinancialReports() {
   }, [currentBranch, dateRange]);
 
   // Function to refresh all financial data
-  const refreshFinancialData = () => {
+  const refreshFinancialData = async () => {
     // Invalidate all relevant queries first
-    queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
-    queryClient.invalidateQueries({ queryKey: ['classes-list-data'] });
-    queryClient.invalidateQueries({ queryKey: ['trainer-payments'] });
+    await queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
+    await queryClient.invalidateQueries({ queryKey: ['classes-list-data'] });
+    await queryClient.invalidateQueries({ queryKey: ['trainer-payments'] });
     
     // Reset queries to clear cache
-    queryClient.resetQueries({ 
+    await queryClient.resetQueries({ 
       queryKey: ['financial-bookings', currentBranch?.id],
       exact: false
     });
     
     // Then refresh invoice data
-    refreshAllInvoiceQueries();
+    await refreshAllInvoiceQueries();
     
     // Immediately refetch to get fresh data
-    queryClient.refetchQueries({ 
+    await queryClient.refetchQueries({ 
       queryKey: ['financial-bookings'],
       type: 'all'
     });

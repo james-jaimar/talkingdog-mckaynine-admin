@@ -5,11 +5,10 @@ import { FinancialData } from "./types";
 
 export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?: string) {
   const queryClient = useQueryClient();
-  const invoicesKey = ['invoices', branchId];
-  const invoicesData = queryClient.getQueryData(invoicesKey);
+  const queryKey = ['financial-bookings', branchId, fromDate, toDate];
 
   return useQuery({
-    queryKey: ['financial-bookings', branchId, fromDate, toDate, invoicesData],
+    queryKey,
     queryFn: async () => {
       if (!branchId) return {
         bookingsWithInvoices: [],
@@ -26,8 +25,8 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
       // Get all valid invoices for this branch
       let totalRevenueQuery = supabase
         .from('invoices')
-        .select('id, total, status, subtotal, monetary_discount, client:client_id (branch_id)')
-        .eq('client.branch_id', branchId)
+        .select('id, total, status, subtotal, monetary_discount, client:clients(branch_id)')
+        .eq('clients.branch_id', branchId)
         .in('status', ['sent', 'paid', 'overdue']);
 
       if (fromDate && toDate) {
@@ -121,12 +120,12 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
         throw invoiceItemsError;
       }
 
-      // Get invalid invoices count - use proper parameter embedding for client.branch_id
+      // Get invalid invoices count - fixed client reference
       let invalidQuery = supabase
         .from('invoices')
-        .select('id, client_id, client!inner(branch_id)', { count: 'exact' })
+        .select('id, client_id, clients!inner(branch_id)', { count: 'exact' })
         .eq('status', 'invalid')
-        .eq('client.branch_id', branchId);
+        .eq('clients.branch_id', branchId);
 
       if (fromDate && toDate) {
         invalidQuery = invalidQuery.gte('issued_date', fromDate).lte('issued_date', toDate);
@@ -138,11 +137,11 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
         console.error("Error counting invalid invoices:", invalidError);
       }
 
-      // Get all invoices count - use proper parameter embedding for client.branch_id
+      // Get all invoices count - fixed client reference
       let countQuery = supabase
         .from('invoices')
-        .select('id, client_id, client!inner(branch_id)', { count: 'exact' })
-        .eq('client.branch_id', branchId)
+        .select('id, client_id, clients!inner(branch_id)', { count: 'exact' })
+        .eq('clients.branch_id', branchId)
         .in('status', ['sent', 'paid', 'overdue']);
 
       if (fromDate && toDate) {
@@ -155,6 +154,7 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
         console.error("Error counting invoices:", countError);
       }
 
+      // Filter invoice items to match branch
       const filteredInvoiceItems = invoiceItems?.filter(item => 
         item.invoices?.client?.branch_id === branchId
       ) || [];
@@ -175,10 +175,10 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
       return result;
     },
     enabled: !!branchId,
-    staleTime: 5000, // Reduced stale time to 5 seconds to ensure more frequent refreshes
+    staleTime: 1000, // 1 second stale time to force more frequent refreshes
     refetchOnWindowFocus: true,
     gcTime: 10 * 60 * 1000,
-    refetchOnMount: true, // Always refetch when component mounts
-    refetchOnReconnect: true, // Refetch when reconnecting
+    refetchOnMount: true,
+    refetchOnReconnect: true,
   });
 }

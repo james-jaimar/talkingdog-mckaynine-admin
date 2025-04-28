@@ -26,12 +26,23 @@ export function useClassFinancialData(
     console.log("Manually refreshing financial data");
     // Use promise-based invalidation to ensure data is invalidated before proceeding
     return Promise.all([
+      // First invalidate all queries
       queryClient.invalidateQueries({ queryKey: ['financial-bookings'] }),
       queryClient.invalidateQueries({ queryKey: ['invoices'] }),
-      queryClient.resetQueries({ queryKey: ['financial-bookings', branchId, fromDate, toDate] }),
-      // Force refetch to get updated data
-      queryClient.refetchQueries({ queryKey: ['financial-bookings'] })
-    ]);
+      
+      // Then reset the specific query to force a clean refetch
+      queryClient.resetQueries({ 
+        queryKey: ['financial-bookings', branchId, fromDate, toDate],
+        exact: true
+      })
+    ]).then(() => {
+      // After invalidation/reset, force a refetch
+      return queryClient.refetchQueries({ 
+        queryKey: ['financial-bookings', branchId, fromDate, toDate],
+        exact: true,
+        type: 'active'
+      });
+    });
   };
 
   return {

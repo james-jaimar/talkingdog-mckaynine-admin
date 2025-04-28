@@ -23,17 +23,30 @@ export function ClassFinancialReport({ dateRange, onRefreshSuccess }: ClassFinan
   const fromDate = dateRange?.from?.toISOString();
   const toDate = dateRange?.to?.toISOString();
 
-  // Force initial data fetch on mount
+  // Force initial data fetch on mount and when parameters change
   useEffect(() => {
-    // Ensure we invalidate all relevant caches on initial mount
-    queryClient.invalidateQueries({ queryKey: ['invoices'] });
-    queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
+    const refreshData = async () => {
+      // Clear all caches related to financial data
+      await queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      await queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
+      
+      // Force reset to clear cache entirely
+      await queryClient.resetQueries({ 
+        queryKey: ['financial-bookings', currentBranch?.id, fromDate, toDate],
+        exact: true
+      });
+      
+      // Force refetch to get fresh data
+      await queryClient.refetchQueries({ 
+        queryKey: ['financial-bookings', currentBranch?.id, fromDate, toDate],
+        type: 'active',
+        exact: true
+      });
+    };
     
-    // Immediately refetch to get fresh data
-    queryClient.refetchQueries({ 
-      queryKey: ['financial-bookings', currentBranch?.id, fromDate, toDate],
-      type: 'active'
-    });
+    if (currentBranch?.id) {
+      refreshData();
+    }
   }, [currentBranch?.id, fromDate, toDate, queryClient]);
 
   const { 
@@ -65,12 +78,15 @@ export function ClassFinancialReport({ dateRange, onRefreshSuccess }: ClassFinan
     
     try {
       // First invalidate all related queries
-      queryClient.invalidateQueries({ queryKey: ['invoices'] });
-      queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
-      queryClient.invalidateQueries({ queryKey: ['classes-list-data'] });
+      await queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      await queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
+      await queryClient.invalidateQueries({ queryKey: ['classes-list-data'] });
       
       // Reset cache completely for financial data
-      queryClient.resetQueries({ queryKey: ['financial-bookings', currentBranch?.id, fromDate, toDate] });
+      await queryClient.resetQueries({ 
+        queryKey: ['financial-bookings', currentBranch?.id, fromDate, toDate],
+        exact: true
+      });
       
       // Then refresh the data
       await refreshData();
