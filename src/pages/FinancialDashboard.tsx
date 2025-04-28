@@ -13,7 +13,7 @@ import { useClassFinancialData } from "@/hooks/useClassFinancialData";
 import { useTerm } from "@/context/TermContext";
 import { useInvoices } from "@/hooks/useInvoices";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { InfoCircle } from "lucide-react";
+import { Info } from "lucide-react";
 
 export default function FinancialDashboard() {
   const [timeframe, setTimeframe] = useState<'monthly' | 'quarterly' | 'yearly'>('monthly');
@@ -109,7 +109,7 @@ export default function FinancialDashboard() {
 
           {revenueDiscrepancy && (
             <Alert className="mb-6">
-              <InfoCircle className="h-4 w-4" />
+              <Info className="h-4 w-4" />
               <AlertDescription>
                 There might be a small discrepancy in financial calculations due to invoices without booking associations.
                 For the most accurate data, please refer to the Financial Reports page.
