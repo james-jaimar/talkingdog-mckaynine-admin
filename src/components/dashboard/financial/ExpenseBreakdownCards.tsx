@@ -4,7 +4,7 @@ import { formatCurrency, formatPercentage } from "@/lib/formatters";
 
 interface ExpenseBreakdownCardsProps {
   totalAdmin: number;
-  totalTrainer: number; // Renamed from totalHandler
+  totalTrainer: number;
   totalFranchise: number;
   profit?: number;
   totalRevenue: number;

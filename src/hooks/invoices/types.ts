@@ -1,3 +1,4 @@
+
 // Types for invoice entities
 
 export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'cancelled' | 'overdue' | 'invalid';
@@ -174,25 +175,4 @@ export interface BookingWithDetails {
       mckaynine_commission_value?: number;
     };
   };
-}
-
-// Add InvoiceFormValues to fix missing type errors
-export interface InvoiceFormValues {
-  client_id: string;
-  invoice_number: string;
-  status: InvoiceStatus;
-  issued_date: Date;
-  due_date: Date;
-  notes?: string;
-  tax_rate: number;
-  items: {
-    id?: string;
-    description: string;
-    quantity: number;
-    unit_price: number;
-    booking_id?: string | null;
-  }[];
-  discount_type: 'fixed' | 'percentage';
-  discount_amount: number;
-  discount_reason?: string;
 }
