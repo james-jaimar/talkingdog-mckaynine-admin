@@ -42,8 +42,9 @@ export function ClassFinancialReport({ dateRange, onRefreshSuccess }: ClassFinan
   const totalProfit = classFinances.reduce((sum, item) => sum + item.profit, 0);
   const profitPercentage = directTotalRevenue > 0 ? (totalProfit / directTotalRevenue) * 100 : 0;
   
-  // Revenue comparison for debugging
+  // Check for discrepancy between total invoice revenue and calculated class revenues
   const revenueDiscrepancy = Math.abs(directTotalRevenue - classesTotalRevenue) > 1;
+  const discrepancyAmount = directTotalRevenue - classesTotalRevenue;
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -160,8 +161,10 @@ export function ClassFinancialReport({ dateRange, onRefreshSuccess }: ClassFinan
         {revenueDiscrepancy && (
           <Alert>
             <AlertDescription>
-              Note: The total revenue from all invoices (R{directTotalRevenue.toFixed(2)}) doesn't match the sum of class revenues 
-              (R{classesTotalRevenue.toFixed(2)}). This may be due to rounding differences or other calculation factors.
+              Note: There's a discrepancy of {discrepancyAmount > 0 ? '+' : '-'}{Math.abs(discrepancyAmount).toFixed(2)} 
+              between the total revenue from invoices (R{directTotalRevenue.toFixed(2)}) 
+              and the sum of class revenues (R{classesTotalRevenue.toFixed(2)}).
+              This is typically due to discounts applied to invoices.
             </AlertDescription>
           </Alert>
         )}

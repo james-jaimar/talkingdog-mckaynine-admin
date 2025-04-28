@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -33,7 +34,8 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
         bookingsWithInvoices: [], 
         allInvoicesCount: 0,
         invalidInvoicesCount: 0,
-        totalRevenue: 0
+        totalRevenue: 0,
+        invoiceRevenue: []
       };
 
       console.log(`Fetching financial data for branch ${branchId} from ${fromDate} to ${toDate}`);
@@ -41,7 +43,7 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
       // Get all valid invoices for this branch
       let totalRevenueQuery = supabase
         .from('invoices')
-        .select('total, status, client:client_id (branch_id)')
+        .select('id, total, status, client:client_id (branch_id)')
         .eq('client.branch_id', branchId)
         .in('status', ['sent', 'paid', 'overdue']);
         
@@ -120,7 +122,7 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
       
       console.log(`Total invoice count for branch ${branchId}: ${allInvoicesCount}`);
       
-      // Also fetch invoice items to get accurate revenue data
+      // Extended query to get invoice items with full invoice details
       let invoiceQuery = supabase
         .from('invoice_items')
         .select(`
@@ -136,6 +138,11 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
             status,
             payment_received,
             total,
+            subtotal,
+            tax_amount,
+            discount_amount,
+            discount_type,
+            monetary_discount,
             client_id,
             issued_date,
             invoice_number,
@@ -172,20 +179,51 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
       // Track all unique invoice IDs to verify our total count
       const allInvoiceIds = new Set<string>();
       
+      // Prepare data structure for revenue tracking by invoice
+      const invoiceRevenueMap = new Map<string, {
+        invoiceId: string,
+        invoiceNumber: string,
+        total: number,
+        bookingIds: string[],
+        classIds: string[],
+        classNames: string[]
+      }>();
+      
       if (branchInvoiceItems && branchInvoiceItems.length > 0) {
         branchInvoiceItems.forEach(item => {
           if (item.invoices?.id) {
             allInvoiceIds.add(item.invoices.id);
-          }
-          
-          if (item.booking_id) {
-            bookingInvoiceMap.set(item.booking_id, {
-              amount: item.amount || (item.unit_price * item.quantity),
-              description: item.description,
-              invoiceStatus: item.invoices?.status || 'unknown',
-              isPaid: item.invoices?.payment_received || item.invoices?.status === 'paid',
-              invoiceId: item.invoice_id
-            });
+            
+            // Track invoice revenue
+            const invoiceId = item.invoices.id;
+            
+            if (!invoiceRevenueMap.has(invoiceId)) {
+              invoiceRevenueMap.set(invoiceId, {
+                invoiceId,
+                invoiceNumber: item.invoices.invoice_number || 'Unknown',
+                total: item.invoices.total || 0,
+                bookingIds: [],
+                classIds: [],
+                classNames: []
+              });
+            }
+            
+            // Add booking relationship if exists
+            if (item.booking_id) {
+              const invoiceRevenue = invoiceRevenueMap.get(invoiceId);
+              if (invoiceRevenue) {
+                invoiceRevenue.bookingIds.push(item.booking_id);
+              }
+              
+              // Also update booking invoice map
+              bookingInvoiceMap.set(item.booking_id, {
+                amount: item.amount || (item.unit_price * item.quantity),
+                description: item.description,
+                invoiceStatus: item.invoices?.status || 'unknown',
+                isPaid: item.invoices?.payment_received || item.invoices?.status === 'paid',
+                invoiceId: item.invoice_id
+              });
+            }
           }
         });
       }
@@ -193,6 +231,9 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
       console.log(`Retrieved ${bookings?.length || 0} bookings and ${branchInvoiceItems?.length || 0} invoice items`);
       console.log(`Mapped ${bookingInvoiceMap.size} bookings to invoices`);
       console.log(`Unique invoice IDs found: ${allInvoiceIds.size}`);
+      
+      // Convert invoice revenue map to array
+      const invoiceRevenue = Array.from(invoiceRevenueMap.values());
       
       // Enhance bookings with invoice data
       const bookingsWithInvoices = bookings?.map(booking => {
@@ -203,8 +244,20 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
         const courseFromClass = booking.class_schedules?.classes?.course_fee || 0;
         const invoiceAmount = invoiceData?.amount;
         
-        // Prioritize invoice amount over class fee for revenue calculation
+        // For revenue calculation: prioritize invoice amount, fallback to class fee
         const actualRevenue = invoiceAmount !== undefined ? invoiceAmount : courseFromClass;
+        
+        // Update invoice revenue map with class info
+        if (invoiceData?.invoiceId && booking.class_schedules?.classes) {
+          const classId = booking.class_schedules.classes.id;
+          const className = booking.class_schedules.classes.name;
+          
+          const invoiceRevenue = invoiceRevenueMap.get(invoiceData.invoiceId);
+          if (invoiceRevenue && !invoiceRevenue.classIds.includes(classId)) {
+            invoiceRevenue.classIds.push(classId);
+            invoiceRevenue.classNames.push(className);
+          }
+        }
         
         return {
           ...booking,
@@ -236,7 +289,8 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
         bookingsWithInvoices, 
         allInvoicesCount: allInvoicesCount || allInvoiceIds.size,
         invalidInvoicesCount: invalidCount || 0,
-        totalRevenue: totalRevenueFromInvoices
+        totalRevenue: totalRevenueFromInvoices,
+        invoiceRevenue
       };
     },
     enabled: !!branchId,
@@ -258,7 +312,8 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
       bookingsWithInvoices, 
       allInvoicesCount,
       invalidInvoicesCount,
-      totalRevenue
+      totalRevenue,
+      invoiceRevenue
     } = financialData;
     
     // Update the total invoice count state
@@ -311,7 +366,7 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
         instructorFee: 0,
         profit: 0,
         invoiceCount: 0,
-        sourceType: 'class', // Only using 'class' as the source type now
+        sourceType: 'class',
         invoiceIds: []
       };
 
@@ -326,7 +381,6 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
         summary.invoiceIds = Array.from(invoiceSet);
       }
 
-      // For fee calculations, use the actual revenue collected
       // Calculate fees based on actual revenue, not just the class fee
       if (classData.mckaynine_commission_type === 'percentage') {
         summary.franchiseFee += (courseRevenue * (classData.mckaynine_commission_value / 100));
@@ -354,12 +408,39 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
       summary.profit = summary.totalRevenue - summary.franchiseFee - summary.adminFee - summary.instructorFee;
     });
 
+    // Now add general revenue category for invoices without class associations
+    // This handles revenue from invoices with discounts or without booking links
+    const classRevenueTotal = Array.from(classSummaries.values()).reduce(
+      (sum, curr) => sum + curr.totalRevenue, 0
+    );
+    
+    // Calculate difference between total invoice revenue and allocated class revenue
+    const unallocatedRevenue = totalRevenue - classRevenueTotal;
+    
+    if (unallocatedRevenue > 1) { // Only add if there's a material difference
+      const generalTraining: ClassFinance = {
+        className: "General Training Services",
+        totalRevenue: unallocatedRevenue,
+        bookingsCount: 0,
+        franchiseFee: 0,
+        adminFee: 0,
+        instructorFee: 0,
+        profit: unallocatedRevenue, // All is profit since we don't know the breakdown
+        invoiceCount: 0,
+        sourceType: 'general',
+        invoiceIds: []
+      };
+      
+      classSummaries.set(generalTraining.className, generalTraining);
+    }
+
     // Convert to array and sort by class name
     const sortedFinances = Array.from(classSummaries.values())
       .sort((a, b) => a.className.localeCompare(b.className));
       
     console.log(`Processed ${sortedFinances.length} class financial summaries`);
     console.log(`Total revenue across classes: ${sortedFinances.reduce((sum, curr) => sum + curr.totalRevenue, 0)}`);
+    console.log(`Total invoice revenue: ${totalRevenue}`);
     
     setClassFinances(sortedFinances);
   }, [financialData]);
