@@ -1,4 +1,3 @@
-
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, RefreshCw, AlertTriangle, Info } from "lucide-react";
@@ -237,7 +236,7 @@ export function ClassFinancialReport({ dateRange, onRefreshSuccess }: ClassFinan
                         <span>R{invoice.total.toFixed(2)}</span>
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        Client: {invoice.clients?.first_name} {invoice.clients?.last_name}
+                        Client: {invoice.client?.first_name} {invoice.client?.last_name}
                       </div>
                       <div className="mt-2">
                         <span className="text-xs font-semibold">Items:</span>

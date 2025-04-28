@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Helmet } from "react-helmet";
@@ -158,7 +157,10 @@ export default function FinancialDashboard() {
 
           {/* Financial metrics cards */}
           <FinancialMetricsCards 
-            metrics={financialMetrics} 
+            totalRevenue={totalRevenue}
+            collectedRevenue={collectedRevenue}
+            pendingRevenue={pendingRevenue}
+            overdueRevenue={overdueRevenue}
             unallocatedRevenue={unallocatedRevenue}
             unallocatedPercentage={unallocatedPercentage}
           />
