@@ -6,16 +6,26 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  TableFooter,
 } from "@/components/ui/table";
 import { ClassFinance } from "@/hooks/useClassFinancialData";
 import { formatCurrency } from "@/lib/formatters";
+import { AlertCircle } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface ClassFinancialTableProps {
   classFinances: ClassFinance[];
   showInvoiceCount?: boolean;
+  totalRevenue?: number;
+  showMismatchWarning?: boolean;
 }
 
-export function ClassFinancialTable({ classFinances, showInvoiceCount = true }: ClassFinancialTableProps) {
+export function ClassFinancialTable({ 
+  classFinances, 
+  showInvoiceCount = true,
+  totalRevenue,
+  showMismatchWarning = false
+}: ClassFinancialTableProps) {
   // Calculate totals for the summary row
   const totals = classFinances.reduce(
     (acc, curr) => ({
@@ -29,6 +39,11 @@ export function ClassFinancialTable({ classFinances, showInvoiceCount = true }: 
     }),
     { revenue: 0, bookings: 0, franchise: 0, admin: 0, instructor: 0, profit: 0, invoices: 0 }
   );
+
+  // Calculate potential total discrepancy
+  const calculatedDiscrepancy = totalRevenue && Math.abs(totalRevenue - totals.revenue) > 1
+    ? totalRevenue - totals.revenue
+    : 0;
 
   return (
     <Table>
@@ -54,6 +69,23 @@ export function ClassFinancialTable({ classFinances, showInvoiceCount = true }: 
               {classItem.className === "General Training Services" && (
                 <span className="ml-1 text-xs text-amber-600">(unassociated invoices)</span>
               )}
+              {classItem.className === "Unallocated Revenue" && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <span className="ml-1 text-red-600 cursor-help inline-flex">
+                        <AlertCircle className="h-4 w-4" />
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="w-[280px] text-sm">
+                        This represents revenue from invoices that couldn't be matched to any class.
+                        It may be due to invoices without booking references or other data inconsistencies.
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
             </TableCell>
             <TableCell className="text-right">{formatCurrency(classItem.totalRevenue)}</TableCell>
             <TableCell className="text-right">{classItem.bookingsCount}</TableCell>
@@ -68,9 +100,30 @@ export function ClassFinancialTable({ classFinances, showInvoiceCount = true }: 
             </TableCell>
           </TableRow>
         ))}
-        <TableRow className="font-bold bg-muted/50">
+      </TableBody>
+      <TableFooter>
+        <TableRow className="bg-muted/50">
           <TableCell>Total</TableCell>
-          <TableCell className="text-right">{formatCurrency(totals.revenue)}</TableCell>
+          <TableCell className="text-right">
+            {formatCurrency(totals.revenue)}
+            {showMismatchWarning && calculatedDiscrepancy !== 0 && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <span className="ml-1 text-red-600 cursor-help inline-flex">
+                      <AlertCircle className="h-4 w-4" />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>
+                      There's a discrepancy of {formatCurrency(Math.abs(calculatedDiscrepancy))} 
+                      compared to the total invoice revenue ({formatCurrency(totalRevenue || 0)}).
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+          </TableCell>
           <TableCell className="text-right">{totals.bookings}</TableCell>
           {showInvoiceCount && (
             <TableCell className="text-right">{totals.invoices}</TableCell>
@@ -82,7 +135,7 @@ export function ClassFinancialTable({ classFinances, showInvoiceCount = true }: 
             {formatCurrency(totals.profit)}
           </TableCell>
         </TableRow>
-      </TableBody>
+      </TableFooter>
     </Table>
   );
 }

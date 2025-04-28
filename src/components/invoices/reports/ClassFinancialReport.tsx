@@ -1,13 +1,15 @@
+
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, RefreshCw, AlertTriangle } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useBranch } from "@/context/BranchContext";
 import { useClassFinancialData } from "@/hooks/useClassFinancialData";
 import { ClassFinancialTable } from "./ClassFinancialTable";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useInvoices } from "@/hooks/useInvoices";
 
 interface ClassFinancialReportProps {
   dateRange?: { from: Date; to: Date };
@@ -18,16 +20,23 @@ export function ClassFinancialReport({ dateRange, onRefreshSuccess }: ClassFinan
   const { currentBranch } = useBranch();
   const [refreshing, setRefreshing] = useState(false);
   const queryClient = useQueryClient();
+  const { invoices } = useInvoices();
   
   const fromDate = dateRange?.from?.toISOString();
   const toDate = dateRange?.to?.toISOString();
+
+  // Get the total revenue from all active invoices for verification
+  const totalInvoiceRevenue = invoices
+    .filter(inv => inv.status === 'sent' || inv.status === 'paid' || inv.status === 'overdue')
+    .reduce((sum, inv) => sum + (inv.total || 0), 0);
 
   const { 
     classFinances, 
     isLoading, 
     refreshData, 
     totalInvoiceCount,
-    invalidInvoicesCount 
+    invalidInvoicesCount,
+    totalRevenue: directTotalRevenue
   } = useClassFinancialData(
     currentBranch?.id,
     fromDate,
@@ -35,10 +44,23 @@ export function ClassFinancialReport({ dateRange, onRefreshSuccess }: ClassFinan
   );
 
   // Calculate summary statistics
-  const totalRevenue = classFinances.reduce((sum, item) => sum + item.totalRevenue, 0);
+  const classesTotalRevenue = classFinances.reduce((sum, item) => sum + item.totalRevenue, 0);
   const totalBookings = classFinances.reduce((sum, item) => sum + item.bookingsCount, 0);
   const totalProfit = classFinances.reduce((sum, item) => sum + item.profit, 0);
-  const profitPercentage = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
+  const profitPercentage = directTotalRevenue > 0 ? (totalProfit / directTotalRevenue) * 100 : 0;
+  
+  // Debug revenue comparisons
+  useEffect(() => {
+    if (!isLoading && classFinances.length > 0) {
+      console.log("Class Financial Report - Revenue comparison:", {
+        fromClassesSum: classesTotalRevenue,
+        fromInvoicesDirectly: directTotalRevenue,
+        fromInvoicesHook: totalInvoiceRevenue,
+        difference: directTotalRevenue - classesTotalRevenue,
+        differencePercent: ((directTotalRevenue - classesTotalRevenue) / directTotalRevenue) * 100
+      });
+    }
+  }, [isLoading, classFinances, directTotalRevenue, totalInvoiceRevenue]);
   
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -114,6 +136,8 @@ export function ClassFinancialReport({ dateRange, onRefreshSuccess }: ClassFinan
     );
   }
 
+  const revenueDiscrepancy = Math.abs(directTotalRevenue - classesTotalRevenue) > 1;
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
@@ -150,8 +174,21 @@ export function ClassFinancialReport({ dateRange, onRefreshSuccess }: ClassFinan
           </Alert>
         )}
         
+        {revenueDiscrepancy && (
+          <Alert>
+            <AlertDescription>
+              Note: The total revenue from all invoices (R{directTotalRevenue.toFixed(2)}) doesn't match the sum of class revenues 
+              (R{classesTotalRevenue.toFixed(2)}). This may be due to invoices without associated bookings or classes.
+            </AlertDescription>
+          </Alert>
+        )}
+        
         <div className="overflow-x-auto">
-          <ClassFinancialTable classFinances={classFinances} />
+          <ClassFinancialTable 
+            classFinances={classFinances} 
+            totalRevenue={directTotalRevenue}
+            showMismatchWarning={revenueDiscrepancy}
+          />
         </div>
       </CardContent>
     </Card>

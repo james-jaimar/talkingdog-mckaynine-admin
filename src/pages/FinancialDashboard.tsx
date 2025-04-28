@@ -11,115 +11,81 @@ import { FinancialMetricsCards } from "@/components/dashboard/financial/Financia
 import { ExpenseBreakdownCards } from "@/components/dashboard/financial/ExpenseBreakdownCards";
 import { useClassFinancialData } from "@/hooks/useClassFinancialData";
 import { useTerm } from "@/context/TermContext";
+import { useInvoices } from "@/hooks/useInvoices";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { InfoCircle } from "lucide-react";
 
 export default function FinancialDashboard() {
   const [timeframe, setTimeframe] = useState<'monthly' | 'quarterly' | 'yearly'>('monthly');
   const { currentBranch } = useBranch();
   const { termDateRange } = useTerm();
+  const { invoices } = useInvoices();
   
-  // Use the existing class financial data hook to get accurate financial information
+  // Get all active invoices
+  const activeInvoices = invoices.filter(inv => 
+    inv.status === 'sent' || inv.status === 'paid' || inv.status === 'overdue'
+  );
+  
+  // Calculate revenue metrics directly from invoices
+  const totalRevenue = activeInvoices.reduce((sum, inv) => sum + inv.total, 0);
+  const collectedRevenue = activeInvoices
+    .filter(inv => inv.status === 'paid')
+    .reduce((sum, inv) => sum + inv.total, 0);
+  const pendingRevenue = activeInvoices
+    .filter(inv => inv.status === 'sent')
+    .reduce((sum, inv) => sum + inv.total, 0);
+  const overdueRevenue = activeInvoices
+    .filter(inv => inv.status === 'overdue')
+    .reduce((sum, inv) => sum + inv.total, 0);
+  
+  // Use the class financial data hook to get accurate financial information
   const { 
     classFinances, 
     isLoading, 
-    totalInvoiceCount, 
-    totalRevenue: directTotalRevenue 
+    totalRevenue: hookTotalRevenue
   } = useClassFinancialData(currentBranch?.id);
   
-  // Calculate all financial metrics directly from classFinances
-  const calculateFinancials = () => {
-    // Calculate total values from class finances
-    const totalAdmin = classFinances.reduce((sum, item) => sum + item.adminFee, 0);
-    const totalTrainer = classFinances.reduce((sum, item) => sum + item.instructorFee, 0);
-    const totalFranchise = classFinances.reduce((sum, item) => sum + item.franchiseFee, 0);
-    
-    // Get the total revenue either from the direct total or by summing classes
-    const classesRevenue = classFinances.reduce((sum, item) => sum + item.totalRevenue, 0);
-    
-    // Choose the higher value between direct calculation and class sum
-    const totalRevenue = Math.max(directTotalRevenue || 0, classesRevenue);
-    
-    console.log("Financial Dashboard calculations - Total revenue:", {
-      directTotalRevenue,
-      classesRevenue,
-      usingTotal: totalRevenue,
-      totalAdmin,
-      totalTrainer,
-      totalFranchise
-    });
-    
-    // Calculate the revenue breakdown for status metrics
-    const { collectedRevenue, pendingRevenue, overdueRevenue } = calculateRevenueByStatus();
-    
-    // Calculate profit as revenue minus all fees
-    const profit = totalRevenue - totalAdmin - totalTrainer - totalFranchise;
-    
-    return {
-      totalRevenue,
-      collectedRevenue,
-      pendingRevenue,
-      overdueRevenue,
-      totalAdmin,
-      totalTrainer,
-      totalFranchise,
-      profit
-    };
-  };
+  // Calculate all financial metrics from class finances
+  const totalAdmin = classFinances.reduce((sum, item) => sum + item.adminFee, 0);
+  const totalTrainer = classFinances.reduce((sum, item) => sum + item.instructorFee, 0);
+  const totalFranchise = classFinances.reduce((sum, item) => sum + item.franchiseFee, 0);
   
-  // We need to calculate revenue by status separately
-  const calculateRevenueByStatus = () => {
-    // If we have direct data from the hook, use that
-    if (directTotalRevenue) {
-      // Since we don't have status breakdown directly, estimate based on class data
-      // This is an approximation and would be better with actual invoice status data
-      const statusData = {
-        collectedRevenue: directTotalRevenue * 0.7, // Estimate 70% collected
-        pendingRevenue: directTotalRevenue * 0.2,   // Estimate 20% pending
-        overdueRevenue: directTotalRevenue * 0.1    // Estimate 10% overdue
-      };
-      
-      console.log("Estimated revenue by status:", statusData);
-      return statusData;
-    }
-    
-    // Fallback to zero values if no data
-    return {
-      collectedRevenue: 0,
-      pendingRevenue: 0,
-      overdueRevenue: 0
-    };
-  };
-  
-  const financialData = calculateFinancials();
+  // Calculate profit as revenue minus all fees
+  const profit = totalRevenue - totalAdmin - totalTrainer - totalFranchise;
   
   // Debug the calculated values
   console.log("Financial Dashboard calculations:", {
-    totalRevenue: financialData.totalRevenue,
-    collectedRevenue: financialData.collectedRevenue,
-    pendingRevenue: financialData.pendingRevenue,
-    overdueRevenue: financialData.overdueRevenue,
-    totalAdmin: financialData.totalAdmin,
-    totalTrainer: financialData.totalTrainer,
-    totalFranchise: financialData.totalFranchise,
-    profit: financialData.profit,
-    invoicesCount: totalInvoiceCount
+    totalRevenue,
+    collectedRevenue,
+    pendingRevenue,
+    overdueRevenue,
+    totalAdmin,
+    totalTrainer,
+    totalFranchise,
+    profit,
+    invoicesCount: activeInvoices.length,
+    hookTotalRevenue
   });
 
   // Financial metrics for the metrics cards
   const financialMetrics = {
-    totalRevenue: financialData.totalRevenue,
-    collectedRevenue: financialData.collectedRevenue,
-    pendingRevenue: financialData.pendingRevenue,
-    overdueRevenue: financialData.overdueRevenue
+    totalRevenue,
+    collectedRevenue,
+    pendingRevenue,
+    overdueRevenue
   };
 
   // Expense breakdown data
   const expenseData = {
-    totalAdmin: financialData.totalAdmin,
-    totalTrainer: financialData.totalTrainer,
-    totalFranchise: financialData.totalFranchise,
-    profit: financialData.profit,
-    totalRevenue: financialData.totalRevenue
+    totalAdmin,
+    totalTrainer,
+    totalFranchise,
+    profit,
+    totalRevenue
   };
+  
+  // Check for a significant discrepancy between the total revenue sources
+  const revenueDiscrepancy = Math.abs(totalRevenue - hookTotalRevenue) > 1;
 
   return (
     <RequireAdmin>
@@ -141,6 +107,16 @@ export default function FinancialDashboard() {
             </Tabs>
           </div>
 
+          {revenueDiscrepancy && (
+            <Alert className="mb-6">
+              <InfoCircle className="h-4 w-4" />
+              <AlertDescription>
+                There might be a small discrepancy in financial calculations due to invoices without booking associations.
+                For the most accurate data, please refer to the Financial Reports page.
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Financial metrics cards */}
           <FinancialMetricsCards metrics={financialMetrics} />
 
@@ -150,17 +126,18 @@ export default function FinancialDashboard() {
           {/* Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             <InvoiceRevenueChart 
+              invoices={activeInvoices}
               timeframe={timeframe} 
               termDateRange={termDateRange}
             />
             <RevenueAllocationChart 
               fees={{
-                adminFee: financialData.totalAdmin,
-                trainerFee: financialData.totalTrainer,
-                franchiseFee: financialData.totalFranchise,
-                profit: financialData.profit
+                adminFee: totalAdmin,
+                trainerFee: totalTrainer,
+                franchiseFee: totalFranchise,
+                profit: profit
               }}
-              totalRevenue={financialData.totalRevenue}
+              totalRevenue={totalRevenue}
               showOnlyPaid={false} // Show all revenue for allocation
             />
           </div>

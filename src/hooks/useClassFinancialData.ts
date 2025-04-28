@@ -39,7 +39,8 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
 
       console.log(`Fetching financial data for branch ${branchId} from ${fromDate} to ${toDate}`);
       
-      // First, get the total revenue from all active invoices for this branch
+      // Get all valid invoices for this branch regardless of booking associations
+      // This ensures we capture ALL revenue, even those not linked to classes
       let totalRevenueQuery = supabase
         .from('invoices')
         .select('total, status, client:client_id (branch_id)')
@@ -59,6 +60,7 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
       
       // Calculate the total revenue from all active invoices
       const totalRevenueFromInvoices = invoicesTotal?.reduce((sum, inv) => sum + (inv.total || 0), 0) || 0;
+      console.log(`Total revenue from all invoices: ${totalRevenueFromInvoices}`);
       
       // Set up query for confirmed bookings with their class information
       let query = supabase
@@ -119,7 +121,6 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
       }
       
       console.log(`Total invoice count for branch ${branchId}: ${allInvoicesCount}`);
-      console.log(`Total revenue from all invoices: ${totalRevenueFromInvoices}`);
       
       // Also fetch invoice items to get accurate revenue data
       let invoiceQuery = supabase
@@ -242,6 +243,28 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
         console.error("Error counting invalid invoices:", invalidError);
       }
       
+      // Directly query all invoices to double-check the total
+      let directRevenueQuery = supabase
+        .from('invoices')
+        .select('id, total, status')
+        .in('status', ['sent', 'paid', 'overdue']);
+        
+      // Apply branch filtering through client
+      directRevenueQuery = directRevenueQuery.eq('clients.branch_id', branchId);
+      
+      // Apply date filtering if dates are provided
+      if (fromDate && toDate) {
+        directRevenueQuery = directRevenueQuery.gte('issued_date', fromDate).lte('issued_date', toDate);
+      }
+      
+      const { data: directRevenueData, error: directRevenueError } = await directRevenueQuery;
+      
+      if (directRevenueError) {
+        console.error("Error fetching direct revenue data:", directRevenueError);
+      } else {
+        console.log(`Direct revenue query found ${directRevenueData?.length || 0} invoices`);
+      }
+      
       return { 
         bookingsWithInvoices, 
         unassociatedInvoices: unassociatedInvoiceItems,
@@ -302,10 +325,10 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
         className: "General Training Services",
         totalRevenue: unassociatedTotal,
         bookingsCount: 0,
-        franchiseFee: 0, // Default commission rate (can be customized)
-        adminFee: 0,     // Default admin fee (can be customized)
-        instructorFee: 0, // Default trainer fee (can be customized)
-        profit: unassociatedTotal, // All profit since no fees are deducted
+        franchiseFee: unassociatedTotal * 0.1, // Default commission rate (10%)
+        adminFee: unassociatedTotal * 0.1,     // Default admin fee (10%)
+        instructorFee: unassociatedTotal * 0.6, // Default trainer fee (60%)
+        profit: unassociatedTotal * 0.2, // Remaining 20% profit
         invoiceCount: generalTrainingInvoiceIds.size // Count unique invoices
       };
       
@@ -403,6 +426,30 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
     console.log(`Expected total invoices: ${allInvoicesCount}`);
     console.log(`Unassociated revenue: ${unassociatedTotal}`);
     console.log(`Total revenue from invoices: ${totalRevenue}`);
+    
+    // Check if we need to add a general revenue entry to account for missing revenue
+    const classesTotalRevenue = sortedFinances.reduce((sum, curr) => sum + curr.totalRevenue, 0);
+    if (totalRevenue > classesTotalRevenue + 1) { // Adding 1 to account for rounding errors
+      const unaccountedRevenue = totalRevenue - classesTotalRevenue;
+      console.log(`Found unaccounted revenue: ${unaccountedRevenue}`);
+      
+      // Add or update the unaccounted revenue entry
+      const unaccountedEntry: ClassFinance = {
+        className: "Unallocated Revenue",
+        totalRevenue: unaccountedRevenue,
+        bookingsCount: 0,
+        franchiseFee: unaccountedRevenue * 0.1, // Default franchise fee (10%)
+        adminFee: unaccountedRevenue * 0.1,     // Default admin fee (10%)
+        instructorFee: 0,                      // No instructor fee for unallocated revenue
+        profit: unaccountedRevenue * 0.8,       // Default profit (80%)
+        invoiceCount: allInvoicesCount - sortedFinances.reduce((sum, curr) => sum + curr.invoiceCount, 0)
+      };
+      
+      // Only add if there's a significant amount of unaccounted revenue
+      if (unaccountedRevenue > 1) {
+        sortedFinances.push(unaccountedEntry);
+      }
+    }
     
     setClassFinances(sortedFinances);
   }, [financialData]);
