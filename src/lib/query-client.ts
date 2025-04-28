@@ -16,11 +16,22 @@ export const queryClient = new QueryClient({
       retry: 1,
       networkMode: "always",
     }
-  },
-  // Configure logger to only log in development
-  logger: {
-    log: process.env.NODE_ENV === 'development' ? console.log : () => {},
-    warn: console.warn,
-    error: console.error,
   }
 });
+
+// Configure console logging behavior based on environment
+if (process.env.NODE_ENV !== 'production') {
+  // Enable more verbose logging in development
+  queryClient.setDefaultOptions({
+    queries: {
+      retry: 1,
+    },
+  });
+} else {
+  // Silence most logs in production
+  console.log = (...args) => {
+    if (args[0]?.includes?.('error:')) {
+      console.error(...args);
+    }
+  };
+}
