@@ -121,10 +121,10 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
         throw invoiceItemsError;
       }
 
-      // Get invalid invoices count
+      // Get invalid invoices count - use proper parameter embedding for client.branch_id
       let invalidQuery = supabase
         .from('invoices')
-        .select('*', { count: 'exact' })
+        .select('id, client_id, client!inner(branch_id)', { count: 'exact' })
         .eq('status', 'invalid')
         .eq('client.branch_id', branchId);
 
@@ -138,10 +138,10 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
         console.error("Error counting invalid invoices:", invalidError);
       }
 
-      // Get all invoices count
+      // Get all invoices count - use proper parameter embedding for client.branch_id
       let countQuery = supabase
         .from('invoices')
-        .select('*', { count: 'exact' })
+        .select('id, client_id, client!inner(branch_id)', { count: 'exact' })
         .eq('client.branch_id', branchId)
         .in('status', ['sent', 'paid', 'overdue']);
 
@@ -175,8 +175,10 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
       return result;
     },
     enabled: !!branchId,
-    staleTime: 30000,
+    staleTime: 5000, // Reduced stale time to 5 seconds to ensure more frequent refreshes
     refetchOnWindowFocus: true,
     gcTime: 10 * 60 * 1000,
+    refetchOnMount: true, // Always refetch when component mounts
+    refetchOnReconnect: true, // Refetch when reconnecting
   });
 }

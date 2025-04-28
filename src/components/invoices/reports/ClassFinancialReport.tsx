@@ -2,7 +2,7 @@
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, RefreshCw, AlertTriangle } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useBranch } from "@/context/BranchContext";
 import { useClassFinancialData } from "@/hooks/useClassFinancialData";
 import { ClassFinancialTable } from "./ClassFinancialTable";
@@ -22,6 +22,19 @@ export function ClassFinancialReport({ dateRange, onRefreshSuccess }: ClassFinan
   
   const fromDate = dateRange?.from?.toISOString();
   const toDate = dateRange?.to?.toISOString();
+
+  // Force initial data fetch on mount
+  useEffect(() => {
+    // Ensure we invalidate all relevant caches on initial mount
+    queryClient.invalidateQueries({ queryKey: ['invoices'] });
+    queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
+    
+    // Immediately refetch to get fresh data
+    queryClient.refetchQueries({ 
+      queryKey: ['financial-bookings', currentBranch?.id, fromDate, toDate],
+      type: 'active'
+    });
+  }, [currentBranch?.id, fromDate, toDate, queryClient]);
 
   const { 
     classFinances, 
@@ -52,9 +65,12 @@ export function ClassFinancialReport({ dateRange, onRefreshSuccess }: ClassFinan
     
     try {
       // First invalidate all related queries
-      await queryClient.invalidateQueries({ queryKey: ['invoices'] });
-      await queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
-      await queryClient.invalidateQueries({ queryKey: ['classes-list-data'] });
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['classes-list-data'] });
+      
+      // Reset cache completely for financial data
+      queryClient.resetQueries({ queryKey: ['financial-bookings', currentBranch?.id, fromDate, toDate] });
       
       // Then refresh the data
       await refreshData();

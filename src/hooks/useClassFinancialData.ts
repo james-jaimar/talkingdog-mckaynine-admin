@@ -24,8 +24,14 @@ export function useClassFinancialData(
 
   const refreshData = () => {
     console.log("Manually refreshing financial data");
-    queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
-    queryClient.invalidateQueries({ queryKey: ['invoices'] });
+    // Use promise-based invalidation to ensure data is invalidated before proceeding
+    return Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['financial-bookings'] }),
+      queryClient.invalidateQueries({ queryKey: ['invoices'] }),
+      queryClient.resetQueries({ queryKey: ['financial-bookings', branchId, fromDate, toDate] }),
+      // Force refetch to get updated data
+      queryClient.refetchQueries({ queryKey: ['financial-bookings'] })
+    ]);
   };
 
   return {

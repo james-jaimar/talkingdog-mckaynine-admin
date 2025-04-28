@@ -53,11 +53,24 @@ export function useInvoices() {
   // Function to refresh all related invoice queries
   const refreshAllInvoiceQueries = () => {
     console.log("Refreshing all invoice queries");
+    // First invalidate all queries to clear stale data
     queryClient.invalidateQueries({ queryKey: ['invoices'] });
     queryClient.invalidateQueries({ queryKey: ['my-invoices'] });
     queryClient.invalidateQueries({ queryKey: ['client-invoices'] });
-    // Force refetch the invoices list
+    queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
+    
+    // Reset queries to clear cache completely
+    queryClient.resetQueries({ queryKey: ['invoices'] });
+    queryClient.resetQueries({ queryKey: ['financial-bookings'] });
+    
+    // Force refetch invoices list to ensure data is fresh
     invoicesList.refetch();
+    
+    // Force refetch all active financial queries
+    queryClient.refetchQueries({ 
+      queryKey: ['financial-bookings'],
+      type: 'all'
+    });
   };
 
   return {
