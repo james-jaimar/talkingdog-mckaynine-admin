@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Helmet } from "react-helmet";
@@ -11,17 +12,12 @@ import { ExpenseBreakdownCards } from "@/components/dashboard/financial/ExpenseB
 import { useClassFinancialData } from "@/hooks/useClassFinancialData";
 import { useTerm } from "@/context/TermContext";
 import { useInvoices } from "@/hooks/useInvoices";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Info } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
 
 export default function FinancialDashboard() {
   const [timeframe, setTimeframe] = useState<'monthly' | 'quarterly' | 'yearly'>('monthly');
   const { currentBranch } = useBranch();
   const { termDateRange } = useTerm();
   const { invoices } = useInvoices();
-  const navigate = useNavigate();
   
   // Get all active invoices
   const activeInvoices = invoices.filter(inv => 
@@ -44,8 +40,7 @@ export default function FinancialDashboard() {
   const { 
     classFinances, 
     isLoading, 
-    totalRevenue: hookTotalRevenue,
-    unallocatedDetails
+    totalRevenue: hookTotalRevenue
   } = useClassFinancialData(currentBranch?.id);
   
   // Calculate all financial metrics from class finances
@@ -55,16 +50,6 @@ export default function FinancialDashboard() {
   
   // Calculate profit as revenue minus all fees
   const profit = totalRevenue - totalAdmin - totalTrainer - totalFranchise;
-
-  // Calculate unallocated statistics
-  const unallocatedItems = classFinances.filter(item => 
-    item.sourceType === 'unallocated' || item.className === 'Unallocated Revenue'
-  );
-  const unallocatedRevenue = unallocatedItems.reduce((sum, item) => sum + item.totalRevenue, 0);
-  const unallocatedPercentage = totalRevenue > 0 ? (unallocatedRevenue / totalRevenue) * 100 : 0;
-  
-  // Count unallocated invoices
-  const unallocatedInvoicesCount = unallocatedDetails?.length || 0;
   
   // Debug the calculated values
   console.log("Financial Dashboard calculations:", {
@@ -77,10 +62,7 @@ export default function FinancialDashboard() {
     totalFranchise,
     profit,
     invoicesCount: activeInvoices.length,
-    hookTotalRevenue,
-    unallocatedRevenue,
-    unallocatedPercentage,
-    unallocatedInvoicesCount
+    hookTotalRevenue
   });
 
   // Financial metrics for the metrics cards
@@ -88,9 +70,7 @@ export default function FinancialDashboard() {
     totalRevenue,
     collectedRevenue,
     pendingRevenue,
-    overdueRevenue,
-    unallocatedRevenue,
-    unallocatedPercentage
+    overdueRevenue
   };
 
   // Expense breakdown data
@@ -101,10 +81,6 @@ export default function FinancialDashboard() {
     profit,
     totalRevenue
   };
-  
-  // Check for a significant discrepancy between the total revenue sources
-  const revenueDiscrepancy = Math.abs(totalRevenue - hookTotalRevenue) > 1;
-  const hasUnallocatedRevenue = unallocatedRevenue > 0 && unallocatedPercentage > 5; // Show alert if more than 5%
 
   return (
     <RequireAdmin>
@@ -126,43 +102,12 @@ export default function FinancialDashboard() {
             </Tabs>
           </div>
 
-          {revenueDiscrepancy && (
-            <Alert className="mb-6">
-              <Info className="h-4 w-4" />
-              <AlertDescription>
-                There might be a small discrepancy in financial calculations due to invoices without booking associations.
-                For the most accurate data, please refer to the Financial Reports page.
-              </AlertDescription>
-            </Alert>
-          )}
-          
-          {hasUnallocatedRevenue && (
-            <Alert className="mb-6" variant="warning">
-              <Info className="h-4 w-4" />
-              <AlertDescription className="flex items-center justify-between">
-                <span>
-                  Approximately {unallocatedPercentage.toFixed(1)}% of your revenue (R{unallocatedRevenue.toFixed(2)}) 
-                  comes from {unallocatedInvoicesCount} invoices that aren't linked to specific classes.
-                </span>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => navigate('/financial-reports?tab=unallocated')}
-                >
-                  View Unallocated Invoices
-                </Button>
-              </AlertDescription>
-            </Alert>
-          )}
-
           {/* Financial metrics cards */}
           <FinancialMetricsCards 
             totalRevenue={totalRevenue}
             collectedRevenue={collectedRevenue}
             pendingRevenue={pendingRevenue}
             overdueRevenue={overdueRevenue}
-            unallocatedRevenue={unallocatedRevenue}
-            unallocatedPercentage={unallocatedPercentage}
           />
 
           {/* Expense breakdown cards with profit included */}

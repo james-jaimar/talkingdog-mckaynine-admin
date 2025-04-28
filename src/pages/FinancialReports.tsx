@@ -14,12 +14,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { TrainerReportsTab } from "@/components/invoices/reports/TrainerReportsTab";
 import { useClassFinancialData } from "@/hooks/useClassFinancialData";
-import { UnallocatedInvoicesReport } from "@/components/invoices/reports/UnallocatedInvoicesReport";
-import { useSearchParams } from "react-router-dom";
 
 export default function FinancialReports() {
   const queryClient = useQueryClient();
-  const [searchParams] = useSearchParams();
   
   // Set default date range to current month
   const [dateRange, setDateRange] = useState({
@@ -30,9 +27,8 @@ export default function FinancialReports() {
   const { currentBranch } = useBranch();
   const { invoices, isLoading, refreshAllInvoiceQueries } = useInvoices();
   
-  // Get the tab from URL params or default to 'financial'
-  const tabFromUrl = searchParams.get('tab');
-  const [activeTab, setActiveTab] = useState(tabFromUrl || 'financial');
+  // Default to 'financial' tab
+  const [activeTab, setActiveTab] = useState('financial');
 
   // Refresh data when component mounts, branch changes or date range changes
   useEffect(() => {
@@ -41,13 +37,6 @@ export default function FinancialReports() {
       refreshFinancialData();
     }
   }, [currentBranch, dateRange]);
-  
-  // Update active tab when URL param changes
-  useEffect(() => {
-    if (tabFromUrl) {
-      setActiveTab(tabFromUrl);
-    }
-  }, [tabFromUrl]);
 
   // Function to refresh all financial data
   const refreshFinancialData = () => {
@@ -55,7 +44,6 @@ export default function FinancialReports() {
     queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
     queryClient.invalidateQueries({ queryKey: ['classes-list-data'] });
     queryClient.invalidateQueries({ queryKey: ['trainer-payments'] });
-    queryClient.invalidateQueries({ queryKey: ['unallocated-invoices'] });
     
     // Then refresh invoice data
     refreshAllInvoiceQueries();
@@ -96,7 +84,6 @@ export default function FinancialReports() {
               <TabsTrigger value="financial">Financial Report</TabsTrigger>
               <TabsTrigger value="classes">Classes List</TabsTrigger>
               <TabsTrigger value="trainers">Trainers</TabsTrigger>
-              <TabsTrigger value="unallocated">Unallocated Invoices</TabsTrigger>
             </TabsList>
 
             <TabsContent value="financial">
@@ -119,14 +106,6 @@ export default function FinancialReports() {
               <TrainerReportsTab 
                 dateRange={dateRange}
                 branchId={currentBranch?.id}
-              />
-            </TabsContent>
-            
-            <TabsContent value="unallocated">
-              <UnallocatedInvoicesReport 
-                dateRange={dateRange}
-                branchId={currentBranch?.id}
-                onRefresh={refreshFinancialData}
               />
             </TabsContent>
           </Tabs>
