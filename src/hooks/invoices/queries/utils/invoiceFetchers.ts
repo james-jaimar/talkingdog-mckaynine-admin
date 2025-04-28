@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Invoice, InvoiceItem } from "@/hooks/invoices/types";
 import { toast } from "sonner";
@@ -56,9 +55,11 @@ export async function fetchInvoiceItems(invoiceId: string): Promise<InvoiceItem[
 export function createDefaultInvoiceItem(total: number): InvoiceItem {
   console.log("Creating a default item based on invoice total");
   return {
+    id: 'default-item',
     description: "Training services",
     quantity: 1,
     unit_price: total,
     amount: total
   };
 }
+
