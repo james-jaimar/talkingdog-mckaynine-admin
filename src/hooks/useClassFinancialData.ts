@@ -38,9 +38,9 @@ export function useClassFinancialData(
 
   /**
    * Refreshes financial data by invalidating caches and triggering refetches
-   * Returns results to match expected return type
+   * Returns the results of the refetch operation to match the expected return type
    */
-  const refreshData = async () => {
+  const refreshData = async (): Promise<unknown[]> => {
     // Invalidate key queries
     await queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
     await queryClient.invalidateQueries({ queryKey: ['invoices'] });
