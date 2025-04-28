@@ -12,6 +12,7 @@ export function InvoiceStatusBadge({ status }: InvoiceStatusBadgeProps) {
     paid: "bg-green-100 text-green-700",
     overdue: "bg-red-100 text-red-700",
     cancelled: "bg-gray-400 text-gray-900",
+    invalid: "bg-yellow-100 text-yellow-700" // Added the missing 'invalid' status
   };
 
   return (

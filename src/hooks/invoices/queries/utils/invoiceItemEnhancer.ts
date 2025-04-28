@@ -67,17 +67,16 @@ export function enhanceInvoiceItem(item: InvoiceItem): InvoiceItem {
       classes: booking.class_schedules.classes
     } : null;
     
-    // Return the enhanced item
+    // Return the enhanced item - we need to ensure we only add properties that are in the InvoiceItem type
     return {
       ...item,
-      bookings: booking,
-      booking_details: {
+      bookings: {
         id: booking.id,
-        dog: {
+        dogs: {
           name: booking.dogs.name,
           breed: booking.dogs.breed
         },
-        class_schedule: classSchedule as any
+        class_schedules: classSchedule as any
       }
     };
   } catch (error) {
