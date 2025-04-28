@@ -34,22 +34,69 @@ export default function FinancialDashboard() {
       .reduce((sum, invoice) => sum + invoice.total, 0)
   };
 
-  // Calculate fees based on actual invoice values
-  const totalAdmin = paidInvoices.reduce((sum, inv) => {
-    const adminFee = inv.admin_fee || 0;
-    return sum + adminFee;
-  }, 0);
+  // Calculate fees by going through invoice items
+  let totalAdmin = 0;
+  let totalTrainer = 0;
+  let totalFranchise = 0;
 
-  const totalTrainer = paidInvoices.reduce((sum, inv) => {
-    const trainerFee = inv.trainer_fee || 0;
-    return sum + trainerFee;
-  }, 0);
+  // Process each paid invoice
+  paidInvoices.forEach(invoice => {
+    if (!invoice.items || invoice.items.length === 0) {
+      console.warn('Invoice has no items:', invoice.id);
+      return;
+    }
+    
+    // Go through each item with a booking to calculate fees based on class configuration
+    invoice.items.forEach(item => {
+      if (item.bookings) {
+        const booking = item.bookings;
+        const classInfo = booking.class_schedules?.classes;
+        
+        if (classInfo) {
+          // Calculate fees based on class configuration
+          const amount = item.amount || 0;
+          
+          // Admin fee calculation
+          if (classInfo.admin_fee_type === 'percentage') {
+            totalAdmin += amount * (classInfo.admin_fee_value / 100);
+          } else {
+            totalAdmin += classInfo.admin_fee_value;
+          }
+          
+          // Trainer fee calculation
+          if (classInfo.trainer_fee_type === 'percentage') {
+            totalTrainer += amount * (classInfo.trainer_fee_value / 100);
+          } else {
+            totalTrainer += classInfo.trainer_fee_value;
+          }
+          
+          // Franchise fee calculation (mckaynine commission)
+          if (classInfo.mckaynine_commission_type === 'percentage') {
+            totalFranchise += amount * (classInfo.mckaynine_commission_value / 100);
+          } else {
+            totalFranchise += classInfo.mckaynine_commission_value;
+          }
+        } else {
+          console.warn('Item has booking but no class info:', item);
+        }
+      } else {
+        console.warn('Invoice item has no bookings:', item);
+        
+        // For items without bookings, use default fee structure
+        // Apply a default fee structure for custom invoice items
+        const amount = item.amount || 0;
+        totalAdmin += amount * 0.10; // Default 10% for admin
+        totalTrainer += amount * 0.40; // Default 40% for trainer
+        totalFranchise += amount * 0.15; // Default 15% for franchise
+      }
+    });
+  });
 
-  const totalFranchise = paidInvoices.reduce((sum, inv) => {
-    const franchiseFee = inv.franchise_fee || 0;
-    return sum + franchiseFee;
-  }, 0);
-
+  // Ensure we have no negative values
+  totalAdmin = Math.max(0, totalAdmin);
+  totalTrainer = Math.max(0, totalTrainer);
+  totalFranchise = Math.max(0, totalFranchise);
+  
   // Calculate profit from actual collected revenue minus all fees
   const totalFees = totalAdmin + totalTrainer + totalFranchise;
   const profit = financialMetrics.collectedRevenue - totalFees;

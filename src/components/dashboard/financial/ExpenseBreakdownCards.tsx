@@ -24,6 +24,19 @@ export function ExpenseBreakdownCards({
   const franchisePercent = (totalFranchise / safeTotal) * 100;
   const profitPercent = (profit / safeTotal) * 100;
 
+  // Debug values to console
+  console.log("ExpenseBreakdownCards values:", {
+    totalAdmin, 
+    totalTrainer, 
+    totalFranchise, 
+    profit,
+    totalRevenue,
+    adminPercent,
+    trainerPercent,
+    franchisePercent,
+    profitPercent
+  });
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
       <Card>
