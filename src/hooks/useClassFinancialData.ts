@@ -11,7 +11,9 @@ export interface ClassFinance {
   adminFee: number;
   instructorFee: number;
   profit: number;
-  invoiceCount: number; // Added to track number of invoices per class
+  invoiceCount: number;
+  sourceType?: 'class' | 'unallocated' | 'general'; // Added to track revenue source
+  invoiceIds?: string[]; // Added to track associated invoices
 }
 
 export function useClassFinancialData(branchId?: string, fromDate?: string, toDate?: string) {
@@ -19,6 +21,7 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
   const [unassociatedRevenue, setUnassociatedRevenue] = useState<number>(0);
   const [totalInvoiceCount, setTotalInvoiceCount] = useState<number>(0);
   const [invalidInvoicesCount, setInvalidInvoicesCount] = useState<number>(0);
+  const [unallocatedDetails, setUnallocatedDetails] = useState<any[]>([]);
   const queryClient = useQueryClient();
   
   // Track invoices data to trigger refetch when invoices change
@@ -34,7 +37,8 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
         unassociatedInvoices: [], 
         allInvoicesCount: 0,
         invalidInvoicesCount: 0,
-        totalRevenue: 0
+        totalRevenue: 0,
+        unallocatedInvoices: []
       };
 
       console.log(`Fetching financial data for branch ${branchId} from ${fromDate} to ${toDate}`);
@@ -140,8 +144,12 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
             total,
             client_id,
             issued_date,
+            invoice_number,
             client:client_id (
-              branch_id
+              branch_id,
+              first_name,
+              last_name,
+              email
             )
           )
         `)
@@ -246,7 +254,27 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
       // Directly query all invoices to double-check the total
       let directRevenueQuery = supabase
         .from('invoices')
-        .select('id, total, status')
+        .select(`
+          id, 
+          total, 
+          status, 
+          invoice_number,
+          client_id,
+          clients:client_id (
+            first_name, 
+            last_name, 
+            email, 
+            branch_id
+          ),
+          items:invoice_items (
+            id, 
+            description, 
+            booking_id,
+            amount, 
+            unit_price, 
+            quantity
+          )
+        `)
         .in('status', ['sent', 'paid', 'overdue']);
         
       // Apply branch filtering through client
@@ -264,13 +292,22 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
       } else {
         console.log(`Direct revenue query found ${directRevenueData?.length || 0} invoices`);
       }
+
+      // Find invoices with no booking associations for further analysis
+      const unallocatedInvoices = directRevenueData?.filter(invoice => {
+        const hasBookingAssociation = invoice.items?.some(item => item.booking_id);
+        return !hasBookingAssociation;
+      }) || [];
       
+      console.log(`Found ${unallocatedInvoices.length} invoices with no booking associations`);
+
       return { 
         bookingsWithInvoices, 
         unassociatedInvoices: unassociatedInvoiceItems,
         allInvoicesCount: allInvoicesCount || allInvoiceIds.size,
         invalidInvoicesCount: invalidCount || 0,
-        totalRevenue: totalRevenueFromInvoices
+        totalRevenue: totalRevenueFromInvoices,
+        unallocatedInvoices
       };
     },
     enabled: !!branchId,
@@ -286,6 +323,7 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
       setUnassociatedRevenue(0);
       setTotalInvoiceCount(0);
       setInvalidInvoicesCount(0);
+      setUnallocatedDetails([]);
       return;
     }
 
@@ -294,12 +332,16 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
       unassociatedInvoices, 
       allInvoicesCount,
       invalidInvoicesCount,
-      totalRevenue
+      totalRevenue,
+      unallocatedInvoices
     } = financialData;
     
     // Update the total invoice count state
     setTotalInvoiceCount(allInvoicesCount);
     setInvalidInvoicesCount(invalidInvoicesCount);
+    
+    // Save unallocated invoice details for inspection
+    setUnallocatedDetails(unallocatedInvoices || []);
     
     // Calculate total revenue from unassociated invoice items
     const unassociatedTotal = unassociatedInvoices.reduce((sum, item) => sum + (item.amount || 0), 0);
@@ -310,6 +352,9 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
     
     // Track unique invoice IDs for accurate invoice counting
     const invoicesCountByClass = new Map<string, Set<string>>();
+    
+    // Track mapped invoices to detect unallocated ones
+    const mappedInvoiceIds = new Set<string>();
 
     // Create a "General Training" entry for unassociated revenue if it exists
     if (unassociatedTotal > 0) {
@@ -318,6 +363,7 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
       unassociatedInvoices.forEach(item => {
         if (item.invoice_id) {
           generalTrainingInvoiceIds.add(item.invoice_id);
+          mappedInvoiceIds.add(item.invoice_id);
         }
       });
       
@@ -329,7 +375,9 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
         adminFee: unassociatedTotal * 0.1,     // Default admin fee (10%)
         instructorFee: unassociatedTotal * 0.6, // Default trainer fee (60%)
         profit: unassociatedTotal * 0.2, // Remaining 20% profit
-        invoiceCount: generalTrainingInvoiceIds.size // Count unique invoices
+        invoiceCount: generalTrainingInvoiceIds.size, // Count unique invoices
+        sourceType: 'general',
+        invoiceIds: Array.from(generalTrainingInvoiceIds)
       };
       
       classSummaries.set("General Training Services", generalTraining);
@@ -352,6 +400,7 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
         const invoiceSet = invoicesCountByClass.get(className);
         if (invoiceSet) {
           invoiceSet.add(booking.invoiceInfo.invoiceId);
+          mappedInvoiceIds.add(booking.invoiceInfo.invoiceId);
         }
       }
     });
@@ -374,7 +423,9 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
         adminFee: 0,
         instructorFee: 0,
         profit: 0,
-        invoiceCount: 0
+        invoiceCount: 0,
+        sourceType: 'class',
+        invoiceIds: []
       };
 
       // Update summary
@@ -385,6 +436,7 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
       const invoiceSet = invoicesCountByClass.get(className);
       if (invoiceSet) {
         summary.invoiceCount = invoiceSet.size;
+        summary.invoiceIds = Array.from(invoiceSet);
       }
 
       // For fee calculations, use the actual revenue collected
@@ -416,6 +468,86 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
       summary.profit = summary.totalRevenue - summary.franchiseFee - summary.adminFee - summary.instructorFee;
     });
 
+    // Process unallocated invoices - invoices with no booking associations
+    // Group them by patterns in descriptions to create better categories
+    const unallocatedByCategory = new Map<string, {
+      totalRevenue: number, 
+      invoiceIds: string[],
+      invoices: any[]
+    }>();
+    
+    // Process unallocated invoices to find patterns
+    unallocatedInvoices.forEach(invoice => {
+      // Skip if this invoice is already mapped somewhere
+      if (Array.from(mappedInvoiceIds).includes(invoice.id)) {
+        return;
+      }
+      
+      // Try to determine a category based on invoice items descriptions
+      let category = "Unallocated Revenue";
+      const descriptions = invoice.items?.map((item: any) => item.description?.toLowerCase() || "") || [];
+      
+      // Look for class-related keywords
+      if (descriptions.some(desc => desc.includes("puppy") || desc.includes("puppy class"))) {
+        category = "Puppy Class Revenue";
+      } else if (descriptions.some(desc => desc.includes("bronze") || desc.includes("cgc"))) {
+        category = "Bronze CGC Revenue";
+      } else if (descriptions.some(desc => desc.includes("eo3") || desc.includes("eo"))) {
+        category = "EO Class Revenue";
+      } else if (descriptions.some(desc => desc.includes("yoga"))) {
+        category = "Yoga Class Revenue";
+      }
+      
+      // Get or create category entry
+      const categoryData = unallocatedByCategory.get(category) || {
+        totalRevenue: 0, 
+        invoiceIds: [],
+        invoices: []
+      };
+      
+      // Add this invoice's revenue
+      categoryData.totalRevenue += invoice.total || 0;
+      categoryData.invoiceIds.push(invoice.id);
+      categoryData.invoices.push(invoice);
+      
+      unallocatedByCategory.set(category, categoryData);
+    });
+    
+    // Add categorized unallocated revenue to class summaries
+    unallocatedByCategory.forEach((data, category) => {
+      // Skip empty categories
+      if (data.totalRevenue <= 0) return;
+      
+      // Default fee percentages
+      const franchiseRate = 0.10; // 10%
+      const adminRate = 0.10;     // 10%
+      const instructorRate = category === "Unallocated Revenue" ? 0 : 0.60; // 60% for classes, 0% for general
+      
+      const revenue = data.totalRevenue;
+      const franchiseFee = revenue * franchiseRate;
+      const adminFee = revenue * adminRate;
+      const instructorFee = revenue * instructorRate;
+      const profit = revenue - franchiseFee - adminFee - instructorFee;
+      
+      const unallocatedEntry: ClassFinance = {
+        className: category,
+        totalRevenue: revenue,
+        bookingsCount: 0,
+        franchiseFee: franchiseFee,
+        adminFee: adminFee,
+        instructorFee: instructorFee,
+        profit: profit,
+        invoiceCount: data.invoiceIds.length,
+        sourceType: 'unallocated',
+        invoiceIds: data.invoiceIds
+      };
+      
+      // Only add if there's revenue
+      if (revenue > 0) {
+        classSummaries.set(category, unallocatedEntry);
+      }
+    });
+
     // Convert to array and sort by class name
     const sortedFinances = Array.from(classSummaries.values())
       .sort((a, b) => a.className.localeCompare(b.className));
@@ -435,14 +567,15 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
       
       // Add or update the unaccounted revenue entry
       const unaccountedEntry: ClassFinance = {
-        className: "Unallocated Revenue",
+        className: "Remaining Unallocated Revenue",
         totalRevenue: unaccountedRevenue,
         bookingsCount: 0,
         franchiseFee: unaccountedRevenue * 0.1, // Default franchise fee (10%)
         adminFee: unaccountedRevenue * 0.1,     // Default admin fee (10%)
         instructorFee: 0,                      // No instructor fee for unallocated revenue
         profit: unaccountedRevenue * 0.8,       // Default profit (80%)
-        invoiceCount: allInvoicesCount - sortedFinances.reduce((sum, curr) => sum + curr.invoiceCount, 0)
+        invoiceCount: allInvoicesCount - sortedFinances.reduce((sum, curr) => sum + curr.invoiceCount, 0),
+        sourceType: 'unallocated'
       };
       
       // Only add if there's a significant amount of unaccounted revenue
@@ -468,6 +601,7 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
     refreshData,
     totalInvoiceCount,
     invalidInvoicesCount,
-    totalRevenue: financialData?.totalRevenue || 0
+    totalRevenue: financialData?.totalRevenue || 0,
+    unallocatedDetails // Return the unallocated invoice details
   };
 }

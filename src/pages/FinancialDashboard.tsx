@@ -42,7 +42,8 @@ export default function FinancialDashboard() {
   const { 
     classFinances, 
     isLoading, 
-    totalRevenue: hookTotalRevenue
+    totalRevenue: hookTotalRevenue,
+    unallocatedDetails
   } = useClassFinancialData(currentBranch?.id);
   
   // Calculate all financial metrics from class finances
@@ -52,6 +53,13 @@ export default function FinancialDashboard() {
   
   // Calculate profit as revenue minus all fees
   const profit = totalRevenue - totalAdmin - totalTrainer - totalFranchise;
+
+  // Calculate unallocated statistics
+  const unallocatedItems = classFinances.filter(item => 
+    item.sourceType === 'unallocated' || item.className === 'Unallocated Revenue'
+  );
+  const unallocatedRevenue = unallocatedItems.reduce((sum, item) => sum + item.totalRevenue, 0);
+  const unallocatedPercentage = totalRevenue > 0 ? (unallocatedRevenue / totalRevenue) * 100 : 0;
   
   // Debug the calculated values
   console.log("Financial Dashboard calculations:", {
@@ -64,7 +72,9 @@ export default function FinancialDashboard() {
     totalFranchise,
     profit,
     invoicesCount: activeInvoices.length,
-    hookTotalRevenue
+    hookTotalRevenue,
+    unallocatedRevenue,
+    unallocatedPercentage
   });
 
   // Financial metrics for the metrics cards
@@ -86,6 +96,7 @@ export default function FinancialDashboard() {
   
   // Check for a significant discrepancy between the total revenue sources
   const revenueDiscrepancy = Math.abs(totalRevenue - hookTotalRevenue) > 1;
+  const hasUnallocatedRevenue = unallocatedRevenue > 0 && unallocatedPercentage > 5; // Show alert if more than 5%
 
   return (
     <RequireAdmin>
@@ -113,6 +124,17 @@ export default function FinancialDashboard() {
               <AlertDescription>
                 There might be a small discrepancy in financial calculations due to invoices without booking associations.
                 For the most accurate data, please refer to the Financial Reports page.
+              </AlertDescription>
+            </Alert>
+          )}
+          
+          {hasUnallocatedRevenue && (
+            <Alert className="mb-6" variant="warning">
+              <Info className="h-4 w-4" />
+              <AlertDescription>
+                Approximately {unallocatedPercentage.toFixed(1)}% of your revenue (R{unallocatedRevenue.toFixed(2)}) 
+                comes from invoices that aren't linked to specific classes.
+                Visit the Financial Reports page to see a detailed breakdown.
               </AlertDescription>
             </Alert>
           )}

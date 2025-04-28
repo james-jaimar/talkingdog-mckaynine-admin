@@ -10,8 +10,9 @@ import {
 } from "@/components/ui/table";
 import { ClassFinance } from "@/hooks/useClassFinancialData";
 import { formatCurrency } from "@/lib/formatters";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Info } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Badge } from "@/components/ui/badge";
 
 interface ClassFinancialTableProps {
   classFinances: ClassFinance[];
@@ -45,6 +46,16 @@ export function ClassFinancialTable({
     ? totalRevenue - totals.revenue
     : 0;
 
+  // Get source type badge color
+  const getSourceBadgeColor = (sourceType?: string) => {
+    switch(sourceType) {
+      case 'class': return 'bg-green-100 text-green-800';
+      case 'unallocated': return 'bg-amber-100 text-amber-800';
+      case 'general': return 'bg-blue-100 text-blue-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
   return (
     <Table>
       <TableHeader>
@@ -63,13 +74,44 @@ export function ClassFinancialTable({
       </TableHeader>
       <TableBody>
         {classFinances.map((classItem) => (
-          <TableRow key={classItem.className}>
-            <TableCell className="font-medium">
+          <TableRow 
+            key={classItem.className}
+            className={classItem.sourceType === 'unallocated' ? 'bg-amber-50' : ''}
+          >
+            <TableCell className="font-medium flex items-center gap-2">
               {classItem.className}
+              
+              {classItem.sourceType && (
+                <span className={`text-xs px-2 py-0.5 rounded-full inline-flex ${getSourceBadgeColor(classItem.sourceType)}`}>
+                  {classItem.sourceType === 'class' ? 'class' : 
+                   classItem.sourceType === 'unallocated' ? 'unallocated' : 
+                   'general'}
+                </span>
+              )}
+              
               {classItem.className === "General Training Services" && (
                 <span className="ml-1 text-xs text-amber-600">(unassociated invoices)</span>
               )}
-              {classItem.className === "Unallocated Revenue" && (
+              
+              {classItem.sourceType === 'unallocated' && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <span className="ml-1 text-amber-600 cursor-help inline-flex">
+                        <Info className="h-4 w-4" />
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="w-[280px] text-sm">
+                        This represents revenue from {classItem.invoiceCount} invoices that couldn't be matched to specific classes,
+                        but have been categorized based on their descriptions.
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+              
+              {classItem.className === "Remaining Unallocated Revenue" && (
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger>
@@ -79,7 +121,7 @@ export function ClassFinancialTable({
                     </TooltipTrigger>
                     <TooltipContent>
                       <p className="w-[280px] text-sm">
-                        This represents revenue from invoices that couldn't be matched to any class.
+                        This represents revenue that couldn't be matched to any class or categorized.
                         It may be due to invoices without booking references or other data inconsistencies.
                       </p>
                     </TooltipContent>
