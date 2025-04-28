@@ -29,7 +29,8 @@ export function ClassFinancialReport({ dateRange, onRefreshSuccess }: ClassFinan
     refreshData, 
     totalInvoiceCount,
     invalidInvoicesCount,
-    totalRevenue: directTotalRevenue
+    totalRevenue: directTotalRevenue,
+    totalDiscounts
   } = useClassFinancialData(
     currentBranch?.id,
     fromDate,
@@ -158,13 +159,22 @@ export function ClassFinancialReport({ dateRange, onRefreshSuccess }: ClassFinan
           </Alert>
         )}
         
+        {totalDiscounts > 0 && (
+          <Alert>
+            <AlertDescription>
+              Total discounts of {totalDiscounts.toFixed(2)} have been applied to invoices and proportionally 
+              distributed across classes. The revenue shown is net after discounts.
+            </AlertDescription>
+          </Alert>
+        )}
+        
         {revenueDiscrepancy && (
           <Alert>
             <AlertDescription>
               Note: There's a discrepancy of {discrepancyAmount > 0 ? '+' : '-'}{Math.abs(discrepancyAmount).toFixed(2)} 
               between the total revenue from invoices (R{directTotalRevenue.toFixed(2)}) 
               and the sum of class revenues (R{classesTotalRevenue.toFixed(2)}).
-              This is typically due to discounts applied to invoices.
+              This may be due to rounding or unallocated items.
             </AlertDescription>
           </Alert>
         )}
@@ -174,6 +184,7 @@ export function ClassFinancialReport({ dateRange, onRefreshSuccess }: ClassFinan
             classFinances={classFinances} 
             totalRevenue={directTotalRevenue}
             showMismatchWarning={revenueDiscrepancy}
+            totalDiscounts={totalDiscounts}
           />
         </div>
       </CardContent>

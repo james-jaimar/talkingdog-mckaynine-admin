@@ -1,3 +1,4 @@
+
 import {
   Table,
   TableBody,
@@ -17,6 +18,7 @@ interface ClassFinancialTableProps {
   classFinances: ClassFinance[];
   showInvoiceCount?: boolean;
   totalRevenue?: number;
+  totalDiscounts?: number;
   showMismatchWarning?: boolean;
 }
 
@@ -24,6 +26,7 @@ export function ClassFinancialTable({
   classFinances, 
   showInvoiceCount = true,
   totalRevenue,
+  totalDiscounts = 0,
   showMismatchWarning = false
 }: ClassFinancialTableProps) {
   // Calculate totals for the summary row
@@ -153,6 +156,17 @@ export function ClassFinancialTable({
             {formatCurrency(totals.profit)}
           </TableCell>
         </TableRow>
+        {totalDiscounts > 0 && (
+          <TableRow>
+            <TableCell colSpan={2} className="text-right font-medium">
+              Total Discounts:
+            </TableCell>
+            <TableCell className="text-right text-red-600 font-medium">
+              {formatCurrency(totalDiscounts)}
+            </TableCell>
+            <TableCell colSpan={showInvoiceCount ? 5 : 4}></TableCell>
+          </TableRow>
+        )}
       </TableFooter>
     </Table>
   );

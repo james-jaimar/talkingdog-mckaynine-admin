@@ -43,7 +43,7 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
       // Get all valid invoices for this branch
       let totalRevenueQuery = supabase
         .from('invoices')
-        .select('id, total, status, client:client_id (branch_id)')
+        .select('id, total, status, subtotal, monetary_discount, client:client_id (branch_id)')
         .eq('client.branch_id', branchId)
         .in('status', ['sent', 'paid', 'overdue']);
         
@@ -58,9 +58,16 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
         console.error("Error fetching invoice totals:", invoiceTotalError);
       }
       
-      // Calculate the total revenue from all active invoices
+      // Calculate the total revenue from all active invoices (after discounts)
       const totalRevenueFromInvoices = invoicesTotal?.reduce((sum, inv) => sum + (inv.total || 0), 0) || 0;
-      console.log(`Total revenue from all invoices: ${totalRevenueFromInvoices}`);
+      // Calculate the total gross revenue before discounts
+      const totalGrossRevenue = invoicesTotal?.reduce((sum, inv) => sum + (inv.subtotal || 0), 0) || 0;
+      // Calculate total discounts
+      const totalDiscounts = invoicesTotal?.reduce((sum, inv) => sum + (inv.monetary_discount || 0), 0) || 0;
+      
+      console.log(`Total gross revenue before discounts: ${totalGrossRevenue}`);
+      console.log(`Total discounts: ${totalDiscounts}`);
+      console.log(`Total net revenue from all invoices after discounts: ${totalRevenueFromInvoices}`);
       
       // Set up query for confirmed bookings with their class information
       let query = supabase
@@ -179,8 +186,48 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
       // Track unique invoices per class
       const classInvoiceMap = new Map();
       
+      // Track discounts per invoice
+      const invoiceDiscountMap = new Map();
+      
+      // First, collect all invoice discounts
+      branchInvoiceItems.forEach(item => {
+        if (!item.invoices) return;
+        
+        const invoiceId = item.invoice_id;
+        const monetaryDiscount = item.invoices.monetary_discount || 0;
+        
+        // Save discount info for each invoice
+        invoiceDiscountMap.set(invoiceId, {
+          discountAmount: monetaryDiscount,
+          subtotal: item.invoices.subtotal || 0,
+          total: item.invoices.total || 0
+        });
+      });
+      
+      // Now process all items and apply discount proportionally
       branchInvoiceItems.forEach(item => {
         if (!item.booking_id || !item.invoices) return;
+        
+        // Get invoice level data
+        const invoiceId = item.invoice_id;
+        const invoiceData = invoiceDiscountMap.get(invoiceId);
+        const invoiceSubtotal = invoiceData?.subtotal || 0;
+        const invoiceDiscountAmount = invoiceData?.discountAmount || 0;
+        
+        // Calculate discount proportion for this item
+        const itemAmount = item.amount || 0;
+        let itemDiscount = 0;
+        
+        if (invoiceSubtotal > 0 && invoiceDiscountAmount > 0) {
+          // Apply discount proportionally based on this item's contribution to the invoice
+          const proportion = itemAmount / invoiceSubtotal;
+          itemDiscount = proportion * invoiceDiscountAmount;
+        }
+        
+        // Actual revenue after applying proportional discount
+        const actualItemRevenue = Math.max(0, itemAmount - itemDiscount);
+        
+        console.log(`Item ${item.id} for booking ${item.booking_id}: Amount=${itemAmount}, Discount=${itemDiscount.toFixed(2)}, Net=${actualItemRevenue.toFixed(2)}`);
         
         // Initialize booking revenue entry if it doesn't exist
         if (!bookingRevenueMap.has(item.booking_id)) {
@@ -191,7 +238,7 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
         }
         
         const bookingRevenue = bookingRevenueMap.get(item.booking_id);
-        bookingRevenue.totalRevenue += item.amount || 0;
+        bookingRevenue.totalRevenue += actualItemRevenue;
         bookingRevenue.invoiceIds.add(item.invoice_id);
       });
       
@@ -245,6 +292,7 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
         allInvoicesCount: allInvoicesCount || 0,
         invalidInvoicesCount: invalidCount || 0,
         totalRevenue: totalRevenueFromInvoices,
+        totalDiscounts: totalDiscounts,
         classInvoiceMap: Array.from(classInvoiceMap.entries()).map(([className, invoiceIds]) => ({
           className,
           invoiceIds: Array.from(invoiceIds) as string[]  // Fix: Explicitly cast to string[]
@@ -271,6 +319,7 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
       allInvoicesCount,
       invalidInvoicesCount,
       totalRevenue,
+      totalDiscounts,
       classInvoiceMap
     } = financialData;
     
@@ -306,7 +355,7 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
       summary.bookingsCount++;
       summary.totalRevenue += totalRevenue;
 
-      // Calculate fees based on actual revenue
+      // Calculate fees based on actual revenue (after discount)
       if (classData.mckaynine_commission_type === 'percentage') {
         summary.franchiseFee += (totalRevenue * (classData.mckaynine_commission_value / 100));
       } else {
@@ -349,6 +398,7 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
     console.log(`Processed ${sortedFinances.length} class financial summaries`);
     console.log(`Total revenue across classes: ${sortedFinances.reduce((sum, curr) => sum + curr.totalRevenue, 0)}`);
     console.log(`Total invoice revenue: ${totalRevenue}`);
+    console.log(`Total discounts: ${totalDiscounts}`);
     
     setClassFinances(sortedFinances);
   }, [financialData]);
@@ -365,6 +415,7 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
     refreshData,
     totalInvoiceCount,
     invalidInvoicesCount,
-    totalRevenue: financialData?.totalRevenue || 0
+    totalRevenue: financialData?.totalRevenue || 0,
+    totalDiscounts: financialData?.totalDiscounts || 0
   };
 }
