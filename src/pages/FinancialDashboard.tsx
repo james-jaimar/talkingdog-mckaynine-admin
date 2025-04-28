@@ -13,15 +13,15 @@ import { ExpenseBreakdownCards } from "@/components/dashboard/financial/ExpenseB
 
 export default function FinancialDashboard() {
   const [timeframe, setTimeframe] = useState<'monthly' | 'quarterly' | 'yearly'>('monthly');
-  const { invoices, isLoading } = useInvoices();
+  const { invoices } = useInvoices();
   const { currentBranch } = useBranch();
 
-  // Filter out any cancelled invoices and include only sent or paid invoices for revenue calculations
+  // Filter out cancelled invoices and include only sent or paid invoices for revenue calculations
   const activeInvoices = invoices ? invoices.filter(invoice => 
     invoice.status !== 'cancelled' && (invoice.status === 'sent' || invoice.status === 'paid' || invoice.status === 'overdue')
   ) : [];
   
-  // Filter out only paid invoices for fee calculations
+  // Filter out only paid invoices for fee calculations to ensure accuracy
   const paidInvoices = activeInvoices.filter(invoice => invoice.status === 'paid');
   
   // Calculate financial metrics from filtered invoice data
@@ -35,9 +35,22 @@ export default function FinancialDashboard() {
   };
 
   // Calculate fees based on actual invoice values
-  const totalAdmin = paidInvoices.reduce((sum, inv) => sum + (inv.admin_fee || inv.total * 0.10), 0);
-  const totalTrainer = paidInvoices.reduce((sum, inv) => sum + (inv.trainer_fee || inv.total * 0.40), 0);
-  const totalFranchise = paidInvoices.reduce((sum, inv) => sum + (inv.franchise_fee || inv.total * 0.15), 0);
+  const totalAdmin = paidInvoices.reduce((sum, inv) => {
+    const adminFee = inv.admin_fee || 0;
+    return sum + adminFee;
+  }, 0);
+
+  const totalTrainer = paidInvoices.reduce((sum, inv) => {
+    const trainerFee = inv.trainer_fee || 0;
+    return sum + trainerFee;
+  }, 0);
+
+  const totalFranchise = paidInvoices.reduce((sum, inv) => {
+    const franchiseFee = inv.franchise_fee || 0;
+    return sum + franchiseFee;
+  }, 0);
+
+  // Calculate profit from actual collected revenue minus all fees
   const totalFees = totalAdmin + totalTrainer + totalFranchise;
   const profit = financialMetrics.collectedRevenue - totalFees;
 

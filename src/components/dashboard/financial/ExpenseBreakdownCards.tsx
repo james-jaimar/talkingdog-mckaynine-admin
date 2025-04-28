@@ -4,9 +4,9 @@ import { formatCurrency, formatPercentage } from "@/lib/formatters";
 
 interface ExpenseBreakdownCardsProps {
   totalAdmin: number;
-  totalTrainer: number; // Will display as Handler Fee
+  totalTrainer: number; // Renamed from totalHandler
   totalFranchise: number;
-  profit?: number; // Added profit property
+  profit?: number;
   totalRevenue: number;
 }
 
@@ -14,10 +14,16 @@ export function ExpenseBreakdownCards({
   totalAdmin,
   totalTrainer,
   totalFranchise,
-  profit = 0, // Default to 0 if not provided
+  profit = 0,
   totalRevenue,
 }: ExpenseBreakdownCardsProps) {
-  const safeTotal = totalRevenue > 0 ? totalRevenue : 1;
+  // Only calculate percentages if there's revenue to avoid division by zero
+  const safeTotal = totalRevenue || 1;
+  const adminPercent = (totalAdmin / safeTotal) * 100;
+  const trainerPercent = (totalTrainer / safeTotal) * 100;
+  const franchisePercent = (totalFranchise / safeTotal) * 100;
+  const profitPercent = (profit / safeTotal) * 100;
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
       <Card>
@@ -32,7 +38,7 @@ export function ExpenseBreakdownCards({
               {formatCurrency(totalAdmin)}
             </span>
             <span className="ml-2 text-xs text-muted-foreground">
-              ({formatPercentage(totalAdmin / safeTotal)} of revenue)
+              ({formatPercentage(adminPercent / 100)} of revenue)
             </span>
           </div>
         </CardContent>
@@ -40,7 +46,7 @@ export function ExpenseBreakdownCards({
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium">
-            Handler Fee
+            Trainer Fee
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -49,7 +55,7 @@ export function ExpenseBreakdownCards({
               {formatCurrency(totalTrainer)}
             </span>
             <span className="ml-2 text-xs text-muted-foreground">
-              ({formatPercentage(totalTrainer / safeTotal)} of revenue)
+              ({formatPercentage(trainerPercent / 100)} of revenue)
             </span>
           </div>
         </CardContent>
@@ -66,7 +72,7 @@ export function ExpenseBreakdownCards({
               {formatCurrency(totalFranchise)}
             </span>
             <span className="ml-2 text-xs text-muted-foreground">
-              ({formatPercentage(totalFranchise / safeTotal)} of revenue)
+              ({formatPercentage(franchisePercent / 100)} of revenue)
             </span>
           </div>
         </CardContent>
@@ -83,7 +89,7 @@ export function ExpenseBreakdownCards({
               {formatCurrency(profit)}
             </span>
             <span className="ml-2 text-xs text-muted-foreground">
-              ({formatPercentage(profit / safeTotal)} of revenue)
+              ({formatPercentage(profitPercent / 100)} of revenue)
             </span>
           </div>
         </CardContent>
