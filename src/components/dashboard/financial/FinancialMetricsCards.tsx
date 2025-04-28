@@ -16,6 +16,7 @@ interface FinancialMetricsCardsProps {
 
 export function FinancialMetricsCards({ metrics }: FinancialMetricsCardsProps) {
   // Always use totalRevenue as the denominator for percentage calculations
+  // Safety check to avoid division by zero
   const totalForPercentage = metrics.totalRevenue > 0 ? metrics.totalRevenue : 1;
     
   const collectedPercentage = metrics.collectedRevenue / totalForPercentage;
@@ -41,6 +42,9 @@ export function FinancialMetricsCards({ metrics }: FinancialMetricsCardsProps) {
       `Difference: ${(1 - sumOfPercentages) * 100}%`
     );
   }
+
+  // Log metrics for debugging
+  console.log("Financial metrics for cards:", metrics);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">

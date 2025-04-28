@@ -10,7 +10,7 @@ import {
   Tooltip,
   ResponsiveContainer
 } from "recharts";
-import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
+import { format, subMonths, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
 import { Invoice } from "@/hooks/invoices/types";
 import { useInvoices } from "@/hooks/useInvoices";
 import { formatCurrency } from "@/lib/formatters";
@@ -18,11 +18,13 @@ import { formatCurrency } from "@/lib/formatters";
 interface InvoiceRevenueChartProps {
   invoices?: Invoice[];
   timeframe: 'monthly' | 'quarterly' | 'yearly';
+  termDateRange?: { startDate: string; endDate: string; } | null;
 }
 
 export function InvoiceRevenueChart({
   invoices: propsInvoices,
-  timeframe
+  timeframe,
+  termDateRange
 }: InvoiceRevenueChartProps) {
   // If invoices aren't passed as props, fetch them
   const { invoices: fetchedInvoices } = useInvoices();
@@ -32,10 +34,23 @@ export function InvoiceRevenueChart({
   const validInvoices = invoices?.filter(invoice => 
     invoice.status === 'sent' || invoice.status === 'paid' || invoice.status === 'overdue'
   ) || [];
+  
+  // Filter by term date range if provided
+  const filteredInvoices = useMemo(() => {
+    if (!termDateRange) return validInvoices;
+    
+    return validInvoices.filter(invoice => {
+      const invoiceDate = new Date(invoice.issued_date);
+      const startDate = new Date(termDateRange.startDate);
+      const endDate = new Date(termDateRange.endDate);
+      
+      return isWithinInterval(invoiceDate, { start: startDate, end: endDate });
+    });
+  }, [validInvoices, termDateRange]);
 
   // Generate chart data based on timeframe
   const chartData = useMemo(() => {
-    if (!validInvoices.length) return [];
+    if (!filteredInvoices.length) return [];
 
     // Get the time range based on timeframe
     const now = new Date();
@@ -75,7 +90,7 @@ export function InvoiceRevenueChart({
           : yearLabel;
       
       // Calculate revenue for this period
-      const periodInvoices = validInvoices.filter(invoice => {
+      const periodInvoices = filteredInvoices.filter(invoice => {
         const invoiceDate = new Date(invoice.issued_date);
         return invoiceDate >= startDate && invoiceDate <= endDate;
       });
@@ -94,7 +109,7 @@ export function InvoiceRevenueChart({
     
     // For quarterly and yearly views, consolidate the data points
     if (timeframe !== 'monthly') {
-      const consolidatedData = {};
+      const consolidatedData: Record<string, {name: string; revenue: number; paidRevenue: number}> = {};
       
       dataPoints.forEach(point => {
         if (!consolidatedData[point.name]) {
@@ -113,7 +128,7 @@ export function InvoiceRevenueChart({
     }
     
     return dataPoints;
-  }, [validInvoices, timeframe]);
+  }, [filteredInvoices, timeframe]);
 
   // Custom tooltip
   const CustomTooltip = ({ active, payload, label }: any) => {

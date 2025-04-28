@@ -1,4 +1,3 @@
-
 import { useState, useMemo } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { 
@@ -35,6 +34,12 @@ export function RevenueAllocationChart({
   const { chartData, activeItems, totalRevenue } = useMemo(() => {
     // If fees are directly provided, use them
     if (fees && propsRevenue) {
+      // Log the fees and total revenue used for the chart
+      console.log("Using direct fee data for revenue allocation chart:", {
+        fees,
+        totalRevenue: propsRevenue
+      });
+      
       return {
         chartData: [
           { name: 'Admin Fee', value: fees.adminFee },
@@ -139,12 +144,13 @@ export function RevenueAllocationChart({
     const totalFees = adminFee + trainerFee + franchiseFee;
     const profit = total - totalFees;
     
-    console.log("Chart allocation data:", {
+    console.log("Chart allocation data calculated from invoices:", {
       adminFee,
       trainerFee,
       franchiseFee,
       profit,
-      totalRevenue: total
+      totalRevenue: total,
+      invoiceCount: filteredInvoices.length
     });
     
     return {
@@ -224,6 +230,8 @@ export function RevenueAllocationChart({
     }
     return null;
   };
+  
+  // Keep the rest of the existing code
   
   return (
     <Card>
