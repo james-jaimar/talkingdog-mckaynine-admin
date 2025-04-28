@@ -28,43 +28,82 @@ export default function FinancialReports() {
   
   // Default to 'financial' tab
   const [activeTab, setActiveTab] = useState('financial');
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
-  // Initial data load - Using a more efficient approach
+  // Initial data load with forced refresh
   useEffect(() => {
-    if (currentBranch) {
-      // Silent refresh without excessive logging
-      const initialLoad = async () => {
-        await refreshFinancialData(false); // Don't show toast on initial load
+    const loadData = async () => {
+      if (currentBranch) {
+        // Always do a complete refresh when component is mounted
+        await queryClient.resetQueries({ queryKey: ['financial-bookings'] });
+        await queryClient.resetQueries({ queryKey: ['invoices'] });
+        
+        // Force a full refresh of all financial data
+        await refreshAllInvoiceQueries();
+        
+        // Then refresh financial-bookings queries specifically
+        await queryClient.refetchQueries({ 
+          queryKey: ['financial-bookings'],
+          type: 'all'
+        });
+        
+        setIsInitialLoad(false);
+      }
+    };
+    
+    loadData();
+    
+    // Clean up function to reset stale flags
+    return () => {
+      queryClient.setQueryDefaults(['financial-bookings'], {
+        staleTime: 5000 // Reset to default stale time when component unmounts
+      });
+    };
+  }, [currentBranch, queryClient, refreshAllInvoiceQueries]);
+
+  // Force refresh when date range changes
+  useEffect(() => {
+    if (!isInitialLoad && currentBranch && dateRange.from && dateRange.to) {
+      const refreshOnDateChange = async () => {
+        // Reset queries with the old date range
+        await queryClient.resetQueries({ queryKey: ['financial-bookings'] });
+      
+        // Then force a refresh with the new date range
+        await refreshFinancialData(false);
       };
       
-      initialLoad();
+      refreshOnDateChange();
     }
-  }, [currentBranch]); 
-
-  // Handle date range changes more efficiently
-  useEffect(() => {
-    if (currentBranch && dateRange.from && dateRange.to) {
-      // Only reset data when date range changes
-      queryClient.removeQueries({ 
-        queryKey: ['financial-bookings', currentBranch.id],
-        exact: false
-      });
-      
-      refreshFinancialData(false); // Silent refresh
-    }
-  }, [currentBranch, dateRange]);
+  }, [dateRange, currentBranch, isInitialLoad, queryClient]);
 
   // Function to refresh all financial data
   const refreshFinancialData = async (showToast = true) => {
-    // Invalidate core queries only
-    await queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
-    await queryClient.invalidateQueries({ queryKey: ['invoices'] });
+    if (!currentBranch) return;
     
-    // Refresh invoice data
-    await refreshAllInvoiceQueries();
-    
-    if (showToast) {
-      toast.success("Financial data refreshed");
+    try {
+      // Completely reset the cache for these queries
+      await queryClient.resetQueries({ queryKey: ['financial-bookings'] });
+      await queryClient.resetQueries({ queryKey: ['invoices'] });
+      
+      // Ensure invoices are refreshed
+      await refreshAllInvoiceQueries();
+      
+      // Force refetch of financial data with the current parameters
+      await queryClient.refetchQueries({ 
+        queryKey: ['financial-bookings', currentBranch.id, 
+                  dateRange.from.toISOString(), 
+                  dateRange.to.toISOString()],
+        type: 'all'
+      });
+      
+      if (showToast) {
+        toast.success("Financial data refreshed");
+      }
+    } catch (error) {
+      console.error("Error refreshing financial data:", error);
+      if (showToast) {
+        toast.error("Failed to refresh data");
+      }
     }
   };
 
@@ -77,9 +116,11 @@ export default function FinancialReports() {
   };
   
   const handleTabChange = (value: string) => {
-    // Avoid excessive invalidation on tab change
     if (value !== activeTab) {
       setActiveTab(value);
+      
+      // Refresh data when changing tabs
+      refreshFinancialData(false);
     }
   };
 

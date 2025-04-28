@@ -6,10 +6,10 @@ export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       refetchOnWindowFocus: false, // Reduce automatic refetches
-      staleTime: 1000 * 60, // Increased to 1 minute to reduce fetching
+      staleTime: 5000, // Reduced to 5 seconds for financial data to stay fresher
       retry: 1,
       refetchOnReconnect: true,
-      refetchOnMount: true, // Changed from 'always' to reduce refetches
+      refetchOnMount: 'always', // Always refetch on mount to ensure fresh data
       gcTime: 1000 * 60 * 5, // 5 minutes for garbage collection
     },
     mutations: {

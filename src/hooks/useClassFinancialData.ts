@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useFinancialQuery } from "./financial/useFinancialQuery";
 import { useFinancialProcessor } from "./financial/useFinancialProcessor";
 import type { UseFinancialDataReturn, FinancialData } from "./financial/types";
+import { useEffect } from "react";
 
 /**
  * Hook for retrieving and processing financial data for classes
@@ -14,6 +15,15 @@ export function useClassFinancialData(
   toDate?: string
 ): UseFinancialDataReturn {
   const queryClient = useQueryClient();
+  
+  // Force refresh financial data on mount to ensure we have fresh data
+  useEffect(() => {
+    if (branchId) {
+      // Only invalidate on the first render, not on every parameter change
+      queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+    }
+  }, [branchId, queryClient]); // Only run when branchId changes, not on every render
   
   const { 
     data: financialData,
@@ -32,19 +42,16 @@ export function useClassFinancialData(
    */
   const refreshData = async () => {
     // Invalidate key queries
-    const invalidationResults = await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ['financial-bookings'] }),
-      queryClient.invalidateQueries({ queryKey: ['invoices'] })
-    ]);
+    await queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
+    await queryClient.invalidateQueries({ queryKey: ['invoices'] });
     
-    // Force a refetch of the current data
+    // Force a complete refetch of all financial data
     const refetchResults = await queryClient.refetchQueries({ 
-      queryKey: ['financial-bookings', branchId, fromDate, toDate],
-      exact: true
+      queryKey: ['financial-bookings'],
+      type: 'all'
     });
     
-    // Return combined results
-    return [...invalidationResults, refetchResults];
+    return refetchResults;
   };
 
   return {

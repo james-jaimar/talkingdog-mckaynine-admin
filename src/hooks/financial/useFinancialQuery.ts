@@ -163,8 +163,8 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
       } as FinancialData;
     },
     enabled: !!branchId,
-    staleTime: 60000, // 1 minute stale time for better performance
-    refetchOnWindowFocus: false, // Reduce excessive refetches
-    gcTime: 10 * 60 * 1000,
+    staleTime: 5000, // Reduced to 5 seconds for fresher data
+    refetchOnWindowFocus: true, // Enable refetch on window focus for financial data
+    gcTime: 10 * 60 * 1000, // 10 minutes before garbage collection
   });
 }
