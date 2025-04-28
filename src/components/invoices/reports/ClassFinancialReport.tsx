@@ -2,7 +2,7 @@
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, RefreshCw, AlertTriangle } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useBranch } from "@/context/BranchContext";
 import { useClassFinancialData } from "@/hooks/useClassFinancialData";
 import { ClassFinancialTable } from "./ClassFinancialTable";
@@ -19,36 +19,14 @@ export function ClassFinancialReport({ dateRange, onRefreshSuccess }: ClassFinan
   const { currentBranch } = useBranch();
   const [refreshing, setRefreshing] = useState(false);
   const queryClient = useQueryClient();
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const attemptCountRef = useRef(0);
+  const maxRefreshAttempts = 3;
   
   const fromDate = dateRange?.from?.toISOString();
   const toDate = dateRange?.to?.toISOString();
 
-  // Force initial data fetch on mount and when parameters change
-  useEffect(() => {
-    const refreshData = async () => {
-      // Clear all caches related to financial data
-      await queryClient.invalidateQueries({ queryKey: ['invoices'] });
-      await queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
-      
-      // Force reset to clear cache entirely
-      await queryClient.resetQueries({ 
-        queryKey: ['financial-bookings', currentBranch?.id, fromDate, toDate],
-        exact: true
-      });
-      
-      // Force refetch to get fresh data
-      await queryClient.refetchQueries({ 
-        queryKey: ['financial-bookings', currentBranch?.id, fromDate, toDate],
-        type: 'active',
-        exact: true
-      });
-    };
-    
-    if (currentBranch?.id) {
-      refreshData();
-    }
-  }, [currentBranch?.id, fromDate, toDate, queryClient]);
-
+  // Get financial data with the current parameters
   const { 
     classFinances, 
     isLoading, 
@@ -62,6 +40,41 @@ export function ClassFinancialReport({ dateRange, onRefreshSuccess }: ClassFinan
     fromDate,
     toDate
   );
+  
+  // Safety mechanism to exit loading state after a timeout
+  useEffect(() => {
+    if (isLoading && !refreshing) {
+      timeoutRef.current = setTimeout(() => {
+        if (attemptCountRef.current < maxRefreshAttempts) {
+          attemptCountRef.current += 1;
+          console.log(`Still loading after timeout, attempt ${attemptCountRef.current} of ${maxRefreshAttempts}`);
+          
+          // Try refreshing data again
+          refreshData().catch(console.error);
+        } else {
+          console.error("Maximum refresh attempts reached, data may be stale");
+          toast.error("Unable to load fresh data after multiple attempts");
+        }
+      }, 10000); // 10 seconds timeout
+    } else {
+      // Clear the timeout when loading completes
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+      
+      // Reset attempt counter when loading completes successfully
+      if (!isLoading && attemptCountRef.current > 0) {
+        attemptCountRef.current = 0;
+      }
+    }
+    
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, [isLoading, refreshing, refreshData]);
 
   // Calculate summary statistics
   const classesTotalRevenue = classFinances.reduce((sum, item) => sum + item.totalRevenue, 0);
@@ -74,23 +87,27 @@ export function ClassFinancialReport({ dateRange, onRefreshSuccess }: ClassFinan
   const discrepancyAmount = directTotalRevenue - classesTotalRevenue;
 
   const handleRefresh = async () => {
+    if (refreshing) return;
+    
     setRefreshing(true);
+    attemptCountRef.current = 0;
     
     try {
-      // First invalidate all related queries
-      await queryClient.invalidateQueries({ queryKey: ['invoices'] });
-      await queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
-      await queryClient.invalidateQueries({ queryKey: ['classes-list-data'] });
-      
-      // Reset cache completely for financial data
+      // First reset all queries to clear caches completely
       await queryClient.resetQueries({ 
         queryKey: ['financial-bookings', currentBranch?.id, fromDate, toDate],
-        exact: true
+        exact: true 
+      });
+      
+      await queryClient.resetQueries({ 
+        queryKey: ['invoices'],
+        exact: false
       });
       
       // Then refresh the data
       await refreshData();
       
+      // Notify of success
       if (onRefreshSuccess) {
         onRefreshSuccess();
       } else {
@@ -100,12 +117,21 @@ export function ClassFinancialReport({ dateRange, onRefreshSuccess }: ClassFinan
       console.error("Error refreshing financial data:", error);
       toast.error("Failed to refresh financial data");
     } finally {
-      // Reset refreshing state
-      setTimeout(() => setRefreshing(false), 1000);
+      // Reset refreshing state after a short delay for UX
+      setTimeout(() => setRefreshing(false), 500);
     }
   };
 
-  if (isLoading) {
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
+
+  if (isLoading || refreshing) {
     return (
       <Card className="w-full">
         <CardHeader className="flex flex-row items-center justify-between">
@@ -113,7 +139,6 @@ export function ClassFinancialReport({ dateRange, onRefreshSuccess }: ClassFinan
           <Button 
             variant="outline" 
             size="sm" 
-            onClick={handleRefresh}
             disabled={true}
           >
             <Loader2 className="h-4 w-4 mr-2 animate-spin" />

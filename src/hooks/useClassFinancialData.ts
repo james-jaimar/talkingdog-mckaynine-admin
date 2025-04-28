@@ -3,11 +3,12 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useFinancialQuery } from "./financial/useFinancialQuery";
 import { useFinancialProcessor } from "./financial/useFinancialProcessor";
 import type { UseFinancialDataReturn, FinancialData } from "./financial/types";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 /**
  * Hook for retrieving and processing financial data for classes
- * Optimized to reduce excessive logs and improve data fetching efficiency
+ * Fixed to properly handle cache invalidation and prevent spinner issues
  */
 export function useClassFinancialData(
   branchId?: string,
@@ -15,19 +16,37 @@ export function useClassFinancialData(
   toDate?: string
 ): UseFinancialDataReturn {
   const queryClient = useQueryClient();
+  const [isRefreshing, setIsRefreshing] = useState(false);
   
-  // Force refresh financial data on mount to ensure we have fresh data
+  // Only invalidate queries on mount, not on every parameter change
   useEffect(() => {
     if (branchId) {
-      // Only invalidate on the first render, not on every parameter change
-      queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
-      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      const warmCache = async () => {
+        try {
+          // Prefetch data without invalidating on first load
+          await queryClient.prefetchQuery({
+            queryKey: ['financial-bookings', branchId, fromDate, toDate],
+          });
+        } catch (error) {
+          console.error("Error warming cache:", error);
+        }
+      };
+      
+      warmCache();
     }
-  }, [branchId, queryClient]); // Only run when branchId changes, not on every render
+    
+    // Clean up function to reset query options
+    return () => {
+      queryClient.setQueryDefaults(['financial-bookings'], {
+        staleTime: 30000,
+      });
+    };
+  }, [branchId, queryClient, fromDate, toDate]);
   
   const { 
     data: financialData,
-    isLoading
+    isLoading,
+    refetch
   } = useFinancialQuery(branchId, fromDate, toDate);
 
   const {
@@ -37,27 +56,46 @@ export function useClassFinancialData(
   } = useFinancialProcessor(financialData as FinancialData);
 
   /**
-   * Refreshes financial data by invalidating caches and triggering refetches
-   * Returns the results of the refetch operation to match the expected return type
+   * Refreshes financial data by properly invalidating caches and triggering refetches
+   * Fixed to properly handle promise resolution and prevent spinner issues
    */
   const refreshData = async (): Promise<unknown[]> => {
-    // Invalidate key queries
-    await queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
-    await queryClient.invalidateQueries({ queryKey: ['invoices'] });
+    setIsRefreshing(true);
     
-    // Force a complete refetch of all financial data
-    const refetchResults = await queryClient.refetchQueries({ 
-      queryKey: ['financial-bookings'],
-      type: 'all'
-    });
-    
-    // Ensure we always return an array to match the expected return type
-    return Array.isArray(refetchResults) ? refetchResults : [refetchResults];
+    try {
+      // Reset queries first to clear all caches
+      await queryClient.resetQueries({ 
+        queryKey: ['financial-bookings', branchId, fromDate, toDate],
+        exact: true
+      });
+      
+      // Then reset invoices cache
+      await queryClient.resetQueries({ 
+        queryKey: ['invoices'],
+        exact: false
+      });
+      
+      // Force a complete refetch of financial data
+      const results = await refetch();
+      
+      // Set timeout to ensure UI updates even if refetch is slow
+      setTimeout(() => {
+        setIsRefreshing(false);
+      }, 500);
+      
+      // Properly transform the result to match the expected return type
+      return Array.isArray(results) ? results : [results];
+    } catch (error) {
+      console.error("Error refreshing financial data:", error);
+      toast.error("Failed to refresh financial data");
+      setIsRefreshing(false);
+      return [];
+    }
   };
 
   return {
     classFinances,
-    isLoading,
+    isLoading: isLoading || isRefreshing,
     refreshData,
     totalInvoiceCount,
     invalidInvoicesCount,

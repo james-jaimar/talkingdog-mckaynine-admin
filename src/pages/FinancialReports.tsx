@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Helmet } from "react-helmet";
 import { useInvoices } from "@/hooks/useInvoices";
@@ -13,6 +13,7 @@ import { startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { TrainerReportsTab } from "@/components/invoices/reports/TrainerReportsTab";
+import { Loader2 } from "lucide-react";
 
 export default function FinancialReports() {
   const queryClient = useQueryClient();
@@ -28,73 +29,139 @@ export default function FinancialReports() {
   
   // Default to 'financial' tab
   const [activeTab, setActiveTab] = useState('financial');
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+  const [dataInitialized, setDataInitialized] = useState(false);
+  const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Initial data load with forced refresh
+  // Initial data load with smart cache management
   useEffect(() => {
     const loadData = async () => {
       if (currentBranch) {
-        // Always do a complete refresh when component is mounted
-        await queryClient.resetQueries({ queryKey: ['financial-bookings'] });
-        await queryClient.resetQueries({ queryKey: ['invoices'] });
+        setIsLoading(true);
         
-        // Force a full refresh of all financial data
-        await refreshAllInvoiceQueries();
-        
-        // Then refresh financial-bookings queries specifically
-        await queryClient.refetchQueries({ 
-          queryKey: ['financial-bookings'],
-          type: 'all'
-        });
-        
-        setIsInitialLoad(false);
+        try {
+          // Set a loading timeout
+          loadingTimeoutRef.current = setTimeout(() => {
+            setIsLoading(false);
+          }, 15000); // Force exit loading state after 15 seconds
+          
+          // Prepare query keys with date parameters
+          const queryKey = [
+            'financial-bookings', 
+            currentBranch.id,
+            dateRange.from.toISOString(),
+            dateRange.to.toISOString()
+          ];
+          
+          // Reset queries for this specific query key only
+          await queryClient.resetQueries({ 
+            queryKey, 
+            exact: true 
+          });
+          
+          // Force fresh fetch for financial data
+          await queryClient.fetchQuery({
+            queryKey,
+            staleTime: 30000, // 30 seconds
+          });
+          
+          // Also refresh invoice data
+          await refreshAllInvoiceQueries();
+          
+          setDataInitialized(true);
+        } catch (error) {
+          console.error("Error initializing financial data:", error);
+          toast.error("Failed to load financial data");
+        } finally {
+          setIsLoading(false);
+          
+          // Clear loading timeout
+          if (loadingTimeoutRef.current) {
+            clearTimeout(loadingTimeoutRef.current);
+            loadingTimeoutRef.current = null;
+          }
+        }
       }
     };
     
     loadData();
     
-    // Clean up function to reset stale flags
+    // Clean up function to clear timeouts and reset state
     return () => {
-      queryClient.setQueryDefaults(['financial-bookings'], {
-        staleTime: 5000 // Reset to default stale time when component unmounts
-      });
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+      }
     };
   }, [currentBranch, queryClient, refreshAllInvoiceQueries]);
 
-  // Force refresh when date range changes
-  useEffect(() => {
-    if (!isInitialLoad && currentBranch && dateRange.from && dateRange.to) {
-      const refreshOnDateChange = async () => {
-        // Reset queries with the old date range
-        await queryClient.resetQueries({ queryKey: ['financial-bookings'] });
-      
-        // Then force a refresh with the new date range
-        await refreshFinancialData(false);
-      };
-      
-      refreshOnDateChange();
+  // Memoized handler for date range changes
+  const handleDateRangeChange = useCallback((range: { from: Date; to?: Date }) => {
+    setDateRange({
+      from: range.from,
+      to: range.to || endOfMonth(new Date())
+    });
+    
+    // Set loading state and clear after timeout
+    setIsLoading(true);
+    
+    // Set a timeout to clear loading state in case it gets stuck
+    if (loadingTimeoutRef.current) {
+      clearTimeout(loadingTimeoutRef.current);
     }
-  }, [dateRange, currentBranch, isInitialLoad, queryClient]);
+    
+    loadingTimeoutRef.current = setTimeout(() => {
+      setIsLoading(false);
+    }, 10000); // Force exit loading state after 10 seconds
+  }, []);
+  
+  // Handle tab changes with debounce
+  const handleTabChange = useCallback((value: string) => {
+    if (value !== activeTab) {
+      setActiveTab(value);
+    }
+  }, [activeTab]);
 
-  // Function to refresh all financial data
-  const refreshFinancialData = async (showToast = true) => {
+  // Reset loading state after date change
+  useEffect(() => {
+    if (dataInitialized) {
+      // Delay to allow queries to execute
+      const timer = setTimeout(() => {
+        setIsLoading(false);
+      }, 1000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [dateRange, dataInitialized]);
+
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Memoized refresh handler
+  const refreshFinancialData = useCallback(async (showToast = true) => {
     if (!currentBranch) return;
     
+    setIsLoading(true);
+    
     try {
-      // Completely reset the cache for these queries
-      await queryClient.resetQueries({ queryKey: ['financial-bookings'] });
-      await queryClient.resetQueries({ queryKey: ['invoices'] });
-      
-      // Ensure invoices are refreshed
-      await refreshAllInvoiceQueries();
-      
-      // Force refetch of financial data with the current parameters
-      await queryClient.refetchQueries({ 
-        queryKey: ['financial-bookings', currentBranch.id, 
-                  dateRange.from.toISOString(), 
-                  dateRange.to.toISOString()],
-        type: 'all'
+      // Reset queries for the current date range
+      await queryClient.resetQueries({ 
+        queryKey: [
+          'financial-bookings', 
+          currentBranch.id,
+          dateRange.from.toISOString(),
+          dateRange.to.toISOString()
+        ],
+        exact: true 
       });
+      
+      // Refresh invoice data
+      await refreshAllInvoiceQueries();
       
       if (showToast) {
         toast.success("Financial data refreshed");
@@ -104,25 +171,10 @@ export default function FinancialReports() {
       if (showToast) {
         toast.error("Failed to refresh data");
       }
+    } finally {
+      setIsLoading(false);
     }
-  };
-
-  // Handle date range changes
-  const handleDateRangeChange = (range: { from: Date; to?: Date }) => {
-    setDateRange({
-      from: range.from,
-      to: range.to || endOfMonth(new Date())
-    });
-  };
-  
-  const handleTabChange = (value: string) => {
-    if (value !== activeTab) {
-      setActiveTab(value);
-      
-      // Refresh data when changing tabs
-      refreshFinancialData(false);
-    }
-  };
+  }, [currentBranch, dateRange, queryClient, refreshAllInvoiceQueries]);
 
   return (
     <RequireAdmin>
@@ -136,9 +188,18 @@ export default function FinancialReports() {
             <h1 className="text-3xl font-bold">Financial Reports</h1>
             <DateRangePicker 
               dateRange={dateRange} 
-              onDateRangeChange={handleDateRangeChange} 
+              onDateRangeChange={handleDateRangeChange}
+              isLoading={isLoading}
+              disabled={isLoading}
             />
           </div>
+
+          {isLoading && !dataInitialized && (
+            <div className="flex items-center justify-center p-12">
+              <Loader2 className="h-8 w-8 animate-spin mr-2" />
+              <p className="text-lg">Loading financial data...</p>
+            </div>
+          )}
 
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
             <TabsList className="mb-4">
