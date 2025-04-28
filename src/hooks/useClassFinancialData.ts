@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,7 +11,7 @@ export interface ClassFinance {
   instructorFee: number;
   profit: number;
   invoiceCount: number;
-  sourceType?: 'class'; // Simplified to just class type
+  sourceType?: 'class' | 'general'; // Updated to exclude 'unallocated'
   invoiceIds?: string[];
 }
 
@@ -312,7 +311,7 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
         instructorFee: 0,
         profit: 0,
         invoiceCount: 0,
-        sourceType: 'class',
+        sourceType: 'class', // Only using 'class' as the source type now
         invoiceIds: []
       };
 
