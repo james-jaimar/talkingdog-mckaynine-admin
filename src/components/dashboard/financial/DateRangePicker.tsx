@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Calendar } from "lucide-react";
 import { format, isSameDay } from 'date-fns';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -21,6 +21,9 @@ interface DateRangePickerProps {
 export function DateRangePicker({ dateRange, onDateRangeChange, className }: DateRangePickerProps) {
   const [date, setDate] = useState<DateRange>(dateRange);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  
+  // Use ref to prevent unnecessary re-renders and updates
+  const previousRangeRef = useRef<string>("");
 
   // Update local state when props change
   useEffect(() => {
@@ -35,11 +38,20 @@ export function DateRangePicker({ dateRange, onDateRangeChange, className }: Dat
     return `${format(date.from, "MMM d, yyyy")} - ${format(date.to, "MMM d, yyyy")}`;
   };
 
-  // Handle selection complete
+  // Handle selection complete with debouncing to prevent excessive updates
   const handleSelection = (range: DateRange) => {
     setDate(range);
+    
+    // Only trigger the callback if both dates are selected and changed
     if (range.from && range.to) {
-      onDateRangeChange(range);
+      const newRangeString = `${range.from.getTime()}-${range.to.getTime()}`;
+      
+      // Skip if same range selected
+      if (previousRangeRef.current !== newRangeString) {
+        previousRangeRef.current = newRangeString;
+        onDateRangeChange(range);
+      }
+      
       setIsCalendarOpen(false);
     }
   };

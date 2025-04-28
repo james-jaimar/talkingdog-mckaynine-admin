@@ -24,73 +24,52 @@ export default function FinancialReports() {
   });
   
   const { currentBranch } = useBranch();
-  const { invoices, isLoading, refreshAllInvoiceQueries } = useInvoices();
+  const { refreshAllInvoiceQueries } = useInvoices();
   
   // Default to 'financial' tab
   const [activeTab, setActiveTab] = useState('financial');
 
-  // Clear all caches on first render to ensure fresh data
-  useEffect(() => {
-    const clearAllCaches = async () => {
-      console.log("FinancialReports: Initial mount - clearing all caches");
-      
-      // Invalidate all queries to clear stale data
-      await queryClient.invalidateQueries({ queryKey: ['invoices'] });
-      await queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
-      
-      // Reset queries to clear cache completely
-      await queryClient.resetQueries({ queryKey: ['financial-bookings'] });
-      await queryClient.resetQueries({ queryKey: ['classes-list-data'] });
-      await queryClient.resetQueries({ queryKey: ['trainer-payments'] });
-      
-      // Force a refresh after clearing cache
-      await refreshFinancialData();
-    };
-    
-    clearAllCaches();
-  }, []); 
-
-  // Refresh data when component mounts, branch changes or date range changes
+  // Initial data load - Using a more efficient approach
   useEffect(() => {
     if (currentBranch) {
-      console.log("Financial Reports: Branch or date range changed, refreshing data");
-      refreshFinancialData();
+      // Silent refresh without excessive logging
+      const initialLoad = async () => {
+        await refreshFinancialData(false); // Don't show toast on initial load
+      };
+      
+      initialLoad();
+    }
+  }, [currentBranch]); 
+
+  // Handle date range changes more efficiently
+  useEffect(() => {
+    if (currentBranch && dateRange.from && dateRange.to) {
+      // Only reset data when date range changes
+      queryClient.removeQueries({ 
+        queryKey: ['financial-bookings', currentBranch.id],
+        exact: false
+      });
+      
+      refreshFinancialData(false); // Silent refresh
     }
   }, [currentBranch, dateRange]);
 
   // Function to refresh all financial data
-  const refreshFinancialData = async () => {
-    // Invalidate all relevant queries first
+  const refreshFinancialData = async (showToast = true) => {
+    // Invalidate core queries only
     await queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
-    await queryClient.invalidateQueries({ queryKey: ['classes-list-data'] });
-    await queryClient.invalidateQueries({ queryKey: ['trainer-payments'] });
+    await queryClient.invalidateQueries({ queryKey: ['invoices'] });
     
-    // Reset queries to clear cache
-    await queryClient.resetQueries({ 
-      queryKey: ['financial-bookings', currentBranch?.id],
-      exact: false
-    });
-    
-    // Then refresh invoice data
+    // Refresh invoice data
     await refreshAllInvoiceQueries();
     
-    // Immediately refetch to get fresh data
-    await queryClient.refetchQueries({ 
-      queryKey: ['financial-bookings'],
-      type: 'all'
-    });
-    
-    toast.success("Financial data refreshed");
+    if (showToast) {
+      toast.success("Financial data refreshed");
+    }
   };
 
   // Handle date range changes
   const handleDateRangeChange = (range: { from: Date; to?: Date }) => {
-    // Clear cache when date range changes
-    queryClient.removeQueries({ 
-      queryKey: ['financial-bookings', currentBranch?.id],
-      exact: false
-    });
-    
     setDateRange({
       from: range.from,
       to: range.to || endOfMonth(new Date())
@@ -98,13 +77,10 @@ export default function FinancialReports() {
   };
   
   const handleTabChange = (value: string) => {
-    // Clear cache when switching tabs
-    queryClient.invalidateQueries({ 
-      queryKey: ['financial-bookings'],
-      exact: false
-    });
-    
-    setActiveTab(value);
+    // Avoid excessive invalidation on tab change
+    if (value !== activeTab) {
+      setActiveTab(value);
+    }
   };
 
   return (
@@ -134,11 +110,7 @@ export default function FinancialReports() {
               <div className="space-y-6">
                 <ClassFinancialReport 
                   dateRange={dateRange} 
-                  onRefreshSuccess={() => {
-                    queryClient.refetchQueries({ queryKey: ['invoices'] });
-                    queryClient.refetchQueries({ queryKey: ['financial-bookings'] });
-                    toast.success("Financial data refreshed");
-                  }} 
+                  onRefreshSuccess={() => refreshFinancialData()}
                 />
               </div>
             </TabsContent>

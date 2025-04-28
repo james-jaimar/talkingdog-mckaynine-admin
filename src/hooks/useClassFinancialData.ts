@@ -4,6 +4,10 @@ import { useFinancialQuery } from "./financial/useFinancialQuery";
 import { useFinancialProcessor } from "./financial/useFinancialProcessor";
 import type { UseFinancialDataReturn, FinancialData } from "./financial/types";
 
+/**
+ * Hook for retrieving and processing financial data for classes
+ * Optimized to reduce excessive logs and improve data fetching efficiency
+ */
 export function useClassFinancialData(
   branchId?: string,
   fromDate?: string,
@@ -22,29 +26,24 @@ export function useClassFinancialData(
     invalidInvoicesCount
   } = useFinancialProcessor(financialData as FinancialData);
 
+  /**
+   * Refreshes financial data by invalidating caches and triggering refetches
+   * Returns results to match expected return type
+   */
   const refreshData = async () => {
-    console.log("Manually refreshing financial data");
-    // Use promise-based invalidation to ensure data is invalidated before proceeding
+    // Invalidate key queries
     const invalidationResults = await Promise.all([
-      // First invalidate all queries
       queryClient.invalidateQueries({ queryKey: ['financial-bookings'] }),
-      queryClient.invalidateQueries({ queryKey: ['invoices'] }),
-      
-      // Then reset the specific query to force a clean refetch
-      queryClient.resetQueries({ 
-        queryKey: ['financial-bookings', branchId, fromDate, toDate],
-        exact: true
-      })
+      queryClient.invalidateQueries({ queryKey: ['invoices'] })
     ]);
     
-    // After invalidation/reset, force a refetch and return its results
+    // Force a refetch of the current data
     const refetchResults = await queryClient.refetchQueries({ 
       queryKey: ['financial-bookings', branchId, fromDate, toDate],
-      exact: true,
-      type: 'active'
+      exact: true
     });
     
-    // Return all the results to match the expected return type
+    // Return combined results
     return [...invalidationResults, refetchResults];
   };
 

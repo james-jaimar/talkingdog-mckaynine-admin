@@ -1,10 +1,12 @@
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { FinancialData } from "./types";
 
+/**
+ * Custom hook to fetch financial data with optimized queries and reduced logging
+ */
 export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?: string) {
-  const queryClient = useQueryClient();
   const queryKey = ['financial-bookings', branchId, fromDate, toDate];
 
   return useQuery({
@@ -20,9 +22,7 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
         classInvoiceMap: []
       } as FinancialData;
 
-      console.log(`Fetching financial data for branch ${branchId} from ${fromDate} to ${toDate}`);
-
-      // Get all valid invoices for this branch
+      // Build a single combined query for revenue data
       let totalRevenueQuery = supabase
         .from('invoices')
         .select('id, total, status, subtotal, monetary_discount, client:clients(branch_id)')
@@ -40,11 +40,10 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
       }
 
       const totalRevenueFromInvoices = invoicesTotal?.reduce((sum, inv) => sum + (inv.total || 0), 0) || 0;
-      const totalGrossRevenue = invoicesTotal?.reduce((sum, inv) => sum + (inv.subtotal || 0), 0) || 0;
       const totalDiscounts = invoicesTotal?.reduce((sum, inv) => sum + (inv.monetary_discount || 0), 0) || 0;
 
-      // Set up query for confirmed bookings with their class information
-      let query = supabase
+      // Efficient query for confirmed bookings with class information
+      let bookingsQuery = supabase
         .from('bookings')
         .select(`
           id,
@@ -67,17 +66,17 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
         .eq('status', 'confirmed');
 
       if (fromDate && toDate) {
-        query = query.gte('created_at', fromDate).lte('created_at', toDate);
+        bookingsQuery = bookingsQuery.gte('created_at', fromDate).lte('created_at', toDate);
       }
 
-      const { data: bookings, error: bookingsError } = await query;
+      const { data: bookings, error: bookingsError } = await bookingsQuery;
 
       if (bookingsError) {
-        console.error("Error fetching booking data for financial report:", bookingsError);
+        console.error("Error fetching booking data:", bookingsError);
         throw bookingsError;
       }
 
-      // Get invoice items with full invoice details
+      // Get invoice items with complete invoice details in a single query
       let invoiceQuery = supabase
         .from('invoice_items')
         .select(`
@@ -120,35 +119,26 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
         throw invoiceItemsError;
       }
 
-      // Get invalid invoices count - fixed client reference
-      let invalidQuery = supabase
+      // Get invoice counts in separate queries
+      const { count: invalidCount, error: invalidError } = await supabase
         .from('invoices')
         .select('id, client_id, clients!inner(branch_id)', { count: 'exact' })
         .eq('status', 'invalid')
-        .eq('clients.branch_id', branchId);
-
-      if (fromDate && toDate) {
-        invalidQuery = invalidQuery.gte('issued_date', fromDate).lte('issued_date', toDate);
-      }
-
-      const { count: invalidCount, error: invalidError } = await invalidQuery;
+        .eq('clients.branch_id', branchId)
+        .gte(fromDate ? 'issued_date' : 'created_at', fromDate || '1970-01-01')
+        .lte(toDate ? 'issued_date' : 'created_at', toDate || '2100-01-01');
 
       if (invalidError) {
         console.error("Error counting invalid invoices:", invalidError);
       }
 
-      // Get all invoices count - fixed client reference
-      let countQuery = supabase
+      const { count: allInvoicesCount, error: countError } = await supabase
         .from('invoices')
         .select('id, client_id, clients!inner(branch_id)', { count: 'exact' })
         .eq('clients.branch_id', branchId)
-        .in('status', ['sent', 'paid', 'overdue']);
-
-      if (fromDate && toDate) {
-        countQuery = countQuery.gte('issued_date', fromDate).lte('issued_date', toDate);
-      }
-
-      const { count: allInvoicesCount, error: countError } = await countQuery;
+        .in('status', ['sent', 'paid', 'overdue'])
+        .gte(fromDate ? 'issued_date' : 'created_at', fromDate || '1970-01-01')
+        .lte(toDate ? 'issued_date' : 'created_at', toDate || '2100-01-01');
 
       if (countError) {
         console.error("Error counting invoices:", countError);
@@ -162,7 +152,7 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
       // Create an empty class invoice map (will be populated by the processor)
       const classInvoiceMap: Array<{className: string, invoiceIds: string[]}> = [];
 
-      const result: FinancialData = {
+      return {
         bookingsWithInvoices: bookings || [],
         allInvoicesCount: allInvoicesCount || 0,
         invalidInvoicesCount: invalidCount || 0,
@@ -170,15 +160,11 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
         totalDiscounts,
         invoiceItems: filteredInvoiceItems,
         classInvoiceMap
-      };
-
-      return result;
+      } as FinancialData;
     },
     enabled: !!branchId,
-    staleTime: 1000, // 1 second stale time to force more frequent refreshes
-    refetchOnWindowFocus: true,
+    staleTime: 60000, // 1 minute stale time for better performance
+    refetchOnWindowFocus: false, // Reduce excessive refetches
     gcTime: 10 * 60 * 1000,
-    refetchOnMount: true,
-    refetchOnReconnect: true,
   });
 }

@@ -2,6 +2,10 @@
 import { useState, useEffect } from "react";
 import { FinancialData, ClassFinance, InvoiceDiscount, BookingRevenue } from "./types";
 
+/**
+ * Processes financial data into structured finances for classes
+ * Optimized to reduce processing overhead and console logging
+ */
 export function useFinancialProcessor(financialData: FinancialData | undefined) {
   const [classFinances, setClassFinances] = useState<ClassFinance[]>([]);
   const [totalInvoiceCount, setTotalInvoiceCount] = useState<number>(0);
@@ -27,13 +31,19 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
     setTotalInvoiceCount(allInvoicesCount);
     setInvalidInvoicesCount(invalidCount);
 
-    // Process the class finances with complete revenue tracking
+    // Skip processing if no data available
+    if (!bookingsWithInvoices?.length && !invoiceItems?.length) {
+      setClassFinances([]);
+      return;
+    }
+
+    // Process the class finances with optimized tracking
     const classSummaries = new Map<string, ClassFinance>();
     const bookingRevenueMap = new Map<string, BookingRevenue>();
     const classInvoiceMap = new Map<string, Set<string>>();
     const invoiceDiscountMap = new Map<string, InvoiceDiscount>();
 
-    // First, collect all invoice discounts
+    // Collect invoice discounts - key processing step
     invoiceItems.forEach(item => {
       if (!item.invoices) return;
 
@@ -47,7 +57,7 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
       });
     });
 
-    // Process all items and apply discount proportionally
+    // Process invoice items and apply discount proportionally
     invoiceItems.forEach(item => {
       if (!item.booking_id || !item.invoices) return;
 
@@ -59,6 +69,7 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
       const itemAmount = item.amount || 0;
       let itemDiscount = 0;
 
+      // Apply proportional discount to each item
       if (invoiceSubtotal > 0 && invoiceDiscountAmount > 0) {
         const proportion = itemAmount / invoiceSubtotal;
         itemDiscount = proportion * invoiceDiscountAmount;
@@ -66,6 +77,7 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
 
       const actualItemRevenue = Math.max(0, itemAmount - itemDiscount);
 
+      // Track booking revenue
       if (!bookingRevenueMap.has(item.booking_id)) {
         bookingRevenueMap.set(item.booking_id, {
           totalRevenue: 0,
@@ -78,7 +90,7 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
       bookingRevenue.invoiceIds.add(item.invoice_id);
     });
 
-    // Process bookings with their complete revenue information
+    // Process bookings with complete revenue information
     bookingsWithInvoices.forEach(booking => {
       const bookingRevenue = bookingRevenueMap.get(booking.id) || {
         totalRevenue: 0,
@@ -91,6 +103,7 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
       const className = classData.name;
       const totalRevenue = bookingRevenue.totalRevenue;
 
+      // Track invoices per class
       if (className && bookingRevenue.invoiceIds.size > 0) {
         if (!classInvoiceMap.has(className)) {
           classInvoiceMap.set(className, new Set());
@@ -100,7 +113,7 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
         );
       }
 
-      // Get or create class summary
+      // Create or update class summary
       const summary = classSummaries.get(className) || {
         className,
         totalRevenue: 0,
@@ -114,11 +127,11 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
         invoiceIds: []
       };
 
-      // Update summary with complete revenue information
+      // Update summary with booking revenue
       summary.bookingsCount++;
       summary.totalRevenue += totalRevenue;
 
-      // Calculate fees based on actual revenue (after discount)
+      // Calculate fees based on actual revenue
       if (classData.mckaynine_commission_type === 'percentage') {
         summary.franchiseFee += (totalRevenue * (classData.mckaynine_commission_value / 100));
       } else {
@@ -140,17 +153,18 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
       classSummaries.set(className, summary);
     });
 
-    // Update invoice counts and calculate profits
+    // Calculate final stats and profit
     Array.from(classInvoiceMap.entries()).forEach(([className, invoiceIds]) => {
       const summary = classSummaries.get(className);
       if (summary) {
         summary.invoiceCount = invoiceIds.size;
         summary.invoiceIds = Array.from(invoiceIds);
+        // Calculate profit as the difference between revenue and all fees
         summary.profit = summary.totalRevenue - summary.franchiseFee - summary.adminFee - summary.instructorFee;
       }
     });
 
-    // Convert to array and sort by class name
+    // Sort finances by class name
     const sortedFinances = Array.from(classSummaries.values())
       .sort((a, b) => a.className.localeCompare(b.className));
 
