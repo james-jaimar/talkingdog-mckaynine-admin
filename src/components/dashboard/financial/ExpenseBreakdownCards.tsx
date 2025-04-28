@@ -26,6 +26,15 @@ export function ExpenseBreakdownCards({
   const franchisePercent = (totalFranchise / safeTotal) * 100;
   const profitPercent = (profit / safeTotal) * 100;
 
+  // Validate the percentages add up to approximately 100%
+  const totalPercent = adminPercent + trainerPercent + franchisePercent + profitPercent;
+  if (Math.abs(100 - totalPercent) > 1 && totalRevenue > 0) {
+    console.warn(
+      `Warning: Expense percentages don't add up to 100%. ` +
+      `Total: ${totalPercent}%, Difference: ${100 - totalPercent}%`
+    );
+  }
+
   // Debug values to console
   console.log("ExpenseBreakdownCards values:", {
     totalAdmin, 
@@ -36,7 +45,8 @@ export function ExpenseBreakdownCards({
     adminPercent,
     trainerPercent,
     franchisePercent,
-    profitPercent
+    profitPercent,
+    totalPercent
   });
 
   return (

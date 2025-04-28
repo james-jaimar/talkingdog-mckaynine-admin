@@ -35,6 +35,10 @@ export function InvoiceRevenueChart({
     invoice.status === 'sent' || invoice.status === 'paid' || invoice.status === 'overdue'
   ) || [];
   
+  // Log the total revenue from invoices for debugging
+  const totalInvoiceRevenue = validInvoices.reduce((sum, inv) => sum + (inv.total || 0), 0);
+  console.log(`InvoiceRevenueChart - Total revenue from ${validInvoices.length} invoices: ${totalInvoiceRevenue}`);
+  
   // Filter by term date range if provided
   const filteredInvoices = useMemo(() => {
     if (!termDateRange) return validInvoices;

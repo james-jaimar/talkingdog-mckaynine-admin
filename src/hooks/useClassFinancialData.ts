@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -32,10 +33,32 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
         bookingsWithInvoices: [], 
         unassociatedInvoices: [], 
         allInvoicesCount: 0,
-        invalidInvoicesCount: 0 
+        invalidInvoicesCount: 0,
+        totalRevenue: 0
       };
 
       console.log(`Fetching financial data for branch ${branchId} from ${fromDate} to ${toDate}`);
+      
+      // First, get the total revenue from all active invoices for this branch
+      let totalRevenueQuery = supabase
+        .from('invoices')
+        .select('total, status, client:client_id (branch_id)')
+        .eq('client.branch_id', branchId)
+        .in('status', ['sent', 'paid', 'overdue']);
+        
+      // Apply date filtering if dates are provided
+      if (fromDate && toDate) {
+        totalRevenueQuery = totalRevenueQuery.gte('issued_date', fromDate).lte('issued_date', toDate);
+      }
+      
+      const { data: invoicesTotal, error: invoiceTotalError } = await totalRevenueQuery;
+      
+      if (invoiceTotalError) {
+        console.error("Error fetching invoice totals:", invoiceTotalError);
+      }
+      
+      // Calculate the total revenue from all active invoices
+      const totalRevenueFromInvoices = invoicesTotal?.reduce((sum, inv) => sum + (inv.total || 0), 0) || 0;
       
       // Set up query for confirmed bookings with their class information
       let query = supabase
@@ -82,7 +105,7 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
           )
         `, { count: 'exact' })
         .eq('client.branch_id', branchId)
-        .neq('status', 'cancelled');
+        .in('status', ['sent', 'paid', 'overdue']);
         
       // Apply date filtering if dates are provided
       if (fromDate && toDate) {
@@ -96,6 +119,7 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
       }
       
       console.log(`Total invoice count for branch ${branchId}: ${allInvoicesCount}`);
+      console.log(`Total revenue from all invoices: ${totalRevenueFromInvoices}`);
       
       // Also fetch invoice items to get accurate revenue data
       let invoiceQuery = supabase
@@ -120,7 +144,7 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
             )
           )
         `)
-        .neq('invoices.status', 'cancelled');
+        .in('invoices.status', ['sent', 'paid', 'overdue']);
         
       // Apply date filtering if dates are provided
       if (fromDate && toDate) {
@@ -222,7 +246,8 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
         bookingsWithInvoices, 
         unassociatedInvoices: unassociatedInvoiceItems,
         allInvoicesCount: allInvoicesCount || allInvoiceIds.size,
-        invalidInvoicesCount: invalidCount || 0
+        invalidInvoicesCount: invalidCount || 0,
+        totalRevenue: totalRevenueFromInvoices
       };
     },
     enabled: !!branchId,
@@ -245,7 +270,8 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
       bookingsWithInvoices, 
       unassociatedInvoices, 
       allInvoicesCount,
-      invalidInvoicesCount 
+      invalidInvoicesCount,
+      totalRevenue
     } = financialData;
     
     // Update the total invoice count state
@@ -376,6 +402,7 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
     console.log(`Total invoices across classes: ${sortedFinances.reduce((sum, curr) => sum + curr.invoiceCount, 0)}`);
     console.log(`Expected total invoices: ${allInvoicesCount}`);
     console.log(`Unassociated revenue: ${unassociatedTotal}`);
+    console.log(`Total revenue from invoices: ${totalRevenue}`);
     
     setClassFinances(sortedFinances);
   }, [financialData]);
@@ -393,6 +420,7 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
     isLoading, 
     refreshData,
     totalInvoiceCount,
-    invalidInvoicesCount
+    invalidInvoicesCount,
+    totalRevenue: financialData?.totalRevenue || 0
   };
 }
