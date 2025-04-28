@@ -1,4 +1,3 @@
-
 import {
   Table,
   TableBody,
@@ -10,7 +9,7 @@ import {
 } from "@/components/ui/table";
 import { ClassFinance } from "@/hooks/useClassFinancialData";
 import { formatCurrency } from "@/lib/formatters";
-import { AlertCircle, Info } from "lucide-react";
+import { Info, AlertCircle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
 

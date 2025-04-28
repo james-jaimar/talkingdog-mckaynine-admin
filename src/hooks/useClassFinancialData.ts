@@ -11,7 +11,7 @@ export interface ClassFinance {
   instructorFee: number;
   profit: number;
   invoiceCount: number;
-  sourceType?: 'class' | 'general'; // Updated to exclude 'unallocated'
+  sourceType?: 'class' | 'general';
   invoiceIds?: string[];
 }
 
@@ -351,7 +351,6 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
 
     // Calculate profits after all fees are computed
     classSummaries.forEach(summary => {
-      // Use actual revenue for profit calculation
       summary.profit = summary.totalRevenue - summary.franchiseFee - summary.adminFee - summary.instructorFee;
     });
 
@@ -371,7 +370,7 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
     queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
     queryClient.invalidateQueries({ queryKey: ['invoices'] });
   };
-
+  
   return { 
     classFinances, 
     isLoading, 
