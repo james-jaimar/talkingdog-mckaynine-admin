@@ -121,8 +121,8 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
       }
       
       console.log(`Total invoice count for branch ${branchId}: ${allInvoicesCount}`);
-      
-      // Extended query to get invoice items with full invoice details
+
+      // Extended query to get ALL invoice items with full invoice details
       let invoiceQuery = supabase
         .from('invoice_items')
         .select(`
@@ -172,98 +172,53 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
       ) || [];
       
       console.log(`Filtered to ${branchInvoiceItems.length} invoice items for branch ${branchId}`);
+      
+      // Create a map to aggregate all items for each booking
+      const bookingRevenueMap = new Map();
+      
+      // Track unique invoices per class
+      const classInvoiceMap = new Map();
+      
+      branchInvoiceItems.forEach(item => {
+        if (!item.booking_id || !item.invoices) return;
         
-      // Map invoices to bookings for financial calculations
-      const bookingInvoiceMap = new Map();
+        // Initialize booking revenue entry if it doesn't exist
+        if (!bookingRevenueMap.has(item.booking_id)) {
+          bookingRevenueMap.set(item.booking_id, {
+            totalRevenue: 0,
+            invoiceIds: new Set()
+          });
+        }
+        
+        const bookingRevenue = bookingRevenueMap.get(item.booking_id);
+        bookingRevenue.totalRevenue += item.amount || 0;
+        bookingRevenue.invoiceIds.add(item.invoice_id);
+      });
       
-      // Track all unique invoice IDs to verify our total count
-      const allInvoiceIds = new Set<string>();
-      
-      // Prepare data structure for revenue tracking by invoice
-      const invoiceRevenueMap = new Map<string, {
-        invoiceId: string,
-        invoiceNumber: string,
-        total: number,
-        bookingIds: string[],
-        classIds: string[],
-        classNames: string[]
-      }>();
-      
-      if (branchInvoiceItems && branchInvoiceItems.length > 0) {
-        branchInvoiceItems.forEach(item => {
-          if (item.invoices?.id) {
-            allInvoiceIds.add(item.invoices.id);
-            
-            // Track invoice revenue
-            const invoiceId = item.invoices.id;
-            
-            if (!invoiceRevenueMap.has(invoiceId)) {
-              invoiceRevenueMap.set(invoiceId, {
-                invoiceId,
-                invoiceNumber: item.invoices.invoice_number || 'Unknown',
-                total: item.invoices.total || 0,
-                bookingIds: [],
-                classIds: [],
-                classNames: []
-              });
-            }
-            
-            // Add booking relationship if exists
-            if (item.booking_id) {
-              const invoiceRevenue = invoiceRevenueMap.get(invoiceId);
-              if (invoiceRevenue) {
-                invoiceRevenue.bookingIds.push(item.booking_id);
-              }
-              
-              // Also update booking invoice map
-              bookingInvoiceMap.set(item.booking_id, {
-                amount: item.amount || (item.unit_price * item.quantity),
-                description: item.description,
-                invoiceStatus: item.invoices?.status || 'unknown',
-                isPaid: item.invoices?.payment_received || item.invoices?.status === 'paid',
-                invoiceId: item.invoice_id
-              });
-            }
+      console.log(`Mapped revenue for ${bookingRevenueMap.size} bookings`);
+
+      // Process bookings with their complete revenue information
+      const processedBookings = bookings?.map(booking => {
+        const bookingRevenue = bookingRevenueMap.get(booking.id) || { 
+          totalRevenue: 0, 
+          invoiceIds: new Set() 
+        };
+        
+        const className = booking.class_schedules?.classes?.name;
+        if (className && bookingRevenue.invoiceIds.size > 0) {
+          if (!classInvoiceMap.has(className)) {
+            classInvoiceMap.set(className, new Set());
           }
-        });
-      }
-      
-      console.log(`Retrieved ${bookings?.length || 0} bookings and ${branchInvoiceItems?.length || 0} invoice items`);
-      console.log(`Mapped ${bookingInvoiceMap.size} bookings to invoices`);
-      console.log(`Unique invoice IDs found: ${allInvoiceIds.size}`);
-      
-      // Convert invoice revenue map to array
-      const invoiceRevenue = Array.from(invoiceRevenueMap.values());
-      
-      // Enhance bookings with invoice data
-      const bookingsWithInvoices = bookings?.map(booking => {
-        // Get invoice data if available
-        const invoiceData = bookingInvoiceMap.get(booking.id);
-        
-        // Use invoice amount if available, otherwise use class fee
-        const courseFromClass = booking.class_schedules?.classes?.course_fee || 0;
-        const invoiceAmount = invoiceData?.amount;
-        
-        // For revenue calculation: prioritize invoice amount, fallback to class fee
-        const actualRevenue = invoiceAmount !== undefined ? invoiceAmount : courseFromClass;
-        
-        // Update invoice revenue map with class info
-        if (invoiceData?.invoiceId && booking.class_schedules?.classes) {
-          const classId = booking.class_schedules.classes.id;
-          const className = booking.class_schedules.classes.name;
-          
-          const invoiceRevenue = invoiceRevenueMap.get(invoiceData.invoiceId);
-          if (invoiceRevenue && !invoiceRevenue.classIds.includes(classId)) {
-            invoiceRevenue.classIds.push(classId);
-            invoiceRevenue.classNames.push(className);
-          }
+          bookingRevenue.invoiceIds.forEach(id => 
+            classInvoiceMap.get(className).add(id)
+          );
         }
         
         return {
           ...booking,
-          actualRevenue,
-          invoiceInfo: invoiceData || { isPaid: false, amount: 0, invoiceStatus: 'not_invoiced' },
-          calculatedFee: courseFromClass // Keep the class fee for percentage calculations
+          actualRevenue: bookingRevenue.totalRevenue,
+          invoiceIds: Array.from(bookingRevenue.invoiceIds),
+          calculatedFee: booking.class_schedules?.classes?.course_fee || 0
         };
       }) || [];
       
@@ -286,17 +241,20 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
       }
 
       return { 
-        bookingsWithInvoices, 
-        allInvoicesCount: allInvoicesCount || allInvoiceIds.size,
+        bookingsWithInvoices: processedBookings, 
+        allInvoicesCount: allInvoicesCount || 0,
         invalidInvoicesCount: invalidCount || 0,
         totalRevenue: totalRevenueFromInvoices,
-        invoiceRevenue
+        classInvoiceMap: Array.from(classInvoiceMap.entries()).map(([className, invoiceIds]) => ({
+          className,
+          invoiceIds: Array.from(invoiceIds)
+        }))
       };
     },
     enabled: !!branchId,
-    staleTime: 30000, // 30 seconds
+    staleTime: 30000,
     refetchOnWindowFocus: true,
-    gcTime: 10 * 60 * 1000, // 10 minutes
+    gcTime: 10 * 60 * 1000,
   });
 
   // Process booking data into financial summaries
@@ -313,49 +271,23 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
       allInvoicesCount,
       invalidInvoicesCount,
       totalRevenue,
-      invoiceRevenue
+      classInvoiceMap
     } = financialData;
     
-    // Update the total invoice count state
     setTotalInvoiceCount(allInvoicesCount);
     setInvalidInvoicesCount(invalidInvoicesCount);
     
-    // Process the class finances
+    // Process the class finances with complete revenue tracking
     const classSummaries = new Map<string, ClassFinance>();
     
-    // Track unique invoice IDs for accurate invoice counting
-    const invoicesCountByClass = new Map<string, Set<string>>();
-    
-    // Initialize invoice counting mechanism
-    bookingsWithInvoices.forEach(booking => {
-      const classData = booking.class_schedules?.classes;
-      if (!classData) return;
-      
-      const className = classData.name;
-      
-      // Initialize the set for this class if it doesn't exist
-      if (!invoicesCountByClass.has(className)) {
-        invoicesCountByClass.set(className, new Set<string>());
-      }
-      
-      // Add the invoice ID to the set if it exists
-      if (booking.invoiceInfo && booking.invoiceInfo.invoiceId) {
-        const invoiceSet = invoicesCountByClass.get(className);
-        if (invoiceSet) {
-          invoiceSet.add(booking.invoiceInfo.invoiceId);
-        }
-      }
-    });
-
-    // Now process financial data with accurate invoice counting
+    // Process all bookings and their associated revenue
     bookingsWithInvoices.forEach(booking => {
       const classData = booking.class_schedules?.classes;
       if (!classData) return;
 
       const className = classData.name;
-      // Use actual revenue from invoice or course fee
-      const courseRevenue = booking.actualRevenue || classData.course_fee || 0;
-
+      const totalRevenue = booking.actualRevenue || 0;
+      
       // Get or create class summary
       const summary = classSummaries.get(className) || {
         className,
@@ -370,32 +302,25 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
         invoiceIds: []
       };
 
-      // Update summary
+      // Update summary with complete revenue information
       summary.bookingsCount++;
-      summary.totalRevenue += courseRevenue;
-      
-      // Set invoice count based on unique invoice IDs
-      const invoiceSet = invoicesCountByClass.get(className);
-      if (invoiceSet) {
-        summary.invoiceCount = invoiceSet.size;
-        summary.invoiceIds = Array.from(invoiceSet);
-      }
+      summary.totalRevenue += totalRevenue;
 
-      // Calculate fees based on actual revenue, not just the class fee
+      // Calculate fees based on actual revenue
       if (classData.mckaynine_commission_type === 'percentage') {
-        summary.franchiseFee += (courseRevenue * (classData.mckaynine_commission_value / 100));
+        summary.franchiseFee += (totalRevenue * (classData.mckaynine_commission_value / 100));
       } else {
         summary.franchiseFee += classData.mckaynine_commission_value;
       }
 
       if (classData.admin_fee_type === 'percentage') {
-        summary.adminFee += (courseRevenue * (classData.admin_fee_value / 100));
+        summary.adminFee += (totalRevenue * (classData.admin_fee_value / 100));
       } else {
         summary.adminFee += classData.admin_fee_value;
       }
 
       if (classData.trainer_fee_type === 'percentage') {
-        summary.instructorFee += (courseRevenue * (classData.trainer_fee_value / 100));
+        summary.instructorFee += (totalRevenue * (classData.trainer_fee_value / 100));
       } else {
         summary.instructorFee += classData.trainer_fee_value;
       }
@@ -403,36 +328,19 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
       classSummaries.set(className, summary);
     });
 
+    // Update invoice counts from the classInvoiceMap
+    classInvoiceMap.forEach(({ className, invoiceIds }) => {
+      const summary = classSummaries.get(className);
+      if (summary) {
+        summary.invoiceCount = invoiceIds.length;
+        summary.invoiceIds = invoiceIds;
+      }
+    });
+
     // Calculate profits after all fees are computed
     classSummaries.forEach(summary => {
       summary.profit = summary.totalRevenue - summary.franchiseFee - summary.adminFee - summary.instructorFee;
     });
-
-    // Now add general revenue category for invoices without class associations
-    // This handles revenue from invoices with discounts or without booking links
-    const classRevenueTotal = Array.from(classSummaries.values()).reduce(
-      (sum, curr) => sum + curr.totalRevenue, 0
-    );
-    
-    // Calculate difference between total invoice revenue and allocated class revenue
-    const unallocatedRevenue = totalRevenue - classRevenueTotal;
-    
-    if (unallocatedRevenue > 1) { // Only add if there's a material difference
-      const generalTraining: ClassFinance = {
-        className: "General Training Services",
-        totalRevenue: unallocatedRevenue,
-        bookingsCount: 0,
-        franchiseFee: 0,
-        adminFee: 0,
-        instructorFee: 0,
-        profit: unallocatedRevenue, // All is profit since we don't know the breakdown
-        invoiceCount: 0,
-        sourceType: 'general',
-        invoiceIds: []
-      };
-      
-      classSummaries.set(generalTraining.className, generalTraining);
-    }
 
     // Convert to array and sort by class name
     const sortedFinances = Array.from(classSummaries.values())
@@ -445,7 +353,6 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
     setClassFinances(sortedFinances);
   }, [financialData]);
 
-  // Function to manually refresh the data
   const refreshData = () => {
     console.log("Manually refreshing financial data");
     queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
