@@ -173,7 +173,7 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
       
       console.log(`Filtered to ${branchInvoiceItems.length} invoice items for branch ${branchId}`);
       
-      // Create a map to aggregate all items for each booking
+      // Create a map to accumulate revenues from all items per booking
       const bookingRevenueMap = new Map();
       
       // Track unique invoices per class
@@ -247,7 +247,7 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
         totalRevenue: totalRevenueFromInvoices,
         classInvoiceMap: Array.from(classInvoiceMap.entries()).map(([className, invoiceIds]) => ({
           className,
-          invoiceIds: Array.from(invoiceIds)
+          invoiceIds: Array.from(invoiceIds) as string[]  // Fix: Explicitly cast to string[]
         }))
       };
     },
