@@ -51,7 +51,8 @@ export function useClassFinancialData(
       type: 'all'
     });
     
-    return refetchResults;
+    // Ensure we always return an array to match the expected return type
+    return Array.isArray(refetchResults) ? refetchResults : [refetchResults];
   };
 
   return {
