@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -316,6 +315,68 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
     gcTime: 10 * 60 * 1000, // 10 minutes - using gcTime instead of cacheTime
   });
 
+  // Add a new section that specifically tracks unallocated invoices
+  const { data: unallocatedInvoicesData } = useQuery({
+    queryKey: ['unallocated-invoices', branchId, fromDate, toDate],
+    queryFn: async () => {
+      if (!branchId) return [];
+      
+      try {
+        // Get invoices with their items
+        const { data: invoicesWithItems, error: invoicesError } = await supabase
+          .from('invoices')
+          .select(`
+            id, 
+            invoice_number, 
+            status, 
+            issued_date, 
+            total,
+            client:client_id (
+              id,
+              first_name, 
+              last_name, 
+              branch_id
+            ),
+            items:invoice_items (
+              id,
+              description,
+              booking_id
+            )
+          `)
+          .eq('client.branch_id', branchId)
+          .in('status', ['sent', 'paid', 'overdue']);
+          
+        if (invoicesError) {
+          console.error("Error fetching unallocated invoices:", invoicesError);
+          return [];
+        }
+        
+        // Filter by date if date range is provided
+        let filteredInvoices = invoicesWithItems || [];
+        if (fromDate && toDate) {
+          filteredInvoices = filteredInvoices.filter(invoice => {
+            const invoiceDate = new Date(invoice.issued_date);
+            return invoiceDate >= new Date(fromDate) && invoiceDate <= new Date(toDate);
+          });
+        }
+        
+        // Filter only invoices that have no items with booking_id (unallocated)
+        const unallocated = filteredInvoices.filter(invoice => 
+          invoice.items?.length > 0 && 
+          !invoice.items.some(item => item.booking_id !== null)
+        );
+        
+        return unallocated;
+      } catch (error) {
+        console.error("Error in unallocated invoices query:", error);
+        return [];
+      }
+    },
+    enabled: !!branchId,
+    // Lower staleTime to refresh more frequently
+    staleTime: 15000, // 15 seconds
+  });
+
   // Process booking data into financial summaries
   useEffect(() => {
     if (!financialData) {
@@ -594,6 +655,7 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
     queryClient.invalidateQueries({ queryKey: ['invoices'] });
   };
 
+  // In the return statement, add the unallocatedDetails field
   return { 
     classFinances, 
     unassociatedRevenue,
@@ -602,6 +664,6 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
     totalInvoiceCount,
     invalidInvoicesCount,
     totalRevenue: financialData?.totalRevenue || 0,
-    unallocatedDetails // Return the unallocated invoice details
+    unallocatedDetails: unallocatedInvoicesData || [] // Use the dedicated query result
   };
 }

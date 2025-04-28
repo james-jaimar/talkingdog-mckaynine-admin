@@ -14,12 +14,15 @@ import { useTerm } from "@/context/TermContext";
 import { useInvoices } from "@/hooks/useInvoices";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Info } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 
 export default function FinancialDashboard() {
   const [timeframe, setTimeframe] = useState<'monthly' | 'quarterly' | 'yearly'>('monthly');
   const { currentBranch } = useBranch();
   const { termDateRange } = useTerm();
   const { invoices } = useInvoices();
+  const navigate = useNavigate();
   
   // Get all active invoices
   const activeInvoices = invoices.filter(inv => 
@@ -61,6 +64,9 @@ export default function FinancialDashboard() {
   const unallocatedRevenue = unallocatedItems.reduce((sum, item) => sum + item.totalRevenue, 0);
   const unallocatedPercentage = totalRevenue > 0 ? (unallocatedRevenue / totalRevenue) * 100 : 0;
   
+  // Count unallocated invoices
+  const unallocatedInvoicesCount = unallocatedDetails?.length || 0;
+  
   // Debug the calculated values
   console.log("Financial Dashboard calculations:", {
     totalRevenue,
@@ -74,7 +80,8 @@ export default function FinancialDashboard() {
     invoicesCount: activeInvoices.length,
     hookTotalRevenue,
     unallocatedRevenue,
-    unallocatedPercentage
+    unallocatedPercentage,
+    unallocatedInvoicesCount
   });
 
   // Financial metrics for the metrics cards
@@ -82,7 +89,9 @@ export default function FinancialDashboard() {
     totalRevenue,
     collectedRevenue,
     pendingRevenue,
-    overdueRevenue
+    overdueRevenue,
+    unallocatedRevenue,
+    unallocatedPercentage
   };
 
   // Expense breakdown data
@@ -131,16 +140,28 @@ export default function FinancialDashboard() {
           {hasUnallocatedRevenue && (
             <Alert className="mb-6" variant="warning">
               <Info className="h-4 w-4" />
-              <AlertDescription>
-                Approximately {unallocatedPercentage.toFixed(1)}% of your revenue (R{unallocatedRevenue.toFixed(2)}) 
-                comes from invoices that aren't linked to specific classes.
-                Visit the Financial Reports page to see a detailed breakdown.
+              <AlertDescription className="flex items-center justify-between">
+                <span>
+                  Approximately {unallocatedPercentage.toFixed(1)}% of your revenue (R{unallocatedRevenue.toFixed(2)}) 
+                  comes from {unallocatedInvoicesCount} invoices that aren't linked to specific classes.
+                </span>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => navigate('/financial-reports?tab=unallocated')}
+                >
+                  View Unallocated Invoices
+                </Button>
               </AlertDescription>
             </Alert>
           )}
 
           {/* Financial metrics cards */}
-          <FinancialMetricsCards metrics={financialMetrics} />
+          <FinancialMetricsCards 
+            metrics={financialMetrics} 
+            unallocatedRevenue={unallocatedRevenue}
+            unallocatedPercentage={unallocatedPercentage}
+          />
 
           {/* Expense breakdown cards with profit included */}
           <ExpenseBreakdownCards {...expenseData} />
