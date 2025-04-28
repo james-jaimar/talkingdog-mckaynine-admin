@@ -16,8 +16,10 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
         allInvoicesCount: 0,
         invalidInvoicesCount: 0,
         totalRevenue: 0,
-        invoiceRevenue: []
-      };
+        totalDiscounts: 0,
+        invoiceItems: [],
+        classInvoiceMap: []
+      } as FinancialData;
 
       console.log(`Fetching financial data for branch ${branchId} from ${fromDate} to ${toDate}`);
 
@@ -153,16 +155,24 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
         console.error("Error counting invoices:", countError);
       }
 
-      return {
+      const filteredInvoiceItems = invoiceItems?.filter(item => 
+        item.invoices?.client?.branch_id === branchId
+      ) || [];
+
+      // Create an empty class invoice map (will be populated by the processor)
+      const classInvoiceMap: Array<{className: string, invoiceIds: string[]}> = [];
+
+      const result: FinancialData = {
         bookingsWithInvoices: bookings || [],
         allInvoicesCount: allInvoicesCount || 0,
         invalidInvoicesCount: invalidCount || 0,
         totalRevenue: totalRevenueFromInvoices,
         totalDiscounts,
-        invoiceItems: invoiceItems?.filter(item => 
-          item.invoices?.client?.branch_id === branchId
-        ) || []
-      } as FinancialData;
+        invoiceItems: filteredInvoiceItems,
+        classInvoiceMap
+      };
+
+      return result;
     },
     enabled: !!branchId,
     staleTime: 30000,

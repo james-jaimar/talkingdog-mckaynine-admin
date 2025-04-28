@@ -2,7 +2,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useFinancialQuery } from "./financial/useFinancialQuery";
 import { useFinancialProcessor } from "./financial/useFinancialProcessor";
-import type { UseFinancialDataReturn } from "./financial/types";
+import type { UseFinancialDataReturn, FinancialData } from "./financial/types";
 
 export function useClassFinancialData(
   branchId?: string,
@@ -20,7 +20,7 @@ export function useClassFinancialData(
     classFinances,
     totalInvoiceCount,
     invalidInvoicesCount
-  } = useFinancialProcessor(financialData);
+  } = useFinancialProcessor(financialData as FinancialData);
 
   const refreshData = () => {
     console.log("Manually refreshing financial data");

@@ -29,7 +29,8 @@ export interface FinancialData {
   invalidInvoicesCount: number;
   totalRevenue: number;
   totalDiscounts: number;
-  classInvoiceMap: Array<{
+  invoiceItems?: any[];
+  classInvoiceMap?: Array<{
     className: string;
     invoiceIds: string[];
   }>;
