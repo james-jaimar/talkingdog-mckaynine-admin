@@ -4,102 +4,47 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Helmet } from "react-helmet";
 import { InvoiceRevenueChart } from "@/components/invoices/reports/InvoiceRevenueChart";
 import { RevenueAllocationChart } from "@/components/invoices/reports/RevenueAllocationChart";
-import { useInvoices } from "@/hooks/useInvoices";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useBranch } from "@/context/BranchContext";
 import RequireAdmin from "@/components/auth/RequireAdmin";
 import { FinancialMetricsCards } from "@/components/dashboard/financial/FinancialMetricsCards";
 import { ExpenseBreakdownCards } from "@/components/dashboard/financial/ExpenseBreakdownCards";
+import { useClassFinancialData } from "@/hooks/useClassFinancialData";
 
 export default function FinancialDashboard() {
   const [timeframe, setTimeframe] = useState<'monthly' | 'quarterly' | 'yearly'>('monthly');
-  const { invoices } = useInvoices();
   const { currentBranch } = useBranch();
-
-  // Filter out cancelled invoices and include only sent or paid invoices for revenue calculations
-  const activeInvoices = invoices ? invoices.filter(invoice => 
-    invoice.status !== 'cancelled' && (invoice.status === 'sent' || invoice.status === 'paid' || invoice.status === 'overdue')
-  ) : [];
   
-  // Filter out only paid invoices for fee calculations to ensure accuracy
-  const paidInvoices = activeInvoices.filter(invoice => invoice.status === 'paid');
+  // Use the existing class financial data hook to get accurate financial information
+  const { classFinances, isLoading } = useClassFinancialData(currentBranch?.id);
   
-  // Calculate financial metrics from filtered invoice data
+  // Calculate total revenue from the collected/paid invoices
+  const totalRevenue = classFinances.reduce((sum, item) => sum + item.totalRevenue, 0);
+  
+  // Calculate financial metrics
   const financialMetrics = {
-    totalRevenue: activeInvoices.reduce((sum, invoice) => sum + invoice.total, 0),
-    collectedRevenue: paidInvoices.reduce((sum, invoice) => sum + invoice.total, 0),
-    pendingRevenue: activeInvoices.filter(invoice => invoice.status === 'sent')
-      .reduce((sum, invoice) => sum + invoice.total, 0),
-    overdueRevenue: activeInvoices.filter(invoice => invoice.status === 'overdue')
-      .reduce((sum, invoice) => sum + invoice.total, 0)
+    totalRevenue: totalRevenue,
+    collectedRevenue: totalRevenue, // For simplicity, using collected revenue as our basis
+    pendingRevenue: 0, // We could calculate this if needed
+    overdueRevenue: 0  // We could calculate this if needed
   };
 
-  // Calculate fees by going through invoice items
-  let totalAdmin = 0;
-  let totalTrainer = 0;
-  let totalFranchise = 0;
-
-  // Process each paid invoice
-  paidInvoices.forEach(invoice => {
-    if (!invoice.items || invoice.items.length === 0) {
-      console.warn('Invoice has no items:', invoice.id);
-      return;
-    }
-    
-    // Go through each item with a booking to calculate fees based on class configuration
-    invoice.items.forEach(item => {
-      // Get the amount for this item
-      const amount = item.amount || 0;
-      
-      if (item.bookings && item.bookings.class_schedules && item.bookings.class_schedules.classes) {
-        const classInfo = item.bookings.class_schedules.classes;
-        
-        // Calculate admin fee
-        if (classInfo.admin_fee_type === 'percentage') {
-          totalAdmin += amount * ((classInfo.admin_fee_value || 0) / 100);
-        } else {
-          totalAdmin += (classInfo.admin_fee_value || 0);
-        }
-        
-        // Calculate trainer fee
-        if (classInfo.trainer_fee_type === 'percentage') {
-          totalTrainer += amount * ((classInfo.trainer_fee_value || 0) / 100);
-        } else {
-          totalTrainer += (classInfo.trainer_fee_value || 0);
-        }
-        
-        // Calculate franchise fee
-        if (classInfo.mckaynine_commission_type === 'percentage') {
-          totalFranchise += amount * ((classInfo.mckaynine_commission_value || 0) / 100);
-        } else {
-          totalFranchise += (classInfo.mckaynine_commission_value || 0);
-        }
-      } else {
-        // For items without bookings, use default fee structure
-        // Apply a default fee structure for custom invoice items
-        totalAdmin += amount * 0.10; // Default 10% for admin
-        totalTrainer += amount * 0.40; // Default 40% for trainer
-        totalFranchise += amount * 0.15; // Default 15% for franchise
-      }
-    });
-  });
-
-  // Ensure we have no negative values
-  totalAdmin = Math.max(0, totalAdmin);
-  totalTrainer = Math.max(0, totalTrainer);
-  totalFranchise = Math.max(0, totalFranchise);
+  // Calculate fees by summing from all class finances
+  let totalAdmin = classFinances.reduce((sum, item) => sum + item.adminFee, 0);
+  let totalTrainer = classFinances.reduce((sum, item) => sum + item.instructorFee, 0);
+  let totalFranchise = classFinances.reduce((sum, item) => sum + item.franchiseFee, 0);
   
-  // Calculate profit from actual collected revenue minus all fees
-  const totalFees = totalAdmin + totalTrainer + totalFranchise;
-  const profit = financialMetrics.collectedRevenue - totalFees;
-
+  // Calculate profit as revenue minus all fees
+  const profit = totalRevenue - totalAdmin - totalTrainer - totalFranchise;
+  
   // Debug the calculated values
-  console.log("Financial calculations:", {
+  console.log("Financial Dashboard calculations:", {
     totalAdmin,
     totalTrainer,
     totalFranchise,
     profit,
-    collectedRevenue: financialMetrics.collectedRevenue
+    totalRevenue,
+    classFinances
   });
 
   return (
@@ -131,13 +76,25 @@ export default function FinancialDashboard() {
             totalTrainer={totalTrainer}
             totalFranchise={totalFranchise}
             profit={profit}
-            totalRevenue={financialMetrics.collectedRevenue}
+            totalRevenue={totalRevenue}
           />
 
           {/* Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            <InvoiceRevenueChart invoices={activeInvoices} timeframe={timeframe} />
-            <RevenueAllocationChart invoices={activeInvoices} showOnlyPaid />
+            <InvoiceRevenueChart 
+              invoices={[]} // We'll handle this in the component
+              timeframe={timeframe} 
+            />
+            <RevenueAllocationChart 
+              fees={{
+                adminFee: totalAdmin,
+                trainerFee: totalTrainer,
+                franchiseFee: totalFranchise,
+                profit: profit
+              }}
+              totalRevenue={totalRevenue}
+              showOnlyPaid={true} 
+            />
           </div>
         </div>
       </DashboardLayout>

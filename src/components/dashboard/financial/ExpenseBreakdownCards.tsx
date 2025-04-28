@@ -17,8 +17,10 @@ export function ExpenseBreakdownCards({
   profit = 0,
   totalRevenue,
 }: ExpenseBreakdownCardsProps) {
-  // Only calculate percentages if there's revenue to avoid division by zero
+  // Use a safe denominator to avoid division by zero
   const safeTotal = totalRevenue || 1;
+  
+  // Calculate percentages of total revenue
   const adminPercent = (totalAdmin / safeTotal) * 100;
   const trainerPercent = (totalTrainer / safeTotal) * 100;
   const franchisePercent = (totalFranchise / safeTotal) * 100;

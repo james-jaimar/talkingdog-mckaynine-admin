@@ -1,75 +1,176 @@
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
-import { Loader2 } from "lucide-react";
-import { Invoice } from "@/types/invoice";
+import { useMemo } from "react";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer
+} from "recharts";
+import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
+import { Invoice } from "@/hooks/invoices/types";
+import { useInvoices } from "@/hooks/useInvoices";
 import { formatCurrency } from "@/lib/formatters";
-import { ChartContainer } from "@/components/ui/chart";
-import { useRevenueChartData, TimeFrame } from "@/hooks/charts/useRevenueChartData";
 
 interface InvoiceRevenueChartProps {
-  invoices: Invoice[];
-  timeframe?: TimeFrame;
+  invoices?: Invoice[];
+  timeframe: 'monthly' | 'quarterly' | 'yearly';
 }
 
-export function InvoiceRevenueChart({ invoices, timeframe = 'monthly' }: InvoiceRevenueChartProps) {
-  // Filter out cancelled invoices before passing to the hook
-  const activeInvoices = invoices ? invoices.filter(invoice => 
-    invoice.status !== 'cancelled' && 
-    (invoice.status === 'sent' || invoice.status === 'paid' || invoice.status === 'overdue')
-  ) : [];
+export function InvoiceRevenueChart({
+  invoices: propsInvoices,
+  timeframe
+}: InvoiceRevenueChartProps) {
+  // If invoices aren't passed as props, fetch them
+  const { invoices: fetchedInvoices } = useInvoices();
+  const invoices = propsInvoices?.length ? propsInvoices : fetchedInvoices;
   
-  const { chartData } = useRevenueChartData(activeInvoices, timeframe);
+  // Filter only valid invoice statuses (sent, paid, overdue)
+  const validInvoices = invoices?.filter(invoice => 
+    invoice.status === 'sent' || invoice.status === 'paid' || invoice.status === 'overdue'
+  ) || [];
 
-  if (!chartData.length) {
-    return (
-      <Card className="w-full h-80">
-        <CardHeader>
-          <CardTitle>Revenue Analysis</CardTitle>
-        </CardHeader>
-        <CardContent className="flex items-center justify-center h-64">
-          {!invoices ? (
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          ) : (
-            <p className="text-muted-foreground">No invoice data available</p>
-          )}
-        </CardContent>
-      </Card>
-    );
-  }
+  // Generate chart data based on timeframe
+  const chartData = useMemo(() => {
+    if (!validInvoices.length) return [];
+
+    // Get the time range based on timeframe
+    const now = new Date();
+    let months = 6; // Default for monthly view
+    
+    if (timeframe === 'quarterly') {
+      months = 12; // Show 4 quarters (12 months)
+    } else if (timeframe === 'yearly') {
+      months = 24; // Show 2 years
+    }
+    
+    // Create an array of month data points
+    const dataPoints = [];
+    for (let i = months - 1; i >= 0; i--) {
+      const date = subMonths(now, i);
+      const startDate = startOfMonth(date);
+      const endDate = endOfMonth(date);
+      
+      // Monthly format is just the month name
+      const monthLabel = format(date, 'MMM');
+      
+      // For quarterly, group by quarter
+      const quarterLabel = timeframe === 'quarterly' 
+        ? `Q${Math.floor(date.getMonth() / 3) + 1} ${date.getFullYear()}` 
+        : monthLabel;
+        
+      // For yearly, just show the year
+      const yearLabel = timeframe === 'yearly' 
+        ? date.getFullYear().toString() 
+        : quarterLabel;
+        
+      // Choose the appropriate label based on timeframe
+      const label = timeframe === 'monthly' 
+        ? monthLabel 
+        : timeframe === 'quarterly' 
+          ? quarterLabel 
+          : yearLabel;
+      
+      // Calculate revenue for this period
+      const periodInvoices = validInvoices.filter(invoice => {
+        const invoiceDate = new Date(invoice.issued_date);
+        return invoiceDate >= startDate && invoiceDate <= endDate;
+      });
+      
+      const revenue = periodInvoices.reduce((sum, invoice) => sum + invoice.total, 0);
+      const paidRevenue = periodInvoices
+        .filter(invoice => invoice.status === 'paid')
+        .reduce((sum, invoice) => sum + invoice.total, 0);
+      
+      dataPoints.push({
+        name: label,
+        revenue,
+        paidRevenue
+      });
+    }
+    
+    // For quarterly and yearly views, consolidate the data points
+    if (timeframe !== 'monthly') {
+      const consolidatedData = {};
+      
+      dataPoints.forEach(point => {
+        if (!consolidatedData[point.name]) {
+          consolidatedData[point.name] = {
+            name: point.name,
+            revenue: 0,
+            paidRevenue: 0
+          };
+        }
+        
+        consolidatedData[point.name].revenue += point.revenue;
+        consolidatedData[point.name].paidRevenue += point.paidRevenue;
+      });
+      
+      return Object.values(consolidatedData);
+    }
+    
+    return dataPoints;
+  }, [validInvoices, timeframe]);
+
+  // Custom tooltip
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-white p-2 border rounded shadow">
+          <p className="font-semibold">{label}</p>
+          <p className="text-green-600">Total: {formatCurrency(payload[0].value)}</p>
+          <p className="text-blue-600">Paid: {formatCurrency(payload[1].value)}</p>
+        </div>
+      );
+    }
+    return null;
+  };
 
   return (
-    <Card className="w-full h-80">
+    <Card>
       <CardHeader>
-        <CardTitle>
-          Revenue Analysis ({timeframe === 'monthly' ? 'Monthly' : timeframe === 'quarterly' ? 'Quarterly' : 'Yearly'})
-        </CardTitle>
+        <CardTitle>Revenue Over Time</CardTitle>
       </CardHeader>
-      <CardContent className="h-64">
-        <ChartContainer
-          config={{
-            paidRevenue: { label: "Collected", color: "#10B981" },
-            pendingRevenue: { label: "Pending", color: "#F59E0B" },
-            overdueRevenue: { label: "Overdue", color: "#EF4444" }
-          }}
-          className="h-full"
-        >
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis tickFormatter={(value) => `${value / 1000}k`} />
-              <Tooltip 
-                formatter={(value: number) => formatCurrency(value)}
-                labelFormatter={(label) => `Period: ${label}`}
-              />
-              <Legend />
-              <Bar dataKey="paidRevenue" name="Collected" fill="#10B981" stackId="stack" />
-              <Bar dataKey="pendingRevenue" name="Pending" fill="#F59E0B" stackId="stack" />
-              <Bar dataKey="overdueRevenue" name="Overdue" fill="#EF4444" stackId="stack" />
-            </BarChart>
-          </ResponsiveContainer>
-        </ChartContainer>
+      <CardContent>
+        <ResponsiveContainer width="100%" height={300}>
+          <AreaChart
+            data={chartData}
+            margin={{
+              top: 10,
+              right: 30,
+              left: 0,
+              bottom: 0,
+            }}
+          >
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="name" />
+            <YAxis 
+              tickFormatter={(value) => 
+                value === 0 ? '0' : `R${(value / 1000).toFixed(0)}k`
+              }
+            />
+            <Tooltip content={<CustomTooltip />} />
+            <Area
+              type="monotone"
+              dataKey="revenue"
+              stackId="1"
+              stroke="#8884d8"
+              fill="rgba(136, 132, 216, 0.6)"
+              name="Total Revenue"
+            />
+            <Area
+              type="monotone"
+              dataKey="paidRevenue"
+              stackId="2"
+              stroke="#82ca9d"
+              fill="rgba(130, 202, 157, 0.6)"
+              name="Paid Revenue"
+            />
+          </AreaChart>
+        </ResponsiveContainer>
       </CardContent>
     </Card>
   );

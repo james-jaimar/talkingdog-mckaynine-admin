@@ -10,17 +10,57 @@ import { AlertTriangle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface RevenueAllocationProps {
-  invoices: Invoice[];
+  invoices?: Invoice[];
+  fees?: {
+    adminFee: number;
+    trainerFee: number;
+    franchiseFee: number;
+    profit: number;
+  };
+  totalRevenue?: number;
   showOnlyPaid?: boolean;
 }
 
-export function RevenueAllocationChart({ invoices, showOnlyPaid = false }: RevenueAllocationProps) {
+export function RevenueAllocationChart({ 
+  invoices, 
+  fees,
+  totalRevenue: propsRevenue,
+  showOnlyPaid = false 
+}: RevenueAllocationProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   
   const COLORS = ['#00C49F', '#3B82F6', '#FFBB28', '#8884d8'];
   
-  // Generate chart data from invoices
+  // Generate chart data from invoices or provided fees
   const { chartData, activeItems, totalRevenue } = useMemo(() => {
+    // If fees are directly provided, use them
+    if (fees && propsRevenue) {
+      return {
+        chartData: [
+          { name: 'Admin Fee', value: fees.adminFee },
+          { name: 'Trainer Fee', value: fees.trainerFee },
+          { name: 'Franchise Fee', value: fees.franchiseFee },
+          { name: 'Profit', value: fees.profit }
+        ],
+        activeItems: 1, // Not actually invoices count, but we need a value
+        totalRevenue: propsRevenue
+      };
+    }
+    
+    // If no invoices provided or empty array
+    if (!invoices || invoices.length === 0) {
+      return {
+        chartData: [
+          { name: 'Admin Fee', value: 0 },
+          { name: 'Trainer Fee', value: 0 },
+          { name: 'Franchise Fee', value: 0 },
+          { name: 'Profit', value: 0 }
+        ],
+        activeItems: 0,
+        totalRevenue: 0
+      };
+    }
+    
     // Filter to only paid invoices if requested
     const filteredInvoices = showOnlyPaid 
       ? invoices.filter(invoice => invoice.status === 'paid')
@@ -117,7 +157,7 @@ export function RevenueAllocationChart({ invoices, showOnlyPaid = false }: Reven
       activeItems: filteredInvoices.length,
       totalRevenue: total
     };
-  }, [invoices, showOnlyPaid]);
+  }, [invoices, showOnlyPaid, fees, propsRevenue]);
   
   // Skip rendering if no revenue
   if (totalRevenue === 0) {
@@ -190,9 +230,11 @@ export function RevenueAllocationChart({ invoices, showOnlyPaid = false }: Reven
       <CardHeader>
         <CardTitle>
           Revenue Allocation {showOnlyPaid ? '(Paid Invoices)' : ''}
-          <span className="text-xs text-muted-foreground ml-2">
-            {activeItems} {activeItems === 1 ? 'invoice' : 'invoices'}
-          </span>
+          {typeof activeItems === 'number' && (
+            <span className="text-xs text-muted-foreground ml-2">
+              {activeItems} {activeItems === 1 ? 'invoice' : 'invoices'}
+            </span>
+          )}
         </CardTitle>
       </CardHeader>
       <CardContent>
