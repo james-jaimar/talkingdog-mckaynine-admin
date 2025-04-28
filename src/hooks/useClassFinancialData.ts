@@ -22,7 +22,7 @@ export function useClassFinancialData(
     invalidInvoicesCount
   } = useFinancialProcessor(financialData as FinancialData);
 
-  const refreshData = () => {
+  const refreshData = async () => {
     console.log("Manually refreshing financial data");
     // Use promise-based invalidation to ensure data is invalidated before proceeding
     return Promise.all([

@@ -39,7 +39,7 @@ export interface FinancialData {
 export interface UseFinancialDataReturn {
   classFinances: ClassFinance[];
   isLoading: boolean;
-  refreshData: () => Promise<unknown[]> | void;
+  refreshData: () => Promise<unknown[]>;
   totalInvoiceCount: number;
   invalidInvoicesCount: number;
   totalRevenue: number;
