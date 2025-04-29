@@ -6,7 +6,7 @@ export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       refetchOnWindowFocus: false,
-      staleTime: 30000, // Increased to 30 seconds for better performance
+      staleTime: 30000, // Default stale time for non-financial queries
       retry: 1,
       refetchOnReconnect: true,
       refetchOnMount: true,
@@ -19,12 +19,13 @@ export const queryClient = new QueryClient({
   }
 });
 
-// Configure specific options for financial data queries
+// Configure specific options for financial data queries - always fresh data
 queryClient.setQueryDefaults(['financial-bookings'], {
-  staleTime: 30000, // 30 seconds specifically for financial data
+  staleTime: 0, // Always consider financial data stale (fetch on every mount)
   retry: 2,
   refetchInterval: false,
-  gcTime: 10 * 60 * 1000, // 10 minutes (renamed from cacheTime to gcTime)
+  refetchOnMount: true, // Always refetch when component mounts
+  gcTime: 0 // Don't retain in cache
 });
 
 // Configure console logging behavior based on environment

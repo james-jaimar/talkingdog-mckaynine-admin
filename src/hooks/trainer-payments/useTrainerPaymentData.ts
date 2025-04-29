@@ -66,5 +66,8 @@ export function useTrainerPaymentData(branchId?: string, dateRange?: { from: Dat
       }
     },
     enabled: !!branchId,
+    staleTime: 0, // Always treat data as stale
+    refetchOnMount: true, // Always refetch when component mounts
+    gcTime: 0 // Don't keep in cache
   });
 }

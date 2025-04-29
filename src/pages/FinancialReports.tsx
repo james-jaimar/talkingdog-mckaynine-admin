@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, useCallback } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Helmet } from "react-helmet";
@@ -33,7 +32,7 @@ export default function FinancialReports() {
   const [dataInitialized, setDataInitialized] = useState(false);
   const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Initial data load with smart cache management
+  // Initial data load - always fetch fresh data
   useEffect(() => {
     const loadData = async () => {
       if (currentBranch) {
@@ -45,24 +44,25 @@ export default function FinancialReports() {
             setIsLoading(false);
           }, 15000); // Force exit loading state after 15 seconds
           
-          // Prepare query keys with date parameters
-          const queryKey = [
-            'financial-bookings', 
-            currentBranch.id,
-            dateRange.from.toISOString(),
-            dateRange.to.toISOString()
-          ];
-          
-          // Reset queries for this specific query key only
-          await queryClient.resetQueries({ 
-            queryKey, 
-            exact: true 
+          // Always invalidate queries to ensure fresh data
+          await queryClient.invalidateQueries({
+            queryKey: [
+              'financial-bookings', 
+              currentBranch.id,
+              dateRange.from.toISOString(),
+              dateRange.to.toISOString()
+            ]
           });
           
           // Force fresh fetch for financial data
           await queryClient.fetchQuery({
-            queryKey,
-            staleTime: 30000, // 30 seconds
+            queryKey: [
+              'financial-bookings', 
+              currentBranch.id,
+              dateRange.from.toISOString(),
+              dateRange.to.toISOString()
+            ],
+            staleTime: 0, // Always consider data stale
           });
           
           // Also refresh invoice data
@@ -92,7 +92,7 @@ export default function FinancialReports() {
         clearTimeout(loadingTimeoutRef.current);
       }
     };
-  }, [currentBranch, queryClient, refreshAllInvoiceQueries]);
+  }, [currentBranch, queryClient, refreshAllInvoiceQueries, dateRange]);
 
   // Memoized handler for date range changes
   const handleDateRangeChange = useCallback((range: { from: Date; to?: Date }) => {
@@ -142,7 +142,7 @@ export default function FinancialReports() {
     };
   }, []);
 
-  // Memoized refresh handler
+  // Memoized refresh handler - now guaranteed to fetch fresh data
   const refreshFinancialData = useCallback(async (showToast = true) => {
     if (!currentBranch) return;
     
@@ -158,6 +158,17 @@ export default function FinancialReports() {
           dateRange.to.toISOString()
         ],
         exact: true 
+      });
+      
+      // Force fetch with staleTime: 0 to ensure fresh data
+      await queryClient.fetchQuery({
+        queryKey: [
+          'financial-bookings', 
+          currentBranch.id,
+          dateRange.from.toISOString(),
+          dateRange.to.toISOString()
+        ],
+        staleTime: 0
       });
       
       // Refresh invoice data

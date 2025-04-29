@@ -8,7 +8,7 @@ import { toast } from "sonner";
 
 /**
  * Hook for retrieving and processing financial data for classes
- * Fixed to properly handle cache invalidation and prevent spinner issues
+ * Always fetches fresh data on component mount
  */
 export function useClassFinancialData(
   branchId?: string,
@@ -18,29 +18,20 @@ export function useClassFinancialData(
   const queryClient = useQueryClient();
   const [isRefreshing, setIsRefreshing] = useState(false);
   
-  // Only invalidate queries on mount, not on every parameter change
+  // Always invalidate financial queries on mount to ensure fresh data
   useEffect(() => {
     if (branchId) {
-      const warmCache = async () => {
-        try {
-          // Prefetch data without invalidating on first load
-          await queryClient.prefetchQuery({
-            queryKey: ['financial-bookings', branchId, fromDate, toDate],
-          });
-        } catch (error) {
-          console.error("Error warming cache:", error);
-        }
-      };
-      
-      warmCache();
-    }
-    
-    // Clean up function to reset query options
-    return () => {
-      queryClient.setQueryDefaults(['financial-bookings'], {
-        staleTime: 30000,
+      // Force invalidation of financial data on every mount
+      queryClient.invalidateQueries({ 
+        queryKey: ['financial-bookings', branchId, fromDate, toDate]
       });
-    };
+      
+      // Also invalidate invoices data
+      queryClient.invalidateQueries({
+        queryKey: ['invoices'],
+        exact: false
+      });
+    }
   }, [branchId, queryClient, fromDate, toDate]);
   
   const { 
@@ -57,7 +48,6 @@ export function useClassFinancialData(
 
   /**
    * Refreshes financial data by properly invalidating caches and triggering refetches
-   * Fixed to properly handle promise resolution and prevent spinner issues
    */
   const refreshData = async (): Promise<unknown[]> => {
     setIsRefreshing(true);

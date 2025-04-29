@@ -1,10 +1,10 @@
-
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { FinancialData } from "./types";
 
 /**
  * Custom hook to fetch financial data with optimized queries and better error handling
+ * Always fetches fresh data on every component mount
  */
 export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?: string) {
   const queryKey = ['financial-bookings', branchId, fromDate, toDate];
@@ -186,9 +186,10 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
       }
     },
     enabled: !!branchId,
-    staleTime: 30000, // 30 seconds
+    staleTime: 0, // Always treat data as stale
     retry: 2, // Retry failed requests up to 2 times
-    refetchOnWindowFocus: false, // Don't refetch when window is focused
-    gcTime: 10 * 60 * 1000, // 10 minutes before garbage collection
+    refetchOnWindowFocus: true, // Refetch when window is focused
+    refetchOnMount: true, // Always refetch when component mounts
+    gcTime: 0, // Don't keep in cache
   });
 }
