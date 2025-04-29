@@ -25,7 +25,12 @@ export function useClassFinancialData(
     
     return () => {
       if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
+        try {
+          abortControllerRef.current.abort();
+        } catch (err) {
+          // Ignore abort errors
+          console.log("Ignoring abort error during cleanup");
+        }
         abortControllerRef.current = null;
       }
     };
@@ -36,7 +41,12 @@ export function useClassFinancialData(
     if (branchId) {
       // Create a new abort controller for each invalidation
       if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
+        try {
+          abortControllerRef.current.abort();
+        } catch (err) {
+          // Ignore abort errors
+          console.log("Ignoring abort error during controller reset");
+        }
       }
       abortControllerRef.current = new AbortController();
       
@@ -61,7 +71,12 @@ export function useClassFinancialData(
     
     return () => {
       if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
+        try {
+          abortControllerRef.current.abort();
+        } catch (err) {
+          // Ignore abort errors
+          console.log("Ignoring abort error during cleanup");
+        }
         abortControllerRef.current = null;
       }
     };
@@ -71,7 +86,12 @@ export function useClassFinancialData(
     data: financialData,
     isLoading,
     refetch
-  } = useFinancialQuery(branchId, fromDate, toDate, abortControllerRef.current?.signal);
+  } = useFinancialQuery(
+    branchId, 
+    fromDate, 
+    toDate, 
+    abortControllerRef.current?.signal
+  );
 
   const {
     classFinances,
@@ -89,7 +109,12 @@ export function useClassFinancialData(
     try {
       // Cancel any ongoing requests first
       if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
+        try {
+          abortControllerRef.current.abort();
+        } catch (err) {
+          // Ignore abort errors
+          console.log("Ignoring abort error during refresh");
+        }
       }
       
       // Create a new abort controller
@@ -129,9 +154,15 @@ export function useClassFinancialData(
       return Array.isArray(results) ? results : [results];
     } catch (error) {
       // Only log if it's not an abort error
-      if (!(error instanceof DOMException && error.name === 'AbortError')) {
+      if (
+        !(error instanceof DOMException && error.name === 'AbortError') &&
+        error?.name !== 'CancelledError' &&
+        !error?.message?.includes?.('cancelled')
+      ) {
         console.error("Error refreshing financial data:", error);
         toast.error("Failed to refresh financial data");
+      } else {
+        console.log("Refresh cancelled, ignoring error");
       }
       setIsRefreshing(false);
       return [];

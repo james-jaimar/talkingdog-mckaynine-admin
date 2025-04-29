@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef, useCallback } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Helmet } from "react-helmet";
@@ -46,7 +47,12 @@ export default function FinancialReports() {
     return () => {
       // Cleanup by aborting any ongoing request when component unmounts or dependencies change
       if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
+        try {
+          abortControllerRef.current.abort();
+        } catch (err) {
+          // Ignore abort errors
+          console.log("Ignoring abort error during cleanup");
+        }
         abortControllerRef.current = null;
       }
     };
@@ -72,6 +78,14 @@ export default function FinancialReports() {
         // Make sure we have a valid abort controller
         if (!abortControllerRef.current) {
           abortControllerRef.current = new AbortController();
+        }
+        
+        const signal = abortControllerRef.current.signal;
+        
+        // Don't proceed if already aborted
+        if (signal.aborted) {
+          console.log("Signal already aborted, skipping data fetch");
+          return;
         }
         
         // Completely reset all queries to ensure fresh data
@@ -105,15 +119,26 @@ export default function FinancialReports() {
         // Also refresh invoice data
         await refreshAllInvoiceQueries();
         
-        setDataInitialized(true);
+        if (!signal.aborted) {
+          setDataInitialized(true);
+        }
       } catch (error) {
         // Only log if it's not an abort error
-        if (!(error instanceof DOMException && error.name === 'AbortError')) {
+        if (
+          !(error instanceof DOMException && error.name === 'AbortError') &&
+          error?.name !== 'CancelledError' &&
+          !error?.message?.includes?.('cancelled')
+        ) {
           console.error("Error initializing financial data:", error);
           toast.error("Failed to load financial data");
+        } else {
+          console.log("Query cancelled, ignoring error");
         }
       } finally {
-        setIsLoading(false);
+        // Only update state if we're still mounted and not cancelled
+        if (abortControllerRef.current && !abortControllerRef.current.signal.aborted) {
+          setIsLoading(false);
+        }
         
         // Clear loading timeout
         if (loadingTimeoutRef.current) {
@@ -133,7 +158,12 @@ export default function FinancialReports() {
       
       // Abort any in-flight queries when unmounting
       if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
+        try {
+          abortControllerRef.current.abort();
+        } catch (err) {
+          // Ignore abort errors
+          console.log("Ignoring abort error during cleanup");
+        }
         abortControllerRef.current = null;
       }
     };
@@ -213,7 +243,9 @@ export default function FinancialReports() {
     if (dataInitialized) {
       // Delay to allow queries to execute
       const timer = setTimeout(() => {
-        setIsLoading(false);
+        if (abortControllerRef.current && !abortControllerRef.current.signal.aborted) {
+          setIsLoading(false);
+        }
       }, 1000);
       
       return () => clearTimeout(timer);
@@ -228,7 +260,12 @@ export default function FinancialReports() {
       }
       
       if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
+        try {
+          abortControllerRef.current.abort();
+        } catch (err) {
+          // Ignore abort errors
+          console.log("Ignoring abort error during cleanup");
+        }
         abortControllerRef.current = null;
       }
     };
@@ -283,11 +320,17 @@ export default function FinancialReports() {
       }
     } catch (error) {
       // Only show error if it's not an abort error
-      if (!(error instanceof DOMException && error.name === 'AbortError')) {
+      if (
+        !(error instanceof DOMException && error.name === 'AbortError') &&
+        error?.name !== 'CancelledError' &&
+        !error?.message?.includes?.('cancelled')
+      ) {
         console.error("Error refreshing financial data:", error);
         if (showToast) {
           toast.error("Failed to refresh data");
         }
+      } else {
+        console.log("Refresh cancelled, ignoring error");
       }
     } finally {
       if (abortControllerRef.current && !abortControllerRef.current.signal.aborted) {

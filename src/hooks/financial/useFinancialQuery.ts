@@ -21,7 +21,12 @@ export function useFinancialQuery(
   useEffect(() => {
     // Cancel existing query if any
     if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
+      try {
+        abortControllerRef.current.abort();
+      } catch (err) {
+        // Ignore abort errors
+        console.log("Ignoring abort error during controller reset");
+      }
     }
     
     // Create new controller
@@ -30,7 +35,12 @@ export function useFinancialQuery(
     // Cleanup on unmount or when dependencies change
     return () => {
       if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
+        try {
+          abortControllerRef.current.abort();
+        } catch (err) {
+          // Ignore abort errors
+          console.log("Ignoring abort error during cleanup");
+        }
         abortControllerRef.current = null;
       }
     };
@@ -56,8 +66,9 @@ export function useFinancialQuery(
         // Log the fetch attempt for debugging
         console.log(`Fetching fresh financial data for branch ${branchId} from ${fromDate} to ${toDate}`);
         
-        // Check if request was cancelled
+        // Check if request was cancelled before we even start
         if (effectiveSignal?.aborted) {
+          console.log("Signal was already aborted, cancelling financial data fetch");
           throw new DOMException("Query was cancelled", "AbortError");
         }
         
@@ -72,14 +83,25 @@ export function useFinancialQuery(
           totalRevenueQuery = totalRevenueQuery.gte('issued_date', fromDate).lte('issued_date', toDate);
         }
 
+        // Enable abortSignal for this supabase query
+        if (effectiveSignal) {
+          totalRevenueQuery = totalRevenueQuery.abortSignal(effectiveSignal);
+        }
+
         // Check again if request was cancelled
         if (effectiveSignal?.aborted) {
+          console.log("Signal aborted during revenue query setup, cancelling");
           throw new DOMException("Query was cancelled", "AbortError");
         }
         
         const { data: invoicesTotal, error: invoiceTotalError } = await totalRevenueQuery;
 
         if (invoiceTotalError) {
+          // Check if it's an abort error from Supabase
+          if (invoiceTotalError.message?.includes?.('The operation was aborted')) {
+            console.log("Invoice totals query was aborted");
+            throw new DOMException("Query was cancelled", "AbortError");
+          }
           console.error("Error fetching invoice totals:", invoiceTotalError);
           throw invoiceTotalError;
         }
@@ -89,6 +111,7 @@ export function useFinancialQuery(
 
         // Check again if request was cancelled
         if (effectiveSignal?.aborted) {
+          console.log("Signal aborted after revenue calculation, cancelling");
           throw new DOMException("Query was cancelled", "AbortError");
         }
         
@@ -119,20 +142,32 @@ export function useFinancialQuery(
           bookingsQuery = bookingsQuery.gte('created_at', fromDate).lte('created_at', toDate);
         }
 
+        // Enable abortSignal for this supabase query
+        if (effectiveSignal) {
+          bookingsQuery = bookingsQuery.abortSignal(effectiveSignal);
+        }
+
         // Check again if request was cancelled
         if (effectiveSignal?.aborted) {
+          console.log("Signal aborted during bookings query setup, cancelling");
           throw new DOMException("Query was cancelled", "AbortError");
         }
         
         const { data: bookings, error: bookingsError } = await bookingsQuery;
 
         if (bookingsError) {
+          // Check if it's an abort error from Supabase
+          if (bookingsError.message?.includes?.('The operation was aborted')) {
+            console.log("Bookings query was aborted");
+            throw new DOMException("Query was cancelled", "AbortError");
+          }
           console.error("Error fetching booking data:", bookingsError);
           throw bookingsError;
         }
 
         // Check again if request was cancelled
         if (effectiveSignal?.aborted) {
+          console.log("Signal aborted after bookings query, cancelling");
           throw new DOMException("Query was cancelled", "AbortError");
         }
         
@@ -172,14 +207,25 @@ export function useFinancialQuery(
             .lte('invoices.issued_date', toDate);
         }
 
+        // Enable abortSignal for this supabase query
+        if (effectiveSignal) {
+          invoiceQuery = invoiceQuery.abortSignal(effectiveSignal);
+        }
+
         // Check again if request was cancelled
         if (effectiveSignal?.aborted) {
+          console.log("Signal aborted during invoice items query setup, cancelling");
           throw new DOMException("Query was cancelled", "AbortError");
         }
         
         const { data: invoiceItems, error: invoiceItemsError } = await invoiceQuery;
 
         if (invoiceItemsError) {
+          // Check if it's an abort error from Supabase
+          if (invoiceItemsError.message?.includes?.('The operation was aborted')) {
+            console.log("Invoice items query was aborted");
+            throw new DOMException("Query was cancelled", "AbortError");
+          }
           console.error("Error fetching invoice items:", invoiceItemsError);
           throw invoiceItemsError;
         }
@@ -188,6 +234,7 @@ export function useFinancialQuery(
         const fetchCounts = async () => {
           // Check again if request was cancelled
           if (effectiveSignal?.aborted) {
+            console.log("Signal aborted before count queries, cancelling");
             throw new DOMException("Query was cancelled", "AbortError");
           }
           
@@ -197,7 +244,8 @@ export function useFinancialQuery(
             .eq('status', 'invalid')
             .eq('clients.branch_id', branchId)
             .gte(fromDate ? 'issued_date' : 'created_at', fromDate || '1970-01-01')
-            .lte(toDate ? 'issued_date' : 'created_at', toDate || '2100-01-01');
+            .lte(toDate ? 'issued_date' : 'created_at', toDate || '2100-01-01')
+            .abortSignal(effectiveSignal);
 
           const allInvoicesCountPromise = supabase
             .from('invoices')
@@ -205,34 +253,67 @@ export function useFinancialQuery(
             .eq('clients.branch_id', branchId)
             .in('status', ['sent', 'paid', 'overdue'])
             .gte(fromDate ? 'issued_date' : 'created_at', fromDate || '1970-01-01')
-            .lte(toDate ? 'issued_date' : 'created_at', toDate || '2100-01-01');
+            .lte(toDate ? 'issued_date' : 'created_at', toDate || '2100-01-01')
+            .abortSignal(effectiveSignal);
             
-          // Execute queries in parallel
-          const [invalidResult, allResult] = await Promise.all([
-            invalidCountPromise,
-            allInvoicesCountPromise
-          ]);
-          
-          // Check again if request was cancelled
-          if (effectiveSignal?.aborted) {
-            throw new DOMException("Query was cancelled", "AbortError");
+          try {
+            // Execute queries in parallel
+            const [invalidResult, allResult] = await Promise.all([
+              invalidCountPromise,
+              allInvoicesCountPromise
+            ]);
+            
+            // Check again if request was cancelled
+            if (effectiveSignal?.aborted) {
+              console.log("Signal aborted after count queries, cancelling");
+              throw new DOMException("Query was cancelled", "AbortError");
+            }
+            
+            return {
+              invalidCount: invalidResult.count || 0,
+              invalidError: invalidResult.error,
+              allInvoicesCount: allResult.count || 0, 
+              countError: allResult.error
+            };
+          } catch (error) {
+            if (error instanceof DOMException && error.name === 'AbortError') {
+              console.log("Count queries were aborted");
+              throw error;
+            }
+            // Return defaults with the error
+            return {
+              invalidCount: 0,
+              invalidError: error,
+              allInvoicesCount: 0,
+              countError: error
+            };
           }
-          
-          return {
-            invalidCount: invalidResult.count || 0,
-            invalidError: invalidResult.error,
-            allInvoicesCount: allResult.count || 0, 
-            countError: allResult.error
-          };
         };
         
-        const { invalidCount, invalidError, allInvoicesCount, countError } = await fetchCounts();
+        let invalidCount = 0;
+        let invalidError = null;
+        let allInvoicesCount = 0;
+        let countError = null;
         
-        if (invalidError) {
+        try {
+          const counts = await fetchCounts();
+          invalidCount = counts.invalidCount;
+          invalidError = counts.invalidError;
+          allInvoicesCount = counts.allInvoicesCount;
+          countError = counts.countError;
+        } catch (error) {
+          // If this is an abort error, propagate it
+          if (error instanceof DOMException && error.name === 'AbortError') {
+            throw error;
+          }
+          console.error("Error fetching counts:", error);
+        }
+        
+        if (invalidError && !effectiveSignal?.aborted) {
           console.error("Error counting invalid invoices:", invalidError);
         }
 
-        if (countError) {
+        if (countError && !effectiveSignal?.aborted) {
           console.error("Error counting invoices:", countError);
         }
 
@@ -257,9 +338,14 @@ export function useFinancialQuery(
         } as FinancialData;
       } catch (error) {
         // Handle AbortError properly
-        if (error instanceof DOMException && error.name === "AbortError") {
+        if (
+          error instanceof DOMException && error.name === "AbortError" ||
+          error?.name === 'CancelledError' ||
+          error?.message?.includes?.('cancelled') ||
+          error?.message?.includes?.('aborted')
+        ) {
           console.log("Financial data query was cancelled");
-          throw error; // Re-throw for React Query to handle
+          throw new DOMException("Query was cancelled", "AbortError"); // Re-throw for React Query to handle
         } else {
           console.error("Error in financial data query:", error);
           throw error;
@@ -267,11 +353,23 @@ export function useFinancialQuery(
       }
     },
     staleTime: 0, // Always treat data as stale
-    retry: 2, // Retry failed requests up to 2 times
+    retry: 1, // Reduced from 2 to 1 to minimize retries on cancelled requests
     retryOnMount: true, // Retry when component mounts
     refetchOnWindowFocus: true, // Refetch when window is focused
     refetchOnMount: true, // Always refetch when component mounts
     gcTime: 0, // Don't keep in cache
-    refetchInterval: false // Don't auto-refetch on interval
+    refetchInterval: false, // Don't auto-refetch on interval
+    // Extra safety for cancelled queries
+    throwOnError: (error) => {
+      if (
+        error instanceof DOMException && error.name === 'AbortError' ||
+        error?.name === 'CancelledError' ||
+        error?.message?.includes?.('cancelled')
+      ) {
+        console.log("Suppressing cancelled query error");
+        return false;
+      }
+      return true;
+    }
   });
 }

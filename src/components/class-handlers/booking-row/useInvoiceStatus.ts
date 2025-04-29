@@ -1,3 +1,4 @@
+
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useRef, useEffect } from "react";
@@ -9,7 +10,12 @@ export function useInvoiceStatus(bookingId: string) {
   useEffect(() => {
     // Cancel existing query if any
     if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
+      try {
+        abortControllerRef.current.abort();
+      } catch (err) {
+        // Ignore abort errors
+        console.log("Ignoring abort error during controller reset");
+      }
     }
     
     // Create new controller
@@ -18,7 +24,12 @@ export function useInvoiceStatus(bookingId: string) {
     // Cleanup on unmount or when bookingId changes
     return () => {
       if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
+        try {
+          abortControllerRef.current.abort();
+        } catch (err) {
+          // Ignore abort errors
+          console.log("Ignoring abort error during cleanup");
+        }
         abortControllerRef.current = null;
       }
     };
@@ -32,8 +43,14 @@ export function useInvoiceStatus(bookingId: string) {
       console.log(`Fetching invoice status for booking ${bookingId}`);
       
       try {
+        // Check if request was cancelled before we even start
+        if (effectiveSignal?.aborted) {
+          console.log(`Signal was already aborted, cancelling invoice status fetch for booking ${bookingId}`);
+          throw new DOMException("Query was cancelled", "AbortError");
+        }
+        
         // First check for invoice items linked to this booking
-        const { data, error } = await supabase
+        let query = supabase
           .from('invoice_items')
           .select(`
             invoice_id,
@@ -44,16 +61,28 @@ export function useInvoiceStatus(bookingId: string) {
               invoice_number
             )
           `)
-          .eq('booking_id', bookingId)
-          .abortSignal(effectiveSignal); // Use the abort signal with Supabase
+          .eq('booking_id', bookingId);
+          
+        // Apply abort signal if available
+        if (effectiveSignal) {
+          query = query.abortSignal(effectiveSignal);
+        }
+        
+        const { data, error } = await query;
 
         if (error) {
+          // Check if it's an abort error from Supabase
+          if (error.message?.includes?.('The operation was aborted')) {
+            console.log(`Invoice status query for booking ${bookingId} was aborted`);
+            throw new DOMException("Query was cancelled", "AbortError");
+          }
           console.error("Error fetching invoice data:", error);
           throw error;
         }
 
         // Check if signal was aborted
         if (effectiveSignal?.aborted) {
+          console.log(`Signal aborted after query for booking ${bookingId}, cancelling`);
           throw new DOMException("Query was cancelled", "AbortError");
         }
 
@@ -88,7 +117,12 @@ export function useInvoiceStatus(bookingId: string) {
         return null;
       } catch (err) {
         // Handle AbortError properly
-        if (err instanceof DOMException && err.name === "AbortError") {
+        if (
+          err instanceof DOMException && err.name === "AbortError" ||
+          err?.name === 'CancelledError' ||
+          err?.message?.includes?.('cancelled') ||
+          err?.message?.includes?.('aborted')
+        ) {
           console.log(`Invoice status query for booking ${bookingId} was cancelled`);
           throw err; // Re-throw for React Query to handle
         } else {
@@ -103,5 +137,17 @@ export function useInvoiceStatus(bookingId: string) {
     refetchOnWindowFocus: true, // Refetch when window focuses
     retry: 1, // Limit retries to prevent excessive requests on error
     gcTime: 5000, // Only keep in cache for 5 seconds
+    // Extra safety for cancelled queries
+    throwOnError: (error) => {
+      if (
+        error instanceof DOMException && error.name === 'AbortError' ||
+        error?.name === 'CancelledError' ||
+        error?.message?.includes?.('cancelled')
+      ) {
+        console.log("Suppressing cancelled invoice status query error");
+        return false;
+      }
+      return true;
+    }
   });
 }

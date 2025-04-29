@@ -11,10 +11,15 @@ export const queryClient = new QueryClient({
       refetchOnReconnect: true,
       refetchOnMount: true,
       gcTime: 5 * 60 * 1000, // 5 minutes for garbage collection
-      // Proper error handling for aborted requests
+      // Improved error handling for aborted requests
       throwOnError: (error) => {
-        // Don't throw for AbortErrors (cancellation)
-        if (error instanceof DOMException && error.name === 'AbortError') {
+        // Don't throw for AbortErrors or CancelledError (cancellation)
+        if (
+          error instanceof DOMException && error.name === 'AbortError' ||
+          error?.name === 'CancelledError' ||
+          error?.message?.includes?.('cancelled')
+        ) {
+          console.log('Query was cancelled, suppressing error');
           return false;
         }
         return true;
@@ -23,10 +28,15 @@ export const queryClient = new QueryClient({
     mutations: {
       retry: 1,
       networkMode: "always",
-      // Proper error handling for aborted requests
+      // Improved error handling for aborted requests
       throwOnError: (error) => {
-        // Don't throw for AbortErrors (cancellation)
-        if (error instanceof DOMException && error.name === 'AbortError') {
+        // Don't throw for AbortErrors or CancelledError (cancellation)
+        if (
+          error instanceof DOMException && error.name === 'AbortError' ||
+          error?.name === 'CancelledError' ||
+          error?.message?.includes?.('cancelled')
+        ) {
+          console.log('Mutation was cancelled, suppressing error');
           return false;
         }
         return true;
@@ -38,7 +48,7 @@ export const queryClient = new QueryClient({
 // Configure specific options for financial data queries - always fresh data
 queryClient.setQueryDefaults(['financial-bookings'], {
   staleTime: 0, // Always consider financial data stale (fetch on every mount)
-  retry: 2,
+  retry: 1, // Reduced from 2 to 1 to minimize retries on cancelled requests
   refetchInterval: false,
   refetchOnMount: true, // Always refetch when component mounts
   gcTime: 0, // Don't retain in cache
@@ -48,7 +58,7 @@ queryClient.setQueryDefaults(['financial-bookings'], {
 // Additionally set defaults for trainer payment queries
 queryClient.setQueryDefaults(['trainer-payments'], {
   staleTime: 0,
-  retry: 2,
+  retry: 1, // Reduced from 2 to 1
   refetchOnMount: true,
   gcTime: 0,
   refetchOnWindowFocus: true
