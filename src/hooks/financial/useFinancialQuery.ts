@@ -1,3 +1,4 @@
+
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { FinancialData } from "./types";
@@ -23,6 +24,9 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
       } as FinancialData;
 
       try {
+        // Log the fetch attempt for debugging
+        console.log(`Fetching fresh financial data for branch ${branchId} from ${fromDate} to ${toDate}`);
+        
         // Build a single combined query for revenue data
         let totalRevenueQuery = supabase
           .from('invoices')
@@ -171,6 +175,8 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
         // Create an empty class invoice map (will be populated by the processor)
         const classInvoiceMap: Array<{className: string, invoiceIds: string[]}> = [];
 
+        console.log(`Successfully fetched financial data for branch ${branchId}: ${filteredInvoiceItems.length} invoice items, ${allInvoicesCount} invoices total`);
+        
         return {
           bookingsWithInvoices: bookings || [],
           allInvoicesCount: allInvoicesCount || 0,
@@ -185,11 +191,11 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
         throw error;
       }
     },
-    enabled: !!branchId,
     staleTime: 0, // Always treat data as stale
     retry: 2, // Retry failed requests up to 2 times
     refetchOnWindowFocus: true, // Refetch when window is focused
     refetchOnMount: true, // Always refetch when component mounts
     gcTime: 0, // Don't keep in cache
+    refetchInterval: false // Don't auto-refetch on interval
   });
 }

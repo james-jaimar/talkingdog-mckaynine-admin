@@ -63,17 +63,10 @@ export function useInvoiceStatus(bookingId: string) {
         return null;
       }
     },
-    staleTime: 10000, // 10 seconds
-    refetchOnWindowFocus: true,
+    staleTime: 0, // Always treat as stale data
+    refetchOnMount: true, // Refetch on every mount
+    refetchOnWindowFocus: true, // Refetch when window focuses
     retry: 1, // Limit retries to prevent excessive requests on error
-    meta: {
-      // Add onSettled to ensure UI is always released, even on error
-      onSettled: () => {
-        // Ensure any UI locks are released
-        setTimeout(() => {
-          document.body.style.pointerEvents = '';
-        }, 100);
-      }
-    }
+    gcTime: 5000, // Only keep in cache for 5 seconds
   });
 }

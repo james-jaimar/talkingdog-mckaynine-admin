@@ -23,12 +23,19 @@ export function useClassFinancialData(
     if (branchId) {
       // Force invalidation of financial data on every mount
       queryClient.invalidateQueries({ 
-        queryKey: ['financial-bookings', branchId, fromDate, toDate]
+        queryKey: ['financial-bookings', branchId, fromDate, toDate],
+        exact: true
       });
       
       // Also invalidate invoices data
       queryClient.invalidateQueries({
         queryKey: ['invoices'],
+        exact: false
+      });
+      
+      // And trainer payment data
+      queryClient.invalidateQueries({
+        queryKey: ['trainer-payments'],
         exact: false
       });
     }
@@ -53,7 +60,7 @@ export function useClassFinancialData(
     setIsRefreshing(true);
     
     try {
-      // Reset queries first to clear all caches
+      // First completely reset all queries to clear any cached data
       await queryClient.resetQueries({ 
         queryKey: ['financial-bookings', branchId, fromDate, toDate],
         exact: true
@@ -63,6 +70,12 @@ export function useClassFinancialData(
       await queryClient.resetQueries({ 
         queryKey: ['invoices'],
         exact: false
+      });
+      
+      // Reset trainer payments cache
+      await queryClient.resetQueries({
+        queryKey: ['trainer-payments'],
+        exact: false 
       });
       
       // Force a complete refetch of financial data

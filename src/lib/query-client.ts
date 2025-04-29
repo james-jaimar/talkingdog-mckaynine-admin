@@ -25,7 +25,17 @@ queryClient.setQueryDefaults(['financial-bookings'], {
   retry: 2,
   refetchInterval: false,
   refetchOnMount: true, // Always refetch when component mounts
-  gcTime: 0 // Don't retain in cache
+  gcTime: 0, // Don't retain in cache
+  refetchOnWindowFocus: true // Also refetch when window gains focus
+});
+
+// Additionally set defaults for trainer payment queries
+queryClient.setQueryDefaults(['trainer-payments'], {
+  staleTime: 0,
+  retry: 2,
+  refetchOnMount: true,
+  gcTime: 0,
+  refetchOnWindowFocus: true
 });
 
 // Configure console logging behavior based on environment

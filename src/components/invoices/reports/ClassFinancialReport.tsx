@@ -41,6 +41,21 @@ export function ClassFinancialReport({ dateRange, onRefreshSuccess }: ClassFinan
     toDate
   );
   
+  // Always reset cache on mount to ensure fresh data
+  useEffect(() => {
+    if (currentBranch?.id) {
+      queryClient.resetQueries({ 
+        queryKey: [
+          'financial-bookings', 
+          currentBranch.id,
+          fromDate,
+          toDate
+        ],
+        exact: true
+      });
+    }
+  }, [currentBranch?.id, fromDate, toDate, queryClient]);
+  
   // Safety mechanism to exit loading state after a timeout
   useEffect(() => {
     if (isLoading && !refreshing) {
@@ -102,6 +117,21 @@ export function ClassFinancialReport({ dateRange, onRefreshSuccess }: ClassFinan
       await queryClient.resetQueries({ 
         queryKey: ['invoices'],
         exact: false
+      });
+      
+      await queryClient.resetQueries({
+        queryKey: ['trainer-payments'],
+        exact: false
+      });
+      
+      // Force fetch with zero staleTime
+      await queryClient.fetchQuery({
+        queryKey: ['financial-bookings', currentBranch?.id, fromDate, toDate],
+        queryFn: async () => {
+          const result = await refreshData();
+          return result;
+        },
+        staleTime: 0
       });
       
       // Then refresh the data

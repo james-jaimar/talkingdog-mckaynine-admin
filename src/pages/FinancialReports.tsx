@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef, useCallback } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Helmet } from "react-helmet";
@@ -44,14 +45,21 @@ export default function FinancialReports() {
             setIsLoading(false);
           }, 15000); // Force exit loading state after 15 seconds
           
-          // Always invalidate queries to ensure fresh data
-          await queryClient.invalidateQueries({
+          // Completely reset all queries to ensure fresh data
+          await queryClient.resetQueries({
             queryKey: [
               'financial-bookings', 
               currentBranch.id,
               dateRange.from.toISOString(),
               dateRange.to.toISOString()
-            ]
+            ],
+            exact: true
+          });
+          
+          // Also reset trainer payment queries
+          await queryClient.resetQueries({
+            queryKey: ['trainer-payments'],
+            exact: false
           });
           
           // Force fresh fetch for financial data
@@ -112,14 +120,44 @@ export default function FinancialReports() {
     loadingTimeoutRef.current = setTimeout(() => {
       setIsLoading(false);
     }, 10000); // Force exit loading state after 10 seconds
-  }, []);
+    
+    // Immediately reset and invalidate all queries for the new date range
+    if (currentBranch) {
+      // Need to do this in a setTimeout to allow React to update state first
+      setTimeout(() => {
+        queryClient.resetQueries({
+          queryKey: [
+            'financial-bookings', 
+            currentBranch.id
+          ],
+          exact: false
+        });
+      }, 0);
+    }
+  }, [currentBranch, queryClient]);
   
   // Handle tab changes with debounce
   const handleTabChange = useCallback((value: string) => {
     if (value !== activeTab) {
       setActiveTab(value);
+      
+      // Force a data refresh when changing tabs
+      if (currentBranch) {
+        // Reset queries for the current tab
+        if (value === 'financial') {
+          queryClient.invalidateQueries({
+            queryKey: ['financial-bookings'],
+            exact: false
+          });
+        } else if (value === 'trainers') {
+          queryClient.invalidateQueries({
+            queryKey: ['trainer-payments'],
+            exact: false
+          });
+        }
+      }
     }
-  }, [activeTab]);
+  }, [activeTab, currentBranch, queryClient]);
 
   // Reset loading state after date change
   useEffect(() => {
@@ -158,6 +196,12 @@ export default function FinancialReports() {
           dateRange.to.toISOString()
         ],
         exact: true 
+      });
+      
+      // Also reset trainer payment queries
+      await queryClient.resetQueries({
+        queryKey: ['trainer-payments'],
+        exact: false
       });
       
       // Force fetch with staleTime: 0 to ensure fresh data
