@@ -1,13 +1,13 @@
 
 import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { RouterProvider } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import Invoices from './pages/Invoices';
-import InvoiceDetail from './pages/InvoiceDetail';
-import Dashboard from './pages/Dashboard';
-import { InvoicesProvider } from './context/InvoicesDataContext';
+import router from './router';
 import { Toaster } from 'sonner';
 import { BranchProvider } from './context/BranchContext';
+import { AuthProvider } from './context/auth/AuthProvider';
+import { TermProvider } from './context/TermContext';
+import { InvoicesProvider } from './context/InvoicesDataContext';
 
 function App() {
   const queryClient = new QueryClient({
@@ -21,18 +21,16 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <BranchProvider>
-          <Toaster />
-          <InvoicesProvider>
-            <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/invoices" element={<Invoices />} />
-              <Route path="/invoices/:id" element={<InvoiceDetail />} />
-            </Routes>
-          </InvoicesProvider>
-        </BranchProvider>
-      </BrowserRouter>
+      <AuthProvider>
+        <TermProvider>
+          <BranchProvider>
+            <Toaster />
+            <InvoicesProvider>
+              <RouterProvider router={router} />
+            </InvoicesProvider>
+          </BranchProvider>
+        </TermProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

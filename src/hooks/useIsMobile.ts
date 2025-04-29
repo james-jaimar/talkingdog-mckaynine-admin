@@ -1,26 +1,25 @@
 
 import { useState, useEffect } from "react";
 
-// Mobile breakpoint consistent with Tailwind's md breakpoint
-const MOBILE_BREAKPOINT = 768;
-
+/**
+ * Custom hook to determine if the current viewport is mobile size
+ * @returns {boolean} True if the viewport width is less than 768px
+ */
 export function useIsMobile() {
-  // Default to false and update after first render to avoid hydration mismatch
-  const [isMobile, setIsMobile] = useState<boolean>(false);
+  const [isMobile, setIsMobile] = useState(
+    typeof window !== "undefined" ? window.innerWidth < 768 : false
+  );
   
   useEffect(() => {
-    // Set initial value
-    setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
+    if (typeof window === "undefined") return;
     
-    // Handler to call on window resize
     const handleResize = () => {
-      setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
+      setIsMobile(window.innerWidth < 768);
     };
     
-    // Add event listener
     window.addEventListener("resize", handleResize);
+    handleResize();
     
-    // Clean up
     return () => window.removeEventListener("resize", handleResize);
   }, []);
   

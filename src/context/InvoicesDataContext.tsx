@@ -27,15 +27,24 @@ export function InvoicesProvider({ children }: { children: React.ReactNode }) {
   const [loadingState, setLoadingState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [currentPage, setCurrentPage] = useState(0);
   const [totalInvoices, setTotalInvoices] = useState(0);
-  const { currentBranch } = useBranch();
   
-  // Calculate total pages
-  const totalPages = Math.ceil(totalInvoices / INVOICES_PER_PAGE);
+  // Get branch context safely with fallback
+  let branchData = { currentBranch: null };
+  try {
+    branchData = useBranch();
+  } catch (err) {
+    console.error("Error accessing branch context:", err);
+  }
+  
+  const { currentBranch } = branchData;
   
   // Function to set the current page
   const setPage = useCallback((page: number) => {
     setCurrentPage(page);
   }, []);
+
+  // Calculate total pages
+  const totalPages = Math.ceil(totalInvoices / INVOICES_PER_PAGE);
 
   // Get invoice count for pagination
   const fetchInvoiceCount = useCallback(async () => {
@@ -127,7 +136,9 @@ export function InvoicesProvider({ children }: { children: React.ReactNode }) {
 
   // Fetch invoices when branch or page changes
   useEffect(() => {
-    fetchInvoices();
+    if (currentBranch) {
+      fetchInvoices();
+    }
   }, [fetchInvoices, currentBranch, currentPage]);
 
   const contextValue: InvoicesContextType = {

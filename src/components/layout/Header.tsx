@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useBranch } from "@/context/BranchContext";
@@ -15,11 +16,28 @@ import { Branch } from "@/context/BranchContext";
 import { TermSelectorRow } from "./header/TermSelectorRow";
 
 export function Header() {
-  const { user, logout, isAdmin, isTrainer, isHandler, role } = useAuth();
+  // Get auth data with error handling
+  let authData = { user: null, logout: async () => ({ success: false, error: "Auth not ready" }), isAdmin: false, isTrainer: false, isHandler: false, role: null };
+  try {
+    authData = useAuth();
+  } catch (error) {
+    console.error("Error accessing auth context:", error);
+  }
+  
+  const { user, logout, isAdmin, isTrainer, isHandler, role } = authData;
   const location = useLocation();
-  const isMobile = useIsMobile();
+  
+  // Get mobile status
+  let isMobile = false;
+  try {
+    isMobile = useIsMobile();
+  } catch (error) {
+    console.error("Error accessing mobile hook:", error);
+  }
+  
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
+  // Get branch data safely
   let branchInfo = { currentBranch: null as Branch | null };
   try {
     branchInfo = useBranch();
