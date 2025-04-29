@@ -1,11 +1,35 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useRef, useEffect } from "react";
 
 export function useInvoiceStatus(bookingId: string) {
+  const abortControllerRef = useRef<AbortController | null>(null);
+  
+  // Create a new AbortController when bookingId changes
+  useEffect(() => {
+    // Cancel existing query if any
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    
+    // Create new controller
+    abortControllerRef.current = new AbortController();
+    
+    // Cleanup on unmount or when bookingId changes
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+    };
+  }, [bookingId]);
+
   return useQuery({
     queryKey: ['booking-invoice', bookingId],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
+      // Use either the signal provided by React Query or our own
+      const effectiveSignal = signal || abortControllerRef.current?.signal;
       console.log(`Fetching invoice status for booking ${bookingId}`);
       
       try {
@@ -26,6 +50,11 @@ export function useInvoiceStatus(bookingId: string) {
         if (error) {
           console.error("Error fetching invoice data:", error);
           throw error;
+        }
+
+        // Check if signal was aborted
+        if (effectiveSignal?.aborted) {
+          throw new DOMException("Query was cancelled", "AbortError");
         }
 
         // Filter out any null invoice data and log what we found
@@ -58,9 +87,15 @@ export function useInvoiceStatus(bookingId: string) {
         console.log(`No invoices found for booking ${bookingId}`);
         return null;
       } catch (err) {
-        console.error(`Error in useInvoiceStatus for booking ${bookingId}:`, err);
-        // Return null instead of throwing to prevent UI lockups
-        return null;
+        // Handle AbortError properly
+        if (err instanceof DOMException && err.name === "AbortError") {
+          console.log(`Invoice status query for booking ${bookingId} was cancelled`);
+          throw err; // Re-throw for React Query to handle
+        } else {
+          console.error(`Error in useInvoiceStatus for booking ${bookingId}:`, err);
+          // Return null instead of throwing to prevent UI lockups
+          return null;
+        }
       }
     },
     staleTime: 0, // Always treat as stale data

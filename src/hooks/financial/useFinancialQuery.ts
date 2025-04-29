@@ -2,6 +2,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { FinancialData } from "./types";
+import { useRef, useEffect } from "react";
 
 /**
  * Custom hook to fetch financial data with optimized queries and better error handling
@@ -9,10 +10,33 @@ import { FinancialData } from "./types";
  */
 export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?: string) {
   const queryKey = ['financial-bookings', branchId, fromDate, toDate];
+  const abortControllerRef = useRef<AbortController | null>(null);
+  
+  // Create a new AbortController when dependencies change
+  useEffect(() => {
+    // Cancel existing query if any
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    
+    // Create new controller
+    abortControllerRef.current = new AbortController();
+    
+    // Cleanup on unmount or when dependencies change
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+    };
+  }, [branchId, fromDate, toDate]);
 
   return useQuery({
     queryKey,
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
+      // Use either the signal provided by React Query or our own
+      const effectiveSignal = signal || abortControllerRef.current?.signal;
+      
       if (!branchId) return {
         bookingsWithInvoices: [],
         allInvoicesCount: 0,
@@ -27,6 +51,11 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
         // Log the fetch attempt for debugging
         console.log(`Fetching fresh financial data for branch ${branchId} from ${fromDate} to ${toDate}`);
         
+        // Check if request was cancelled
+        if (effectiveSignal?.aborted) {
+          throw new DOMException("Query was cancelled", "AbortError");
+        }
+        
         // Build a single combined query for revenue data
         let totalRevenueQuery = supabase
           .from('invoices')
@@ -38,6 +67,11 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
           totalRevenueQuery = totalRevenueQuery.gte('issued_date', fromDate).lte('issued_date', toDate);
         }
 
+        // Check again if request was cancelled
+        if (effectiveSignal?.aborted) {
+          throw new DOMException("Query was cancelled", "AbortError");
+        }
+        
         const { data: invoicesTotal, error: invoiceTotalError } = await totalRevenueQuery;
 
         if (invoiceTotalError) {
@@ -48,6 +82,11 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
         const totalRevenueFromInvoices = invoicesTotal?.reduce((sum, inv) => sum + (inv.total || 0), 0) || 0;
         const totalDiscounts = invoicesTotal?.reduce((sum, inv) => sum + (inv.monetary_discount || 0), 0) || 0;
 
+        // Check again if request was cancelled
+        if (effectiveSignal?.aborted) {
+          throw new DOMException("Query was cancelled", "AbortError");
+        }
+        
         // Efficient query for confirmed bookings with class information
         let bookingsQuery = supabase
           .from('bookings')
@@ -75,6 +114,11 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
           bookingsQuery = bookingsQuery.gte('created_at', fromDate).lte('created_at', toDate);
         }
 
+        // Check again if request was cancelled
+        if (effectiveSignal?.aborted) {
+          throw new DOMException("Query was cancelled", "AbortError");
+        }
+        
         const { data: bookings, error: bookingsError } = await bookingsQuery;
 
         if (bookingsError) {
@@ -82,6 +126,11 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
           throw bookingsError;
         }
 
+        // Check again if request was cancelled
+        if (effectiveSignal?.aborted) {
+          throw new DOMException("Query was cancelled", "AbortError");
+        }
+        
         // Get invoice items with complete invoice details in a single query
         let invoiceQuery = supabase
           .from('invoice_items')
@@ -118,6 +167,11 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
             .lte('invoices.issued_date', toDate);
         }
 
+        // Check again if request was cancelled
+        if (effectiveSignal?.aborted) {
+          throw new DOMException("Query was cancelled", "AbortError");
+        }
+        
         const { data: invoiceItems, error: invoiceItemsError } = await invoiceQuery;
 
         if (invoiceItemsError) {
@@ -127,6 +181,11 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
 
         // Get invoice counts in separate queries with timeout handling
         const fetchCounts = async () => {
+          // Check again if request was cancelled
+          if (effectiveSignal?.aborted) {
+            throw new DOMException("Query was cancelled", "AbortError");
+          }
+          
           const invalidCountPromise = supabase
             .from('invoices')
             .select('id, client_id, clients!inner(branch_id)', { count: 'exact' })
@@ -148,6 +207,11 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
             invalidCountPromise,
             allInvoicesCountPromise
           ]);
+          
+          // Check again if request was cancelled
+          if (effectiveSignal?.aborted) {
+            throw new DOMException("Query was cancelled", "AbortError");
+          }
           
           return {
             invalidCount: invalidResult.count || 0,
@@ -187,12 +251,19 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
           classInvoiceMap
         } as FinancialData;
       } catch (error) {
-        console.error("Error in financial data query:", error);
-        throw error;
+        // Handle AbortError properly
+        if (error instanceof DOMException && error.name === "AbortError") {
+          console.log("Financial data query was cancelled");
+          throw error; // Re-throw for React Query to handle
+        } else {
+          console.error("Error in financial data query:", error);
+          throw error;
+        }
       }
     },
     staleTime: 0, // Always treat data as stale
     retry: 2, // Retry failed requests up to 2 times
+    retryOnMount: true, // Retry when component mounts
     refetchOnWindowFocus: true, // Refetch when window is focused
     refetchOnMount: true, // Always refetch when component mounts
     gcTime: 0, // Don't keep in cache

@@ -17,6 +17,7 @@ import { Loader2 } from "lucide-react";
 
 export default function FinancialReports() {
   const queryClient = useQueryClient();
+  const abortControllerRef = useRef<AbortController | null>(null);
   
   // Set default date range to current month
   const [dateRange, setDateRange] = useState({
@@ -33,61 +34,99 @@ export default function FinancialReports() {
   const [dataInitialized, setDataInitialized] = useState(false);
   const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Create new abort controller when component mounts or data params change
+  useEffect(() => {
+    // Cancel any existing request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    
+    // Create a new abort controller
+    abortControllerRef.current = new AbortController();
+    
+    return () => {
+      // Cleanup by aborting any ongoing request when component unmounts or dependencies change
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+    };
+  }, [currentBranch, dateRange]); // Re-create when these dependencies change
+
   // Initial data load - always fetch fresh data
   useEffect(() => {
     const loadData = async () => {
-      if (currentBranch) {
-        setIsLoading(true);
+      if (!currentBranch) return;
+      
+      setIsLoading(true);
+      
+      try {
+        // Set a loading timeout
+        if (loadingTimeoutRef.current) {
+          clearTimeout(loadingTimeoutRef.current);
+        }
         
-        try {
-          // Set a loading timeout
-          loadingTimeoutRef.current = setTimeout(() => {
-            setIsLoading(false);
-          }, 15000); // Force exit loading state after 15 seconds
-          
-          // Completely reset all queries to ensure fresh data
-          await queryClient.resetQueries({
-            queryKey: [
-              'financial-bookings', 
-              currentBranch.id,
-              dateRange.from.toISOString(),
-              dateRange.to.toISOString()
-            ],
-            exact: true
-          });
-          
-          // Also reset trainer payment queries
-          await queryClient.resetQueries({
-            queryKey: ['trainer-payments'],
-            exact: false
-          });
-          
-          // Force fresh fetch for financial data
-          await queryClient.fetchQuery({
-            queryKey: [
-              'financial-bookings', 
-              currentBranch.id,
-              dateRange.from.toISOString(),
-              dateRange.to.toISOString()
-            ],
-            staleTime: 0, // Always consider data stale
-          });
-          
-          // Also refresh invoice data
-          await refreshAllInvoiceQueries();
-          
-          setDataInitialized(true);
-        } catch (error) {
+        loadingTimeoutRef.current = setTimeout(() => {
+          setIsLoading(false);
+        }, 15000); // Force exit loading state after 15 seconds
+        
+        // Make sure we have a valid abort controller
+        if (!abortControllerRef.current) {
+          abortControllerRef.current = new AbortController();
+        }
+        
+        // Get the signal from our abort controller
+        const signal = abortControllerRef.current.signal;
+        
+        // Completely reset all queries to ensure fresh data
+        await queryClient.resetQueries({
+          queryKey: [
+            'financial-bookings', 
+            currentBranch.id,
+            dateRange.from.toISOString(),
+            dateRange.to.toISOString()
+          ],
+          exact: true,
+          // Add this options object to cancel query if component unmounts
+          meta: { signal }
+        });
+        
+        // Also reset trainer payment queries
+        await queryClient.resetQueries({
+          queryKey: ['trainer-payments'],
+          exact: false,
+          meta: { signal }
+        });
+        
+        // Force fresh fetch for financial data
+        await queryClient.fetchQuery({
+          queryKey: [
+            'financial-bookings', 
+            currentBranch.id,
+            dateRange.from.toISOString(),
+            dateRange.to.toISOString()
+          ],
+          staleTime: 0, // Always consider data stale
+          meta: { signal } // Pass the abort signal
+        });
+        
+        // Also refresh invoice data
+        await refreshAllInvoiceQueries();
+        
+        setDataInitialized(true);
+      } catch (error) {
+        // Only log if it's not an abort error
+        if (!(error instanceof DOMException && error.name === 'AbortError')) {
           console.error("Error initializing financial data:", error);
           toast.error("Failed to load financial data");
-        } finally {
-          setIsLoading(false);
-          
-          // Clear loading timeout
-          if (loadingTimeoutRef.current) {
-            clearTimeout(loadingTimeoutRef.current);
-            loadingTimeoutRef.current = null;
-          }
+        }
+      } finally {
+        setIsLoading(false);
+        
+        // Clear loading timeout
+        if (loadingTimeoutRef.current) {
+          clearTimeout(loadingTimeoutRef.current);
+          loadingTimeoutRef.current = null;
         }
       }
     };
@@ -99,11 +138,23 @@ export default function FinancialReports() {
       if (loadingTimeoutRef.current) {
         clearTimeout(loadingTimeoutRef.current);
       }
+      
+      // Abort any in-flight queries when unmounting
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
     };
   }, [currentBranch, queryClient, refreshAllInvoiceQueries, dateRange]);
 
   // Memoized handler for date range changes
   const handleDateRangeChange = useCallback((range: { from: Date; to?: Date }) => {
+    // Cancel existing queries before changing date range
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = new AbortController();
+    }
+    
     setDateRange({
       from: range.from,
       to: range.to || endOfMonth(new Date())
@@ -139,6 +190,12 @@ export default function FinancialReports() {
   // Handle tab changes with debounce
   const handleTabChange = useCallback((value: string) => {
     if (value !== activeTab) {
+      // Cancel existing queries before changing tabs
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = new AbortController();
+      }
+      
       setActiveTab(value);
       
       // Force a data refresh when changing tabs
@@ -177,6 +234,11 @@ export default function FinancialReports() {
       if (loadingTimeoutRef.current) {
         clearTimeout(loadingTimeoutRef.current);
       }
+      
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
     };
   }, []);
 
@@ -184,6 +246,13 @@ export default function FinancialReports() {
   const refreshFinancialData = useCallback(async (showToast = true) => {
     if (!currentBranch) return;
     
+    // Cancel previous requests first
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = new AbortController();
+    }
+    
+    const signal = abortControllerRef.current.signal;
     setIsLoading(true);
     
     try {
@@ -195,13 +264,15 @@ export default function FinancialReports() {
           dateRange.from.toISOString(),
           dateRange.to.toISOString()
         ],
-        exact: true 
+        exact: true,
+        meta: { signal }
       });
       
       // Also reset trainer payment queries
       await queryClient.resetQueries({
         queryKey: ['trainer-payments'],
-        exact: false
+        exact: false,
+        meta: { signal }
       });
       
       // Force fetch with staleTime: 0 to ensure fresh data
@@ -212,22 +283,28 @@ export default function FinancialReports() {
           dateRange.from.toISOString(),
           dateRange.to.toISOString()
         ],
-        staleTime: 0
+        staleTime: 0,
+        meta: { signal }
       });
       
       // Refresh invoice data
       await refreshAllInvoiceQueries();
       
-      if (showToast) {
+      if (showToast && !signal.aborted) {
         toast.success("Financial data refreshed");
       }
     } catch (error) {
-      console.error("Error refreshing financial data:", error);
-      if (showToast) {
-        toast.error("Failed to refresh data");
+      // Only show error if it's not an abort error
+      if (!(error instanceof DOMException && error.name === 'AbortError')) {
+        console.error("Error refreshing financial data:", error);
+        if (showToast) {
+          toast.error("Failed to refresh data");
+        }
       }
     } finally {
-      setIsLoading(false);
+      if (!signal.aborted) {
+        setIsLoading(false);
+      }
     }
   }, [currentBranch, dateRange, queryClient, refreshAllInvoiceQueries]);
 
