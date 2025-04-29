@@ -1,35 +1,22 @@
 
-import React from 'react';
-import { RouterProvider } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+// We'll use the router.tsx file instead of defining routes directly here
+import { RouterProvider } from "react-router-dom";
 import router from './router';
-import { Toaster } from 'sonner';
-import { BranchProvider } from './context/BranchContext';
-import { AuthProvider } from './context/auth/AuthProvider';
-import { TermProvider } from './context/TermContext';
-import { InvoicesProvider } from './context/InvoicesDataContext';
+import { QueryClientProvider } from "@tanstack/react-query";
+import { queryClient } from "./lib/query-client";
+import { AuthProvider } from '@/context/auth';
+import { BranchProvider } from '@/context/BranchContext';
+import { TermProvider } from '@/context/TermContext';
 
 function App() {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: {
-        staleTime: 1000 * 60 * 5, // 5 minutes
-        retry: 1,
-      },
-    },
-  });
-
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <TermProvider>
-          <BranchProvider>
-            <Toaster />
-            <InvoicesProvider>
-              <RouterProvider router={router} />
-            </InvoicesProvider>
-          </BranchProvider>
-        </TermProvider>
+        <BranchProvider>
+          <TermProvider>
+            <RouterProvider router={router} />
+          </TermProvider>
+        </BranchProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

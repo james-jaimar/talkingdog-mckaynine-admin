@@ -1,36 +1,78 @@
-import { Link } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+
+import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import { RecentBookings } from "@/components/dashboard/RecentBookings";
+import { ClassesScheduled } from "@/components/dashboard/ClassesScheduled";
+import { useBranch } from "@/context/BranchContext";
+import { StatsCard } from "@/components/dashboard/StatsCard";
+import { useDashboardStats } from "@/hooks/useDashboardStats";
+import { Users, Dog, Book, Calendar } from "lucide-react";
+import { useTerm } from "@/context/TermContext";
+import { useEffect } from "react";
 
 export default function Dashboard() {
+  const { currentBranch } = useBranch();
+  const { termData, isTermLoading } = useTerm();
+  
+  const {
+    clientCount,
+    dogCount,
+    bookingCount,
+    upcomingClassCount,
+    refetchAllStats,
+    isLoading: statsLoading
+  } = useDashboardStats();
+
+  // Fetch stats when component mounts or term changes
+  useEffect(() => {
+    console.log("Dashboard detected term change, refetching stats");
+    refetchAllStats();
+  }, [termData?.id, refetchAllStats]);
+
+  // Determine if we're in a loading state
+  const isLoading = isTermLoading || statsLoading;
+
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-3xl font-bold mb-6">Dashboard</h1>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Invoices</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="mb-4">Manage customer invoices</p>
-            <Link to="/invoices">
-              <Button>View Invoices</Button>
-            </Link>
-          </CardContent>
-        </Card>
-        
-        {/* Placeholder for future cards */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Reports</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="mb-4">Financial reports and analysis</p>
-            <Button disabled>Coming Soon</Button>
-          </CardContent>
-        </Card>
+    <DashboardLayout>
+      <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-4">
+          <StatsCard
+            title="Clients"
+            value={isLoading ? "Loading..." : clientCount ?? "-"}
+            icon={Users}
+            description="Registered clients"
+          />
+          <StatsCard
+            title="Dogs"
+            value={isLoading ? "Loading..." : dogCount ?? "-"}
+            icon={Dog}
+            description="Total dogs"
+          />
+          <StatsCard
+            title="Bookings"
+            value={isLoading ? "Loading..." : bookingCount ?? "-"}
+            icon={Book}
+            description={`Bookings ${termData ? `in Term ${termData.term_number}` : ''}`}
+          />
+          <StatsCard
+            title="Upcoming Classes"
+            value={isLoading ? "Loading..." : upcomingClassCount ?? "-"}
+            icon={Calendar}
+            description={`Classes ${termData ? `in Term ${termData.term_number}` : 'scheduled'}`}
+          />
+        </div>
+
+        {/* Grid layout for dashboard cards */}
+        <div className="grid gap-4 md:grid-cols-2">
+          <RecentBookings branchId={currentBranch?.id} />
+          <ClassesScheduled branchId={currentBranch?.id} />
+        </div>
       </div>
-    </div>
+    </DashboardLayout>
   );
 }
+

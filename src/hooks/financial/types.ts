@@ -29,8 +29,7 @@ export interface FinancialData {
   invalidInvoicesCount: number;
   totalRevenue: number;
   totalDiscounts: number;
-  invoiceItems?: any[];
-  classInvoiceMap?: Array<{
+  classInvoiceMap: Array<{
     className: string;
     invoiceIds: string[];
   }>;
@@ -39,7 +38,7 @@ export interface FinancialData {
 export interface UseFinancialDataReturn {
   classFinances: ClassFinance[];
   isLoading: boolean;
-  refreshData: () => Promise<unknown[]>;
+  refreshData: () => void;
   totalInvoiceCount: number;
   invalidInvoicesCount: number;
   totalRevenue: number;

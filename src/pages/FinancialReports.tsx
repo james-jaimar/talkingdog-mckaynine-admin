@@ -1,21 +1,23 @@
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Helmet } from "react-helmet";
+import { useInvoices } from "@/hooks/useInvoices";
 import { useBranch } from "@/context/BranchContext";
+import { useQueryClient } from "@tanstack/react-query";
 import RequireAdmin from "@/components/auth/RequireAdmin";
 import { ClassFinancialReport } from "@/components/invoices/reports/ClassFinancialReport";
 import { ClassesListReport } from "@/components/invoices/reports/ClassesListReport";
 import { DateRangePicker } from "@/components/dashboard/financial/DateRangePicker";
 import { startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { toast } from "sonner";
 import { TrainerReportsTab } from "@/components/invoices/reports/TrainerReportsTab";
-import { Loader2 } from "lucide-react";
-import { FinancialDataProvider } from "@/context/FinancialDataContext";
-import { useFinancialData } from "@/context/FinancialDataContext";
-import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
+import { useClassFinancialData } from "@/hooks/useClassFinancialData";
 
-function FinancialReportsContent() {
+export default function FinancialReports() {
+  const queryClient = useQueryClient();
+  
   // Set default date range to current month
   const [dateRange, setDateRange] = useState({
     from: startOfMonth(subMonths(new Date(), 0)), // Current month
@@ -23,91 +25,44 @@ function FinancialReportsContent() {
   });
   
   const { currentBranch } = useBranch();
-  const { isLoading, fetchFinancialData } = useFinancialData();
+  const { invoices, isLoading, refreshAllInvoiceQueries } = useInvoices();
   
   // Default to 'financial' tab
   const [activeTab, setActiveTab] = useState('financial');
-  const [initialized, setInitialized] = useState(false);
 
-  // Initialize data on mount
+  // Refresh data when component mounts, branch changes or date range changes
   useEffect(() => {
-    if (currentBranch?.id) {
-      const fromDateIso = dateRange.from.toISOString();
-      const toDateIso = dateRange.to.toISOString();
-      fetchFinancialData(currentBranch.id, fromDateIso, toDateIso);
-      setInitialized(true);
+    if (currentBranch) {
+      console.log("Financial Reports: Branch or date range changed, refreshing data");
+      refreshFinancialData();
     }
-  }, [currentBranch, fetchFinancialData]);
+  }, [currentBranch, dateRange]);
 
-  // Memoized handler for date range changes
-  const handleDateRangeChange = useCallback((range: { from: Date; to?: Date }) => {
-    const newRange = {
+  // Function to refresh all financial data
+  const refreshFinancialData = () => {
+    // Invalidate all relevant queries first
+    queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
+    queryClient.invalidateQueries({ queryKey: ['classes-list-data'] });
+    queryClient.invalidateQueries({ queryKey: ['trainer-payments'] });
+    
+    // Then refresh invoice data
+    refreshAllInvoiceQueries();
+    
+    toast.success("Financial data refreshed");
+  };
+
+  // Handle date range changes
+  const handleDateRangeChange = (range: { from: Date; to?: Date }) => {
+    setDateRange({
       from: range.from,
       to: range.to || endOfMonth(new Date())
-    };
-    
-    setDateRange(newRange);
-    
-    if (currentBranch?.id) {
-      const fromDateIso = newRange.from.toISOString();
-      const toDateIso = newRange.to.toISOString();
-      fetchFinancialData(currentBranch.id, fromDateIso, toDateIso);
-    }
-  }, [currentBranch, fetchFinancialData]);
+    });
+  };
   
-  // Handle tab changes
-  const handleTabChange = useCallback((value: string) => {
+  const handleTabChange = (value: string) => {
     setActiveTab(value);
-  }, []);
+  };
 
-  return (
-    <>
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-        <h1 className="text-3xl font-bold">Financial Reports</h1>
-        <DateRangePicker 
-          dateRange={dateRange} 
-          onDateRangeChange={handleDateRangeChange}
-          isLoading={isLoading}
-          disabled={isLoading}
-        />
-      </div>
-
-      {isLoading && !initialized && (
-        <div className="flex items-center justify-center p-12">
-          <Loader2 className="h-8 w-8 animate-spin mr-2" />
-          <p className="text-lg">Loading financial data...</p>
-        </div>
-      )}
-
-      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-        <TabsList className="mb-4">
-          <TabsTrigger value="financial">Financial Report</TabsTrigger>
-          <TabsTrigger value="classes">Classes List</TabsTrigger>
-          <TabsTrigger value="trainers">Trainers</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="financial">
-          <div className="space-y-6">
-            <ClassFinancialReport dateRange={dateRange} />
-          </div>
-        </TabsContent>
-
-        <TabsContent value="classes">
-          <ClassesListReport />
-        </TabsContent>
-        
-        <TabsContent value="trainers">
-          <TrainerReportsTab 
-            dateRange={dateRange}
-            branchId={currentBranch?.id}
-          />
-        </TabsContent>
-      </Tabs>
-    </>
-  );
-}
-
-export default function FinancialReports() {
   return (
     <RequireAdmin>
       <DashboardLayout>
@@ -116,11 +71,44 @@ export default function FinancialReports() {
         </Helmet>
         
         <div className="container mx-auto py-6">
-          <ErrorBoundary>
-            <FinancialDataProvider>
-              <FinancialReportsContent />
-            </FinancialDataProvider>
-          </ErrorBoundary>
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+            <h1 className="text-3xl font-bold">Financial Reports</h1>
+            <DateRangePicker 
+              dateRange={dateRange} 
+              onDateRangeChange={handleDateRangeChange} 
+            />
+          </div>
+
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+            <TabsList className="mb-4">
+              <TabsTrigger value="financial">Financial Report</TabsTrigger>
+              <TabsTrigger value="classes">Classes List</TabsTrigger>
+              <TabsTrigger value="trainers">Trainers</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="financial">
+              <div className="space-y-6">
+                <ClassFinancialReport 
+                  dateRange={dateRange} 
+                  onRefreshSuccess={() => {
+                    refreshAllInvoiceQueries();
+                    toast.success("Financial data refreshed");
+                  }} 
+                />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="classes">
+              <ClassesListReport />
+            </TabsContent>
+            
+            <TabsContent value="trainers">
+              <TrainerReportsTab 
+                dateRange={dateRange}
+                branchId={currentBranch?.id}
+              />
+            </TabsContent>
+          </Tabs>
         </div>
       </DashboardLayout>
     </RequireAdmin>

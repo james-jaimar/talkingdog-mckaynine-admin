@@ -5,7 +5,7 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Helmet } from "react-helmet";
 import { Button } from "@/components/ui/button";
 import { Edit } from "lucide-react";
-import { useSimpleInvoiceDetails } from "@/hooks/invoices/useSimpleInvoiceDetails";
+import { useInvoiceDetails } from "@/hooks/invoices/useInvoiceQueries";
 import { toast } from "sonner";
 import { generateInvoicePDF } from "@/components/invoices/pdf/InvoicePDFGenerator";
 import { InvoiceDetailHeader } from "@/components/invoices/detail/InvoiceDetailHeader";
@@ -17,11 +17,12 @@ import { InvoiceError } from "@/components/invoices/detail/InvoiceError";
 import { InvoiceMissingIdError } from "@/components/invoices/detail/InvoiceMissingIdError";
 
 export default function InvoiceDetail() {
+  // Using id instead of invoiceId to match the parameter name in the route
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  // Updated to use our new simpler hook
-  const { data: invoice, isLoading, error, isError } = useSimpleInvoiceDetails(id);
+  // Updated to use id instead of invoiceId
+  const { data: invoice, isLoading, error, isError } = useInvoiceDetails(id);
 
   useEffect(() => {
     if (!id) {

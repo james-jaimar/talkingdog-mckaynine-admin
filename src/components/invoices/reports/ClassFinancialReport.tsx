@@ -4,28 +4,38 @@ import { Button } from "@/components/ui/button";
 import { Loader2, RefreshCw, AlertTriangle } from "lucide-react";
 import { useState } from "react";
 import { useBranch } from "@/context/BranchContext";
+import { useClassFinancialData } from "@/hooks/useClassFinancialData";
 import { ClassFinancialTable } from "./ClassFinancialTable";
+import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useFinancialData } from "@/context/FinancialDataContext";
 
 interface ClassFinancialReportProps {
   dateRange?: { from: Date; to: Date };
+  onRefreshSuccess?: () => void;
 }
 
-export function ClassFinancialReport({ dateRange }: ClassFinancialReportProps) {
+export function ClassFinancialReport({ dateRange, onRefreshSuccess }: ClassFinancialReportProps) {
   const { currentBranch } = useBranch();
   const [refreshing, setRefreshing] = useState(false);
+  const queryClient = useQueryClient();
   
-  // Get financial data from context
+  const fromDate = dateRange?.from?.toISOString();
+  const toDate = dateRange?.to?.toISOString();
+
   const { 
     classFinances, 
     isLoading, 
-    refreshData,
+    refreshData, 
     totalInvoiceCount,
     invalidInvoicesCount,
     totalRevenue: directTotalRevenue,
     totalDiscounts
-  } = useFinancialData();
+  } = useClassFinancialData(
+    currentBranch?.id,
+    fromDate,
+    toDate
+  );
 
   // Calculate summary statistics
   const classesTotalRevenue = classFinances.reduce((sum, item) => sum + item.totalRevenue, 0);
@@ -38,19 +48,32 @@ export function ClassFinancialReport({ dateRange }: ClassFinancialReportProps) {
   const discrepancyAmount = directTotalRevenue - classesTotalRevenue;
 
   const handleRefresh = async () => {
-    if (refreshing) return;
-    
     setRefreshing(true);
     
     try {
+      // First invalidate all related queries
+      await queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      await queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
+      await queryClient.invalidateQueries({ queryKey: ['classes-list-data'] });
+      
+      // Then refresh the data
       await refreshData();
+      
+      if (onRefreshSuccess) {
+        onRefreshSuccess();
+      } else {
+        toast.success("Financial data refreshed");
+      }
+    } catch (error) {
+      console.error("Error refreshing financial data:", error);
+      toast.error("Failed to refresh financial data");
     } finally {
-      // Reset refreshing state after a short delay for UX
-      setTimeout(() => setRefreshing(false), 500);
+      // Reset refreshing state
+      setTimeout(() => setRefreshing(false), 1000);
     }
   };
 
-  if (isLoading || refreshing) {
+  if (isLoading) {
     return (
       <Card className="w-full">
         <CardHeader className="flex flex-row items-center justify-between">
@@ -58,6 +81,7 @@ export function ClassFinancialReport({ dateRange }: ClassFinancialReportProps) {
           <Button 
             variant="outline" 
             size="sm" 
+            onClick={handleRefresh}
             disabled={true}
           >
             <Loader2 className="h-4 w-4 mr-2 animate-spin" />

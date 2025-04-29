@@ -1,37 +1,42 @@
 
-import { useFinancialData } from "@/context/FinancialDataContext";
-import { useEffect } from "react";
-import type { ClassFinance } from "./financial/types";
+import { useQueryClient } from "@tanstack/react-query";
+import { useFinancialQuery } from "./financial/useFinancialQuery";
+import { useFinancialProcessor } from "./financial/useFinancialProcessor";
+import type { UseFinancialDataReturn } from "./financial/types";
 
-/**
- * Hook for retrieving and processing financial data for classes
- * Leverages the centralized FinancialDataContext
- */
 export function useClassFinancialData(
   branchId?: string,
   fromDate?: string,
   toDate?: string
-) {
-  const financialData = useFinancialData();
+): UseFinancialDataReturn {
+  const queryClient = useQueryClient();
   
-  // Fetch financial data when parameters change
-  useEffect(() => {
-    if (branchId) {
-      console.log(`Fetching financial data for branch ${branchId} from ${fromDate || 'unknown'} to ${toDate || 'unknown'}`);
-      financialData.fetchFinancialData(branchId, fromDate || '', toDate || '');
-    }
-  }, [branchId, fromDate, toDate, financialData]);
+  const { 
+    data: financialData,
+    isLoading
+  } = useFinancialQuery(branchId, fromDate, toDate);
+
+  const {
+    classFinances,
+    totalInvoiceCount,
+    invalidInvoicesCount
+  } = useFinancialProcessor(financialData);
+
+  const refreshData = () => {
+    console.log("Manually refreshing financial data");
+    queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
+    queryClient.invalidateQueries({ queryKey: ['invoices'] });
+  };
 
   return {
-    classFinances: financialData.classFinances,
-    isLoading: financialData.isLoading,
-    isRefreshing: financialData.isRefreshing,
-    refreshData: financialData.refreshData,
-    totalInvoiceCount: financialData.totalInvoiceCount,
-    invalidInvoicesCount: financialData.invalidInvoicesCount,
-    totalRevenue: financialData.totalRevenue,
-    totalDiscounts: financialData.totalDiscounts
+    classFinances,
+    isLoading,
+    refreshData,
+    totalInvoiceCount,
+    invalidInvoicesCount,
+    totalRevenue: financialData?.totalRevenue || 0,
+    totalDiscounts: financialData?.totalDiscounts || 0
   };
 }
 
-export type { ClassFinance };
+export type { ClassFinance } from "./financial/types";
