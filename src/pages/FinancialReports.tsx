@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, useCallback } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Helmet } from "react-helmet";
@@ -75,9 +74,6 @@ export default function FinancialReports() {
           abortControllerRef.current = new AbortController();
         }
         
-        // Get the signal from our abort controller
-        const signal = abortControllerRef.current.signal;
-        
         // Completely reset all queries to ensure fresh data
         await queryClient.resetQueries({
           queryKey: [
@@ -86,16 +82,13 @@ export default function FinancialReports() {
             dateRange.from.toISOString(),
             dateRange.to.toISOString()
           ],
-          exact: true,
-          // Add this options object to cancel query if component unmounts
-          meta: { signal }
+          exact: true
         });
         
         // Also reset trainer payment queries
         await queryClient.resetQueries({
           queryKey: ['trainer-payments'],
-          exact: false,
-          meta: { signal }
+          exact: false
         });
         
         // Force fresh fetch for financial data
@@ -107,7 +100,6 @@ export default function FinancialReports() {
             dateRange.to.toISOString()
           ],
           staleTime: 0, // Always consider data stale
-          meta: { signal } // Pass the abort signal
         });
         
         // Also refresh invoice data
@@ -252,7 +244,6 @@ export default function FinancialReports() {
       abortControllerRef.current = new AbortController();
     }
     
-    const signal = abortControllerRef.current.signal;
     setIsLoading(true);
     
     try {
@@ -264,15 +255,13 @@ export default function FinancialReports() {
           dateRange.from.toISOString(),
           dateRange.to.toISOString()
         ],
-        exact: true,
-        meta: { signal }
+        exact: true
       });
       
       // Also reset trainer payment queries
       await queryClient.resetQueries({
         queryKey: ['trainer-payments'],
-        exact: false,
-        meta: { signal }
+        exact: false
       });
       
       // Force fetch with staleTime: 0 to ensure fresh data
@@ -283,14 +272,13 @@ export default function FinancialReports() {
           dateRange.from.toISOString(),
           dateRange.to.toISOString()
         ],
-        staleTime: 0,
-        meta: { signal }
+        staleTime: 0
       });
       
       // Refresh invoice data
       await refreshAllInvoiceQueries();
       
-      if (showToast && !signal.aborted) {
+      if (showToast && abortControllerRef.current && !abortControllerRef.current.signal.aborted) {
         toast.success("Financial data refreshed");
       }
     } catch (error) {
@@ -302,7 +290,7 @@ export default function FinancialReports() {
         }
       }
     } finally {
-      if (!signal.aborted) {
+      if (abortControllerRef.current && !abortControllerRef.current.signal.aborted) {
         setIsLoading(false);
       }
     }

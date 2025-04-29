@@ -8,7 +8,12 @@ import { useRef, useEffect } from "react";
  * Custom hook to fetch financial data with optimized queries and better error handling
  * Always fetches fresh data on every component mount
  */
-export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?: string) {
+export function useFinancialQuery(
+  branchId?: string, 
+  fromDate?: string, 
+  toDate?: string, 
+  externalSignal?: AbortSignal
+) {
   const queryKey = ['financial-bookings', branchId, fromDate, toDate];
   const abortControllerRef = useRef<AbortController | null>(null);
   
@@ -35,7 +40,7 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
     queryKey,
     queryFn: async ({ signal }) => {
       // Use either the signal provided by React Query or our own
-      const effectiveSignal = signal || abortControllerRef.current?.signal;
+      const effectiveSignal = signal || externalSignal || abortControllerRef.current?.signal;
       
       if (!branchId) return {
         bookingsWithInvoices: [],

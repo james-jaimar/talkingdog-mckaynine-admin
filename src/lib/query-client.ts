@@ -11,7 +11,7 @@ export const queryClient = new QueryClient({
       refetchOnReconnect: true,
       refetchOnMount: true,
       gcTime: 5 * 60 * 1000, // 5 minutes for garbage collection
-      // Add proper error and cancellation handling
+      // Proper error handling for aborted requests
       throwOnError: (error) => {
         // Don't throw for AbortErrors (cancellation)
         if (error instanceof DOMException && error.name === 'AbortError') {
@@ -23,7 +23,7 @@ export const queryClient = new QueryClient({
     mutations: {
       retry: 1,
       networkMode: "always",
-      // Add proper error and cancellation handling
+      // Proper error handling for aborted requests
       throwOnError: (error) => {
         // Don't throw for AbortErrors (cancellation)
         if (error instanceof DOMException && error.name === 'AbortError') {

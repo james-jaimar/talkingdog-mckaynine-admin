@@ -39,27 +39,23 @@ export function useClassFinancialData(
         abortControllerRef.current.abort();
       }
       abortControllerRef.current = new AbortController();
-      const signal = abortControllerRef.current.signal;
       
       // Force invalidation of financial data on every mount
       queryClient.invalidateQueries({ 
         queryKey: ['financial-bookings', branchId, fromDate, toDate],
-        exact: true,
-        meta: { signal }
+        exact: true
       });
       
       // Also invalidate invoices data
       queryClient.invalidateQueries({
         queryKey: ['invoices'],
-        exact: false,
-        meta: { signal }
+        exact: false
       });
       
       // And trainer payment data
       queryClient.invalidateQueries({
         queryKey: ['trainer-payments'],
-        exact: false,
-        meta: { signal }
+        exact: false
       });
     }
     
@@ -75,7 +71,7 @@ export function useClassFinancialData(
     data: financialData,
     isLoading,
     refetch
-  } = useFinancialQuery(branchId, fromDate, toDate);
+  } = useFinancialQuery(branchId, fromDate, toDate, abortControllerRef.current?.signal);
 
   const {
     classFinances,
@@ -98,35 +94,33 @@ export function useClassFinancialData(
       
       // Create a new abort controller
       abortControllerRef.current = new AbortController();
-      const signal = abortControllerRef.current.signal;
       
       // First completely reset all queries to clear any cached data
       await queryClient.resetQueries({ 
         queryKey: ['financial-bookings', branchId, fromDate, toDate],
-        exact: true,
-        meta: { signal }
+        exact: true
       });
       
       // Then reset invoices cache
       await queryClient.resetQueries({ 
         queryKey: ['invoices'],
-        exact: false,
-        meta: { signal }
+        exact: false
       });
       
       // Reset trainer payments cache
       await queryClient.resetQueries({
         queryKey: ['trainer-payments'],
-        exact: false,
-        meta: { signal }
+        exact: false
       });
       
       // Force a complete refetch of financial data
-      const results = await refetch();
+      const results = await refetch({
+        cancelRefetch: true
+      });
       
       // Set timeout to ensure UI updates even if refetch is slow
       setTimeout(() => {
-        if (!signal.aborted) {
+        if (abortControllerRef.current && !abortControllerRef.current.signal.aborted) {
           setIsRefreshing(false);
         }
       }, 500);

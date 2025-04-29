@@ -1,4 +1,3 @@
-
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useRef, useEffect } from "react";
@@ -45,7 +44,8 @@ export function useInvoiceStatus(bookingId: string) {
               invoice_number
             )
           `)
-          .eq('booking_id', bookingId);
+          .eq('booking_id', bookingId)
+          .abortSignal(effectiveSignal); // Use the abort signal with Supabase
 
         if (error) {
           console.error("Error fetching invoice data:", error);
