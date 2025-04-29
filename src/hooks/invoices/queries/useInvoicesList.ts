@@ -7,29 +7,34 @@ import { useBranch } from "@/context/BranchContext";
 
 /**
  * Optimized hook to fetch all invoices with client information
- * Reduces console logging and improves query efficiency
+ * Uses pagination and better query structure to prevent resource errors
  */
-export function useInvoicesList() {
+export function useInvoicesList(limit = 20, page = 0) {
   const { currentBranch } = useBranch();
   const branchId = currentBranch?.id;
   
   return useQuery({
-    queryKey: ['invoices', branchId],
+    queryKey: ['invoices', branchId, limit, page],
     queryFn: async () => {
       if (!branchId) {
         return [];
       }
       
       try {
-        // Fetch invoices with client data, filtered by branch
+        // Calculate pagination
+        const from = page * limit;
+        const to = from + limit - 1;
+        
+        // Fetch invoices with client data, filtered by branch with pagination
         const { data: invoicesData, error: invoicesError } = await supabase
           .from('invoices')
           .select(`
             *,
-            clients!inner (*, branch_id)
+            clients!inner (id, first_name, last_name, email, phone, branch_id)
           `)
           .eq('clients.branch_id', branchId)
-          .order('created_at', { ascending: false });
+          .order('created_at', { ascending: false })
+          .range(from, to);
 
         if (invoicesError) {
           return handleQueryError(invoicesError, "Error fetching invoices");
@@ -39,7 +44,7 @@ export function useInvoicesList() {
           return [];
         }
 
-        // Use a more efficient batch approach for invoice items and related data
+        // Use a more efficient batch approach for invoice items
         const invoiceIds = invoicesData.map(invoice => invoice.id);
         
         // Get all items for these invoices in a single request
@@ -61,39 +66,55 @@ export function useInvoicesList() {
           return acc;
         }, {} as Record<string, any[]>);
         
-        // Get all booking IDs from the items for batch fetching
+        // Get booking IDs for batch fetching
         const bookingIds = allItems
           ?.filter(item => !!item.booking_id)
           .map(item => item.booking_id) || [];
         
-        // Fetch all bookings with related data in a single request
-        const { data: allBookings, error: bookingsError } = bookingIds.length > 0 ? 
-          await supabase
-            .from('bookings')
-            .select(`
-              id,
-              dog_id,
-              dogs (id, name, breed),
-              class_schedule_id,
-              class_schedules (
-                id, 
-                start_time,
-                class_id,
-                classes (id, name, description, course_fee)
-              )
-            `)
-            .in('id', bookingIds) : 
-          { data: [], error: null };
-          
-        if (bookingsError) {
-          console.error("Error fetching bookings data:", bookingsError);
-        }
+        let bookingsById = {};
         
-        // Group bookings by ID for faster lookup
-        const bookingsById = (allBookings || []).reduce((acc, booking) => {
-          acc[booking.id] = booking;
-          return acc;
-        }, {} as Record<string, any>);
+        // Only fetch bookings if there are booking IDs
+        if (bookingIds.length > 0) {
+          // Split the booking IDs into chunks of 100 to avoid URI length limits
+          const chunkSize = 100;
+          const bookingChunks = [];
+          for (let i = 0; i < bookingIds.length; i += chunkSize) {
+            bookingChunks.push(bookingIds.slice(i, i + chunkSize));
+          }
+          
+          let allBookings: any[] = [];
+          
+          // Fetch bookings in chunks
+          for (const chunk of bookingChunks) {
+            const { data: chunkBookings, error: chunkError } = await supabase
+              .from('bookings')
+              .select(`
+                id,
+                dog_id,
+                dogs (id, name, breed),
+                class_schedule_id,
+                class_schedules (
+                  id, 
+                  start_time,
+                  class_id,
+                  classes (id, name, description, course_fee)
+                )
+              `)
+              .in('id', chunk);
+              
+            if (chunkError) {
+              console.error("Error fetching bookings chunk:", chunkError);
+            } else if (chunkBookings) {
+              allBookings = [...allBookings, ...chunkBookings];
+            }
+          }
+          
+          // Group bookings by ID for faster lookup
+          bookingsById = allBookings.reduce((acc, booking) => {
+            acc[booking.id] = booking;
+            return acc;
+          }, {} as Record<string, any>);
+        }
 
         // Process invoices with their items and bookings
         const invoicesWithItems = invoicesData.map(invoice => {
@@ -120,16 +141,13 @@ export function useInvoicesList() {
                 const classDescription = booking.class_schedules.classes.description;
                 const classPrice = booking.class_schedules.classes.course_fee;
                 
-                // Update description with class and dog info
                 enhancedItem.description = `${className} - ${dogName}`;
                 
-                // Use class price if not already set
                 if (!enhancedItem.unit_price || enhancedItem.unit_price === 0) {
                   enhancedItem.unit_price = classPrice;
                   enhancedItem.amount = classPrice * item.quantity;
                 }
                 
-                // Add booking data to the item
                 enhancedItem.bookings = {
                   id: booking.id,
                   dogs: {
@@ -179,7 +197,6 @@ export function useInvoicesList() {
           };
         });
 
-        // Return as Invoice array with type assertion
         return invoicesWithItems as Invoice[];
         
       } catch (error) {
@@ -190,5 +207,13 @@ export function useInvoicesList() {
     staleTime: 1000 * 60 * 5, // 5 minutes
     enabled: !!branchId,
     refetchOnWindowFocus: false,
+    gcTime: 0, // Don't keep in cache
+    retry: (failureCount, error: any) => {
+      // Only retry a few times on specific errors
+      if (error?.message?.includes?.('ERR_INSUFFICIENT_RESOURCES')) {
+        return failureCount < 2;
+      }
+      return failureCount < 3;
+    },
   });
 }

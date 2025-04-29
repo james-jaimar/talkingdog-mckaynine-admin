@@ -1,23 +1,11 @@
 
 import { useEmailInvoice } from "./invoices/useEmailInvoice";
-import { 
-  useMarkInvoiceAsPaid, 
-  useMarkInvoiceAsSent, 
-  useCancelInvoice 
-} from "./invoices/status";
-import { 
-  useCreateInvoice, 
-  useUpdateInvoice, 
-  useDeleteInvoice 
-} from "./invoices/mutations";
-import { 
-  useInvoicesList, 
-  useInvoiceDetails, 
-  useClientInvoices, 
-  useMyInvoices 
-} from "./invoices/queries";
+import { useMarkInvoiceAsPaid, useMarkInvoiceAsSent, useCancelInvoice } from "./invoices/status";
+import { useCreateInvoice, useUpdateInvoice, useDeleteInvoice } from "./invoices/mutations";
+import { useInvoicesList, useInvoiceDetails, useClientInvoices, useMyInvoices } from "./invoices/useInvoiceQueries";
 import { useQueryClient } from "@tanstack/react-query";
 import { generateInvoiceNumber as generateInvoiceNumberUtil } from "./invoices/useInvoiceUtilities";
+import { toast } from "sonner";
 
 // Re-export the individual hook functions for direct imports
 export { 
@@ -50,27 +38,33 @@ export function useInvoices() {
   const cancelInvoice = useCancelInvoice();
   const emailInvoice = useEmailInvoice();
   
-  // Function to refresh all related invoice queries
-  const refreshAllInvoiceQueries = () => {
+  // Function to refresh all related invoice queries with error handling
+  const refreshAllInvoiceQueries = async () => {
     console.log("Refreshing all invoice queries");
-    // First invalidate all queries to clear stale data
-    queryClient.invalidateQueries({ queryKey: ['invoices'] });
-    queryClient.invalidateQueries({ queryKey: ['my-invoices'] });
-    queryClient.invalidateQueries({ queryKey: ['client-invoices'] });
-    queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
-    
-    // Reset queries to clear cache completely
-    queryClient.resetQueries({ queryKey: ['invoices'] });
-    queryClient.resetQueries({ queryKey: ['financial-bookings'] });
-    
-    // Force refetch invoices list to ensure data is fresh
-    invoicesList.refetch();
-    
-    // Force refetch all active financial queries
-    queryClient.refetchQueries({ 
-      queryKey: ['financial-bookings'],
-      type: 'all'
-    });
+    try {
+      // First invalidate all queries to clear stale data
+      await queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      await queryClient.invalidateQueries({ queryKey: ['my-invoices'] });
+      await queryClient.invalidateQueries({ queryKey: ['client-invoices'] });
+      await queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
+      
+      // Reset queries to clear cache completely
+      await queryClient.resetQueries({ queryKey: ['invoices'] });
+      await queryClient.resetQueries({ queryKey: ['financial-bookings'] });
+      
+      // Force refetch invoices list to ensure data is fresh
+      await invoicesList.refetch();
+      
+      // Force refetch all active financial queries
+      await queryClient.refetchQueries({ 
+        queryKey: ['financial-bookings'],
+        type: 'all'
+      });
+    } catch (error) {
+      console.error("Error refreshing invoice queries:", error);
+      toast.error("Failed to refresh invoice data");
+      throw error;
+    }
   };
 
   return {
@@ -88,6 +82,7 @@ export function useInvoices() {
     // Data from hooks
     invoices: invoicesList.data || [],
     isLoading: invoicesList.isLoading,
+    error: invoicesList.error,
     
     // Mutations
     createInvoice,

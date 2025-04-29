@@ -6,19 +6,23 @@ import { useInvoices } from "@/hooks/useInvoices";
 import { InvoicesList } from "@/components/invoices/InvoicesList";
 import { InvoiceCreateDialog } from "@/components/invoices/InvoiceCreateDialog";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, RefreshCcw } from "lucide-react";
 import { InvoiceStatus } from "@/types/invoice";
 import { useQueryClient } from "@tanstack/react-query";
 import { startOfMonth, endOfMonth, subMonths, format } from "date-fns";
 import { InvoiceFinancialSummary } from "@/components/invoices/summary/InvoiceFinancialSummary";
 import { InvoiceFilterTabs } from "@/components/invoices/filters/InvoiceFilterTabs";
 import { useTerm } from "@/context/TermContext";
+import { toast } from "sonner";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 
 export default function Invoices() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<InvoiceStatus | 'all'>('all');
   const [monthFilter, setMonthFilter] = useState<string>("current");
-  const { invoices, isLoading, refreshAllInvoiceQueries } = useInvoices();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const { invoices, isLoading, error, refreshAllInvoiceQueries } = useInvoices();
   const queryClient = useQueryClient();
   const { termDateRange } = useTerm();
 
@@ -31,7 +35,7 @@ export default function Invoices() {
 
   // Auto-refresh data when component mounts
   useEffect(() => {
-    console.log("Invoices page: Refreshing data");
+    console.log("Invoices page: Initial data load");
     refreshAllInvoiceQueries();
   }, [refreshAllInvoiceQueries]);
 
@@ -42,6 +46,20 @@ export default function Invoices() {
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
     }
   }, [createDialogOpen, queryClient]);
+
+  // Handle manual refresh
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await refreshAllInvoiceQueries();
+      toast.success("Invoice data refreshed");
+    } catch (error) {
+      console.error("Error refreshing invoice data:", error);
+      toast.error("Failed to refresh invoice data. Please try again.");
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   // Get date ranges for month filtering
   const getCurrentMonthRange = () => {
@@ -100,13 +118,36 @@ export default function Invoices() {
       </Helmet>
       
       <div className="container mx-auto py-6">
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
           <h1 className="text-3xl font-bold">Invoices</h1>
           
-          <Button onClick={() => setCreateDialogOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" /> Create Invoice
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              onClick={handleRefresh} 
+              disabled={isRefreshing}
+              aria-label="Refresh invoice data"
+            >
+              <RefreshCcw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              {isRefreshing ? 'Refreshing...' : 'Refresh'}
+            </Button>
+            
+            <Button onClick={() => setCreateDialogOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" /> Create Invoice
+            </Button>
+          </div>
         </div>
+
+        {error && (
+          <Alert variant="destructive" className="mb-6">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>
+              Failed to load invoice data. Please try refreshing the page.
+              {error instanceof Error ? ` Error: ${error.message}` : ''}
+            </AlertDescription>
+          </Alert>
+        )}
 
         <InvoiceFinancialSummary 
           invoices={filteredInvoices} 
@@ -121,7 +162,7 @@ export default function Invoices() {
         
         <InvoicesList 
           invoices={filteredInvoices} 
-          isLoading={isLoading} 
+          isLoading={isLoading || isRefreshing} 
           currentMonthLabel={monthRanges[monthFilter as keyof typeof monthRanges].label}
         />
         
