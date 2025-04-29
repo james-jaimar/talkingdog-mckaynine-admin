@@ -78,6 +78,16 @@ export function TermProvider({ children }: { children: ReactNode }) {
 
   // Add state to track sync status
   const [termSynced, setTermSynced] = useState(false);
+  
+  // Track last successful term data fetch to avoid redundant updates
+  const [lastFetchedTerm, setLastFetchedTerm] = useState<{
+    year: number;
+    termNumber: TermNumber;
+    id?: string;
+  }>({
+    year: selectedYear,
+    termNumber: selectedTermNumber
+  });
 
   // Wrapper functions to update state and persist to localStorage
   const setSelectedYear = useCallback((year: number) => {
@@ -110,7 +120,7 @@ export function TermProvider({ children }: { children: ReactNode }) {
     isLoading: isTermLoading,
     refetch: refetchTerm
   } = useQuery({
-    queryKey: ['term', selectedYear, selectedTermNumber],
+    queryKey: ['term', selectedYear, selectedTermNumber, termSynced],
     queryFn: async () => {
       console.log(`Fetching term data for year ${selectedYear} and term ${selectedTermNumber}`);
       
@@ -146,7 +156,15 @@ export function TermProvider({ children }: { children: ReactNode }) {
         const termData = data[0];
         termData.start_date = startOfDay(new Date(selectedYear, getTermMonths(selectedTermNumber as TermNumber)[0], 1)).toISOString();
         termData.end_date = endOfDay(new Date(selectedYear, getTermMonths(selectedTermNumber as TermNumber)[1] + 1, 0)).toISOString();
-
+        
+        // Track successful fetch
+        setLastFetchedTerm({
+          year: selectedYear,
+          termNumber: selectedTermNumber,
+          id: termData.id
+        });
+        
+        setTermSynced(true);
         return termData as TermData;
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : 'Unknown error';
@@ -155,48 +173,64 @@ export function TermProvider({ children }: { children: ReactNode }) {
         return null;
       }
     },
-    staleTime: 60 * 1000, // Cache term data for 60 seconds
+    staleTime: 30 * 1000, // Cache term data for 30 seconds
   });
 
   // When term data changes, invalidate relevant queries
   useEffect(() => {
-    if (termData?.id) {
+    const shouldInvalidate = termData?.id && (
+      termData.id !== lastFetchedTerm.id || 
+      selectedYear !== lastFetchedTerm.year || 
+      selectedTermNumber !== lastFetchedTerm.termNumber
+    );
+    
+    if (shouldInvalidate) {
       console.log('Term data updated, invalidating queries', { 
         term: termData.term_number, 
         year: selectedYear,
-        id: termData.id
+        id: termData.id,
+        previousId: lastFetchedTerm.id || 'none'
       });
       
-      setTermSynced(true); // Mark term as synced once we have data
-      
-      // Invalidate specific queries that depend on term data to force refetches
-      queryClient.invalidateQueries({ 
+      // Clear any cached data that would be affected by term changes
+      queryClient.removeQueries({ 
         queryKey: ['classes'],
         exact: false
       });
       
-      queryClient.invalidateQueries({ 
+      queryClient.removeQueries({ 
         queryKey: ['class-handlers'],
         exact: false
       });
       
-      queryClient.invalidateQueries({ 
+      queryClient.removeQueries({ 
         queryKey: ['dashboard-stats'], 
         exact: false
       });
 
-      queryClient.invalidateQueries({ 
+      queryClient.removeQueries({ 
         queryKey: ['financial-bookings'], 
         exact: false
       });
 
-      queryClient.invalidateQueries({ 
+      queryClient.removeQueries({ 
         queryKey: ['recent-bookings'], 
         exact: false
       });
 
-      queryClient.invalidateQueries({ 
+      queryClient.removeQueries({ 
         queryKey: ['upcoming-classes'], 
+        exact: false
+      });
+      
+      // Force immediate refetch of these queries
+      queryClient.refetchQueries({ 
+        queryKey: ['classes'],
+        exact: false
+      });
+      
+      queryClient.refetchQueries({ 
+        queryKey: ['class-handlers'],
         exact: false
       });
       
@@ -208,11 +242,12 @@ export function TermProvider({ children }: { children: ReactNode }) {
         });
       }, 0);
     }
-  }, [termData?.id, selectedYear, queryClient]);
+  }, [termData?.id, selectedYear, selectedTermNumber, queryClient, lastFetchedTerm]);
   
   // Force refresh term data when selection changes
   useEffect(() => {
     if (!termSynced) {
+      console.log('Forcing refetch of term data due to selection change');
       refetchTerm();
     }
   }, [selectedYear, selectedTermNumber, termSynced, refetchTerm]);

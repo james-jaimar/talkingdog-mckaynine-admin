@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, Calendar } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { useEffect } from "react";
 
 export function TermSelectorRow() {
   const {
@@ -17,8 +18,19 @@ export function TermSelectorRow() {
     isTermLoading,
     error,
     years,
-    terms
+    terms,
+    refetchTerm
   } = useTerm();
+
+  // Debug log when term data changes
+  useEffect(() => {
+    console.log('TermSelector - Current term data:', { 
+      termId: termData?.id,
+      termNumber: selectedTermNumber,
+      year: selectedYear,
+      isLoading: isTermLoading
+    });
+  }, [termData, selectedTermNumber, selectedYear, isTermLoading]);
 
   const handleYearChange = (value: string) => {
     console.log('TermSelector - Changing year to:', value);
@@ -29,6 +41,8 @@ export function TermSelectorRow() {
     console.log('TermSelector - Changing term to:', value);
     if (value === '1' || value === '2' || value === '3' || value === '4') {
       setSelectedTermNumber(value as '1' | '2' | '3' | '4');
+      // Force a refresh of term data after selection
+      setTimeout(() => refetchTerm(), 0);
     }
   };
 

@@ -3,12 +3,13 @@ import { useClassOrdering } from "./useClassOrdering";
 import { useBranch } from "@/context/BranchContext";
 import { useAuth } from "@/context/auth";
 import { useTerm } from "@/context/TermContext";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 export function useClassesData() {
   const { currentBranch } = useBranch();
   const { user, session } = useAuth();
   const { termData, selectedTermNumber, selectedYear } = useTerm();
+  const [forceRefresh, setForceRefresh] = useState(0);
   
   // Use our centralized hook for class ordering and data
   const { 
@@ -18,14 +19,21 @@ export function useClassesData() {
     refetch
   } = useClassOrdering();
   
-  // Refetch when term changes - using the actual term ID or term number + year to track changes
+  // Refetch classes when the term changes
   useEffect(() => {
     console.log("Term selection changed in useClassesData, refetching", {
       termId: termData?.id,
       termNumber: selectedTermNumber,
-      year: selectedYear
+      year: selectedYear,
+      forceRefresh
     });
-    refetch();
+    
+    // Force a refetch when term data changes
+    refetch().then(() => {
+      console.log("Classes refetched after term change");
+      // Increment force refresh counter to trigger derived state updates
+      setForceRefresh(prev => prev + 1);
+    });
   }, [
     termData?.id, 
     selectedTermNumber, 
@@ -48,7 +56,7 @@ export function useClassesData() {
     return orderedClasses.filter(c => 
       c.class_schedules && c.class_schedules.some(s => s.term_id === termData.id)
     );
-  }, [orderedClasses, termData?.id]);
+  }, [orderedClasses, termData?.id, forceRefresh]);
   
   return {
     activeClasses,
@@ -56,6 +64,7 @@ export function useClassesData() {
     isLoading,
     hasBranch: !!currentBranch,
     isAuthenticated: !!user && !!session,
-    error
+    error,
+    refetch
   };
 }

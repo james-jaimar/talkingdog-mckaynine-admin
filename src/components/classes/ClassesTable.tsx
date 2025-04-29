@@ -32,13 +32,27 @@ export function ClassesTable() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const queryClient = useQueryClient();
   const { currentBranch } = useBranch();
-  const { termData } = useTerm();
+  const { termData, selectedTermNumber, selectedYear } = useTerm();
+  const [lastTermId, setLastTermId] = useState<string | undefined>(termData?.id);
   
-  // Refresh data when the term changes
+  // Check if term has changed since last render
   useEffect(() => {
-    console.log("ClassesTable: Term changed, refreshing data", termData?.id);
-    refetch();
-  }, [termData?.id, refetch]);
+    if (termData?.id !== lastTermId) {
+      console.log("ClassesTable: Term changed, refreshing data", {
+        from: lastTermId,
+        to: termData?.id,
+        termNumber: selectedTermNumber,
+        year: selectedYear
+      });
+      
+      setLastTermId(termData?.id);
+      
+      // Force refetch when term changes
+      refetch().then(() => {
+        console.log("Classes data refreshed after term change");
+      });
+    }
+  }, [termData?.id, selectedTermNumber, selectedYear, lastTermId, refetch]);
   
   const handleEdit = (classItem: any) => {
     setEditingClass(classItem);
