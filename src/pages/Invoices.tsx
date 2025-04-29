@@ -2,28 +2,26 @@
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Helmet } from "react-helmet";
-import { useInvoices } from "@/hooks/useInvoices";
 import { InvoicesList } from "@/components/invoices/InvoicesList";
 import { InvoiceCreateDialog } from "@/components/invoices/InvoiceCreateDialog";
 import { Button } from "@/components/ui/button";
-import { Plus, RefreshCcw } from "lucide-react";
+import { Plus, RefreshCcw, AlertCircle } from "lucide-react";
 import { InvoiceStatus } from "@/types/invoice";
-import { useQueryClient } from "@tanstack/react-query";
 import { startOfMonth, endOfMonth, subMonths, format } from "date-fns";
 import { InvoiceFinancialSummary } from "@/components/invoices/summary/InvoiceFinancialSummary";
 import { InvoiceFilterTabs } from "@/components/invoices/filters/InvoiceFilterTabs";
 import { useTerm } from "@/context/TermContext";
 import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
+import { InvoicesProvider, useInvoicesData } from "@/context/InvoicesDataContext";
 
-export default function Invoices() {
+// Wrapper component that uses the context
+function InvoicesContent() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<InvoiceStatus | 'all'>('all');
   const [monthFilter, setMonthFilter] = useState<string>("current");
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const { invoices, isLoading, error, refreshAllInvoiceQueries } = useInvoices();
-  const queryClient = useQueryClient();
+  const { invoices, isLoading, error, refreshInvoices } = useInvoicesData();
   const { termDateRange } = useTerm();
 
   // Set the month filter to "term" if a term is selected
@@ -36,22 +34,14 @@ export default function Invoices() {
   // Auto-refresh data when component mounts
   useEffect(() => {
     console.log("Invoices page: Initial data load");
-    refreshAllInvoiceQueries();
-  }, [refreshAllInvoiceQueries]);
-
-  // Refresh data when create dialog closes
-  useEffect(() => {
-    if (!createDialogOpen) {
-      console.log("Create dialog closed, refreshing data");
-      queryClient.invalidateQueries({ queryKey: ['invoices'] });
-    }
-  }, [createDialogOpen, queryClient]);
+    refreshInvoices();
+  }, [refreshInvoices]);
 
   // Handle manual refresh
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
-      await refreshAllInvoiceQueries();
+      await refreshInvoices();
       toast.success("Invoice data refreshed");
     } catch (error) {
       console.error("Error refreshing invoice data:", error);
@@ -112,69 +102,80 @@ export default function Invoices() {
   }) || [];
 
   return (
+    <>
+      <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
+        <h1 className="text-3xl font-bold">Invoices</h1>
+        
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={handleRefresh} 
+            disabled={isRefreshing}
+            aria-label="Refresh invoice data"
+          >
+            <RefreshCcw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            {isRefreshing ? 'Refreshing...' : 'Refresh'}
+          </Button>
+          
+          <Button onClick={() => setCreateDialogOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" /> Create Invoice
+          </Button>
+        </div>
+      </div>
+
+      {error && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>
+            Failed to load invoice data. Please try refreshing the page.
+            {error instanceof Error ? ` Error: ${error.message}` : ''}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      <InvoiceFinancialSummary 
+        invoices={filteredInvoices} 
+        currentMonthLabel={monthRanges[monthFilter as keyof typeof monthRanges].label} 
+      />
+
+      <InvoiceFilterTabs 
+        onMonthFilterChange={setMonthFilter}
+        onStatusFilterChange={setStatusFilter}
+        showTermOption={!!termDateRange}
+      />
+      
+      <InvoicesList 
+        invoices={filteredInvoices} 
+        isLoading={isLoading || isRefreshing} 
+        currentMonthLabel={monthRanges[monthFilter as keyof typeof monthRanges].label}
+      />
+      
+      <InvoiceCreateDialog 
+        open={createDialogOpen} 
+        onOpenChange={(open) => {
+          setCreateDialogOpen(open);
+          if (!open) {
+            refreshInvoices();
+          }
+        }} 
+      />
+    </>
+  );
+}
+
+// Main component that provides the context
+export default function Invoices() {
+  return (
     <DashboardLayout>
       <Helmet>
         <title>Invoices - McKaynine Training Centre</title>
       </Helmet>
       
       <div className="container mx-auto py-6">
-        <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
-          <h1 className="text-3xl font-bold">Invoices</h1>
-          
-          <div className="flex gap-2">
-            <Button 
-              variant="outline" 
-              onClick={handleRefresh} 
-              disabled={isRefreshing}
-              aria-label="Refresh invoice data"
-            >
-              <RefreshCcw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-              {isRefreshing ? 'Refreshing...' : 'Refresh'}
-            </Button>
-            
-            <Button onClick={() => setCreateDialogOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" /> Create Invoice
-            </Button>
-          </div>
-        </div>
-
-        {error && (
-          <Alert variant="destructive" className="mb-6">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Error</AlertTitle>
-            <AlertDescription>
-              Failed to load invoice data. Please try refreshing the page.
-              {error instanceof Error ? ` Error: ${error.message}` : ''}
-            </AlertDescription>
-          </Alert>
-        )}
-
-        <InvoiceFinancialSummary 
-          invoices={filteredInvoices} 
-          currentMonthLabel={monthRanges[monthFilter as keyof typeof monthRanges].label} 
-        />
-
-        <InvoiceFilterTabs 
-          onMonthFilterChange={setMonthFilter}
-          onStatusFilterChange={setStatusFilter}
-          showTermOption={!!termDateRange}
-        />
-        
-        <InvoicesList 
-          invoices={filteredInvoices} 
-          isLoading={isLoading || isRefreshing} 
-          currentMonthLabel={monthRanges[monthFilter as keyof typeof monthRanges].label}
-        />
-        
-        <InvoiceCreateDialog 
-          open={createDialogOpen} 
-          onOpenChange={(open) => {
-            setCreateDialogOpen(open);
-            if (!open) {
-              refreshAllInvoiceQueries();
-            }
-          }} 
-        />
+        <InvoicesProvider>
+          <InvoicesContent />
+        </InvoicesProvider>
       </div>
     </DashboardLayout>
   );

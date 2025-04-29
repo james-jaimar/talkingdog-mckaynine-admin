@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Invoice } from "@/types/invoice";
 import {
@@ -7,7 +8,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useQueryClient } from "@tanstack/react-query";
 import { InvoicesTable } from "./table/InvoicesTable";
 import { SearchInvoices } from "./SearchInvoices";
 import { DeleteInvoiceDialog } from "./dialogs/DeleteInvoiceDialog";
@@ -17,6 +17,8 @@ import { useIsMobile } from "@/hooks/useIsMobile";
 import { useBranch } from "@/context/BranchContext";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { GitBranch, AlertTriangle } from "lucide-react";
+import { InvoicesPagination } from "./InvoicesPagination";
+import { useInvoicesData } from "@/context/InvoicesDataContext";
 
 interface InvoicesListProps {
   invoices: Invoice[];
@@ -29,9 +31,9 @@ export function InvoicesList({
   isLoading, 
   currentMonthLabel = "All Invoices" 
 }: InvoicesListProps) {
-  const queryClient = useQueryClient();
   const isMobile = useIsMobile();
   const { currentBranch } = useBranch();
+  const { currentPage, totalPages, setPage } = useInvoicesData();
   const [searchTerm, setSearchTerm] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
@@ -39,13 +41,6 @@ export function InvoicesList({
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [duplicateInvoiceNumbers, setDuplicateInvoiceNumbers] = useState<string[]>([]);
-
-  // Add effect to refresh data when component mounts or branch changes
-  useEffect(() => {
-    if (currentBranch) {
-      queryClient.invalidateQueries({ queryKey: ['invoices'] });
-    }
-  }, [queryClient, currentBranch]);
 
   // Check for duplicate invoice numbers when invoices change
   useEffect(() => {
@@ -148,6 +143,13 @@ export function InvoicesList({
                   onTransferInvoice={handleTransferRequest}
                 />
               </div>
+
+              <InvoicesPagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setPage}
+                isLoading={isLoading}
+              />
             </>
           )}
         </CardContent>
