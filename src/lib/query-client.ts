@@ -24,7 +24,7 @@ queryClient.setQueryDefaults(['financial-bookings'], {
   staleTime: 30000, // 30 seconds specifically for financial data
   retry: 2,
   refetchInterval: false,
-  cacheTime: 10 * 60 * 1000, // 10 minutes
+  gcTime: 10 * 60 * 1000, // 10 minutes (renamed from cacheTime to gcTime)
 });
 
 // Configure console logging behavior based on environment
