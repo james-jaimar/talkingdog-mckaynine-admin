@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Helmet } from "react-helmet";
 import { InvoiceRevenueChart } from "@/components/invoices/reports/InvoiceRevenueChart";
@@ -14,6 +14,7 @@ import { useTerm } from "@/context/TermContext";
 import { useInvoices } from "@/hooks/useInvoices";
 import { FinancialDataProvider } from "@/context/FinancialDataContext";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
+import { toast } from "sonner";
 
 function FinancialDashboardContent() {
   const [timeframe, setTimeframe] = useState<'monthly' | 'quarterly' | 'yearly'>('monthly');
@@ -42,8 +43,9 @@ function FinancialDashboardContent() {
   const { 
     classFinances, 
     isLoading, 
-    totalRevenue: hookTotalRevenue
-  } = useClassFinancialData(currentBranch?.id);
+    totalRevenue: hookTotalRevenue,
+    refreshData
+  } = useClassFinancialData(currentBranch?.id, termDateRange?.startDate, termDateRange?.endDate);
   
   // Calculate all financial metrics from class finances
   const totalAdmin = classFinances.reduce((sum, item) => sum + item.adminFee, 0);
@@ -52,20 +54,39 @@ function FinancialDashboardContent() {
   
   // Calculate profit as revenue minus all fees
   const profit = totalRevenue - totalAdmin - totalTrainer - totalFranchise;
+
+  // Force refresh data when component mounts or when term or branch changes
+  useEffect(() => {
+    if (currentBranch?.id && termDateRange) {
+      refreshData();
+      console.log("Forcing financial data refresh due to branch/term change");
+    }
+  }, [currentBranch?.id, termDateRange, refreshData]);
   
   // Debug the calculated values
-  console.log("Financial Dashboard calculations:", {
-    totalRevenue,
-    collectedRevenue,
-    pendingRevenue,
-    overdueRevenue,
-    totalAdmin,
-    totalTrainer,
-    totalFranchise,
-    profit,
-    invoicesCount: activeInvoices.length,
-    hookTotalRevenue
-  });
+  useEffect(() => {
+    console.log("Financial Dashboard calculations:", {
+      totalRevenue,
+      collectedRevenue,
+      pendingRevenue,
+      overdueRevenue,
+      totalAdmin,
+      totalTrainer,
+      totalFranchise,
+      profit,
+      invoicesCount: activeInvoices.length,
+      hookTotalRevenue,
+      classFinancesCount: classFinances.length
+    });
+
+    // Add warning toast if class finances is empty
+    if (classFinances.length === 0 && !isLoading && currentBranch) {
+      toast.warning("No financial data found for the current term and branch", {
+        description: "Please check if classes have been set up with fee information",
+        duration: 5000
+      });
+    }
+  }, [totalRevenue, totalAdmin, totalTrainer, totalFranchise, profit, activeInvoices.length, hookTotalRevenue, classFinances.length, isLoading, currentBranch]);
 
   // Financial metrics for the metrics cards
   const financialMetrics = {
@@ -98,34 +119,55 @@ function FinancialDashboardContent() {
         </Tabs>
       </div>
 
-      {/* Financial metrics cards */}
-      <FinancialMetricsCards 
-        totalRevenue={totalRevenue}
-        collectedRevenue={collectedRevenue}
-        pendingRevenue={pendingRevenue}
-        overdueRevenue={overdueRevenue}
-      />
+      {isLoading ? (
+        <div className="w-full py-12 text-center">
+          <p className="text-lg text-muted-foreground">Loading financial data...</p>
+        </div>
+      ) : (
+        <>
+          {/* Financial metrics cards */}
+          <FinancialMetricsCards 
+            totalRevenue={totalRevenue}
+            collectedRevenue={collectedRevenue}
+            pendingRevenue={pendingRevenue}
+            overdueRevenue={overdueRevenue}
+          />
 
-      {/* Expense breakdown cards with profit included */}
-      <ExpenseBreakdownCards {...expenseData} />
+          {/* Expense breakdown cards with profit included */}
+          <ExpenseBreakdownCards {...expenseData} />
 
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <InvoiceRevenueChart 
-          invoices={activeInvoices}
-          timeframe={timeframe} 
-          termDateRange={termDateRange}
-        />
-        <RevenueAllocationChart 
-          fees={{
-            adminFee: totalAdmin,
-            trainerFee: totalTrainer,
-            franchiseFee: totalFranchise,
-            profit: profit
+          {/* Charts */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <InvoiceRevenueChart 
+              invoices={activeInvoices}
+              timeframe={timeframe} 
+              termDateRange={termDateRange}
+            />
+            <RevenueAllocationChart 
+              fees={{
+                adminFee: totalAdmin,
+                trainerFee: totalTrainer,
+                franchiseFee: totalFranchise,
+                profit: profit
+              }}
+              totalRevenue={totalRevenue}
+              showOnlyPaid={false} // Show all revenue for allocation
+            />
+          </div>
+        </>
+      )}
+
+      {/* Debug button for administrators to refresh data */}
+      <div className="mt-6 text-right">
+        <button 
+          onClick={() => {
+            refreshData();
+            toast.success("Financial data is being refreshed");
           }}
-          totalRevenue={totalRevenue}
-          showOnlyPaid={false} // Show all revenue for allocation
-        />
+          className="text-xs text-muted-foreground hover:text-primary underline"
+        >
+          Refresh Financial Data
+        </button>
       </div>
     </div>
   );

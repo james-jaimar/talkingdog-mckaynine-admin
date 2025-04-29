@@ -1,4 +1,5 @@
 
+// This is a large file, so we'll only update key parts of it
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { FinancialData, ClassFinance } from "@/hooks/financial/types";
@@ -124,7 +125,7 @@ export function FinancialDataProvider({ children }: { children: React.ReactNode 
         const totalRevenueFromInvoices = invoicesTotal?.reduce((sum, inv) => sum + (inv.total || 0), 0) || 0;
         const totalDiscounts = invoicesTotal?.reduce((sum, inv) => sum + (inv.monetary_discount || 0), 0) || 0;
 
-        // Get bookings data
+        // Get bookings data with class fee information
         console.log("Fetching bookings data...");
         let bookingsQuery = supabase
           .from('bookings')
@@ -165,6 +166,8 @@ export function FinancialDataProvider({ children }: { children: React.ReactNode 
           console.error("Error fetching booking data:", bookingsError);
           throw bookingsError;
         }
+
+        console.log(`Fetched ${bookings?.length || 0} bookings with class information`);
 
         // Get invoice items
         console.log("Fetching invoice items...");
@@ -253,6 +256,8 @@ export function FinancialDataProvider({ children }: { children: React.ReactNode 
           item.invoices?.client?.branch_id === branchId
         ) || [];
 
+        console.log(`Filtered to ${filteredInvoiceItems.length} invoice items for branch ${branchId}`);
+
         // Create financial data object
         const financialDataResult: FinancialData = {
           bookingsWithInvoices: bookings || [],
@@ -298,21 +303,24 @@ export function FinancialDataProvider({ children }: { children: React.ReactNode 
     setIsRefreshing(true);
     const { branchId, fromDate, toDate } = currentParams;
     
-    if (!branchId || !fromDate || !toDate) {
+    if (!branchId) {
       setIsRefreshing(false);
+      toast.error("No branch selected");
       return;
     }
     
     try {
-      await fetchFinancialData(branchId, fromDate, toDate);
+      await fetchFinancialData(branchId, fromDate || '', toDate || '');
       toast.success("Financial data refreshed");
     } catch (error) {
       console.error("Error refreshing data:", error);
+      toast.error("Failed to refresh data");
     } finally {
       setIsRefreshing(false);
     }
   }, [currentParams, fetchFinancialData]);
 
+  // Calculate the value to expose
   const value = {
     isLoading,
     isRefreshing,

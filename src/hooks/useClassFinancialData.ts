@@ -16,14 +16,16 @@ export function useClassFinancialData(
   
   // Fetch financial data when parameters change
   useEffect(() => {
-    if (branchId && fromDate && toDate) {
-      financialData.fetchFinancialData(branchId, fromDate, toDate);
+    if (branchId) {
+      console.log(`Fetching financial data for branch ${branchId} from ${fromDate || 'unknown'} to ${toDate || 'unknown'}`);
+      financialData.fetchFinancialData(branchId, fromDate || '', toDate || '');
     }
   }, [branchId, fromDate, toDate, financialData]);
 
   return {
     classFinances: financialData.classFinances,
     isLoading: financialData.isLoading,
+    isRefreshing: financialData.isRefreshing,
     refreshData: financialData.refreshData,
     totalInvoiceCount: financialData.totalInvoiceCount,
     invalidInvoicesCount: financialData.invalidInvoicesCount,
