@@ -11,14 +11,10 @@ export const queryClient = new QueryClient({
       refetchOnReconnect: true,
       refetchOnMount: true,
       gcTime: 5 * 60 * 1000, // 5 minutes for garbage collection
-      // Improved error handling for aborted requests
+      
+      // Handle cancelled requests properly
       throwOnError: (error) => {
-        // Don't throw for AbortErrors or CancelledError (cancellation)
-        if (
-          error instanceof DOMException && error.name === 'AbortError' ||
-          error?.name === 'CancelledError' ||
-          error?.message?.includes?.('cancelled')
-        ) {
+        if (isCancelledError(error)) {
           console.log('Query was cancelled, suppressing error');
           return false;
         }
@@ -28,14 +24,10 @@ export const queryClient = new QueryClient({
     mutations: {
       retry: 1,
       networkMode: "always",
-      // Improved error handling for aborted requests
+      
+      // Handle cancelled requests properly
       throwOnError: (error) => {
-        // Don't throw for AbortErrors or CancelledError (cancellation)
-        if (
-          error instanceof DOMException && error.name === 'AbortError' ||
-          error?.name === 'CancelledError' ||
-          error?.message?.includes?.('cancelled')
-        ) {
+        if (isCancelledError(error)) {
           console.log('Mutation was cancelled, suppressing error');
           return false;
         }
@@ -45,20 +37,30 @@ export const queryClient = new QueryClient({
   }
 });
 
-// Configure specific options for financial data queries - always fresh data
+// Helper to check for cancelled/aborted errors
+function isCancelledError(error: unknown): boolean {
+  return (
+    error instanceof DOMException && error.name === 'AbortError' ||
+    error?.name === 'CancelledError' ||
+    error?.message?.includes?.('cancelled') ||
+    error?.message?.includes?.('aborted')
+  );
+}
+
+// Set default options for financial queries - always fresh data
 queryClient.setQueryDefaults(['financial-bookings'], {
-  staleTime: 0, // Always consider financial data stale (fetch on every mount)
-  retry: 1, // Reduced from 2 to 1 to minimize retries on cancelled requests
+  staleTime: 0, // Always consider financial data stale
+  retry: 1,
   refetchInterval: false,
   refetchOnMount: true, // Always refetch when component mounts
   gcTime: 0, // Don't retain in cache
   refetchOnWindowFocus: true // Also refetch when window gains focus
 });
 
-// Additionally set defaults for trainer payment queries
+// Set defaults for trainer payment queries
 queryClient.setQueryDefaults(['trainer-payments'], {
   staleTime: 0,
-  retry: 1, // Reduced from 2 to 1
+  retry: 1,
   refetchOnMount: true,
   gcTime: 0,
   refetchOnWindowFocus: true
@@ -67,18 +69,21 @@ queryClient.setQueryDefaults(['trainer-payments'], {
 // Configure console logging behavior based on environment
 if (process.env.NODE_ENV !== 'production') {
   // Enable more verbose logging in development
+  const originalConsoleLog = console.log;
   console.log = (...args) => {
     // Filter out some of the overly verbose react-query logs
     if (args[0]?.includes?.('[react-query]') && !args[0]?.includes?.('error')) {
       return;
     }
-    console.info(...args);
+    originalConsoleLog(...args);
   };
 } else {
   // Silence most logs in production
+  const originalConsoleLog = console.log;
+  const originalConsoleError = console.error;
   console.log = (...args) => {
     if (args[0]?.includes?.('error:')) {
-      console.error(...args);
+      originalConsoleError(...args);
     }
   };
 }
