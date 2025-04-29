@@ -20,3 +20,14 @@ export const formatDate = (dateString: string): string => {
     day: 'numeric'
   });
 };
+
+/**
+ * Format a number as percentage
+ */
+export const formatPercentage = (value: number): string => {
+  return new Intl.NumberFormat('en-US', {
+    style: 'percent',
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1
+  }).format(value);
+};
