@@ -19,10 +19,12 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
       bookingsWithInvoices,
       allInvoicesCount,
       invalidInvoicesCount: invalidCount,
-      invoiceItems = [],
       totalRevenue,
       totalDiscounts
     } = financialData;
+
+    // Use optional chaining for possibly undefined invoiceItems
+    const invoiceItems = financialData.invoiceItems || [];
 
     setTotalInvoiceCount(allInvoicesCount);
     setInvalidInvoicesCount(invalidCount);
