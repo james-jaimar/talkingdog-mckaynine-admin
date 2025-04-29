@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { Invoice, InvoiceItem } from "@/hooks/invoices/types";
 import { toast } from "sonner";
@@ -62,4 +63,3 @@ export function createDefaultInvoiceItem(total: number): InvoiceItem {
     amount: total
   };
 }
-
