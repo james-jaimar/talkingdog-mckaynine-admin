@@ -71,24 +71,25 @@ export function useFinancialProcessor(data: FinancialData | null) {
       // Update existing class entry or create new one
       if (processedClasses.has(classId)) {
         const existingClass = processedClasses.get(classId)!;
-        existingClass.revenue += totalRevenue;
+        existingClass.totalRevenue += totalRevenue;
         existingClass.adminFee += adminFee;
         existingClass.instructorFee += instructorFee;
         existingClass.franchiseFee += franchiseFee;
-        existingClass.profit = existingClass.revenue - existingClass.adminFee - 
+        existingClass.profit = existingClass.totalRevenue - existingClass.adminFee - 
                                existingClass.instructorFee - existingClass.franchiseFee;
-        existingClass.bookingCount += 1;
+        existingClass.bookingsCount += 1;
       } else {
         const profit = totalRevenue - adminFee - instructorFee - franchiseFee;
         processedClasses.set(classId, {
-          id: classId,
-          name: className,
-          revenue: totalRevenue,
+          className,
+          totalRevenue,
           adminFee,
           instructorFee,
           franchiseFee,
           profit,
-          bookingCount: 1
+          bookingsCount: 1,
+          invoiceCount: invoiceItems.length,
+          sourceType: 'class'
         });
       }
     });
