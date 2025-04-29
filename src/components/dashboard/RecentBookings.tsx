@@ -1,4 +1,3 @@
-
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
@@ -13,11 +12,11 @@ interface RecentBookingsProps {
 }
 
 export function RecentBookings({ branchId }: RecentBookingsProps) {
-  const { termData } = useTerm();
+  const { termData, selectedTermNumber, selectedYear } = useTerm();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const { data: bookings, isLoading, refetch } = useQuery({
-    queryKey: ['recent-bookings', branchId, termData?.id],
+    queryKey: ['recent-bookings', branchId, termData?.id, selectedTermNumber, selectedYear],
     queryFn: async () => {
       // Don't fetch data if no branch is selected
       if (!branchId) return [];
@@ -61,13 +60,16 @@ export function RecentBookings({ branchId }: RecentBookingsProps) {
 
   // Refresh when term changes
   useEffect(() => {
-    if (termData?.id) {
-      console.log("RecentBookings responding to term change");
-      setIsRefreshing(true);
-      refetch().finally(() => setIsRefreshing(false));
-    }
-  }, [termData?.id, refetch]);
+    console.log("RecentBookings responding to term change", {
+      termId: termData?.id,
+      termNumber: selectedTermNumber,
+      year: selectedYear
+    });
+    setIsRefreshing(true);
+    refetch().finally(() => setIsRefreshing(false));
+  }, [termData?.id, selectedTermNumber, selectedYear, refetch]);
 
+  // Rest of the component remains the same
   const getStatusColor = (status: string) => {
     switch(status) {
       case 'confirmed': return 'bg-green-500';
@@ -150,4 +152,22 @@ export function RecentBookings({ branchId }: RecentBookingsProps) {
       </CardContent>
     </Card>
   );
+}
+
+function getStatusColor(status: string) {
+  switch(status) {
+    case 'confirmed': return 'bg-green-500';
+    case 'cancelled': return 'bg-red-500';
+    case 'completed': return 'bg-blue-500';
+    default: return 'bg-gray-500';
+  }
+}
+
+function getPaymentStatusVariant(status: string) {
+  switch(status) {
+    case 'paid': return 'default';
+    case 'pending': return 'secondary';
+    case 'refunded': return 'destructive';
+    default: return 'outline';
+  }
 }

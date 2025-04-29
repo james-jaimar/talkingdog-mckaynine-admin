@@ -8,10 +8,11 @@ import { useDashboardStats } from "@/hooks/useDashboardStats";
 import { Users, Dog, Book, Calendar } from "lucide-react";
 import { useTerm } from "@/context/TermContext";
 import { useEffect } from "react";
+import { Helmet } from "react-helmet";
 
 export default function Dashboard() {
   const { currentBranch } = useBranch();
-  const { termData, isTermLoading } = useTerm();
+  const { termData, isTermLoading, selectedTermNumber, selectedYear } = useTerm();
   
   const {
     clientCount,
@@ -24,15 +25,22 @@ export default function Dashboard() {
 
   // Fetch stats when component mounts or term changes
   useEffect(() => {
-    console.log("Dashboard detected term change, refetching stats");
+    console.log("Dashboard detected term change, refetching stats", {
+      termId: termData?.id,
+      termNumber: selectedTermNumber,
+      year: selectedYear
+    });
     refetchAllStats();
-  }, [termData?.id, refetchAllStats]);
+  }, [termData?.id, selectedTermNumber, selectedYear, refetchAllStats]);
 
   // Determine if we're in a loading state
   const isLoading = isTermLoading || statsLoading;
 
   return (
     <DashboardLayout>
+      <Helmet>
+        <title>Dashboard - McKaynine Training Centre</title>
+      </Helmet>
       <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
         <div className="flex items-center justify-between">
           <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
@@ -75,4 +83,3 @@ export default function Dashboard() {
     </DashboardLayout>
   );
 }
-

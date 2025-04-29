@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useContext, useEffect, useCallback, ReactNode } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -75,10 +76,14 @@ export function TermProvider({ children }: { children: ReactNode }) {
   const [selectedTermNumber, setSelectedTermNumberState] = useState<TermNumber>(storedData.termNumber);
   const [error, setError] = useState<Error | null>(null);
 
+  // Add state to track sync status
+  const [termSynced, setTermSynced] = useState(false);
+
   // Wrapper functions to update state and persist to localStorage
   const setSelectedYear = useCallback((year: number) => {
     console.log('Setting selected year to:', year);
     setSelectedYearState(year);
+    setTermSynced(false); // Mark that we need to sync the term data
     localStorage.setItem(
       TERM_STORAGE_KEY, 
       JSON.stringify({ year, termNumber: selectedTermNumber })
@@ -90,6 +95,7 @@ export function TermProvider({ children }: { children: ReactNode }) {
   const setSelectedTermNumber = useCallback((termNumber: TermNumber) => {
     console.log('Setting selected term number to:', termNumber);
     setSelectedTermNumberState(termNumber);
+    setTermSynced(false); // Mark that we need to sync the term data
     localStorage.setItem(
       TERM_STORAGE_KEY, 
       JSON.stringify({ year: selectedYear, termNumber })
@@ -155,23 +161,47 @@ export function TermProvider({ children }: { children: ReactNode }) {
   // When term data changes, invalidate relevant queries
   useEffect(() => {
     if (termData?.id) {
-      console.log('Term data updated, invalidating queries');
+      console.log('Term data updated, invalidating queries', { 
+        term: termData.term_number, 
+        year: selectedYear,
+        id: termData.id
+      });
       
-      // Invalidate specific queries that depend on term data
+      setTermSynced(true); // Mark term as synced once we have data
+      
+      // Invalidate specific queries that depend on term data to force refetches
+      queryClient.invalidateQueries({ 
+        queryKey: ['classes'],
+        exact: false
+      });
+      
+      queryClient.invalidateQueries({ 
+        queryKey: ['class-handlers'],
+        exact: false
+      });
+      
+      queryClient.invalidateQueries({ 
+        queryKey: ['dashboard-stats'], 
+        exact: false
+      });
+
+      queryClient.invalidateQueries({ 
+        queryKey: ['financial-bookings'], 
+        exact: false
+      });
+
+      queryClient.invalidateQueries({ 
+        queryKey: ['recent-bookings'], 
+        exact: false
+      });
+
+      queryClient.invalidateQueries({ 
+        queryKey: ['upcoming-classes'], 
+        exact: false
+      });
+      
+      // Queue toast notification at end of current execution cycle
       setTimeout(() => {
-        queryClient.invalidateQueries({ 
-          queryKey: ['classes'],
-          exact: false
-        });
-        queryClient.invalidateQueries({ 
-          queryKey: ['class-handlers'],
-          exact: false
-        });
-        queryClient.invalidateQueries({ 
-          queryKey: ['dashboard-stats'], 
-          exact: false
-        });
-        
         toast({
           title: `Term Changed`,
           description: `Now viewing Term ${termData.term_number}, ${selectedYear}`,
@@ -179,6 +209,13 @@ export function TermProvider({ children }: { children: ReactNode }) {
       }, 0);
     }
   }, [termData?.id, selectedYear, queryClient]);
+  
+  // Force refresh term data when selection changes
+  useEffect(() => {
+    if (!termSynced) {
+      refetchTerm();
+    }
+  }, [selectedYear, selectedTermNumber, termSynced, refetchTerm]);
 
   // Generate years array (current year to current year + 4)
   const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() + i);

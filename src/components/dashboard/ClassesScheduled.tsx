@@ -14,11 +14,11 @@ interface ClassesScheduledProps {
 
 export function ClassesScheduled({ branchId }: ClassesScheduledProps) {
   const isMobile = useIsMobile();
-  const { termData } = useTerm();
+  const { termData, selectedTermNumber, selectedYear } = useTerm();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const { data: classes, isLoading, refetch } = useQuery({
-    queryKey: ['upcoming-classes', branchId, termData?.id],
+    queryKey: ['upcoming-classes', branchId, termData?.id, selectedTermNumber, selectedYear],
     queryFn: async () => {
       // Don't fetch data if no branch is selected
       if (!branchId) return [];
@@ -68,12 +68,14 @@ export function ClassesScheduled({ branchId }: ClassesScheduledProps) {
 
   // Refresh when term changes
   useEffect(() => {
-    if (termData?.id) {
-      console.log("ClassesScheduled responding to term change");
-      setIsRefreshing(true);
-      refetch().finally(() => setIsRefreshing(false));
-    }
-  }, [termData?.id, refetch]);
+    console.log("ClassesScheduled responding to term change", {
+      termId: termData?.id,
+      termNumber: selectedTermNumber,
+      year: selectedYear
+    });
+    setIsRefreshing(true);
+    refetch().finally(() => setIsRefreshing(false));
+  }, [termData?.id, selectedTermNumber, selectedYear, refetch]);
 
   const getInitials = (firstName: string, lastName: string) => {
     return `${firstName?.[0] || ''}${lastName?.[0] || ''}`;

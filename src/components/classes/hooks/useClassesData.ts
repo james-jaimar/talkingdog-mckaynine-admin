@@ -8,7 +8,7 @@ import { useEffect, useMemo } from "react";
 export function useClassesData() {
   const { currentBranch } = useBranch();
   const { user, session } = useAuth();
-  const { termData } = useTerm();
+  const { termData, selectedTermNumber, selectedYear } = useTerm();
   
   // Use our centralized hook for class ordering and data
   const { 
@@ -18,11 +18,20 @@ export function useClassesData() {
     refetch
   } = useClassOrdering();
   
-  // Refetch when term changes
+  // Refetch when term changes - using the actual term ID or term number + year to track changes
   useEffect(() => {
-    console.log("Term selection changed in useClassesData, refetching");
+    console.log("Term selection changed in useClassesData, refetching", {
+      termId: termData?.id,
+      termNumber: selectedTermNumber,
+      year: selectedYear
+    });
     refetch();
-  }, [termData?.id, refetch]);
+  }, [
+    termData?.id, 
+    selectedTermNumber, 
+    selectedYear, 
+    refetch
+  ]);
   
   // For active classes, filter to show only those with schedules for the current term
   const activeClasses = useMemo(() => {
