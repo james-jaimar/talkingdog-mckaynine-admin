@@ -20,8 +20,11 @@ export const queryClient = new QueryClient({
 // Add a listener to ensure we don't return stale data even if network requests fail
 queryClient.setDefaultOptions({
   queries: {
-    onError: (error) => {
-      console.error("Query error:", error);
+    // In v5, onError moved to meta or onSettled, using onSettled instead
+    onSettled: (_, error) => {
+      if (error) {
+        console.error("Query error:", error);
+      }
     },
     structuralSharing: false // This forces new references even for identical data
   }
