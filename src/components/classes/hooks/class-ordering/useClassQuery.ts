@@ -7,15 +7,15 @@ import { useTerm } from "@/context/TermContext";
 
 export function useClassQuery() {
   const { currentBranch } = useBranch();
-  const { termData } = useTerm();
+  const { termData, selectedTermNumber, selectedYear } = useTerm();
   const branchId = currentBranch?.id;
 
   return useQuery({
-    queryKey: ['classes', branchId],
+    queryKey: ['classes', branchId, termData?.id, selectedTermNumber, selectedYear],
     queryFn: async () => {
       if (!branchId) return [];
 
-      console.log('Fetching classes for branch:', branchId);
+      console.log('Fetching classes for branch:', branchId, 'with term:', termData?.id);
       
       try {
         // First, fetch the saved order for this branch if it exists
@@ -68,7 +68,7 @@ export function useClassQuery() {
         }
         
         let classes = allClasses as ClassWithSchedules[];
-        console.log(`Fetched ${classes.length} classes before ordering`);
+        console.log(`Fetched ${classes.length} classes before ordering, for term: ${termData?.id}`);
         
         // Apply the saved order if available
         if (savedOrder.length > 0) {
@@ -96,11 +96,6 @@ export function useClassQuery() {
           classes = orderedClasses;
         }
         
-        // Debug logging: Log all classes after ordering
-        classes.forEach(classItem => {
-          console.log(`Class "${classItem.name}" (${classItem.id}): ${classItem.class_schedules?.length || 0} schedules`);
-        });
-        
         return classes;
       } catch (error) {
         console.error("Error fetching classes:", error);
@@ -108,6 +103,6 @@ export function useClassQuery() {
       }
     },
     enabled: !!branchId,
-    staleTime: 30000, // Cache for 30 seconds
+    staleTime: 10000, // Reduce cache time to 10 seconds for quicker refreshes
   });
 }

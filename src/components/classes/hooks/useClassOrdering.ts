@@ -7,13 +7,15 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "@/components/ui/use-toast";
 import { useTerm } from "@/context/TermContext";
 import { ClassWithSchedules } from "./types/class-with-schedules";
+import { useQueryClient } from "@tanstack/react-query";
 
 export function useClassOrdering() {
+  const queryClient = useQueryClient();
   const { currentBranch } = useBranch();
-  const { termData } = useTerm();
+  const { termData, selectedTermNumber, selectedYear } = useTerm();
   const branchId = currentBranch?.id;
   
-  // Fetch classes with the saved order - without term filtering
+  // Fetch classes with the saved order - now includes term in the query key
   const { 
     data: fetchedClasses, 
     isLoading, 
@@ -51,26 +53,43 @@ export function useClassOrdering() {
       termId: termData?.id,
       fetchedClassesCount: fetchedClasses?.length || 0,
       orderedClassesCount: orderedClasses.length,
-      hasInitialized: hasInitialized.current
+      hasInitialized: hasInitialized.current,
+      selectedTerm: selectedTermNumber,
+      selectedYear
     });
-  }, [branchId, termData?.id, fetchedClasses, orderedClasses]);
+  }, [branchId, termData?.id, fetchedClasses, orderedClasses, selectedTermNumber, selectedYear]);
   
   // Reset when term changes to get fresh data
   useEffect(() => {
     if (termData?.id !== lastTermId.current) {
       console.log("Term changed in useClassOrdering, resetting state", { 
         from: lastTermId.current, 
-        to: termData?.id 
+        to: termData?.id,
+        selectedTerm: selectedTermNumber,
+        selectedYear
       });
       hasInitialized.current = false;
       optimisticUpdateInProgress.current = false;
       resetMovingState();
       lastTermId.current = termData?.id;
       
+      // Clear the query cache for classes
+      queryClient.invalidateQueries({
+        queryKey: ['classes'],
+        exact: false
+      });
+      
       // Force a refetch when term changes
       refetch();
     }
-  }, [termData?.id, resetMovingState, refetch]);
+  }, [
+    termData?.id, 
+    resetMovingState, 
+    refetch, 
+    queryClient,
+    selectedTermNumber,
+    selectedYear
+  ]);
 
   // Sync orderedClasses with fetchedClasses
   useEffect(() => {
@@ -82,13 +101,14 @@ export function useClassOrdering() {
         count: fetchedClasses.length,
         isDragging,
         optimisticUpdate: optimisticUpdateInProgress.current,
-        hasInitialized: hasInitialized.current
+        hasInitialized: hasInitialized.current,
+        termId: termData?.id
       });
       
       setOrderedClasses(fetchedClasses);
       hasInitialized.current = true;
     }
-  }, [fetchedClasses, isDragging]);
+  }, [fetchedClasses, isDragging, termData?.id]);
   
   // Handle the start of drag operations
   const handleDragStart = useCallback(() => {

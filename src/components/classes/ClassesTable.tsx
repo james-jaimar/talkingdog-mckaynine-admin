@@ -30,6 +30,7 @@ export function ClassesTable() {
   
   const [editingClass, setEditingClass] = useState<any>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const queryClient = useQueryClient();
   const { currentBranch } = useBranch();
   const { termData, selectedTermNumber, selectedYear } = useTerm();
@@ -46,13 +47,17 @@ export function ClassesTable() {
       });
       
       setLastTermId(termData?.id);
+      setIsRefreshing(true);
       
       // Force refetch when term changes
-      refetch().then(() => {
-        console.log("Classes data refreshed after term change");
+      queryClient.invalidateQueries({ queryKey: ['classes'], exact: false }).then(() => {
+        refetch().finally(() => {
+          setIsRefreshing(false);
+          console.log("Classes data refreshed after term change");
+        });
       });
     }
-  }, [termData?.id, selectedTermNumber, selectedYear, lastTermId, refetch]);
+  }, [termData?.id, selectedTermNumber, selectedYear, lastTermId, refetch, queryClient]);
   
   const handleEdit = (classItem: any) => {
     setEditingClass(classItem);
@@ -100,7 +105,8 @@ export function ClassesTable() {
     handleDragEnd(sourceIndex, destinationIndex);
   };
 
-  if (isLoading) {
+  // Show loading state if initially loading or during term change refresh
+  if (isLoading || isRefreshing) {
     return <ClassesTableLoading />;
   }
   

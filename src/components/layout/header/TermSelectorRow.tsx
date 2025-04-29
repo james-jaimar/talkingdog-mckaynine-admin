@@ -6,7 +6,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, Calendar } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
 export function TermSelectorRow() {
   const {
@@ -21,6 +22,9 @@ export function TermSelectorRow() {
     terms,
     refetchTerm
   } = useTerm();
+  
+  const queryClient = useQueryClient();
+  const [isChangingTerm, setIsChangingTerm] = useState(false);
 
   // Debug log when term data changes
   useEffect(() => {
@@ -28,25 +32,61 @@ export function TermSelectorRow() {
       termId: termData?.id,
       termNumber: selectedTermNumber,
       year: selectedYear,
-      isLoading: isTermLoading
+      isLoading: isTermLoading,
+      isChangingTerm
     });
-  }, [termData, selectedTermNumber, selectedYear, isTermLoading]);
+  }, [termData, selectedTermNumber, selectedYear, isTermLoading, isChangingTerm]);
 
-  const handleYearChange = (value: string) => {
+  const handleYearChange = async (value: string) => {
     console.log('TermSelector - Changing year to:', value);
+    setIsChangingTerm(true);
+    
+    // First invalidate queries that depend on term
+    await queryClient.invalidateQueries({ 
+      queryKey: ['classes'],
+      exact: false 
+    });
+    
+    // Then update the year
     setSelectedYear(parseInt(value));
+    
+    // Force a refresh of term data
+    setTimeout(() => {
+      refetchTerm().then(() => {
+        console.log('Term data refreshed after year change');
+        setIsChangingTerm(false);
+      });
+    }, 0);
   };
 
-  const handleTermChange = (value: string) => {
+  const handleTermChange = async (value: string) => {
     console.log('TermSelector - Changing term to:', value);
     if (value === '1' || value === '2' || value === '3' || value === '4') {
+      setIsChangingTerm(true);
+      
+      // First invalidate queries that depend on term
+      await queryClient.invalidateQueries({ 
+        queryKey: ['classes'],
+        exact: false 
+      });
+      
+      // Update the term number
       setSelectedTermNumber(value as '1' | '2' | '3' | '4');
+      
       // Force a refresh of term data after selection
-      setTimeout(() => refetchTerm(), 0);
+      setTimeout(() => {
+        refetchTerm().then(() => {
+          console.log('Term data refreshed after term change');
+          setIsChangingTerm(false);
+        });
+      }, 0);
     }
   };
 
   const errorMessage = error?.message || '';
+  
+  // Show combined loading state (either from term context or local state)
+  const showLoading = isTermLoading || isChangingTerm;
 
   if (error) {
     return (
@@ -67,7 +107,7 @@ export function TermSelectorRow() {
       <div className="container mx-auto px-4 py-2">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center space-x-4 text-white">
-            {isTermLoading ? (
+            {showLoading ? (
               <div className="flex items-center space-x-2">
                 <Loader2 className="h-4 w-4 animate-spin text-white" />
                 <div className="space-y-2">
@@ -102,7 +142,7 @@ export function TermSelectorRow() {
               <Select
                 value={selectedYear.toString()}
                 onValueChange={handleYearChange}
-                disabled={isTermLoading}
+                disabled={showLoading}
               >
                 <SelectTrigger className="w-[120px] bg-white text-gray-800">
                   <SelectValue placeholder="Select year" />
@@ -121,7 +161,7 @@ export function TermSelectorRow() {
               <Select
                 value={selectedTermNumber}
                 onValueChange={handleTermChange}
-                disabled={isTermLoading}
+                disabled={showLoading}
               >
                 <SelectTrigger className="w-[120px] bg-white text-gray-800">
                   <SelectValue placeholder="Select term" />

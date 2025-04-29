@@ -76,8 +76,9 @@ export function TermProvider({ children }: { children: ReactNode }) {
   const [selectedTermNumber, setSelectedTermNumberState] = useState<TermNumber>(storedData.termNumber);
   const [error, setError] = useState<Error | null>(null);
 
-  // Add state to track sync status
+  // Add state to track sync status and prevent redundant operations
   const [termSynced, setTermSynced] = useState(false);
+  const [isChangingTerm, setIsChangingTerm] = useState(false);
   
   // Track last successful term data fetch to avoid redundant updates
   const [lastFetchedTerm, setLastFetchedTerm] = useState<{
@@ -94,25 +95,51 @@ export function TermProvider({ children }: { children: ReactNode }) {
     console.log('Setting selected year to:', year);
     setSelectedYearState(year);
     setTermSynced(false); // Mark that we need to sync the term data
+    setIsChangingTerm(true); // Flag to indicate term is changing
     localStorage.setItem(
       TERM_STORAGE_KEY, 
       JSON.stringify({ year, termNumber: selectedTermNumber })
     );
     // Reset any previous errors
     setError(null);
+    
+    // Preemptively clear cache for term-dependent queries
+    invalidateTermDependentQueries();
   }, [selectedTermNumber]);
   
   const setSelectedTermNumber = useCallback((termNumber: TermNumber) => {
     console.log('Setting selected term number to:', termNumber);
     setSelectedTermNumberState(termNumber);
     setTermSynced(false); // Mark that we need to sync the term data
+    setIsChangingTerm(true); // Flag to indicate term is changing
     localStorage.setItem(
       TERM_STORAGE_KEY, 
       JSON.stringify({ year: selectedYear, termNumber })
     );
     // Reset any previous errors
     setError(null);
+    
+    // Preemptively clear cache for term-dependent queries
+    invalidateTermDependentQueries();
   }, [selectedYear]);
+
+  // Centralized function to invalidate all term-dependent queries
+  const invalidateTermDependentQueries = useCallback(async () => {
+    console.log("Invalidating all term-dependent queries");
+    
+    // First, forcefully remove all relevant cache entries
+    await Promise.all([
+      queryClient.removeQueries({ queryKey: ['classes'], exact: false }),
+      queryClient.removeQueries({ queryKey: ['class-handlers'], exact: false }),
+      queryClient.removeQueries({ queryKey: ['class-schedules'], exact: false }),
+      queryClient.removeQueries({ queryKey: ['dashboard-stats'], exact: false }),
+      queryClient.removeQueries({ queryKey: ['financial-bookings'], exact: false }),
+      queryClient.removeQueries({ queryKey: ['recent-bookings'], exact: false }),
+      queryClient.removeQueries({ queryKey: ['upcoming-classes'], exact: false })
+    ]);
+    
+    console.log("Cache cleared for term-dependent queries");
+  }, [queryClient]);
 
   // Fetch term data based on selected year and term number
   const { 
@@ -165,18 +192,20 @@ export function TermProvider({ children }: { children: ReactNode }) {
         });
         
         setTermSynced(true);
+        setIsChangingTerm(false); // Term change complete
         return termData as TermData;
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : 'Unknown error';
         console.error('Exception fetching term data:', err);
         setError(new Error(errorMsg));
+        setIsChangingTerm(false); // Term change failed
         return null;
       }
     },
     staleTime: 30 * 1000, // Cache term data for 30 seconds
   });
 
-  // When term data changes, invalidate relevant queries
+  // When term data changes, invalidate and refetch relevant queries
   useEffect(() => {
     const shouldInvalidate = termData?.id && (
       termData.id !== lastFetchedTerm.id || 
@@ -185,64 +214,51 @@ export function TermProvider({ children }: { children: ReactNode }) {
     );
     
     if (shouldInvalidate) {
-      console.log('Term data updated, invalidating queries', { 
+      console.log('Term data updated, triggering data refresh', { 
         term: termData.term_number, 
         year: selectedYear,
         id: termData.id,
         previousId: lastFetchedTerm.id || 'none'
       });
       
-      // Clear any cached data that would be affected by term changes
-      queryClient.removeQueries({ 
-        queryKey: ['classes'],
-        exact: false
-      });
-      
-      queryClient.removeQueries({ 
-        queryKey: ['class-handlers'],
-        exact: false
-      });
-      
-      queryClient.removeQueries({ 
-        queryKey: ['dashboard-stats'], 
-        exact: false
-      });
-
-      queryClient.removeQueries({ 
-        queryKey: ['financial-bookings'], 
-        exact: false
-      });
-
-      queryClient.removeQueries({ 
-        queryKey: ['recent-bookings'], 
-        exact: false
-      });
-
-      queryClient.removeQueries({ 
-        queryKey: ['upcoming-classes'], 
-        exact: false
-      });
-      
-      // Force immediate refetch of these queries
-      queryClient.refetchQueries({ 
-        queryKey: ['classes'],
-        exact: false
-      });
-      
-      queryClient.refetchQueries({ 
-        queryKey: ['class-handlers'],
-        exact: false
-      });
-      
-      // Queue toast notification at end of current execution cycle
-      setTimeout(() => {
-        toast({
-          title: `Term Changed`,
-          description: `Now viewing Term ${termData.term_number}, ${selectedYear}`,
+      // Invalidate all cached queries
+      invalidateTermDependentQueries().then(() => {
+        // After cache is cleared, trigger refetch of key queries
+        queryClient.refetchQueries({ 
+          queryKey: ['classes'],
+          exact: false
         });
-      }, 0);
+        
+        queryClient.refetchQueries({ 
+          queryKey: ['class-handlers'],
+          exact: false
+        });
+        
+        queryClient.refetchQueries({ 
+          queryKey: ['dashboard-stats'],
+          exact: false
+        });
+        
+        queryClient.refetchQueries({ 
+          queryKey: ['upcoming-classes'],
+          exact: false
+        });
+        
+        queryClient.refetchQueries({ 
+          queryKey: ['recent-bookings'],
+          exact: false
+        });
+        
+        // Queue toast notification at end of current execution cycle
+        setTimeout(() => {
+          toast({
+            title: `Term Changed`,
+            description: `Now viewing Term ${termData.term_number}, ${selectedYear}`,
+          });
+        }, 0);
+      });
     }
-  }, [termData?.id, selectedYear, selectedTermNumber, queryClient, lastFetchedTerm]);
+  }, [termData?.id, selectedYear, selectedTermNumber, queryClient, lastFetchedTerm, invalidateTermDependentQueries]);
   
   // Force refresh term data when selection changes
   useEffect(() => {
@@ -270,7 +286,7 @@ export function TermProvider({ children }: { children: ReactNode }) {
     selectedTermNumber,
     setSelectedTermNumber,
     termData,
-    isTermLoading,
+    isTermLoading: isTermLoading || isChangingTerm, // Include term change state in loading indicator
     error,
     termDateRange,
     years,

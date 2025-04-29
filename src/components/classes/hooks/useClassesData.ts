@@ -4,12 +4,14 @@ import { useBranch } from "@/context/BranchContext";
 import { useAuth } from "@/context/auth";
 import { useTerm } from "@/context/TermContext";
 import { useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
 export function useClassesData() {
   const { currentBranch } = useBranch();
   const { user, session } = useAuth();
   const { termData, selectedTermNumber, selectedYear } = useTerm();
   const [forceRefresh, setForceRefresh] = useState(0);
+  const queryClient = useQueryClient();
   
   // Use our centralized hook for class ordering and data
   const { 
@@ -28,6 +30,9 @@ export function useClassesData() {
       forceRefresh
     });
     
+    // First invalidate the classes query cache
+    queryClient.invalidateQueries({ queryKey: ['classes'], exact: false });
+    
     // Force a refetch when term data changes
     refetch().then(() => {
       console.log("Classes refetched after term change");
@@ -38,7 +43,8 @@ export function useClassesData() {
     termData?.id, 
     selectedTermNumber, 
     selectedYear, 
-    refetch
+    refetch,
+    queryClient
   ]);
   
   // For active classes, filter to show only those with schedules for the current term
@@ -53,9 +59,12 @@ export function useClassesData() {
     }
     
     // With term: show classes that have schedules for this term
-    return orderedClasses.filter(c => 
+    const filtered = orderedClasses.filter(c => 
       c.class_schedules && c.class_schedules.some(s => s.term_id === termData.id)
     );
+    
+    console.log(`Found ${filtered.length} classes with schedules for term: ${termData.id}`);
+    return filtered;
   }, [orderedClasses, termData?.id, forceRefresh]);
   
   return {
