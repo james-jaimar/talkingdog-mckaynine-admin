@@ -20,12 +20,15 @@ export const queryClient = new QueryClient({
 // Add a listener to ensure we don't return stale data even if network requests fail
 queryClient.setDefaultOptions({
   queries: {
-    // In v5, onError moved to meta or onSettled, using onSettled instead
-    onSettled: (_, error) => {
-      if (error) {
-        console.error("Query error:", error);
-      }
-    },
+    // React Query v5 no longer supports onSettled at this level
+    // Use meta for error handling or a global error handler
     structuralSharing: false // This forces new references even for identical data
+  }
+});
+
+// Add a global query error handler
+queryClient.getQueryCache().subscribe({
+  onError: (error) => {
+    console.error("Query error:", error);
   }
 });
