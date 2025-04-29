@@ -7,6 +7,7 @@ import InvoiceDetail from './pages/InvoiceDetail';
 import Dashboard from './pages/Dashboard';
 import { InvoicesProvider } from './context/InvoicesDataContext';
 import { Toaster } from 'sonner';
+import { BranchProvider } from './context/BranchContext';
 
 function App() {
   const queryClient = new QueryClient({
@@ -21,14 +22,16 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <Toaster />
-        <InvoicesProvider>
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/invoices" element={<Invoices />} />
-            <Route path="/invoices/:id" element={<InvoiceDetail />} />
-          </Routes>
-        </InvoicesProvider>
+        <BranchProvider>
+          <Toaster />
+          <InvoicesProvider>
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/invoices" element={<Invoices />} />
+              <Route path="/invoices/:id" element={<InvoiceDetail />} />
+            </Routes>
+          </InvoicesProvider>
+        </BranchProvider>
       </BrowserRouter>
     </QueryClientProvider>
   );
