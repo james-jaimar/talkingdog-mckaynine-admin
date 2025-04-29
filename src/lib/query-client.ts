@@ -39,11 +39,22 @@ export const queryClient = new QueryClient({
 
 // Helper to check for cancelled/aborted errors
 function isCancelledError(error: unknown): boolean {
+  // Type guard checking if error is an object with name or message properties
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+  
+  const errorObj = error as { 
+    name?: string; 
+    message?: string; 
+    [key: string]: unknown 
+  };
+  
   return (
-    error instanceof DOMException && error.name === 'AbortError' ||
-    error?.name === 'CancelledError' ||
-    error?.message?.includes?.('cancelled') ||
-    error?.message?.includes?.('aborted')
+    (errorObj instanceof DOMException && errorObj.name === 'AbortError') ||
+    errorObj.name === 'CancelledError' ||
+    !!errorObj.message?.includes?.('cancelled') ||
+    !!errorObj.message?.includes?.('aborted')
   );
 }
 
