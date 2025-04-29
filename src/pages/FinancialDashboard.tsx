@@ -12,8 +12,10 @@ import { ExpenseBreakdownCards } from "@/components/dashboard/financial/ExpenseB
 import { useClassFinancialData } from "@/hooks/useClassFinancialData";
 import { useTerm } from "@/context/TermContext";
 import { useInvoices } from "@/hooks/useInvoices";
+import { FinancialDataProvider } from "@/context/FinancialDataContext";
+import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 
-export default function FinancialDashboard() {
+function FinancialDashboardContent() {
   const [timeframe, setTimeframe] = useState<'monthly' | 'quarterly' | 'yearly'>('monthly');
   const { currentBranch } = useBranch();
   const { termDateRange } = useTerm();
@@ -83,55 +85,65 @@ export default function FinancialDashboard() {
   };
 
   return (
+    <div className="container mx-auto py-6">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">Financial Dashboard</h1>
+        
+        <Tabs value={timeframe} onValueChange={(value) => setTimeframe(value as any)} className="w-fit">
+          <TabsList>
+            <TabsTrigger value="monthly">Monthly</TabsTrigger>
+            <TabsTrigger value="quarterly">Quarterly</TabsTrigger>
+            <TabsTrigger value="yearly">Yearly</TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
+
+      {/* Financial metrics cards */}
+      <FinancialMetricsCards 
+        totalRevenue={totalRevenue}
+        collectedRevenue={collectedRevenue}
+        pendingRevenue={pendingRevenue}
+        overdueRevenue={overdueRevenue}
+      />
+
+      {/* Expense breakdown cards with profit included */}
+      <ExpenseBreakdownCards {...expenseData} />
+
+      {/* Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <InvoiceRevenueChart 
+          invoices={activeInvoices}
+          timeframe={timeframe} 
+          termDateRange={termDateRange}
+        />
+        <RevenueAllocationChart 
+          fees={{
+            adminFee: totalAdmin,
+            trainerFee: totalTrainer,
+            franchiseFee: totalFranchise,
+            profit: profit
+          }}
+          totalRevenue={totalRevenue}
+          showOnlyPaid={false} // Show all revenue for allocation
+        />
+      </div>
+    </div>
+  );
+}
+
+export default function FinancialDashboard() {
+  return (
     <RequireAdmin>
       <DashboardLayout>
         <Helmet>
           <title>Financial Dashboard - McKaynine Training Centre</title>
         </Helmet>
         
-        <div className="container mx-auto py-6">
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-3xl font-bold">Financial Dashboard</h1>
-            
-            <Tabs value={timeframe} onValueChange={(value) => setTimeframe(value as any)} className="w-fit">
-              <TabsList>
-                <TabsTrigger value="monthly">Monthly</TabsTrigger>
-                <TabsTrigger value="quarterly">Quarterly</TabsTrigger>
-                <TabsTrigger value="yearly">Yearly</TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
-
-          {/* Financial metrics cards */}
-          <FinancialMetricsCards 
-            totalRevenue={totalRevenue}
-            collectedRevenue={collectedRevenue}
-            pendingRevenue={pendingRevenue}
-            overdueRevenue={overdueRevenue}
-          />
-
-          {/* Expense breakdown cards with profit included */}
-          <ExpenseBreakdownCards {...expenseData} />
-
-          {/* Charts */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            <InvoiceRevenueChart 
-              invoices={activeInvoices}
-              timeframe={timeframe} 
-              termDateRange={termDateRange}
-            />
-            <RevenueAllocationChart 
-              fees={{
-                adminFee: totalAdmin,
-                trainerFee: totalTrainer,
-                franchiseFee: totalFranchise,
-                profit: profit
-              }}
-              totalRevenue={totalRevenue}
-              showOnlyPaid={false} // Show all revenue for allocation
-            />
-          </div>
-        </div>
+        <ErrorBoundary>
+          <FinancialDataProvider>
+            <FinancialDashboardContent />
+          </FinancialDataProvider>
+        </ErrorBoundary>
       </DashboardLayout>
     </RequireAdmin>
   );
