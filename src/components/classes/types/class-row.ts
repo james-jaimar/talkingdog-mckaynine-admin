@@ -1,11 +1,11 @@
 
-import { Class } from "./class";
+import { ClassWithSchedules } from "../hooks/types/class-with-schedules";
 
 export interface ClassRowProps {
-  classItem: Class;
+  classItem: ClassWithSchedules;
   index: number;
   totalClasses?: number;
-  onEdit: (classItem: Class) => void;
+  onEdit: (classItem: ClassWithSchedules) => void;
   isLoading?: boolean;
   isMoving?: boolean;
 }

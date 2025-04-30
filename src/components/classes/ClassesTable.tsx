@@ -12,8 +12,8 @@ import { ClassesTableError } from "./table/ClassesTableError";
 import { ClassesTableEmpty } from "./table/ClassesTableEmpty";
 import { ClassesTableHeader } from "./table/ClassesTableHeader";
 import { useTerm } from "@/context/TermContext";
-import { toast } from "@/components/ui/use-toast";
 import { DragDropContext, Droppable } from "react-beautiful-dnd";
+import { ClassWithSchedules } from "./hooks/types/class-with-schedules";
 
 export function ClassesTable() {
   const { 
@@ -23,7 +23,7 @@ export function ClassesTable() {
     refetch 
   } = useClassesData();
   
-  const [editingClass, setEditingClass] = useState<any>(null);
+  const [editingClass, setEditingClass] = useState<ClassWithSchedules | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const queryClient = useQueryClient();
@@ -59,7 +59,7 @@ export function ClassesTable() {
     }
   }, [termData?.id, lastTermId, refetch, queryClient, activeClasses?.length]);
   
-  const handleEdit = (classItem: any) => {
+  const handleEdit = (classItem: ClassWithSchedules) => {
     setEditingClass(classItem);
     setIsEditModalOpen(true);
   };

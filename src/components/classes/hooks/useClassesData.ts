@@ -4,6 +4,7 @@ import { useBranch } from "@/context/BranchContext";
 import { useAuth } from "@/context/auth";
 import { useTerm } from "@/context/TermContext";
 import { useMemo } from "react";
+import { ClassWithSchedules } from "./types/class-with-schedules";
 
 export function useClassesData() {
   const { currentBranch } = useBranch();
@@ -20,7 +21,7 @@ export function useClassesData() {
   
   // Filter classes by term at the application level as a safety check
   // The primary filtering should happen at the database level in useClassQuery
-  const activeClasses = useMemo(() => {
+  const activeClasses = useMemo<ClassWithSchedules[]>(() => {
     if (!orderedClasses || !Array.isArray(orderedClasses)) {
       console.log("orderedClasses is not valid:", orderedClasses);
       return [];
