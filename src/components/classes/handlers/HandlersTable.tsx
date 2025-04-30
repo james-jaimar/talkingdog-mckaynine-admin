@@ -11,7 +11,7 @@ interface HandlersTableProps {
 export function HandlersTable({ handlers, onShowDogs }: HandlersTableProps) {
   return (
     <Table>
-      <TableHeader>
+      <TableHeader className="bg-gray-100">
         <TableRow>
           <TableHead>Handler Name</TableHead>
           <TableHead>Email</TableHead>
@@ -21,8 +21,8 @@ export function HandlersTable({ handlers, onShowDogs }: HandlersTableProps) {
         </TableRow>
       </TableHeader>
       <TableBody>
-        {handlers.map(handler => (
-          <TableRow key={handler.id}>
+        {handlers.map((handler, index) => (
+          <TableRow key={handler.id} className={index % 2 === 0 ? "bg-white" : "bg-gray-200"}>
             <TableCell className="font-medium">
               {handler.first_name} {handler.last_name}
             </TableCell>

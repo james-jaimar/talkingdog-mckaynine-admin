@@ -34,7 +34,7 @@ export function HandlerTable({
     <div className="w-full">
       <div className="overflow-x-auto">
         <Table className="border-collapse table-fixed min-w-full">
-          <TableHeader>
+          <TableHeader className="bg-gray-100">
             <HandlerTableHeader />
           </TableHeader>
           <TableBody>

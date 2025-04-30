@@ -108,7 +108,7 @@ export default function CustomerInvoices() {
             ) : (
               <div className="border rounded-lg overflow-hidden">
                 <Table>
-                  <TableHeader>
+                  <TableHeader className="bg-gray-100">
                     <TableRow>
                       <TableHead>Invoice #</TableHead>
                       <TableHead>Date</TableHead>
@@ -119,8 +119,8 @@ export default function CustomerInvoices() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredInvoices.map((invoice) => (
-                      <TableRow key={invoice.id}>
+                    {filteredInvoices.map((invoice, index) => (
+                      <TableRow key={invoice.id} className={index % 2 === 0 ? "bg-white" : "bg-gray-200"}>
                         <TableCell className="font-medium">{invoice.invoice_number}</TableCell>
                         <TableCell>{format(new Date(invoice.issued_date), "dd MMM yyyy")}</TableCell>
                         <TableCell>{formatCurrency(invoice.total)}</TableCell>

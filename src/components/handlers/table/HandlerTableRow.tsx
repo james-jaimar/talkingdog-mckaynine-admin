@@ -36,9 +36,12 @@ export function HandlerTableRow({ handler, index = 0 }: HandlerTableRowProps) {
     return handler.class_statuses?.find(status => status.class_type === classType);
   };
 
+  // Use a darker gray for alternating rows - using #333 for odd rows
+  const rowBgClass = index % 2 === 0 ? "bg-white" : "bg-gray-200";
+
   return (
     <TableRow 
-      className={index % 2 === 0 ? "bg-gray-50" : "bg-gray-200"}
+      className={rowBgClass}
       key={handler.id}
     >
       <TableCell className="w-[180px] font-medium">

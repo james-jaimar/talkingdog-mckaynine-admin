@@ -60,7 +60,7 @@ export function TrainersTable() {
       ) : (
         <div className="border rounded-md overflow-hidden">
           <Table>
-            <TableHeader>
+            <TableHeader className="bg-gray-100">
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Contact</TableHead>
@@ -69,8 +69,8 @@ export function TrainersTable() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {trainers.map((trainer) => (
-                <TableRow key={trainer.id}>
+              {trainers.map((trainer, index) => (
+                <TableRow key={trainer.id} className={index % 2 === 0 ? "bg-white" : "bg-gray-200"}>
                   <TableCell>
                     <div className="flex items-center space-x-3">
                       <Avatar className="h-8 w-8 bg-mckaynine-100 text-mckaynine-800">
