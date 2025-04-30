@@ -106,9 +106,9 @@ export function useClassQuery() {
         }
         
         let classes = allClasses as ClassWithSchedules[];
-        console.log(`Fetched ${classes.length} classes for term: ${termData?.id || 'all terms'}`);
+        console.log(`Fetched ${classes?.length || 0} classes for term: ${termData?.id || 'all terms'}`);
         
-        // If no classes were found, return an empty array
+        // If no classes were found, return an empty array - don't return null or undefined
         if (!classes || classes.length === 0) {
           return [];
         }
@@ -139,7 +139,8 @@ export function useClassQuery() {
           classes = orderedClasses;
         }
         
-        return classes;
+        // Ensure we always return an array
+        return Array.isArray(classes) ? classes : [];
       } catch (error) {
         console.error("Error fetching classes:", error);
         throw error;

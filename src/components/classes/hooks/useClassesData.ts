@@ -21,13 +21,18 @@ export function useClassesData() {
   // Filter classes by term at the application level as a safety check
   // The primary filtering should happen at the database level in useClassQuery
   const activeClasses = useMemo(() => {
-    if (!orderedClasses) return [];
+    if (!orderedClasses || !Array.isArray(orderedClasses)) {
+      console.log("orderedClasses is not valid:", orderedClasses);
+      return [];
+    }
     
     console.log(`Using ${orderedClasses.length} pre-filtered classes for term: ${termData?.id || 'none'}`);
     
     // Classes should already be filtered by term at the database level
     // Just ensure we have valid classes with schedules for rendering
     return orderedClasses.filter(c => {
+      if (!c) return false;
+      
       // Safety check: ensure class has schedules
       if (!c.class_schedules || c.class_schedules.length === 0) return false;
       

@@ -13,6 +13,7 @@ import { ClassesTableEmpty } from "./table/ClassesTableEmpty";
 import { ClassesTableHeader } from "./table/ClassesTableHeader";
 import { useTerm } from "@/context/TermContext";
 import { toast } from "@/components/ui/use-toast";
+import { DragDropContext, Droppable } from "react-beautiful-dnd";
 
 export function ClassesTable() {
   const { 
@@ -90,6 +91,12 @@ export function ClassesTable() {
     }, 300);
   };
   
+  const handleDragEnd = (result: any) => {
+    // This is a placeholder implementation for drag & drop functionality
+    // Actual implementation would be added when needed
+    console.log("Drag ended:", result);
+  };
+  
   // Show loading state if initially loading or during term change refresh
   if (isLoading || isRefreshing) {
     return <ClassesTableLoading />;
@@ -107,26 +114,38 @@ export function ClassesTable() {
 
   return (
     <>
-      <Card>
-        <CardContent className="p-0 overflow-auto relative">
-          <Table>
-            <ClassesTableHeader />
-            <TableBody className="relative" data-testid="classes-table-body">
-              {activeClasses.map((classItem, index) => (
-                <ClassTableRow
-                  key={classItem.id}
-                  classItem={classItem as any}
-                  index={index}
-                  totalClasses={activeClasses.length}
-                  onEdit={() => handleEdit(classItem)}
-                  isLoading={isLoading}
-                  isMoving={false}
-                />
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      <DragDropContext onDragEnd={handleDragEnd}>
+        <Card>
+          <CardContent className="p-0 overflow-auto relative">
+            <Table>
+              <ClassesTableHeader />
+              <Droppable droppableId="classes-table">
+                {(provided) => (
+                  <TableBody 
+                    className="relative" 
+                    data-testid="classes-table-body"
+                    ref={provided.innerRef}
+                    {...provided.droppableProps}
+                  >
+                    {Array.isArray(activeClasses) && activeClasses.map((classItem, index) => (
+                      <ClassTableRow
+                        key={classItem.id}
+                        classItem={classItem}
+                        index={index}
+                        totalClasses={activeClasses.length}
+                        onEdit={() => handleEdit(classItem)}
+                        isLoading={isLoading}
+                        isMoving={false}
+                      />
+                    ))}
+                    {provided.placeholder}
+                  </TableBody>
+                )}
+              </Droppable>
+            </Table>
+          </CardContent>
+        </Card>
+      </DragDropContext>
       
       <EditClassModal
         open={isEditModalOpen}
