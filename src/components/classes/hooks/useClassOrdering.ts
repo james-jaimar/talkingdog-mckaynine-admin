@@ -9,6 +9,18 @@ import { useTerm } from "@/context/TermContext";
 import { ClassWithSchedules } from "./types/class-with-schedules";
 import { useQueryClient } from "@tanstack/react-query";
 
+// Enable this for detailed debug logs, should be false in production
+const DEBUG_LOGGING = false;
+
+/**
+ * Log utility function for conditional logging
+ */
+const logDebug = (...args: any[]) => {
+  if (DEBUG_LOGGING) {
+    console.log(...args);
+  }
+};
+
 export function useClassOrdering() {
   const queryClient = useQueryClient();
   const { currentBranch } = useBranch();
@@ -46,9 +58,9 @@ export function useClassOrdering() {
   const lastReorderTimestamp = useRef(0);
   const optimisticUpdateInProgress = useRef(false);
   
-  // Debug logging for state changes
+  // Debug logging for state changes - only if needed
   useEffect(() => {
-    console.log("useClassOrdering state:", { 
+    logDebug("useClassOrdering state:", { 
       branchId,
       termId: termData?.id,
       fetchedClassesCount: fetchedClasses?.length || 0,
@@ -62,7 +74,7 @@ export function useClassOrdering() {
   // Reset when term changes to get fresh data
   useEffect(() => {
     if (termData?.id !== lastTermId.current) {
-      console.log("Term changed in useClassOrdering, resetting state", { 
+      logDebug("Term changed in useClassOrdering, resetting state", { 
         from: lastTermId.current, 
         to: termData?.id,
         selectedTerm: selectedTermNumber,
@@ -78,31 +90,28 @@ export function useClassOrdering() {
       // Reset the ordered classes array
       setOrderedClasses([]);
       
-      // Reset the query cache for classes
-      queryClient.resetQueries({
-        queryKey: ['classes'],
-        exact: false
+      // Reset the query cache for classes, more selective reset
+      queryClient.invalidateQueries({
+        queryKey: ['classes', branchId, lastTermId.current],
+        exact: true
       });
-      
-      // Force a refetch when term changes
-      refetch();
     }
   }, [
     termData?.id, 
     resetMovingState, 
-    refetch, 
     queryClient,
     selectedTermNumber,
-    selectedYear
+    selectedYear,
+    branchId
   ]);
 
-  // Sync orderedClasses with fetchedClasses
+  // Sync orderedClasses with fetchedClasses - improved efficiency
   useEffect(() => {
     // Only update if:
     // 1. We have fetched classes
     // 2. Either we haven't initialized yet or we're not in the middle of a drag/optimistic update
     if (fetchedClasses && (!hasInitialized.current || (!isDragging && !optimisticUpdateInProgress.current))) {
-      console.log("Syncing ordered classes from fetched data", {
+      logDebug("Syncing ordered classes from fetched data", {
         count: fetchedClasses.length,
         isDragging,
         optimisticUpdate: optimisticUpdateInProgress.current,
@@ -110,21 +119,28 @@ export function useClassOrdering() {
         termId: termData?.id
       });
       
-      // Create a new array reference to ensure React detects the change
-      setOrderedClasses([...fetchedClasses]);
-      hasInitialized.current = true;
+      // Compare if arrays are different before setting state
+      const areArraysDifferent = 
+        orderedClasses.length !== fetchedClasses.length || 
+        JSON.stringify(orderedClasses.map(c => c.id)) !== JSON.stringify(fetchedClasses.map(c => c.id));
+        
+      if (areArraysDifferent) {
+        // Create a new array reference to ensure React detects the change
+        setOrderedClasses([...fetchedClasses]);
+        hasInitialized.current = true;
+      }
     }
-  }, [fetchedClasses, isDragging, termData?.id]);
+  }, [fetchedClasses, isDragging, termData?.id, orderedClasses]);
   
   // Handle the start of drag operations
   const handleDragStart = useCallback(() => {
-    console.log("Drag started");
+    logDebug("Drag started");
     setIsDragging(true);
   }, []);
   
   // Process the completion of a drag operation
   const handleDragEnd = useCallback((sourceIndex: number, destinationIndex: number | null) => {
-    console.log(`Drag ended: from ${sourceIndex} to ${destinationIndex ?? 'nowhere'}`);
+    logDebug(`Drag ended: from ${sourceIndex} to ${destinationIndex ?? 'nowhere'}`);
     
     // If no valid destination, just cancel the drag
     if (destinationIndex === null || sourceIndex === destinationIndex) {
@@ -146,7 +162,7 @@ export function useClassOrdering() {
       
       // Identify the moving class
       const movingClassId = orderedClasses[sourceIndex].id;
-      console.log(`Reordering class ${movingClassId} from index ${sourceIndex} to ${destinationIndex}`);
+      logDebug(`Reordering class ${movingClassId} from index ${sourceIndex} to ${destinationIndex}`);
       
       markAsMoving(movingClassId);
       

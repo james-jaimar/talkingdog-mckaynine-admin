@@ -1,5 +1,5 @@
 
-import React, { createContext, useState, useContext, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback, ReactNode, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
@@ -34,6 +34,7 @@ interface TermContextType {
 }
 
 const TERM_STORAGE_KEY = 'mckaynine-selected-term';
+const TERM_CHANGE_DEBOUNCE_MS = 500; // Debounce time in ms
 
 // Create context with default values
 const TermContext = createContext<TermContextType | undefined>(undefined);
@@ -87,44 +88,74 @@ export function TermProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<Error | null>(null);
 
   // Track last successful term data fetch to avoid redundant updates
-  const [lastTermId, setLastTermId] = useState<string | undefined>(undefined);
+  const lastTermId = useRef<string | undefined>(undefined);
   const [isChangingTerm, setIsChangingTerm] = useState(false);
-
-  // Wrapper functions to update state and persist to localStorage
+  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
+  const changeCounter = useRef(0);
+  
+  // Wrapper functions to update state and persist to localStorage with debouncing
   const setSelectedYear = useCallback((year: number) => {
-    setSelectedYearState(year);
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+    }
+    
+    const currentChangeId = ++changeCounter.current;
     setIsChangingTerm(true);
+    setSelectedYearState(year);
+    
     localStorage.setItem(
       TERM_STORAGE_KEY, 
       JSON.stringify({ year, termNumber: selectedTermNumber })
     );
     setError(null);
+    
+    // Use debouncing to prevent rapid consecutive changes
+    debounceTimer.current = setTimeout(() => {
+      // Only proceed if this is still the most recent change
+      if (currentChangeId === changeCounter.current) {
+        setIsChangingTerm(false);
+      }
+    }, TERM_CHANGE_DEBOUNCE_MS);
   }, [selectedTermNumber]);
   
   const setSelectedTermNumber = useCallback((termNumber: TermNumber) => {
-    setSelectedTermNumberState(termNumber);
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+    }
+    
+    const currentChangeId = ++changeCounter.current;
     setIsChangingTerm(true);
+    setSelectedTermNumberState(termNumber);
+    
     localStorage.setItem(
       TERM_STORAGE_KEY, 
       JSON.stringify({ year: selectedYear, termNumber })
     );
     setError(null);
+    
+    // Use debouncing to prevent rapid consecutive changes
+    debounceTimer.current = setTimeout(() => {
+      // Only proceed if this is still the most recent change
+      if (currentChangeId === changeCounter.current) {
+        setIsChangingTerm(false);
+      }
+    }, TERM_CHANGE_DEBOUNCE_MS);
   }, [selectedYear]);
 
   // Centralized function to invalidate all term-dependent queries with debounce control
   const invalidateTermDependentQueries = useCallback(async () => {
-    // Just remove the relevant queries from cache
+    // Just remove the relevant queries from cache - MORE SELECTIVE
     await Promise.all([
-      queryClient.removeQueries({ queryKey: ['classes'], exact: false }),
-      queryClient.removeQueries({ queryKey: ['class-schedules'], exact: false }),
-      queryClient.removeQueries({ queryKey: ['dashboard-stats'], exact: false })
+      queryClient.removeQueries({ queryKey: ['classes', undefined, lastTermId.current], exact: false }),
+      queryClient.removeQueries({ queryKey: ['class-schedules', lastTermId.current], exact: false }),
+      queryClient.removeQueries({ queryKey: ['dashboard-stats', undefined, lastTermId.current], exact: false })
     ]);
-  }, [queryClient]);
+  }, [queryClient, lastTermId]);
 
   // Fetch term data based on selected year and term number
   const { 
     data: termData, 
-    isLoading: isTermLoading,
+    isLoading: isFetchingTerm,
     refetch: refetchTerm
   } = useQuery({
     queryKey: ['term', selectedYear, selectedTermNumber],
@@ -161,44 +192,46 @@ export function TermProvider({ children }: { children: ReactNode }) {
         termData.end_date = endOfDay(new Date(selectedYear, getTermMonths(selectedTermNumber)[1] + 1, 0)).toISOString();
         
         // Track the term ID to detect changes
-        setLastTermId(termData.id);
-        setIsChangingTerm(false);
+        lastTermId.current = termData.id;
         
         return termData as TermData;
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : 'Unknown error';
         setError(new Error(errorMsg));
-        setIsChangingTerm(false);
         return null;
       }
     },
     staleTime: 30 * 1000, // Cache term data for 30 seconds
   });
 
+  // Calculate the real loading state (either fetching or changing term)
+  const isTermLoading = isFetchingTerm || isChangingTerm;
+
   // When term data changes, invalidate and refetch relevant queries
   useEffect(() => {
-    if (!termData?.id || termData?.id === lastTermId) return;
+    if (!termData?.id) return;
     
-    // Update lastTermId to prevent repeated invalidations
-    setLastTermId(termData.id);
-    
-    // Only invalidate queries when we have a valid term
-    invalidateTermDependentQueries().then(() => {
-      // Just trigger a refetch of the important queries
-      queryClient.refetchQueries({ 
-        queryKey: ['classes'],
-        exact: false
-      });
+    // Only invalidate queries when a term is actually changed
+    if (termData?.id !== lastTermId.current && !isChangingTerm) {
+      // Update lastTermId to prevent repeated invalidations
+      lastTermId.current = termData.id;
       
-      // Show a notification only once after term data is loaded
-      setTimeout(() => {
+      // Invalidate queries for the new term and trigger refetch
+      invalidateTermDependentQueries().then(() => {
+        // Refetch just the classes query (the rest will load when their components mount)
+        queryClient.refetchQueries({ 
+          queryKey: ['classes'],
+          exact: false
+        });
+        
+        // Show a notification, but ensure we only do this once
         toast({
           title: `Term Changed`,
           description: `Now viewing Term ${termData.term_number}, ${selectedYear}`,
         });
-      }, 0);
-    });
-  }, [termData?.id, lastTermId, invalidateTermDependentQueries, queryClient, selectedYear]);
+      });
+    }
+  }, [termData?.id, invalidateTermDependentQueries, queryClient, selectedYear, isChangingTerm]);
 
   // Generate years array (current year to current year + 4)
   const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() + i);
@@ -218,7 +251,7 @@ export function TermProvider({ children }: { children: ReactNode }) {
     selectedTermNumber,
     setSelectedTermNumber,
     termData,
-    isTermLoading: isTermLoading || isChangingTerm,
+    isTermLoading,
     error,
     termDateRange,
     years,

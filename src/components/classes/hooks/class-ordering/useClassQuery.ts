@@ -5,6 +5,18 @@ import { ClassWithSchedules } from "../types/class-with-schedules";
 import { useBranch } from "@/context/BranchContext";
 import { useTerm } from "@/context/TermContext";
 
+// Enable this for detailed debug logs, should be false in production
+const DEBUG_LOGGING = false;
+
+/**
+ * Log utility function for conditional logging
+ */
+const logDebug = (...args: any[]) => {
+  if (DEBUG_LOGGING) {
+    console.log(...args);
+  }
+};
+
 export function useClassQuery() {
   const { currentBranch } = useBranch();
   const { termData } = useTerm();
@@ -17,6 +29,8 @@ export function useClassQuery() {
       if (!branchId) return [];
       
       try {
+        logDebug(`Fetching classes for branch: ${branchId} and term: ${termId || 'all terms'}`);
+        
         // First, fetch the saved order for this branch if it exists
         const { data: orderData, error: orderError } = await supabase
           .from('class_tab_order')
@@ -61,7 +75,7 @@ export function useClassQuery() {
         
         // If a term is selected, filter by term at the database level
         if (termId) {
-          // Use a join to filter classes that have schedules for the selected term
+          // Replace the original query with a filtered version
           classesQuery = supabase
             .from('classes')
             .select(`
@@ -103,8 +117,11 @@ export function useClassQuery() {
         
         // If no classes were found, return an empty array
         if (!classes || classes.length === 0) {
+          logDebug(`No classes found for branch ${branchId} ${termId ? `and term ${termId}` : ''}`);
           return [];
         }
+        
+        logDebug(`Found ${classes.length} classes for branch ${branchId} ${termId ? `and term ${termId}` : ''}`);
         
         // Apply the saved order if available
         if (savedOrder.length > 0) {
@@ -134,6 +151,7 @@ export function useClassQuery() {
         // Ensure we always return an array
         return Array.isArray(classes) ? classes : [];
       } catch (error) {
+        console.error("Error fetching classes:", error);
         throw error;
       }
     },
