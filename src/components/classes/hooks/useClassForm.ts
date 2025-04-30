@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { Class } from "../types/class";
 import { classFormSchema, ClassFormValues } from "../schemas/classFormSchema";
+import { ClassWithSchedules } from "./types/class-with-schedules";
 
 // Branch option type
 type BranchOption = {
@@ -14,7 +15,10 @@ type BranchOption = {
   value: string;
 };
 
-export function useClassForm(classData: Class | null, onSuccess: () => void) {
+// Define a union type that can be either Class or ClassWithSchedules
+type ClassData = Class | ClassWithSchedules;
+
+export function useClassForm(classData: ClassData | null, onSuccess?: () => void) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [branches, setBranches] = useState<BranchOption[]>([]);
   const [isLoadingBranches, setIsLoadingBranches] = useState(true);
@@ -218,7 +222,7 @@ export function useClassForm(classData: Class | null, onSuccess: () => void) {
       }
       
       queryClient.invalidateQueries({ queryKey: ["classes"] });
-      onSuccess();
+      if (onSuccess) onSuccess();
     } catch (error) {
       console.error("Error saving class:", error);
       toast({

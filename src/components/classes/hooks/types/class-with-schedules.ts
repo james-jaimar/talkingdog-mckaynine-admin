@@ -1,5 +1,6 @@
 import { Class } from "../../types/class";
 import { ClassType } from "../../types/class-types";
+import { ClassScheduleBasic } from "../../types/class-schedule";
 
 export interface ClassWithSchedules {
   id: string;
@@ -20,15 +21,7 @@ export interface ClassWithSchedules {
   branches?: {
     name: string;
   };
-  class_schedules?: {
-    id: string;
-    start_time: string;
-    end_time: string;
-    selected_dates?: string[];
-    term_id?: string;
-    bookings?: { id: string }[];
-    // Not adding all ClassSchedule properties as they're not used in ClassesTable display
-  }[];
+  class_schedules?: ClassScheduleBasic[];
   
   // Visual indicator for UI - will be set by components as needed
   isMoving?: boolean;

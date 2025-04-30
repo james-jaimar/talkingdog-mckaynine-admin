@@ -27,3 +27,17 @@ export interface ClassSchedule {
     dog_id?: string;
   }[];
 }
+
+// Add a simplified version for ClassWithSchedules to use
+export interface ClassScheduleBasic {
+  id: string;
+  start_time: string;
+  end_time: string;
+  term_id?: string;
+  selected_dates?: string[];
+  bookings?: { 
+    id: string;
+    client_id?: string;
+    dog_id?: string;
+  }[];
+}

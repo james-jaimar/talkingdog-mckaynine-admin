@@ -1,6 +1,6 @@
 
 // Import ClassSchedule type for proper typing
-import { ClassSchedule } from './class-schedule';
+import { ClassSchedule, ClassScheduleBasic } from './class-schedule';
 import { ClassType } from './class-types';
 
 export interface Class {
@@ -22,7 +22,7 @@ export interface Class {
   branches?: {
     name: string;
   };
-  class_schedules?: ClassSchedule[];
+  class_schedules?: ClassSchedule[] | ClassScheduleBasic[];
   created_at: string;
   updated_at: string;
 }
