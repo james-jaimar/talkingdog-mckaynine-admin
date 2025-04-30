@@ -49,15 +49,22 @@ export function ClassesTable() {
       setLastTermId(termData?.id);
       setIsRefreshing(true);
       
-      // Force refetch when term changes
-      queryClient.invalidateQueries({ queryKey: ['classes'], exact: false }).then(() => {
+      // Clear query cache for classes and related queries
+      queryClient.resetQueries({ 
+        queryKey: ['classes'],
+        exact: false
+      }).then(() => {
+        // Force refetch when term changes
         refetch().finally(() => {
           setIsRefreshing(false);
-          console.log("Classes data refreshed after term change");
+          console.log("Classes data refreshed after term change", {
+            termId: termData?.id,
+            classes: orderedClasses?.length || 0
+          });
         });
       });
     }
-  }, [termData?.id, selectedTermNumber, selectedYear, lastTermId, refetch, queryClient]);
+  }, [termData?.id, selectedTermNumber, selectedYear, lastTermId, refetch, queryClient, orderedClasses?.length]);
   
   const handleEdit = (classItem: any) => {
     setEditingClass(classItem);
@@ -72,7 +79,8 @@ export function ClassesTable() {
   };
   
   const handleEditSuccess = () => {
-    queryClient.invalidateQueries({ 
+    // Invalidate and refetch to ensure latest data
+    queryClient.resetQueries({ 
       queryKey: ['classes'],
       exact: false
     });
@@ -83,6 +91,11 @@ export function ClassesTable() {
       queryKey: ['class-schedules'],
       exact: false
     });
+    
+    // Force a new fetch after a brief delay
+    setTimeout(() => {
+      refetch();
+    }, 300);
   };
   
   // Handle drag and drop events from react-beautiful-dnd

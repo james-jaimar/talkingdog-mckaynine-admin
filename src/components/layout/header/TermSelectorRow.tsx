@@ -8,6 +8,7 @@ import { Loader2, Calendar } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { invalidateTermRelatedData } from "@/lib/query-client";
 
 export function TermSelectorRow() {
   const {
@@ -41,22 +42,22 @@ export function TermSelectorRow() {
     console.log('TermSelector - Changing year to:', value);
     setIsChangingTerm(true);
     
-    // First invalidate queries that depend on term
-    await queryClient.invalidateQueries({ 
-      queryKey: ['classes'],
-      exact: false 
-    });
+    // First completely reset the query cache
+    await queryClient.resetQueries();
     
     // Then update the year
     setSelectedYear(parseInt(value));
     
-    // Force a refresh of term data
+    // Force a complete term data refresh
     setTimeout(() => {
       refetchTerm().then(() => {
-        console.log('Term data refreshed after year change');
-        setIsChangingTerm(false);
+        // After term refetch completes, invalidate all dependent data
+        invalidateTermRelatedData().then(() => {
+          console.log('Term data and related queries refreshed after year change');
+          setIsChangingTerm(false);
+        });
       });
-    }, 0);
+    }, 100);
   };
 
   const handleTermChange = async (value: string) => {
@@ -64,11 +65,8 @@ export function TermSelectorRow() {
     if (value === '1' || value === '2' || value === '3' || value === '4') {
       setIsChangingTerm(true);
       
-      // First invalidate queries that depend on term
-      await queryClient.invalidateQueries({ 
-        queryKey: ['classes'],
-        exact: false 
-      });
+      // First completely reset the query cache
+      await queryClient.resetQueries();
       
       // Update the term number
       setSelectedTermNumber(value as '1' | '2' | '3' | '4');
@@ -76,10 +74,13 @@ export function TermSelectorRow() {
       // Force a refresh of term data after selection
       setTimeout(() => {
         refetchTerm().then(() => {
-          console.log('Term data refreshed after term change');
-          setIsChangingTerm(false);
+          // After term refetch completes, invalidate all dependent data
+          invalidateTermRelatedData().then(() => {
+            console.log('Term data and related queries refreshed after term change');
+            setIsChangingTerm(false);
+          });
         });
-      }, 0);
+      }, 100);
     }
   };
 

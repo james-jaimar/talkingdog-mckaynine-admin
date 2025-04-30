@@ -9,9 +9,10 @@ export function useClassQuery() {
   const { currentBranch } = useBranch();
   const { termData, selectedTermNumber, selectedYear } = useTerm();
   const branchId = currentBranch?.id;
+  const termId = termData?.id;
 
   return useQuery({
-    queryKey: ['classes', branchId, termData?.id, selectedTermNumber, selectedYear],
+    queryKey: ['classes', branchId, termId, selectedTermNumber, selectedYear],
     queryFn: async () => {
       if (!branchId) return [];
 
@@ -32,7 +33,9 @@ export function useClassQuery() {
         const savedOrder = orderData?.class_ids || [];
         console.log('Retrieved saved order with', savedOrder.length, 'classes');
         
-        // Fetch all classes with their schedules - without term filtering at data fetch level
+        // Fetch all classes - don't filter by term at this level
+        // The query is optimized to bring back classes with all schedules
+        // then the filtering happens in the component
         const { data: allClasses, error: classError } = await supabase
           .from('classes')
           .select(`
@@ -103,6 +106,9 @@ export function useClassQuery() {
       }
     },
     enabled: !!branchId,
-    staleTime: 10000, // Reduce cache time to 10 seconds for quicker refreshes
+    // Reduce stale time to ensure fresher data
+    staleTime: 0, 
+    // Force new references even if data hasn't changed
+    structuralSharing: false,
   });
 }

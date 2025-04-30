@@ -5,6 +5,7 @@ import { useAuth } from "@/context/auth";
 import { useTerm } from "@/context/TermContext";
 import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { invalidateTermRelatedData } from "@/lib/query-client";
 
 export function useClassesData() {
   const { currentBranch } = useBranch();
@@ -30,14 +31,14 @@ export function useClassesData() {
       forceRefresh
     });
     
-    // First invalidate the classes query cache
-    queryClient.invalidateQueries({ queryKey: ['classes'], exact: false });
-    
-    // Force a refetch when term data changes
-    refetch().then(() => {
-      console.log("Classes refetched after term change");
-      // Increment force refresh counter to trigger derived state updates
-      setForceRefresh(prev => prev + 1);
+    // First invalidate all term-related data
+    invalidateTermRelatedData().then(() => {
+      // Then force a refetch of classes data specifically
+      refetch().then(() => {
+        console.log("Classes refetched after term change");
+        // Increment force refresh counter to trigger derived state updates
+        setForceRefresh(prev => prev + 1);
+      });
     });
   }, [
     termData?.id, 

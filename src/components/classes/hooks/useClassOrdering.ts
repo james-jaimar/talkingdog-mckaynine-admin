@@ -15,7 +15,7 @@ export function useClassOrdering() {
   const { termData, selectedTermNumber, selectedYear } = useTerm();
   const branchId = currentBranch?.id;
   
-  // Fetch classes with the saved order - now includes term in the query key
+  // Fetch classes with the saved order - includes term in the query key
   const { 
     data: fetchedClasses, 
     isLoading, 
@@ -68,13 +68,18 @@ export function useClassOrdering() {
         selectedTerm: selectedTermNumber,
         selectedYear
       });
+      
+      // Clear all local state
       hasInitialized.current = false;
       optimisticUpdateInProgress.current = false;
       resetMovingState();
       lastTermId.current = termData?.id;
       
-      // Clear the query cache for classes
-      queryClient.invalidateQueries({
+      // Reset the ordered classes array
+      setOrderedClasses([]);
+      
+      // Reset the query cache for classes
+      queryClient.resetQueries({
         queryKey: ['classes'],
         exact: false
       });
@@ -105,7 +110,8 @@ export function useClassOrdering() {
         termId: termData?.id
       });
       
-      setOrderedClasses(fetchedClasses);
+      // Create a new array reference to ensure React detects the change
+      setOrderedClasses([...fetchedClasses]);
       hasInitialized.current = true;
     }
   }, [fetchedClasses, isDragging, termData?.id]);
