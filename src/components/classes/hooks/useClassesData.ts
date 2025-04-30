@@ -14,6 +14,11 @@ export function useClassesData() {
     orderedClasses, 
     isLoading, 
     error,
+    isMoving,
+    isItemMoving,
+    pendingMovements,
+    handleDragStart,
+    handleDragEnd,
     refetch
   } = useClassOrdering();
   
@@ -32,7 +37,12 @@ export function useClassesData() {
     isLoading,
     hasBranch: !!currentBranch,
     isAuthenticated: !!user && !!session,
+    isMoving,
+    isItemMoving,
+    pendingMovements,
     error,
-    refetch
+    refetch,
+    handleDragStart,
+    handleDragEnd
   };
 }

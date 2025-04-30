@@ -11,15 +11,20 @@ import { ClassesTableLoading } from "./table/ClassesTableLoading";
 import { ClassesTableError } from "./table/ClassesTableError";
 import { ClassesTableEmpty } from "./table/ClassesTableEmpty";
 import { ClassesTableHeader } from "./table/ClassesTableHeader";
-import { DragDropContext, Droppable } from "react-beautiful-dnd";
+import { DragDropContext, Droppable, DropResult } from "react-beautiful-dnd";
 import { ClassWithSchedules } from "./hooks/types/class-with-schedules";
+import { toast } from "@/components/ui/use-toast";
 
 export function ClassesTable() {
   const { 
     activeClasses,
     isLoading, 
-    error, 
-    refetch 
+    error,
+    isMoving,
+    isItemMoving,
+    refetch,
+    handleDragStart,
+    handleDragEnd: processDragEnd
   } = useClassesData();
   
   const [editingClass, setEditingClass] = useState<ClassWithSchedules | null>(null);
@@ -49,9 +54,25 @@ export function ClassesTable() {
     handleCloseModal();
   };
   
-  const handleDragEnd = (result: any) => {
-    // This is a placeholder implementation for drag & drop functionality
-    console.log("Drag ended:", result);
+  // Handle the drag end event from react-beautiful-dnd
+  const handleDragEnd = (result: DropResult) => {
+    const { source, destination } = result;
+    
+    // Dropped outside the list or no movement
+    if (!destination || source.index === destination.index) {
+      return;
+    }
+    
+    try {
+      processDragEnd(source.index, destination.index);
+    } catch (error) {
+      console.error("Error processing drag end:", error);
+      toast({
+        title: "Error",
+        description: "Failed to reorder classes. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
   
   if (isLoading) {
@@ -69,7 +90,7 @@ export function ClassesTable() {
 
   return (
     <>
-      <DragDropContext onDragEnd={handleDragEnd}>
+      <DragDropContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
         <Card>
           <CardContent className="p-0 overflow-auto relative">
             <Table>
@@ -90,7 +111,7 @@ export function ClassesTable() {
                         totalClasses={activeClasses.length}
                         onEdit={() => handleEdit(classItem)}
                         isLoading={isLoading}
-                        isMoving={false}
+                        isMoving={isMoving || isItemMoving(classItem.id)}
                       />
                     ))}
                     {provided.placeholder}
