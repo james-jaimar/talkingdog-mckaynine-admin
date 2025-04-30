@@ -28,7 +28,7 @@ queryClient.setDefaultOptions({
 
 // Add a global query error handler
 queryClient.getQueryCache().subscribe(event => {
-  if (event.type === 'error' && event.error) {
-    console.error("Query error:", event.error);
+  if (event.type === 'updated' && event.query.state.error) {
+    console.error("Query error:", event.query.state.error);
   }
 });
