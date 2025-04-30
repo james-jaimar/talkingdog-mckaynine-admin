@@ -18,21 +18,31 @@ export function useClassesData() {
     refetch
   } = useClassOrdering();
   
-  // Now this is simpler - we're already filtering at the database level
-  // This is just for additional filtering or transformations as needed
+  // Filter classes by term at the application level as a safety check
+  // The primary filtering should happen at the database level in useClassQuery
   const activeClasses = useMemo(() => {
     if (!orderedClasses) return [];
     
     console.log(`Using ${orderedClasses.length} pre-filtered classes for term: ${termData?.id || 'none'}`);
     
-    // The classes are already filtered by term at the database level
-    // Just ensure we have valid classes with schedules
-    return orderedClasses.filter(c => c.class_schedules && c.class_schedules.length > 0);
+    // Classes should already be filtered by term at the database level
+    // Just ensure we have valid classes with schedules for rendering
+    return orderedClasses.filter(c => {
+      // Safety check: ensure class has schedules
+      if (!c.class_schedules || c.class_schedules.length === 0) return false;
+      
+      // If we have a term selected, validate the class schedules match this term
+      if (termData?.id) {
+        // Double-check that at least one schedule belongs to the current term
+        return c.class_schedules.some(schedule => schedule.term_id === termData.id);
+      }
+      
+      return true;
+    });
   }, [orderedClasses, termData?.id]);
   
   return {
     activeClasses,
-    allClasses: orderedClasses, // Provide access to all classes (even without schedules)
     isLoading,
     hasBranch: !!currentBranch,
     isAuthenticated: !!user && !!session,

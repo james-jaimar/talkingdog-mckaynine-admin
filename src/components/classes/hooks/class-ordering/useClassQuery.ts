@@ -33,7 +33,7 @@ export function useClassQuery() {
         const savedOrder = orderData?.class_ids || [];
         console.log('Retrieved saved order with', savedOrder.length, 'classes');
         
-        // Modified query to filter by term at the database level when a term is selected
+        // Build our base query
         let classesQuery = supabase
           .from('classes')
           .select(`
@@ -51,7 +51,7 @@ export function useClassQuery() {
             duration,
             capacity,
             branches(name),
-            class_schedules!inner(
+            class_schedules(
               id, 
               start_time, 
               end_time, 
@@ -62,14 +62,43 @@ export function useClassQuery() {
           `)
           .eq('branch_id', branchId);
         
-        // If a term is selected, filter classes to only those with schedules in this term
+        // If a term is selected, modify the query to filter by term at the database level
         if (termId) {
           console.log(`Filtering classes at DB level for term: ${termId}`);
-          classesQuery = classesQuery.eq('class_schedules.term_id', termId);
+          
+          // Use a nested exists query to filter classes that have schedules for the selected term
+          classesQuery = supabase
+            .from('classes')
+            .select(`
+              id, 
+              name, 
+              class_type,
+              course_fee,
+              enrollment_fee,
+              mckaynine_commission_type,
+              mckaynine_commission_value,
+              admin_fee_type,
+              admin_fee_value,
+              trainer_fee_type,
+              trainer_fee_value,
+              duration,
+              capacity,
+              branches(name),
+              class_schedules!inner(
+                id, 
+                start_time, 
+                end_time, 
+                selected_dates,
+                term_id,
+                bookings(id)
+              )
+            `)
+            .eq('branch_id', branchId)
+            .eq('class_schedules.term_id', termId);
         }
         
         // Execute the query
-        const { data: allClasses, error: classError } = await classesQuery.order('name');
+        const { data: allClasses, error: classError } = await classesQuery;
 
         if (classError) {
           console.error('Error fetching classes:', classError);
@@ -78,6 +107,11 @@ export function useClassQuery() {
         
         let classes = allClasses as ClassWithSchedules[];
         console.log(`Fetched ${classes.length} classes for term: ${termData?.id || 'all terms'}`);
+        
+        // If no classes were found, return an empty array
+        if (!classes || classes.length === 0) {
+          return [];
+        }
         
         // Apply the saved order if available
         if (savedOrder.length > 0) {
@@ -114,7 +148,7 @@ export function useClassQuery() {
     enabled: !!branchId,
     // Reduce stale time to ensure fresher data
     staleTime: 0, 
-    // Force new references even if data hasn't changed
+    // Create new references to ensure React detects changes
     structuralSharing: false,
   });
 }

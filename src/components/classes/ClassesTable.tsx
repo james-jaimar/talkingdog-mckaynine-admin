@@ -13,12 +13,10 @@ import { ClassesTableEmpty } from "./table/ClassesTableEmpty";
 import { ClassesTableHeader } from "./table/ClassesTableHeader";
 import { useTerm } from "@/context/TermContext";
 import { toast } from "@/components/ui/use-toast";
-import { DragDropContext, Droppable, DropResult } from "react-beautiful-dnd";
 
 export function ClassesTable() {
   const { 
     activeClasses,
-    allClasses, 
     isLoading, 
     error, 
     refetch 
@@ -29,7 +27,7 @@ export function ClassesTable() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const queryClient = useQueryClient();
   const { currentBranch } = useBranch();
-  const { termData, selectedTermNumber, selectedYear } = useTerm();
+  const { termData } = useTerm();
   const [lastTermId, setLastTermId] = useState<string | undefined>(termData?.id);
   
   // Check if term has changed since last render
@@ -37,9 +35,7 @@ export function ClassesTable() {
     if (termData?.id !== lastTermId) {
       console.log("ClassesTable: Term changed, refreshing data", {
         from: lastTermId,
-        to: termData?.id,
-        termNumber: selectedTermNumber,
-        year: selectedYear
+        to: termData?.id
       });
       
       setLastTermId(termData?.id);
@@ -55,12 +51,12 @@ export function ClassesTable() {
           setIsRefreshing(false);
           console.log("Classes data refreshed after term change", {
             termId: termData?.id,
-            classes: allClasses?.length || 0
+            classes: activeClasses?.length || 0
           });
         });
       });
     }
-  }, [termData?.id, selectedTermNumber, selectedYear, lastTermId, refetch, queryClient, allClasses?.length]);
+  }, [termData?.id, lastTermId, refetch, queryClient, activeClasses?.length]);
   
   const handleEdit = (classItem: any) => {
     setEditingClass(classItem);
@@ -103,13 +99,9 @@ export function ClassesTable() {
     return <ClassesTableError error={error} onRetry={() => refetch()} />;
   }
 
-  // Use the appropriate classes data based on context
-  // In this case, we'll use activeClasses - already filtered by term at database level
-  const displayClasses = activeClasses;
-  
-  console.log(`ClassesTable: Displaying ${displayClasses?.length || 0} classes, filtered by term: ${termData?.id || 'none'}`);
-  
-  if (!displayClasses || displayClasses.length === 0) {
+  // Ensure we have valid data to display
+  // This now safely uses activeClasses which is already filtered by term
+  if (!activeClasses || activeClasses.length === 0) {
     return <ClassesTableEmpty />;
   }
 
@@ -120,12 +112,12 @@ export function ClassesTable() {
           <Table>
             <ClassesTableHeader />
             <TableBody className="relative" data-testid="classes-table-body">
-              {displayClasses.map((classItem, index) => (
+              {activeClasses.map((classItem, index) => (
                 <ClassTableRow
                   key={classItem.id}
                   classItem={classItem as any}
                   index={index}
-                  totalClasses={displayClasses.length}
+                  totalClasses={activeClasses.length}
                   onEdit={() => handleEdit(classItem)}
                   isLoading={isLoading}
                   isMoving={false}

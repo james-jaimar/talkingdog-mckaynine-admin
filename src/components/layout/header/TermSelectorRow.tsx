@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { invalidateTermRelatedData } from "@/lib/query-client";
+import { toast } from "@/components/ui/use-toast";
 
 export function TermSelectorRow() {
   const {
@@ -43,7 +44,13 @@ export function TermSelectorRow() {
     setIsChangingTerm(true);
     
     try {
-      // First completely reset the query cache
+      // Display toast to inform user
+      toast({
+        title: "Changing year...",
+        description: `Switching to ${value}`,
+      });
+      
+      // First completely reset the query cache to avoid stale data
       await queryClient.resetQueries();
       
       // Then update the year
@@ -56,12 +63,24 @@ export function TermSelectorRow() {
           invalidateTermRelatedData().then(() => {
             console.log('Term data and related queries refreshed after year change');
             setIsChangingTerm(false);
+            
+            // Inform the user
+            toast({
+              title: "Year changed",
+              description: `Now viewing ${value}`,
+            });
           });
         });
       }, 100);
     } catch (error) {
       console.error('Error changing year:', error);
       setIsChangingTerm(false);
+      
+      toast({
+        title: "Error changing year",
+        description: "Please try again",
+        variant: "destructive"
+      });
     }
   };
 
@@ -71,7 +90,13 @@ export function TermSelectorRow() {
       setIsChangingTerm(true);
       
       try {
-        // First completely reset the query cache
+        // Display toast to inform user
+        toast({
+          title: "Changing term...",
+          description: `Switching to Term ${value}`,
+        });
+        
+        // First completely reset the query cache to avoid stale data
         await queryClient.resetQueries();
         
         // Update the term number
@@ -84,12 +109,24 @@ export function TermSelectorRow() {
             invalidateTermRelatedData().then(() => {
               console.log('Term data and related queries refreshed after term change');
               setIsChangingTerm(false);
+              
+              // Inform the user
+              toast({
+                title: "Term changed",
+                description: `Now viewing Term ${value}, ${selectedYear}`,
+              });
             });
           });
         }, 100);
       } catch (error) {
         console.error('Error changing term:', error);
         setIsChangingTerm(false);
+        
+        toast({
+          title: "Error changing term",
+          description: "Please try again",
+          variant: "destructive"
+        });
       }
     }
   };
@@ -139,7 +176,8 @@ export function TermSelectorRow() {
                     )}
                   </div>
                   <p className="text-sm text-gray-200">
-                    {format(new Date(termData.start_date), 'dd MMM yyyy')} - {format(new Date(termData.end_date), 'dd MMM yyyy')}
+                    {termData.start_date ? format(new Date(termData.start_date), 'dd MMM yyyy') : ''} - 
+                    {termData.end_date ? format(new Date(termData.end_date), 'dd MMM yyyy') : ''}
                   </p>
                 </div>
               </div>
