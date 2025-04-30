@@ -33,10 +33,8 @@ export function useClassQuery() {
         const savedOrder = orderData?.class_ids || [];
         console.log('Retrieved saved order with', savedOrder.length, 'classes');
         
-        // Fetch all classes - don't filter by term at this level
-        // The query is optimized to bring back classes with all schedules
-        // then the filtering happens in the component
-        const { data: allClasses, error: classError } = await supabase
+        // Modified query to filter by term at the database level when a term is selected
+        let classesQuery = supabase
           .from('classes')
           .select(`
             id, 
@@ -53,7 +51,7 @@ export function useClassQuery() {
             duration,
             capacity,
             branches(name),
-            class_schedules(
+            class_schedules!inner(
               id, 
               start_time, 
               end_time, 
@@ -62,8 +60,16 @@ export function useClassQuery() {
               bookings(id)
             )
           `)
-          .eq('branch_id', branchId)
-          .order('name');
+          .eq('branch_id', branchId);
+        
+        // If a term is selected, filter classes to only those with schedules in this term
+        if (termId) {
+          console.log(`Filtering classes at DB level for term: ${termId}`);
+          classesQuery = classesQuery.eq('class_schedules.term_id', termId);
+        }
+        
+        // Execute the query
+        const { data: allClasses, error: classError } = await classesQuery.order('name');
 
         if (classError) {
           console.error('Error fetching classes:', classError);
@@ -71,7 +77,7 @@ export function useClassQuery() {
         }
         
         let classes = allClasses as ClassWithSchedules[];
-        console.log(`Fetched ${classes.length} classes before ordering, for term: ${termData?.id}`);
+        console.log(`Fetched ${classes.length} classes for term: ${termData?.id || 'all terms'}`);
         
         // Apply the saved order if available
         if (savedOrder.length > 0) {

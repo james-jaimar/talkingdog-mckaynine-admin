@@ -3,16 +3,12 @@ import { useClassOrdering } from "./useClassOrdering";
 import { useBranch } from "@/context/BranchContext";
 import { useAuth } from "@/context/auth";
 import { useTerm } from "@/context/TermContext";
-import { useEffect, useMemo, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { invalidateTermRelatedData } from "@/lib/query-client";
+import { useMemo } from "react";
 
 export function useClassesData() {
   const { currentBranch } = useBranch();
   const { user, session } = useAuth();
-  const { termData, selectedTermNumber, selectedYear } = useTerm();
-  const [forceRefresh, setForceRefresh] = useState(0);
-  const queryClient = useQueryClient();
+  const { termData } = useTerm();
   
   // Use our centralized hook for class ordering and data
   const { 
@@ -22,51 +18,17 @@ export function useClassesData() {
     refetch
   } = useClassOrdering();
   
-  // Refetch classes when the term changes
-  useEffect(() => {
-    console.log("Term selection changed in useClassesData, refetching", {
-      termId: termData?.id,
-      termNumber: selectedTermNumber,
-      year: selectedYear,
-      forceRefresh
-    });
-    
-    // First invalidate all term-related data
-    invalidateTermRelatedData().then(() => {
-      // Then force a refetch of classes data specifically
-      refetch().then(() => {
-        console.log("Classes refetched after term change");
-        // Increment force refresh counter to trigger derived state updates
-        setForceRefresh(prev => prev + 1);
-      });
-    });
-  }, [
-    termData?.id, 
-    selectedTermNumber, 
-    selectedYear, 
-    refetch,
-    queryClient
-  ]);
-  
-  // For active classes, filter to show only those with schedules for the current term
+  // Now this is simpler - we're already filtering at the database level
+  // This is just for additional filtering or transformations as needed
   const activeClasses = useMemo(() => {
     if (!orderedClasses) return [];
     
-    console.log(`Filtering ${orderedClasses.length} classes for active classes with term: ${termData?.id || 'none'}`);
+    console.log(`Using ${orderedClasses.length} pre-filtered classes for term: ${termData?.id || 'none'}`);
     
-    if (!termData?.id) {
-      // If no term is selected, show all classes that have any schedules
-      return orderedClasses.filter(c => c.class_schedules && c.class_schedules.length > 0);
-    }
-    
-    // With term: show classes that have schedules for this term
-    const filtered = orderedClasses.filter(c => 
-      c.class_schedules && c.class_schedules.some(s => s.term_id === termData.id)
-    );
-    
-    console.log(`Found ${filtered.length} classes with schedules for term: ${termData.id}`);
-    return filtered;
-  }, [orderedClasses, termData?.id, forceRefresh]);
+    // The classes are already filtered by term at the database level
+    // Just ensure we have valid classes with schedules
+    return orderedClasses.filter(c => c.class_schedules && c.class_schedules.length > 0);
+  }, [orderedClasses, termData?.id]);
   
   return {
     activeClasses,

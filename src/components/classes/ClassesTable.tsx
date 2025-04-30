@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { Table, TableBody } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
 import { ClassTableRow } from "./ClassTableRow";
-import { useClassOrdering } from "./hooks/useClassOrdering";
+import { useClassesData } from "./hooks/useClassesData";
 import { EditClassModal } from "./EditClassModal";
 import { useQueryClient } from "@tanstack/react-query";
 import { useBranch } from "@/context/BranchContext";
@@ -17,16 +17,12 @@ import { DragDropContext, Droppable, DropResult } from "react-beautiful-dnd";
 
 export function ClassesTable() {
   const { 
-    orderedClasses, 
+    activeClasses,
+    allClasses, 
     isLoading, 
-    isMoving,
-    isItemMoving,
     error, 
-    handleDragStart,
-    handleDragEnd,
-    pendingMovements,
-    refetch
-  } = useClassOrdering();
+    refetch 
+  } = useClassesData();
   
   const [editingClass, setEditingClass] = useState<any>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -59,12 +55,12 @@ export function ClassesTable() {
           setIsRefreshing(false);
           console.log("Classes data refreshed after term change", {
             termId: termData?.id,
-            classes: orderedClasses?.length || 0
+            classes: allClasses?.length || 0
           });
         });
       });
     }
-  }, [termData?.id, selectedTermNumber, selectedYear, lastTermId, refetch, queryClient, orderedClasses?.length]);
+  }, [termData?.id, selectedTermNumber, selectedYear, lastTermId, refetch, queryClient, allClasses?.length]);
   
   const handleEdit = (classItem: any) => {
     setEditingClass(classItem);
@@ -98,26 +94,6 @@ export function ClassesTable() {
     }, 300);
   };
   
-  // Handle drag and drop events from react-beautiful-dnd
-  const onDragStart = () => {
-    handleDragStart();
-  };
-  
-  const onDragEnd = (result: DropResult) => {
-    // Check if we have a valid destination
-    if (!result.destination) {
-      console.log("Dropped outside valid area");
-      handleDragEnd(result.source.index, null);
-      return;
-    }
-    
-    const sourceIndex = result.source.index;
-    const destinationIndex = result.destination.index;
-    
-    console.log(`Drag complete: from ${sourceIndex} to ${destinationIndex}`);
-    handleDragEnd(sourceIndex, destinationIndex);
-  };
-
   // Show loading state if initially loading or during term change refresh
   if (isLoading || isRefreshing) {
     return <ClassesTableLoading />;
@@ -127,11 +103,11 @@ export function ClassesTable() {
     return <ClassesTableError error={error} onRetry={() => refetch()} />;
   }
 
-  // In the classes management page, always show ALL classes regardless of term
-  // This ensures newly added classes are visible
-  const displayClasses = orderedClasses;
+  // Use the appropriate classes data based on context
+  // In this case, we'll use activeClasses - already filtered by term at database level
+  const displayClasses = activeClasses;
   
-  console.log(`ClassesTable: Displaying ${displayClasses?.length || 0} classes, with term: ${termData?.id || 'none'}`);
+  console.log(`ClassesTable: Displaying ${displayClasses?.length || 0} classes, filtered by term: ${termData?.id || 'none'}`);
   
   if (!displayClasses || displayClasses.length === 0) {
     return <ClassesTableEmpty />;
@@ -141,39 +117,22 @@ export function ClassesTable() {
     <>
       <Card>
         <CardContent className="p-0 overflow-auto relative">
-          {(isMoving || pendingMovements > 0) && (
-            <div className="bg-yellow-50 text-yellow-800 p-2 text-xs text-center sticky top-0 z-10 border-b border-yellow-100">
-              Saving class order...
-            </div>
-          )}
-          <DragDropContext onDragStart={onDragStart} onDragEnd={onDragEnd}>
-            <Table>
-              <ClassesTableHeader />
-              <Droppable droppableId="classes-table-body">
-                {(provided) => (
-                  <TableBody
-                    {...provided.droppableProps}
-                    ref={provided.innerRef}
-                    className="relative"
-                    data-testid="classes-drag-container"
-                  >
-                    {displayClasses.map((classItem, index) => (
-                      <ClassTableRow
-                        key={classItem.id}
-                        classItem={classItem as any}
-                        index={index}
-                        totalClasses={displayClasses.length}
-                        onEdit={() => handleEdit(classItem)}
-                        isLoading={isLoading}
-                        isMoving={isItemMoving(classItem.id)}
-                      />
-                    ))}
-                    {provided.placeholder}
-                  </TableBody>
-                )}
-              </Droppable>
-            </Table>
-          </DragDropContext>
+          <Table>
+            <ClassesTableHeader />
+            <TableBody className="relative" data-testid="classes-table-body">
+              {displayClasses.map((classItem, index) => (
+                <ClassTableRow
+                  key={classItem.id}
+                  classItem={classItem as any}
+                  index={index}
+                  totalClasses={displayClasses.length}
+                  onEdit={() => handleEdit(classItem)}
+                  isLoading={isLoading}
+                  isMoving={false}
+                />
+              ))}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
       

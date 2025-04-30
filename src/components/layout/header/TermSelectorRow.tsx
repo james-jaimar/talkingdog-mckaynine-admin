@@ -42,22 +42,27 @@ export function TermSelectorRow() {
     console.log('TermSelector - Changing year to:', value);
     setIsChangingTerm(true);
     
-    // First completely reset the query cache
-    await queryClient.resetQueries();
-    
-    // Then update the year
-    setSelectedYear(parseInt(value));
-    
-    // Force a complete term data refresh
-    setTimeout(() => {
-      refetchTerm().then(() => {
-        // After term refetch completes, invalidate all dependent data
-        invalidateTermRelatedData().then(() => {
-          console.log('Term data and related queries refreshed after year change');
-          setIsChangingTerm(false);
+    try {
+      // First completely reset the query cache
+      await queryClient.resetQueries();
+      
+      // Then update the year
+      setSelectedYear(parseInt(value));
+      
+      // Force a complete term data refresh
+      setTimeout(() => {
+        refetchTerm().then(() => {
+          // After term refetch completes, invalidate all dependent data
+          invalidateTermRelatedData().then(() => {
+            console.log('Term data and related queries refreshed after year change');
+            setIsChangingTerm(false);
+          });
         });
-      });
-    }, 100);
+      }, 100);
+    } catch (error) {
+      console.error('Error changing year:', error);
+      setIsChangingTerm(false);
+    }
   };
 
   const handleTermChange = async (value: string) => {
@@ -65,22 +70,27 @@ export function TermSelectorRow() {
     if (value === '1' || value === '2' || value === '3' || value === '4') {
       setIsChangingTerm(true);
       
-      // First completely reset the query cache
-      await queryClient.resetQueries();
-      
-      // Update the term number
-      setSelectedTermNumber(value as '1' | '2' | '3' | '4');
-      
-      // Force a refresh of term data after selection
-      setTimeout(() => {
-        refetchTerm().then(() => {
-          // After term refetch completes, invalidate all dependent data
-          invalidateTermRelatedData().then(() => {
-            console.log('Term data and related queries refreshed after term change');
-            setIsChangingTerm(false);
+      try {
+        // First completely reset the query cache
+        await queryClient.resetQueries();
+        
+        // Update the term number
+        setSelectedTermNumber(value as '1' | '2' | '3' | '4');
+        
+        // Force a refresh of term data after selection
+        setTimeout(() => {
+          refetchTerm().then(() => {
+            // After term refetch completes, invalidate all dependent data
+            invalidateTermRelatedData().then(() => {
+              console.log('Term data and related queries refreshed after term change');
+              setIsChangingTerm(false);
+            });
           });
-        });
-      }, 100);
+        }, 100);
+      } catch (error) {
+        console.error('Error changing term:', error);
+        setIsChangingTerm(false);
+      }
     }
   };
 
