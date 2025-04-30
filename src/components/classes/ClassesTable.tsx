@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Table, TableBody } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
 import { ClassTableRow } from "./ClassTableRow";
@@ -11,7 +11,6 @@ import { ClassesTableLoading } from "./table/ClassesTableLoading";
 import { ClassesTableError } from "./table/ClassesTableError";
 import { ClassesTableEmpty } from "./table/ClassesTableEmpty";
 import { ClassesTableHeader } from "./table/ClassesTableHeader";
-import { useTerm } from "@/context/TermContext";
 import { DragDropContext, Droppable } from "react-beautiful-dnd";
 import { ClassWithSchedules } from "./hooks/types/class-with-schedules";
 
@@ -25,39 +24,8 @@ export function ClassesTable() {
   
   const [editingClass, setEditingClass] = useState<ClassWithSchedules | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const queryClient = useQueryClient();
   const { currentBranch } = useBranch();
-  const { termData } = useTerm();
-  const [lastTermId, setLastTermId] = useState<string | undefined>(termData?.id);
-  
-  // Check if term has changed since last render
-  useEffect(() => {
-    if (termData?.id !== lastTermId) {
-      console.log("ClassesTable: Term changed, refreshing data", {
-        from: lastTermId,
-        to: termData?.id
-      });
-      
-      setLastTermId(termData?.id);
-      setIsRefreshing(true);
-      
-      // Clear query cache for classes and related queries
-      queryClient.resetQueries({ 
-        queryKey: ['classes'],
-        exact: false
-      }).then(() => {
-        // Force refetch when term changes
-        refetch().finally(() => {
-          setIsRefreshing(false);
-          console.log("Classes data refreshed after term change", {
-            termId: termData?.id,
-            classes: activeClasses?.length || 0
-          });
-        });
-      });
-    }
-  }, [termData?.id, lastTermId, refetch, queryClient, activeClasses?.length]);
   
   const handleEdit = (classItem: ClassWithSchedules) => {
     setEditingClass(classItem);
@@ -72,33 +40,21 @@ export function ClassesTable() {
   };
   
   const handleEditSuccess = () => {
-    // Invalidate and refetch to ensure latest data
-    queryClient.resetQueries({ 
+    // Reset queries and close modal
+    queryClient.invalidateQueries({ 
       queryKey: ['classes'],
       exact: false
     });
+    
     handleCloseModal();
-    
-    // Also invalidate any related queries to ensure we see the latest data
-    queryClient.invalidateQueries({
-      queryKey: ['class-schedules'],
-      exact: false
-    });
-    
-    // Force a new fetch after a brief delay
-    setTimeout(() => {
-      refetch();
-    }, 300);
   };
   
   const handleDragEnd = (result: any) => {
     // This is a placeholder implementation for drag & drop functionality
-    // Actual implementation would be added when needed
     console.log("Drag ended:", result);
   };
   
-  // Show loading state if initially loading or during term change refresh
-  if (isLoading || isRefreshing) {
+  if (isLoading) {
     return <ClassesTableLoading />;
   }
   
@@ -106,8 +62,7 @@ export function ClassesTable() {
     return <ClassesTableError error={error} onRetry={() => refetch()} />;
   }
 
-  // Ensure we have valid data to display
-  // This now safely uses activeClasses which is already filtered by term
+  // Check for empty data
   if (!activeClasses || activeClasses.length === 0) {
     return <ClassesTableEmpty />;
   }

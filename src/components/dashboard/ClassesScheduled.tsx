@@ -6,7 +6,6 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useTerm } from '@/context/TermContext';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useState, useEffect } from 'react';
 
 interface ClassesScheduledProps {
   branchId?: string;
@@ -14,16 +13,13 @@ interface ClassesScheduledProps {
 
 export function ClassesScheduled({ branchId }: ClassesScheduledProps) {
   const isMobile = useIsMobile();
-  const { termData, selectedTermNumber, selectedYear } = useTerm();
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const { termData } = useTerm();
 
-  const { data: classes, isLoading, refetch } = useQuery({
-    queryKey: ['upcoming-classes', branchId, termData?.id, selectedTermNumber, selectedYear],
+  const { data: classes, isLoading } = useQuery({
+    queryKey: ['upcoming-classes', branchId, termData?.id],
     queryFn: async () => {
       // Don't fetch data if no branch is selected
       if (!branchId) return [];
-      
-      console.log('Fetching upcoming classes with term ID:', termData?.id);
       
       // Use today's date as the default start date
       const startDate = new Date().toISOString();
@@ -59,23 +55,11 @@ export function ClassesScheduled({ branchId }: ClassesScheduledProps) {
         .limit(5);
       
       if (error) throw error;
-      console.log('Upcoming classes fetched:', data?.length || 0);
       return data;
     },
     enabled: !!branchId,
     staleTime: 30 * 1000, // Cache for 30 seconds
   });
-
-  // Refresh when term changes
-  useEffect(() => {
-    console.log("ClassesScheduled responding to term change", {
-      termId: termData?.id,
-      termNumber: selectedTermNumber,
-      year: selectedYear
-    });
-    setIsRefreshing(true);
-    refetch().finally(() => setIsRefreshing(false));
-  }, [termData?.id, selectedTermNumber, selectedYear, refetch]);
 
   const getInitials = (firstName: string, lastName: string) => {
     return `${firstName?.[0] || ''}${lastName?.[0] || ''}`;
@@ -98,7 +82,7 @@ export function ClassesScheduled({ branchId }: ClassesScheduledProps) {
       <CardContent>
         {!branchId ? (
           <div className="text-center py-4 text-gray-500">Please select a branch</div>
-        ) : isLoading || isRefreshing ? (
+        ) : isLoading ? (
           <div className="space-y-3">
             <Skeleton className="h-20 w-full" />
             <Skeleton className="h-20 w-full" />

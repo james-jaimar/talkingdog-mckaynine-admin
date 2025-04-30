@@ -6,10 +6,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, Calendar } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { useEffect, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { invalidateTermRelatedData } from "@/lib/query-client";
-import { toast } from "@/components/ui/use-toast";
 
 export function TermSelectorRow() {
   const {
@@ -21,120 +17,20 @@ export function TermSelectorRow() {
     isTermLoading,
     error,
     years,
-    terms,
-    refetchTerm
+    terms
   } = useTerm();
   
-  const queryClient = useQueryClient();
-  const [isChangingTerm, setIsChangingTerm] = useState(false);
-
-  // Debug log when term data changes
-  useEffect(() => {
-    console.log('TermSelector - Current term data:', { 
-      termId: termData?.id,
-      termNumber: selectedTermNumber,
-      year: selectedYear,
-      isLoading: isTermLoading,
-      isChangingTerm
-    });
-  }, [termData, selectedTermNumber, selectedYear, isTermLoading, isChangingTerm]);
-
-  const handleYearChange = async (value: string) => {
-    console.log('TermSelector - Changing year to:', value);
-    setIsChangingTerm(true);
-    
-    try {
-      // Display toast to inform user
-      toast({
-        title: "Changing year...",
-        description: `Switching to ${value}`,
-      });
-      
-      // First completely reset the query cache to avoid stale data
-      await queryClient.resetQueries();
-      
-      // Then update the year
-      setSelectedYear(parseInt(value));
-      
-      // Force a complete term data refresh
-      setTimeout(() => {
-        refetchTerm().then(() => {
-          // After term refetch completes, invalidate all dependent data
-          invalidateTermRelatedData().then(() => {
-            console.log('Term data and related queries refreshed after year change');
-            setIsChangingTerm(false);
-            
-            // Inform the user
-            toast({
-              title: "Year changed",
-              description: `Now viewing ${value}`,
-            });
-          });
-        });
-      }, 100);
-    } catch (error) {
-      console.error('Error changing year:', error);
-      setIsChangingTerm(false);
-      
-      toast({
-        title: "Error changing year",
-        description: "Please try again",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleTermChange = async (value: string) => {
-    console.log('TermSelector - Changing term to:', value);
-    if (value === '1' || value === '2' || value === '3' || value === '4') {
-      setIsChangingTerm(true);
-      
-      try {
-        // Display toast to inform user
-        toast({
-          title: "Changing term...",
-          description: `Switching to Term ${value}`,
-        });
-        
-        // First completely reset the query cache to avoid stale data
-        await queryClient.resetQueries();
-        
-        // Update the term number
-        setSelectedTermNumber(value as '1' | '2' | '3' | '4');
-        
-        // Force a refresh of term data after selection
-        setTimeout(() => {
-          refetchTerm().then(() => {
-            // After term refetch completes, invalidate all dependent data
-            invalidateTermRelatedData().then(() => {
-              console.log('Term data and related queries refreshed after term change');
-              setIsChangingTerm(false);
-              
-              // Inform the user
-              toast({
-                title: "Term changed",
-                description: `Now viewing Term ${value}, ${selectedYear}`,
-              });
-            });
-          });
-        }, 100);
-      } catch (error) {
-        console.error('Error changing term:', error);
-        setIsChangingTerm(false);
-        
-        toast({
-          title: "Error changing term",
-          description: "Please try again",
-          variant: "destructive"
-        });
-      }
-    }
-  };
-
   const errorMessage = error?.message || '';
   
-  // Show combined loading state (either from term context or local state)
-  const showLoading = isTermLoading || isChangingTerm;
+  const handleYearChange = (value: string) => {
+    setSelectedYear(parseInt(value));
+  };
+
+  const handleTermChange = (value: string) => {
+    if (value === '1' || value === '2' || value === '3' || value === '4') {
+      setSelectedTermNumber(value as '1' | '2' | '3' | '4');
+    }
+  };
 
   if (error) {
     return (
@@ -155,7 +51,7 @@ export function TermSelectorRow() {
       <div className="container mx-auto px-4 py-2">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center space-x-4 text-white">
-            {showLoading ? (
+            {isTermLoading ? (
               <div className="flex items-center space-x-2">
                 <Loader2 className="h-4 w-4 animate-spin text-white" />
                 <div className="space-y-2">
@@ -191,7 +87,7 @@ export function TermSelectorRow() {
               <Select
                 value={selectedYear.toString()}
                 onValueChange={handleYearChange}
-                disabled={showLoading}
+                disabled={isTermLoading}
               >
                 <SelectTrigger className="w-[120px] bg-white text-gray-800">
                   <SelectValue placeholder="Select year" />
@@ -210,7 +106,7 @@ export function TermSelectorRow() {
               <Select
                 value={selectedTermNumber}
                 onValueChange={handleTermChange}
-                disabled={showLoading}
+                disabled={isTermLoading}
               >
                 <SelectTrigger className="w-[120px] bg-white text-gray-800">
                   <SelectValue placeholder="Select term" />

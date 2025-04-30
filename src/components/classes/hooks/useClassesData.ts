@@ -2,14 +2,12 @@
 import { useClassOrdering } from "./useClassOrdering";
 import { useBranch } from "@/context/BranchContext";
 import { useAuth } from "@/context/auth";
-import { useTerm } from "@/context/TermContext";
 import { useMemo } from "react";
 import { ClassWithSchedules } from "./types/class-with-schedules";
 
 export function useClassesData() {
   const { currentBranch } = useBranch();
   const { user, session } = useAuth();
-  const { termData } = useTerm();
   
   // Use our centralized hook for class ordering and data
   const { 
@@ -19,33 +17,15 @@ export function useClassesData() {
     refetch
   } = useClassOrdering();
   
-  // Filter classes by term at the application level as a safety check
-  // The primary filtering should happen at the database level in useClassQuery
+  // Simply pass through the data without additional filtering
+  // The classes are already properly filtered at the database level
   const activeClasses = useMemo<ClassWithSchedules[]>(() => {
     if (!orderedClasses || !Array.isArray(orderedClasses)) {
-      console.log("orderedClasses is not valid:", orderedClasses);
       return [];
     }
     
-    console.log(`Using ${orderedClasses.length} pre-filtered classes for term: ${termData?.id || 'none'}`);
-    
-    // Classes should already be filtered by term at the database level
-    // Just ensure we have valid classes with schedules for rendering
-    return orderedClasses.filter(c => {
-      if (!c) return false;
-      
-      // Safety check: ensure class has schedules
-      if (!c.class_schedules || c.class_schedules.length === 0) return false;
-      
-      // If we have a term selected, validate the class schedules match this term
-      if (termData?.id) {
-        // Double-check that at least one schedule belongs to the current term
-        return c.class_schedules.some(schedule => schedule.term_id === termData.id);
-      }
-      
-      return true;
-    });
-  }, [orderedClasses, termData?.id]);
+    return orderedClasses;
+  }, [orderedClasses]);
   
   return {
     activeClasses,

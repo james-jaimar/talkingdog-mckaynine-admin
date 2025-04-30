@@ -12,16 +12,13 @@ interface RecentBookingsProps {
 }
 
 export function RecentBookings({ branchId }: RecentBookingsProps) {
-  const { termData, selectedTermNumber, selectedYear } = useTerm();
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const { termData } = useTerm();
 
-  const { data: bookings, isLoading, refetch } = useQuery({
-    queryKey: ['recent-bookings', branchId, termData?.id, selectedTermNumber, selectedYear],
+  const { data: bookings, isLoading } = useQuery({
+    queryKey: ['recent-bookings', branchId, termData?.id],
     queryFn: async () => {
       // Don't fetch data if no branch is selected
       if (!branchId) return [];
-      
-      console.log('Fetching recent bookings with term ID:', termData?.id);
       
       // Build the query with branch filter
       let query = supabase
@@ -51,23 +48,11 @@ export function RecentBookings({ branchId }: RecentBookingsProps) {
         .limit(5);
       
       if (error) throw error;
-      console.log('Recent bookings fetched:', data?.length || 0);
       return data;
     },
     enabled: !!branchId,
     staleTime: 30 * 1000, // Cache for 30 seconds
   });
-
-  // Refresh when term changes
-  useEffect(() => {
-    console.log("RecentBookings responding to term change", {
-      termId: termData?.id,
-      termNumber: selectedTermNumber,
-      year: selectedYear
-    });
-    setIsRefreshing(true);
-    refetch().finally(() => setIsRefreshing(false));
-  }, [termData?.id, selectedTermNumber, selectedYear, refetch]);
 
   // Rest of the component remains the same
   const getStatusColor = (status: string) => {
@@ -96,7 +81,7 @@ export function RecentBookings({ branchId }: RecentBookingsProps) {
       <CardContent>
         {!branchId ? (
           <div className="text-center py-4 text-gray-500">Please select a branch</div>
-        ) : isLoading || isRefreshing ? (
+        ) : isLoading ? (
           <div className="space-y-2">
             <Skeleton className="h-12 w-full" />
             <Skeleton className="h-12 w-full" />
@@ -152,22 +137,4 @@ export function RecentBookings({ branchId }: RecentBookingsProps) {
       </CardContent>
     </Card>
   );
-}
-
-function getStatusColor(status: string) {
-  switch(status) {
-    case 'confirmed': return 'bg-green-500';
-    case 'cancelled': return 'bg-red-500';
-    case 'completed': return 'bg-blue-500';
-    default: return 'bg-gray-500';
-  }
-}
-
-function getPaymentStatusVariant(status: string) {
-  switch(status) {
-    case 'paid': return 'default';
-    case 'pending': return 'secondary';
-    case 'refunded': return 'destructive';
-    default: return 'outline';
-  }
 }

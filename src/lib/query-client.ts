@@ -5,11 +5,10 @@ export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       refetchOnWindowFocus: false,
-      staleTime: 0, // Always fetch fresh data
+      staleTime: 30000, // 30 seconds default stale time
       retry: 1,
       refetchOnReconnect: true,
-      gcTime: 1000 * 60 * 10, // 10 minutes - how long to keep inactive data in cache
-      structuralSharing: false, // Always force new references
+      gcTime: 1000 * 60 * 10, // 10 minutes
     },
     mutations: {
       retry: 1,
@@ -18,59 +17,22 @@ export const queryClient = new QueryClient({
   },
 });
 
-// Add a global query error handler
-queryClient.getQueryCache().subscribe(event => {
-  if (event.type === 'updated' && event.query.state.error) {
-    console.error("Query error:", event.query.state.error);
-  }
-});
-
-// Check for invariant errors in any update and log them
-queryClient.getQueryCache().subscribe(event => {
-  try {
-    if (event.type === 'updated' && event.query.state.data === undefined && event.query.state.status === 'success') {
-      console.warn("Potentially invalid data state detected:", {
-        queryKey: event.query.queryKey,
-        status: event.query.state.status,
-        data: event.query.state.data
-      });
-    }
-  } catch (error) {
-    console.error("Error in query cache monitoring:", error);
-  }
-});
-
 // Global function to invalidate all term-related data
 export async function invalidateTermRelatedData() {
-  console.log("Invalidating all term-related data");
-  
   try {
-    // First, forcefully remove all relevant cache entries
+    // First, remove cached data to ensure fresh fetch
     await Promise.all([
       queryClient.removeQueries({ queryKey: ['classes'], exact: false }),
       queryClient.removeQueries({ queryKey: ['class-schedules'], exact: false }),
       queryClient.removeQueries({ queryKey: ['dashboard-stats'], exact: false })
     ]);
     
-    // Then invalidate to trigger refetches
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ['classes'], exact: false }),
-      queryClient.invalidateQueries({ queryKey: ['class-schedules'], exact: false }),
-      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'], exact: false }),
-      queryClient.invalidateQueries({ queryKey: ['financial-bookings'], exact: false }),
-      queryClient.invalidateQueries({ queryKey: ['recent-bookings'], exact: false }),
-      queryClient.invalidateQueries({ queryKey: ['upcoming-classes'], exact: false })
-    ]);
-    
-    console.log("Term-related data invalidation complete");
-    
-    // Force immediate refetch of key queries
+    // Then trigger refetches
     return Promise.all([
       queryClient.refetchQueries({ queryKey: ['classes'], exact: false }),
-      queryClient.refetchQueries({ queryKey: ['class-handlers'], exact: false })
+      queryClient.refetchQueries({ queryKey: ['dashboard-stats'], exact: false })
     ]);
   } catch (error) {
-    console.error("Error during data invalidation:", error);
     return Promise.reject(error);
   }
 }

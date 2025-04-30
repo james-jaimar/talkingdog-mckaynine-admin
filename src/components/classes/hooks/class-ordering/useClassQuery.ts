@@ -7,16 +7,14 @@ import { useTerm } from "@/context/TermContext";
 
 export function useClassQuery() {
   const { currentBranch } = useBranch();
-  const { termData, selectedTermNumber, selectedYear } = useTerm();
+  const { termData } = useTerm();
   const branchId = currentBranch?.id;
   const termId = termData?.id;
 
   return useQuery({
-    queryKey: ['classes', branchId, termId, selectedTermNumber, selectedYear],
+    queryKey: ['classes', branchId, termId],
     queryFn: async () => {
       if (!branchId) return [];
-
-      console.log('Fetching classes for branch:', branchId, 'with term:', termData?.id);
       
       try {
         // First, fetch the saved order for this branch if it exists
@@ -27,13 +25,12 @@ export function useClassQuery() {
           .maybeSingle();
           
         if (orderError) {
-          console.error('Error fetching class order:', orderError);
+          throw orderError;
         }
         
         const savedOrder = orderData?.class_ids || [];
-        console.log('Retrieved saved order with', savedOrder.length, 'classes');
         
-        // Build our base query
+        // Build our base query with proper filtering at the database level
         let classesQuery = supabase
           .from('classes')
           .select(`
@@ -57,16 +54,14 @@ export function useClassQuery() {
               end_time, 
               selected_dates,
               term_id,
-              bookings(id)
+              bookings(id, client_id, dog_id)
             )
           `)
           .eq('branch_id', branchId);
         
-        // If a term is selected, modify the query to filter by term at the database level
+        // If a term is selected, filter by term at the database level
         if (termId) {
-          console.log(`Filtering classes at DB level for term: ${termId}`);
-          
-          // Use a nested exists query to filter classes that have schedules for the selected term
+          // Use a join to filter classes that have schedules for the selected term
           classesQuery = supabase
             .from('classes')
             .select(`
@@ -90,7 +85,7 @@ export function useClassQuery() {
                 end_time, 
                 selected_dates,
                 term_id,
-                bookings(id)
+                bookings(id, client_id, dog_id)
               )
             `)
             .eq('branch_id', branchId)
@@ -101,14 +96,12 @@ export function useClassQuery() {
         const { data: allClasses, error: classError } = await classesQuery;
 
         if (classError) {
-          console.error('Error fetching classes:', classError);
           throw classError;
         }
         
         let classes = allClasses as ClassWithSchedules[];
-        console.log(`Fetched ${classes?.length || 0} classes for term: ${termData?.id || 'all terms'}`);
         
-        // If no classes were found, return an empty array - don't return null or undefined
+        // If no classes were found, return an empty array
         if (!classes || classes.length === 0) {
           return [];
         }
@@ -135,21 +128,17 @@ export function useClassQuery() {
             orderedClasses.push(classItem);
           });
           
-          console.log(`Applied saved order: ${orderedClasses.length} classes ordered`);
           classes = orderedClasses;
         }
         
         // Ensure we always return an array
         return Array.isArray(classes) ? classes : [];
       } catch (error) {
-        console.error("Error fetching classes:", error);
         throw error;
       }
     },
     enabled: !!branchId,
-    // Reduce stale time to ensure fresher data
-    staleTime: 0, 
-    // Create new references to ensure React detects changes
+    staleTime: 30000, // 30 seconds
     structuralSharing: false,
   });
 }
