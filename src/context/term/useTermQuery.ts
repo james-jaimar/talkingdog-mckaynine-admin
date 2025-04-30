@@ -1,12 +1,12 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { TermData } from './types';
+import { TermData, TermNumber } from './types';
 import { calculateTermDateRange } from './utils';
 
 export function useTermQuery(
   selectedYear: number,
-  selectedTermNumber: string,
+  selectedTermNumber: TermNumber, // Fixed: Use the TermNumber type instead of string
   onError: (error: Error) => void
 ) {
   return useQuery({
