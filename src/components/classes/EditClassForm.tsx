@@ -22,14 +22,17 @@ import { Class } from "./types/class";
 import { FeeFields } from "./form-sections/FeeFields";
 import { CLASS_TYPES } from "./types/class-types";
 import { useEffect } from "react";
+import { ClassWithSchedules } from "./hooks/types/class-with-schedules";
 
 interface EditClassFormProps {
-  classData: Class;
+  // Accept either Class or ClassWithSchedules to make it more flexible
+  classData: Class | ClassWithSchedules;
   currentBranchName?: string | null;
-  onSuccess: () => void;
+  onSuccess?: () => void;
+  onCancel?: () => void;
 }
 
-export function EditClassForm({ classData, currentBranchName, onSuccess }: EditClassFormProps) {
+export function EditClassForm({ classData, currentBranchName, onSuccess, onCancel }: EditClassFormProps) {
   const { form, isSubmitting, branches, isLoadingBranches, onSubmit } = useClassForm(classData, onSuccess);
 
   // Log the classData and form values to verify they are correct
@@ -77,6 +80,7 @@ export function EditClassForm({ classData, currentBranchName, onSuccess }: EditC
                   placeholder="Describe what the class covers..." 
                   className="min-h-[100px]" 
                   {...field} 
+                  value={field.value || ''} // Handle null/undefined description
                 />
               </FormControl>
               <FormMessage />
@@ -175,7 +179,12 @@ export function EditClassForm({ classData, currentBranchName, onSuccess }: EditC
 
         <FeeFields control={form.control} />
 
-        <div className="flex justify-end">
+        <div className="flex justify-end space-x-3">
+          {onCancel && (
+            <Button type="button" variant="outline" onClick={onCancel}>
+              Cancel
+            </Button>
+          )}
           <Button type="submit" disabled={isSubmitting}>
             {isSubmitting ? "Saving..." : "Update Class"}
           </Button>
