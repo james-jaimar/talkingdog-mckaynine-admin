@@ -2,7 +2,7 @@
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   DialogDescription,
-  DialogHeader,
+  DialogHeader as UIDialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 
@@ -15,7 +15,7 @@ interface PaymentDialogHeaderProps {
   allUnpaidSelected?: boolean;
 }
 
-export function PaymentDialogHeader({ 
+export function DialogHeader({ 
   trainerName, 
   totalAmount,
   classCount,
@@ -25,12 +25,12 @@ export function PaymentDialogHeader({
 }: PaymentDialogHeaderProps) {
   return (
     <>
-      <DialogHeader>
+      <UIDialogHeader>
         <DialogTitle>Mark Payments for {trainerName}</DialogTitle>
         <DialogDescription>
           Select classes to mark as paid for this trainer.
         </DialogDescription>
-      </DialogHeader>
+      </UIDialogHeader>
       
       <div className="flex items-center justify-between mb-4">
         <div>
@@ -58,3 +58,6 @@ export function PaymentDialogHeader({
     </>
   );
 }
+
+// Export as a named export to match the import in TrainerPaymentDialog
+export { DialogHeader as PaymentDialogHeader };

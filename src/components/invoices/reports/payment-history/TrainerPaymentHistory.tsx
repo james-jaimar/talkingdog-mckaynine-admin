@@ -70,7 +70,56 @@ export function TrainerPaymentHistory({ limit = 5, showViewAll = false }: Traine
         const { data, error } = await query;
         
         if (error) {
-          // Log the specific error for debugging
+          // Check if the error is specifically about the missing columns
+          if (error.message?.includes("column 'document_url' does not exist") ||
+              error.message?.includes("column 'document_name' does not exist")) {
+            console.error("Document URL columns don't exist yet. Migration needed:", error.message);
+            
+            // Fall back to querying without the document columns
+            const fallbackQuery = await supabase
+              .from('trainer_payments')
+              .select(`
+                id,
+                trainer_id,
+                payment_date,
+                payment_method,
+                transaction_id,
+                notes,
+                amount,
+                trainers (
+                  first_name,
+                  last_name
+                )
+              `)
+              .eq('status', 'paid')
+              .order('payment_date', { ascending: false });
+              
+            if (!viewAll) {
+              fallbackQuery.limit(limit);
+            }
+            
+            if (fallbackQuery.error) {
+              throw fallbackQuery.error;
+            }
+            
+            // Map the data to include null document fields
+            return (fallbackQuery.data || []).map(payment => ({
+              id: payment.id,
+              trainer_id: payment.trainer_id,
+              trainer_name: payment.trainers ? 
+                `${payment.trainers.first_name} ${payment.trainers.last_name}` : 
+                "Unknown",
+              payment_date: payment.payment_date,
+              amount: payment.amount || 0,
+              payment_method: payment.payment_method,
+              transaction_id: payment.transaction_id,
+              notes: payment.notes,
+              document_url: null, // Add missing fields with null values
+              document_name: null
+            }));
+          }
+          
+          // For other types of errors, throw them
           console.error("Error fetching trainer payment history:", error);
           throw error;
         }
@@ -95,12 +144,9 @@ export function TrainerPaymentHistory({ limit = 5, showViewAll = false }: Traine
           document_name: payment.document_name
         }));
       } catch (error) {
-        // Handle the column not existing error gracefully
-        if ((error as any)?.message?.includes("column 'document_url' does not exist")) {
-          console.error("The document_url column doesn't exist yet. You need to run the SQL migration first.");
-          toast.error("Payment document feature requires database migration");
-          return [];
-        }
+        // Handle other general errors
+        console.error("Error fetching trainer payment history:", error);
+        toast.error("Failed to fetch payment history");
         throw error;
       }
     }
