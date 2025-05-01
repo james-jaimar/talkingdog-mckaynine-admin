@@ -1,29 +1,30 @@
+
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import RequireAuth from "./components/auth/RequireAuth";
 import RequireAdmin from "./components/auth/RequireAdmin";
-import LoginPage from "./pages/LoginPage";
-import DashboardPage from "./pages/DashboardPage";
-import ClassesPage from "./pages/ClassesPage";
-import SchedulesPage from "./pages/SchedulesPage";
-import HandlersPage from "./pages/HandlersPage";
-import DogsPage from "./pages/DogsPage";
-import BranchPage from "./pages/admin/BranchPage";
-import UserPage from "./pages/admin/UserPage";
-import InvoicesPage from "./pages/InvoicesPage";
-import InvoiceDetailsPage from "./pages/InvoiceDetailsPage";
-import NotFoundPage from "./pages/NotFoundPage";
+import LoginPage from "./pages/Auth";
+import DashboardPage from "./pages/Dashboard";
+import ClassesPage from "./pages/Classes";
+import SchedulesPage from "./pages/ClassSchedules";
+import HandlersPage from "./pages/Handlers";
+import DogsPage from "./pages/Dogs";
+import BranchPage from "./pages/Branches";
+import UserPage from "./pages/UserAdmin";
+import InvoicesPage from "./pages/Invoices";
+import InvoiceDetailsPage from "./pages/InvoiceDetail";
+import NotFoundPage from "./pages/NotFound";
 import DiscountPage from "./pages/admin/DiscountPage";
 import SettingsPage from "./pages/admin/SettingsPage";
 import MaintenancePage from "./pages/admin/maintenance/MaintenancePage";
 import SignupPage from "./pages/SignupPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
-import ClientsPage from "./pages/ClientsPage";
+import ClientsPage from "./pages/Clients";
 import ClientDetailsPage from "./pages/ClientDetailsPage";
-import TrainersPage from "./pages/TrainersPage";
-import UnpaidHandlersPage from "./pages/UnpaidHandlersPage";
-import FinancialDashboardPage from "./pages/FinancialDashboardPage";
-import FinancialReportsPage from "./pages/FinancialReportsPage"; // Import the new page
+import TrainersPage from "./pages/Trainers";
+import UnpaidHandlersPage from "./pages/UnpaidHandlers";
+import FinancialDashboardPage from "./pages/FinancialDashboard";
+import FinancialReportsPage from "./pages/FinancialReports"; // Import the new page
 
 const router = createBrowserRouter([
   {

@@ -27,11 +27,11 @@ import {
 
 export function Sidebar() {
   const location = useLocation();
-  const { userRole, loading } = useAuth();
+  const { role, isLoading } = useAuth(); // Updated to use the correct property names
   const { currentBranch: branch } = useBranch(); // Updated to match the context
   
   // Check if the user is an admin
-  const isAdmin = userRole === "admin";
+  const isAdmin = role === "admin"; // Updated to match the auth context property
 
   return (
     <div className="hidden lg:flex flex-col h-screen w-64 bg-blue-900 text-white overflow-y-auto">
@@ -41,7 +41,7 @@ export function Sidebar() {
         {branch && <p className="text-xs text-blue-300">{branch.name}</p>}
       </div>
 
-      {loading ? (
+      {isLoading ? (
         <div className="flex justify-center py-8">
           <Loader2 className="h-6 w-6 animate-spin text-blue-400" />
         </div>
