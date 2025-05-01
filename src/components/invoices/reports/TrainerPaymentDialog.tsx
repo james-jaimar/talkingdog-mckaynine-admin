@@ -149,6 +149,11 @@ export function TrainerPaymentDialog({
         );
         const isPaid = !!payment;
         
+        // Check if there is any payment record (paid or pending)
+        const hasPaymentRecord = trainerPayments?.some(p => 
+          p.class_schedule_id === schedule.id
+        );
+        
         // Calculate revenue for this class
         let revenue = 0;
         let bookingsCount = 0;
@@ -185,7 +190,8 @@ export function TrainerPaymentDialog({
           revenue,
           potentialRevenue: revenue, // Add the missing potentialRevenue property
           bookings: bookingsCount,
-          isPaid
+          isPaid,
+          hasActualPayment: hasPaymentRecord || false // Add the missing hasActualPayment property
         };
       });
 
