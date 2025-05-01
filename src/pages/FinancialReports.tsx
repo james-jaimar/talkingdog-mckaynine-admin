@@ -14,15 +14,28 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { TrainerReportsTab } from "@/components/invoices/reports/TrainerReportsTab";
 import { useClassFinancialData } from "@/hooks/useClassFinancialData";
+import { useTerm } from "@/context/TermContext";
 
 export default function FinancialReports() {
   const queryClient = useQueryClient();
+  const { termDateRange, termData } = useTerm();
   
-  // Set default date range to current month
+  // Set default date range based on current term if available, otherwise current month
   const [dateRange, setDateRange] = useState({
-    from: startOfMonth(subMonths(new Date(), 0)), // Current month
-    to: endOfMonth(new Date())
+    from: termDateRange ? new Date(termDateRange.startDate) : startOfMonth(subMonths(new Date(), 0)),
+    to: termDateRange ? new Date(termDateRange.endDate) : endOfMonth(new Date())
   });
+  
+  // Update date range when term changes
+  useEffect(() => {
+    if (termDateRange) {
+      console.log("FinancialReports: Term date range changed, updating date range");
+      setDateRange({
+        from: new Date(termDateRange.startDate),
+        to: new Date(termDateRange.endDate)
+      });
+    }
+  }, [termDateRange]);
   
   const { currentBranch } = useBranch();
   const { invoices, isLoading, refreshAllInvoiceQueries } = useInvoices();
@@ -37,6 +50,14 @@ export default function FinancialReports() {
       refreshFinancialData();
     }
   }, [currentBranch, dateRange]);
+  
+  // Also refresh when term changes
+  useEffect(() => {
+    if (termData?.id) {
+      console.log(`FinancialReports: Term changed to ${termData.term_number}, refreshing data`);
+      refreshFinancialData();
+    }
+  }, [termData?.id]);
 
   // Function to refresh all financial data
   const refreshFinancialData = () => {

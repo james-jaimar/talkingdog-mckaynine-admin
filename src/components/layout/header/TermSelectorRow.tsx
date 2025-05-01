@@ -4,8 +4,10 @@ import { useTerm } from "@/context/TermContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, Calendar } from "lucide-react";
+import { Loader2, Calendar, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 export function TermSelectorRow() {
   const {
@@ -17,18 +19,37 @@ export function TermSelectorRow() {
     isTermLoading,
     error,
     years,
-    terms
+    terms,
+    refetchTerm
   } = useTerm();
   
+  const queryClient = useQueryClient();
   const errorMessage = error?.message || '';
   
   const handleYearChange = (value: string) => {
     setSelectedYear(parseInt(value));
+    toast.info(`Changing year to ${value}`, { duration: 2000 });
   };
 
   const handleTermChange = (value: string) => {
     if (value === '1' || value === '2' || value === '3' || value === '4') {
       setSelectedTermNumber(value as '1' | '2' | '3' | '4');
+      toast.info(`Changing to Term ${value}`, { duration: 2000 });
+      
+      // Force invalidate financial queries when changing terms
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
+        queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      }, 100);
+    }
+  };
+
+  const handleManualRefresh = () => {
+    if (refetchTerm) {
+      refetchTerm();
+      queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      toast.success("Term data refreshed");
     }
   };
 
@@ -123,6 +144,19 @@ export function TermSelectorRow() {
                 </SelectContent>
               </Select>
             </div>
+            
+            <button
+              onClick={handleManualRefresh}
+              className="p-2 rounded-full hover:bg-mckaynine-700 transition-colors"
+              title="Refresh term data"
+              disabled={isTermLoading}
+            >
+              {isTermLoading ? (
+                <Loader2 className="h-5 w-5 animate-spin text-white" />
+              ) : (
+                <RefreshCw className="h-5 w-5 text-white" />
+              )}
+            </button>
           </div>
         </div>
       </div>

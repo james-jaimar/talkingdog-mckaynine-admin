@@ -42,8 +42,14 @@ export function TermProvider({ children }: { children: ReactNode }) {
     
     // Only invalidate queries when a term is actually changed
     if (termData?.id !== lastTermId.current && !isChangingTerm) {
+      console.log(`Term changed: ${termData.term_number}, ${selectedYear} - invalidating term-dependent queries`);
+      
       // Invalidate queries for the new term and trigger refetch
       invalidateTermDependentQueries(termData.id).then(() => {
+        // Refetch financial data queries explicitly
+        queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
+        queryClient.invalidateQueries({ queryKey: ['invoices'] });
+        
         // Refetch just the classes query (the rest will load when their components mount)
         queryClient.refetchQueries({ 
           queryKey: ['classes'],

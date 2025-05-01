@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Helmet } from "react-helmet";
 import { InvoiceRevenueChart } from "@/components/invoices/reports/InvoiceRevenueChart";
@@ -12,36 +12,61 @@ import { ExpenseBreakdownCards } from "@/components/dashboard/financial/ExpenseB
 import { useClassFinancialData } from "@/hooks/useClassFinancialData";
 import { useTerm } from "@/context/TermContext";
 import { useInvoices } from "@/hooks/useInvoices";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function FinancialDashboard() {
   const [timeframe, setTimeframe] = useState<'monthly' | 'quarterly' | 'yearly'>('monthly');
   const { currentBranch } = useBranch();
-  const { termDateRange } = useTerm();
+  const { termDateRange, termData } = useTerm();
   const { invoices } = useInvoices();
+  const queryClient = useQueryClient();
+  
+  // Use effect to refresh data when term changes
+  useEffect(() => {
+    if (termData?.id) {
+      console.log(`FinancialDashboard: Term data changed, refreshing financial data for term ${termData.term_number}`);
+      queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+    }
+  }, [termData?.id, queryClient]);
   
   // Get all active invoices
   const activeInvoices = invoices.filter(inv => 
     inv.status === 'sent' || inv.status === 'paid' || inv.status === 'overdue'
   );
   
+  // Filter invoices by term date range if available
+  const termFilteredInvoices = termDateRange 
+    ? activeInvoices.filter(inv => {
+        const invDate = new Date(inv.issued_date);
+        const startDate = new Date(termDateRange.startDate);
+        const endDate = new Date(termDateRange.endDate);
+        return invDate >= startDate && invDate <= endDate;
+      })
+    : activeInvoices;
+  
   // Calculate revenue metrics directly from invoices
-  const totalRevenue = activeInvoices.reduce((sum, inv) => sum + inv.total, 0);
-  const collectedRevenue = activeInvoices
+  const totalRevenue = termFilteredInvoices.reduce((sum, inv) => sum + inv.total, 0);
+  const collectedRevenue = termFilteredInvoices
     .filter(inv => inv.status === 'paid')
     .reduce((sum, inv) => sum + inv.total, 0);
-  const pendingRevenue = activeInvoices
+  const pendingRevenue = termFilteredInvoices
     .filter(inv => inv.status === 'sent')
     .reduce((sum, inv) => sum + inv.total, 0);
-  const overdueRevenue = activeInvoices
+  const overdueRevenue = termFilteredInvoices
     .filter(inv => inv.status === 'overdue')
     .reduce((sum, inv) => sum + inv.total, 0);
   
-  // Use the class financial data hook to get accurate financial information
+  // Format date range for query params if available
+  const fromDate = termDateRange?.startDate ? new Date(termDateRange.startDate).toISOString() : undefined;
+  const toDate = termDateRange?.endDate ? new Date(termDateRange.endDate).toISOString() : undefined;
+  
+  // Use the class financial data hook to get accurate financial information for the current term
   const { 
     classFinances, 
     isLoading, 
     totalRevenue: hookTotalRevenue
-  } = useClassFinancialData(currentBranch?.id);
+  } = useClassFinancialData(currentBranch?.id, fromDate, toDate);
   
   // Calculate all financial metrics from class finances
   const totalAdmin = classFinances.reduce((sum, item) => sum + item.adminFee, 0);
@@ -61,8 +86,10 @@ export default function FinancialDashboard() {
     totalTrainer,
     totalFranchise,
     profit,
-    invoicesCount: activeInvoices.length,
-    hookTotalRevenue
+    invoicesCount: termFilteredInvoices.length,
+    hookTotalRevenue,
+    termDateRange,
+    currentTermNumber: termData?.term_number
   });
 
   // Financial metrics for the metrics cards
@@ -116,7 +143,7 @@ export default function FinancialDashboard() {
           {/* Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             <InvoiceRevenueChart 
-              invoices={activeInvoices}
+              invoices={termFilteredInvoices}
               timeframe={timeframe} 
               termDateRange={termDateRange}
             />

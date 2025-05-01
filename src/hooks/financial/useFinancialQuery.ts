@@ -120,10 +120,10 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
         throw invoiceItemsError;
       }
 
-      // Get invalid invoices count
+      // Get invalid invoices count - fix the query to include client in the select
       let invalidQuery = supabase
         .from('invoices')
-        .select('*', { count: 'exact' })
+        .select('id, client:client_id (branch_id)', { count: 'exact' })
         .eq('status', 'invalid')
         .eq('client.branch_id', branchId);
 
@@ -137,10 +137,10 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
         console.error("Error counting invalid invoices:", invalidError);
       }
 
-      // Get all invoices count
+      // Get all invoices count - fix the query to include client in the select
       let countQuery = supabase
         .from('invoices')
-        .select('*', { count: 'exact' })
+        .select('id, client:client_id (branch_id)', { count: 'exact' })
         .eq('client.branch_id', branchId)
         .in('status', ['sent', 'paid', 'overdue']);
 
