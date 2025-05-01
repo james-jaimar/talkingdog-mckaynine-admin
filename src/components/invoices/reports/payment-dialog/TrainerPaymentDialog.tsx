@@ -113,7 +113,7 @@ export function TrainerPaymentDialog({
   // For Sheet (mobile), we need different positioning
   const contentProps = isMobile ? 
     { side: "bottom" as const, className: "h-[90%] pt-6" } : 
-    { className: "max-w-3xl max-h-[90vh] flex flex-col overflow-hidden" };
+    { className: "max-w-3xl h-[90vh] flex flex-col overflow-hidden" };
 
   // Calculate if all unpaid classes are selected
   const unpaidClassIds = classDetails.filter(c => !c.isPaid).map(c => c.scheduleId);
@@ -128,8 +128,8 @@ export function TrainerPaymentDialog({
           <DialogTitleComponent>Record Trainer Payment</DialogTitleComponent>
         </DialogHeaderComponent>
         
-        <ScrollArea className="flex-1 px-1">
-          <div className="space-y-6 py-4">
+        <ScrollArea className="flex-1 overflow-y-auto">
+          <div className="space-y-6 py-4 px-1">
             {isLoading ? (
               <LoadingState />
             ) : (

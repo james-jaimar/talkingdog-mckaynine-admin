@@ -88,6 +88,12 @@
 .drawer-content, .dialog-content {
   max-height: 90vh;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Fix for Safari and iOS overscroll behavior */
+.dialog-content, .drawer-content, [data-radix-scroll-area-viewport] {
+  overscroll-behavior: contain;
 }
 
 /* Improve touch feedback */
@@ -95,4 +101,13 @@
   button:active, a:active {
     opacity: 0.7;
   }
+}
+
+/* Fix for iOS momentum scrolling */
+.overflow-y-auto,
+.overflow-auto,
+[data-radix-scroll-area-viewport],
+.DialogContent,
+.SheetContent {
+  -webkit-overflow-scrolling: touch;
 }
