@@ -78,11 +78,11 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
     id: trainer.id,
     trainerName: trainer.trainerName,
     totalEarned: trainer.totalEarned,
-    paid: trainer.paidAmount,
-    pending: trainer.pendingAmount,
+    paid: trainer.paid,
+    pending: trainer.pending,
     potentialEarnings: trainer.potentialEarnings,
     classesCount: trainer.classesCount,
-    clients: trainer.clientsCount,
+    clients: trainer.clients,
     lastPaymentDate: trainer.lastPaymentDate,
     classDetails: trainer.classDetails
   }));
