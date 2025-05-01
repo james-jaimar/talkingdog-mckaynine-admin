@@ -74,7 +74,8 @@ export default {
                     '700': 'hsl(var(--mckaynine-700))',
                     '800': 'hsl(var(--mckaynine-800))',
                     '900': 'hsl(var(--mckaynine-900))',
-                }
+                },
+                'alternate-row': '#c5e7f9'
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
