@@ -1,105 +1,182 @@
 
-import { TrainerPaymentData, TrainerClassDetail, Schedule, Booking, InvoiceItem } from "../types";
-import { calculateClassRevenue } from "./calculateTrainerFees";
+import { Schedule, Booking, InvoiceItem, TrainerPaymentData, TrainerClassDetail } from "../types";
+import { supabase } from "@/integrations/supabase/client";
 
-export function formatTrainerPaymentData(
-  trainer: { id: string; first_name: string; last_name: string },
-  allSchedules: Schedule[],
-  bookings: Booking[] = [],
-  invoiceItems: InvoiceItem[] = [],
-  trainerPayments: any[] = []
-): TrainerPaymentData {
-  const allScheduleIds = allSchedules.map(s => s.id);
-  const uniqueClientIds = new Set(bookings?.map(b => b.client_id).filter(Boolean));
+// Format trainer payment data, including client names where available
+export async function formatTrainerPaymentData(
+  trainer: any,
+  schedules: Schedule[],
+  bookings: Booking[],
+  invoiceItems: InvoiceItem[],
+  payments: any[] = []
+): Promise<TrainerPaymentData> {
+  // Extract client IDs from bookings to fetch their names
+  const clientIds = new Set<string>();
+  bookings.forEach(booking => {
+    if (booking.client_id) {
+      clientIds.add(booking.client_id);
+    }
+  });
 
-  // Calculate totals from actual payments
-  const totalPaid = trainerPayments
-    .filter(payment => payment.status === 'paid')
-    .reduce((sum, payment) => sum + (payment.amount || 0), 0);
-
-  const totalPending = trainerPayments
-    .filter(payment => payment.status === 'pending')
-    .reduce((sum, payment) => sum + (payment.amount || 0), 0);
-    
-  // Determine if there are any actual payments in the system
-  const hasActualPayments = trainerPayments && trainerPayments.length > 0;
-
-  // Find last payment date from actual payments
-  let lastPaymentDate: string | undefined;
-  const paidPayments = trainerPayments.filter(payment => payment.status === 'paid');
-  if (paidPayments.length > 0) {
-    const paymentDates = paidPayments
-      .map(payment => payment.payment_date)
-      .filter(Boolean) as string[];
-    if (paymentDates.length > 0) {
-      lastPaymentDate = new Date(Math.max(...paymentDates.map(d => new Date(d).getTime()))).toISOString();
+  // Fetch client names for the client IDs in bookings
+  const clientNamesMap = new Map<string, string>();
+  if (clientIds.size > 0) {
+    const { data: clients, error } = await supabase
+      .from('clients')
+      .select('id, first_name, last_name')
+      .in('id', Array.from(clientIds));
+      
+    if (!error && clients) {
+      clients.forEach(client => {
+        const fullName = `${client.first_name} ${client.last_name || ''}`.trim();
+        clientNamesMap.set(client.id, fullName);
+      });
     }
   }
 
-  // Group bookings by schedule ID for faster lookup
-  const bookingsBySchedule: Record<string, Booking[]> = {};
-  bookings.forEach(booking => {
-    const scheduleId = booking.class_schedule_id;
-    if (!bookingsBySchedule[scheduleId]) {
-      bookingsBySchedule[scheduleId] = [];
+  // Calculate potential earnings
+  let potentialEarnings = 0;
+  let actualEarnings = 0;
+  let paidAmount = 0;
+  const uniqueScheduleIds = new Set<string>();
+  
+  const classDetails: TrainerClassDetail[] = schedules.map(schedule => {
+    uniqueScheduleIds.add(schedule.id);
+    
+    // Find bookings for this schedule
+    const scheduleBookings = bookings.filter(b => b.class_schedule_id === schedule.id);
+    const bookingsCount = scheduleBookings.length;
+    
+    // Find invoice items for these bookings
+    const bookingIds = scheduleBookings.map(b => b.id);
+    const relevantInvoiceItems = invoiceItems.filter(item => 
+      item.booking_id && bookingIds.includes(item.booking_id)
+    );
+    
+    // Calculate revenue based on invoice items
+    let revenue = 0;
+    let potentialRevenue = 0;
+    let isPaid = false;
+    
+    // Create detailed booking information including client names
+    const bookingsDetails = scheduleBookings.map(booking => {
+      const bookingItems = relevantInvoiceItems.filter(item => item.booking_id === booking.id);
+      const bookingRevenue = bookingItems.reduce((sum, item) => sum + item.amount, 0);
+      
+      // Calculate trainer's commission for this booking
+      let commissionAmount = 0;
+      if (schedule.classes) {
+        if (schedule.classes.trainer_fee_type === 'percentage') {
+          commissionAmount = bookingRevenue * (schedule.classes.trainer_fee_value / 100);
+        } else {
+          commissionAmount = schedule.classes.trainer_fee_value;
+        }
+      }
+      
+      // Get client name from map or use fallback
+      const clientName = booking.client_id ? clientNamesMap.get(booking.client_id) : undefined;
+      
+      return {
+        bookingId: booking.id,
+        handlerName: booking.clients?.first_name 
+          ? `${booking.clients.first_name} ${booking.clients.last_name || ''}`.trim()
+          : clientName || 'Unnamed Client',
+        clientId: booking.client_id || '',
+        clientName: clientName || undefined,
+        commissionAmount
+      };
+    });
+    
+    // Calculate totals from invoice items
+    relevantInvoiceItems.forEach(item => {
+      const itemAmount = item.amount || 0;
+      
+      // Add to potential revenue
+      potentialRevenue += itemAmount;
+      
+      // Only count as actual revenue if the invoice is paid
+      if (item.invoices?.status === 'paid') {
+        revenue += itemAmount;
+        isPaid = true;
+      }
+    });
+    
+    // Calculate trainer's commission for this class
+    let classCommission = 0;
+    if (schedule.classes) {
+      if (schedule.classes.trainer_fee_type === 'percentage') {
+        classCommission = potentialRevenue * (schedule.classes.trainer_fee_value / 100);
+      } else if (bookingsCount > 0) {
+        classCommission = schedule.classes.trainer_fee_value * bookingsCount;
+      }
     }
-    bookingsBySchedule[scheduleId].push(booking);
-  });
-
-  // Calculate potential earnings and class details
-  let totalPotentialEarnings = 0;
-
-  const classDetails: TrainerClassDetail[] = allSchedules.map(schedule => {
-    const scheduleBookings = bookingsBySchedule[schedule.id] || [];
+    
+    // Add to total potential earnings
+    potentialEarnings += classCommission;
+    
+    // For paid invoices, add to actual and paid earnings
+    if (isPaid) {
+      actualEarnings += classCommission;
+      paidAmount += classCommission;
+    }
+    
+    // Create schedule date for sorting
     const scheduleDate = new Date(schedule.start_time);
     
-    // Get all invoice items for this schedule's bookings
-    const scheduleInvoiceItems: InvoiceItem[] = [];
-    
-    scheduleBookings.forEach(booking => {
-      const items = invoiceItems.filter(item => item.booking_id === booking.id);
-      scheduleInvoiceItems.push(...items);
-    });
-
-    // Calculate revenue for this class based on NET amounts (using invoice totals)
-    const revenueDetails = calculateClassRevenue(
-      scheduleBookings, 
-      schedule, 
-      scheduleInvoiceItems
-    );
-
-    // Add to total potential earnings
-    totalPotentialEarnings += revenueDetails.potentialRevenue;
-
-    // A class is only considered paid if:
-    // 1. We have actual paid trainer payments in the system
-    // 2. The revenue calculation determined that this specific class has been paid
-    const classIsPaid = totalPaid > 0 && revenueDetails.isPaid;
-
     return {
       scheduleId: schedule.id,
       className: schedule.classes?.name || 'Unknown Class',
       classDate: schedule.start_time,
+      revenue,
+      potentialRevenue,
+      bookings: bookingsCount,
+      isPaid,
       scheduleDate,
-      revenue: revenueDetails.revenue,
-      potentialRevenue: revenueDetails.potentialRevenue,
-      bookings: scheduleBookings.length,
-      isPaid: classIsPaid // Only true if we have actual payments and this class is paid
+      bookingsDetails
     };
   });
-
+  
+  // Sort class details by date (most recent first)
+  classDetails.sort((a, b) => b.scheduleDate.getTime() - a.scheduleDate.getTime());
+  
+  // Check if there are any trainer payments recorded in the system
+  const hasRecordedPayments = payments.length > 0;
+  
+  // If we have recorded payments, use those instead of calculated values
+  if (hasRecordedPayments) {
+    paidAmount = payments.reduce((sum, payment) => {
+      return payment.status === 'paid' ? sum + payment.amount : sum;
+    }, 0);
+  }
+  
+  // Get last payment date
+  let lastPaymentDate;
+  if (payments.length > 0) {
+    const paidPayments = payments.filter(p => p.status === 'paid' && p.payment_date);
+    if (paidPayments.length > 0) {
+      lastPaymentDate = new Date(
+        Math.max(...paidPayments.map(p => new Date(p.payment_date).getTime()))
+      ).toISOString();
+    }
+  }
+  
+  // Count unique clients
+  const uniqueClients = new Set<string>();
+  bookings.forEach(booking => {
+    if (booking.client_id) uniqueClients.add(booking.client_id);
+  });
+  
   return {
     id: trainer.id,
-    trainerName: `${trainer.first_name} ${trainer.last_name}`,
-    totalEarned: hasActualPayments ? totalPaid : totalPotentialEarnings, // Show actual earnings if we have payments, otherwise potential
-    paid: totalPaid,
-    // Only show pending if we have actual payments, otherwise show potential earnings
-    pending: hasActualPayments ? totalPending : totalPotentialEarnings,
-    potentialEarnings: totalPotentialEarnings,
-    classesCount: allSchedules.length,
-    clients: uniqueClientIds.size,
+    trainerName: `${trainer.first_name} ${trainer.last_name || ''}`.trim(),
+    totalEarned: actualEarnings,
+    paid: paidAmount,
+    pending: Math.max(0, actualEarnings - paidAmount),
+    potentialEarnings,
+    classesCount: schedules.length,
+    clients: uniqueClients.size,
     lastPaymentDate,
-    scheduleIds: allScheduleIds,
-    classDetails: classDetails.sort((a, b) => a.scheduleDate.getTime() - b.scheduleDate.getTime())
+    scheduleIds: Array.from(uniqueScheduleIds),
+    classDetails
   };
 }

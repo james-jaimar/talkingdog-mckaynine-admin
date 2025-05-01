@@ -1,4 +1,3 @@
-
 import { Database } from "@/integrations/supabase/types";
 
 export interface TrainerClassDetail {
@@ -10,6 +9,13 @@ export interface TrainerClassDetail {
   bookings: number;
   isPaid: boolean;
   scheduleDate: Date;
+  bookingsDetails?: Array<{
+    bookingId: string;
+    handlerName: string;
+    clientId: string;
+    clientName?: string;
+    commissionAmount: number;
+  }>;
 }
 
 export interface TrainerPaymentData {
