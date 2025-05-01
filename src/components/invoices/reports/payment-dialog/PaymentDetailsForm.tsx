@@ -7,6 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Button } from "@/components/ui/button";
+import { PaymentFileUploader } from "./PaymentFileUploader";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const paymentDetailsSchema = z.object({
   paymentMethod: z.enum(['bank_transfer', 'cash', 'check', 'other'], {
@@ -15,6 +18,8 @@ const paymentDetailsSchema = z.object({
   transactionId: z.string().optional(),
   paymentNotes: z.string().optional(),
   sendEmail: z.boolean().default(false),
+  documentUrl: z.string().optional(),
+  documentName: z.string().optional(),
 });
 
 export type PaymentDetailsFormValues = z.infer<typeof paymentDetailsSchema>;
@@ -23,18 +28,31 @@ interface PaymentDetailsFormProps {
   onSubmit: (data: PaymentDetailsFormValues) => void;
   isPending: boolean;
   trainerEmail?: string;
+  defaultValues?: Partial<PaymentDetailsFormValues>;
 }
 
-export function PaymentDetailsForm({ onSubmit, isPending, trainerEmail }: PaymentDetailsFormProps) {
+export function PaymentDetailsForm({ 
+  onSubmit, 
+  isPending, 
+  trainerEmail,
+  defaultValues 
+}: PaymentDetailsFormProps) {
   const [showEmailWarning, setShowEmailWarning] = useState(false);
+  const [paymentDocument, setPaymentDocument] = useState<{ url: string; name: string } | null>(
+    defaultValues?.documentUrl && defaultValues?.documentName 
+      ? { url: defaultValues.documentUrl, name: defaultValues.documentName }
+      : null
+  );
   
   const form = useForm<PaymentDetailsFormValues>({
     resolver: zodResolver(paymentDetailsSchema),
     defaultValues: {
-      paymentMethod: 'bank_transfer',
-      transactionId: '',
-      paymentNotes: '',
-      sendEmail: false,
+      paymentMethod: defaultValues?.paymentMethod || 'bank_transfer',
+      transactionId: defaultValues?.transactionId || '',
+      paymentNotes: defaultValues?.paymentNotes || '',
+      sendEmail: defaultValues?.sendEmail || false,
+      documentUrl: defaultValues?.documentUrl || '',
+      documentName: defaultValues?.documentName || '',
     },
   });
 
@@ -43,7 +61,27 @@ export function PaymentDetailsForm({ onSubmit, isPending, trainerEmail }: Paymen
       setShowEmailWarning(true);
       return;
     }
-    onSubmit(data);
+    
+    // Include the document information in the form submission
+    const formData = {
+      ...data,
+      documentUrl: paymentDocument?.url || '',
+      documentName: paymentDocument?.name || '',
+    };
+    
+    onSubmit(formData);
+  };
+
+  const handleFileUpload = (fileUrl: string, fileName: string) => {
+    setPaymentDocument({ url: fileUrl, name: fileName });
+    form.setValue('documentUrl', fileUrl);
+    form.setValue('documentName', fileName);
+  };
+
+  const handleFileRemove = () => {
+    setPaymentDocument(null);
+    form.setValue('documentUrl', '');
+    form.setValue('documentName', '');
   };
 
   return (
@@ -93,6 +131,28 @@ export function PaymentDetailsForm({ onSubmit, isPending, trainerEmail }: Paymen
         
         <FormField
           control={form.control}
+          name="documentUrl"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Payment Document (optional)</FormLabel>
+              <FormControl>
+                <PaymentFileUploader
+                  onFileUpload={handleFileUpload}
+                  existingFile={paymentDocument}
+                  onFileRemove={handleFileRemove}
+                  disabled={isPending}
+                />
+              </FormControl>
+              <FormMessage />
+              <FormDescription>
+                Upload a PDF document as proof of payment (max 5MB)
+              </FormDescription>
+            </FormItem>
+          )}
+        />
+        
+        <FormField
+          control={form.control}
           name="paymentNotes"
           render={({ field }) => (
             <FormItem>
@@ -116,12 +176,11 @@ export function PaymentDetailsForm({ onSubmit, isPending, trainerEmail }: Paymen
           render={({ field }) => (
             <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 mt-4">
               <FormControl>
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={field.value}
-                  onChange={field.onChange}
+                  onCheckedChange={field.onChange}
                   disabled={isPending || !trainerEmail}
-                  className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                  className="h-4 w-4"
                 />
               </FormControl>
               <div className="space-y-1 leading-none">
@@ -140,6 +199,12 @@ export function PaymentDetailsForm({ onSubmit, isPending, trainerEmail }: Paymen
             </FormItem>
           )}
         />
+
+        <div className="flex justify-end pt-4">
+          <Button type="submit" disabled={isPending}>
+            {isPending ? "Processing..." : "Record Payment"}
+          </Button>
+        </div>
       </form>
     </Form>
   );

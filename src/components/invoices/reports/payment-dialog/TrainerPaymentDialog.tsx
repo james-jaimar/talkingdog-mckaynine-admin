@@ -1,245 +1,161 @@
 
-import { useState } from "react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { useMarkTrainerPaymentsPaid } from "@/hooks/useMarkTrainerPaymentsPaid";
-import { PaymentDialogHeader } from "./DialogHeader";
-import { PaymentDialogFooter } from "./DialogFooter";
+import { useState, useEffect } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { DialogHeader as PaymentDialogHeader } from "./DialogHeader";
 import { ClassTable } from "./ClassTable";
+import { PaymentTracker } from "./PaymentTracker";
+import { PaymentDetailsPanel } from "./PaymentDetailsPanel";
+import { DialogFooter } from "./DialogFooter";
 import { LoadingState } from "./LoadingState";
 import { useTrainerPaymentData } from "./useTrainerPaymentData";
-import { TrainerPaymentDialogProps } from "./types";
-import { PaymentDetailsForm, PaymentDetailsFormValues } from "./PaymentDetailsForm";
-import { PaymentTracker } from "./PaymentTracker";
-import { generateTrainerPaymentPDF } from "../pdf/TrainerPaymentPDF";
-import { sendTrainerPaymentEmail } from "@/lib/emails/trainerPaymentEmail";
-import { PaymentDetailsPanel } from "./PaymentDetailsPanel";
-import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
+import { useMarkTrainerPaymentsPaid } from "@/hooks/useMarkTrainerPaymentsPaid";
 import { toast } from "sonner";
+import { useIsMobile } from "@/hooks/useIsMobile";
+import { PaymentDetailsForm, PaymentDetailsFormValues } from "./PaymentDetailsForm";
+
+interface TrainerPaymentDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  trainerId: string;
+  dateRange?: { from: Date; to: Date };
+  branchId?: string;
+  scheduleIds?: string[];
+}
 
 export function TrainerPaymentDialog({
   open,
   onOpenChange,
   trainerId,
-  branchId,
   dateRange,
-  scheduleIds,
+  branchId,
+  scheduleIds = []
 }: TrainerPaymentDialogProps) {
-  const { 
-    loading, 
-    trainerName,
-    trainerEmail, 
-    classDetails, 
-    selectedClasses, 
-    toggleSelectAll, 
-    toggleClass 
-  } = useTrainerPaymentData(open, trainerId, branchId, dateRange);
+  const [selectedClassIds, setSelectedClassIds] = useState<string[]>(scheduleIds || []);
+  const isMobile = useIsMobile();
 
-  const [processStep, setProcessStep] = useState<'select' | 'details' | 'processing'>('select');
-  const [paymentStep, setPaymentStep] = useState<'processing' | 'pdf' | 'email' | 'database' | 'complete'>('processing');
-  const [paymentDetails, setPaymentDetails] = useState<PaymentDetailsFormValues | null>(null);
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
-  
+  // Reset selected classes when the dialog opens with new scheduleIds
+  useEffect(() => {
+    if (open && scheduleIds.length > 0) {
+      setSelectedClassIds(scheduleIds);
+    }
+  }, [open, scheduleIds]);
+
+  const { data, isLoading, error, trainerData } = useTrainerPaymentData(
+    trainerId, 
+    branchId, 
+    selectedClassIds, 
+    dateRange
+  );
+
   const markAsPaid = useMarkTrainerPaymentsPaid();
-  
-  // Calculate if all unpaid classes are selected
-  const unpaidClasses = classDetails.filter(c => !c.isPaid);
-  const allUnpaidSelected = 
-    selectedClasses.length > 0 && 
-    selectedClasses.length === unpaidClasses.length;
-  const hasUnpaidClasses = unpaidClasses.length > 0;
 
-  const handleSelectPaymentDetails = async (details: PaymentDetailsFormValues) => {
-    setPaymentDetails(details);
-    setProcessStep('processing');
-    await processPayment(details);
-  };
-  
-  const handleMarkAsPaid = () => {
-    if (selectedClasses.length === 0) return;
-    setProcessStep('details');
-  };
-  
-  const handleBackToSelection = () => {
-    setProcessStep('select');
-    setPaymentDetails(null);
-    setPdfUrl(null);
+  const handleToggleClass = (scheduleId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedClassIds(prev => [...prev, scheduleId]);
+    } else {
+      setSelectedClassIds(prev => prev.filter(id => id !== scheduleId));
+    }
   };
 
-  const processPayment = async (details: PaymentDetailsFormValues) => {
+  const handleSelectAll = (checked: boolean) => {
+    if (checked && data?.classes) {
+      setSelectedClassIds(data.classes.map(c => c.scheduleId));
+    } else {
+      setSelectedClassIds([]);
+    }
+  };
+
+  const handleSubmitPayment = async (paymentDetails: PaymentDetailsFormValues) => {
+    if (selectedClassIds.length === 0) {
+      toast.error("No classes selected for payment");
+      return;
+    }
+
     try {
-      setPaymentStep('processing');
-      
-      // Small delay to show processing step
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Generate PDF
-      setPaymentStep('pdf');
-      const pdf = await generateTrainerPaymentPDF({
-        trainerName,
-        trainerEmail: trainerEmail || 'No email provided',
-        classes: classDetails.filter(c => selectedClasses.includes(c.scheduleId)),
-        paymentDetails: details,
-        paymentDate: new Date().toISOString()
-      });
-      setPdfUrl(pdf);
-      
-      // Send email if requested
-      if (details.sendEmail && trainerEmail) {
-        setPaymentStep('email');
-        await sendTrainerPaymentEmail({
-          to: trainerEmail,
-          trainerName,
-          pdfAttachment: pdf,
-          amount: classDetails
-            .filter(c => selectedClasses.includes(c.scheduleId))
-            .reduce((sum, c) => sum + c.potentialRevenue, 0),
-          paymentDetails: details
-        });
-      }
-      
-      // Update database
-      setPaymentStep('database');
       await markAsPaid.mutateAsync({
         trainerId,
-        scheduleIds: selectedClasses,
-        paymentMethod: details.paymentMethod,
-        transactionId: details.transactionId || null,
-        notes: details.paymentNotes || null
+        scheduleIds: selectedClassIds,
+        paymentMethod: paymentDetails.paymentMethod,
+        transactionId: paymentDetails.transactionId,
+        notes: paymentDetails.paymentNotes,
+        sendEmail: paymentDetails.sendEmail,
+        documentUrl: paymentDetails.documentUrl,
+        documentName: paymentDetails.documentName
       });
       
-      // Complete
-      setPaymentStep('complete');
-      
-      // Wait a moment then close the dialog
-      setTimeout(() => {
-        onOpenChange(false);
-        toast.success("Payment completed and records updated");
-      }, 1500);
-      
+      toast.success("Payment recorded successfully");
+      onOpenChange(false);
     } catch (error) {
-      console.error("Error processing payment:", error);
-      toast.error("Error processing payment");
-      setProcessStep('details');
+      console.error("Payment error:", error);
+      toast.error("Failed to record payment");
     }
   };
 
-  // Determine content based on current step
-  const renderDialogContent = () => {
-    if (processStep === 'select') {
-      return (
-        <>
-          <PaymentDialogHeader
-            trainerName={trainerName}
-            toggleSelectAll={toggleSelectAll}
-            hasUnpaidClasses={hasUnpaidClasses}
-            allUnpaidSelected={allUnpaidSelected}
-          />
-          
-          {loading ? (
-            <LoadingState />
-          ) : (
-            <ClassTable 
-              classDetails={classDetails}
-              selectedClasses={selectedClasses}
-              toggleClass={toggleClass}
-            />
-          )}
-          
-          <PaymentDialogFooter
-            selectedClasses={selectedClasses}
-            classDetails={classDetails}
-            isPending={markAsPaid.isPending}
-            onCancel={() => onOpenChange(false)}
-            onMarkAsPaid={handleMarkAsPaid}
-          />
-        </>
-      );
-    } else if (processStep === 'details') {
-      return (
-        <>
-          <div className="mb-4">
-            <Button 
-              variant="ghost" 
-              onClick={handleBackToSelection} 
-              className="p-0 h-8"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to class selection
-            </Button>
-          </div>
-          
-          <h2 className="text-xl font-semibold mb-1">Payment Details</h2>
-          <p className="text-sm text-muted-foreground mb-4">
-            Enter payment information for {trainerName}
-          </p>
-          
-          <PaymentDetailsPanel 
-            classDetails={classDetails.filter(c => selectedClasses.includes(c.scheduleId))}
-          />
-          
-          <div className="mt-6">
-            <PaymentDetailsForm 
-              onSubmit={handleSelectPaymentDetails}
-              isPending={markAsPaid.isPending}
-              trainerEmail={trainerEmail}
-            />
-
-            <div className="flex justify-end mt-4">
-              <Button 
-                variant="outline" 
-                onClick={handleBackToSelection} 
-                className="mr-2"
-                disabled={markAsPaid.isPending}
-              >
-                Back
-              </Button>
-              <Button 
-                onClick={() => {
-                  const formValues = {
-                    paymentMethod: "bank_transfer",
-                    transactionId: "",
-                    paymentNotes: "",
-                    sendEmail: false
-                  } as PaymentDetailsFormValues;
-                  handleSelectPaymentDetails(formValues);
-                }}
-                disabled={markAsPaid.isPending}
-              >
-                Complete Payment
-              </Button>
-            </div>
-          </div>
-        </>
-      );
-    } else {
-      return (
-        <div className="flex flex-col items-center justify-center py-8">
-          <h2 className="text-xl font-semibold mb-6">Processing Payment</h2>
-          
-          <PaymentTracker 
-            step={paymentStep} 
-            sendEmail={paymentDetails?.sendEmail || false} 
-          />
-          
-          {paymentStep === 'complete' && (
-            <div className="text-center mt-4">
-              <p className="text-green-600 font-medium">Payment successfully processed!</p>
-              <p className="text-sm text-muted-foreground mt-2">
-                This dialog will close automatically...
-              </p>
-            </div>
-          )}
-        </div>
-      );
-    }
-  };
+  // Use Sheet component for mobile and Dialog for desktop
+  const DialogComponent = isMobile ? Sheet : Dialog;
+  const DialogContentComponent = isMobile ? SheetContent : DialogContent;
+  const DialogHeaderComponent = isMobile ? SheetHeader : DialogHeader;
+  const DialogTitleComponent = isMobile ? SheetTitle : DialogTitle;
+  
+  // For Sheet (mobile), we need different positioning
+  const contentProps = isMobile ? 
+    { side: "bottom" as const, className: "h-[90%] pt-6" } : 
+    { className: "max-w-3xl max-h-[90vh] flex flex-col overflow-hidden" };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
-        {renderDialogContent()}
-      </DialogContent>
-    </Dialog>
+    <DialogComponent open={open} onOpenChange={onOpenChange}>
+      <DialogContentComponent {...contentProps}>
+        <DialogHeaderComponent>
+          <DialogTitleComponent>Record Trainer Payment</DialogTitleComponent>
+        </DialogHeaderComponent>
+        
+        <ScrollArea className="flex-1 px-1">
+          <div className="space-y-6 py-4">
+            {isLoading ? (
+              <LoadingState />
+            ) : (
+              <>
+                <PaymentDialogHeader 
+                  trainerName={trainerData?.trainerName || "Trainer"} 
+                  totalAmount={data?.totalAmount || 0}
+                  classCount={selectedClassIds.length}
+                />
+                
+                {data?.classes && data.classes.length > 0 ? (
+                  <ClassTable 
+                    classes={data.classes}
+                    selectedClassIds={selectedClassIds}
+                    onToggleClass={handleToggleClass}
+                    onSelectAll={handleSelectAll}
+                  />
+                ) : (
+                  <div className="text-center py-4">
+                    <p className="text-muted-foreground">No classes found for this trainer</p>
+                  </div>
+                )}
+                
+                {selectedClassIds.length > 0 && (
+                  <>
+                    <PaymentTracker
+                      selectedCount={selectedClassIds.length}
+                      totalCount={data?.classes?.length || 0}
+                      amount={data?.selectedAmount || 0}
+                    />
+                    
+                    <PaymentDetailsForm 
+                      onSubmit={handleSubmitPayment} 
+                      isPending={markAsPaid.isPending}
+                      trainerEmail={trainerData?.email}
+                    />
+                  </>
+                )}
+              </>
+            )}
+          </div>
+        </ScrollArea>
+      </DialogContentComponent>
+    </DialogComponent>
   );
 }
