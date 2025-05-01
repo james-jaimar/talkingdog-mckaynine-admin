@@ -6,19 +6,23 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-interface DialogHeaderProps {
+interface PaymentDialogHeaderProps {
   trainerName: string;
-  toggleSelectAll: (checked: boolean) => void;
-  hasUnpaidClasses: boolean;
-  allUnpaidSelected: boolean;
+  totalAmount?: number;
+  classCount: number;
+  toggleSelectAll?: (checked: boolean) => void;
+  hasUnpaidClasses?: boolean;
+  allUnpaidSelected?: boolean;
 }
 
 export function PaymentDialogHeader({ 
   trainerName, 
-  toggleSelectAll, 
-  hasUnpaidClasses,
-  allUnpaidSelected
-}: DialogHeaderProps) {
+  totalAmount,
+  classCount,
+  toggleSelectAll,
+  hasUnpaidClasses = false,
+  allUnpaidSelected = false
+}: PaymentDialogHeaderProps) {
   return (
     <>
       <DialogHeader>
@@ -28,18 +32,29 @@ export function PaymentDialogHeader({
         </DialogDescription>
       </DialogHeader>
       
-      {hasUnpaidClasses && (
-        <div className="flex items-center gap-2 mb-2">
-          <Checkbox 
-            id="select-all" 
-            checked={allUnpaidSelected}
-            onCheckedChange={toggleSelectAll}
-          />
-          <label htmlFor="select-all" className="text-sm font-medium">
-            Select All Unpaid Classes
-          </label>
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <p className="text-sm text-muted-foreground">
+            Selected: <span className="font-medium">{classCount} classes</span>
+            {totalAmount !== undefined && (
+              <span className="ml-2">| Total amount: <span className="font-medium">${totalAmount.toFixed(2)}</span></span>
+            )}
+          </p>
         </div>
-      )}
+        
+        {hasUnpaidClasses && toggleSelectAll && (
+          <div className="flex items-center gap-2">
+            <Checkbox 
+              id="select-all" 
+              checked={allUnpaidSelected}
+              onCheckedChange={toggleSelectAll}
+            />
+            <label htmlFor="select-all" className="text-sm font-medium">
+              Select All Unpaid
+            </label>
+          </div>
+        )}
+      </div>
     </>
   );
 }

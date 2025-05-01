@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,7 +28,7 @@ export function useTrainerPaymentData(
   }, [open, trainerId, branchId]);
 
   const fetchTrainerData = async () => {
-    if (!trainerId || !branchId) return;
+    if (!trainerId) return;
     
     setLoading(true);
     try {
@@ -43,7 +44,7 @@ export function useTrainerPaymentData(
         setTrainerEmail(trainerData.email);
       }
 
-      // Get the trainer payments data from the query cache
+      // Get the trainer payments data from the query cache if available
       const cachedData = queryClient.getQueryData(['trainer-payments', branchId, dateRange]) as any[];
       
       if (cachedData) {
@@ -54,8 +55,8 @@ export function useTrainerPaymentData(
           // Pre-select unpaid classes
           setSelectedClasses(
             trainerData.classDetails
-              .filter(c => !c.isPaid)
-              .map(c => c.scheduleId)
+              .filter((c: TrainerClassDetail) => !c.isPaid)
+              .map((c: TrainerClassDetail) => c.scheduleId)
           );
           setLoading(false);
           return;
@@ -96,10 +97,7 @@ export function useTrainerPaymentData(
             )
           )
         `)
-        .eq('trainer_id', trainerId)
-        .gte('start_time', dateRange?.from.toISOString())
-        .lte('start_time', dateRange?.to.toISOString())
-        .order('start_time');
+        .eq('trainer_id', trainerId);
 
       if (!schedules || schedules.length === 0) {
         setClassDetails([]);

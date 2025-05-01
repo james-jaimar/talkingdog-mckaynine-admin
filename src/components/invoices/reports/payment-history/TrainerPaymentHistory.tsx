@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useIsMobile } from "@/hooks/useIsMobile";
+import { toast } from "sonner";
 
 interface TrainerPayment {
   id: string;
@@ -37,56 +38,71 @@ export function TrainerPaymentHistory({ limit = 5, showViewAll = false }: Traine
   const [viewAll, setViewAll] = useState(!showViewAll);
   const isMobile = useIsMobile();
   
-  const { data: payments, isLoading } = useQuery({
+  const { data: payments, isLoading, error } = useQuery({
     queryKey: ['trainer-payment-history', limit, viewAll],
     queryFn: async () => {
-      // Get recent payments with trainer information
-      const query = supabase
-        .from('trainer_payments')
-        .select(`
-          id,
-          trainer_id,
-          payment_date,
-          payment_method,
-          transaction_id,
-          notes,
-          document_url,
-          document_name,
-          amount,
-          trainers (
-            first_name,
-            last_name
-          )
-        `)
-        .eq('status', 'paid')
-        .order('payment_date', { ascending: false });
-      
-      if (!viewAll) {
-        query.limit(limit);
-      }
-      
-      const { data, error } = await query;
-      
-      if (error) {
-        console.error("Error fetching trainer payment history:", error);
+      try {
+        // Get recent payments with trainer information
+        const query = supabase
+          .from('trainer_payments')
+          .select(`
+            id,
+            trainer_id,
+            payment_date,
+            payment_method,
+            transaction_id,
+            notes,
+            document_url,
+            document_name,
+            amount,
+            trainers (
+              first_name,
+              last_name
+            )
+          `)
+          .eq('status', 'paid')
+          .order('payment_date', { ascending: false });
+        
+        if (!viewAll) {
+          query.limit(limit);
+        }
+        
+        const { data, error } = await query;
+        
+        if (error) {
+          // Log the specific error for debugging
+          console.error("Error fetching trainer payment history:", error);
+          throw error;
+        }
+        
+        if (!data) {
+          return [];
+        }
+        
+        // Format the data
+        return data.map(payment => ({
+          id: payment.id,
+          trainer_id: payment.trainer_id,
+          trainer_name: payment.trainers ? 
+            `${payment.trainers.first_name} ${payment.trainers.last_name}` : 
+            "Unknown",
+          payment_date: payment.payment_date,
+          amount: payment.amount || 0,
+          payment_method: payment.payment_method,
+          transaction_id: payment.transaction_id,
+          notes: payment.notes,
+          document_url: payment.document_url,
+          document_name: payment.document_name
+        }));
+      } catch (error) {
+        // Handle the column not existing error gracefully
+        if ((error as any)?.message?.includes("column 'document_url' does not exist")) {
+          console.error("The document_url column doesn't exist yet. You need to run the SQL migration first.");
+          toast.error("Payment document feature requires database migration");
+          return [];
+        }
         throw error;
       }
-      
-      // Format the data
-      return data.map(payment => ({
-        id: payment.id,
-        trainer_id: payment.trainer_id,
-        trainer_name: payment.trainers ? 
-          `${payment.trainers.first_name} ${payment.trainers.last_name}` : 
-          "Unknown",
-        payment_date: payment.payment_date,
-        amount: payment.amount || 0,
-        payment_method: payment.payment_method,
-        transaction_id: payment.transaction_id,
-        notes: payment.notes,
-        document_url: payment.document_url,
-        document_name: payment.document_name
-      }));
     }
   });
 
@@ -104,6 +120,25 @@ export function TrainerPaymentHistory({ limit = 5, showViewAll = false }: Traine
       default: return method;
     }
   };
+
+  // If there's an error with document_url column, we should inform the user
+  if (error && (error as any)?.message?.includes("column 'document_url' does not exist")) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Trainer Payments</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-4">
+            <p className="text-amber-600 mb-2">Database migration required</p>
+            <p className="text-muted-foreground">
+              The payment document feature requires a database update. Please run the SQL migration first.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <>

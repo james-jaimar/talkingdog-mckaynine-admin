@@ -3,13 +3,12 @@ import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { DialogHeader as PaymentDialogHeader } from "./DialogHeader";
+import { PaymentDialogHeader } from "./DialogHeader";
 import { ClassTable } from "./ClassTable";
 import { PaymentTracker } from "./PaymentTracker";
 import { PaymentDetailsPanel } from "./PaymentDetailsPanel";
 import { DialogFooter } from "./DialogFooter";
 import { LoadingState } from "./LoadingState";
-import { useTrainerPaymentData } from "./useTrainerPaymentData";
 import { useMarkTrainerPaymentsPaid } from "@/hooks/useMarkTrainerPaymentsPaid";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/useIsMobile";
@@ -42,14 +41,23 @@ export function TrainerPaymentDialog({
     }
   }, [open, scheduleIds]);
 
-  const { data, isLoading, error, trainerData } = useTrainerPaymentData(
-    trainerId, 
-    branchId, 
-    selectedClassIds, 
-    dateRange
-  );
+  // Use the custom hook to fetch trainer payment data
+  const { 
+    loading: isLoading, 
+    trainerName, 
+    trainerEmail,
+    classDetails,
+    selectedClasses,
+    toggleClass,
+    toggleSelectAll
+  } = useTrainerPaymentData(open, trainerId, branchId, dateRange);
 
   const markAsPaid = useMarkTrainerPaymentsPaid();
+
+  // Calculate total amount from selected classes
+  const selectedAmount = classDetails
+    .filter(c => selectedClassIds.includes(c.scheduleId))
+    .reduce((sum, c) => sum + c.potentialRevenue, 0);
 
   const handleToggleClass = (scheduleId: string, checked: boolean) => {
     if (checked) {
@@ -60,8 +68,11 @@ export function TrainerPaymentDialog({
   };
 
   const handleSelectAll = (checked: boolean) => {
-    if (checked && data?.classes) {
-      setSelectedClassIds(data.classes.map(c => c.scheduleId));
+    if (checked && classDetails) {
+      const unpaidScheduleIds = classDetails
+        .filter(c => !c.isPaid)
+        .map(c => c.scheduleId);
+      setSelectedClassIds(unpaidScheduleIds);
     } else {
       setSelectedClassIds([]);
     }
@@ -104,6 +115,12 @@ export function TrainerPaymentDialog({
     { side: "bottom" as const, className: "h-[90%] pt-6" } : 
     { className: "max-w-3xl max-h-[90vh] flex flex-col overflow-hidden" };
 
+  // Calculate if all unpaid classes are selected
+  const unpaidClassIds = classDetails.filter(c => !c.isPaid).map(c => c.scheduleId);
+  const hasUnpaidClasses = unpaidClassIds.length > 0;
+  const allUnpaidSelected = unpaidClassIds.length > 0 && 
+    unpaidClassIds.every(id => selectedClassIds.includes(id));
+
   return (
     <DialogComponent open={open} onOpenChange={onOpenChange}>
       <DialogContentComponent {...contentProps}>
@@ -118,17 +135,19 @@ export function TrainerPaymentDialog({
             ) : (
               <>
                 <PaymentDialogHeader 
-                  trainerName={trainerData?.trainerName || "Trainer"} 
-                  totalAmount={data?.totalAmount || 0}
+                  trainerName={trainerName || "Trainer"} 
+                  totalAmount={selectedAmount}
                   classCount={selectedClassIds.length}
+                  toggleSelectAll={handleSelectAll}
+                  hasUnpaidClasses={hasUnpaidClasses}
+                  allUnpaidSelected={allUnpaidSelected}
                 />
                 
-                {data?.classes && data.classes.length > 0 ? (
+                {classDetails && classDetails.length > 0 ? (
                   <ClassTable 
-                    classes={data.classes}
-                    selectedClassIds={selectedClassIds}
-                    onToggleClass={handleToggleClass}
-                    onSelectAll={handleSelectAll}
+                    classDetails={classDetails}
+                    selectedClasses={selectedClassIds}
+                    toggleClass={handleToggleClass}
                   />
                 ) : (
                   <div className="text-center py-4">
@@ -140,14 +159,14 @@ export function TrainerPaymentDialog({
                   <>
                     <PaymentTracker
                       selectedCount={selectedClassIds.length}
-                      totalCount={data?.classes?.length || 0}
-                      amount={data?.selectedAmount || 0}
+                      totalCount={classDetails?.length || 0}
+                      amount={selectedAmount}
                     />
                     
                     <PaymentDetailsForm 
                       onSubmit={handleSubmitPayment} 
                       isPending={markAsPaid.isPending}
-                      trainerEmail={trainerData?.email}
+                      trainerEmail={trainerEmail}
                     />
                   </>
                 )}
@@ -159,3 +178,6 @@ export function TrainerPaymentDialog({
     </DialogComponent>
   );
 }
+
+// Import the hook at the end to avoid circular dependencies
+import { useTrainerPaymentData } from "./useTrainerPaymentData";
