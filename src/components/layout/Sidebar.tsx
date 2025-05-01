@@ -57,7 +57,6 @@ export function Sidebar() {
             <SidebarLink to="/schedules" icon={<Calendar className="h-5 w-5 mr-2" />} label="Schedules" />
             <SidebarLink to="/handlers" icon={<Users className="h-5 w-5 mr-2" />} label="Handlers" />
             <SidebarLink to="/clients" icon={<Users className="h-5 w-5 mr-2" />} label="Clients" />
-            <SidebarLink to="/dogs" icon={<Dog className="h-5 w-5 mr-2" />} label="Dogs" />
             <SidebarLink to="/invoices" icon={<FileStack className="h-5 w-5 mr-2" />} label="Invoices" />
           </nav>
 
@@ -71,9 +70,6 @@ export function Sidebar() {
                 <SidebarLink to="/branches" icon={<Building2 className="h-5 w-5 mr-2" />} label="Branches" />
                 <SidebarLink to="/users" icon={<User className="h-5 w-5 mr-2" />} label="Users" />
                 <SidebarLink to="/trainers" icon={<User className="h-5 w-5 mr-2" />} label="Trainers" />
-                <SidebarLink to="/discounts" icon={<Tag className="h-5 w-5 mr-2" />} label="Discounts" />
-                <SidebarLink to="/settings" icon={<Settings className="h-5 w-5 mr-2" />} label="Settings" />
-                <SidebarLink to="/maintenance" icon={<Wrench className="h-5 w-5 mr-2" />} label="Maintenance" />
                 <SidebarLink to="/unpaid-handlers" icon={<AlertCircle className="h-5 w-5 mr-2" />} label="Unpaid Handlers" />
               </nav>
               

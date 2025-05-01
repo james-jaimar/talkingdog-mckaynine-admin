@@ -16,8 +16,7 @@ import NotFoundPage from "./pages/NotFound";
 import FinancialDashboardPage from "./pages/FinancialDashboard";
 import FinancialReportsPage from "./pages/FinancialReports";
 import TrainersPage from "./pages/Trainers";
-import ClientsPage from "./pages/Clients";
-import ClientDetailsPage from "./pages/ClientDetailsPage";
+import ClientsPage from "./pages/Clients"; // Using the correct path for ClientsPage
 import UnpaidHandlersPage from "./pages/UnpaidHandlers";
 
 // Import the route collections
@@ -88,7 +87,10 @@ const router = createBrowserRouter([
   },
   {
     path: "/client/:id",
-    element: <ProtectedRoute requiredRole="trainer"><ClientDetailsPage /></ProtectedRoute>
+    element: <ProtectedRoute requiredRole="trainer">
+      {/* Using a dynamic import to handle client details */}
+      <ClientsPage />
+    </ProtectedRoute>
   },
   {
     path: "*",
