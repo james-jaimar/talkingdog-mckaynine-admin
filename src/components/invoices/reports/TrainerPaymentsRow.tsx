@@ -9,27 +9,7 @@ import { ExtendedBadge } from "@/components/ui/badge-variants";
 import { formatCurrency } from "@/lib/formatters";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { TrainerClassDetail } from "@/hooks/useTrainerPaymentData";
-import { format } from "date-fns";
-
-// Handler commission data extraction per class
-function getHandlerCommissionsForClass(classDetail: TrainerClassDetail) {
-  // If we have bookingsDetails with handler information, use it
-  if (classDetail.bookingsDetails && classDetail.bookingsDetails.length > 0) {
-    return classDetail.bookingsDetails;
-  }
-  
-  // Fallback: simulate with count of bookings (should not happen with our fixes)
-  const result = [];
-  for (let i = 1; i <= classDetail.bookings; i++) {
-    result.push({
-      bookingId: `placeholder-${i}`,
-      clientId: `placeholder-${i}`,
-      handlerName: `Client ${i}`,
-      commissionAmount: Math.round((classDetail.potentialRevenue || 0) / classDetail.bookings)
-    });
-  }
-  return result;
-}
+import { ClassDetailsList } from "./class-details/ClassDetailsList";
 
 interface TrainerPaymentsRowProps {
   trainer: {
@@ -50,7 +30,6 @@ interface TrainerPaymentsRowProps {
 
 export function TrainerPaymentsRow({ trainer, onMarkForPayment, index }: TrainerPaymentsRowProps) {
   const [expanded, setExpanded] = useState(false);
-  const [expandedClass, setExpandedClass] = useState<string | null>(null);
 
   const toggleExpand = () => setExpanded((prev) => !prev);
 
@@ -130,93 +109,11 @@ export function TrainerPaymentsRow({ trainer, onMarkForPayment, index }: Trainer
           <TableCell colSpan={9} className="py-0">
             <div className="py-2">
               <p className="font-medium mb-2">Classes ({classDetailsShown})</p>
-              <div className="space-y-2 max-h-64 overflow-y-auto pr-2">
-                {trainer.classDetails.length > 0 ? (
-                  trainer.classDetails.map((classDetail) => (
-                    <div 
-                      key={classDetail.scheduleId}
-                      className="grid grid-cols-7 gap-2 p-2 bg-background rounded-md border text-sm"
-                    >
-                      <div className="flex items-center gap-1 col-span-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="p-0 h-6 w-6"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setExpandedClass(
-                              expandedClass === classDetail.scheduleId ? null : classDetail.scheduleId
-                            );
-                          }}
-                        >
-                          {expandedClass === classDetail.scheduleId ? (
-                            <ChevronUp className="h-4 w-4" />
-                          ) : (
-                            <ChevronDown className="h-4 w-4" />
-                          )}
-                        </Button>
-                        <div>
-                          <p className="font-medium">{classDetail.className}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {format(new Date(classDetail.classDate), 'PPP p')}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-center self-center">
-                        <p>{classDetail.bookings} bookings</p>
-                      </div>
-                      <div className="text-center self-center">
-                        <p className="font-semibold">{formatCurrency(classDetail.potentialRevenue)}</p>
-                        <p className="text-xs text-muted-foreground">Potential</p>
-                      </div>
-                      <div className="text-center self-center">
-                        <p>{formatCurrency(classDetail.revenue)}</p>
-                        <p className="text-xs text-muted-foreground">Actual</p>
-                      </div>
-                      <div className="text-center self-center">
-                        <ExtendedBadge variant={classDetail.isPaid ? "green" : "amber"}>
-                          {classDetail.isPaid ? "Paid" : "Unpaid"}
-                        </ExtendedBadge>
-                      </div>
-                      <div className="text-right self-center col-span-2">
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          disabled={classDetail.isPaid || classDetail.bookings === 0}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onMarkForPayment(trainer.id);
-                          }}
-                        >
-                          Mark Paid
-                        </Button>
-                      </div>
-
-                      {/* Handler breakdown expansion - Fixed to show actual client names */}
-                      {expandedClass === classDetail.scheduleId && (
-                        <div className="col-span-7 mt-2 mb-2 border-t pt-2">
-                          <span className="font-medium mb-1 block">Handlers in this class</span>
-                          <div className="space-y-2">
-                            {getHandlerCommissionsForClass(classDetail).map((handlerData, i) => (
-                              <div key={i} className="flex justify-between rounded bg-muted px-3 py-2">
-                                <span className="font-medium">{handlerData.handlerName}</span>
-                                <span className="text-right">{formatCurrency(handlerData.commissionAmount)}</span>
-                              </div>
-                            ))}
-                            {getHandlerCommissionsForClass(classDetail).length === 0 && (
-                              <div className="text-muted-foreground italic col-span-2">No handler commission data available</div>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center p-4 text-muted-foreground">
-                    No class details available
-                  </div>
-                )}
-              </div>
+              <ClassDetailsList 
+                classDetails={trainer.classDetails}
+                onMarkForPayment={onMarkForPayment}
+                trainerId={trainer.id}
+              />
             </div>
           </TableCell>
         </TableRow>
