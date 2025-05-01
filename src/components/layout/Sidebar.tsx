@@ -2,7 +2,7 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { useAuth } from "@/context/auth"; // Updated import path
+import { useAuth } from "@/context/auth"; // Corrected import path
 import { useBranch } from "@/context/BranchContext"; // Updated import path
 import { Loader2 } from "lucide-react";
 import { FinancialReportsLink } from "@/components/navigation/FinancialReportsLink";
@@ -13,7 +13,7 @@ import {
   CircleUser,
   Calendar,
   Users,
-  Dog, // Fixed import - DogBowl is not available in lucide-react
+  Dog,
   FileStack,
   Building2,
   User,
@@ -27,7 +27,7 @@ import {
 
 export function Sidebar() {
   const location = useLocation();
-  const { role, isLoading } = useAuth(); // Updated to use the correct property names
+  const { role, isLoading } = useAuth(); // Using correct properties
   const { currentBranch: branch } = useBranch(); // Updated to match the context
   
   // Check if the user is an admin

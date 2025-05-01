@@ -17,10 +17,8 @@ import FinancialDashboardPage from "./pages/FinancialDashboard";
 import FinancialReportsPage from "./pages/FinancialReports";
 import TrainersPage from "./pages/Trainers";
 import ClientsPage from "./pages/Clients";
-import SignupPage from "./pages/SignupPage"; // Will use from adminRoutes
-import ResetPasswordPage from "./pages/ResetPasswordPage"; // Will use from adminRoutes
-import ClientDetailsPage from "./pages/ClientDetailsPage"; // Will use from adminRoutes
-import UnpaidHandlersPage from "./pages/UnpaidHandlers"; // Will handle from the routes if available
+import ClientDetailsPage from "./pages/ClientDetailsPage";
+import UnpaidHandlersPage from "./pages/UnpaidHandlers";
 
 // Import the route collections
 import { adminRoutes } from "./routes/adminRoutes";
@@ -87,6 +85,10 @@ const router = createBrowserRouter([
   {
     path: "/financial-reports",
     element: <RequireAdmin><FinancialReportsPage /></RequireAdmin>
+  },
+  {
+    path: "/client/:id",
+    element: <ProtectedRoute requiredRole="trainer"><ClientDetailsPage /></ProtectedRoute>
   },
   {
     path: "*",
