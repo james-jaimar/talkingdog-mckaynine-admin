@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import {
   TableCell,
@@ -15,7 +16,7 @@ function getHandlerCommissionsForClass(classDetail: TrainerClassDetail) {
   // If we have bookingsDetails with handler information
   if ((classDetail as any).bookingsDetails) {
     return (classDetail as any).bookingsDetails.map((b: any) => ({
-      handler: b.clientName || b.handlerName || "Unnamed Client",
+      handler: b.handlerName || "Unnamed Handler",
       commission: b.commissionAmount || 0
     }));
   }
@@ -192,7 +193,7 @@ export function TrainerPaymentsRow({ trainer, onMarkForPayment, index }: Trainer
                         </Button>
                       </div>
 
-                      {/* Handler breakdown expansion - Updated to show one handler per row with actual client names */}
+                      {/* Handler breakdown expansion - Updated to show one handler per row */}
                       {expandedClass === classDetail.scheduleId && (
                         <div className="col-span-7 mt-2 mb-2 border-t pt-2">
                           <span className="font-medium mb-1 block">Handlers in this class</span>
