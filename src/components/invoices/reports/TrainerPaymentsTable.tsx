@@ -74,7 +74,7 @@ export function TrainerPaymentsTable({ trainers, onMarkForPayment }: TrainerPaym
       
       <div className="overflow-x-auto rounded-md border">
         <Table>
-          <TableHeader className="bg-gray-100">
+          <TableHeader>
             <TableRow>
               <TableHead>Trainer</TableHead>
               <TableHead className="text-right">Total Commission</TableHead>
@@ -88,12 +88,11 @@ export function TrainerPaymentsTable({ trainers, onMarkForPayment }: TrainerPaym
             </TableRow>
           </TableHeader>
           <TableBody>
-            {trainersWithClasses.map((trainer, index) => (
+            {trainersWithClasses.map((trainer) => (
               <TrainerPaymentsRow 
                 key={trainer.id}
                 trainer={trainer}
                 onMarkForPayment={onMarkForPayment}
-                isEven={index % 2 === 0}
               />
             ))}
           </TableBody>

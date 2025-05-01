@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import {
   TableCell,
@@ -12,6 +13,7 @@ import { format } from "date-fns";
 
 // Handler commission data extraction per class
 function getHandlerCommissionsForClass(classDetail: TrainerClassDetail) {
+  // If we have bookingsDetails with handler information
   if ((classDetail as any).bookingsDetails) {
     return (classDetail as any).bookingsDetails.map((b: any, i: number) => ({
       handler: b.handlerName || `Handler ${i + 1}`,
@@ -44,10 +46,9 @@ interface TrainerPaymentsRowProps {
     classDetails?: TrainerClassDetail[];
   };
   onMarkForPayment: (trainerId: string) => void;
-  isEven?: boolean;
 }
 
-export function TrainerPaymentsRow({ trainer, onMarkForPayment, isEven = false }: TrainerPaymentsRowProps) {
+export function TrainerPaymentsRow({ trainer, onMarkForPayment }: TrainerPaymentsRowProps) {
   const [expanded, setExpanded] = useState(false);
   const [expandedClass, setExpandedClass] = useState<string | null>(null);
 
@@ -66,14 +67,10 @@ export function TrainerPaymentsRow({ trainer, onMarkForPayment, isEven = false }
     ? (trainer.potentialEarnings || 0) 
     : trainer.pending;
 
-  // Row background class based on even/odd status
-  const rowBgClass = isEven ? "bg-white" : "bg-gray-200";
-  const expandedRowBgClass = isEven ? "bg-gray-50" : "bg-gray-200";
-
   return (
     <>
       <TableRow 
-        className={`${hasClassDetails ? "cursor-pointer hover:bg-muted/60" : ""} ${rowBgClass}`} 
+        className={hasClassDetails ? "cursor-pointer hover:bg-muted/60" : ""} 
         onClick={hasClassDetails ? toggleExpand : undefined}
       >
         <TableCell className="flex items-center gap-2">
@@ -128,7 +125,7 @@ export function TrainerPaymentsRow({ trainer, onMarkForPayment, isEven = false }
       </TableRow>
 
       {expanded && trainer.classDetails && (
-        <TableRow className={`${expandedRowBgClass} border-t-0`}>
+        <TableRow className="bg-muted/20 border-t-0">
           <TableCell colSpan={9} className="py-0">
             <div className="py-2">
               <p className="font-medium mb-2">Classes ({classDetailsShown})</p>
