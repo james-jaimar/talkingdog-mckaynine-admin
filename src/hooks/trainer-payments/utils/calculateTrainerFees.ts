@@ -97,20 +97,21 @@ export function calculateClassRevenue(
   
   // Get only the first item from each invoice to avoid double counting
   invoiceItems.forEach(item => {
-    if (item.invoices?.status === 'paid' && !invoiceMap.has(item.invoice_id)) {
-      invoiceMap.set(item.invoice_id, item);
+    if (item.invoices?.status === 'paid' && !invoiceMap.has(item.invoices.id)) {
+      invoiceMap.set(item.invoices.id, item);
     }
   });
   
   // Calculate revenue only from paid unique invoices using their total
   Array.from(invoiceMap.values()).forEach(item => {
     if (item.invoices?.status === 'paid') {
-      const invoiceTotal = item.invoices.total || 0;
+      // We need to ensure the type has total property
+      const invoiceTotal = (item.invoices as any).total || 0;
       
       // If there are multiple bookings for this invoice, distribute evenly
       const bookingIds = new Set(
         invoiceItems
-          .filter(ii => ii.invoice_id === item.invoice_id && ii.booking_id)
+          .filter(ii => ii.invoices && ii.invoices.id === item.invoices?.id && ii.booking_id)
           .map(ii => ii.booking_id!)
       );
       
@@ -119,7 +120,7 @@ export function calculateClassRevenue(
       
       // Add revenue if this item is associated with one of our bookings
       const isForCurrentSchedule = invoiceItems.some(ii => 
-        ii.invoice_id === item.invoice_id && 
+        ii.invoices && ii.invoices.id === item.invoices?.id && 
         bookings.some(b => b.id === ii.booking_id)
       );
       
@@ -129,7 +130,7 @@ export function calculateClassRevenue(
         } else {
           actualRevenue += trainerFeeValue;
         }
-        paidItems.add(item.invoice_id);
+        paidItems.add(item.invoices.id);
       }
     }
   });

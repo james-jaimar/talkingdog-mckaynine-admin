@@ -91,5 +91,6 @@ export type InvoiceItem = {
     id: string;
     status: string;
     payment_date?: string;
+    total?: number; // Added total property to fix TypeScript error
   } | null;
 };
