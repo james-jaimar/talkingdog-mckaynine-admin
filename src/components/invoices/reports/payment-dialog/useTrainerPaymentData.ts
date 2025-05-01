@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,6 +11,7 @@ export function useTrainerPaymentData(
 ) {
   const [loading, setLoading] = useState(false);
   const [trainerName, setTrainerName] = useState("");
+  const [trainerEmail, setTrainerEmail] = useState<string | null>(null);
   const [classDetails, setClassDetails] = useState<TrainerClassDetail[]>([]);
   const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
   const queryClient = useQueryClient();
@@ -31,15 +31,16 @@ export function useTrainerPaymentData(
     
     setLoading(true);
     try {
-      // First get trainer name
+      // First get trainer name and email
       const { data: trainerData } = await supabase
         .from('trainers')
-        .select('first_name, last_name')
+        .select('first_name, last_name, email')
         .eq('id', trainerId)
         .single();
       
       if (trainerData) {
         setTrainerName(`${trainerData.first_name} ${trainerData.last_name}`);
+        setTrainerEmail(trainerData.email);
       }
 
       // Get the trainer payments data from the query cache
@@ -241,6 +242,7 @@ export function useTrainerPaymentData(
   return {
     loading,
     trainerName,
+    trainerEmail,
     classDetails,
     selectedClasses,
     toggleSelectAll,

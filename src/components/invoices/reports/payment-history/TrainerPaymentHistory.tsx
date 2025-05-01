@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -42,116 +41,123 @@ export function TrainerPaymentHistory({ trainerId, limit = 5, showViewAll = true
   const { data: payments = [], isLoading } = useQuery({
     queryKey: ['trainer-payments-history', trainerId, activeTab === "all" ? viewAllLimit : limit],
     queryFn: async () => {
-      let query = supabase
-        .from('trainer_payments')
-        .select(`
-          id,
-          trainer_id,
-          payment_date,
-          amount,
-          status,
-          payment_method,
-          transaction_id,
-          notes,
-          class_schedule_id,
-          trainers:trainer_id (
-            id, 
-            first_name,
-            last_name
-          )
-        `)
-        .eq('status', 'paid')
-        .order('payment_date', { ascending: false });
-
-      if (trainerId) {
-        query = query.eq('trainer_id', trainerId);
-      }
-      
-      // Limit results
-      query = query.limit(activeTab === "all" ? viewAllLimit : limit);
-      
-      const { data, error } = await query;
-      
-      if (error) throw error;
-      
-      // Group payments by date and trainer
-      const groupedPayments: Record<string, Record<string, PaymentHistoryItem>> = {};
-      
-      for (const payment of data) {
-        const paymentDate = new Date(payment.payment_date).toISOString().split('T')[0];
-        const key = `${paymentDate}_${payment.trainer_id}`;
-        
-        if (!groupedPayments[key]) {
-          groupedPayments[key] = {
-            [payment.id]: {
-              id: payment.id,
-              trainer_id: payment.trainer_id,
-              payment_date: payment.payment_date,
-              amount: payment.amount || 0,
-              status: payment.status,
-              payment_method: payment.payment_method,
-              transaction_id: payment.transaction_id,
-              notes: payment.notes,
-              trainer_name: `${payment.trainers.first_name} ${payment.trainers.last_name}`,
-              classes_count: 1,
-              classes: []
-            }
-          };
-        } else {
-          const firstPaymentId = Object.keys(groupedPayments[key])[0];
-          groupedPayments[key][firstPaymentId].classes_count += 1;
-        }
-      }
-      
-      // Convert to array
-      const result = Object.values(groupedPayments).map(obj => Object.values(obj)[0]);
-      
-      // For each grouped payment, fetch the class details
-      for (const payment of result) {
-        // Get all payment records for this trainer and date
-        const { data: paymentRecords } = await supabase
+      try {
+        let query = supabase
           .from('trainer_payments')
-          .select('class_schedule_id')
-          .eq('trainer_id', payment.trainer_id)
+          .select(`
+            id,
+            trainer_id,
+            payment_date,
+            amount,
+            status,
+            payment_method,
+            transaction_id,
+            notes,
+            class_schedule_id,
+            trainers:trainer_id (
+              id, 
+              first_name,
+              last_name
+            )
+          `)
           .eq('status', 'paid')
-          .like('payment_date', `${new Date(payment.payment_date).toISOString().split('T')[0]}%`);
+          .order('payment_date', { ascending: false });
+
+        if (trainerId) {
+          query = query.eq('trainer_id', trainerId);
+        }
         
-        if (paymentRecords && paymentRecords.length > 0) {
-          const scheduleIds = paymentRecords.map(r => r.class_schedule_id);
+        // Limit results
+        query = query.limit(activeTab === "all" ? viewAllLimit : limit);
+        
+        const { data, error } = await query;
+        
+        if (error) throw error;
+        
+        if (!data || data.length === 0) return [];
+        
+        // Group payments by date and trainer
+        const groupedPayments: Record<string, Record<string, PaymentHistoryItem>> = {};
+        
+        for (const payment of data) {
+          const paymentDate = new Date(payment.payment_date).toISOString().split('T')[0];
+          const key = `${paymentDate}_${payment.trainer_id}`;
           
-          // Fetch class details for these schedules
-          const { data: classDetails } = await supabase
-            .from('class_schedules')
-            .select(`
-              id,
-              start_time,
-              classes:class_id (
-                id,
-                name,
-                trainer_fee_type,
-                trainer_fee_value
-              )
-            `)
-            .in('id', scheduleIds);
-            
-          if (classDetails && classDetails.length > 0) {
-            const fetchedClasses: TrainerClassDetail[] = classDetails.map(detail => ({
-              scheduleId: detail.id,
-              className: detail.classes?.name || 'Unknown Class',
-              classDate: detail.start_time,
-              revenue: 0, // Placeholder
-              potentialRevenue: 0, // Placeholder
-              bookings: 0, // Placeholder
-              isPaid: true,
-              scheduleDate: new Date(detail.start_time)
-            }));
-            
-            payment.classes = fetchedClasses;
+          if (!groupedPayments[key]) {
+            groupedPayments[key] = {
+              [payment.id]: {
+                id: payment.id,
+                trainer_id: payment.trainer_id,
+                payment_date: payment.payment_date,
+                amount: payment.amount || 0,
+                status: payment.status,
+                payment_method: payment.payment_method,
+                transaction_id: payment.transaction_id,
+                notes: payment.notes,
+                trainer_name: `${payment.trainers.first_name} ${payment.trainers.last_name}`,
+                classes_count: 1,
+                classes: []
+              }
+            };
+          } else {
+            const firstPaymentId = Object.keys(groupedPayments[key])[0];
+            groupedPayments[key][firstPaymentId].classes_count += 1;
           }
         }
+        
+        // Convert to array
+        const result = Object.values(groupedPayments).map(obj => Object.values(obj)[0]);
+        
+        // For each grouped payment, fetch the class details
+        for (const payment of result) {
+          // Get all payment records for this trainer and date
+          const { data: paymentRecords } = await supabase
+            .from('trainer_payments')
+            .select('class_schedule_id')
+            .eq('trainer_id', payment.trainer_id)
+            .eq('status', 'paid')
+            .like('payment_date', `${new Date(payment.payment_date).toISOString().split('T')[0]}%`);
+        
+          if (paymentRecords && paymentRecords.length > 0) {
+            const scheduleIds = paymentRecords.map(r => r.class_schedule_id);
+          
+            // Fetch class details for these schedules
+            const { data: classDetails } = await supabase
+              .from('class_schedules')
+              .select(`
+                id,
+                start_time,
+                classes:class_id (
+                  id,
+                  name,
+                  trainer_fee_type,
+                  trainer_fee_value
+                )
+              `)
+              .in('id', scheduleIds);
+            
+            if (classDetails && classDetails.length > 0) {
+              const fetchedClasses: TrainerClassDetail[] = classDetails.map(detail => ({
+                scheduleId: detail.id,
+                className: detail.classes?.name || 'Unknown Class',
+                classDate: detail.start_time,
+                revenue: 0, // Placeholder
+                potentialRevenue: 0, // Placeholder
+                bookings: 0, // Placeholder
+                isPaid: true,
+                scheduleDate: new Date(detail.start_time)
+              }));
+            
+              payment.classes = fetchedClasses;
+            }
+          }
+        }
+        
+        return result;
+      } catch (error) {
+        console.error("Error fetching payment history:", error);
+        return [];
       }
-      
-      return result;
     },
     enabled: activeTab === "recent" || (activeTab === "all" && viewAllLimit > 0),
   });

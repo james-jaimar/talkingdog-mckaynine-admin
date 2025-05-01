@@ -979,9 +979,12 @@ export type Database = {
           created_at: string
           id: string
           invoice_item_id: string | null
+          notes: string | null
           payment_date: string | null
+          payment_method: string | null
           status: string
           trainer_id: string
+          transaction_id: string | null
           updated_at: string
         }
         Insert: {
@@ -991,9 +994,12 @@ export type Database = {
           created_at?: string
           id?: string
           invoice_item_id?: string | null
+          notes?: string | null
           payment_date?: string | null
+          payment_method?: string | null
           status?: string
           trainer_id: string
+          transaction_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -1003,9 +1009,12 @@ export type Database = {
           created_at?: string
           id?: string
           invoice_item_id?: string | null
+          notes?: string | null
           payment_date?: string | null
+          payment_method?: string | null
           status?: string
           trainer_id?: string
+          transaction_id?: string | null
           updated_at?: string
         }
         Relationships: [
