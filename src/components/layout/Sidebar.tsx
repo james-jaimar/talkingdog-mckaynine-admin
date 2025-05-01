@@ -2,8 +2,8 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { useAuth } from "@/hooks/useAuth";
-import { useCurrentBranch } from "@/hooks/useCurrentBranch";
+import { useAuth } from "@/context/auth"; // Updated import path
+import { useBranch } from "@/context/BranchContext"; // Updated import path
 import { Loader2 } from "lucide-react";
 import { FinancialReportsLink } from "@/components/navigation/FinancialReportsLink";
 
@@ -13,7 +13,7 @@ import {
   CircleUser,
   Calendar,
   Users,
-  DogBowl,
+  Dog, // Fixed import - DogBowl is not available in lucide-react
   FileStack,
   Building2,
   User,
@@ -28,7 +28,7 @@ import {
 export function Sidebar() {
   const location = useLocation();
   const { userRole, loading } = useAuth();
-  const { branch } = useCurrentBranch();
+  const { currentBranch: branch } = useBranch(); // Updated to match the context
   
   // Check if the user is an admin
   const isAdmin = userRole === "admin";
@@ -57,7 +57,7 @@ export function Sidebar() {
             <SidebarLink to="/schedules" icon={<Calendar className="h-5 w-5 mr-2" />} label="Schedules" />
             <SidebarLink to="/handlers" icon={<Users className="h-5 w-5 mr-2" />} label="Handlers" />
             <SidebarLink to="/clients" icon={<Users className="h-5 w-5 mr-2" />} label="Clients" />
-            <SidebarLink to="/dogs" icon={<DogBowl className="h-5 w-5 mr-2" />} label="Dogs" />
+            <SidebarLink to="/dogs" icon={<Dog className="h-5 w-5 mr-2" />} label="Dogs" />
             <SidebarLink to="/invoices" icon={<FileStack className="h-5 w-5 mr-2" />} label="Invoices" />
           </nav>
 

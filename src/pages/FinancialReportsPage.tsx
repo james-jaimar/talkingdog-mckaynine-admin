@@ -6,14 +6,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { useDateRangePickerState } from '@/hooks/useDateRangePickerState';
 import { TrainerReportsTab } from '@/components/invoices/reports/TrainerReportsTab';
-import { useCurrentBranch } from '@/hooks/useCurrentBranch';
+import { useBranch } from '@/context/BranchContext'; // Updated import path
 import { Calendar, ChevronRight, User2, Users, Receipt, CreditCard } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export function FinancialReportsPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { branch } = useCurrentBranch();
+  const { currentBranch: branch } = useBranch(); // Updated to match context structure
   const { dateRange, DateRangePicker } = useDateRangePickerState();
   const [activeTab, setActiveTab] = useState<string>('trainer-payments');
   
@@ -24,6 +24,12 @@ export function FinancialReportsPage() {
     const searchParams = new URLSearchParams(location.search);
     searchParams.set('tab', value);
     navigate(`${location.pathname}?${searchParams.toString()}`, { replace: true });
+  };
+
+  // Ensure dateRange always has both from and to dates defined
+  const safeDataRange = {
+    from: dateRange.from,
+    to: dateRange.to || dateRange.from // Fallback to 'from' if 'to' is not defined
   };
 
   // Possible report categories
@@ -85,7 +91,7 @@ export function FinancialReportsPage() {
         
         <TabsContent value="trainer-payments" className="space-y-4">
           <TrainerReportsTab 
-            dateRange={dateRange}
+            dateRange={safeDataRange}
             branchId={branch?.id}
           />
         </TabsContent>

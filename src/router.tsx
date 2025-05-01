@@ -1,6 +1,5 @@
-
 import { createBrowserRouter, Navigate } from "react-router-dom";
-import ProtectedRoute from "./components/auth/ProtectedRoute";
+import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import RequireAuth from "./components/auth/RequireAuth";
 import RequireAdmin from "./components/auth/RequireAdmin";
 import LoginPage from "./pages/LoginPage";
