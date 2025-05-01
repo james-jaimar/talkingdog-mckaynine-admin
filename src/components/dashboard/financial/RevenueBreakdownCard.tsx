@@ -36,7 +36,7 @@ export function RevenueBreakdownCard({ invoices, dateRange, isLoading }: Revenue
       // Further filter to only include sent, paid, or overdue invoices
       .filter(invoice => invoice.status === 'sent' || invoice.status === 'paid' || invoice.status === 'overdue');
     
-    // Calculate revenue metrics
+    // Calculate revenue metrics directly from total (which already includes discounts)
     const total = filteredInvoices.reduce((sum, invoice) => sum + invoice.total, 0);
     const collected = filteredInvoices
       .filter(invoice => invoice.status === 'paid')

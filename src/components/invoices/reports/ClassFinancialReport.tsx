@@ -29,8 +29,7 @@ export function ClassFinancialReport({ dateRange, onRefreshSuccess }: ClassFinan
     refreshData, 
     totalInvoiceCount,
     invalidInvoicesCount,
-    totalRevenue: directTotalRevenue,
-    totalDiscounts
+    totalRevenue: directTotalRevenue
   } = useClassFinancialData(
     currentBranch?.id,
     fromDate,
@@ -159,15 +158,6 @@ export function ClassFinancialReport({ dateRange, onRefreshSuccess }: ClassFinan
           </Alert>
         )}
         
-        {totalDiscounts > 0 && (
-          <Alert>
-            <AlertDescription>
-              Total discounts of {totalDiscounts.toFixed(2)} have been applied to invoices and proportionally 
-              distributed across classes. The revenue shown is net after discounts.
-            </AlertDescription>
-          </Alert>
-        )}
-        
         {revenueDiscrepancy && (
           <Alert>
             <AlertDescription>
@@ -184,7 +174,6 @@ export function ClassFinancialReport({ dateRange, onRefreshSuccess }: ClassFinan
             classFinances={classFinances} 
             totalRevenue={directTotalRevenue}
             showMismatchWarning={revenueDiscrepancy}
-            totalDiscounts={totalDiscounts}
           />
         </div>
       </CardContent>

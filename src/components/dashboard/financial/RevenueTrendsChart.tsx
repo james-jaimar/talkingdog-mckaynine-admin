@@ -6,7 +6,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import { formatCurrency } from "@/lib/formatters";
 import { ChartContainer } from "@/components/ui/chart";
 import { Loader2 } from "lucide-react";
-import { isWithinInterval, format, parseISO, startOfMonth, endOfMonth, startOfQuarter, endOfQuarter, startOfYear, endOfYear } from "date-fns";
+import { isWithinInterval, format, startOfMonth, endOfMonth, startOfQuarter, endOfQuarter, startOfYear, endOfYear } from "date-fns";
 
 interface RevenueTrendsChartProps {
   invoices: Invoice[];
@@ -70,6 +70,7 @@ export function RevenueTrendsChart({ invoices, timeframe, dateRange, isLoading }
       }
 
       // Add invoice amount to appropriate category
+      // Use the total field which already includes any discounts applied
       const amount = invoice.total;
       groupedData[periodKey].totalRevenue += amount;
       

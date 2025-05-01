@@ -19,8 +19,7 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
       bookingsWithInvoices,
       allInvoicesCount,
       invalidInvoicesCount: invalidCount,
-      totalRevenue,
-      totalDiscounts
+      totalRevenue
     } = financialData;
 
     // Use optional chaining for possibly undefined invoiceItems
@@ -35,38 +34,28 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
     const classInvoiceMap = new Map<string, Set<string>>();
     const invoiceDiscountMap = new Map<string, InvoiceDiscount>();
 
-    // First, collect all invoice discounts
+    // First, collect all invoice data
     invoiceItems.forEach(item => {
       if (!item.invoices) return;
 
       const invoiceId = item.invoice_id;
-      const monetaryDiscount = item.invoices.monetary_discount || 0;
-
+      // Note: We're no longer processing discounts separately as we're working with the net amount
       invoiceDiscountMap.set(invoiceId, {
-        discountAmount: monetaryDiscount,
+        discountAmount: 0, // We're using the total amount which already accounts for discounts
         subtotal: item.invoices.subtotal || 0,
         total: item.invoices.total || 0
       });
     });
 
-    // Process all items and apply discount proportionally
+    // Process all items using the final invoice total (after discount)
     invoiceItems.forEach(item => {
       if (!item.booking_id || !item.invoices) return;
 
       const invoiceId = item.invoice_id;
       const invoiceData = invoiceDiscountMap.get(invoiceId);
-      const invoiceSubtotal = invoiceData?.subtotal || 0;
-      const invoiceDiscountAmount = invoiceData?.discountAmount || 0;
-
-      const itemAmount = item.amount || 0;
-      let itemDiscount = 0;
-
-      if (invoiceSubtotal > 0 && invoiceDiscountAmount > 0) {
-        const proportion = itemAmount / invoiceSubtotal;
-        itemDiscount = proportion * invoiceDiscountAmount;
-      }
-
-      const actualItemRevenue = Math.max(0, itemAmount - itemDiscount);
+      
+      // Use the amount directly as it's already the final price after discounts
+      const actualItemRevenue = item.amount || 0;
 
       if (!bookingRevenueMap.has(item.booking_id)) {
         bookingRevenueMap.set(item.booking_id, {
@@ -116,11 +105,11 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
         invoiceIds: []
       };
 
-      // Update summary with complete revenue information
+      // Update summary with revenue information
       summary.bookingsCount++;
       summary.totalRevenue += totalRevenue;
 
-      // Calculate fees based on actual revenue (after discount)
+      // Calculate fees based on actual revenue (which is now net after discount)
       if (classData.mckaynine_commission_type === 'percentage') {
         summary.franchiseFee += (totalRevenue * (classData.mckaynine_commission_value / 100));
       } else {

@@ -16,7 +16,6 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
         allInvoicesCount: 0,
         invalidInvoicesCount: 0,
         totalRevenue: 0,
-        totalDiscounts: 0,
         invoiceItems: []
       } as FinancialData;
 
@@ -25,7 +24,7 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
       // Get all valid invoices for this branch
       let totalRevenueQuery = supabase
         .from('invoices')
-        .select('id, total, status, subtotal, monetary_discount, client:client_id (branch_id)')
+        .select('id, total, status, client:client_id (branch_id)')
         .eq('client.branch_id', branchId)
         .in('status', ['sent', 'paid', 'overdue']);
 
@@ -39,9 +38,8 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
         console.error("Error fetching invoice totals:", invoiceTotalError);
       }
 
+      // Calculate total revenue (using the total field which is already after discounts)
       const totalRevenueFromInvoices = invoicesTotal?.reduce((sum, inv) => sum + (inv.total || 0), 0) || 0;
-      const totalGrossRevenue = invoicesTotal?.reduce((sum, inv) => sum + (inv.subtotal || 0), 0) || 0;
-      const totalDiscounts = invoicesTotal?.reduce((sum, inv) => sum + (inv.monetary_discount || 0), 0) || 0;
 
       // Set up query for confirmed bookings with their class information
       let query = supabase
@@ -95,9 +93,6 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
             total,
             subtotal,
             tax_amount,
-            discount_amount,
-            discount_type,
-            monetary_discount,
             client_id,
             issued_date,
             invoice_number,
@@ -160,7 +155,6 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
         allInvoicesCount: allInvoicesCount || 0,
         invalidInvoicesCount: invalidCount || 0,
         totalRevenue: totalRevenueFromInvoices,
-        totalDiscounts: totalDiscounts,
         invoiceItems: invoiceItems?.filter(item => 
           item.invoices?.client?.branch_id === branchId
         ) || []
