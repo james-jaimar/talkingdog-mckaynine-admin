@@ -1,39 +1,67 @@
 
-import { formatCurrency } from "@/lib/formatters";
 import { TrainerClassDetail } from "@/hooks/trainer-payments/types";
+import { formatCurrency } from "@/lib/formatters";
+import { Badge } from "@/components/ui/badge";
 
 interface PaymentDetailsPanelProps {
   classDetails: TrainerClassDetail[];
 }
 
 export function PaymentDetailsPanel({ classDetails }: PaymentDetailsPanelProps) {
-  const totalClasses = classDetails.length;
-  const totalBookings = classDetails.reduce((acc, detail) => acc + detail.bookings, 0);
-  const totalAmount = classDetails.reduce((acc, detail) => acc + detail.potentialRevenue, 0);
+  // Calculate total revenue
+  const totalRevenue = classDetails.reduce((sum, detail) => sum + detail.revenue, 0);
+  
+  // Calculate potential revenue (what could be earned)
+  const potentialRevenue = classDetails.reduce((sum, detail) => sum + detail.potentialRevenue, 0);
+  
+  // Count total bookings
+  const totalBookings = classDetails.reduce((sum, detail) => sum + detail.bookings, 0);
   
   return (
-    <div className="border rounded-md p-4 bg-muted/30 space-y-3">
-      <div className="grid grid-cols-2 gap-2 text-sm">
-        <div className="font-medium">Total Classes:</div>
-        <div>{totalClasses}</div>
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div className="bg-gray-50 p-4 rounded-lg">
+          <h3 className="text-sm font-medium text-muted-foreground mb-1">Classes</h3>
+          <p className="text-2xl font-bold">{classDetails.length}</p>
+        </div>
         
-        <div className="font-medium">Total Bookings:</div>
-        <div>{totalBookings}</div>
+        <div className="bg-gray-50 p-4 rounded-lg">
+          <h3 className="text-sm font-medium text-muted-foreground mb-1">Bookings</h3>
+          <p className="text-2xl font-bold">{totalBookings}</p>
+        </div>
         
-        <div className="font-medium">Total Amount:</div>
-        <div className="font-semibold">{formatCurrency(totalAmount)}</div>
+        <div className="bg-gray-50 p-4 rounded-lg">
+          <h3 className="text-sm font-medium text-muted-foreground mb-1">Revenue</h3>
+          <p className="text-2xl font-bold">{formatCurrency(totalRevenue)}</p>
+        </div>
+        
+        <div className="bg-gray-50 p-4 rounded-lg">
+          <h3 className="text-sm font-medium text-muted-foreground mb-1">Potential Revenue</h3>
+          <p className="text-2xl font-bold">{formatCurrency(potentialRevenue)}</p>
+        </div>
       </div>
       
-      <div className="pt-2 border-t">
-        <h4 className="font-medium mb-2 text-sm">Classes included:</h4>
-        <ul className="text-sm space-y-1 max-h-24 overflow-y-auto">
-          {classDetails.map(cls => (
-            <li key={cls.scheduleId} className="flex justify-between">
-              <span>{cls.className} ({new Date(cls.classDate).toLocaleDateString()})</span>
-              <span>{formatCurrency(cls.potentialRevenue)}</span>
-            </li>
-          ))}
-        </ul>
+      <div className="mt-4 border rounded-md">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/50">
+            <tr>
+              <th className="text-left px-4 py-2">Class</th>
+              <th className="text-center px-2 py-2">Date</th>
+              <th className="text-right px-4 py-2">Revenue</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y">
+            {classDetails.map((detail) => (
+              <tr key={detail.scheduleId}>
+                <td className="px-4 py-2">{detail.className}</td>
+                <td className="text-center px-2 py-2">
+                  {new Date(detail.classDate).toLocaleDateString()}
+                </td>
+                <td className="text-right px-4 py-2">{formatCurrency(detail.potentialRevenue)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );

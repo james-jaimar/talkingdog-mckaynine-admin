@@ -20,13 +20,15 @@ interface TrainerPaymentsSummaryProps {
   isLoading: boolean;
   dateRange?: { from: Date; to: Date };
   branchId?: string;
+  onMarkAsUnpaid?: (trainerId: string) => void;
 }
 
 export function TrainerPaymentsSummary({ 
   trainers, 
   isLoading, 
   dateRange = { from: new Date(), to: new Date() },
-  branchId
+  branchId,
+  onMarkAsUnpaid
 }: TrainerPaymentsSummaryProps) {
   const [selectedTrainerId, setSelectedTrainerId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -50,6 +52,7 @@ export function TrainerPaymentsSummary({
           <TrainerPaymentsTable 
             trainers={trainers} 
             onMarkForPayment={openPaymentDialog}
+            onMarkAsUnpaid={onMarkAsUnpaid}
           />
         </CardContent>
       </Card>

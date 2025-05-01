@@ -10,6 +10,8 @@ import { formatCurrency } from "@/lib/formatters";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { TrainerClassDetail } from "@/hooks/useTrainerPaymentData";
 import { ClassDetailsList } from "./class-details/ClassDetailsList";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { MoreHorizontal } from "lucide-react";
 
 interface TrainerPaymentsRowProps {
   trainer: {
@@ -25,10 +27,16 @@ interface TrainerPaymentsRowProps {
     classDetails?: TrainerClassDetail[];
   };
   onMarkForPayment: (trainerId: string) => void;
+  onMarkAsUnpaid?: (trainerId: string) => void;
   index: number;
 }
 
-export function TrainerPaymentsRow({ trainer, onMarkForPayment, index }: TrainerPaymentsRowProps) {
+export function TrainerPaymentsRow({ 
+  trainer, 
+  onMarkForPayment, 
+  onMarkAsUnpaid, 
+  index 
+}: TrainerPaymentsRowProps) {
   const [expanded, setExpanded] = useState(false);
 
   const toggleExpand = () => setExpanded((prev) => !prev);
@@ -91,16 +99,45 @@ export function TrainerPaymentsRow({ trainer, onMarkForPayment, index }: Trainer
           )}
         </TableCell>
         <TableCell className="text-right">
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              onMarkForPayment(trainer.id);
-            }}
-          >
-            Mark for Payment
-          </Button>
+          {hasActualPayments && trainer.paid > 0 ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  Actions <MoreHorizontal className="ml-1 h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={(e) => {
+                  e.stopPropagation();
+                  onMarkForPayment(trainer.id);
+                }}>
+                  Mark for Payment
+                </DropdownMenuItem>
+                {onMarkAsUnpaid && (
+                  <DropdownMenuItem 
+                    className="text-red-600" 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onMarkAsUnpaid(trainer.id);
+                    }}
+                  >
+                    Mark as Unpaid
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                onMarkForPayment(trainer.id);
+              }}
+            >
+              Mark for Payment
+            </Button>
+          )}
         </TableCell>
       </TableRow>
 
@@ -113,6 +150,7 @@ export function TrainerPaymentsRow({ trainer, onMarkForPayment, index }: Trainer
                 classDetails={trainer.classDetails}
                 onMarkForPayment={onMarkForPayment}
                 trainerId={trainer.id}
+                onMarkAsUnpaid={onMarkAsUnpaid}
               />
             </div>
           </TableCell>

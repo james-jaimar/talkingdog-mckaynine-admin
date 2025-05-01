@@ -28,9 +28,10 @@ interface TrainerPaymentsTableProps {
     scheduleIds?: string[];
   }>;
   onMarkForPayment: (trainerId: string) => void;
+  onMarkAsUnpaid?: (trainerId: string) => void;
 }
 
-export function TrainerPaymentsTable({ trainers, onMarkForPayment }: TrainerPaymentsTableProps) {
+export function TrainerPaymentsTable({ trainers, onMarkForPayment, onMarkAsUnpaid }: TrainerPaymentsTableProps) {
   console.log("TrainerPaymentsTable rendering with trainers:", trainers);
   
   // Check if there are any trainers with classes
@@ -94,6 +95,7 @@ export function TrainerPaymentsTable({ trainers, onMarkForPayment }: TrainerPaym
                 trainer={trainer}
                 index={index}
                 onMarkForPayment={onMarkForPayment}
+                onMarkAsUnpaid={onMarkAsUnpaid}
               />
             ))}
           </TableBody>
