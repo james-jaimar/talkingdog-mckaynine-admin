@@ -76,7 +76,7 @@ export function TrainerPaymentHistory({ limit = 5, showViewAll = false }: Traine
             console.error("Document URL columns don't exist yet. Migration needed:", error.message);
             
             // Fall back to querying without the document columns
-            const fallbackQuery = await supabase
+            let fallbackQuery = supabase
               .from('trainer_payments')
               .select(`
                 id,
@@ -95,15 +95,17 @@ export function TrainerPaymentHistory({ limit = 5, showViewAll = false }: Traine
               .order('payment_date', { ascending: false });
               
             if (!viewAll) {
-              fallbackQuery.limit(limit);
+              fallbackQuery = fallbackQuery.limit(limit);
             }
             
-            if (fallbackQuery.error) {
-              throw fallbackQuery.error;
+            const { data: fallbackData, error: fallbackError } = await fallbackQuery;
+            
+            if (fallbackError) {
+              throw fallbackError;
             }
             
             // Map the data to include null document fields
-            return (fallbackQuery.data || []).map(payment => ({
+            return (fallbackData || []).map(payment => ({
               id: payment.id,
               trainer_id: payment.trainer_id,
               trainer_name: payment.trainers ? 
