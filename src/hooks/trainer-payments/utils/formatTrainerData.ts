@@ -46,7 +46,7 @@ export function formatTrainerPaymentData(
     bookingsBySchedule[scheduleId].push(booking);
   });
 
-  // Group invoice items by booking ID for faster lookup
+  // Group invoice items by booking ID for faster lookup - use net amounts after discounts
   const invoiceItemsByBooking: Record<string, InvoiceItem[]> = {};
   invoiceItems.forEach(item => {
     if (item.booking_id) {
@@ -71,7 +71,7 @@ export function formatTrainerPaymentData(
       scheduleInvoiceItems.push(...items);
     });
 
-    // Calculate revenue for this class
+    // Calculate revenue for this class based on NET amounts (after any discounts)
     const revenueDetails = calculateClassRevenue(scheduleBookings, schedule, scheduleInvoiceItems);
 
     // Add to total potential earnings

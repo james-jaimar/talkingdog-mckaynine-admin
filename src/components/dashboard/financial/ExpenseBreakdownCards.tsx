@@ -20,7 +20,7 @@ export function ExpenseBreakdownCards({
   // Use a safe denominator to avoid division by zero
   const safeTotal = totalRevenue || 1;
   
-  // Calculate percentages of total revenue
+  // Calculate percentages of total revenue (which is already net after discounts)
   const adminPercent = (totalAdmin / safeTotal) * 100;
   const trainerPercent = (totalTrainer / safeTotal) * 100;
   const franchisePercent = (totalFranchise / safeTotal) * 100;

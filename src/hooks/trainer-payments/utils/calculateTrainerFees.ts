@@ -17,7 +17,7 @@ export function calculateTrainerFee(
 }
 
 export function calculateFranchiseFee(
-  courseFee: number,
+  courseFee: number, // This is now expected to be the net amount after any discounts
   enrollmentFee: number,
   schedule: Schedule
 ): number {
@@ -28,7 +28,7 @@ export function calculateFranchiseFee(
   
   let franchiseFee = enrollmentFee; // Start with enrollment fee
   
-  // Add commission based on course fee
+  // Add commission based on course fee (which is now net after discount)
   if (commissionType === 'percentage') {
     franchiseFee += courseFee * (commissionValue / 100);
   } else {
@@ -39,7 +39,7 @@ export function calculateFranchiseFee(
 }
 
 export function calculateAdminFee(
-  courseFee: number,
+  courseFee: number, // This is now expected to be the net amount after any discounts
   schedule: Schedule
 ): number {
   if (!schedule.classes) return 0;
@@ -96,11 +96,12 @@ export function calculateClassRevenue(
   // Calculate actual paid revenue from invoice items
   let actualRevenue = 0;
   
-  // Calculate revenue only from paid invoice items
+  // Calculate revenue only from paid invoice items using NET amounts
   for (const item of validInvoiceItems) {
     if (item.invoices?.status === 'paid') {
+      const netItemAmount = item.amount || 0; // This is already net after any discounts
       if (trainerFeeType === 'percentage') {
-        actualRevenue += (item.amount || 0) * (trainerFeeValue / 100);
+        actualRevenue += netItemAmount * (trainerFeeValue / 100);
       } else {
         actualRevenue += trainerFeeValue;
       }

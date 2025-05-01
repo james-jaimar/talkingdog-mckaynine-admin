@@ -34,14 +34,13 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
     const classInvoiceMap = new Map<string, Set<string>>();
     const invoiceDiscountMap = new Map<string, InvoiceDiscount>();
 
-    // First, collect all invoice data
+    // First, collect all invoice data - use total (already accounts for discounts)
     invoiceItems.forEach(item => {
       if (!item.invoices) return;
 
       const invoiceId = item.invoice_id;
-      // Note: We're no longer processing discounts separately as we're working with the net amount
       invoiceDiscountMap.set(invoiceId, {
-        discountAmount: 0, // We're using the total amount which already accounts for discounts
+        discountAmount: 0, // Not needed since we're using total directly
         subtotal: item.invoices.subtotal || 0,
         total: item.invoices.total || 0
       });
@@ -54,7 +53,7 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
       const invoiceId = item.invoice_id;
       const invoiceData = invoiceDiscountMap.get(invoiceId);
       
-      // Use the amount directly as it's already the final price after discounts
+      // Use the final amount from the item (after any discounts applied)
       const actualItemRevenue = item.amount || 0;
 
       if (!bookingRevenueMap.has(item.booking_id)) {
@@ -105,11 +104,11 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
         invoiceIds: []
       };
 
-      // Update summary with revenue information
+      // Update summary with net revenue information
       summary.bookingsCount++;
       summary.totalRevenue += totalRevenue;
 
-      // Calculate fees based on actual revenue (which is now net after discount)
+      // Calculate fees based on actual revenue (net after discount)
       if (classData.mckaynine_commission_type === 'percentage') {
         summary.franchiseFee += (totalRevenue * (classData.mckaynine_commission_value / 100));
       } else {
@@ -137,6 +136,7 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
       if (summary) {
         summary.invoiceCount = invoiceIds.size;
         summary.invoiceIds = Array.from(invoiceIds);
+        // Calculate profit as net revenue minus all fees
         summary.profit = summary.totalRevenue - summary.franchiseFee - summary.adminFee - summary.instructorFee;
       }
     });

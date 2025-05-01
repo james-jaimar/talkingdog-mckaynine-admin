@@ -21,7 +21,7 @@ export function RevenueAllocationChart({
 }: RevenueAllocationChartProps) {
   const COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#8b5cf6'];
   
-  // Safely calculate percentages to avoid division by zero
+  // Safely calculate percentages to avoid division by zero - using net revenue
   const safeTotal = totalRevenue || 1;
   const adminPercent = (fees.adminFee / safeTotal) * 100;
   const trainerPercent = (fees.trainerFee / safeTotal) * 100;
@@ -38,7 +38,7 @@ export function RevenueAllocationChart({
   
   // Debug values
   console.log("Revenue allocation chart values:", {
-    totalRevenue,
+    totalRevenue, // This is net revenue after discounts
     adminFee: fees.adminFee,
     trainerFee: fees.trainerFee, 
     franchiseFee: fees.franchiseFee,
