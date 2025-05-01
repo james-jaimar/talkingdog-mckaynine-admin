@@ -33,6 +33,8 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
     const classSummaries = new Map<string, ClassFinance>();
     const bookingRevenueMap = new Map<string, BookingRevenue>();
     const classInvoiceMap = new Map<string, Set<string>>();
+    // Create a map to track unique booking IDs per class
+    const classBookingMap = new Map<string, Set<string>>();
 
     // First map invoices to bookings using invoice items as a connector
     const invoiceToBookingMap = new Map<string, string[]>();
@@ -80,11 +82,17 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
         }
         classInvoiceMap.get(className)!.add(invoice.id);
         
+        // Track unique booking IDs for each class
+        if (!classBookingMap.has(className)) {
+          classBookingMap.set(className, new Set());
+        }
+        classBookingMap.get(className)!.add(bookingId);
+        
         // Get or create class summary
         const summary = classSummaries.get(className) || {
           className,
           totalRevenue: 0,
-          bookingsCount: 0,
+          bookingsCount: 0, // This will be set based on unique bookings later
           franchiseFee: 0,
           adminFee: 0,
           instructorFee: 0,
@@ -95,7 +103,7 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
         };
         
         // Update summary with invoice amount
-        summary.bookingsCount++;
+        // Do NOT increment bookingsCount here as we'll set it based on unique bookings later
         summary.totalRevenue += invoiceAmountPerBooking;
         
         // Calculate fees based on invoice amount
@@ -191,20 +199,44 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
       classSummaries.set(generalClassName, generalSummary);
     }
 
-    // Update invoice counts and calculate profits for all classes
+    // Update invoice counts, set bookingsCount based on unique bookings, and calculate profits for all classes
     Array.from(classInvoiceMap.entries()).forEach(([className, invoiceIds]) => {
       const summary = classSummaries.get(className);
       if (summary) {
         summary.invoiceCount = invoiceIds.size;
         summary.invoiceIds = Array.from(invoiceIds);
+        
+        // Set bookingsCount based on unique booking IDs
+        const uniqueBookings = classBookingMap.get(className);
+        if (uniqueBookings) {
+          summary.bookingsCount = uniqueBookings.size;
+        }
+        
         // Calculate profit as total revenue minus all fees
         summary.profit = summary.totalRevenue - summary.franchiseFee - summary.adminFee - summary.instructorFee;
+      }
+    });
+
+    // Make sure to set bookingCount for unprocessed/general entries too
+    classSummaries.forEach(summary => {
+      if (summary.sourceType === 'general' && !summary.bookingsCount) {
+        // For general entries, set bookingsCount to match invoiceCount as a reasonable estimate
+        summary.bookingsCount = summary.invoiceCount;
       }
     });
 
     // Convert to array and sort by class name
     const sortedFinances = Array.from(classSummaries.values())
       .sort((a, b) => a.className.localeCompare(b.className));
+
+    // Log the total number of unique bookings across all classes for debugging
+    const totalUniqueBookings = new Set<string>();
+    classBookingMap.forEach((bookings) => {
+      bookings.forEach(id => totalUniqueBookings.add(id));
+    });
+    
+    console.log("Financial processor - total unique bookings:", totalUniqueBookings.size);
+    console.log("Financial processor - total invoices:", allInvoicesCount);
 
     setClassFinances(sortedFinances);
   }, [financialData]);
