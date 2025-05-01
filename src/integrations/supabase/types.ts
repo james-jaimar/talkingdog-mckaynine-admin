@@ -977,6 +977,8 @@ export type Database = {
           booking_id: string | null
           class_schedule_id: string
           created_at: string
+          document_name: string | null
+          document_url: string | null
           id: string
           invoice_item_id: string | null
           notes: string | null
@@ -992,6 +994,8 @@ export type Database = {
           booking_id?: string | null
           class_schedule_id: string
           created_at?: string
+          document_name?: string | null
+          document_url?: string | null
           id?: string
           invoice_item_id?: string | null
           notes?: string | null
@@ -1007,6 +1011,8 @@ export type Database = {
           booking_id?: string | null
           class_schedule_id?: string
           created_at?: string
+          document_name?: string | null
+          document_url?: string | null
           id?: string
           invoice_item_id?: string | null
           notes?: string | null
