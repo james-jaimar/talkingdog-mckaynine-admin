@@ -15,8 +15,8 @@ import { format } from "date-fns";
 function getHandlerCommissionsForClass(classDetail: TrainerClassDetail) {
   // If we have bookingsDetails with handler information
   if ((classDetail as any).bookingsDetails) {
-    return (classDetail as any).bookingsDetails.map((b: any, i: number) => ({
-      handler: b.handlerName || `Handler ${i + 1}`,
+    return (classDetail as any).bookingsDetails.map((b: any) => ({
+      handler: b.handlerName || "Unnamed Handler",
       commission: b.commissionAmount || 0
     }));
   }
@@ -25,7 +25,7 @@ function getHandlerCommissionsForClass(classDetail: TrainerClassDetail) {
   const result = [];
   for (let i = 1; i <= classDetail.bookings; i++) {
     result.push({
-      handler: `Handler ${i}`,
+      handler: `Client ${i}`,
       commission: Math.round((classDetail.potentialRevenue || 0) / classDetail.bookings)
     });
   }
@@ -193,14 +193,14 @@ export function TrainerPaymentsRow({ trainer, onMarkForPayment, index }: Trainer
                         </Button>
                       </div>
 
-                      {/* Handler breakdown expansion */}
+                      {/* Handler breakdown expansion - Updated to show one handler per row */}
                       {expandedClass === classDetail.scheduleId && (
                         <div className="col-span-7 mt-2 mb-2 border-t pt-2">
                           <span className="font-medium mb-1 block">Handlers in this class</span>
-                          <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
                             {getHandlerCommissionsForClass(classDetail).map((handlerData, i) => (
-                              <div key={i} className="flex justify-between rounded bg-muted px-2 py-1">
-                                <span>{handlerData.handler}</span>
+                              <div key={i} className="flex justify-between rounded bg-muted px-3 py-2">
+                                <span className="font-medium">{handlerData.handler}</span>
                                 <span className="text-right">{formatCurrency(handlerData.commission)}</span>
                               </div>
                             ))}
