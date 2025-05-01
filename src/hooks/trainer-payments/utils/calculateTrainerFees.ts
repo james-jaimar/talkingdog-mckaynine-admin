@@ -135,6 +135,12 @@ export function calculateClassRevenue(
     }
   });
 
+  // If no paid invoices, calculate potential revenue for each booking
+  if (actualRevenue === 0 && bookingsCount > 0) {
+    // For bookings without paid invoices, use the course fee to calculate potential revenue
+    actualRevenue = potentialRevenue;
+  }
+
   return {
     revenue: actualRevenue,
     isPaid: paidItems.size > 0, // Class is paid if we have at least one paid invoice

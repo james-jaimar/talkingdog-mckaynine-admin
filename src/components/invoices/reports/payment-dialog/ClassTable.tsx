@@ -54,7 +54,7 @@ export function ClassTable({ classDetails, selectedClasses, toggleClass }: Class
               <TableCell className="font-medium">{classData.className}</TableCell>
               <TableCell>{format(new Date(classData.classDate), 'MMM d, yyyy')}</TableCell>
               <TableCell className="text-right">{classData.bookings}</TableCell>
-              <TableCell className="text-right">{formatCurrency(classData.revenue)}</TableCell>
+              <TableCell className="text-right">{formatCurrency(classData.potentialRevenue)}</TableCell>
               <TableCell className="text-right">
                 <ExtendedBadge variant={classData.isPaid ? "green" : "amber"}>
                   {classData.isPaid ? "Paid" : "Unpaid"}

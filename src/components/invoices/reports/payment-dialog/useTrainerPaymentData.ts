@@ -72,17 +72,25 @@ export function useTrainerPaymentData(
             id, 
             name,
             trainer_fee_type,
-            trainer_fee_value
+            trainer_fee_value,
+            course_fee
           ),
           bookings:bookings!class_schedule_id (
             id,
+            client_id,
+            clients:client_id (
+              id,
+              first_name,
+              last_name
+            ),
             invoice_items:invoice_items!booking_id (
               id,
               amount,
               invoice_id,
               invoices:invoice_id (
                 id,
-                status
+                status,
+                total
               )
             )
           )
@@ -116,28 +124,77 @@ export function useTrainerPaymentData(
         // Calculate revenue for this class
         let revenue = 0;
         let bookingsCount = 0;
+        let bookingsDetails = [];
         
         if (schedule.bookings && schedule.bookings.length > 0) {
           bookingsCount = schedule.bookings.length;
           
           for (const booking of schedule.bookings) {
-            if (!booking.invoice_items || booking.invoice_items.length === 0) continue;
-            
-            for (const item of booking.invoice_items) {
-              if (!item.invoices || item.invoices.status === 'cancelled') continue;
+            // Add booking details
+            const clientName = booking.clients 
+              ? `${booking.clients.first_name || ''} ${booking.clients.last_name || ''}`.trim()
+              : 'Unnamed Client';
               
-              // Calculate trainer's commission
-              if (schedule.classes) {
-                const feeType = schedule.classes.trainer_fee_type;
-                const feeValue = schedule.classes.trainer_fee_value || 0;
-                
-                if (feeType === 'percentage') {
-                  revenue += (item.amount || 0) * (feeValue / 100);
-                } else if (feeType === 'fixed') {
-                  revenue += feeValue;
+            let bookingRevenue = 0;
+            
+            // Calculate fees for this booking
+            if (booking.invoice_items && booking.invoice_items.length > 0 && schedule.classes) {
+              // Get paid invoice items
+              const paidItems = booking.invoice_items.filter(
+                item => item.invoices && item.invoices.status === 'paid'
+              );
+              
+              const feeType = schedule.classes.trainer_fee_type;
+              const feeValue = schedule.classes.trainer_fee_value || 0;
+              
+              // Calculate from invoice totals for percentage fees
+              if (feeType === 'percentage') {
+                for (const item of paidItems) {
+                  // Use invoice total for more accurate calculation
+                  const invoiceTotal = item.invoices?.total || 0;
+                  bookingRevenue += (invoiceTotal * feeValue / 100);
                 }
+              } else {
+                // For fixed fee, just add the fixed amount if there are any paid invoices
+                bookingRevenue = paidItems.length > 0 ? feeValue : 0;
+              }
+            } else if (schedule.classes) {
+              // If no invoices yet, calculate potential revenue
+              const feeType = schedule.classes.trainer_fee_type;
+              const feeValue = schedule.classes.trainer_fee_value || 0;
+              const courseFee = schedule.classes.course_fee || 0;
+              
+              if (feeType === 'percentage') {
+                bookingRevenue = courseFee * (feeValue / 100);
+              } else {
+                bookingRevenue = feeValue;
               }
             }
+            
+            // Add this booking's revenue to total
+            revenue += bookingRevenue;
+            
+            // Add booking details
+            bookingsDetails.push({
+              bookingId: booking.id,
+              clientId: booking.client_id || '',
+              handlerName: clientName,
+              commissionAmount: bookingRevenue
+            });
+          }
+        }
+        
+        // Calculate potential revenue - what could be earned if all bookings pay
+        let potentialRevenue = 0;
+        if (schedule.classes && schedule.bookings) {
+          const feeType = schedule.classes.trainer_fee_type;
+          const feeValue = schedule.classes.trainer_fee_value || 0;
+          const courseFee = schedule.classes.course_fee || 0;
+          
+          if (feeType === 'percentage') {
+            potentialRevenue = courseFee * (feeValue / 100) * bookingsCount;
+          } else {
+            potentialRevenue = feeValue * bookingsCount;
           }
         }
         
@@ -147,9 +204,10 @@ export function useTrainerPaymentData(
           classDate: schedule.start_time,
           scheduleDate: new Date(schedule.start_time),
           revenue,
-          potentialRevenue: revenue,
+          potentialRevenue,
           bookings: bookingsCount,
-          isPaid
+          isPaid,
+          bookingsDetails
         };
       });
 
