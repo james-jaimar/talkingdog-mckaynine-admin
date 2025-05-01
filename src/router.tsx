@@ -8,24 +8,25 @@ import DashboardPage from "./pages/Dashboard";
 import ClassesPage from "./pages/Classes";
 import SchedulesPage from "./pages/ClassSchedules";
 import HandlersPage from "./pages/Handlers";
-import DogsPage from "./pages/Dogs";
 import BranchPage from "./pages/Branches";
 import UserPage from "./pages/UserAdmin";
 import InvoicesPage from "./pages/Invoices";
 import InvoiceDetailsPage from "./pages/InvoiceDetail";
 import NotFoundPage from "./pages/NotFound";
-import DiscountPage from "./pages/admin/DiscountPage";
-import SettingsPage from "./pages/admin/SettingsPage";
-import MaintenancePage from "./pages/admin/maintenance/MaintenancePage";
-import SignupPage from "./pages/SignupPage";
-import ResetPasswordPage from "./pages/ResetPasswordPage";
-import ClientsPage from "./pages/Clients";
-import ClientDetailsPage from "./pages/ClientDetailsPage";
-import TrainersPage from "./pages/Trainers";
-import UnpaidHandlersPage from "./pages/UnpaidHandlers";
 import FinancialDashboardPage from "./pages/FinancialDashboard";
-import FinancialReportsPage from "./pages/FinancialReports"; // Import the new page
+import FinancialReportsPage from "./pages/FinancialReports";
+import TrainersPage from "./pages/Trainers";
+import ClientsPage from "./pages/Clients";
+import SignupPage from "./pages/SignupPage"; // Will use from adminRoutes
+import ResetPasswordPage from "./pages/ResetPasswordPage"; // Will use from adminRoutes
+import ClientDetailsPage from "./pages/ClientDetailsPage"; // Will use from adminRoutes
+import UnpaidHandlersPage from "./pages/UnpaidHandlers"; // Will handle from the routes if available
 
+// Import the route collections
+import { adminRoutes } from "./routes/adminRoutes";
+import { trainerRoutes } from "./routes/trainerRoutes";
+
+// Define the base routes that are available
 const router = createBrowserRouter([
   {
     path: "/",
@@ -34,14 +35,6 @@ const router = createBrowserRouter([
   {
     path: "/login",
     element: <LoginPage />
-  },
-  {
-    path: "/signup",
-    element: <SignupPage />
-  },
-  {
-    path: "/reset-password",
-    element: <ResetPasswordPage />
   },
   {
     path: "/dashboard",
@@ -60,16 +53,8 @@ const router = createBrowserRouter([
     element: <ProtectedRoute requiredRole="trainer"><HandlersPage /></ProtectedRoute>
   },
   {
-    path: "/dogs",
-    element: <ProtectedRoute requiredRole="trainer"><DogsPage /></ProtectedRoute>
-  },
-  {
     path: "/clients",
     element: <ProtectedRoute requiredRole="trainer"><ClientsPage /></ProtectedRoute>
-  },
-  {
-    path: "/clients/:clientId",
-    element: <ProtectedRoute requiredRole="trainer"><ClientDetailsPage /></ProtectedRoute>
   },
   {
     path: "/invoices",
@@ -90,18 +75,6 @@ const router = createBrowserRouter([
   {
     path: "/trainers",
     element: <RequireAdmin><TrainersPage /></RequireAdmin>
-  },
-  {
-    path: "/discounts",
-    element: <RequireAdmin><DiscountPage /></RequireAdmin>
-  },
-  {
-    path: "/settings",
-    element: <RequireAdmin><SettingsPage /></RequireAdmin>
-  },
-  {
-    path: "/maintenance",
-    element: <RequireAdmin><MaintenancePage /></RequireAdmin>
   },
   {
     path: "/unpaid-handlers",
