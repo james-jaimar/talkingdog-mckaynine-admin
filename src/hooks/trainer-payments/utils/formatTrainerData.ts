@@ -40,6 +40,10 @@ export async function formatTrainerPaymentData(
   let paidAmount = 0;
   const uniqueScheduleIds = new Set<string>();
   
+  // Check if there are any recorded trainer payments in the database
+  const hasRecordedPayments = payments && payments.length > 0;
+  const hasPaidPayments = payments && payments.some(p => p.status === 'paid');
+  
   const classDetails: TrainerClassDetail[] = schedules.map(schedule => {
     uniqueScheduleIds.add(schedule.id);
     
@@ -57,6 +61,14 @@ export async function formatTrainerPaymentData(
     let revenue = 0;
     let potentialRevenue = 0;
     let isPaid = false;
+    let hasActualPayment = false;
+    
+    // Check if there is a recorded payment for this schedule
+    if (hasRecordedPayments) {
+      const schedulePayment = payments.find(p => p.class_schedule_id === schedule.id);
+      isPaid = schedulePayment && schedulePayment.status === 'paid';
+      hasActualPayment = !!schedulePayment;
+    }
     
     // Create detailed booking information including client names
     const bookingsDetails = scheduleBookings.map(booking => {
@@ -97,7 +109,6 @@ export async function formatTrainerPaymentData(
       // Only count as actual revenue if the invoice is paid
       if (item.invoices?.status === 'paid') {
         revenue += itemAmount;
-        isPaid = true;
       }
     });
     
@@ -114,10 +125,11 @@ export async function formatTrainerPaymentData(
     // Add to total potential earnings
     potentialEarnings += classCommission;
     
-    // For paid invoices, add to actual and paid earnings
-    if (isPaid) {
-      actualEarnings += classCommission;
-      paidAmount += classCommission;
+    // For paid invoices, add to actual earnings
+    // Note: We're no longer using isPaid to determine if we add to actualEarnings
+    // This was causing incorrect earnings calculations
+    if (revenue > 0) {
+      actualEarnings += classCommission * (revenue / potentialRevenue);
     }
     
     // Create schedule date for sorting
@@ -130,7 +142,8 @@ export async function formatTrainerPaymentData(
       revenue,
       potentialRevenue,
       bookings: bookingsCount,
-      isPaid,
+      isPaid, // Now only true if explicitly marked as paid in trainer_payments table
+      hasActualPayment,
       scheduleDate,
       bookingsDetails
     };
@@ -138,9 +151,6 @@ export async function formatTrainerPaymentData(
   
   // Sort class details by date (most recent first)
   classDetails.sort((a, b) => b.scheduleDate.getTime() - a.scheduleDate.getTime());
-  
-  // Check if there are any trainer payments recorded in the system
-  const hasRecordedPayments = payments.length > 0;
   
   // If we have recorded payments, use those instead of calculated values
   if (hasRecordedPayments) {
@@ -151,7 +161,7 @@ export async function formatTrainerPaymentData(
   
   // Get last payment date
   let lastPaymentDate;
-  if (payments.length > 0) {
+  if (hasPaidPayments) {
     const paidPayments = payments.filter(p => p.status === 'paid' && p.payment_date);
     if (paidPayments.length > 0) {
       lastPaymentDate = new Date(
@@ -177,6 +187,7 @@ export async function formatTrainerPaymentData(
     clients: uniqueClients.size,
     lastPaymentDate,
     scheduleIds: Array.from(uniqueScheduleIds),
-    classDetails
+    classDetails,
+    hasReceivedPayment: hasPaidPayments
   };
 }

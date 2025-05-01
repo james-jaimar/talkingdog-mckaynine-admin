@@ -1,3 +1,4 @@
+
 import { Database } from "@/integrations/supabase/types";
 
 export interface TrainerClassDetail {
@@ -8,6 +9,7 @@ export interface TrainerClassDetail {
   potentialRevenue: number; // Added potential revenue field
   bookings: number;
   isPaid: boolean;
+  hasActualPayment: boolean; // New field to distinguish between potential vs actual payments
   scheduleDate: Date;
   bookingsDetails?: Array<{
     bookingId: string;
@@ -31,6 +33,7 @@ export interface TrainerPaymentData {
   scheduleIds: string[];
   classDetails?: TrainerClassDetail[];
   expanded?: boolean;
+  hasReceivedPayment: boolean; // New field to indicate if the trainer has actually been paid
 }
 
 // Update the Schedule type to match the actual data structure from fetchSchedules
