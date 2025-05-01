@@ -10,6 +10,7 @@ import Branches from "./pages/Branches";
 import UnpaidHandlers from "./pages/UnpaidHandlers";
 import NotFound from "./pages/NotFound";
 import UserAdmin from "./pages/UserAdmin";
+import Home from "./pages/Home";
 
 // Create a dashboard route that ONLY works for staff (admin and trainer) users
 const dashboardRoute = {
@@ -51,6 +52,12 @@ const userAdminRoute = {
   ),
 };
 
+// Add explicit home route
+const homeRoute = {
+  path: "/",
+  element: <Home />,
+};
+
 // Create a 404 route for missing pages
 const notFoundRoute = {
   path: "*", // Catch all unmatched routes
@@ -65,6 +72,7 @@ const notFound404Route = {
 
 // Combine all routes
 const router = createBrowserRouter([
+  homeRoute, // Explicit home route
   ...publicRoutes,
   ...adminRoutes.map(route => ({
     ...route,
