@@ -1,87 +1,124 @@
 
-import { createBrowserRouter } from "react-router-dom";
-import { publicRoutes } from "./routes/publicRoutes";
-import { adminRoutes } from "./routes/adminRoutes";
-import { trainerRoutes } from "./routes/trainerRoutes";
-import { customerRoutes } from "./routes/customerRoutes";
-import Dashboard from "./pages/Dashboard";
-import { ProtectedRoute } from "./components/auth/ProtectedRoute";
-import Branches from "./pages/Branches";
-import UnpaidHandlers from "./pages/UnpaidHandlers";
-import NotFound from "./pages/NotFound";
-import UserAdmin from "./pages/UserAdmin";
+import { createBrowserRouter, Navigate } from "react-router-dom";
+import ProtectedRoute from "./components/auth/ProtectedRoute";
+import RequireAuth from "./components/auth/RequireAuth";
+import RequireAdmin from "./components/auth/RequireAdmin";
+import LoginPage from "./pages/LoginPage";
+import DashboardPage from "./pages/DashboardPage";
+import ClassesPage from "./pages/ClassesPage";
+import SchedulesPage from "./pages/SchedulesPage";
+import HandlersPage from "./pages/HandlersPage";
+import DogsPage from "./pages/DogsPage";
+import BranchPage from "./pages/admin/BranchPage";
+import UserPage from "./pages/admin/UserPage";
+import InvoicesPage from "./pages/InvoicesPage";
+import InvoiceDetailsPage from "./pages/InvoiceDetailsPage";
+import NotFoundPage from "./pages/NotFoundPage";
+import DiscountPage from "./pages/admin/DiscountPage";
+import SettingsPage from "./pages/admin/SettingsPage";
+import MaintenancePage from "./pages/admin/maintenance/MaintenancePage";
+import SignupPage from "./pages/SignupPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
+import ClientsPage from "./pages/ClientsPage";
+import ClientDetailsPage from "./pages/ClientDetailsPage";
+import TrainersPage from "./pages/TrainersPage";
+import UnpaidHandlersPage from "./pages/UnpaidHandlersPage";
+import FinancialDashboardPage from "./pages/FinancialDashboardPage";
+import FinancialReportsPage from "./pages/FinancialReportsPage"; // Import the new page
 
-// Create a dashboard route that ONLY works for staff (admin and trainer) users
-const dashboardRoute = {
-  path: "/dashboard",
-  element: (
-    <ProtectedRoute requiredRole="trainer">
-      <Dashboard />
-    </ProtectedRoute>
-  ),
-};
-
-// Create a branches route that ONLY works for admin users
-const branchesRoute = {
-  path: "/branches",
-  element: (
-    <ProtectedRoute requiredRole="admin">
-      <Branches />
-    </ProtectedRoute>
-  ),
-};
-
-// Create an unpaid-handlers route that ONLY works for admin users
-const unpaidHandlersRoute = {
-  path: "/unpaid-handlers",
-  element: (
-    <ProtectedRoute requiredRole="admin">
-      <UnpaidHandlers />
-    </ProtectedRoute>
-  ),
-};
-
-// Create a user-admin route that ONLY works for admin users
-const userAdminRoute = {
-  path: "/user-admin",
-  element: (
-    <ProtectedRoute requiredRole="admin">
-      <UserAdmin />
-    </ProtectedRoute>
-  ),
-};
-
-// Create a 404 route for missing pages
-const notFoundRoute = {
-  path: "*", // Catch all unmatched routes
-  element: <NotFound />,
-};
-
-// Create a dedicated 404 route page
-const notFound404Route = {
-  path: "/404",
-  element: <NotFound />,
-};
-
-// Combine all routes
 const router = createBrowserRouter([
-  ...publicRoutes,
-  ...adminRoutes.map(route => ({
-    ...route,
-    element: (
-      <ProtectedRoute requiredRole="admin">
-        {route.element}
-      </ProtectedRoute>
-    ),
-  })),
-  dashboardRoute, // Only accessible to trainers and admins
-  branchesRoute, // Only accessible to admins
-  unpaidHandlersRoute, // Only accessible to admins
-  userAdminRoute, // Only accessible to admins
-  ...trainerRoutes,
-  ...customerRoutes, // Customer routes with handler-specific layouts
-  notFound404Route, // Explicit 404 route
-  notFoundRoute, // Must be last to catch all other routes
+  {
+    path: "/",
+    element: <Navigate to="/dashboard" />
+  },
+  {
+    path: "/login",
+    element: <LoginPage />
+  },
+  {
+    path: "/signup",
+    element: <SignupPage />
+  },
+  {
+    path: "/reset-password",
+    element: <ResetPasswordPage />
+  },
+  {
+    path: "/dashboard",
+    element: <ProtectedRoute requiredRole="trainer"><DashboardPage /></ProtectedRoute>,
+  },
+  {
+    path: "/classes",
+    element: <ProtectedRoute requiredRole="trainer"><ClassesPage /></ProtectedRoute>
+  },
+  {
+    path: "/schedules",
+    element: <ProtectedRoute requiredRole="trainer"><SchedulesPage /></ProtectedRoute>
+  },
+  {
+    path: "/handlers",
+    element: <ProtectedRoute requiredRole="trainer"><HandlersPage /></ProtectedRoute>
+  },
+  {
+    path: "/dogs",
+    element: <ProtectedRoute requiredRole="trainer"><DogsPage /></ProtectedRoute>
+  },
+  {
+    path: "/clients",
+    element: <ProtectedRoute requiredRole="trainer"><ClientsPage /></ProtectedRoute>
+  },
+  {
+    path: "/clients/:clientId",
+    element: <ProtectedRoute requiredRole="trainer"><ClientDetailsPage /></ProtectedRoute>
+  },
+  {
+    path: "/invoices",
+    element: <ProtectedRoute requiredRole="trainer"><InvoicesPage /></ProtectedRoute>
+  },
+  {
+    path: "/invoices/:invoiceId",
+    element: <ProtectedRoute requiredRole="trainer"><InvoiceDetailsPage /></ProtectedRoute>
+  },
+  {
+    path: "/branches",
+    element: <RequireAdmin><BranchPage /></RequireAdmin>
+  },
+  {
+    path: "/users",
+    element: <RequireAdmin><UserPage /></RequireAdmin>
+  },
+  {
+    path: "/trainers",
+    element: <RequireAdmin><TrainersPage /></RequireAdmin>
+  },
+  {
+    path: "/discounts",
+    element: <RequireAdmin><DiscountPage /></RequireAdmin>
+  },
+  {
+    path: "/settings",
+    element: <RequireAdmin><SettingsPage /></RequireAdmin>
+  },
+  {
+    path: "/maintenance",
+    element: <RequireAdmin><MaintenancePage /></RequireAdmin>
+  },
+  {
+    path: "/unpaid-handlers",
+    element: <RequireAdmin><UnpaidHandlersPage /></RequireAdmin>
+  },
+  {
+    path: "/financial-dashboard",
+    element: <RequireAdmin><FinancialDashboardPage /></RequireAdmin>
+  },
+  {
+    path: "/financial-reports",
+    element: <RequireAdmin><FinancialReportsPage /></RequireAdmin>
+  },
+  {
+    path: "*",
+    element: <NotFoundPage />
+  }
 ]);
 
 export default router;

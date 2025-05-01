@@ -1,13 +1,13 @@
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { formatCurrency } from "@/lib/formatters";
-import { ChevronRight, FileText, Loader2 } from "lucide-react";
+import { ChevronRight, FileText, Loader2, RefreshCw } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -37,8 +37,9 @@ export function TrainerPaymentHistory({ limit = 5, showViewAll = false }: Traine
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [viewAll, setViewAll] = useState(!showViewAll);
   const isMobile = useIsMobile();
+  const queryClient = useQueryClient();
   
-  const { data: payments, isLoading, error } = useQuery({
+  const { data: payments, isLoading, error, refetch } = useQuery({
     queryKey: ['trainer-payment-history', limit, viewAll],
     queryFn: async () => {
       try {
@@ -151,12 +152,20 @@ export function TrainerPaymentHistory({ limit = 5, showViewAll = false }: Traine
         toast.error("Failed to fetch payment history");
         throw error;
       }
-    }
+    },
+    staleTime: 0, // Make it always refetch when component is mounted
+    refetchOnWindowFocus: true // Refetch when window regains focus
   });
 
   const handleViewDetails = (payment: TrainerPayment) => {
     setSelectedPayment(payment);
     setDetailsOpen(true);
+  };
+  
+  const handleRefresh = () => {
+    refetch();
+    queryClient.invalidateQueries({ queryKey: ['trainer-payments'] }); 
+    toast.success("Refreshing payment data");
   };
   
   const formatPaymentMethod = (method: string) => {
@@ -193,15 +202,25 @@ export function TrainerPaymentHistory({ limit = 5, showViewAll = false }: Traine
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <CardTitle>Recent Trainer Payments</CardTitle>
-          {showViewAll && (
+          <div className="flex gap-2">
             <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => setViewAll(prev => !prev)}
+              variant="outline" 
+              size="icon"
+              onClick={handleRefresh}
+              title="Refresh payment data"
             >
-              {viewAll ? "Show Less" : "View All"}
+              <RefreshCw className="h-4 w-4" />
             </Button>
-          )}
+            {showViewAll && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setViewAll(prev => !prev)}
+              >
+                {viewAll ? "Show Less" : "View All"}
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (
