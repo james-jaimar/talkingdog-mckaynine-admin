@@ -1,124 +1,137 @@
 
-import React, { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Button } from '@/components/ui/button';
-import { useDateRangePickerState } from '@/hooks/useDateRangePickerState';
-import { TrainerReportsTab } from '@/components/invoices/reports/TrainerReportsTab';
-import { useBranch } from '@/context/BranchContext';
-import { Calendar, ChevronRight, User2, Users, Receipt, CreditCard } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import { ClassFinancialReport } from '@/components/invoices/reports/ClassFinancialReport';
+import { useState, useEffect } from "react";
+import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import { Helmet } from "react-helmet";
+import { useInvoices } from "@/hooks/useInvoices";
+import { useBranch } from "@/context/BranchContext";
+import { useQueryClient } from "@tanstack/react-query";
+import RequireAdmin from "@/components/auth/RequireAdmin";
+import { ClassFinancialReport } from "@/components/invoices/reports/ClassFinancialReport";
+import { ClassesListReport } from "@/components/invoices/reports/ClassesListReport";
+import { DateRangePicker } from "@/components/dashboard/financial/DateRangePicker";
+import { startOfMonth, endOfMonth, subMonths } from "date-fns";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { toast } from "sonner";
+import { TrainerReportsTab } from "@/components/invoices/reports/TrainerReportsTab";
+import { useClassFinancialData } from "@/hooks/useClassFinancialData";
+import { useTerm } from "@/context/TermContext";
 
-export function FinancialReportsPage() {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const { currentBranch: branch } = useBranch();
-  const { dateRange, DateRangePicker } = useDateRangePickerState();
-  const [activeTab, setActiveTab] = useState<string>('financial-report');
+export default function FinancialReports() {
+  const queryClient = useQueryClient();
+  const { termDateRange, termData } = useTerm();
+  
+  // Set default date range based on current term if available, otherwise current month
+  const [dateRange, setDateRange] = useState({
+    from: termDateRange ? new Date(termDateRange.startDate) : startOfMonth(subMonths(new Date(), 0)),
+    to: termDateRange ? new Date(termDateRange.endDate) : endOfMonth(new Date())
+  });
+  
+  // Update date range when term changes
+  useEffect(() => {
+    if (termDateRange) {
+      console.log("FinancialReports: Term date range changed, updating date range");
+      setDateRange({
+        from: new Date(termDateRange.startDate),
+        to: new Date(termDateRange.endDate)
+      });
+    }
+  }, [termDateRange]);
+  
+  const { currentBranch } = useBranch();
+  const { invoices, isLoading, refreshAllInvoiceQueries } = useInvoices();
+  
+  // Default to 'financial' tab
+  const [activeTab, setActiveTab] = useState('financial');
+
+  // Refresh data when component mounts, branch changes or date range changes
+  useEffect(() => {
+    if (currentBranch) {
+      console.log("Financial Reports: Branch or date range changed, refreshing data");
+      refreshFinancialData();
+    }
+  }, [currentBranch, dateRange]);
+  
+  // Also refresh when term changes
+  useEffect(() => {
+    if (termData?.id) {
+      console.log(`FinancialReports: Term changed to ${termData.term_number}, refreshing data`);
+      refreshFinancialData();
+    }
+  }, [termData?.id]);
+
+  // Function to refresh all financial data
+  const refreshFinancialData = () => {
+    // Invalidate all relevant queries first
+    queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
+    queryClient.invalidateQueries({ queryKey: ['classes-list-data'] });
+    queryClient.invalidateQueries({ queryKey: ['trainer-payments'] });
+    
+    // Then refresh invoice data
+    refreshAllInvoiceQueries();
+    
+    toast.success("Financial data refreshed");
+  };
+
+  // Handle date range changes
+  const handleDateRangeChange = (range: { from: Date; to?: Date }) => {
+    setDateRange({
+      from: range.from,
+      to: range.to || endOfMonth(new Date())
+    });
+  };
   
   const handleTabChange = (value: string) => {
     setActiveTab(value);
-    
-    // Update URL to reflect current tab
-    const searchParams = new URLSearchParams(location.search);
-    searchParams.set('tab', value);
-    navigate(`${location.pathname}?${searchParams.toString()}`, { replace: true });
   };
-
-  // Ensure dateRange always has both from and to dates defined
-  const safeDataRange = {
-    from: dateRange.from || new Date(),
-    to: dateRange.to || new Date() // Provide default values to ensure both are defined
-  };
-
-  // Possible report categories
-  const reportCategories = [
-    {
-      id: 'financial-report',
-      title: 'Financial Report',
-      description: 'View class financial data and revenue analysis',
-      icon: <Receipt className="h-10 w-10 text-blue-500" />
-    },
-    {
-      id: 'classes-list',
-      title: 'Classes List',
-      description: 'View class schedules and attendance records',
-      icon: <Calendar className="h-10 w-10 text-green-500" />
-    },
-    {
-      id: 'trainer-payments',
-      title: 'Trainer Payments',
-      description: 'View and manage trainer payment records and history',
-      icon: <User2 className="h-10 w-10 text-amber-500" />
-    }
-  ];
 
   return (
-    <div className="container py-6 space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Financial Reports</h1>
-          <p className="text-muted-foreground">
-            View and manage financial data across your business
-          </p>
+    <RequireAdmin>
+      <DashboardLayout>
+        <Helmet>
+          <title>Financial Reports - McKaynine Training Centre</title>
+        </Helmet>
+        
+        <div className="container mx-auto py-6">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+            <h1 className="text-3xl font-bold">Financial Reports</h1>
+            <DateRangePicker 
+              dateRange={dateRange} 
+              onDateRangeChange={handleDateRangeChange} 
+            />
+          </div>
+
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+            <TabsList className="mb-4">
+              <TabsTrigger value="financial">Financial Report</TabsTrigger>
+              <TabsTrigger value="classes">Classes List</TabsTrigger>
+              <TabsTrigger value="trainers">Trainers</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="financial">
+              <div className="space-y-6">
+                <ClassFinancialReport 
+                  dateRange={dateRange} 
+                  onRefreshSuccess={() => {
+                    refreshAllInvoiceQueries();
+                    toast.success("Financial data refreshed");
+                  }} 
+                />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="classes">
+              <ClassesListReport />
+            </TabsContent>
+            
+            <TabsContent value="trainers">
+              <TrainerReportsTab 
+                dateRange={dateRange}
+                branchId={currentBranch?.id}
+              />
+            </TabsContent>
+          </Tabs>
         </div>
-        
-        <DateRangePicker />
-      </div>
-      
-      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
-        <TabsList className="grid grid-cols-3 gap-2">
-          {reportCategories.map((category) => (
-            <TabsTrigger 
-              key={category.id} 
-              value={category.id}
-            >
-              {category.title}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-        
-        <TabsContent value="financial-report" className="space-y-4">
-          <ClassFinancialReport 
-            dateRange={safeDataRange}
-            onRefreshSuccess={() => {}}
-          />
-        </TabsContent>
-        
-        <TabsContent value="classes-list">
-          <Card>
-            <CardHeader>
-              <CardTitle>Classes List</CardTitle>
-              <CardDescription>
-                View scheduled classes and attendance information
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex justify-center py-10">
-              <p className="text-muted-foreground">
-                Classes list report is currently under development
-              </p>
-            </CardContent>
-            <CardFooter>
-              <Button variant="outline" asChild>
-                <Link to="/classes">
-                  Go to Classes <ChevronRight className="ml-2 h-4 w-4" />
-                </Link>
-              </Button>
-            </CardFooter>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="trainer-payments" className="space-y-4">
-          <TrainerReportsTab 
-            dateRange={safeDataRange}
-            branchId={branch?.id}
-          />
-        </TabsContent>
-      </Tabs>
-    </div>
+      </DashboardLayout>
+    </RequireAdmin>
   );
 }
-
-export default FinancialReportsPage;
