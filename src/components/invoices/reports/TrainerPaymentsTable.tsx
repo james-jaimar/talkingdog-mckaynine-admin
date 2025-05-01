@@ -88,10 +88,11 @@ export function TrainerPaymentsTable({ trainers, onMarkForPayment }: TrainerPaym
             </TableRow>
           </TableHeader>
           <TableBody>
-            {trainersWithClasses.map((trainer) => (
+            {trainersWithClasses.map((trainer, index) => (
               <TrainerPaymentsRow 
                 key={trainer.id}
                 trainer={trainer}
+                index={index}
                 onMarkForPayment={onMarkForPayment}
               />
             ))}

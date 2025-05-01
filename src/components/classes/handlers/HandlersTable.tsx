@@ -21,8 +21,8 @@ export function HandlersTable({ handlers, onShowDogs }: HandlersTableProps) {
         </TableRow>
       </TableHeader>
       <TableBody>
-        {handlers.map(handler => (
-          <TableRow key={handler.id}>
+        {handlers.map((handler, index) => (
+          <TableRow key={handler.id} isEven={index % 2 === 0}>
             <TableCell className="font-medium">
               {handler.first_name} {handler.last_name}
             </TableCell>

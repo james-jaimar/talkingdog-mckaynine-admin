@@ -53,7 +53,7 @@ export function HandlerTable({
                 <HandlerTableRow 
                   key={handler.id} 
                   handler={handler} 
-                  index={index + startIndex}
+                  index={index}
                 />
               ))
             )}

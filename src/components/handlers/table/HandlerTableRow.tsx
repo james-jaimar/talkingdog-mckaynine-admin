@@ -30,6 +30,7 @@ interface HandlerTableRowProps {
 
 export function HandlerTableRow({ handler, index = 0 }: HandlerTableRowProps) {
   const fullName = `${handler.first_name} ${handler.last_name || ''}`.trim();
+  const isEven = index % 2 === 0;
 
   // Helper function to find the class status for a specific class type
   const getClassStatus = (classType: string) => {
@@ -38,7 +39,7 @@ export function HandlerTableRow({ handler, index = 0 }: HandlerTableRowProps) {
 
   return (
     <TableRow 
-      className={index % 2 === 0 ? "bg-gray-50" : "bg-gray-200"}
+      isEven={isEven}
       key={handler.id}
     >
       <TableCell className="w-[180px] font-medium">

@@ -46,9 +46,10 @@ interface TrainerPaymentsRowProps {
     classDetails?: TrainerClassDetail[];
   };
   onMarkForPayment: (trainerId: string) => void;
+  index: number;
 }
 
-export function TrainerPaymentsRow({ trainer, onMarkForPayment }: TrainerPaymentsRowProps) {
+export function TrainerPaymentsRow({ trainer, onMarkForPayment, index }: TrainerPaymentsRowProps) {
   const [expanded, setExpanded] = useState(false);
   const [expandedClass, setExpandedClass] = useState<string | null>(null);
 
@@ -70,7 +71,8 @@ export function TrainerPaymentsRow({ trainer, onMarkForPayment }: TrainerPayment
   return (
     <>
       <TableRow 
-        className={hasClassDetails ? "cursor-pointer hover:bg-muted/60" : ""} 
+        className={hasClassDetails ? "cursor-pointer hover:bg-muted/60" : ""}
+        isEven={index % 2 === 0}
         onClick={hasClassDetails ? toggleExpand : undefined}
       >
         <TableCell className="flex items-center gap-2">
