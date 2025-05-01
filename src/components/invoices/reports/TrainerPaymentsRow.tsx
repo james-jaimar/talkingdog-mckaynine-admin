@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import {
   TableCell,
@@ -12,12 +13,12 @@ import { format } from "date-fns";
 
 // Handler commission data extraction per class
 function getHandlerCommissionsForClass(classDetail: TrainerClassDetail) {
-  // If we have bookingsDetails with handler information
+  // If we have bookingsDetails with handler information, use it
   if (classDetail.bookingsDetails && classDetail.bookingsDetails.length > 0) {
     return classDetail.bookingsDetails;
   }
   
-  // Fallback: simulate with count of bookings
+  // Fallback: simulate with count of bookings (should not happen with our fixes)
   const result = [];
   for (let i = 1; i <= classDetail.bookings; i++) {
     result.push({
@@ -191,7 +192,7 @@ export function TrainerPaymentsRow({ trainer, onMarkForPayment, index }: Trainer
                         </Button>
                       </div>
 
-                      {/* Handler breakdown expansion - Updated to show one handler per row with real names */}
+                      {/* Handler breakdown expansion - Fixed to show actual client names */}
                       {expandedClass === classDetail.scheduleId && (
                         <div className="col-span-7 mt-2 mb-2 border-t pt-2">
                           <span className="font-medium mb-1 block">Handlers in this class</span>

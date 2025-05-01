@@ -78,10 +78,16 @@ export function formatTrainerPaymentData(
 
     // Build booking details for this class with actual client names
     const bookingsDetails = scheduleBookings.map(booking => {
-      // Get client name from the booking, or fallback to placeholder
-      const clientName = booking.clients 
-        ? `${booking.clients.first_name || ''} ${booking.clients.last_name || ''}`.trim()
-        : 'Unnamed Client';
+      // Use the client's first and last name when available
+      let clientName = 'Unnamed Client';
+      
+      if (booking.clients) {
+        const firstName = booking.clients.first_name || '';
+        const lastName = booking.clients.last_name || '';
+        if (firstName || lastName) {
+          clientName = `${firstName} ${lastName}`.trim();
+        }
+      }
         
       // Calculate individual commission - either actual or potential
       const perBookingCommission = scheduleBookings.length > 0 

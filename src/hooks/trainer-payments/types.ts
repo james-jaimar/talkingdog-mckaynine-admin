@@ -1,3 +1,4 @@
+
 import { Database } from "@/integrations/supabase/types";
 
 export interface TrainerClassDetail {
@@ -5,14 +6,14 @@ export interface TrainerClassDetail {
   className: string;
   classDate: string;
   revenue: number;
-  potentialRevenue: number; // Added potential revenue field
+  potentialRevenue: number;
   bookings: number;
   isPaid: boolean;
   scheduleDate: Date;
   bookingsDetails?: {
     bookingId: string;
     clientId: string;
-    handlerName: string;
+    handlerName: string; // This should contain the actual client name
     commissionAmount: number;
   }[];
 }
@@ -23,7 +24,7 @@ export interface TrainerPaymentData {
   totalEarned: number;
   paid: number;
   pending: number;
-  potentialEarnings: number; // Added potential earnings field
+  potentialEarnings: number;
   classesCount: number;
   clients: number;
   lastPaymentDate?: string;
@@ -61,11 +62,10 @@ export interface Schedule {
 // Update Booking type to make optional fields that might not be returned from some queries
 export type Booking = {
   id: string;
-  client_id?: string;   // Making optional
-  dog_id?: string;      // Making optional
+  client_id?: string;
+  dog_id?: string;
   class_schedule_id: string;
   payment_status: string;
-  // Other fields from the database table
   created_at?: string;
   updated_at?: string;
   is_enrolled?: boolean;
@@ -78,6 +78,7 @@ export type Booking = {
   info_pg?: string;
   // Add a computed field for clients information that may come from a join
   clients?: {
+    id?: string;
     uses_whatsapp_status?: string;
     social_media_consent_status?: string;
     first_name?: string;
@@ -96,6 +97,6 @@ export type InvoiceItem = {
     id: string;
     status: string;
     payment_date?: string;
-    total?: number; // Added total property to fix TypeScript error
+    total?: number;
   } | null;
 };
