@@ -76,6 +76,26 @@ export function formatTrainerPaymentData(
     // 2. The revenue calculation determined that this specific class has been paid
     const classIsPaid = totalPaid > 0 && revenueDetails.isPaid;
 
+    // Build booking details for this class with actual client names
+    const bookingsDetails = scheduleBookings.map(booking => {
+      // Get client name from the booking, or fallback to placeholder
+      const clientName = booking.clients 
+        ? `${booking.clients.first_name || ''} ${booking.clients.last_name || ''}`.trim()
+        : 'Unnamed Client';
+        
+      // Calculate individual commission - either actual or potential
+      const perBookingCommission = scheduleBookings.length > 0 
+        ? revenueDetails.potentialRevenue / scheduleBookings.length 
+        : 0;
+        
+      return {
+        bookingId: booking.id,
+        clientId: booking.client_id || '',
+        handlerName: clientName,
+        commissionAmount: perBookingCommission
+      };
+    });
+
     return {
       scheduleId: schedule.id,
       className: schedule.classes?.name || 'Unknown Class',
@@ -84,7 +104,8 @@ export function formatTrainerPaymentData(
       revenue: revenueDetails.revenue,
       potentialRevenue: revenueDetails.potentialRevenue,
       bookings: scheduleBookings.length,
-      isPaid: classIsPaid // Only true if we have actual payments and this class is paid
+      isPaid: classIsPaid, // Only true if we have actual payments and this class is paid
+      bookingsDetails
     };
   });
 

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import {
   TableCell,
@@ -14,19 +13,18 @@ import { format } from "date-fns";
 // Handler commission data extraction per class
 function getHandlerCommissionsForClass(classDetail: TrainerClassDetail) {
   // If we have bookingsDetails with handler information
-  if ((classDetail as any).bookingsDetails) {
-    return (classDetail as any).bookingsDetails.map((b: any) => ({
-      handler: b.handlerName || "Unnamed Handler",
-      commission: b.commissionAmount || 0
-    }));
+  if (classDetail.bookingsDetails && classDetail.bookingsDetails.length > 0) {
+    return classDetail.bookingsDetails;
   }
   
   // Fallback: simulate with count of bookings
   const result = [];
   for (let i = 1; i <= classDetail.bookings; i++) {
     result.push({
-      handler: `Client ${i}`,
-      commission: Math.round((classDetail.potentialRevenue || 0) / classDetail.bookings)
+      bookingId: `placeholder-${i}`,
+      clientId: `placeholder-${i}`,
+      handlerName: `Client ${i}`,
+      commissionAmount: Math.round((classDetail.potentialRevenue || 0) / classDetail.bookings)
     });
   }
   return result;
@@ -193,15 +191,15 @@ export function TrainerPaymentsRow({ trainer, onMarkForPayment, index }: Trainer
                         </Button>
                       </div>
 
-                      {/* Handler breakdown expansion - Updated to show one handler per row */}
+                      {/* Handler breakdown expansion - Updated to show one handler per row with real names */}
                       {expandedClass === classDetail.scheduleId && (
                         <div className="col-span-7 mt-2 mb-2 border-t pt-2">
                           <span className="font-medium mb-1 block">Handlers in this class</span>
                           <div className="space-y-2">
                             {getHandlerCommissionsForClass(classDetail).map((handlerData, i) => (
                               <div key={i} className="flex justify-between rounded bg-muted px-3 py-2">
-                                <span className="font-medium">{handlerData.handler}</span>
-                                <span className="text-right">{formatCurrency(handlerData.commission)}</span>
+                                <span className="font-medium">{handlerData.handlerName}</span>
+                                <span className="text-right">{formatCurrency(handlerData.commissionAmount)}</span>
                               </div>
                             ))}
                             {getHandlerCommissionsForClass(classDetail).length === 0 && (

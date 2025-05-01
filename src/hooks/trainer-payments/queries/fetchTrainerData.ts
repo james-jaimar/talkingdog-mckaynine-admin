@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { Schedule, Booking, InvoiceItem } from "../types";
 
@@ -65,7 +66,12 @@ export async function fetchBookings(scheduleIds: string[], dateRange?: { from: s
       id,
       client_id,
       class_schedule_id,
-      payment_status
+      payment_status,
+      clients:client_id (
+        id,
+        first_name, 
+        last_name
+      )
     `)
     .in('class_schedule_id', scheduleIds);
 
