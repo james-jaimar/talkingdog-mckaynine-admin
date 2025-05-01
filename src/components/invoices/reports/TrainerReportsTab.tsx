@@ -8,6 +8,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { TrainerPaymentDialog } from "./TrainerPaymentDialog";
 import { TrainerPaymentsTable } from "./TrainerPaymentsTable";
+import { TrainerPaymentHistory } from "./payment-history/TrainerPaymentHistory";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface TrainerReportsTabProps {
   dateRange: { from: Date; to: Date };
@@ -20,6 +22,7 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
   const [selectedTrainerId, setSelectedTrainerId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedScheduleIds, setSelectedScheduleIds] = useState<string[]>([]);
+  const [activeTab, setActiveTab] = useState<'payments' | 'history'>('payments');
   
   // Pass the dateRange to useTrainerPayments to ensure we get data for the selected date range
   const { data: trainers = [], isLoading, refetch } = useTrainerPayments(branchId, dateRange);
@@ -35,6 +38,7 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
     setRefreshing(true);
     try {
       await queryClient.invalidateQueries({ queryKey: ['trainer-payments'] });
+      await queryClient.invalidateQueries({ queryKey: ['trainer-payments-history'] });
       await refetch();
       toast.success("Trainer payment data refreshed");
     } catch (error) {
@@ -77,26 +81,40 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h2 className="text-lg font-semibold">Trainer Payments</h2>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={handleRefresh}
-          disabled={refreshing}
-        >
-          {refreshing ? (
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-          ) : (
-            <RefreshCw className="h-4 w-4 mr-2" />
-          )}
-          Refresh Data
-        </Button>
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'payments' | 'history')} className="w-full">
+          <div className="flex justify-between items-center mb-2">
+            <TabsList>
+              <TabsTrigger value="payments">Pending Payments</TabsTrigger>
+              <TabsTrigger value="history">Payment History</TabsTrigger>
+            </TabsList>
+            
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleRefresh}
+              disabled={refreshing}
+            >
+              {refreshing ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4 mr-2" />
+              )}
+              Refresh Data
+            </Button>
+          </div>
+          
+          <TabsContent value="payments">
+            <TrainerPaymentsTable 
+              trainers={trainers} 
+              onMarkForPayment={openPaymentDialog}
+            />
+          </TabsContent>
+          
+          <TabsContent value="history">
+            <TrainerPaymentHistory />
+          </TabsContent>
+        </Tabs>
       </div>
-      
-      <TrainerPaymentsTable 
-        trainers={trainers} 
-        onMarkForPayment={openPaymentDialog}
-      />
       
       {selectedTrainerId && (
         <TrainerPaymentDialog 

@@ -9,10 +9,16 @@ export function useMarkTrainerPaymentsPaid() {
   return useMutation({
     mutationFn: async ({ 
       trainerId, 
-      scheduleIds 
+      scheduleIds,
+      paymentMethod = 'bank_transfer',
+      transactionId = null,
+      notes = null
     }: { 
       trainerId: string; 
       scheduleIds: string[];
+      paymentMethod?: string;
+      transactionId?: string | null;
+      notes?: string | null;
     }) => {
       if (!scheduleIds.length) {
         throw new Error("No schedules selected");
@@ -30,6 +36,9 @@ export function useMarkTrainerPaymentsPaid() {
             amount: 0, // We'll update this later based on invoice calculations
             status: 'paid',
             payment_date: now,
+            payment_method: paymentMethod,
+            transaction_id: transactionId,
+            notes: notes,
             created_at: now,
             updated_at: now
           }))
@@ -42,7 +51,6 @@ export function useMarkTrainerPaymentsPaid() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['trainer-payments'] });
-      toast.success("Trainer payments marked as paid");
     },
     onError: (error) => {
       console.error("Error marking trainer payments as paid:", error);
