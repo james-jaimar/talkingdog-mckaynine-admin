@@ -17,7 +17,7 @@ export function calculateTrainerFee(
 }
 
 export function calculateFranchiseFee(
-  courseFee: number, // This is now expected to be the net amount after any discounts
+  courseFee: number, // This is the net amount after any discounts
   enrollmentFee: number,
   schedule: Schedule
 ): number {
@@ -28,7 +28,7 @@ export function calculateFranchiseFee(
   
   let franchiseFee = enrollmentFee; // Start with enrollment fee
   
-  // Add commission based on course fee (which is now net after discount)
+  // Add commission based on course fee (which is already net after discount)
   if (commissionType === 'percentage') {
     franchiseFee += courseFee * (commissionValue / 100);
   } else {
@@ -39,7 +39,7 @@ export function calculateFranchiseFee(
 }
 
 export function calculateAdminFee(
-  courseFee: number, // This is now expected to be the net amount after any discounts
+  courseFee: number, // This is already the net amount after any discounts
   schedule: Schedule
 ): number {
   if (!schedule.classes) return 0;
@@ -88,33 +88,55 @@ export function calculateClassRevenue(
   // Calculate total potential revenue based on bookings count
   const potentialRevenue = bookingsCount * potentialRevenuePerBooking;
 
-  // Filter out cancelled invoices
-  const validInvoiceItems = invoiceItems.filter(item => 
-    item.invoices && item.invoices.status !== 'cancelled'
-  );
-
-  // Calculate actual paid revenue from invoice items
+  // Use only paid invoice items and work with invoice total
   let actualRevenue = 0;
+  const paidItems = new Set<string>(); // To track unique invoices
   
-  // Calculate revenue only from paid invoice items using NET amounts
-  for (const item of validInvoiceItems) {
+  // Group invoice items by invoice id to avoid counting the same invoice multiple times
+  const invoiceMap = new Map<string, InvoiceItem>();
+  
+  // Get only the first item from each invoice to avoid double counting
+  invoiceItems.forEach(item => {
+    if (item.invoices?.status === 'paid' && !invoiceMap.has(item.invoice_id)) {
+      invoiceMap.set(item.invoice_id, item);
+    }
+  });
+  
+  // Calculate revenue only from paid unique invoices using their total
+  Array.from(invoiceMap.values()).forEach(item => {
     if (item.invoices?.status === 'paid') {
-      const netItemAmount = item.amount || 0; // This is already net after any discounts
-      if (trainerFeeType === 'percentage') {
-        actualRevenue += netItemAmount * (trainerFeeValue / 100);
-      } else {
-        actualRevenue += trainerFeeValue;
+      const invoiceTotal = item.invoices.total || 0;
+      
+      // If there are multiple bookings for this invoice, distribute evenly
+      const bookingIds = new Set(
+        invoiceItems
+          .filter(ii => ii.invoice_id === item.invoice_id && ii.booking_id)
+          .map(ii => ii.booking_id!)
+      );
+      
+      const bookingCount = bookingIds.size || 1;
+      const invoicePerBooking = invoiceTotal / bookingCount;
+      
+      // Add revenue if this item is associated with one of our bookings
+      const isForCurrentSchedule = invoiceItems.some(ii => 
+        ii.invoice_id === item.invoice_id && 
+        bookings.some(b => b.id === ii.booking_id)
+      );
+      
+      if (isForCurrentSchedule) {
+        if (trainerFeeType === 'percentage') {
+          actualRevenue += invoicePerBooking * (trainerFeeValue / 100);
+        } else {
+          actualRevenue += trainerFeeValue;
+        }
+        paidItems.add(item.invoice_id);
       }
     }
-  }
-
-  // Important: A class is only considered paid if there is actual revenue
-  // AND if there are valid invoice items that are paid
-  const hasPaidInvoices = validInvoiceItems.some(item => item.invoices?.status === 'paid');
+  });
 
   return {
     revenue: actualRevenue,
-    isPaid: actualRevenue > 0 && hasPaidInvoices, // Only mark as paid if we have actual revenue AND paid invoices
+    isPaid: paidItems.size > 0, // Class is paid if we have at least one paid invoice
     bookingsCount,
     potentialRevenue
   };

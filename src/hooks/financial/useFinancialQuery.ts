@@ -16,30 +16,39 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
         allInvoicesCount: 0,
         invalidInvoicesCount: 0,
         totalRevenue: 0,
-        invoiceItems: []
+        invoiceItems: [],
+        invoices: []
       } as FinancialData;
 
       console.log(`Fetching financial data for branch ${branchId} from ${fromDate} to ${toDate}`);
 
-      // Get all valid invoices for this branch
-      let totalRevenueQuery = supabase
+      // Get all valid invoices for this branch - directly using the invoices table
+      let invoicesQuery = supabase
         .from('invoices')
-        .select('id, total, status, client:client_id (branch_id)')
+        .select(`
+          id,
+          total, 
+          status,
+          client_id,
+          issued_date,
+          client:client_id (branch_id)
+        `)
         .eq('client.branch_id', branchId)
         .in('status', ['sent', 'paid', 'overdue']);
 
       if (fromDate && toDate) {
-        totalRevenueQuery = totalRevenueQuery.gte('issued_date', fromDate).lte('issued_date', toDate);
+        invoicesQuery = invoicesQuery.gte('issued_date', fromDate).lte('issued_date', toDate);
       }
 
-      const { data: invoicesTotal, error: invoiceTotalError } = await totalRevenueQuery;
+      const { data: invoices, error: invoicesError } = await invoicesQuery;
 
-      if (invoiceTotalError) {
-        console.error("Error fetching invoice totals:", invoiceTotalError);
+      if (invoicesError) {
+        console.error("Error fetching invoices:", invoicesError);
+        throw invoicesError;
       }
 
-      // Calculate total revenue (using the total field which is already after discounts)
-      const totalRevenueFromInvoices = invoicesTotal?.reduce((sum, inv) => sum + (inv.total || 0), 0) || 0;
+      // Calculate total revenue directly from invoices total column
+      const totalRevenueFromInvoices = invoices?.reduce((sum, inv) => sum + (inv.total || 0), 0) || 0;
 
       // Set up query for confirmed bookings with their class information
       let query = supabase
@@ -75,8 +84,8 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
         throw bookingsError;
       }
 
-      // Get invoice items with full invoice details
-      let invoiceQuery = supabase
+      // Get invoice items with full invoice details - we'll still need this to link invoices to bookings
+      let invoiceItemsQuery = supabase
         .from('invoice_items')
         .select(`
           id,
@@ -104,18 +113,18 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
         .in('invoices.status', ['sent', 'paid', 'overdue']);
 
       if (fromDate && toDate) {
-        invoiceQuery = invoiceQuery.gte('invoices.issued_date', fromDate)
+        invoiceItemsQuery = invoiceItemsQuery.gte('invoices.issued_date', fromDate)
           .lte('invoices.issued_date', toDate);
       }
 
-      const { data: invoiceItems, error: invoiceItemsError } = await invoiceQuery;
+      const { data: invoiceItems, error: invoiceItemsError } = await invoiceItemsQuery;
 
       if (invoiceItemsError) {
         console.error("Error fetching invoice items:", invoiceItemsError);
         throw invoiceItemsError;
       }
 
-      // Get invalid invoices count - fix the query to include client in the select
+      // Get invalid invoices count
       let invalidQuery = supabase
         .from('invoices')
         .select('id, client:client_id (branch_id)', { count: 'exact' })
@@ -132,7 +141,7 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
         console.error("Error counting invalid invoices:", invalidError);
       }
 
-      // Get all invoices count - fix the query to include client in the select
+      // Get all invoices count
       let countQuery = supabase
         .from('invoices')
         .select('id, client:client_id (branch_id)', { count: 'exact' })
@@ -157,7 +166,8 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
         totalRevenue: totalRevenueFromInvoices,
         invoiceItems: invoiceItems?.filter(item => 
           item.invoices?.client?.branch_id === branchId
-        ) || []
+        ) || [],
+        invoices: invoices || []
       };
       
       return result;

@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { FinancialData, ClassFinance, InvoiceDiscount, BookingRevenue } from "./types";
+import { FinancialData, ClassFinance, BookingRevenue } from "./types";
 
 export function useFinancialProcessor(financialData: FinancialData | undefined) {
   const [classFinances, setClassFinances] = useState<ClassFinance[]>([]);
@@ -19,10 +19,11 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
       bookingsWithInvoices,
       allInvoicesCount,
       invalidInvoicesCount: invalidCount,
-      totalRevenue
+      totalRevenue,
+      invoices
     } = financialData;
 
-    // Use optional chaining for possibly undefined invoiceItems
+    // Use optional chaining for possibly undefined invoice items
     const invoiceItems = financialData.invoiceItems || [];
 
     setTotalInvoiceCount(allInvoicesCount);
@@ -32,111 +33,171 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
     const classSummaries = new Map<string, ClassFinance>();
     const bookingRevenueMap = new Map<string, BookingRevenue>();
     const classInvoiceMap = new Map<string, Set<string>>();
-    const invoiceDiscountMap = new Map<string, InvoiceDiscount>();
 
-    // First, collect all invoice data - use total (already accounts for discounts)
+    // First map invoices to bookings using invoice items as a connector
+    const invoiceToBookingMap = new Map<string, string[]>();
+    const bookingToInvoiceMap = new Map<string, Set<string>>();
+    
     invoiceItems.forEach(item => {
-      if (!item.invoices) return;
-
-      const invoiceId = item.invoice_id;
-      invoiceDiscountMap.set(invoiceId, {
-        discountAmount: 0, // Not needed since we're using total directly
-        subtotal: item.invoices.subtotal || 0,
-        total: item.invoices.total || 0
-      });
-    });
-
-    // Process all items using the final invoice total (after discount)
-    invoiceItems.forEach(item => {
-      if (!item.booking_id || !item.invoices) return;
-
-      const invoiceId = item.invoice_id;
-      const invoiceData = invoiceDiscountMap.get(invoiceId);
-      
-      // Use the final amount from the item (after any discounts applied)
-      const actualItemRevenue = item.amount || 0;
-
-      if (!bookingRevenueMap.has(item.booking_id)) {
-        bookingRevenueMap.set(item.booking_id, {
-          totalRevenue: 0,
-          invoiceIds: new Set()
-        });
+      if (item.booking_id && item.invoice_id) {
+        // Map invoice to booking
+        if (!invoiceToBookingMap.has(item.invoice_id)) {
+          invoiceToBookingMap.set(item.invoice_id, []);
+        }
+        invoiceToBookingMap.get(item.invoice_id)!.push(item.booking_id);
+        
+        // Map booking to invoice
+        if (!bookingToInvoiceMap.has(item.booking_id)) {
+          bookingToInvoiceMap.set(item.booking_id, new Set());
+        }
+        bookingToInvoiceMap.get(item.booking_id)!.add(item.invoice_id);
       }
-
-      const bookingRevenue = bookingRevenueMap.get(item.booking_id)!;
-      bookingRevenue.totalRevenue += actualItemRevenue;
-      bookingRevenue.invoiceIds.add(item.invoice_id);
     });
 
-    // Process bookings with their complete revenue information
-    bookingsWithInvoices.forEach(booking => {
-      const bookingRevenue = bookingRevenueMap.get(booking.id) || {
-        totalRevenue: 0,
-        invoiceIds: new Set()
-      };
-
-      const classData = booking.class_schedules?.classes;
-      if (!classData) return;
-
-      const className = classData.name;
-      const totalRevenue = bookingRevenue.totalRevenue;
-
-      if (className && bookingRevenue.invoiceIds.size > 0) {
+    // Now work directly with invoices and distribute revenue proportionally
+    const processedInvoices = new Set<string>();
+    
+    // First handle invoices that can be mapped to specific classes through bookings
+    invoices.forEach(invoice => {
+      const bookingIds = invoiceToBookingMap.get(invoice.id);
+      
+      // Skip if this invoice has no associated bookings or already processed
+      if (!bookingIds || bookingIds.length === 0 || processedInvoices.has(invoice.id)) return;
+      
+      // Distribute the invoice total evenly among associated bookings
+      const invoiceAmountPerBooking = invoice.total / bookingIds.length;
+      
+      bookingIds.forEach(bookingId => {
+        const booking = bookingsWithInvoices.find(b => b.id === bookingId);
+        if (!booking || !booking.class_schedules?.classes) return;
+        
+        const classData = booking.class_schedules.classes;
+        const className = classData.name;
+        
+        // Track this invoice for this class
         if (!classInvoiceMap.has(className)) {
           classInvoiceMap.set(className, new Set());
         }
-        bookingRevenue.invoiceIds.forEach(id =>
-          classInvoiceMap.get(className)!.add(id)
-        );
-      }
-
-      // Get or create class summary
-      const summary = classSummaries.get(className) || {
-        className,
+        classInvoiceMap.get(className)!.add(invoice.id);
+        
+        // Get or create class summary
+        const summary = classSummaries.get(className) || {
+          className,
+          totalRevenue: 0,
+          bookingsCount: 0,
+          franchiseFee: 0,
+          adminFee: 0,
+          instructorFee: 0,
+          profit: 0,
+          invoiceCount: 0,
+          sourceType: 'class',
+          invoiceIds: []
+        };
+        
+        // Update summary with invoice amount
+        summary.bookingsCount++;
+        summary.totalRevenue += invoiceAmountPerBooking;
+        
+        // Calculate fees based on invoice amount
+        if (classData.mckaynine_commission_type === 'percentage') {
+          summary.franchiseFee += (invoiceAmountPerBooking * (classData.mckaynine_commission_value / 100));
+        } else {
+          summary.franchiseFee += classData.mckaynine_commission_value;
+        }
+        
+        if (classData.admin_fee_type === 'percentage') {
+          summary.adminFee += (invoiceAmountPerBooking * (classData.admin_fee_value / 100));
+        } else {
+          summary.adminFee += classData.admin_fee_value;
+        }
+        
+        if (classData.trainer_fee_type === 'percentage') {
+          summary.instructorFee += (invoiceAmountPerBooking * (classData.trainer_fee_value / 100));
+        } else {
+          summary.instructorFee += classData.trainer_fee_value;
+        }
+        
+        classSummaries.set(className, summary);
+      });
+      
+      processedInvoices.add(invoice.id);
+    });
+    
+    // Handle unprocessed invoices (not linked to specific classes)
+    const unprocessedInvoicesTotal = invoices
+      .filter(inv => !processedInvoices.has(inv.id))
+      .reduce((sum, inv) => sum + inv.total, 0);
+    
+    if (unprocessedInvoicesTotal > 0) {
+      const generalClassName = "General Training Services";
+      const unprocessedInvoiceIds = invoices
+        .filter(inv => !processedInvoices.has(inv.id))
+        .map(inv => inv.id);
+      
+      // Create a general entry for unprocessed invoices
+      const generalSummary = classSummaries.get(generalClassName) || {
+        className: generalClassName,
         totalRevenue: 0,
         bookingsCount: 0,
         franchiseFee: 0,
         adminFee: 0,
         instructorFee: 0,
         profit: 0,
-        invoiceCount: 0,
-        sourceType: 'class',
-        invoiceIds: []
+        invoiceCount: unprocessedInvoiceIds.length,
+        sourceType: 'general',
+        invoiceIds: unprocessedInvoiceIds
       };
-
-      // Update summary with net revenue information
-      summary.bookingsCount++;
-      summary.totalRevenue += totalRevenue;
-
-      // Calculate fees based on actual revenue (net after discount)
-      if (classData.mckaynine_commission_type === 'percentage') {
-        summary.franchiseFee += (totalRevenue * (classData.mckaynine_commission_value / 100));
-      } else {
-        summary.franchiseFee += classData.mckaynine_commission_value;
+      
+      // Use average fee percentages from other classes or default values
+      let avgAdminPercent = 10;
+      let avgTrainerPercent = 30;
+      let avgFranchisePercent = 15;
+      
+      // Calculate averages if we have processed classes
+      if (classSummaries.size > 0) {
+        let totalAdmin = 0;
+        let totalTrainer = 0;
+        let totalFranchise = 0;
+        let totalRevenue = 0;
+        
+        classSummaries.forEach(summary => {
+          if (summary.totalRevenue > 0) {
+            totalAdmin += summary.adminFee;
+            totalTrainer += summary.instructorFee;
+            totalFranchise += summary.franchiseFee;
+            totalRevenue += summary.totalRevenue;
+          }
+        });
+        
+        if (totalRevenue > 0) {
+          avgAdminPercent = (totalAdmin / totalRevenue) * 100;
+          avgTrainerPercent = (totalTrainer / totalRevenue) * 100;
+          avgFranchisePercent = (totalFranchise / totalRevenue) * 100;
+        }
       }
+      
+      // Apply average percentages to unprocessed revenue
+      generalSummary.totalRevenue = unprocessedInvoicesTotal;
+      generalSummary.adminFee = unprocessedInvoicesTotal * (avgAdminPercent / 100);
+      generalSummary.instructorFee = unprocessedInvoicesTotal * (avgTrainerPercent / 100);
+      generalSummary.franchiseFee = unprocessedInvoicesTotal * (avgFranchisePercent / 100);
+      
+      // Calculate profit
+      generalSummary.profit = generalSummary.totalRevenue - 
+                             generalSummary.adminFee - 
+                             generalSummary.instructorFee - 
+                             generalSummary.franchiseFee;
+      
+      classSummaries.set(generalClassName, generalSummary);
+    }
 
-      if (classData.admin_fee_type === 'percentage') {
-        summary.adminFee += (totalRevenue * (classData.admin_fee_value / 100));
-      } else {
-        summary.adminFee += classData.admin_fee_value;
-      }
-
-      if (classData.trainer_fee_type === 'percentage') {
-        summary.instructorFee += (totalRevenue * (classData.trainer_fee_value / 100));
-      } else {
-        summary.instructorFee += classData.trainer_fee_value;
-      }
-
-      classSummaries.set(className, summary);
-    });
-
-    // Update invoice counts and calculate profits
+    // Update invoice counts and calculate profits for all classes
     Array.from(classInvoiceMap.entries()).forEach(([className, invoiceIds]) => {
       const summary = classSummaries.get(className);
       if (summary) {
         summary.invoiceCount = invoiceIds.size;
         summary.invoiceIds = Array.from(invoiceIds);
-        // Calculate profit as net revenue minus all fees
+        // Calculate profit as total revenue minus all fees
         summary.profit = summary.totalRevenue - summary.franchiseFee - summary.adminFee - summary.instructorFee;
       }
     });

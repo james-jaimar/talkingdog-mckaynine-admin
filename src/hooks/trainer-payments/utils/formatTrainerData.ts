@@ -46,17 +46,6 @@ export function formatTrainerPaymentData(
     bookingsBySchedule[scheduleId].push(booking);
   });
 
-  // Group invoice items by booking ID for faster lookup - use net amounts after discounts
-  const invoiceItemsByBooking: Record<string, InvoiceItem[]> = {};
-  invoiceItems.forEach(item => {
-    if (item.booking_id) {
-      if (!invoiceItemsByBooking[item.booking_id]) {
-        invoiceItemsByBooking[item.booking_id] = [];
-      }
-      invoiceItemsByBooking[item.booking_id].push(item);
-    }
-  });
-
   // Calculate potential earnings and class details
   let totalPotentialEarnings = 0;
 
@@ -66,13 +55,18 @@ export function formatTrainerPaymentData(
     
     // Get all invoice items for this schedule's bookings
     const scheduleInvoiceItems: InvoiceItem[] = [];
+    
     scheduleBookings.forEach(booking => {
-      const items = invoiceItemsByBooking[booking.id] || [];
+      const items = invoiceItems.filter(item => item.booking_id === booking.id);
       scheduleInvoiceItems.push(...items);
     });
 
-    // Calculate revenue for this class based on NET amounts (after any discounts)
-    const revenueDetails = calculateClassRevenue(scheduleBookings, schedule, scheduleInvoiceItems);
+    // Calculate revenue for this class based on NET amounts (using invoice totals)
+    const revenueDetails = calculateClassRevenue(
+      scheduleBookings, 
+      schedule, 
+      scheduleInvoiceItems
+    );
 
     // Add to total potential earnings
     totalPotentialEarnings += revenueDetails.potentialRevenue;

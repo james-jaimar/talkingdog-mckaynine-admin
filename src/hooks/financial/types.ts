@@ -1,11 +1,12 @@
 
-// Update the FinancialData type to no longer include totalDiscounts
+// Update the FinancialData type to include invoices
 export interface FinancialData {
   bookingsWithInvoices: BookingWithSchedule[];
   allInvoicesCount: number;
   invalidInvoicesCount: number;
   totalRevenue: number;
   invoiceItems: InvoiceItemWithInvoice[];
+  invoices: InvoiceData[];
 }
 
 export interface BookingWithSchedule {
@@ -39,10 +40,15 @@ export interface ClassFinance {
   invoiceIds: string[];
 }
 
-export interface InvoiceDiscount {
-  discountAmount: number;
-  subtotal: number; 
+export interface InvoiceData {
+  id: string;
   total: number;
+  status: string;
+  client_id: string;
+  issued_date: string;
+  client?: {
+    branch_id?: string;
+  };
 }
 
 export interface BookingRevenue {
