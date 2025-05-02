@@ -1,4 +1,3 @@
-
 import { jsPDF } from "jspdf";
 import { TrainerClassDetail } from "@/hooks/trainer-payments/types";
 import { PaymentDetailsFormValues } from "../payment-dialog/PaymentDetailsForm";

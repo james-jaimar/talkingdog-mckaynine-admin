@@ -6,13 +6,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { PaymentDialogHeader } from "./DialogHeader";
 import { ClassTable } from "./ClassTable";
 import { PaymentTracker } from "./PaymentTracker";
-import { PaymentDetailsPanel } from "./PaymentDetailsPanel";
+import { PaymentDetailsForm, PaymentDetailsFormValues } from "./PaymentDetailsForm";
 import { DialogFooter } from "./DialogFooter";
 import { LoadingState } from "./LoadingState";
 import { useMarkTrainerPaymentsPaid } from "@/hooks/useMarkTrainerPaymentsPaid";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/useIsMobile";
-import { PaymentDetailsForm, PaymentDetailsFormValues } from "./PaymentDetailsForm";
 
 interface TrainerPaymentDialogProps {
   open: boolean;
@@ -32,6 +31,10 @@ export function TrainerPaymentDialog({
   scheduleIds = []
 }: TrainerPaymentDialogProps) {
   const [selectedClassIds, setSelectedClassIds] = useState<string[]>(scheduleIds || []);
+  const [paymentDetails, setPaymentDetails] = useState<PaymentDetailsFormValues>({
+    paymentMethod: 'bank_transfer',
+    sendEmail: true
+  });
   const isMobile = useIsMobile();
 
   // Reset selected classes when the dialog opens with new scheduleIds
@@ -77,6 +80,14 @@ export function TrainerPaymentDialog({
       setSelectedClassIds([]);
     }
   };
+
+  // Update the payment details to include the total amount for display purposes
+  useEffect(() => {
+    setPaymentDetails(prev => ({
+      ...prev,
+      totalAmount: selectedAmount
+    }));
+  }, [selectedAmount]);
 
   const handleSubmitPayment = async (paymentDetails: PaymentDetailsFormValues) => {
     if (selectedClassIds.length === 0) {
@@ -163,8 +174,10 @@ export function TrainerPaymentDialog({
                       amount={selectedAmount}
                     />
                     
-                    <PaymentDetailsForm 
-                      onSubmit={handleSubmitPayment} 
+                    <PaymentDetailsForm
+                      values={paymentDetails}
+                      onChange={setPaymentDetails}
+                      onSubmit={handleSubmitPayment}
                       isPending={markAsPaid.isPending}
                       trainerEmail={trainerEmail}
                     />
