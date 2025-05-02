@@ -82,7 +82,9 @@ export function useMarkTrainerPaymentsPaid() {
       return { trainerId, scheduleIds };
     },
     onSuccess: () => {
+      // Invalidate all related queries to ensure payment history is refreshed
       queryClient.invalidateQueries({ queryKey: ['trainer-payments'] });
+      queryClient.invalidateQueries({ queryKey: ['trainer-payment-history'] }); // Add this to refresh payment history
       toast.success("Payments marked as paid successfully");
     },
     onError: (error) => {

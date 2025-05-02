@@ -38,7 +38,7 @@ export function TrainerPaymentHistory({ limit = 5, showViewAll = false }: Traine
   const [viewAll, setViewAll] = useState(!showViewAll);
   const isMobile = useIsMobile();
   
-  const { data: payments, isLoading, error } = useQuery({
+  const { data: payments, isLoading, error, refetch } = useQuery({
     queryKey: ['trainer-payment-history', limit, viewAll],
     queryFn: async () => {
       try {
@@ -151,7 +151,9 @@ export function TrainerPaymentHistory({ limit = 5, showViewAll = false }: Traine
         toast.error("Failed to fetch payment history");
         throw error;
       }
-    }
+    },
+    refetchOnWindowFocus: true, // Add this to ensure data refreshes when the component gets focus
+    staleTime: 1000 * 60 * 5 // Set a short stale time (5 minutes) to update more frequently
   });
 
   const handleViewDetails = (payment: TrainerPayment) => {
@@ -193,15 +195,24 @@ export function TrainerPaymentHistory({ limit = 5, showViewAll = false }: Traine
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <CardTitle>Recent Trainer Payments</CardTitle>
-          {showViewAll && (
+          <div className="flex gap-2">
             <Button 
-              variant="ghost" 
+              variant="outline" 
               size="sm" 
-              onClick={() => setViewAll(prev => !prev)}
+              onClick={() => refetch()}
             >
-              {viewAll ? "Show Less" : "View All"}
+              Refresh
             </Button>
-          )}
+            {showViewAll && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setViewAll(prev => !prev)}
+              >
+                {viewAll ? "Show Less" : "View All"}
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (

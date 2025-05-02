@@ -37,7 +37,9 @@ export function useMarkTrainerPaymentsUnpaid() {
       return { trainerId, scheduleIds };
     },
     onSuccess: () => {
+      // Invalidate both trainer-payments and trainer-payment-history queries
       queryClient.invalidateQueries({ queryKey: ['trainer-payments'] });
+      queryClient.invalidateQueries({ queryKey: ['trainer-payment-history'] });
       toast.success("Payments marked as unpaid successfully");
     },
     onError: (error) => {

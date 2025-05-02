@@ -3,12 +3,14 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTrainerPaymentData } from "@/hooks/useTrainerPaymentData";
 import { TrainerPaymentsSummary } from "./TrainerPaymentsSummary";
-import { Loader2, AlertCircle } from "lucide-react";
+import { Loader2, AlertCircle, RefreshCw } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { TrainerPaymentHistory } from "./payment-history/TrainerPaymentHistory";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useMarkTrainerPaymentsUnpaid } from "@/hooks/useMarkTrainerPaymentsUnpaid";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface TrainerReportsTabProps {
   dateRange: { from: Date; to: Date };
@@ -16,7 +18,8 @@ interface TrainerReportsTabProps {
 }
 
 export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProps) {
-  const { data: trainersData, isLoading, error } = useTrainerPaymentData(branchId, dateRange);
+  const queryClient = useQueryClient();
+  const { data: trainersData, isLoading, error, refetch } = useTrainerPaymentData(branchId, dateRange);
   const [markUnpaidDialogOpen, setMarkUnpaidDialogOpen] = useState(false);
   const [selectedTrainerId, setSelectedTrainerId] = useState<string | null>(null);
   
@@ -54,6 +57,14 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
       console.error("Error marking as unpaid:", error);
     }
   };
+  
+  const refreshAllData = () => {
+    // Invalidate all payment-related queries
+    queryClient.invalidateQueries({ queryKey: ['trainer-payments'] });
+    queryClient.invalidateQueries({ queryKey: ['trainer-payment-history'] });
+    refetch();
+    toast.success("Payment data refreshed");
+  };
 
   if (isLoading) {
     return (
@@ -89,6 +100,18 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
 
   return (
     <div className="space-y-6">
+      <div className="flex justify-end mb-2">
+        <Button 
+          variant="outline" 
+          onClick={refreshAllData} 
+          size="sm"
+          className="gap-2"
+        >
+          <RefreshCw className="h-4 w-4" />
+          Refresh Data
+        </Button>
+      </div>
+      
       <TrainerPaymentsSummary 
         trainers={formattedTrainers}
         isLoading={isLoading}
