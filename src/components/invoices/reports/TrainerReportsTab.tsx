@@ -3,8 +3,8 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTrainerPaymentData } from "@/hooks/useTrainerPaymentData";
 import { TrainerPaymentsSummary } from "./TrainerPaymentsSummary";
-import { Loader2, AlertCircle, RefreshCw, Bug, Database } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Loader2, AlertCircle, RefreshCw, Database, Info } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { TrainerPaymentHistory } from "./payment-history/TrainerPaymentHistory";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useMarkTrainerPaymentsUnpaid } from "@/hooks/useMarkTrainerPaymentsUnpaid";
@@ -25,6 +25,8 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
   const [selectedTrainerId, setSelectedTrainerId] = useState<string | null>(null);
   const [isDebugging, setIsDebugging] = useState(false);
   const [debugInfo, setDebugInfo] = useState<any>(null);
+  const [showPermissionsCheck, setShowPermissionsCheck] = useState(false);
+  const [permissionCheckResult, setPermissionCheckResult] = useState<any>(null);
   
   const markAsUnpaid = useMarkTrainerPaymentsUnpaid();
   
@@ -67,6 +69,54 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
     queryClient.invalidateQueries({ queryKey: ['trainer-payment-history'] });
     refetch();
     toast.success("Payment data refreshed");
+  };
+
+  // Test edge function for trainer payments
+  const testEdgeFunction = async () => {
+    try {
+      setIsDebugging(true);
+      
+      const testTrainerId = trainersData && trainersData.length > 0 
+        ? trainersData[0].id 
+        : '00000000-0000-0000-0000-000000000000';
+      
+      // Test the edge function with minimal data
+      const { data, error } = await supabase.functions.invoke('update-trainer-payments', {
+        body: { 
+          trainerId: testTrainerId,
+          scheduleIds: ['00000000-0000-0000-0000-000000000000'], // Test ID
+          paymentMethod: 'bank_transfer',
+          notes: 'Test from debugging panel'
+        }
+      });
+      
+      setPermissionCheckResult({
+        success: !error,
+        error: error?.message,
+        data
+      });
+      
+      if (error) {
+        toast.error("Edge function test failed", { 
+          description: error.message
+        });
+      } else {
+        toast.success("Edge function is working", {
+          description: "The payment update edge function is properly configured"
+        });
+      }
+    } catch (e) {
+      console.error("Error testing edge function:", e);
+      setPermissionCheckResult({
+        success: false,
+        error: e.message
+      });
+      toast.error("Edge function test failed", {
+        description: e.message
+      });
+    } finally {
+      setIsDebugging(false);
+    }
   };
 
   // Debug function to check trainer payments in database
@@ -241,6 +291,16 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
         
         <Button 
           variant="outline" 
+          onClick={() => setShowPermissionsCheck(true)} 
+          size="sm"
+          className="gap-2"
+        >
+          <Info className="h-4 w-4" />
+          Check Permissions
+        </Button>
+        
+        <Button 
+          variant="outline" 
           onClick={debugTrainerPayments}
           size="sm"
           className="gap-2"
@@ -250,6 +310,38 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
           {isDebugging ? "Checking..." : "Verify Database"}
         </Button>
       </div>
+      
+      {showPermissionsCheck && (
+        <Alert variant="default" className="bg-blue-50 mb-4">
+          <AlertTitle className="flex items-center gap-2">
+            Permission Check
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={testEdgeFunction}
+              disabled={isDebugging}
+            >
+              {isDebugging ? "Testing..." : "Test Edge Function"}
+            </Button>
+          </AlertTitle>
+          <AlertDescription>
+            <p className="mb-2">
+              Testing payment permissions can help identify issues with trainer payments.
+            </p>
+            {permissionCheckResult && (
+              <div className="text-xs font-mono overflow-x-auto mt-2 p-2 bg-slate-100 rounded">
+                <p><strong>Success:</strong> {permissionCheckResult.success ? '✅ Yes' : '❌ No'}</p>
+                {permissionCheckResult.error && <p><strong>Error:</strong> {permissionCheckResult.error}</p>}
+                {permissionCheckResult.data && (
+                  <pre className="whitespace-pre-wrap">
+                    {JSON.stringify(permissionCheckResult.data, null, 2)}
+                  </pre>
+                )}
+              </div>
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
       
       {debugInfo && (
         <Alert variant="default" className="bg-slate-50 mb-4">
@@ -263,6 +355,13 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
             ))}
             <p className="font-semibold mt-2 mb-1">Payment Columns:</p>
             <p>{debugInfo.schema?.join(', ')}</p>
+            {debugInfo.insertTest && (
+              <div className="mt-2">
+                <p className="font-semibold">Insert Test:</p>
+                <p>Success: {debugInfo.insertTest.success ? '✅ Yes' : '❌ No'}</p>
+                {debugInfo.insertTest.error && <p className="text-red-500">Error: {debugInfo.insertTest.error}</p>}
+              </div>
+            )}
           </div>
         </Alert>
       )}
