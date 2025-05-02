@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useTrainerPaymentData } from "@/hooks/useTrainerPaymentData";
 import { TrainerPaymentsSummary } from "./TrainerPaymentsSummary";
-import { Loader2, AlertCircle, RefreshCw, Database, Info, Tool } from "lucide-react";
+import { Loader2, AlertCircle, RefreshCw, Database, Info, Wrench } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { TrainerPaymentHistory } from "./payment-history/TrainerPaymentHistory";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -183,7 +183,7 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
             size="sm"
             className="gap-2 bg-amber-50 border-amber-300 hover:bg-amber-100"
           >
-            <Tool className="h-4 w-4" />
+            <Wrench className="h-4 w-4" />
             Fix Zero Amount Payments
           </Button>
         )}

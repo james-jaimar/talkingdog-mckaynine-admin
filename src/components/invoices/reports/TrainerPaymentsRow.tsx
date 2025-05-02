@@ -7,7 +7,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ExtendedBadge } from "@/components/ui/badge-variants";
 import { formatCurrency } from "@/lib/formatters";
-import { ChevronDown, ChevronUp, Tool } from "lucide-react";
+import { ChevronDown, ChevronUp, Wrench } from "lucide-react";
 import { TrainerClassDetail } from "@/hooks/useTrainerPaymentData";
 import { ClassDetailsList } from "./class-details/ClassDetailsList";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -74,7 +74,7 @@ export function TrainerPaymentsRow({
           
           {trainer.hasZeroAmountPayments && (
             <ExtendedBadge variant="amber" className="ml-1">
-              <Tool className="h-3 w-3 mr-1" />
+              <Wrench className="h-3 w-3 mr-1" />
               Fix Needed
             </ExtendedBadge>
           )}
@@ -142,7 +142,7 @@ export function TrainerPaymentsRow({
                       onFixZeroAmounts(trainer.id);
                     }}
                   >
-                    <Tool className="h-4 w-4 mr-1" />
+                    <Wrench className="h-4 w-4 mr-1" />
                     Fix Zero Amounts
                   </DropdownMenuItem>
                 )}
