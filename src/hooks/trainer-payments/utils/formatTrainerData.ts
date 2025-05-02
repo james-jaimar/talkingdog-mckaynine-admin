@@ -3,7 +3,7 @@ import { TrainerPaymentData, TrainerClassDetail, Schedule, Booking, InvoiceItem 
 import { calculateClassRevenue } from "./calculateTrainerFees";
 
 export function formatTrainerPaymentData(
-  trainer: { id: string; first_name: string; last_name: string },
+  trainer: { id: string; first_name: string; last_name: string; email?: string },
   allSchedules: Schedule[],
   bookings: Booking[] = [],
   invoiceItems: InvoiceItem[] = [],
@@ -40,6 +40,8 @@ export function formatTrainerPaymentData(
   const bookingsBySchedule: Record<string, Booking[]> = {};
   bookings.forEach(booking => {
     const scheduleId = booking.class_schedule_id;
+    if (!scheduleId) return;
+    
     if (!bookingsBySchedule[scheduleId]) {
       bookingsBySchedule[scheduleId] = [];
     }
@@ -90,7 +92,14 @@ export function formatTrainerPaymentData(
       // Use the client's first and last name when available
       let clientName = 'Unnamed Client';
       
-      if (booking.clients) {
+      if (booking.client) {
+        const firstName = booking.client.first_name || '';
+        const lastName = booking.client.last_name || '';
+        if (firstName || lastName) {
+          clientName = `${firstName} ${lastName}`.trim();
+        }
+      } else if (booking.clients) {
+        // Fallback to clients property if client is not available
         const firstName = booking.clients.first_name || '';
         const lastName = booking.clients.last_name || '';
         if (firstName || lastName) {
@@ -127,10 +136,10 @@ export function formatTrainerPaymentData(
   return {
     id: trainer.id,
     trainerName: `${trainer.first_name} ${trainer.last_name}`,
+    trainerEmail: trainer.email,
     totalEarned: hasActualPayments ? totalPaid : totalPotentialEarnings, // Show actual earnings if we have payments, otherwise potential
     paid: totalPaid,
-    // Only show pending if we have actual payments, otherwise show potential earnings
-    pending: hasActualPayments ? totalPending : totalPotentialEarnings,
+    pending: hasActualPayments ? totalPending : totalPotentialEarnings, // Only show pending if we have actual payments, otherwise show potential earnings
     potentialEarnings: totalPotentialEarnings,
     classesCount: allSchedules.length,
     clients: uniqueClientIds.size,

@@ -37,6 +37,12 @@ export interface Booking {
     name: string;
     breed: string;
   };
+  // For backward compatibility with code using clients instead of client
+  clients?: {
+    id: string;
+    first_name: string;
+    last_name: string;
+  };
   computed_payment_status?: string;
 }
 
@@ -51,23 +57,41 @@ export interface InvoiceItem {
   invoices?: {
     id: string;
     status: string;
+    payment_date?: string;
   };
+}
+
+export interface BookingDetail {
+  bookingId: string;
+  clientId: string;
+  handlerName: string;
+  commissionAmount: number;
 }
 
 export interface TrainerClassDetail {
   scheduleId: string;
   className: string;
   classDate: string;
+  scheduleDate: Date;
   bookings: number;
   revenue: number;
   potentialRevenue: number;
   isPaid: boolean;
+  bookingsDetails?: BookingDetail[];
 }
 
 export interface TrainerPaymentData {
   id: string;
   trainerName: string;
-  trainerEmail: string;
+  trainerEmail?: string;
+  totalEarned: number;
+  paid: number;
+  pending: number;
+  potentialEarnings?: number;
+  classesCount: number;
+  clients: number;
+  lastPaymentDate?: string;
+  scheduleIds?: string[];
   classDetails: TrainerClassDetail[];
 }
 

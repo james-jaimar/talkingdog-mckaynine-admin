@@ -1,25 +1,34 @@
 
 import { TrainerClassDetail } from "@/hooks/trainer-payments/types";
 
-/**
- * Extracts handler commission data from class details
- * Returns either actual handler details or generates placeholder data
- */
-export function getHandlerCommissionsForClass(classDetail: TrainerClassDetail) {
-  // If we have bookingsDetails with handler information, use it
-  if (classDetail.bookingsDetails && classDetail.bookingsDetails.length > 0) {
-    return classDetail.bookingsDetails;
-  }
+// Get commissions grouped by handlers
+export function getHandlerCommissions(classDetails: TrainerClassDetail[]) {
+  if (!classDetails) return [];
+
+  // Create a map to group commissions by handler
+  const handlerMap = new Map();
   
-  // Fallback: simulate with count of bookings (should not happen with our fixes)
-  const result = [];
-  for (let i = 1; i <= classDetail.bookings; i++) {
-    result.push({
-      bookingId: `placeholder-${i}`,
-      clientId: `placeholder-${i}`,
-      handlerName: `Client ${i}`,
-      commissionAmount: Math.round((classDetail.potentialRevenue || 0) / classDetail.bookings)
+  classDetails.forEach(classDetail => {
+    if (!classDetail.bookingsDetails) return;
+    
+    classDetail.bookingsDetails.forEach(booking => {
+      const { handlerName, commissionAmount } = booking;
+      
+      if (!handlerMap.has(handlerName)) {
+        handlerMap.set(handlerName, {
+          name: handlerName,
+          totalCommission: 0,
+          bookings: 0
+        });
+      }
+      
+      const handler = handlerMap.get(handlerName);
+      handler.totalCommission += commissionAmount;
+      handler.bookings += 1;
     });
-  }
-  return result;
+  });
+  
+  // Convert map to array and sort by totalCommission descending
+  return Array.from(handlerMap.values())
+    .sort((a, b) => b.totalCommission - a.totalCommission);
 }

@@ -8,7 +8,8 @@ export async function fetchTrainers(branchId: string) {
     .select(`
       id,
       first_name,
-      last_name
+      last_name,
+      email
     `)
     .eq('branch_id', branchId);
 
@@ -67,6 +68,8 @@ export async function fetchBookings(scheduleIds: string[], dateRange?: { from: s
       client_id,
       class_schedule_id,
       payment_status,
+      status,
+      is_enrolled,
       clients:client_id (
         id,
         first_name, 
@@ -86,7 +89,13 @@ export async function fetchBookings(scheduleIds: string[], dateRange?: { from: s
     throw error;
   }
 
-  return bookings as Booking[];
+  // Add client property for compatibility
+  const bookingsWithClientData = bookings.map(booking => ({
+    ...booking,
+    client: booking.clients, // Make sure both client and clients are available
+  })) as unknown as Booking[];
+
+  return bookingsWithClientData;
 }
 
 export async function fetchInvoiceItems(bookingIds: string[]): Promise<InvoiceItem[]> {
@@ -99,6 +108,9 @@ export async function fetchInvoiceItems(bookingIds: string[]): Promise<InvoiceIt
       amount,
       booking_id,
       invoice_id,
+      description,
+      quantity,
+      unit_price,
       invoices:invoice_id (
         id,
         status,
@@ -112,7 +124,19 @@ export async function fetchInvoiceItems(bookingIds: string[]): Promise<InvoiceIt
     throw error;
   }
 
-  return invoiceItems as InvoiceItem[];
+  // Ensure all required fields are present for the InvoiceItem interface
+  const completeInvoiceItems = invoiceItems.map(item => ({
+    id: item.id,
+    invoice_id: item.invoice_id,
+    booking_id: item.booking_id,
+    description: item.description || 'Class booking',
+    quantity: item.quantity || 1,
+    unit_price: item.unit_price || item.amount || 0,
+    amount: item.amount || 0,
+    invoices: item.invoices
+  })) as InvoiceItem[];
+
+  return completeInvoiceItems;
 }
 
 export async function fetchTrainerPayments(trainerId: string, dateRange?: { from: string; to: string }) {
