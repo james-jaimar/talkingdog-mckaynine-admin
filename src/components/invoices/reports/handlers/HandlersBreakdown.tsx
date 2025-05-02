@@ -1,14 +1,14 @@
 
 import { formatCurrency } from "@/lib/formatters";
 import { TrainerClassDetail } from "@/hooks/trainer-payments/types";
-import { getHandlerCommissionsForClass } from "../utils/getHandlerCommissions";
+import { getHandlerCommissions } from "../utils/getHandlerCommissions";
 
 interface HandlersBreakdownProps {
   classDetail: TrainerClassDetail;
 }
 
 export function HandlersBreakdown({ classDetail }: HandlersBreakdownProps) {
-  const handlerData = getHandlerCommissionsForClass(classDetail);
+  const handlerData = getHandlerCommissions([classDetail]);
   
   return (
     <div className="col-span-7 mt-2 mb-2 border-t pt-2">
@@ -16,8 +16,8 @@ export function HandlersBreakdown({ classDetail }: HandlersBreakdownProps) {
       <div className="space-y-2">
         {handlerData.map((handler, i) => (
           <div key={i} className="flex justify-between rounded bg-muted px-3 py-2">
-            <span className="font-medium">{handler.handlerName}</span>
-            <span className="text-right">{formatCurrency(handler.commissionAmount)}</span>
+            <span className="font-medium">{handler.name}</span>
+            <span className="text-right">{formatCurrency(handler.totalCommission)}</span>
           </div>
         ))}
         {handlerData.length === 0 && (

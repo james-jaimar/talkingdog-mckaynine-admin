@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTrainerPaymentData } from "@/hooks/useTrainerPaymentData";
@@ -126,7 +127,10 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
             <AlertDialogAction 
               onClick={() => {
                 if (selectedTrainerId) {
-                  markAsUnpaid.mutate(selectedTrainerId);
+                  markAsUnpaid.mutate({ 
+                    trainerId: selectedTrainerId, 
+                    scheduleIds: [] // Empty array as default if no schedules selected
+                  });
                 }
                 setMarkUnpaidDialogOpen(false);
               }}
