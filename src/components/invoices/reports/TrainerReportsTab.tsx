@@ -1,9 +1,9 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTrainerPaymentData } from "@/hooks/useTrainerPaymentData";
 import { TrainerPaymentsSummary } from "./TrainerPaymentsSummary";
-import { Loader2, AlertCircle, RefreshCw } from "lucide-react";
+import { Loader2, AlertCircle, RefreshCw, Bug } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { TrainerPaymentHistory } from "./payment-history/TrainerPaymentHistory";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -11,6 +11,7 @@ import { useMarkTrainerPaymentsUnpaid } from "@/hooks/useMarkTrainerPaymentsUnpa
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 interface TrainerReportsTabProps {
   dateRange: { from: Date; to: Date };
@@ -22,6 +23,7 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
   const { data: trainersData, isLoading, error, refetch } = useTrainerPaymentData(branchId, dateRange);
   const [markUnpaidDialogOpen, setMarkUnpaidDialogOpen] = useState(false);
   const [selectedTrainerId, setSelectedTrainerId] = useState<string | null>(null);
+  const [isDebugging, setIsDebugging] = useState(false);
   
   const markAsUnpaid = useMarkTrainerPaymentsUnpaid();
   
@@ -66,6 +68,51 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
     toast.success("Payment data refreshed");
   };
 
+  // Debug function to check trainer payments in database
+  const debugTrainerPayments = async () => {
+    setIsDebugging(true);
+    
+    try {
+      // Check if trainer_payments table has columns document_url and document_name
+      const { data: dbSchema, error: schemaError } = await supabase
+        .from('trainer_payments')
+        .select('*')
+        .limit(1);
+        
+      if (schemaError) {
+        console.error("Error checking trainer_payments schema:", schemaError);
+        toast.error("Error checking database schema");
+        return;
+      }
+      
+      console.log("Trainer payments schema sample:", dbSchema);
+      
+      // Fetch recent payments to check status
+      const { data: payments, error } = await supabase
+        .from('trainer_payments')
+        .select('*')
+        .order('updated_at', { ascending: false })
+        .limit(10);
+        
+      if (error) {
+        console.error("Error fetching trainer payments:", error);
+        toast.error("Error fetching payments from database");
+        return;
+      }
+      
+      console.log("Recent trainer payments:", payments);
+      toast.success(`Found ${payments.length} trainer payment records`);
+
+      // Refresh data after checking
+      refreshAllData();
+    } catch (e) {
+      console.error("Debug error:", e);
+      toast.error("Error during debug");
+    } finally {
+      setIsDebugging(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-10">
@@ -100,7 +147,7 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-end mb-2">
+      <div className="flex justify-end mb-2 gap-2">
         <Button 
           variant="outline" 
           onClick={refreshAllData} 
@@ -110,6 +157,19 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
           <RefreshCw className="h-4 w-4" />
           Refresh Data
         </Button>
+        
+        {process.env.NODE_ENV === 'development' && (
+          <Button 
+            variant="outline" 
+            onClick={debugTrainerPayments}
+            size="sm"
+            className="gap-2"
+            disabled={isDebugging}
+          >
+            <Bug className="h-4 w-4" />
+            {isDebugging ? "Checking..." : "Debug DB"}
+          </Button>
+        )}
       </div>
       
       <TrainerPaymentsSummary 

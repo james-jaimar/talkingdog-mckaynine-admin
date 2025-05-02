@@ -38,122 +38,130 @@ export function TrainerPaymentHistory({ limit = 5, showViewAll = false }: Traine
   const [viewAll, setViewAll] = useState(!showViewAll);
   const isMobile = useIsMobile();
   
-  const { data: payments, isLoading, error, refetch } = useQuery({
-    queryKey: ['trainer-payment-history', limit, viewAll],
-    queryFn: async () => {
-      try {
-        // Get recent payments with trainer information
-        const query = supabase
-          .from('trainer_payments')
-          .select(`
-            id,
-            trainer_id,
-            payment_date,
-            payment_method,
-            transaction_id,
-            notes,
-            document_url,
-            document_name,
-            amount,
-            trainers (
-              first_name,
-              last_name
-            )
-          `)
-          .eq('status', 'paid')
-          .order('payment_date', { ascending: false });
-        
-        if (!viewAll) {
-          query.limit(limit);
-        }
-        
-        const { data, error } = await query;
-        
-        if (error) {
-          // Check if the error is specifically about the missing columns
-          if (error.message?.includes("column 'document_url' does not exist") ||
-              error.message?.includes("column 'document_name' does not exist")) {
-            console.error("Document URL columns don't exist yet. Migration needed:", error.message);
+  const fetchPaymentHistory = async () => {
+    console.log("Fetching trainer payment history");
+    
+    try {
+      // Get recent payments with trainer information
+      const query = supabase
+        .from('trainer_payments')
+        .select(`
+          id,
+          trainer_id,
+          payment_date,
+          payment_method,
+          transaction_id,
+          notes,
+          document_url,
+          document_name,
+          amount,
+          trainers (
+            first_name,
+            last_name
+          )
+        `)
+        .eq('status', 'paid')
+        .order('payment_date', { ascending: false });
+      
+      if (!viewAll) {
+        query.limit(limit);
+      }
+      
+      const { data, error } = await query;
+      
+      if (error) {
+        // Check if the error is specifically about the missing columns
+        if (error.message?.includes("column 'document_url' does not exist") ||
+            error.message?.includes("column 'document_name' does not exist")) {
+          console.error("Document URL columns don't exist yet. Migration needed:", error.message);
+          
+          // Fall back to querying without the document columns
+          let fallbackQuery = supabase
+            .from('trainer_payments')
+            .select(`
+              id,
+              trainer_id,
+              payment_date,
+              payment_method,
+              transaction_id,
+              notes,
+              amount,
+              trainers (
+                first_name,
+                last_name
+              )
+            `)
+            .eq('status', 'paid')
+            .order('payment_date', { ascending: false });
             
-            // Fall back to querying without the document columns
-            let fallbackQuery = supabase
-              .from('trainer_payments')
-              .select(`
-                id,
-                trainer_id,
-                payment_date,
-                payment_method,
-                transaction_id,
-                notes,
-                amount,
-                trainers (
-                  first_name,
-                  last_name
-                )
-              `)
-              .eq('status', 'paid')
-              .order('payment_date', { ascending: false });
-              
-            if (!viewAll) {
-              fallbackQuery = fallbackQuery.limit(limit);
-            }
-            
-            const { data: fallbackData, error: fallbackError } = await fallbackQuery;
-            
-            if (fallbackError) {
-              throw fallbackError;
-            }
-            
-            // Map the data to include null document fields
-            return (fallbackData || []).map(payment => ({
-              id: payment.id,
-              trainer_id: payment.trainer_id,
-              trainer_name: payment.trainers ? 
-                `${payment.trainers.first_name} ${payment.trainers.last_name}` : 
-                "Unknown",
-              payment_date: payment.payment_date,
-              amount: payment.amount || 0,
-              payment_method: payment.payment_method,
-              transaction_id: payment.transaction_id,
-              notes: payment.notes,
-              document_url: null, // Add missing fields with null values
-              document_name: null
-            }));
+          if (!viewAll) {
+            fallbackQuery = fallbackQuery.limit(limit);
           }
           
-          // For other types of errors, throw them
-          console.error("Error fetching trainer payment history:", error);
-          throw error;
+          const { data: fallbackData, error: fallbackError } = await fallbackQuery;
+          
+          if (fallbackError) {
+            throw fallbackError;
+          }
+          
+          console.log("Payment history (fallback):", fallbackData);
+          
+          // Map the data to include null document fields
+          return (fallbackData || []).map(payment => ({
+            id: payment.id,
+            trainer_id: payment.trainer_id,
+            trainer_name: payment.trainers ? 
+              `${payment.trainers.first_name} ${payment.trainers.last_name}` : 
+              "Unknown",
+            payment_date: payment.payment_date,
+            amount: payment.amount || 0,
+            payment_method: payment.payment_method,
+            transaction_id: payment.transaction_id,
+            notes: payment.notes,
+            document_url: null, // Add missing fields with null values
+            document_name: null
+          }));
         }
         
-        if (!data) {
-          return [];
-        }
-        
-        // Format the data
-        return data.map(payment => ({
-          id: payment.id,
-          trainer_id: payment.trainer_id,
-          trainer_name: payment.trainers ? 
-            `${payment.trainers.first_name} ${payment.trainers.last_name}` : 
-            "Unknown",
-          payment_date: payment.payment_date,
-          amount: payment.amount || 0,
-          payment_method: payment.payment_method,
-          transaction_id: payment.transaction_id,
-          notes: payment.notes,
-          document_url: payment.document_url,
-          document_name: payment.document_name
-        }));
-      } catch (error) {
-        // Handle other general errors
+        // For other types of errors, throw them
         console.error("Error fetching trainer payment history:", error);
-        toast.error("Failed to fetch payment history");
         throw error;
       }
-    },
-    refetchOnWindowFocus: true, // Add this to ensure data refreshes when the component gets focus
-    staleTime: 1000 * 60 * 5 // Set a short stale time (5 minutes) to update more frequently
+      
+      console.log("Payment history:", data);
+      
+      if (!data) {
+        return [];
+      }
+      
+      // Format the data
+      return data.map(payment => ({
+        id: payment.id,
+        trainer_id: payment.trainer_id,
+        trainer_name: payment.trainers ? 
+          `${payment.trainers.first_name} ${payment.trainers.last_name}` : 
+          "Unknown",
+        payment_date: payment.payment_date,
+        amount: payment.amount || 0,
+        payment_method: payment.payment_method,
+        transaction_id: payment.transaction_id,
+        notes: payment.notes,
+        document_url: payment.document_url,
+        document_name: payment.document_name
+      }));
+    } catch (error) {
+      // Handle other general errors
+      console.error("Error fetching trainer payment history:", error);
+      toast.error("Failed to fetch payment history");
+      throw error;
+    }
+  };
+  
+  const { data: payments = [], isLoading, error, refetch } = useQuery({
+    queryKey: ['trainer-payment-history', limit, viewAll],
+    queryFn: fetchPaymentHistory,
+    refetchInterval: 30000, // Refresh every 30 seconds
+    staleTime: 15000 // Consider data stale after 15 seconds
   });
 
   const handleViewDetails = (payment: TrainerPayment) => {

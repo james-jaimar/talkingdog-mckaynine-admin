@@ -33,8 +33,16 @@ export function useMarkTrainerPaymentsPaid() {
       // Current timestamp for all updates
       const now = new Date().toISOString();
       
+      console.log("Marking payments as paid:", {
+        trainerId,
+        scheduleIds,
+        paymentMethod,
+        transactionId,
+        now
+      });
+      
       // Update trainer payment records for these schedules
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('trainer_payments')
         .update({
           status: 'paid',
@@ -49,7 +57,12 @@ export function useMarkTrainerPaymentsPaid() {
         .eq('trainer_id', trainerId)
         .in('class_schedule_id', scheduleIds);
 
-      if (error) throw error;
+      console.log("Update response:", { data, error });
+      
+      if (error) {
+        console.error("Error updating trainer payments:", error);
+        throw error;
+      }
       
       // If email notification is requested, send it via edge function
       if (sendEmail) {
@@ -84,12 +97,12 @@ export function useMarkTrainerPaymentsPaid() {
     onSuccess: () => {
       // Invalidate all related queries to ensure payment history is refreshed
       queryClient.invalidateQueries({ queryKey: ['trainer-payments'] });
-      queryClient.invalidateQueries({ queryKey: ['trainer-payment-history'] }); // Add this to refresh payment history
+      queryClient.invalidateQueries({ queryKey: ['trainer-payment-history'] });
       toast.success("Payments marked as paid successfully");
     },
     onError: (error) => {
       console.error("Error marking trainer payments as paid:", error);
-      toast.error("Failed to update payment status");
+      toast.error("Failed to update payment status: " + (error as Error).message);
     }
   });
 }

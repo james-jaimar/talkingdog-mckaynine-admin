@@ -18,8 +18,13 @@ export function useMarkTrainerPaymentsUnpaid() {
         throw new Error("No schedules selected");
       }
       
+      console.log("Marking trainer payments as unpaid:", {
+        trainerId,
+        scheduleIds
+      });
+      
       // Update trainer payment records for these schedules back to pending
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('trainer_payments')
         .update({
           status: 'pending',
@@ -32,7 +37,12 @@ export function useMarkTrainerPaymentsUnpaid() {
         .eq('trainer_id', trainerId)
         .in('class_schedule_id', scheduleIds);
 
-      if (error) throw error;
+      console.log("Update response:", { data, error });
+      
+      if (error) {
+        console.error("Error updating trainer payments to unpaid:", error);
+        throw error;
+      }
       
       return { trainerId, scheduleIds };
     },
@@ -44,7 +54,7 @@ export function useMarkTrainerPaymentsUnpaid() {
     },
     onError: (error) => {
       console.error("Error marking trainer payments as unpaid:", error);
-      toast.error("Failed to update payment status");
+      toast.error("Failed to update payment status: " + (error as Error).message);
     }
   });
 }
