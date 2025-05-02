@@ -25,7 +25,7 @@ export async function generateTrainerPaymentPDF({
   const totalAmount = classes.reduce((sum, c) => sum + c.potentialRevenue, 0);
   
   // Add McKaynine logo at original size (210mm wide)
-  const logoPath = "/lovable-uploads/3647f206-d732-423e-91db-6a150b7df9b6.png";
+  const logoPath = "/lovable-uploads/e55530eb-3e59-46f4-a6c6-93f2d1835712.png";
   
   try {
     // Set coordinates to place the logo at the top of the page

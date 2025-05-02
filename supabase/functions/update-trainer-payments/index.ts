@@ -60,18 +60,18 @@ serve(async (req: Request) => {
     
     // Check if document fields exist in the table
     try {
-      const { data: columnExists, error: columnCheckError } = await supabaseAdmin.rpc(
-        'check_column_exists',
-        { 
-          p_table: 'trainer_payments',
-          p_column: 'document_url'
-        }
-      );
+      const { data: columnsData, error: columnCheckError } = await supabaseAdmin
+        .from('information_schema.columns')
+        .select('column_name')
+        .eq('table_name', 'trainer_payments')
+        .in('column_name', ['document_url', 'document_name']);
       
-      console.log("Document column check result:", { exists: columnExists, error: columnCheckError });
+      const columnNames = columnsData?.map(col => col.column_name) || [];
+      
+      console.log("Document column check result:", { columns: columnNames, error: columnCheckError });
       
       // Add document fields if they exist and values are provided
-      if (columnExists && payload.documentUrl) {
+      if (columnNames.includes('document_url') && payload.documentUrl) {
         updateData.document_url = payload.documentUrl;
         updateData.document_name = payload.documentName || null;
       }

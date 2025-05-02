@@ -1,102 +1,64 @@
 
-import { Database } from "@/integrations/supabase/types";
+export interface TrainerPaymentData {
+  id: string;
+  trainerName: string;
+  trainerEmail?: string;
+  totalEarned: number;
+  paid: number;
+  pending: number;
+  potentialEarnings?: number;
+  classesCount: number;
+  clients: number;
+  lastPaymentDate?: string;
+  scheduleIds?: string[];
+  classDetails?: TrainerClassDetail[];
+}
 
 export interface TrainerClassDetail {
   scheduleId: string;
   className: string;
   classDate: string;
+  scheduleDate: Date;
   revenue: number;
   potentialRevenue: number;
   bookings: number;
   isPaid: boolean;
-  scheduleDate: Date;
   bookingsDetails?: {
     bookingId: string;
     clientId: string;
-    handlerName: string; // This should contain the actual client name
+    handlerName: string;
     commissionAmount: number;
   }[];
 }
 
-export interface TrainerPaymentData {
-  id: string;
-  trainerName: string;
-  totalEarned: number;
-  paid: number;
-  pending: number;
-  potentialEarnings: number;
-  classesCount: number;
-  clients: number;
-  lastPaymentDate?: string;
-  scheduleIds: string[];
-  classDetails?: TrainerClassDetail[];
-  expanded?: boolean;
-}
-
-// Update the Schedule type to match the actual data structure from fetchSchedules
 export interface Schedule {
   id: string;
-  class_id?: string;
-  trainer_id?: string;
   start_time: string;
-  end_time: string;
-  recurring?: boolean;
-  recurrence_pattern?: string | null;
-  selected_dates?: string[] | null;
-  created_at?: string;
-  updated_at?: string;
   classes?: {
     id: string;
     name: string;
-    trainer_fee_type: string;
-    trainer_fee_value: number;
-    mckaynine_commission_type: string;
-    mckaynine_commission_value: number;
-    admin_fee_type: string;
-    admin_fee_value: number;
-    course_fee: number;
-    enrollment_fee: number;
-  } | null;
+    trainer_fee_type?: string;
+    trainer_fee_value?: number;
+  };
 }
 
-// Update Booking type to make optional fields that might not be returned from some queries
-export type Booking = {
+export interface Booking {
   id: string;
-  client_id?: string;
-  dog_id?: string;
   class_schedule_id: string;
-  payment_status: string;
-  created_at?: string;
-  updated_at?: string;
-  is_enrolled?: boolean;
-  vaccination_verified?: boolean;
-  status?: string;
-  notes?: string;
-  proof_of_payment?: string;
-  additional_notes?: string;
-  info_eo?: string;
-  info_pg?: string;
-  // Add a computed field for clients information that may come from a join
+  client_id?: string;
   clients?: {
-    id?: string;
-    uses_whatsapp_status?: string;
-    social_media_consent_status?: string;
-    first_name?: string;
-    last_name?: string;
+    id: string;
+    first_name: string;
+    last_name: string;
   };
-  // Add a computed field for info statuses
-  info_eo_status?: boolean | null;
-  info_pg_status?: boolean | null;
-};
+}
 
-export type InvoiceItem = {
+export interface InvoiceItem {
   id: string;
+  booking_id?: string;
   amount: number;
-  booking_id: string;
-  invoices: {
+  invoices?: {
     id: string;
     status: string;
-    payment_date?: string;
-    total?: number;
-  } | null;
-};
+  };
+}

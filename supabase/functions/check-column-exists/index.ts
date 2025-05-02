@@ -13,39 +13,42 @@ serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
-  
+
   try {
-    // Create Supabase client using environment variables
-    const supabase = createClient(
+    const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    // Extract table and column name from request
     const { table, column } = await req.json();
     
     if (!table || !column) {
       return new Response(
-        JSON.stringify({ error: "Table and column names are required" }),
+        JSON.stringify({ error: "Missing table or column parameter" }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
-
-    // Use raw SQL query instead of direct supabase query to avoid type issues
-    const { data, error } = await supabase.rpc('check_column_exists', {
-      p_table: table,
-      p_column: column
-    });
-
+    
+    // Query information_schema to check if column exists
+    const { data, error } = await supabaseAdmin
+      .from('information_schema.columns')
+      .select('column_name')
+      .eq('table_name', table)
+      .eq('column_name', column)
+      .maybeSingle();
+      
     if (error) {
       return new Response(
         JSON.stringify({ error: error.message }),
         { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
-
+    
     return new Response(
-      JSON.stringify({ exists: !!data }),
+      JSON.stringify({ 
+        exists: !!data,
+        column: data?.column_name || null
+      }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   } catch (error) {
