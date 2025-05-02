@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { formatCurrency } from "@/lib/formatters";
-import { ChevronRight, FileText, Loader2 } from "lucide-react";
+import { ChevronRight, FileText, Loader2, RefreshCw } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -70,10 +70,10 @@ export function TrainerPaymentHistory({ limit = 5, showViewAll = false }: Traine
       const { data, error } = await query;
       
       if (error) {
-        // Check if the error is specifically about the missing columns
+        // Handle the case where document_url/document_name columns might not exist
         if (error.message?.includes("column 'document_url' does not exist") ||
             error.message?.includes("column 'document_name' does not exist")) {
-          console.error("Document URL columns don't exist yet. Migration needed:", error.message);
+          console.log("Document URL columns don't exist yet. Using fallback query:", error.message);
           
           // Fall back to querying without the document columns
           let fallbackQuery = supabase
@@ -157,11 +157,17 @@ export function TrainerPaymentHistory({ limit = 5, showViewAll = false }: Traine
     }
   };
   
-  const { data: payments = [], isLoading, error, refetch } = useQuery({
+  const { 
+    data: payments = [], 
+    isLoading, 
+    error, 
+    refetch,
+    isFetching 
+  } = useQuery({
     queryKey: ['trainer-payment-history', limit, viewAll],
     queryFn: fetchPaymentHistory,
-    refetchInterval: 30000, // Refresh every 30 seconds
-    staleTime: 15000 // Consider data stale after 15 seconds
+    refetchInterval: 15000, // Refresh every 15 seconds
+    staleTime: 5000 // Consider data stale after 5 seconds
   });
 
   const handleViewDetails = (payment: TrainerPayment) => {
@@ -169,7 +175,14 @@ export function TrainerPaymentHistory({ limit = 5, showViewAll = false }: Traine
     setDetailsOpen(true);
   };
   
+  const handleRefresh = () => {
+    refetch();
+    toast.success("Refreshing payment history");
+  };
+  
   const formatPaymentMethod = (method: string) => {
+    if (!method) return 'N/A';
+    
     switch(method) {
       case 'bank_transfer': return 'Bank Transfer';
       case 'cash': return 'Cash';
@@ -183,15 +196,32 @@ export function TrainerPaymentHistory({ limit = 5, showViewAll = false }: Traine
   if (error && (error as any)?.message?.includes("column 'document_url' does not exist")) {
     return (
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
           <CardTitle>Recent Trainer Payments</CardTitle>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleRefresh} 
+            disabled={isFetching}
+          >
+            <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
+            <span className="ml-2">Refresh</span>
+          </Button>
         </CardHeader>
         <CardContent>
           <div className="text-center py-4">
-            <p className="text-amber-600 mb-2">Database migration required</p>
+            <p className="text-amber-600 mb-2">Database update required</p>
             <p className="text-muted-foreground">
-              The payment document feature requires a database update. Please run the SQL migration first.
+              Please run the SQL migration to add document storage columns to the trainer payments table.
             </p>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleRefresh}
+              className="mt-2"
+            >
+              Try Again
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -207,9 +237,11 @@ export function TrainerPaymentHistory({ limit = 5, showViewAll = false }: Traine
             <Button 
               variant="outline" 
               size="sm" 
-              onClick={() => refetch()}
+              onClick={handleRefresh}
+              disabled={isFetching}
             >
-              Refresh
+              <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
+              <span className="ml-2">Refresh</span>
             </Button>
             {showViewAll && (
               <Button 
@@ -223,7 +255,7 @@ export function TrainerPaymentHistory({ limit = 5, showViewAll = false }: Traine
           </div>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
+          {isLoading || isFetching ? (
             <div className="flex justify-center p-4">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
@@ -292,6 +324,15 @@ export function TrainerPaymentHistory({ limit = 5, showViewAll = false }: Traine
           ) : (
             <div className="text-center py-4">
               <p className="text-muted-foreground">No payment history available</p>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleRefresh}
+                className="mt-2"
+              >
+                <RefreshCw className="h-4 w-4 mr-1" />
+                Check Again
+              </Button>
             </div>
           )}
         </CardContent>

@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTrainerPaymentData } from "@/hooks/useTrainerPaymentData";
 import { TrainerPaymentsSummary } from "./TrainerPaymentsSummary";
-import { Loader2, AlertCircle, RefreshCw, Bug } from "lucide-react";
+import { Loader2, AlertCircle, RefreshCw, Bug, Database } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { TrainerPaymentHistory } from "./payment-history/TrainerPaymentHistory";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -24,6 +24,7 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
   const [markUnpaidDialogOpen, setMarkUnpaidDialogOpen] = useState(false);
   const [selectedTrainerId, setSelectedTrainerId] = useState<string | null>(null);
   const [isDebugging, setIsDebugging] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<any>(null);
   
   const markAsUnpaid = useMarkTrainerPaymentsUnpaid();
   
@@ -61,7 +62,7 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
   };
   
   const refreshAllData = () => {
-    // Invalidate all payment-related queries
+    // Invalidate all payment-related queries with a force refetch
     queryClient.invalidateQueries({ queryKey: ['trainer-payments'] });
     queryClient.invalidateQueries({ queryKey: ['trainer-payment-history'] });
     refetch();
@@ -71,9 +72,10 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
   // Debug function to check trainer payments in database
   const debugTrainerPayments = async () => {
     setIsDebugging(true);
+    setDebugInfo(null);
     
     try {
-      // Check if trainer_payments table has columns document_url and document_name
+      // Check if trainer_payments table structure
       const { data: dbSchema, error: schemaError } = await supabase
         .from('trainer_payments')
         .select('*')
@@ -87,7 +89,21 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
       
       console.log("Trainer payments schema sample:", dbSchema);
       
-      // Fetch recent payments to check status
+      // Test direct insert to verify permission issues
+      const testData = {
+        trainer_id: '00000000-0000-0000-0000-000000000000', // Just a placeholder for testing
+        class_schedule_id: '00000000-0000-0000-0000-000000000000', // Just a placeholder
+        status: 'test',
+        amount: 0,
+        updated_at: new Date().toISOString()
+      };
+      
+      const { data: insertTest, error: insertError } = await supabase
+        .from('trainer_payments')
+        .insert([testData])
+        .select();
+        
+      // Check if we can update an existing record - less intrusive than insert test
       const { data: payments, error } = await supabase
         .from('trainer_payments')
         .select('*')
@@ -99,11 +115,27 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
         toast.error("Error fetching payments from database");
         return;
       }
-      
-      console.log("Recent trainer payments:", payments);
-      toast.success(`Found ${payments.length} trainer payment records`);
 
-      // Refresh data after checking
+      const debugResults = {
+        schema: dbSchema ? Object.keys(dbSchema[0] || {}) : [],
+        insertTest: {
+          success: !insertError,
+          error: insertError?.message,
+        },
+        recentPayments: payments,
+        tableCounts: await getTableCounts()
+      };
+      
+      setDebugInfo(debugResults);
+      console.log("Debug results:", debugResults);
+      
+      if (payments && payments.length > 0) {
+        toast.success(`Found ${payments.length} trainer payment records`);
+      } else {
+        toast.warning("No payment records found in database");
+      }
+
+      // Refresh data after debugging
       refreshAllData();
     } catch (e) {
       console.error("Debug error:", e);
@@ -112,6 +144,53 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
       setIsDebugging(false);
     }
   };
+  
+  // Helper function to get counts from various tables
+  const getTableCounts = async () => {
+    const tables = ['trainer_payments', 'invoices', 'trainers', 'bookings'];
+    const counts: Record<string, number> = {};
+    
+    for (const table of tables) {
+      try {
+        const { count, error } = await supabase
+          .from(table)
+          .select('*', { count: 'exact', head: true });
+          
+        counts[table] = count || 0;
+        
+        if (error) {
+          console.error(`Error counting ${table}:`, error);
+        }
+      } catch (e) {
+        console.error(`Error in count for ${table}:`, e);
+      }
+    }
+    
+    return counts;
+  };
+
+  // Check for database schema issues on mount
+  useEffect(() => {
+    const checkDbSchema = async () => {
+      try {
+        // Check if document_url column exists
+        const { data, error } = await supabase.rpc('check_column_exists', {
+          p_table: 'trainer_payments',
+          p_column: 'document_url'
+        });
+        
+        if (error) {
+          console.warn("Could not check schema:", error.message);
+        } else if (!data) {
+          console.warn("Missing document_url column in trainer_payments table");
+        }
+      } catch (e) {
+        console.error("Schema check error:", e);
+      }
+    };
+    
+    checkDbSchema();
+  }, []);
 
   if (isLoading) {
     return (
@@ -147,7 +226,7 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-end mb-2 gap-2">
+      <div className="flex flex-wrap justify-end mb-2 gap-2">
         <Button 
           variant="outline" 
           onClick={refreshAllData} 
@@ -158,19 +237,33 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
           Refresh Data
         </Button>
         
-        {process.env.NODE_ENV === 'development' && (
-          <Button 
-            variant="outline" 
-            onClick={debugTrainerPayments}
-            size="sm"
-            className="gap-2"
-            disabled={isDebugging}
-          >
-            <Bug className="h-4 w-4" />
-            {isDebugging ? "Checking..." : "Debug DB"}
-          </Button>
-        )}
+        <Button 
+          variant="outline" 
+          onClick={debugTrainerPayments}
+          size="sm"
+          className="gap-2"
+          disabled={isDebugging}
+        >
+          <Database className="h-4 w-4" />
+          {isDebugging ? "Checking..." : "Verify Database"}
+        </Button>
       </div>
+      
+      {debugInfo && (
+        <Alert variant="default" className="bg-slate-50 mb-4">
+          <div className="text-xs font-mono overflow-x-auto">
+            <p className="font-semibold mb-1">Database Tables:</p>
+            {Object.entries(debugInfo.tableCounts || {}).map(([table, count]) => (
+              <div key={table} className="flex justify-between">
+                <span>{table}:</span>
+                <span className="font-semibold">{count} records</span>
+              </div>
+            ))}
+            <p className="font-semibold mt-2 mb-1">Payment Columns:</p>
+            <p>{debugInfo.schema?.join(', ')}</p>
+          </div>
+        </Alert>
+      )}
       
       <TrainerPaymentsSummary 
         trainers={formattedTrainers}
