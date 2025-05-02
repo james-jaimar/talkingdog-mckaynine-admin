@@ -38,6 +38,17 @@ export function useMarkTrainerPaymentsPaid() {
         throw new Error("No schedules selected");
       }
       
+      // Calculate total payment amount from class details
+      let amount = 0;
+      if (classDetails && classDetails.length > 0) {
+        amount = classDetails.reduce((total, cls) => {
+          if (scheduleIds.includes(cls.scheduleId)) {
+            return total + cls.potentialRevenue;
+          }
+          return total;
+        }, 0);
+      }
+      
       console.log("Marking payments as paid:", {
         trainerId,
         scheduleIds,
@@ -46,6 +57,7 @@ export function useMarkTrainerPaymentsPaid() {
         documentUrl,
         documentName,
         sendEmail,
+        amount,
         classDetails: classDetails?.length || 0
       });
       
@@ -60,11 +72,12 @@ export function useMarkTrainerPaymentsPaid() {
           const pdfDataUri = await generateTrainerPaymentPDF({
             trainerName,
             trainerEmail: trainerEmail || "trainer@example.com", // Fallback
-            classes: classDetails,
+            classes: classDetails.filter(cls => scheduleIds.includes(cls.scheduleId)),
             paymentDetails: {
               paymentMethod,
               transactionId,
-              paymentNotes: notes
+              paymentNotes: notes,
+              totalAmount: amount
             },
             paymentDate
           });
@@ -109,7 +122,7 @@ export function useMarkTrainerPaymentsPaid() {
               
             if (urlData) {
               finalDocumentUrl = urlData.signedUrl;
-              finalDocumentName = "Payment Confirmation.pdf";
+              finalDocumentName = `Payment Confirmation - ${trainerName}.pdf`;
               console.log("Generated signed URL for PDF:", finalDocumentUrl);
             }
           }
@@ -130,7 +143,8 @@ export function useMarkTrainerPaymentsPaid() {
             notes,
             documentUrl: finalDocumentUrl,
             documentName: finalDocumentName,
-            sendEmail
+            sendEmail,
+            amount // Include the calculated amount
           }
         });
 
@@ -153,7 +167,8 @@ export function useMarkTrainerPaymentsPaid() {
           updatedCount: data.updatedCount || 0,
           createdCount: data.createdCount || 0,
           totalCount: scheduleIds.length,
-          documentUrl: finalDocumentUrl
+          documentUrl: finalDocumentUrl,
+          amount
         };
       } catch (error) {
         console.error("Error in markTrainerPaymentsPaid:", error);

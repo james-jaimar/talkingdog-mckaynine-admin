@@ -1,150 +1,92 @@
 
-import { Schedule, InvoiceItem, Booking } from "../types";
+import { Schedule, Booking, InvoiceItem } from "../types";
 
-export function calculateTrainerFee(
-  courseFee: number,
-  schedule: Schedule
-): number {
-  if (!schedule.classes) return 0;
-  
-  const feeType = schedule.classes.trainer_fee_type;
-  const feeValue = schedule.classes.trainer_fee_value || 0;
-  
-  if (feeType === 'percentage') {
-    return courseFee * (feeValue / 100);
-  }
-  return feeValue;
+interface RevenueDetails {
+  revenue: number;
+  potentialRevenue: number;
+  isPaid: boolean;
 }
 
-export function calculateFranchiseFee(
-  courseFee: number, // This is the net amount after any discounts
-  enrollmentFee: number,
-  schedule: Schedule
-): number {
-  if (!schedule.classes) return 0;
-  
-  const commissionType = schedule.classes.mckaynine_commission_type;
-  const commissionValue = schedule.classes.mckaynine_commission_value || 0;
-  
-  let franchiseFee = enrollmentFee; // Start with enrollment fee
-  
-  // Add commission based on course fee (which is already net after discount)
-  if (commissionType === 'percentage') {
-    franchiseFee += courseFee * (commissionValue / 100);
-  } else {
-    franchiseFee += commissionValue;
-  }
-  
-  return franchiseFee;
-}
-
-export function calculateAdminFee(
-  courseFee: number, // This is already the net amount after any discounts
-  schedule: Schedule
-): number {
-  if (!schedule.classes) return 0;
-  
-  const feeType = schedule.classes.admin_fee_type;
-  const feeValue = schedule.classes.admin_fee_value || 0;
-  
-  if (feeType === 'percentage') {
-    return courseFee * (feeValue / 100);
-  }
-  return feeValue;
-}
-
+/**
+ * Calculate revenue for a class based on bookings and invoice items
+ */
 export function calculateClassRevenue(
   bookings: Booking[],
   schedule: Schedule,
-  invoiceItems: InvoiceItem[] = []
-): { 
-  revenue: number; 
-  isPaid: boolean;
-  bookingsCount: number;
-  potentialRevenue: number;
-} {
+  invoiceItems: InvoiceItem[]
+): RevenueDetails {
+  // Default values
+  let revenue = 0;
+  let potentialRevenue = 0;
+  let isPaid = false;
+
+  // If no class data available, return zeros
   if (!schedule.classes) {
-    return { 
-      revenue: 0, 
-      isPaid: false, 
-      bookingsCount: 0, 
-      potentialRevenue: 0 
-    };
+    return { revenue: 0, potentialRevenue: 0, isPaid: false };
   }
 
-  // Get fee values from the class
-  const courseFee = schedule.classes.course_fee || 0;
-  const trainerFeeType = schedule.classes.trainer_fee_type;
-  const trainerFeeValue = schedule.classes.trainer_fee_value || 0;
+  // Get trainer fee configuration from the class
+  const trainerFeeType = schedule.classes.trainer_fee_type || 'percentage';
+  const trainerFeeValue = schedule.classes.trainer_fee_value || 70; // Default to 70%
   
-  // Calculate potential revenue per booking based on class configuration
-  const potentialRevenuePerBooking = trainerFeeType === 'percentage' 
-    ? courseFee * (trainerFeeValue / 100) 
-    : trainerFeeValue;
+  // Get amount from paid invoice items
+  const bookingIds = bookings.map(b => b.id);
+  
+  // Calculate actual revenue from paid invoices
+  const paidInvoiceItems = invoiceItems.filter(item => 
+    item.booking_id && 
+    bookingIds.includes(item.booking_id) && 
+    item.invoices?.status === 'paid'
+  );
 
-  // Count total bookings for this schedule
-  const bookingsCount = bookings.length;
-  
-  // Calculate total potential revenue based on bookings count
-  const potentialRevenue = bookingsCount * potentialRevenuePerBooking;
+  // Calculate potential revenue from all invoice items (paid or unpaid)
+  const allValidInvoiceItems = invoiceItems.filter(item => 
+    item.booking_id && 
+    bookingIds.includes(item.booking_id) && 
+    item.invoices?.status !== 'cancelled'
+  );
 
-  // Use only paid invoice items and work with invoice total
-  let actualRevenue = 0;
-  const paidItems = new Set<string>(); // To track unique invoices
-  
-  // Group invoice items by invoice id to avoid counting the same invoice multiple times
-  const invoiceMap = new Map<string, InvoiceItem>();
-  
-  // Get only the first item from each invoice to avoid double counting
-  invoiceItems.forEach(item => {
-    if (item.invoices?.status === 'paid' && !invoiceMap.has(item.invoices.id)) {
-      invoiceMap.set(item.invoices.id, item);
+  // If there are paid items, calculate actual revenue
+  if (paidInvoiceItems.length > 0) {
+    const paidAmount = paidInvoiceItems.reduce((sum, item) => sum + (item.amount || 0), 0);
+    
+    // Apply trainer fee calculation
+    if (trainerFeeType === 'percentage') {
+      revenue = paidAmount * (trainerFeeValue / 100);
+    } else if (trainerFeeType === 'fixed') {
+      // For fixed fee, we apply the fixed amount per booking
+      revenue = paidInvoiceItems.length * trainerFeeValue;
     }
-  });
-  
-  // Calculate revenue only from paid unique invoices using their total
-  Array.from(invoiceMap.values()).forEach(item => {
-    if (item.invoices?.status === 'paid') {
-      // We need to ensure the type has total property
-      const invoiceTotal = (item.invoices as any).total || 0;
-      
-      // If there are multiple bookings for this invoice, distribute evenly
-      const bookingIds = new Set(
-        invoiceItems
-          .filter(ii => ii.invoices && ii.invoices.id === item.invoices?.id && ii.booking_id)
-          .map(ii => ii.booking_id!)
-      );
-      
-      const bookingCount = bookingIds.size || 1;
-      const invoicePerBooking = invoiceTotal / bookingCount;
-      
-      // Add revenue if this item is associated with one of our bookings
-      const isForCurrentSchedule = invoiceItems.some(ii => 
-        ii.invoices && ii.invoices.id === item.invoices?.id && 
-        bookings.some(b => b.id === ii.booking_id)
-      );
-      
-      if (isForCurrentSchedule) {
-        if (trainerFeeType === 'percentage') {
-          actualRevenue += invoicePerBooking * (trainerFeeValue / 100);
-        } else {
-          actualRevenue += trainerFeeValue;
-        }
-        paidItems.add(item.invoices.id);
-      }
-    }
-  });
+    
+    // If there are paid invoice items, consider the class as paid
+    isPaid = true;
+  }
 
-  // If no paid invoices, calculate potential revenue for each booking
-  if (actualRevenue === 0 && bookingsCount > 0) {
-    // For bookings without paid invoices, use the course fee to calculate potential revenue
-    actualRevenue = potentialRevenue;
+  // Calculate potential revenue from all valid invoice items
+  if (allValidInvoiceItems.length > 0) {
+    const totalAmount = allValidInvoiceItems.reduce((sum, item) => sum + (item.amount || 0), 0);
+    
+    // Apply trainer fee calculation
+    if (trainerFeeType === 'percentage') {
+      potentialRevenue = totalAmount * (trainerFeeValue / 100);
+    } else if (trainerFeeType === 'fixed') {
+      // For fixed fee, we apply the fixed amount per booking
+      potentialRevenue = allValidInvoiceItems.length * trainerFeeValue;
+    }
+  } else if (bookings.length > 0 && schedule.classes.course_fee) {
+    // If no invoice items but bookings exist, calculate based on course fee
+    const estimatedTotal = bookings.length * (schedule.classes.course_fee || 0);
+    
+    if (trainerFeeType === 'percentage') {
+      potentialRevenue = estimatedTotal * (trainerFeeValue / 100);
+    } else if (trainerFeeType === 'fixed') {
+      potentialRevenue = bookings.length * trainerFeeValue;
+    }
   }
 
   return {
-    revenue: actualRevenue,
-    isPaid: paidItems.size > 0, // Class is paid if we have at least one paid invoice
-    bookingsCount,
-    potentialRevenue
+    revenue,
+    potentialRevenue,
+    isPaid
   };
 }

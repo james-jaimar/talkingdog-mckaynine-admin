@@ -46,6 +46,13 @@ export function formatTrainerPaymentData(
     bookingsBySchedule[scheduleId].push(booking);
   });
 
+  // Map of paid schedule IDs from trainer_payments
+  const paidScheduleIds = new Set(
+    paidPayments
+      .filter(payment => payment.class_schedule_id)
+      .map(payment => payment.class_schedule_id)
+  );
+
   // Calculate potential earnings and class details
   let totalPotentialEarnings = 0;
 
@@ -71,10 +78,12 @@ export function formatTrainerPaymentData(
     // Add to total potential earnings
     totalPotentialEarnings += revenueDetails.potentialRevenue;
 
-    // A class is only considered paid if:
-    // 1. We have actual paid trainer payments in the system
-    // 2. The revenue calculation determined that this specific class has been paid
-    const classIsPaid = totalPaid > 0 && revenueDetails.isPaid;
+    // A class is considered paid if:
+    // 1. We have it in the paidScheduleIds set from trainer_payments
+    // 2. OR the revenue calculation determined it's been paid (for backward compatibility)
+    const classIsPaid = 
+      paidScheduleIds.has(schedule.id) || 
+      (totalPaid > 0 && revenueDetails.isPaid);
 
     // Build booking details for this class with actual client names
     const bookingsDetails = scheduleBookings.map(booking => {
@@ -110,7 +119,7 @@ export function formatTrainerPaymentData(
       revenue: revenueDetails.revenue,
       potentialRevenue: revenueDetails.potentialRevenue,
       bookings: scheduleBookings.length,
-      isPaid: classIsPaid, // Only true if we have actual payments and this class is paid
+      isPaid: classIsPaid, // Use our improved isPaid check
       bookingsDetails
     };
   });

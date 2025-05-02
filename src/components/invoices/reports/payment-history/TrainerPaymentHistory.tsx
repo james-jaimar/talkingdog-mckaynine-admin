@@ -283,7 +283,10 @@ export function TrainerPaymentHistory({ limit = 5, showViewAll = false }: Traine
                         }
                       </TableCell>
                       <TableCell className="text-right">
-                        {formatCurrency(payment.amount)}
+                        {payment.amount > 0 
+                          ? formatCurrency(payment.amount) 
+                          : <span className="text-muted-foreground">Not specified</span>
+                        }
                       </TableCell>
                       <TableCell className="text-right">
                         {formatPaymentMethod(payment.payment_method)}
@@ -355,7 +358,12 @@ export function TrainerPaymentHistory({ limit = 5, showViewAll = false }: Traine
                   </div>
                   <div>
                     <h4 className="text-sm font-medium text-muted-foreground">Amount</h4>
-                    <p className="text-base font-semibold">{formatCurrency(selectedPayment.amount)}</p>
+                    <p className="text-base font-semibold">
+                      {selectedPayment.amount > 0 
+                        ? formatCurrency(selectedPayment.amount)
+                        : <span className="text-muted-foreground">Not specified</span>
+                      }
+                    </p>
                   </div>
                   <div>
                     <h4 className="text-sm font-medium text-muted-foreground">Payment Date</h4>

@@ -1,210 +1,261 @@
 
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { TrainerClassSelector } from "./payment-dialog/TrainerClassSelector";
+import { PaymentDetailsForm, PaymentDetailsValues } from "./payment-dialog/PaymentDetailsForm";
 import { useTrainerPaymentData } from "@/hooks/useTrainerPaymentData";
 import { useMarkTrainerPaymentsPaid } from "@/hooks/useMarkTrainerPaymentsPaid";
-import { PaymentDetailsForm, PaymentDetailsFormValues } from "./payment-dialog/PaymentDetailsForm";
-import { Button } from "@/components/ui/button";
-import { TrainerClassSelector } from "./payment-dialog/TrainerClassSelector";
-import { Loader2, FileText } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle, Loader2 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Separator } from "@/components/ui/separator";
-import { AlertDialogAction } from "@/components/ui/alert-dialog";
 
 interface TrainerPaymentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   trainerId: string;
-  dateRange?: { from: Date; to: Date };
-  branchId?: string;
   scheduleIds?: string[];
+  branchId?: string;
+  dateRange: { from: Date; to: Date };
 }
 
-export function TrainerPaymentDialog({ 
-  open, 
-  onOpenChange, 
+export function TrainerPaymentDialog({
+  open,
+  onOpenChange,
   trainerId,
-  dateRange,
+  scheduleIds = [],
   branchId,
-  scheduleIds = []
+  dateRange
 }: TrainerPaymentDialogProps) {
-  const [selectedScheduleIds, setSelectedScheduleIds] = useState<string[]>(scheduleIds);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [paymentDetails, setPaymentDetails] = useState<PaymentDetailsFormValues>({
+  const [selectedTab, setSelectedTab] = useState<string>("classes");
+  const [selectedScheduleIds, setSelectedScheduleIds] = useState<string[]>([]);
+  const [paymentDetails, setPaymentDetails] = useState<PaymentDetailsValues>({
     paymentMethod: 'bank_transfer',
-    transactionId: '',
-    paymentNotes: '',
-    sendEmail: false
+    sendEmail: true
   });
-  
-  // Get trainer data to display classes for selection
-  const { data: trainerData, isLoading } = useTrainerPaymentData(branchId, dateRange);
-  const trainer = trainerData?.find(t => t.id === trainerId);
-  
-  // Mark payments as paid mutation
-  const markAsPaid = useMarkTrainerPaymentsPaid();
+  const [hasSelectedClasses, setHasSelectedClasses] = useState(false);
+  const [totalAmount, setTotalAmount] = useState(0);
 
-  // Reset selection when dialog opens/trainer changes
+  const { data: trainersData, isLoading: isLoadingTrainers } = useTrainerPaymentData(branchId, dateRange);
+  const markTrainerPaymentsPaid = useMarkTrainerPaymentsPaid();
+
+  // Get the trainer data
+  const trainer = trainersData?.find(t => t.id === trainerId);
+  
+  // Reset selections when dialog opens
   useEffect(() => {
-    if (open && trainerId) {
-      setSelectedScheduleIds(scheduleIds);
-    }
-  }, [open, trainerId, scheduleIds]);
-
-  const handleSubmitPayment = async () => {
-    if (selectedScheduleIds.length === 0) {
-      toast.warning("Please select at least one class for payment");
-      return;
-    }
-
-    if (!paymentDetails.paymentMethod) {
-      toast.warning("Please select a payment method");
-      return;
-    }
-
-    setIsProcessing(true);
-    
-    try {
-      // Find the selected classes from the trainer data
-      const selectedClasses = trainer?.classDetails?.filter(
-        cls => selectedScheduleIds.includes(cls.scheduleId)
-      ) || [];
-
-      await markAsPaid.mutateAsync({
-        trainerId,
-        scheduleIds: selectedScheduleIds,
-        paymentMethod: paymentDetails.paymentMethod,
-        transactionId: paymentDetails.transactionId,
-        notes: paymentDetails.paymentNotes,
-        sendEmail: paymentDetails.sendEmail,
-        trainerName: trainer?.trainerName,
-        trainerEmail: trainer?.trainerEmail,
-        classDetails: selectedClasses,
-        documentUrl: paymentDetails.documentUrl,
-        documentName: paymentDetails.documentName
-      });
+    if (open) {
+      // Pre-select unpaid classes from the provided scheduleIds
+      if (trainer?.classDetails) {
+        const validScheduleIds = scheduleIds.filter(id => 
+          trainer.classDetails?.some(cls => cls.scheduleId === id && !cls.isPaid)
+        );
+        setSelectedScheduleIds(validScheduleIds);
+      } else {
+        setSelectedScheduleIds([]);
+      }
       
-      // Close dialog after successful payment
-      onOpenChange(false);
-    } catch (error) {
-      console.error("Error processing payment:", error);
-      // Toast is handled by the mutation
-    } finally {
-      setIsProcessing(false);
+      setPaymentDetails({
+        paymentMethod: 'bank_transfer',
+        sendEmail: true
+      });
+      setSelectedTab("classes");
     }
-  };
+  }, [open, trainer, scheduleIds]);
 
-  const handleToggleSchedule = (scheduleId: string) => {
+  // Calculate total amount and check if any classes are selected
+  useEffect(() => {
+    if (!trainer?.classDetails) {
+      setTotalAmount(0);
+      setHasSelectedClasses(false);
+      return;
+    }
+
+    const selectedClasses = trainer.classDetails.filter(
+      cls => selectedScheduleIds.includes(cls.scheduleId)
+    );
+    
+    const total = selectedClasses.reduce(
+      (sum, cls) => sum + cls.potentialRevenue, 
+      0
+    );
+    
+    setTotalAmount(total);
+    setHasSelectedClasses(selectedClasses.length > 0);
+  }, [selectedScheduleIds, trainer]);
+
+  const toggleClassSelection = (scheduleId: string) => {
     setSelectedScheduleIds(prev => 
-      prev.includes(scheduleId)
-        ? prev.filter(id => id !== scheduleId)
+      prev.includes(scheduleId) 
+        ? prev.filter(id => id !== scheduleId) 
         : [...prev, scheduleId]
     );
   };
 
-  const handleToggleAll = () => {
+  const toggleAllUnpaid = () => {
     if (!trainer?.classDetails) return;
-    
+
     const unpaidClasses = trainer.classDetails.filter(cls => !cls.isPaid);
+    const unpaidIds = unpaidClasses.map(cls => cls.scheduleId);
     
-    if (selectedScheduleIds.length === unpaidClasses.length) {
-      // If all are selected, deselect all
+    const allSelected = unpaidClasses.every(cls => 
+      selectedScheduleIds.includes(cls.scheduleId)
+    );
+    
+    if (allSelected) {
       setSelectedScheduleIds([]);
     } else {
-      // Otherwise select all unpaid
-      setSelectedScheduleIds(unpaidClasses.map(c => c.scheduleId));
+      setSelectedScheduleIds(unpaidIds);
     }
   };
-  
-  const handleFormChange = (values: PaymentDetailsFormValues) => {
+
+  const handlePaymentDetailsChange = (values: PaymentDetailsValues) => {
     setPaymentDetails(values);
   };
 
-  // Calculate total payment amount
-  const selectedClassDetails = trainer?.classDetails?.filter(
-    cls => selectedScheduleIds.includes(cls.scheduleId)
-  ) || [];
+  const handleMarkAsPaid = async () => {
+    if (!trainer || selectedScheduleIds.length === 0) {
+      toast.error("No classes selected for payment");
+      return;
+    }
+
+    try {
+      await markTrainerPaymentsPaid.mutateAsync({
+        trainerId,
+        scheduleIds: selectedScheduleIds,
+        paymentMethod: paymentDetails.paymentMethod || 'bank_transfer',
+        transactionId: paymentDetails.transactionId,
+        notes: paymentDetails.paymentNotes,
+        sendEmail: paymentDetails.sendEmail,
+        documentUrl: paymentDetails.documentUrl,
+        documentName: paymentDetails.documentName,
+        trainerName: trainer.trainerName,
+        trainerEmail: trainer.trainerEmail,
+        classDetails: trainer.classDetails?.filter(c => 
+          selectedScheduleIds.includes(c.scheduleId)
+        )
+      });
+      
+      onOpenChange(false);
+    } catch (error) {
+      console.error("Error updating payments:", error);
+      // Toast is already shown in the mutation error handler
+    }
+  };
   
-  const totalAmount = selectedClassDetails.reduce(
-    (sum, cls) => sum + cls.potentialRevenue, 0
-  );
-  
+  const isSubmitting = markTrainerPaymentsPaid.isPending;
+  const isLoadingData = isLoadingTrainers || !trainer;
+  const canProceed = hasSelectedClasses && !!paymentDetails.paymentMethod && !isSubmitting;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-xl">Process Payment for {trainer?.trainerName}</DialogTitle>
+          <DialogTitle>Process Trainer Payment</DialogTitle>
         </DialogHeader>
-        
-        {isLoading ? (
-          <div className="flex justify-center py-8">
+
+        {isLoadingData ? (
+          <div className="flex items-center justify-center p-8">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
         ) : !trainer ? (
-          <div className="text-center py-4 text-muted-foreground">
-            Trainer information not found
-          </div>
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>Trainer not found</AlertDescription>
+          </Alert>
         ) : (
-          <div className="space-y-6">
-            <TrainerClassSelector 
-              classes={trainer.classDetails || []} 
-              selectedIds={selectedScheduleIds}
-              onToggleClass={handleToggleSchedule}
-              onToggleAll={handleToggleAll}
-              isDisabled={isProcessing}
-            />
-            
-            <Separator />
-            
-            <PaymentDetailsForm 
-              onChange={handleFormChange} 
-              values={paymentDetails}
-              isDisabled={isProcessing}
-              includeEmailOption={true}
-              onSubmit={handleSubmitPayment}
-              trainerEmail={trainer.trainerEmail}
-            />
-            
-            <div className="flex flex-col sm:flex-row items-center justify-between pt-4 gap-4">
-              <div className="text-lg font-semibold">
-                Total Payment: {new Intl.NumberFormat('en-ZA', { 
-                  style: 'currency', 
-                  currency: 'ZAR',
-                  currencyDisplay: 'narrowSymbol'
-                }).format(totalAmount)}
+          <>
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-lg font-semibold">{trainer.trainerName}</h3>
+                {trainer.trainerEmail && (
+                  <p className="text-sm text-muted-foreground">
+                    {trainer.trainerEmail}
+                  </p>
+                )}
               </div>
-              
-              <div className="flex gap-3">
-                <Button
-                  variant="outline"
-                  onClick={() => onOpenChange(false)}
-                  disabled={isProcessing}
-                >
-                  Cancel
-                </Button>
+
+              <Tabs value={selectedTab} onValueChange={setSelectedTab}>
+                <TabsList className="w-full">
+                  <TabsTrigger value="classes" className="flex-1">
+                    Select Classes
+                  </TabsTrigger>
+                  <TabsTrigger value="payment" className="flex-1" disabled={!hasSelectedClasses}>
+                    Payment Details
+                  </TabsTrigger>
+                </TabsList>
                 
-                <AlertDialogAction asChild>
-                  <Button 
-                    onClick={handleSubmitPayment}
-                    disabled={isProcessing || selectedScheduleIds.length === 0}
-                    className="gap-2"
-                  >
-                    {isProcessing ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Processing...
-                      </>
-                    ) : (
-                      <>
-                        <FileText className="h-4 w-4" />
-                        Process Payment
-                      </>
-                    )}
-                  </Button>
-                </AlertDialogAction>
-              </div>
+                <TabsContent value="classes" className="py-4">
+                  <TrainerClassSelector 
+                    classes={trainer.classDetails || []}
+                    selectedIds={selectedScheduleIds}
+                    onToggleClass={toggleClassSelection}
+                    onToggleAll={toggleAllUnpaid}
+                    isDisabled={isSubmitting}
+                  />
+                  
+                  {selectedScheduleIds.length > 0 && (
+                    <div className="mt-4 p-4 border rounded-lg bg-muted/30">
+                      <div className="flex justify-between text-sm mb-1">
+                        <span>Classes selected:</span>
+                        <span>{selectedScheduleIds.length}</span>
+                      </div>
+                      <div className="flex justify-between font-semibold">
+                        <span>Total amount:</span>
+                        <span>R {totalAmount.toFixed(2)}</span>
+                      </div>
+                    </div>
+                  )}
+                </TabsContent>
+                
+                <TabsContent value="payment" className="py-4">
+                  <PaymentDetailsForm
+                    values={paymentDetails}
+                    onChange={handlePaymentDetailsChange}
+                    isDisabled={isSubmitting}
+                    includeEmailOption={true}
+                  />
+                </TabsContent>
+              </Tabs>
             </div>
-          </div>
+
+            <DialogFooter className="flex flex-col-reverse sm:flex-row sm:justify-between sm:space-x-2">
+              <Button
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                disabled={isSubmitting}
+              >
+                Cancel
+              </Button>
+              
+              {selectedTab === "classes" ? (
+                <Button 
+                  type="button" 
+                  onClick={() => setSelectedTab("payment")} 
+                  disabled={!hasSelectedClasses || isSubmitting}
+                >
+                  Continue to Payment Details
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  onClick={handleMarkAsPaid}
+                  disabled={!canProceed}
+                  className="w-full sm:w-auto"
+                >
+                  {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Process Payment (R {totalAmount.toFixed(2)})
+                </Button>
+              )}
+            </DialogFooter>
+          </>
         )}
       </DialogContent>
     </Dialog>
