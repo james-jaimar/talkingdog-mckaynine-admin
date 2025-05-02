@@ -1,3 +1,4 @@
+
 import { TrainerPaymentData, TrainerClassDetail, Schedule, Booking, InvoiceItem } from "../types";
 import { calculateClassRevenue } from "./calculateTrainerFees";
 
@@ -33,6 +34,7 @@ export function formatTrainerPaymentData(
     .filter(payment => payment.status === 'paid')
     .reduce((sum, payment) => sum + (payment.amount || 0), 0);
 
+  // Calculate pending amount from pending payments
   const totalPending = trainerPayments
     .filter(payment => payment.status === 'pending')
     .reduce((sum, payment) => sum + (payment.amount || 0), 0);
@@ -148,33 +150,45 @@ export function formatTrainerPaymentData(
     };
   });
 
-  // Calculate total expected earnings
-  const calculatedTotalEarned = classDetails.reduce(
-    (sum, cls) => sum + (cls.isPaid ? cls.potentialRevenue : 0), 
-    0
-  );
-
-  // Calculate pending amount
-  const calculatedPendingAmount = classDetails.reduce(
-    (sum, cls) => sum + (cls.isPaid ? 0 : cls.potentialRevenue), 
-    0
-  );
+  // FIX: Calculate pending amount properly
+  let pendingAmount = 0;
+  
+  // If we have actual payment records, use those for the pending amount calculation
+  if (hasActualPayments) {
+    pendingAmount = totalPending;
+    
+    // For trainers with both paid and pending classes, we need to check if all pending
+    // payments are properly accounted for in the trainer_payments table
+    const pendingClassDetails = classDetails.filter(cls => !cls.isPaid);
+    const pendingScheduleIds = pendingClassDetails.map(cls => cls.scheduleId);
+    
+    // Check if we have payment records for all pending classes
+    const pendingSchedulesWithRecords = new Set(
+      trainerPayments
+        .filter(payment => payment.status === 'pending')
+        .map(payment => payment.class_schedule_id)
+    );
+    
+    // Calculate potential earnings for classes that don't have payment records
+    for (const cls of pendingClassDetails) {
+      if (!pendingSchedulesWithRecords.has(cls.scheduleId)) {
+        pendingAmount += cls.potentialRevenue;
+      }
+    }
+  } else {
+    // If no actual payment records, calculate from class details
+    pendingAmount = classDetails
+      .filter(cls => !cls.isPaid)
+      .reduce((sum, cls) => sum + cls.potentialRevenue, 0);
+  }
 
   return {
     id: trainer.id,
     trainerName: `${trainer.first_name} ${trainer.last_name}`,
     trainerEmail: trainer.email,
-    totalEarned: hasActualPayments ? 
-      // If we have actual payment records, use the actual paid amount
-      totalPaid : 
-      // Otherwise use calculated amount based on class payment status
-      calculatedTotalEarned,
+    totalEarned: hasActualPayments ? totalPaid : totalEarned,
     paid: totalPaid,
-    pending: hasActualPayments ? 
-      // If we have actual payment records, use actual pending amount
-      totalPending : 
-      // Otherwise calculate from unpaid classes
-      calculatedPendingAmount,
+    pending: pendingAmount, // Use our fixed pending calculation
     potentialEarnings: totalPotentialEarnings,
     classesCount: allSchedules.length,
     clients: uniqueClientIds.size,

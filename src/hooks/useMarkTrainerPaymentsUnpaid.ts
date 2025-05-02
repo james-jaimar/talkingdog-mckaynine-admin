@@ -130,9 +130,20 @@ export function useMarkTrainerPaymentsUnpaid() {
     onSuccess: (result) => {
       // Force refresh with a small delay to ensure DB has updated
       setTimeout(() => {
+        // Invalidate all relevant queries to ensure data is refreshed completely
         queryClient.invalidateQueries({ queryKey: ['trainer-payments'] });
         queryClient.invalidateQueries({ queryKey: ['trainer-payment-history'] });
+        queryClient.invalidateQueries({ queryKey: ['classes-list-data'] });
+        
+        // For more immediate UI refresh, invalidate with exact parameters if available
+        queryClient.invalidateQueries({ 
+          predicate: (query) => {
+            return query.queryKey[0] === 'trainer-payments' || 
+                   query.queryKey[0] === 'trainer-payment-history';
+          }
+        });
       }, 500);
+      
       toast.success(`${result.updatedCount || 'All'} payments marked as unpaid successfully`);
     },
     onError: (error) => {
