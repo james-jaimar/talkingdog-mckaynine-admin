@@ -77,8 +77,8 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
     try {
       // Check if trainer_payments table structure
       const { data: dbSchema, error: schemaError } = await supabase
-        .from('trainer_payments')
-        .select('*')
+        .from("trainer_payments")
+        .select("*")
         .limit(1);
         
       if (schemaError) {
@@ -99,14 +99,14 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
       };
       
       const { data: insertTest, error: insertError } = await supabase
-        .from('trainer_payments')
+        .from("trainer_payments")
         .insert([testData])
         .select();
         
       // Check if we can update an existing record - less intrusive than insert test
       const { data: payments, error } = await supabase
-        .from('trainer_payments')
-        .select('*')
+        .from("trainer_payments")
+        .select("*")
         .order('updated_at', { ascending: false })
         .limit(10);
         
@@ -153,7 +153,7 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
     for (const table of tables) {
       try {
         const { count, error } = await supabase
-          .from(table)
+          .from(table as any)
           .select('*', { count: 'exact', head: true });
           
         counts[table] = count || 0;
@@ -173,7 +173,7 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
   useEffect(() => {
     const checkDbSchema = async () => {
       try {
-        // Check if document_url column exists using edge function instead of RPC
+        // Check if document_url column exists using edge function
         const response = await supabase.functions.invoke('check-column-exists', {
           body: {
             table: 'trainer_payments',

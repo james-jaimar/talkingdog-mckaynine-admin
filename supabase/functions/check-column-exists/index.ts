@@ -31,14 +31,11 @@ serve(async (req: Request) => {
       );
     }
 
-    // Query directly using information_schema instead of RPC function
-    const { data, error } = await supabase
-      .from('information_schema.columns')
-      .select('column_name')
-      .eq('table_schema', 'public')
-      .eq('table_name', table)
-      .eq('column_name', column)
-      .maybeSingle();
+    // Use raw SQL query instead of direct supabase query to avoid type issues
+    const { data, error } = await supabase.rpc('check_column_exists', {
+      p_table: table,
+      p_column: column
+    });
 
     if (error) {
       return new Response(
@@ -48,7 +45,7 @@ serve(async (req: Request) => {
     }
 
     return new Response(
-      JSON.stringify({ exists: data !== null }),
+      JSON.stringify({ exists: !!data }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   } catch (error) {

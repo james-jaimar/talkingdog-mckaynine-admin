@@ -66,7 +66,7 @@ export function useMarkTrainerPaymentsPaid() {
         // Only add document fields if they exist in the database
         // This check helps with backward compatibility
         try {
-          // Use edge function instead of RPC to check columns
+          // Use edge function to check columns
           const response = await supabase.functions.invoke('check-column-exists', {
             body: { 
               table: 'trainer_payments',
