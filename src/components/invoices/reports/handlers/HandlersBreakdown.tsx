@@ -5,11 +5,15 @@ import { getHandlerCommissions } from "../utils/getHandlerCommissions";
 import { TrainerClassDetail } from "@/hooks/trainer-payments/types";
 
 interface HandlersBreakdownProps {
-  classDetails: TrainerClassDetail[];
+  classDetails?: TrainerClassDetail[];
+  classDetail?: TrainerClassDetail;
 }
 
-export function HandlersBreakdown({ classDetails }: HandlersBreakdownProps) {
-  const handlersData = getHandlerCommissions(classDetails);
+export function HandlersBreakdown({ classDetails, classDetail }: HandlersBreakdownProps) {
+  // If classDetail is provided, use it, otherwise use the array from classDetails
+  const detailsToProcess = classDetail ? [classDetail] : classDetails || [];
+  
+  const handlersData = getHandlerCommissions(detailsToProcess);
   
   if (handlersData.length === 0) {
     return (
