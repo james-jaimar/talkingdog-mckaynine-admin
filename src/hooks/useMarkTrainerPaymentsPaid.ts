@@ -66,19 +66,22 @@ export function useMarkTrainerPaymentsPaid() {
         // Only add document fields if they exist in the database
         // This check helps with backward compatibility
         try {
-          const { data: documentColumnCheck } = await supabase.rpc('check_column_exists', { 
-            p_table: 'trainer_payments',
-            p_column: 'document_url'
+          // Use edge function instead of RPC to check columns
+          const response = await supabase.functions.invoke('check-column-exists', {
+            body: { 
+              table: 'trainer_payments',
+              column: 'document_url'
+            }
           });
           
-          const documentColumnExists = documentColumnCheck === true;
+          const documentColumnExists = response.data?.exists === true;
           
           if (documentColumnExists && documentUrl) {
             updateData.document_url = documentUrl;
             updateData.document_name = documentName || null;
           }
         } catch (columnCheckError) {
-          // If the RPC doesn't exist, assume columns don't exist
+          // If the edge function fails, assume columns don't exist
           console.log("Could not check for document columns:", columnCheckError);
         }
       

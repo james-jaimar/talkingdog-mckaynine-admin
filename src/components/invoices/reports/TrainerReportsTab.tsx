@@ -173,15 +173,17 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
   useEffect(() => {
     const checkDbSchema = async () => {
       try {
-        // Check if document_url column exists
-        const { data, error } = await supabase.rpc('check_column_exists', {
-          p_table: 'trainer_payments',
-          p_column: 'document_url'
+        // Check if document_url column exists using edge function instead of RPC
+        const response = await supabase.functions.invoke('check-column-exists', {
+          body: {
+            table: 'trainer_payments',
+            column: 'document_url'
+          }
         });
         
-        if (error) {
-          console.warn("Could not check schema:", error.message);
-        } else if (!data) {
+        if (response.error) {
+          console.warn("Could not check schema:", response.error);
+        } else if (!response.data?.exists) {
           console.warn("Missing document_url column in trainer_payments table");
         }
       } catch (e) {
@@ -256,7 +258,7 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
             {Object.entries(debugInfo.tableCounts || {}).map(([table, count]) => (
               <div key={table} className="flex justify-between">
                 <span>{table}:</span>
-                <span className="font-semibold">{count} records</span>
+                <span className="font-semibold">{String(count)} records</span>
               </div>
             ))}
             <p className="font-semibold mt-2 mb-1">Payment Columns:</p>
