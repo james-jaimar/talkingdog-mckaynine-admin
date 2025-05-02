@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useTrainerPaymentData } from "@/hooks/useTrainerPaymentData";
@@ -78,7 +79,9 @@ export function TrainerPaymentDialog({
         sendEmail: paymentDetails.sendEmail,
         trainerName: trainer?.trainerName,
         trainerEmail: trainer?.trainerEmail,
-        classDetails: selectedClasses
+        classDetails: selectedClasses,
+        documentUrl: paymentDetails.documentUrl,
+        documentName: paymentDetails.documentName
       });
       
       // Close dialog after successful payment
@@ -157,7 +160,9 @@ export function TrainerPaymentDialog({
               onChange={handleFormChange} 
               values={paymentDetails}
               isDisabled={isProcessing}
-              includeEmailOption
+              includeEmailOption={true}
+              onSubmit={handleSubmitPayment}
+              trainerEmail={trainer.trainerEmail}
             />
             
             <div className="flex flex-col sm:flex-row items-center justify-between pt-4 gap-4">

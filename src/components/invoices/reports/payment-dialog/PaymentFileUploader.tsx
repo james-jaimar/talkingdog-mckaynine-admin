@@ -1,172 +1,144 @@
 
-import { useState, useCallback } from "react";
-import { useDropzone } from "react-dropzone";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Loader2, FileText, X, Upload } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { FileIcon, Loader2, X, Upload } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
 
 interface PaymentFileUploaderProps {
   onFileUpload: (fileUrl: string, fileName: string) => void;
-  existingFile?: { url: string; name: string } | null;
-  onFileRemove?: () => void;
+  onFileRemove: () => void;
+  existingFile: { url: string; name: string } | null;
   disabled?: boolean;
 }
 
-export function PaymentFileUploader({ 
-  onFileUpload, 
-  existingFile, 
+export function PaymentFileUploader({
+  onFileUpload,
   onFileRemove,
-  disabled = false 
+  existingFile,
+  disabled = false
 }: PaymentFileUploaderProps) {
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadError, setUploadError] = useState("");
 
-  const onDrop = useCallback(async (acceptedFiles: File[]) => {
-    if (acceptedFiles.length === 0) return;
-    
-    const file = acceptedFiles[0];
-    
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
     // Validate file type (PDF only)
-    if (file.type !== 'application/pdf') {
-      toast.error("Only PDF files are allowed");
+    if (file.type !== "application/pdf") {
+      setUploadError("Only PDF files are allowed");
       return;
     }
-    
+
     // Validate file size (max 5MB)
-    const MAX_SIZE = 5 * 1024 * 1024; // 5MB
-    if (file.size > MAX_SIZE) {
-      toast.error("File size should be less than 5MB");
+    if (file.size > 5 * 1024 * 1024) {
+      setUploadError("File size should be less than 5MB");
       return;
     }
-    
+
     setIsUploading(true);
-    setUploadProgress(0);
-    
+    setUploadError("");
+
     try {
-      // Generate a unique filename
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
-      const filePath = `trainer-payments/${fileName}`;
+      // Generate a unique file name
+      const timestamp = new Date().getTime();
+      const fileName = `payment-document-${timestamp}-${file.name.replace(/\s+/g, '-')}`;
       
-      // Create storage bucket if it doesn't exist yet
-      const { data: bucketExists } = await supabase.storage.getBucket('payment-documents');
-      if (!bucketExists) {
+      // Ensure the bucket exists
+      const { data: bucketData, error: bucketError } = await supabase.storage.getBucket('payment-documents');
+      if (bucketError && bucketError.message.includes('does not exist')) {
         await supabase.storage.createBucket('payment-documents', {
-          public: false,
-          allowedMimeTypes: ['application/pdf'],
-          fileSizeLimit: MAX_SIZE
+          public: false // Make it private requiring signed URLs
         });
       }
       
-      // Upload file
-      const { error, data } = await supabase.storage
+      // Upload the file
+      const { data, error } = await supabase.storage
         .from('payment-documents')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false
-        });
-      
-      if (error) throw error;
-      
-      // Get public URL
-      const { data: urlData } = await supabase.storage
-        .from('payment-documents')
-        .createSignedUrl(filePath, 60 * 60 * 24 * 7); // 7 days validity
-      
-      if (urlData?.signedUrl) {
-        onFileUpload(urlData.signedUrl, file.name);
-        toast.success("File uploaded successfully");
-      } else {
-        throw new Error("Failed to get signed URL");
+        .upload(`trainer-payments/${fileName}`, file);
+
+      if (error) {
+        console.error("Error uploading file:", error);
+        setUploadError(error.message || "Failed to upload file");
+        return;
       }
-    } catch (error: any) {
-      console.error("Upload error:", error);
-      toast.error(`Upload failed: ${error.message || "Unknown error"}`);
+
+      // Get a URL for the uploaded file
+      const { data: urlData, error: urlError } = await supabase.storage
+        .from('payment-documents')
+        .createSignedUrl(`trainer-payments/${fileName}`, 60 * 60 * 24 * 7); // 7 days expiry
+
+      if (urlError) {
+        console.error("Error generating signed URL:", urlError);
+        setUploadError(urlError.message || "Failed to generate document URL");
+        return;
+      }
+
+      // Call the callback with file URL and name
+      onFileUpload(urlData.signedUrl, file.name);
+    } catch (error) {
+      console.error("Exception during file upload:", error);
+      setUploadError("An unexpected error occurred during upload");
     } finally {
       setIsUploading(false);
-      setUploadProgress(0);
-    }
-  }, [onFileUpload]);
-  
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    accept: {
-      'application/pdf': ['.pdf']
-    },
-    maxFiles: 1,
-    disabled: isUploading || disabled
-  });
-  
-  const handleRemoveFile = () => {
-    if (onFileRemove) {
-      onFileRemove();
     }
   };
-  
-  // If there's an existing file, show it
-  if (existingFile?.url) {
+
+  const handleRemoveFile = () => {
+    onFileRemove();
+    setUploadError("");
+  };
+
+  if (existingFile) {
     return (
-      <div className="border rounded-md p-3 bg-slate-50 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 overflow-hidden">
-          <FileText className="h-5 w-5 text-blue-500 flex-shrink-0" />
+      <div className="flex items-center justify-between p-2 border rounded-md">
+        <div className="flex items-center space-x-2">
+          <FileIcon className="h-5 w-5 text-blue-500" />
           <a 
-            href={existingFile.url} 
-            target="_blank" 
+            href={existingFile.url}
+            target="_blank"
             rel="noopener noreferrer"
-            className="text-sm text-blue-600 hover:underline truncate"
+            className="text-sm text-blue-500 hover:underline truncate max-w-[200px]"
           >
-            {existingFile.name || "Payment document.pdf"}
+            {existingFile.name}
           </a>
         </div>
-        {!disabled && onFileRemove && (
-          <Button 
-            variant="ghost" 
+        {!disabled && (
+          <Button
+            type="button"
+            variant="ghost"
             size="sm"
             onClick={handleRemoveFile}
-            className="h-7 w-7 p-0 rounded-full"
+            className="h-8 w-8 p-0"
           >
             <X className="h-4 w-4" />
-            <span className="sr-only">Remove file</span>
           </Button>
         )}
       </div>
     );
   }
-  
+
   return (
-    <div>
-      <div
-        {...getRootProps()}
-        className={`border-2 border-dashed rounded-md p-6 transition-colors ${
-          isDragActive 
-            ? "border-blue-500 bg-blue-50" 
-            : "border-gray-300 hover:border-blue-400"
-        } ${disabled ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
-      >
-        <input {...getInputProps()} />
-        <div className="text-center">
-          {isUploading ? (
-            <div className="flex flex-col items-center space-y-2">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-              <p className="text-sm text-gray-600">Uploading payment document...</p>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center space-y-2">
-              <Upload className="h-8 w-8 text-gray-400" />
-              <p className="text-sm text-gray-600">
-                {isDragActive 
-                  ? "Drop the PDF file here"
-                  : "Drag & drop a PDF file here, or click to select"
-                }
-              </p>
-              <p className="text-xs text-gray-500">
-                PDF only, max 5MB
-              </p>
-            </div>
-          )}
-        </div>
+    <div className="space-y-2">
+      <div className="flex items-center">
+        <Input
+          type="file"
+          accept="application/pdf"
+          onChange={handleFileChange}
+          disabled={isUploading || disabled}
+          className="file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
+        />
       </div>
+      {isUploading && (
+        <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span>Uploading document...</span>
+        </div>
+      )}
+      {uploadError && (
+        <p className="text-sm text-red-500">{uploadError}</p>
+      )}
     </div>
   );
 }

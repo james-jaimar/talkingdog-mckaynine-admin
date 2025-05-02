@@ -26,35 +26,60 @@ export type PaymentDetailsFormValues = z.infer<typeof paymentDetailsSchema>;
 
 interface PaymentDetailsFormProps {
   onSubmit: (data: PaymentDetailsFormValues) => void;
-  isPending: boolean;
+  onChange?: (data: PaymentDetailsFormValues) => void;
+  isPending?: boolean;
+  isDisabled?: boolean;
   trainerEmail?: string;
   defaultValues?: Partial<PaymentDetailsFormValues>;
+  values?: Partial<PaymentDetailsFormValues>;
+  includeEmailOption?: boolean;
 }
 
 export function PaymentDetailsForm({ 
   onSubmit, 
-  isPending, 
+  onChange,
+  isPending = false,
+  isDisabled = false,
   trainerEmail,
-  defaultValues 
+  defaultValues,
+  values,
+  includeEmailOption = false
 }: PaymentDetailsFormProps) {
   const [showEmailWarning, setShowEmailWarning] = useState(false);
   const [paymentDocument, setPaymentDocument] = useState<{ url: string; name: string } | null>(
-    defaultValues?.documentUrl && defaultValues?.documentName 
-      ? { url: defaultValues.documentUrl, name: defaultValues.documentName }
+    (defaultValues?.documentUrl && defaultValues?.documentName) || (values?.documentUrl && values?.documentName)
+      ? { 
+          url: values?.documentUrl || defaultValues?.documentUrl || '', 
+          name: values?.documentName || defaultValues?.documentName || ''
+        }
       : null
   );
   
   const form = useForm<PaymentDetailsFormValues>({
     resolver: zodResolver(paymentDetailsSchema),
     defaultValues: {
-      paymentMethod: defaultValues?.paymentMethod || 'bank_transfer',
-      transactionId: defaultValues?.transactionId || '',
-      paymentNotes: defaultValues?.paymentNotes || '',
-      sendEmail: defaultValues?.sendEmail || false,
-      documentUrl: defaultValues?.documentUrl || '',
-      documentName: defaultValues?.documentName || '',
+      paymentMethod: values?.paymentMethod || defaultValues?.paymentMethod || 'bank_transfer',
+      transactionId: values?.transactionId || defaultValues?.transactionId || '',
+      paymentNotes: values?.paymentNotes || defaultValues?.paymentNotes || '',
+      sendEmail: values?.sendEmail || defaultValues?.sendEmail || false,
+      documentUrl: values?.documentUrl || defaultValues?.documentUrl || '',
+      documentName: values?.documentName || defaultValues?.documentName || '',
     },
   });
+
+  // Update form when values prop changes
+  React.useEffect(() => {
+    if (values) {
+      form.reset({
+        paymentMethod: values.paymentMethod || form.getValues('paymentMethod'),
+        transactionId: values.transactionId || form.getValues('transactionId'),
+        paymentNotes: values.paymentNotes || form.getValues('paymentNotes'),
+        sendEmail: values.sendEmail || form.getValues('sendEmail'),
+        documentUrl: values.documentUrl || form.getValues('documentUrl'),
+        documentName: values.documentName || form.getValues('documentName'),
+      });
+    }
+  }, [values, form]);
 
   const handleSubmit = (data: PaymentDetailsFormValues) => {
     if (data.sendEmail && (!trainerEmail || trainerEmail.trim() === '')) {
@@ -72,16 +97,46 @@ export function PaymentDetailsForm({
     onSubmit(formData);
   };
 
+  const handleChange = (field: keyof PaymentDetailsFormValues, value: any) => {
+    if (onChange) {
+      const currentValues = form.getValues();
+      onChange({
+        ...currentValues,
+        [field]: value,
+        documentUrl: paymentDocument?.url || '',
+        documentName: paymentDocument?.name || '',
+      });
+    }
+  };
+
   const handleFileUpload = (fileUrl: string, fileName: string) => {
     setPaymentDocument({ url: fileUrl, name: fileName });
     form.setValue('documentUrl', fileUrl);
     form.setValue('documentName', fileName);
+    
+    if (onChange) {
+      const currentValues = form.getValues();
+      onChange({
+        ...currentValues,
+        documentUrl: fileUrl,
+        documentName: fileName,
+      });
+    }
   };
 
   const handleFileRemove = () => {
     setPaymentDocument(null);
     form.setValue('documentUrl', '');
     form.setValue('documentName', '');
+    
+    if (onChange) {
+      const currentValues = form.getValues();
+      onChange({
+        ...currentValues,
+        documentUrl: '',
+        documentName: '',
+      });
+    }
   };
 
   return (
@@ -94,9 +149,12 @@ export function PaymentDetailsForm({
             <FormItem>
               <FormLabel>Payment Method</FormLabel>
               <Select 
-                onValueChange={field.onChange} 
+                onValueChange={(value) => {
+                  field.onChange(value);
+                  handleChange('paymentMethod', value);
+                }} 
                 defaultValue={field.value}
-                disabled={isPending}
+                disabled={isPending || isDisabled}
               >
                 <FormControl>
                   <SelectTrigger>
@@ -122,7 +180,15 @@ export function PaymentDetailsForm({
             <FormItem>
               <FormLabel>Transaction ID (optional)</FormLabel>
               <FormControl>
-                <Input placeholder="Transaction reference number" {...field} disabled={isPending} />
+                <Input 
+                  placeholder="Transaction reference number" 
+                  {...field} 
+                  disabled={isPending || isDisabled}
+                  onChange={(e) => {
+                    field.onChange(e);
+                    handleChange('transactionId', e.target.value);
+                  }}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -140,7 +206,7 @@ export function PaymentDetailsForm({
                   onFileUpload={handleFileUpload}
                   existingFile={paymentDocument}
                   onFileRemove={handleFileRemove}
-                  disabled={isPending}
+                  disabled={isPending || isDisabled}
                 />
               </FormControl>
               <FormMessage />
@@ -161,8 +227,12 @@ export function PaymentDetailsForm({
                 <Textarea 
                   placeholder="Additional payment details or notes" 
                   {...field} 
-                  disabled={isPending}
+                  disabled={isPending || isDisabled}
                   className="h-20"
+                  onChange={(e) => {
+                    field.onChange(e);
+                    handleChange('paymentNotes', e.target.value);
+                  }}
                 />
               </FormControl>
               <FormMessage />
@@ -170,38 +240,43 @@ export function PaymentDetailsForm({
           )}
         />
 
-        <FormField
-          control={form.control}
-          name="sendEmail"
-          render={({ field }) => (
-            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 mt-4">
-              <FormControl>
-                <Checkbox
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                  disabled={isPending || !trainerEmail}
-                  className="h-4 w-4"
-                />
-              </FormControl>
-              <div className="space-y-1 leading-none">
-                <FormLabel>Send email confirmation</FormLabel>
-                <FormDescription>
-                  {trainerEmail ? 
-                    `An email with payment details and PDF will be sent to ${trainerEmail}` : 
-                    'No email available for this trainer'}
-                </FormDescription>
-                {showEmailWarning && !trainerEmail && (
-                  <p className="text-sm text-red-500">
-                    Cannot send email - no email address is available for this trainer
-                  </p>
-                )}
-              </div>
-            </FormItem>
-          )}
-        />
+        {includeEmailOption && (
+          <FormField
+            control={form.control}
+            name="sendEmail"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 mt-4">
+                <FormControl>
+                  <Checkbox
+                    checked={field.value}
+                    onCheckedChange={(checked) => {
+                      field.onChange(checked);
+                      handleChange('sendEmail', checked);
+                    }}
+                    disabled={isPending || isDisabled || !trainerEmail}
+                    className="h-4 w-4"
+                  />
+                </FormControl>
+                <div className="space-y-1 leading-none">
+                  <FormLabel>Send email confirmation</FormLabel>
+                  <FormDescription>
+                    {trainerEmail ? 
+                      `An email with payment details and PDF will be sent to ${trainerEmail}` : 
+                      'No email available for this trainer'}
+                  </FormDescription>
+                  {showEmailWarning && !trainerEmail && (
+                    <p className="text-sm text-red-500">
+                      Cannot send email - no email address is available for this trainer
+                    </p>
+                  )}
+                </div>
+              </FormItem>
+            )}
+          />
+        )}
 
         <div className="flex justify-end pt-4">
-          <Button type="submit" disabled={isPending}>
+          <Button type="submit" disabled={isPending || isDisabled}>
             {isPending ? "Processing..." : "Record Payment"}
           </Button>
         </div>
@@ -209,3 +284,6 @@ export function PaymentDetailsForm({
     </Form>
   );
 }
+
+// Add React import that was missing
+import React from 'react';
