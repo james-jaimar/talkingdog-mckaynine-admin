@@ -9,10 +9,12 @@ export function useMarkTrainerPaymentsUnpaid() {
   return useMutation({
     mutationFn: async ({ 
       trainerId, 
-      scheduleIds 
+      scheduleIds,
+      resetZeroAmounts = false
     }: { 
       trainerId: string; 
       scheduleIds: string[];
+      resetZeroAmounts?: boolean;
     }) => {
       // If no scheduleIds provided, check if trainer has any payments to mark as unpaid
       if (!scheduleIds.length) {
@@ -41,14 +43,15 @@ export function useMarkTrainerPaymentsUnpaid() {
       
       console.log("Marking trainer payments as unpaid:", {
         trainerId,
-        scheduleIds
+        scheduleIds,
+        resetZeroAmounts
       });
       
       try {
         // Check if trainer payments exist for these schedules
         const { data: existingPayments, error: checkError } = await supabase
           .from('trainer_payments')
-          .select('id, status, class_schedule_id')
+          .select('id, status, class_schedule_id, amount, booking_id')
           .eq('trainer_id', trainerId)
           .in('class_schedule_id', scheduleIds);
           
@@ -62,6 +65,50 @@ export function useMarkTrainerPaymentsUnpaid() {
         if (!existingPayments?.length) {
           toast.warning("No payment records found to update");
           return { trainerId, scheduleIds, updatedCount: 0 };
+        }
+        
+        // Handle records with zero amounts if requested
+        if (resetZeroAmounts) {
+          const zeroAmountRecords = existingPayments.filter(p => p.amount === 0 || p.amount === 0.0);
+          
+          if (zeroAmountRecords.length > 0) {
+            console.log(`Found ${zeroAmountRecords.length} records with zero amounts to recalculate`);
+            
+            // For each zero-amount record, recalculate the correct amount
+            for (const record of zeroAmountRecords) {
+              if (!record.booking_id) continue;
+              
+              try {
+                // Call database function to calculate the correct amount
+                const { data: calculatedAmount, error: calcError } = await supabase
+                  .rpc('calculate_trainer_payment', { p_booking_id: record.booking_id });
+                
+                if (calcError) {
+                  console.error("Error calculating trainer payment:", calcError);
+                  continue;
+                }
+                
+                if (calculatedAmount && calculatedAmount > 0) {
+                  console.log(`Updating record ${record.id} amount from 0 to ${calculatedAmount}`);
+                  
+                  // Update the record with the correct amount
+                  const { error: updateError } = await supabase
+                    .from('trainer_payments')
+                    .update({ 
+                      amount: calculatedAmount,
+                      updated_at: new Date().toISOString()
+                    })
+                    .eq('id', record.id);
+                    
+                  if (updateError) {
+                    console.error("Error updating payment amount:", updateError);
+                  }
+                }
+              } catch (err) {
+                console.error("Error in payment recalculation:", err);
+              }
+            }
+          }
         }
         
         // Get the IDs of records that need updating (only paid ones)
@@ -120,7 +167,8 @@ export function useMarkTrainerPaymentsUnpaid() {
         return { 
           trainerId, 
           scheduleIds, 
-          updatedCount: paidRecordIds.length 
+          updatedCount: paidRecordIds.length,
+          zeroAmountsFixed: resetZeroAmounts
         };
       } catch (error) {
         console.error("Error in markTrainerPaymentsUnpaid:", error);
@@ -144,7 +192,11 @@ export function useMarkTrainerPaymentsUnpaid() {
         });
       }, 500);
       
-      toast.success(`${result.updatedCount || 'All'} payments marked as unpaid successfully`);
+      const successMessage = result.zeroAmountsFixed 
+        ? `${result.updatedCount || 'All'} payments updated and zero amounts fixed`
+        : `${result.updatedCount || 'All'} payments marked as unpaid successfully`;
+        
+      toast.success(successMessage);
     },
     onError: (error) => {
       console.error("Error marking trainer payments as unpaid:", error);

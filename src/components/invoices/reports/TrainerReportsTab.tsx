@@ -1,9 +1,9 @@
 
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useTrainerPaymentData } from "@/hooks/useTrainerPaymentData";
 import { TrainerPaymentsSummary } from "./TrainerPaymentsSummary";
-import { Loader2, AlertCircle, RefreshCw, Database, Info } from "lucide-react";
+import { Loader2, AlertCircle, RefreshCw, Database, Info, Tool } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { TrainerPaymentHistory } from "./payment-history/TrainerPaymentHistory";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -21,6 +21,7 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
   const queryClient = useQueryClient();
   const { data: trainersData, isLoading, error, refetch } = useTrainerPaymentData(branchId, dateRange);
   const [markUnpaidDialogOpen, setMarkUnpaidDialogOpen] = useState(false);
+  const [fixZeroAmountsDialogOpen, setFixZeroAmountsDialogOpen] = useState(false);
   const [selectedTrainerId, setSelectedTrainerId] = useState<string | null>(null);
   const [selectedScheduleIds, setSelectedScheduleIds] = useState<string[]>([]);
   
@@ -36,6 +37,19 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
     setSelectedScheduleIds(paidSchedules);
     setMarkUnpaidDialogOpen(true);
   };
+
+  // Handle fix zero amounts for a specific trainer
+  const handleFixZeroAmounts = (trainerId: string) => {
+    setSelectedTrainerId(trainerId);
+    // Find trainer data to get all scheduleIds
+    const trainer = trainersData?.find(t => t.id === trainerId);
+    // Find schedules with zero amount payments for this trainer
+    const zeroPaidSchedules = trainer?.classDetails
+      .filter(c => c.hasZeroAmountPayment)
+      .map(c => c.scheduleId) || [];
+    setSelectedScheduleIds(zeroPaidSchedules);
+    setFixZeroAmountsDialogOpen(true);
+  };
   
   const refreshAllData = () => {
     queryClient.invalidateQueries({ queryKey: ['trainer-payments'] });
@@ -49,6 +63,24 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
     toast.info("You have permission to manage trainer payments", {
       description: "You can mark payments as paid or unpaid and view payment history"
     });
+  };
+  
+  // Fix zero payments function
+  const fixZeroPayments = () => {
+    if (!selectedTrainerId) return;
+    
+    if (selectedScheduleIds.length === 0) {
+      toast.info("No payment records with zero amounts found");
+      setFixZeroAmountsDialogOpen(false);
+      return;
+    }
+    
+    markAsUnpaid.mutate({
+      trainerId: selectedTrainerId,
+      scheduleIds: selectedScheduleIds,
+      resetZeroAmounts: true
+    });
+    setFixZeroAmountsDialogOpen(false);
   };
   
   // Verify database button functionality
@@ -86,6 +118,11 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
     );
   }
   
+  // Check if any trainer has zero-amount payments
+  const hasZeroAmountPayments = trainersData.some(trainer => 
+    trainer.classDetails.some(cls => cls.hasZeroAmountPayment)
+  );
+  
   const formattedTrainers = trainersData.map(trainer => ({
     id: trainer.id,
     trainerName: trainer.trainerName,
@@ -96,7 +133,8 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
     classesCount: trainer.classesCount,
     clients: trainer.clients,
     lastPaymentDate: trainer.lastPaymentDate,
-    classDetails: trainer.classDetails
+    classDetails: trainer.classDetails,
+    hasZeroAmountPayments: trainer.classDetails.some(cls => cls.hasZeroAmountPayment)
   }));
 
   return (
@@ -131,6 +169,24 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
           <Database className="h-4 w-4" />
           Verify Database
         </Button>
+        
+        {hasZeroAmountPayments && (
+          <Button 
+            variant="outline" 
+            onClick={() => {
+              // Find first trainer with zero-amount payments
+              const trainerWithZero = formattedTrainers.find(t => t.hasZeroAmountPayments);
+              if (trainerWithZero) {
+                handleFixZeroAmounts(trainerWithZero.id);
+              }
+            }}
+            size="sm"
+            className="gap-2 bg-amber-50 border-amber-300 hover:bg-amber-100"
+          >
+            <Tool className="h-4 w-4" />
+            Fix Zero Amount Payments
+          </Button>
+        )}
       </div>
       
       <TrainerPaymentsSummary 
@@ -139,6 +195,7 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
         dateRange={dateRange}
         branchId={branchId}
         onMarkAsUnpaid={handleMarkAsUnpaid}
+        onFixZeroAmounts={handleFixZeroAmounts}
       />
       
       <TrainerPaymentHistory limit={5} showViewAll />
@@ -172,6 +229,32 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
               className="bg-red-600 hover:bg-red-700"
             >
               Yes, Mark as Unpaid
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      
+      <AlertDialog open={fixZeroAmountsDialogOpen} onOpenChange={setFixZeroAmountsDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Fix Zero Amount Payments</AlertDialogTitle>
+            <AlertDialogDescription>
+              Some payment records have incorrect (zero) amounts. This utility will recalculate 
+              the correct payment amounts based on the booking data.
+              {selectedScheduleIds.length > 0 && (
+                <p className="mt-2 font-medium">
+                  {selectedScheduleIds.length} payment record(s) will be fixed.
+                </p>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={fixZeroPayments}
+              className="bg-amber-600 hover:bg-amber-700"
+            >
+              Fix Payment Records
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -10,7 +10,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { TrainerPaymentsRow } from "./TrainerPaymentsRow";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Info } from "lucide-react";
+import { Info, AlertTriangle } from "lucide-react";
 
 interface TrainerPaymentsTableProps {
   trainers: Array<{
@@ -26,12 +26,19 @@ interface TrainerPaymentsTableProps {
     classDetails?: any[];
     invoicesCount?: number;
     scheduleIds?: string[];
+    hasZeroAmountPayments?: boolean;
   }>;
   onMarkForPayment: (trainerId: string) => void;
   onMarkAsUnpaid?: (trainerId: string) => void;
+  onFixZeroAmounts?: (trainerId: string) => void;
 }
 
-export function TrainerPaymentsTable({ trainers, onMarkForPayment, onMarkAsUnpaid }: TrainerPaymentsTableProps) {
+export function TrainerPaymentsTable({ 
+  trainers, 
+  onMarkForPayment, 
+  onMarkAsUnpaid,
+  onFixZeroAmounts
+}: TrainerPaymentsTableProps) {
   console.log("TrainerPaymentsTable rendering with trainers:", trainers);
   
   // Check if there are any trainers with classes
@@ -39,6 +46,9 @@ export function TrainerPaymentsTable({ trainers, onMarkForPayment, onMarkAsUnpai
   
   // Check if any trainers have actual paid amounts
   const anyActualPayments = trainers.some(t => t.paid > 0);
+  
+  // Check if any trainers have zero amount payments
+  const anyZeroAmountPayments = trainers.some(t => t.hasZeroAmountPayments);
   
   if (!trainers || trainers.length === 0) {
     return (
@@ -73,6 +83,16 @@ export function TrainerPaymentsTable({ trainers, onMarkForPayment, onMarkAsUnpai
         </Alert>
       )}
       
+      {anyZeroAmountPayments && (
+        <Alert variant="warning" className="bg-amber-50 border-amber-200">
+          <AlertTriangle className="h-4 w-4 text-amber-600" />
+          <AlertDescription className="text-amber-800">
+            Some payment records have incorrect (zero) amounts. Use the "Fix Zero Amount Payments" 
+            button to recalculate these payments.
+          </AlertDescription>
+        </Alert>
+      )}
+      
       <div className="overflow-x-auto rounded-md border">
         <Table>
           <TableHeader>
@@ -96,6 +116,7 @@ export function TrainerPaymentsTable({ trainers, onMarkForPayment, onMarkAsUnpai
                 index={index}
                 onMarkForPayment={onMarkForPayment}
                 onMarkAsUnpaid={onMarkAsUnpaid}
+                onFixZeroAmounts={onFixZeroAmounts}
               />
             ))}
           </TableBody>

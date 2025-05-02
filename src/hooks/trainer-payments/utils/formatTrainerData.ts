@@ -34,9 +34,9 @@ export function formatTrainerPaymentData(
     .filter(payment => payment.status === 'paid')
     .reduce((sum, payment) => sum + (payment.amount || 0), 0);
 
-  // Calculate pending amount from pending payments
+  // Calculate pending amount from pending payments, filtering out zero-amount payments
   const totalPending = trainerPayments
-    .filter(payment => payment.status === 'pending')
+    .filter(payment => payment.status === 'pending' && payment.amount > 0)
     .reduce((sum, payment) => sum + (payment.amount || 0), 0);
     
   // Determine if there are any actual payments in the system
@@ -73,6 +73,13 @@ export function formatTrainerPaymentData(
       .map(payment => payment.class_schedule_id)
   );
 
+  // Map of schedule IDs that have payment entries with zero amounts
+  const zeroAmountScheduleIds = new Set(
+    trainerPayments
+      .filter(payment => payment.amount === 0 || payment.amount === 0.0)
+      .map(payment => payment.class_schedule_id)
+  );
+
   // Calculate class details and sum up earnings
   const classDetails: TrainerClassDetail[] = allSchedules.map(schedule => {
     const scheduleBookings = bookingsBySchedule[schedule.id] || [];
@@ -103,6 +110,9 @@ export function formatTrainerPaymentData(
 
     // A class is considered paid if we have it in the paidScheduleIds set from trainer_payments
     const classIsPaid = paidScheduleIds.has(schedule.id);
+    
+    // Check if this schedule has a payment record with zero amount
+    const hasZeroAmountPayment = zeroAmountScheduleIds.has(schedule.id);
 
     // Build booking details for this class with actual client names
     const bookingsDetails = scheduleBookings.map(booking => {
@@ -146,6 +156,7 @@ export function formatTrainerPaymentData(
       potentialRevenue: revenueDetails.potentialRevenue,
       bookings: scheduleBookings.length,
       isPaid: classIsPaid,
+      hasZeroAmountPayment,
       bookingsDetails
     };
   });
@@ -155,23 +166,30 @@ export function formatTrainerPaymentData(
   
   // If we have actual payment records, use those for the pending amount calculation
   if (hasActualPayments) {
+    // Start with the totalPending from valid payment records
     pendingAmount = totalPending;
     
     // For trainers with both paid and pending classes, we need to check if all pending
-    // payments are properly accounted for in the trainer_payments table
+    // classes are properly accounted for in the trainer_payments table
     const pendingClassDetails = classDetails.filter(cls => !cls.isPaid);
-    const pendingScheduleIds = pendingClassDetails.map(cls => cls.scheduleId);
     
-    // Check if we have payment records for all pending classes
-    const pendingSchedulesWithRecords = new Set(
-      trainerPayments
-        .filter(payment => payment.status === 'pending')
-        .map(payment => payment.class_schedule_id)
+    // Check for classes with zero-amount payments - these need to be included in pendingAmount
+    // These represent a special case where the payment record exists but has an incorrect amount
+    for (const cls of pendingClassDetails) {
+      if (cls.hasZeroAmountPayment && cls.potentialRevenue > 0) {
+        // Include the potential revenue for this class in pending amount
+        pendingAmount += cls.potentialRevenue;
+      }
+    }
+    
+    // Get all schedule IDs that have any payment records
+    const schedulesWithPayments = new Set(
+      trainerPayments.map(payment => payment.class_schedule_id)
     );
     
-    // Calculate potential earnings for classes that don't have payment records
+    // For classes without any payment records, add their potential revenue to pending
     for (const cls of pendingClassDetails) {
-      if (!pendingSchedulesWithRecords.has(cls.scheduleId)) {
+      if (!schedulesWithPayments.has(cls.scheduleId) && cls.potentialRevenue > 0) {
         pendingAmount += cls.potentialRevenue;
       }
     }

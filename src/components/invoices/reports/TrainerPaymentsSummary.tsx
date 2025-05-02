@@ -16,11 +16,13 @@ interface TrainerPaymentsSummaryProps {
     lastPaymentDate?: string;
     scheduleIds?: string[];
     invoicesCount?: number;
+    hasZeroAmountPayments?: boolean;
   }>;
   isLoading: boolean;
   dateRange?: { from: Date; to: Date };
   branchId?: string;
   onMarkAsUnpaid?: (trainerId: string) => void;
+  onFixZeroAmounts?: (trainerId: string) => void;
 }
 
 export function TrainerPaymentsSummary({ 
@@ -28,7 +30,8 @@ export function TrainerPaymentsSummary({
   isLoading, 
   dateRange = { from: new Date(), to: new Date() },
   branchId,
-  onMarkAsUnpaid
+  onMarkAsUnpaid,
+  onFixZeroAmounts
 }: TrainerPaymentsSummaryProps) {
   const [selectedTrainerId, setSelectedTrainerId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -53,6 +56,7 @@ export function TrainerPaymentsSummary({
             trainers={trainers} 
             onMarkForPayment={openPaymentDialog}
             onMarkAsUnpaid={onMarkAsUnpaid}
+            onFixZeroAmounts={onFixZeroAmounts}
           />
         </CardContent>
       </Card>

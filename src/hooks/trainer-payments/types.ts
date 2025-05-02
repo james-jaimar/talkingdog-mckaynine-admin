@@ -77,6 +77,7 @@ export interface TrainerClassDetail {
   revenue: number;
   potentialRevenue: number;
   isPaid: boolean;
+  hasZeroAmountPayment?: boolean;
   bookingsDetails?: BookingDetail[];
 }
 
