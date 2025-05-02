@@ -1,4 +1,3 @@
-
 import { TrainerPaymentData, TrainerClassDetail, Schedule, Booking, InvoiceItem } from "../types";
 import { calculateClassRevenue } from "./calculateTrainerFees";
 
@@ -12,7 +11,24 @@ export function formatTrainerPaymentData(
   const allScheduleIds = allSchedules.map(s => s.id);
   const uniqueClientIds = new Set(bookings?.map(b => b.client_id).filter(Boolean));
 
-  // Calculate totals from actual payments
+  // Calculate totals from all class details first
+  let totalPotentialEarnings = 0;
+  let totalEarned = 0;
+  
+  // Track schedules with payment status
+  const schedulePaymentStatus = new Map<string, boolean>();
+  
+  // First, populate the map with payment status from trainer_payments
+  trainerPayments.forEach(payment => {
+    if (payment.class_schedule_id) {
+      schedulePaymentStatus.set(
+        payment.class_schedule_id, 
+        payment.status === 'paid'
+      );
+    }
+  });
+
+  // Calculate totals from actual payments - these are the source of truth
   const totalPaid = trainerPayments
     .filter(payment => payment.status === 'paid')
     .reduce((sum, payment) => sum + (payment.amount || 0), 0);
@@ -55,9 +71,7 @@ export function formatTrainerPaymentData(
       .map(payment => payment.class_schedule_id)
   );
 
-  // Calculate potential earnings and class details
-  let totalPotentialEarnings = 0;
-
+  // Calculate class details and sum up earnings
   const classDetails: TrainerClassDetail[] = allSchedules.map(schedule => {
     const scheduleBookings = bookingsBySchedule[schedule.id] || [];
     const scheduleDate = new Date(schedule.start_time);
@@ -79,13 +93,14 @@ export function formatTrainerPaymentData(
 
     // Add to total potential earnings
     totalPotentialEarnings += revenueDetails.potentialRevenue;
+    
+    // Add to total earned if class is paid
+    if (paidScheduleIds.has(schedule.id)) {
+      totalEarned += revenueDetails.potentialRevenue;
+    }
 
-    // A class is considered paid if:
-    // 1. We have it in the paidScheduleIds set from trainer_payments
-    // 2. OR the revenue calculation determined it's been paid (for backward compatibility)
-    const classIsPaid = 
-      paidScheduleIds.has(schedule.id) || 
-      (totalPaid > 0 && revenueDetails.isPaid);
+    // A class is considered paid if we have it in the paidScheduleIds set from trainer_payments
+    const classIsPaid = paidScheduleIds.has(schedule.id);
 
     // Build booking details for this class with actual client names
     const bookingsDetails = scheduleBookings.map(booking => {
@@ -128,23 +143,45 @@ export function formatTrainerPaymentData(
       revenue: revenueDetails.revenue,
       potentialRevenue: revenueDetails.potentialRevenue,
       bookings: scheduleBookings.length,
-      isPaid: classIsPaid, // Use our improved isPaid check
+      isPaid: classIsPaid,
       bookingsDetails
     };
   });
+
+  // Calculate total expected earnings
+  const calculatedTotalEarned = classDetails.reduce(
+    (sum, cls) => sum + (cls.isPaid ? cls.potentialRevenue : 0), 
+    0
+  );
+
+  // Calculate pending amount
+  const calculatedPendingAmount = classDetails.reduce(
+    (sum, cls) => sum + (cls.isPaid ? 0 : cls.potentialRevenue), 
+    0
+  );
 
   return {
     id: trainer.id,
     trainerName: `${trainer.first_name} ${trainer.last_name}`,
     trainerEmail: trainer.email,
-    totalEarned: hasActualPayments ? totalPaid : totalPotentialEarnings, // Show actual earnings if we have payments, otherwise potential
+    totalEarned: hasActualPayments ? 
+      // If we have actual payment records, use the actual paid amount
+      totalPaid : 
+      // Otherwise use calculated amount based on class payment status
+      calculatedTotalEarned,
     paid: totalPaid,
-    pending: hasActualPayments ? totalPending : totalPotentialEarnings, // Only show pending if we have actual payments, otherwise show potential earnings
+    pending: hasActualPayments ? 
+      // If we have actual payment records, use actual pending amount
+      totalPending : 
+      // Otherwise calculate from unpaid classes
+      calculatedPendingAmount,
     potentialEarnings: totalPotentialEarnings,
     classesCount: allSchedules.length,
     clients: uniqueClientIds.size,
     lastPaymentDate,
     scheduleIds: allScheduleIds,
-    classDetails: classDetails.sort((a, b) => a.scheduleDate.getTime() - b.scheduleDate.getTime())
+    classDetails: classDetails.sort((a, b) => 
+      new Date(a.classDate).getTime() - new Date(b.classDate).getTime()
+    )
   };
 }

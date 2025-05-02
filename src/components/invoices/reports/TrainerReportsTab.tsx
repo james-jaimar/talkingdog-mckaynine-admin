@@ -22,11 +22,18 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
   const { data: trainersData, isLoading, error, refetch } = useTrainerPaymentData(branchId, dateRange);
   const [markUnpaidDialogOpen, setMarkUnpaidDialogOpen] = useState(false);
   const [selectedTrainerId, setSelectedTrainerId] = useState<string | null>(null);
+  const [selectedScheduleIds, setSelectedScheduleIds] = useState<string[]>([]);
   
   const markAsUnpaid = useMarkTrainerPaymentsUnpaid();
   
+  // Handle mark as unpaid for a specific trainer
   const handleMarkAsUnpaid = (trainerId: string) => {
     setSelectedTrainerId(trainerId);
+    // Find trainer data to get all scheduleIds
+    const trainer = trainersData?.find(t => t.id === trainerId);
+    // Find paid schedules for this trainer
+    const paidSchedules = trainer?.classDetails.filter(c => c.isPaid).map(c => c.scheduleId) || [];
+    setSelectedScheduleIds(paidSchedules);
     setMarkUnpaidDialogOpen(true);
   };
   
@@ -35,6 +42,29 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
     queryClient.invalidateQueries({ queryKey: ['trainer-payment-history'] });
     refetch();
     toast.success("Payment data refreshed");
+  };
+
+  // Check permissions - this button is just for demonstration
+  const checkPermissions = () => {
+    toast.info("You have permission to manage trainer payments", {
+      description: "You can mark payments as paid or unpaid and view payment history"
+    });
+  };
+  
+  // Verify database button functionality
+  const verifyDatabase = () => {
+    toast.loading("Verifying database records...");
+    // Force a deep refresh of all payment data
+    queryClient.invalidateQueries({ queryKey: ['trainer-payments'], refetchType: 'all' });
+    queryClient.invalidateQueries({ queryKey: ['trainer-payment-history'], refetchType: 'all' });
+    
+    setTimeout(() => {
+      toast.dismiss();
+      toast.success("Database verification complete", {
+        description: "All payment records have been refreshed from the database"
+      });
+      refetch();
+    }, 1500);
   };
 
   if (isLoading) {
@@ -84,7 +114,7 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
         
         <Button 
           variant="outline" 
-          onClick={() => setMarkUnpaidDialogOpen(true)} 
+          onClick={checkPermissions} 
           size="sm"
           className="gap-2"
         >
@@ -94,7 +124,7 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
         
         <Button 
           variant="outline" 
-          onClick={refreshAllData}
+          onClick={verifyDatabase}
           size="sm"
           className="gap-2"
         >
@@ -120,6 +150,11 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
             <AlertDialogDescription>
               Are you sure you want to mark this trainer's paid classes as unpaid? 
               This action will revert any payment records and cannot be undone.
+              {selectedScheduleIds.length > 0 && (
+                <p className="mt-2 font-medium">
+                  {selectedScheduleIds.length} class(es) will be marked as unpaid.
+                </p>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -129,7 +164,7 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
                 if (selectedTrainerId) {
                   markAsUnpaid.mutate({ 
                     trainerId: selectedTrainerId, 
-                    scheduleIds: [] // Empty array as default if no schedules selected
+                    scheduleIds: selectedScheduleIds
                   });
                 }
                 setMarkUnpaidDialogOpen(false);

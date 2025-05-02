@@ -87,7 +87,7 @@ export interface TrainerPaymentData {
   totalEarned: number;
   paid: number;
   pending: number;
-  potentialEarnings?: number;
+  potentialEarnings: number;
   classesCount: number;
   clients: number;
   lastPaymentDate?: string;

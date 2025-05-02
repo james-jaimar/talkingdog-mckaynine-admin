@@ -14,8 +14,29 @@ export function useMarkTrainerPaymentsUnpaid() {
       trainerId: string; 
       scheduleIds: string[];
     }) => {
+      // If no scheduleIds provided, check if trainer has any payments to mark as unpaid
       if (!scheduleIds.length) {
-        throw new Error("No schedules selected");
+        console.log("No schedules explicitly selected, checking for paid schedules for trainer:", trainerId);
+        
+        // Get all paid schedules for this trainer
+        const { data: paidSchedules, error: findError } = await supabase
+          .from('trainer_payments')
+          .select('class_schedule_id')
+          .eq('trainer_id', trainerId)
+          .eq('status', 'paid');
+          
+        if (findError) {
+          console.error("Error finding paid trainer schedules:", findError);
+          throw findError;
+        }
+        
+        if (paidSchedules && paidSchedules.length > 0) {
+          // Use these schedules instead
+          scheduleIds = paidSchedules.map(s => s.class_schedule_id);
+          console.log(`Found ${scheduleIds.length} paid schedules for trainer ${trainerId}`);
+        } else {
+          throw new Error("No paid schedules found for this trainer");
+        }
       }
       
       console.log("Marking trainer payments as unpaid:", {
@@ -27,7 +48,7 @@ export function useMarkTrainerPaymentsUnpaid() {
         // Check if trainer payments exist for these schedules
         const { data: existingPayments, error: checkError } = await supabase
           .from('trainer_payments')
-          .select('id, status')
+          .select('id, status, class_schedule_id')
           .eq('trainer_id', trainerId)
           .in('class_schedule_id', scheduleIds);
           
@@ -43,6 +64,16 @@ export function useMarkTrainerPaymentsUnpaid() {
           return { trainerId, scheduleIds, updatedCount: 0 };
         }
         
+        // Get the IDs of records that need updating (only paid ones)
+        const paidRecordIds = existingPayments
+          .filter(p => p.status === 'paid')
+          .map(p => p.id);
+          
+        if (paidRecordIds.length === 0) {
+          toast.info("No paid records found to mark as unpaid");
+          return { trainerId, scheduleIds, updatedCount: 0 };
+        }
+        
         // Update trainer payment records for these schedules back to pending
         const { data, error } = await supabase
           .from('trainer_payments')
@@ -54,8 +85,7 @@ export function useMarkTrainerPaymentsUnpaid() {
             notes: null,
             updated_at: new Date().toISOString()
           })
-          .eq('trainer_id', trainerId)
-          .in('class_schedule_id', scheduleIds);
+          .in('id', paidRecordIds);
 
         console.log("Update response:", { data, error });
         
@@ -75,8 +105,7 @@ export function useMarkTrainerPaymentsUnpaid() {
                 payment_date: null,
                 updated_at: new Date().toISOString()
               })
-              .eq('trainer_id', trainerId)
-              .in('class_schedule_id', scheduleIds);
+              .in('id', paidRecordIds);
               
             console.log("Retry update response:", { data: retryData, error: retryError });
             
@@ -91,7 +120,7 @@ export function useMarkTrainerPaymentsUnpaid() {
         return { 
           trainerId, 
           scheduleIds, 
-          updatedCount: existingPayments.length 
+          updatedCount: paidRecordIds.length 
         };
       } catch (error) {
         console.error("Error in markTrainerPaymentsUnpaid:", error);

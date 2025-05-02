@@ -1,34 +1,47 @@
 
 import { TrainerClassDetail } from "@/hooks/trainer-payments/types";
 
-// Get commissions grouped by handlers
-export function getHandlerCommissions(classDetails: TrainerClassDetail[]) {
-  if (!classDetails) return [];
+interface HandlerCommission {
+  name: string;
+  totalCommission: number;
+  bookingCount: number;
+}
 
-  // Create a map to group commissions by handler
-  const handlerMap = new Map();
+/**
+ * Calculate handler commissions across all provided class details
+ */
+export function getHandlerCommissions(classDetails: TrainerClassDetail[]): HandlerCommission[] {
+  // Map to track handler totals by name
+  const handlersMap = new Map<string, HandlerCommission>();
   
+  // Process all class details
   classDetails.forEach(classDetail => {
-    if (!classDetail.bookingsDetails) return;
+    if (!classDetail.bookingsDetails || classDetail.bookingsDetails.length === 0) {
+      return;
+    }
     
+    // Process each booking in this class
     classDetail.bookingsDetails.forEach(booking => {
-      const { handlerName, commissionAmount } = booking;
+      const handlerName = booking.handlerName || 'Unknown Handler';
+      const commission = booking.commissionAmount || 0;
       
-      if (!handlerMap.has(handlerName)) {
-        handlerMap.set(handlerName, {
+      // Get or create handler record
+      if (!handlersMap.has(handlerName)) {
+        handlersMap.set(handlerName, {
           name: handlerName,
           totalCommission: 0,
-          bookings: 0
+          bookingCount: 0
         });
       }
       
-      const handler = handlerMap.get(handlerName);
-      handler.totalCommission += commissionAmount;
-      handler.bookings += 1;
+      // Update handler record
+      const handlerRecord = handlersMap.get(handlerName)!;
+      handlerRecord.totalCommission += commission;
+      handlerRecord.bookingCount += 1;
     });
   });
   
-  // Convert map to array and sort by totalCommission descending
-  return Array.from(handlerMap.values())
+  // Convert map to array and sort by total commission (highest first)
+  return Array.from(handlersMap.values())
     .sort((a, b) => b.totalCommission - a.totalCommission);
 }
