@@ -28,6 +28,7 @@ interface TrainerPaymentsTableProps {
     scheduleIds?: string[];
     hasZeroAmountPayments?: boolean;
     hasZeroCommissionClasses?: boolean;
+    hasUnpaidCommission?: boolean;
   }>;
   onMarkForPayment: (trainerId: string) => void;
   onMarkAsUnpaid?: (trainerId: string) => void;
@@ -80,16 +81,6 @@ export function TrainerPaymentsTable({
 
   return (
     <div className="space-y-4">
-      {!anyActualPayments && (
-        <Alert variant="default" className="bg-blue-50 border-blue-200">
-          <Info className="h-4 w-4 text-blue-600" />
-          <AlertDescription className="text-blue-800">
-            Displaying potential earnings based on class configurations and bookings. 
-            No actual payments have been processed in this system yet.
-          </AlertDescription>
-        </Alert>
-      )}
-      
       {anyZeroAmountPayments && (
         <Alert variant="warning" className="bg-amber-50 border-amber-200">
           <AlertTriangle className="h-4 w-4 text-amber-600" />

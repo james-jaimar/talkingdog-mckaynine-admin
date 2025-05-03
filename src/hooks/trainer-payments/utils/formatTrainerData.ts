@@ -12,10 +12,6 @@ export function formatTrainerPaymentData(
   const allScheduleIds = allSchedules.map(s => s.id);
   const uniqueClientIds = new Set(bookings?.map(b => b.client_id).filter(Boolean));
 
-  // Calculate totals from all class details first
-  let totalPotentialEarnings = 0;
-  let totalEarned = 0;
-  
   // Track schedules with payment status
   const schedulePaymentStatus = new Map<string, boolean>();
   
@@ -31,7 +27,7 @@ export function formatTrainerPaymentData(
 
   // Calculate totals from actual payments - these are the source of truth
   const totalPaid = trainerPayments
-    .filter(payment => payment.status === 'paid')
+    .filter(payment => payment.status === 'paid' && payment.amount > 0)
     .reduce((sum, payment) => sum + (payment.amount || 0), 0);
 
   // Calculate pending amount from pending payments, filtering out zero-amount payments
@@ -82,6 +78,7 @@ export function formatTrainerPaymentData(
 
   // Track if this trainer has any zero-commission classes
   let hasZeroCommissionClasses = false;
+  let totalCommission = 0; // Total earned commission across all classes
 
   // Calculate class details and sum up earnings
   const classDetails: TrainerClassDetail[] = allSchedules.map(schedule => {
@@ -111,18 +108,17 @@ export function formatTrainerPaymentData(
       scheduleInvoiceItems
     );
 
-    // Only add to total potential earnings if not a zero-commission class
-    if (!hasZeroCommission) {
-      totalPotentialEarnings += revenueDetails.potentialRevenue;
-      
-      // Add to total earned if class is paid
-      if (paidScheduleIds.has(schedule.id)) {
-        totalEarned += revenueDetails.potentialRevenue;
-      }
-    }
-
     // A class is considered paid if we have it in the paidScheduleIds set from trainer_payments
     const classIsPaid = paidScheduleIds.has(schedule.id);
+
+    // Only add to total commission if not a zero-commission class
+    if (!hasZeroCommission) {
+      if (classIsPaid) {
+        totalCommission += revenueDetails.revenue;
+      } else {
+        totalCommission += revenueDetails.potentialRevenue;
+      }
+    }
     
     // Check if this schedule has a payment record with zero amount
     // We'll only flag it as having a "zero amount payment" if it's not supposed to have zero commission
@@ -179,53 +175,34 @@ export function formatTrainerPaymentData(
   // Calculate pending amount properly
   let pendingAmount = 0;
   
-  // If we have actual payment records, use those for the pending amount calculation
-  if (hasActualPayments) {
-    // Start with the totalPending from valid payment records
-    pendingAmount = totalPending;
-    
-    // For trainers with both paid and pending classes, we need to check if all pending
-    // classes are properly accounted for in the trainer_payments table
-    const pendingClassDetails = classDetails.filter(cls => !cls.isPaid && !cls.hasZeroCommission);
-    
-    // Check for classes with zero-amount payments - these need to be included in pendingAmount
-    // These represent a special case where the payment record exists but has an incorrect amount
-    for (const cls of pendingClassDetails) {
-      if (cls.hasZeroAmountPayment && cls.potentialRevenue > 0) {
-        // Include the potential revenue for this class in pending amount
-        pendingAmount += cls.potentialRevenue;
-      }
-    }
-    
-    // Get all schedule IDs that have any payment records
-    const schedulesWithPayments = new Set(
-      trainerPayments.map(payment => payment.class_schedule_id)
-    );
-    
-    // For classes without any payment records, add their potential revenue to pending
-    for (const cls of pendingClassDetails) {
-      if (!schedulesWithPayments.has(cls.scheduleId) && cls.potentialRevenue > 0) {
-        pendingAmount += cls.potentialRevenue;
-      }
-    }
-  } else {
-    // If no actual payment records, calculate from class details
-    pendingAmount = classDetails
-      .filter(cls => !cls.isPaid && !cls.hasZeroCommission)
-      .reduce((sum, cls) => sum + cls.potentialRevenue, 0);
+  // Get all unpaid class details
+  const unpaidClassDetails = classDetails.filter(cls => !cls.isPaid && !cls.hasZeroCommission);
+  
+  // Sum up the potential revenue for unpaid classes
+  pendingAmount = unpaidClassDetails.reduce((sum, cls) => sum + cls.potentialRevenue, 0);
+  
+  // Make sure pending amount is accurate by checking for zero-amount payments
+  // These represent a special case where the payment record exists but has an incorrect amount
+  const zeroAmountPaymentClasses = classDetails.filter(cls => cls.hasZeroAmountPayment);
+  if (zeroAmountPaymentClasses.length > 0) {
+    // Add the potential revenue for classes with zero-amount payments
+    pendingAmount += zeroAmountPaymentClasses.reduce((sum, cls) => sum + cls.potentialRevenue, 0);
   }
 
   // Calculate if this trainer has unpaid amounts (used for status display)
   const hasUnpaidCommission = pendingAmount > 0;
+  
+  // Ensure total commission matches the sum of paid + pending
+  const totalEarned = hasActualPayments ? totalPaid : totalCommission - pendingAmount;
 
   return {
     id: trainer.id,
     trainerName: `${trainer.first_name} ${trainer.last_name}`,
     trainerEmail: trainer.email,
-    totalEarned: hasActualPayments ? totalPaid : totalEarned,
+    totalEarned: totalCommission,
     paid: totalPaid,
     pending: pendingAmount,
-    potentialEarnings: totalPotentialEarnings,
+    potentialEarnings: totalCommission, // Same as totalEarned for consistency
     classesCount: allSchedules.length,
     clients: uniqueClientIds.size,
     lastPaymentDate,

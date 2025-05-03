@@ -119,7 +119,7 @@ export function TrainerPaymentsRow({
             <ExtendedBadge variant="blue">No Commission</ExtendedBadge>
           ) : hasPendingAmount ? (
             <ExtendedBadge variant="amber">Payment Due</ExtendedBadge>
-          ) : hasActualPayments && trainer.paid > 0 ? (
+          ) : hasActualPayments ? (
             <ExtendedBadge variant="green">Paid</ExtendedBadge>
           ) : (
             <ExtendedBadge variant="amber">Payment Due</ExtendedBadge>
@@ -128,7 +128,7 @@ export function TrainerPaymentsRow({
         <TableCell className="text-right">
           {isZeroCommissionTrainer ? (
             <Button variant="outline" size="sm" disabled>N/A</Button>
-          ) : hasActualPayments && trainer.paid > 0 ? (
+          ) : hasActualPayments && !hasPendingAmount ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm">
