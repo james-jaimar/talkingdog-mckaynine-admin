@@ -41,11 +41,12 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
   // Handle fix zero amounts for a specific trainer
   const handleFixZeroAmounts = (trainerId: string) => {
     setSelectedTrainerId(trainerId);
-    // Find trainer data to get all scheduleIds
+    // Find trainer data to get scheduleIds with zero amounts
     const trainer = trainersData?.find(t => t.id === trainerId);
     // Find schedules with zero amount payments for this trainer
+    // Don't include those that have hasZeroCommission=true as those are intentional
     const zeroPaidSchedules = trainer?.classDetails
-      .filter(c => c.hasZeroAmountPayment)
+      .filter(c => c.hasZeroAmountPayment && !c.hasZeroCommission)
       .map(c => c.scheduleId) || [];
     setSelectedScheduleIds(zeroPaidSchedules);
     setFixZeroAmountsDialogOpen(true);
@@ -118,9 +119,10 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
     );
   }
   
-  // Check if any trainer has zero-amount payments
+  // Check if any trainer has zero-amount payments that need fixing
+  // Only consider zero amounts for trainers who should actually get a commission
   const hasZeroAmountPayments = trainersData.some(trainer => 
-    trainer.classDetails.some(cls => cls.hasZeroAmountPayment)
+    trainer.classDetails.some(cls => cls.hasZeroAmountPayment && !cls.hasZeroCommission)
   );
   
   const formattedTrainers = trainersData.map(trainer => ({
@@ -134,7 +136,8 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
     clients: trainer.clients,
     lastPaymentDate: trainer.lastPaymentDate,
     classDetails: trainer.classDetails,
-    hasZeroAmountPayments: trainer.classDetails.some(cls => cls.hasZeroAmountPayment)
+    hasZeroAmountPayments: trainer.classDetails.some(cls => cls.hasZeroAmountPayment && !cls.hasZeroCommission),
+    hasZeroCommissionClasses: trainer.hasZeroCommissionClasses
   }));
 
   return (
@@ -174,8 +177,10 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
           <Button 
             variant="outline" 
             onClick={() => {
-              // Find first trainer with zero-amount payments
-              const trainerWithZero = formattedTrainers.find(t => t.hasZeroAmountPayments);
+              // Find first trainer with zero-amount payments (excluding trainers with zero commission)
+              const trainerWithZero = formattedTrainers.find(t => 
+                t.hasZeroAmountPayments && !t.hasZeroCommissionClasses
+              );
               if (trainerWithZero) {
                 handleFixZeroAmounts(trainerWithZero.id);
               }

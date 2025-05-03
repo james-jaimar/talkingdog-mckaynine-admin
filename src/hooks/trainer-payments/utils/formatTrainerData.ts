@@ -80,10 +80,21 @@ export function formatTrainerPaymentData(
       .map(payment => payment.class_schedule_id)
   );
 
+  // Track if this trainer has any zero-commission classes
+  let hasZeroCommissionClasses = false;
+
   // Calculate class details and sum up earnings
   const classDetails: TrainerClassDetail[] = allSchedules.map(schedule => {
     const scheduleBookings = bookingsBySchedule[schedule.id] || [];
     const scheduleDate = new Date(schedule.start_time);
+    
+    // Check if this class has zero commission configured
+    const trainerFeeValue = schedule.classes?.trainer_fee_value;
+    const hasZeroCommission = trainerFeeValue === 0;
+    
+    if (hasZeroCommission) {
+      hasZeroCommissionClasses = true;
+    }
     
     // Get all invoice items for this schedule's bookings
     const scheduleInvoiceItems: InvoiceItem[] = [];
@@ -100,19 +111,22 @@ export function formatTrainerPaymentData(
       scheduleInvoiceItems
     );
 
-    // Add to total potential earnings
-    totalPotentialEarnings += revenueDetails.potentialRevenue;
-    
-    // Add to total earned if class is paid
-    if (paidScheduleIds.has(schedule.id)) {
-      totalEarned += revenueDetails.potentialRevenue;
+    // Only add to total potential earnings if not a zero-commission class
+    if (!hasZeroCommission) {
+      totalPotentialEarnings += revenueDetails.potentialRevenue;
+      
+      // Add to total earned if class is paid
+      if (paidScheduleIds.has(schedule.id)) {
+        totalEarned += revenueDetails.potentialRevenue;
+      }
     }
 
     // A class is considered paid if we have it in the paidScheduleIds set from trainer_payments
     const classIsPaid = paidScheduleIds.has(schedule.id);
     
     // Check if this schedule has a payment record with zero amount
-    const hasZeroAmountPayment = zeroAmountScheduleIds.has(schedule.id);
+    // We'll only flag it as having a "zero amount payment" if it's not supposed to have zero commission
+    const hasZeroAmountPayment = !hasZeroCommission && zeroAmountScheduleIds.has(schedule.id);
 
     // Build booking details for this class with actual client names
     const bookingsDetails = scheduleBookings.map(booking => {
@@ -157,6 +171,7 @@ export function formatTrainerPaymentData(
       bookings: scheduleBookings.length,
       isPaid: classIsPaid,
       hasZeroAmountPayment,
+      hasZeroCommission,
       bookingsDetails
     };
   });
@@ -171,7 +186,7 @@ export function formatTrainerPaymentData(
     
     // For trainers with both paid and pending classes, we need to check if all pending
     // classes are properly accounted for in the trainer_payments table
-    const pendingClassDetails = classDetails.filter(cls => !cls.isPaid);
+    const pendingClassDetails = classDetails.filter(cls => !cls.isPaid && !cls.hasZeroCommission);
     
     // Check for classes with zero-amount payments - these need to be included in pendingAmount
     // These represent a special case where the payment record exists but has an incorrect amount
@@ -196,7 +211,7 @@ export function formatTrainerPaymentData(
   } else {
     // If no actual payment records, calculate from class details
     pendingAmount = classDetails
-      .filter(cls => !cls.isPaid)
+      .filter(cls => !cls.isPaid && !cls.hasZeroCommission)
       .reduce((sum, cls) => sum + cls.potentialRevenue, 0);
   }
 
@@ -206,12 +221,13 @@ export function formatTrainerPaymentData(
     trainerEmail: trainer.email,
     totalEarned: hasActualPayments ? totalPaid : totalEarned,
     paid: totalPaid,
-    pending: pendingAmount, // Use our fixed pending calculation
+    pending: pendingAmount,
     potentialEarnings: totalPotentialEarnings,
     classesCount: allSchedules.length,
     clients: uniqueClientIds.size,
     lastPaymentDate,
     scheduleIds: allScheduleIds,
+    hasZeroCommissionClasses,
     classDetails: classDetails.sort((a, b) => 
       new Date(a.classDate).getTime() - new Date(b.classDate).getTime()
     )

@@ -27,6 +27,7 @@ interface TrainerPaymentsTableProps {
     invoicesCount?: number;
     scheduleIds?: string[];
     hasZeroAmountPayments?: boolean;
+    hasZeroCommissionClasses?: boolean;
   }>;
   onMarkForPayment: (trainerId: string) => void;
   onMarkAsUnpaid?: (trainerId: string) => void;
@@ -49,6 +50,12 @@ export function TrainerPaymentsTable({
   
   // Check if any trainers have zero amount payments
   const anyZeroAmountPayments = trainers.some(t => t.hasZeroAmountPayments);
+  
+  // Check for trainers with zero commission
+  const anyZeroCommissionTrainers = trainers.some(t => 
+    t.hasZeroCommissionClasses && 
+    (t.pending === 0 && t.paid === 0 && t.potentialEarnings === 0)
+  );
   
   if (!trainers || trainers.length === 0) {
     return (
@@ -89,6 +96,16 @@ export function TrainerPaymentsTable({
           <AlertDescription className="text-amber-800">
             Some payment records have incorrect (zero) amounts. Use the "Fix Zero Amount Payments" 
             button to recalculate these payments.
+          </AlertDescription>
+        </Alert>
+      )}
+      
+      {anyZeroCommissionTrainers && (
+        <Alert variant="default" className="bg-blue-50 border-blue-200">
+          <Info className="h-4 w-4 text-blue-600" />
+          <AlertDescription className="text-blue-800">
+            Some trainers have classes configured with 0% commission. These trainers will 
+            show "N/A" for payment amounts and cannot be marked for payment.
           </AlertDescription>
         </Alert>
       )}

@@ -1,98 +1,115 @@
 
-import { TrainerClassDetail } from "@/hooks/trainer-payments/types";
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { formatCurrency } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
-import { ExtendedBadge } from "@/components/ui/badge-variants";
-import { CheckCircle, AlertCircle, MoreHorizontal } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { MoreHorizontal } from "lucide-react";
+import { ExtendedBadge } from "@/components/ui/badge-variants";
+
+interface ClassDetail {
+  scheduleId: string;
+  className: string;
+  classDate: string;
+  bookings: number;
+  revenue: number;
+  potentialRevenue: number;
+  isPaid: boolean;
+  hasZeroAmountPayment?: boolean;
+  hasZeroCommission?: boolean;
+}
 
 interface ClassDetailsListProps {
-  classDetails: TrainerClassDetail[];
+  classDetails: ClassDetail[];
   trainerId: string;
-  onMarkForPayment: (trainerId: string) => void;
+  onMarkForPayment: (trainerId: string, scheduleId?: string) => void;
   onMarkAsUnpaid?: (trainerId: string) => void;
 }
 
-export function ClassDetailsList({ 
-  classDetails, 
-  trainerId, 
-  onMarkForPayment,
-  onMarkAsUnpaid
-}: ClassDetailsListProps) {
-  const sortedClasses = [...classDetails].sort((a, b) => {
-    // Sort by date (most recent first)
-    return new Date(b.classDate).getTime() - new Date(a.classDate).getTime();
-  });
-
+export function ClassDetailsList({ classDetails, trainerId, onMarkForPayment, onMarkAsUnpaid }: ClassDetailsListProps) {
+  if (!classDetails || classDetails.length === 0) {
+    return (
+      <div className="text-center py-4 text-muted-foreground">
+        No class details available
+      </div>
+    );
+  }
+  
+  // Sort by class date (oldest first)
+  const sortedDetails = [...classDetails].sort((a, b) => 
+    new Date(a.classDate).getTime() - new Date(b.classDate).getTime()
+  );
+  
   return (
-    <div className="overflow-auto max-h-[300px] border rounded-md">
-      <table className="w-full text-sm">
-        <thead className="bg-muted/50">
-          <tr>
-            <th className="text-left px-4 py-2">Status</th>
-            <th className="text-left px-4 py-2">Class</th>
-            <th className="text-center px-4 py-2">Date</th>
-            <th className="text-center px-4 py-2">Bookings</th>
-            <th className="text-right px-4 py-2">Revenue</th>
-            <th className="text-right px-4 py-2">Actions</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y">
-          {sortedClasses.map((cls) => (
-            <tr key={cls.scheduleId} className="hover:bg-muted/40">
-              <td className="px-4 py-2">
-                {cls.isPaid ? (
-                  <div className="flex items-center">
-                    <CheckCircle className="h-4 w-4 text-green-500 mr-1" />
-                    <ExtendedBadge variant="green">Paid</ExtendedBadge>
-                  </div>
+    <div className="overflow-x-auto rounded-md border">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Class Name</TableHead>
+            <TableHead>Date</TableHead>
+            <TableHead className="text-center">Bookings</TableHead>
+            <TableHead className="text-right">Revenue</TableHead>
+            <TableHead className="text-right">Status</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {sortedDetails.map((detail) => (
+            <TableRow key={detail.scheduleId}>
+              <TableCell>{detail.className}</TableCell>
+              <TableCell>
+                {new Date(detail.classDate).toLocaleDateString()}
+              </TableCell>
+              <TableCell className="text-center">{detail.bookings}</TableCell>
+              <TableCell className="text-right">
+                {detail.hasZeroCommission ? (
+                  <span className="text-muted-foreground">N/A</span>
                 ) : (
-                  <div className="flex items-center">
-                    <AlertCircle className="h-4 w-4 text-amber-500 mr-1" />
-                    <ExtendedBadge variant="amber">Pending</ExtendedBadge>
-                  </div>
+                  formatCurrency(detail.isPaid ? detail.potentialRevenue : detail.potentialRevenue)
                 )}
-              </td>
-              <td className="px-4 py-2">{cls.className}</td>
-              <td className="text-center px-4 py-2">
-                {new Date(cls.classDate).toLocaleDateString()}
-              </td>
-              <td className="text-center px-4 py-2">{cls.bookings}</td>
-              <td className="text-right px-4 py-2">
-                {formatCurrency(cls.potentialRevenue)}
-              </td>
-              <td className="text-right px-4 py-2">
-                {cls.isPaid && onMarkAsUnpaid ? (
+              </TableCell>
+              <TableCell className="text-right">
+                {detail.hasZeroCommission ? (
+                  <ExtendedBadge variant="blue">No Commission</ExtendedBadge>
+                ) : detail.isPaid ? (
+                  <ExtendedBadge variant="green">Paid</ExtendedBadge>
+                ) : detail.hasZeroAmountPayment ? (
+                  <ExtendedBadge variant="amber">Zero Amount</ExtendedBadge>
+                ) : (
+                  <ExtendedBadge variant="amber">Unpaid</ExtendedBadge>
+                )}
+              </TableCell>
+              <TableCell className="text-right">
+                {detail.hasZeroCommission ? (
+                  <span className="text-muted-foreground">N/A</span>
+                ) : (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button size="sm" variant="ghost">
+                      <Button variant="outline" size="sm">
                         <MoreHorizontal className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem 
-                        className="text-red-600"
-                        onClick={() => onMarkAsUnpaid(trainerId)}
+                        onClick={() => onMarkForPayment(trainerId, detail.scheduleId)}
                       >
-                        Mark as Unpaid
+                        {detail.isPaid ? 'Update Payment' : 'Mark as Paid'}
                       </DropdownMenuItem>
+                      {detail.isPaid && onMarkAsUnpaid && (
+                        <DropdownMenuItem 
+                          className="text-red-600" 
+                          onClick={() => onMarkAsUnpaid(trainerId)}
+                        >
+                          Mark as Unpaid
+                        </DropdownMenuItem>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
-                ) : (
-                  <Button 
-                    size="sm" 
-                    variant="ghost"
-                    disabled={cls.isPaid}
-                    onClick={() => onMarkForPayment(trainerId)}
-                  >
-                    Mark Paid
-                  </Button>
                 )}
-              </td>
-            </tr>
+              </TableCell>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
     </div>
   );
 }

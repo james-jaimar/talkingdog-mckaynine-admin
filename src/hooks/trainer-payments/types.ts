@@ -78,6 +78,7 @@ export interface TrainerClassDetail {
   potentialRevenue: number;
   isPaid: boolean;
   hasZeroAmountPayment?: boolean;
+  hasZeroCommission?: boolean;
   bookingsDetails?: BookingDetail[];
 }
 
@@ -93,6 +94,7 @@ export interface TrainerPaymentData {
   clients: number;
   lastPaymentDate?: string;
   scheduleIds?: string[];
+  hasZeroCommissionClasses?: boolean;
   classDetails: TrainerClassDetail[];
 }
 

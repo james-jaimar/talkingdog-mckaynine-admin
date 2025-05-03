@@ -26,6 +26,7 @@ interface TrainerPaymentsRowProps {
     lastPaymentDate?: string;
     classDetails?: TrainerClassDetail[];
     hasZeroAmountPayments?: boolean;
+    hasZeroCommissionClasses?: boolean;
   };
   onMarkForPayment: (trainerId: string) => void;
   onMarkAsUnpaid?: (trainerId: string) => void;
@@ -47,6 +48,10 @@ export function TrainerPaymentsRow({
   const hasClassDetails = trainer.classDetails && trainer.classDetails.length > 0;
   const classesCount = trainer.classesCount || 0;
   const classDetailsShown = trainer.classDetails?.length || 0;
+  
+  // Handle trainers with zero commission classes
+  const isZeroCommissionTrainer = trainer.hasZeroCommissionClasses && 
+                                 (trainer.pending === 0 && trainer.paid === 0 && trainer.potentialEarnings === 0);
   
   const hasActualPayments = trainer.paid > 0;
   const showPotentialAmounts = !hasActualPayments;
@@ -78,18 +83,42 @@ export function TrainerPaymentsRow({
               Fix Needed
             </ExtendedBadge>
           )}
-        </TableCell>
-        <TableCell className="text-right">
-          {formatCurrency(earnings)}
-          {showPotentialAmounts && (
-            <span className="text-xs text-muted-foreground ml-1">(Potential)</span>
+          
+          {isZeroCommissionTrainer && (
+            <ExtendedBadge variant="blue" className="ml-1">
+              0% Commission
+            </ExtendedBadge>
           )}
         </TableCell>
-        <TableCell className="text-right">{formatCurrency(trainer.paid)}</TableCell>
         <TableCell className="text-right">
-          {formatCurrency(pendingAmount)}
-          {showPotentialAmounts && (
-            <span className="text-xs text-muted-foreground ml-1">(Potential)</span>
+          {isZeroCommissionTrainer ? (
+            <span className="text-muted-foreground">N/A</span>
+          ) : (
+            <>
+              {formatCurrency(earnings)}
+              {showPotentialAmounts && (
+                <span className="text-xs text-muted-foreground ml-1">(Potential)</span>
+              )}
+            </>
+          )}
+        </TableCell>
+        <TableCell className="text-right">
+          {isZeroCommissionTrainer ? (
+            <span className="text-muted-foreground">N/A</span>
+          ) : (
+            formatCurrency(trainer.paid)
+          )}
+        </TableCell>
+        <TableCell className="text-right">
+          {isZeroCommissionTrainer ? (
+            <span className="text-muted-foreground">N/A</span>
+          ) : (
+            <>
+              {formatCurrency(pendingAmount)}
+              {showPotentialAmounts && (
+                <span className="text-xs text-muted-foreground ml-1">(Potential)</span>
+              )}
+            </>
           )}
         </TableCell>
         <TableCell className="text-center">{classesCount}</TableCell>
@@ -100,7 +129,9 @@ export function TrainerPaymentsRow({
             : 'Never'}
         </TableCell>
         <TableCell className="text-right">
-          {showPotentialAmounts ? (
+          {isZeroCommissionTrainer ? (
+            <ExtendedBadge variant="blue">No Commission</ExtendedBadge>
+          ) : showPotentialAmounts ? (
             <ExtendedBadge variant="blue">Potential</ExtendedBadge>
           ) : trainer.pending > 0 ? (
             <ExtendedBadge variant="amber">Payment Due</ExtendedBadge>
@@ -109,7 +140,9 @@ export function TrainerPaymentsRow({
           )}
         </TableCell>
         <TableCell className="text-right">
-          {hasActualPayments && trainer.paid > 0 ? (
+          {isZeroCommissionTrainer ? (
+            <Button variant="outline" size="sm" disabled>N/A</Button>
+          ) : hasActualPayments && trainer.paid > 0 ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm">

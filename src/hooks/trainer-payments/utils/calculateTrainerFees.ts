@@ -27,7 +27,16 @@ export function calculateClassRevenue(
 
   // Get trainer fee configuration from the class
   const trainerFeeType = schedule.classes.trainer_fee_type || 'percentage';
-  const trainerFeeValue = schedule.classes.trainer_fee_value || 70; // Default to 70%
+  // Check if trainer_fee_value is specifically set to 0 versus undefined
+  // Use a default of 70% only if the value is undefined, not if it's intentionally 0
+  const trainerFeeValue = schedule.classes.trainer_fee_value !== undefined 
+    ? schedule.classes.trainer_fee_value 
+    : 70; 
+  
+  // If trainer fee is explicitly set to 0, return zeros (no commission)
+  if (trainerFeeValue === 0) {
+    return { revenue: 0, potentialRevenue: 0, isPaid: false };
+  }
   
   // Get amount from paid invoice items
   const bookingIds = bookings.map(b => b.id);
