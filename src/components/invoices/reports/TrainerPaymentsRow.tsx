@@ -27,6 +27,7 @@ interface TrainerPaymentsRowProps {
     classDetails?: TrainerClassDetail[];
     hasZeroAmountPayments?: boolean;
     hasZeroCommissionClasses?: boolean;
+    hasUnpaidCommission?: boolean;
   };
   onMarkForPayment: (trainerId: string) => void;
   onMarkAsUnpaid?: (trainerId: string) => void;
@@ -53,14 +54,9 @@ export function TrainerPaymentsRow({
   const isZeroCommissionTrainer = trainer.hasZeroCommissionClasses && 
                                  (trainer.pending === 0 && trainer.paid === 0 && trainer.potentialEarnings === 0);
   
+  // Determine status based on payment amounts
   const hasActualPayments = trainer.paid > 0;
-  const showPotentialAmounts = !hasActualPayments;
-  const earnings = showPotentialAmounts 
-    ? (trainer.potentialEarnings || 0)
-    : trainer.totalEarned;
-  const pendingAmount = showPotentialAmounts 
-    ? (trainer.potentialEarnings || 0) 
-    : trainer.pending;
+  const hasPendingAmount = trainer.pending > 0;
 
   return (
     <>
@@ -94,12 +90,7 @@ export function TrainerPaymentsRow({
           {isZeroCommissionTrainer ? (
             <span className="text-muted-foreground">N/A</span>
           ) : (
-            <>
-              {formatCurrency(earnings)}
-              {showPotentialAmounts && (
-                <span className="text-xs text-muted-foreground ml-1">(Potential)</span>
-              )}
-            </>
+            formatCurrency(trainer.totalEarned || 0)
           )}
         </TableCell>
         <TableCell className="text-right">
@@ -113,12 +104,7 @@ export function TrainerPaymentsRow({
           {isZeroCommissionTrainer ? (
             <span className="text-muted-foreground">N/A</span>
           ) : (
-            <>
-              {formatCurrency(pendingAmount)}
-              {showPotentialAmounts && (
-                <span className="text-xs text-muted-foreground ml-1">(Potential)</span>
-              )}
-            </>
+            formatCurrency(trainer.pending)
           )}
         </TableCell>
         <TableCell className="text-center">{classesCount}</TableCell>
@@ -131,12 +117,12 @@ export function TrainerPaymentsRow({
         <TableCell className="text-right">
           {isZeroCommissionTrainer ? (
             <ExtendedBadge variant="blue">No Commission</ExtendedBadge>
-          ) : showPotentialAmounts ? (
-            <ExtendedBadge variant="blue">Potential</ExtendedBadge>
-          ) : trainer.pending > 0 ? (
+          ) : hasPendingAmount ? (
             <ExtendedBadge variant="amber">Payment Due</ExtendedBadge>
-          ) : (
+          ) : hasActualPayments && trainer.paid > 0 ? (
             <ExtendedBadge variant="green">Paid</ExtendedBadge>
+          ) : (
+            <ExtendedBadge variant="amber">Payment Due</ExtendedBadge>
           )}
         </TableCell>
         <TableCell className="text-right">

@@ -176,7 +176,7 @@ export function formatTrainerPaymentData(
     };
   });
 
-  // FIX: Calculate pending amount properly
+  // Calculate pending amount properly
   let pendingAmount = 0;
   
   // If we have actual payment records, use those for the pending amount calculation
@@ -215,6 +215,9 @@ export function formatTrainerPaymentData(
       .reduce((sum, cls) => sum + cls.potentialRevenue, 0);
   }
 
+  // Calculate if this trainer has unpaid amounts (used for status display)
+  const hasUnpaidCommission = pendingAmount > 0;
+
   return {
     id: trainer.id,
     trainerName: `${trainer.first_name} ${trainer.last_name}`,
@@ -227,6 +230,7 @@ export function formatTrainerPaymentData(
     clients: uniqueClientIds.size,
     lastPaymentDate,
     scheduleIds: allScheduleIds,
+    hasUnpaidCommission,
     hasZeroCommissionClasses,
     classDetails: classDetails.sort((a, b) => 
       new Date(a.classDate).getTime() - new Date(b.classDate).getTime()
