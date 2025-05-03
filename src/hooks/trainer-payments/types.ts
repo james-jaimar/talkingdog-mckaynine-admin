@@ -94,6 +94,7 @@ export interface TrainerPaymentData {
   clients: number;
   lastPaymentDate?: string;
   scheduleIds?: string[];
+  hasUnpaidCommission?: boolean;
   hasZeroCommissionClasses?: boolean;
   classDetails: TrainerClassDetail[];
 }
