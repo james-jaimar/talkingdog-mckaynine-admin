@@ -1,10 +1,10 @@
 
-import { useState, useEffect } from "react";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { useState } from "react";
+import { Card } from "@/components/ui/card";
 import { useTrainerPaymentData } from "@/hooks/useTrainerPaymentData";
 import { TrainerPaymentsSummary } from "./TrainerPaymentsSummary";
-import { Loader2, AlertCircle, RefreshCw, Database, Info, Wrench } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Loader2, AlertCircle, RefreshCw, Wrench } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { TrainerPaymentHistory } from "./payment-history/TrainerPaymentHistory";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useMarkTrainerPaymentsUnpaid } from "@/hooks/useMarkTrainerPaymentsUnpaid";
@@ -58,13 +58,6 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
     refetch();
     toast.success("Payment data refreshed");
   };
-
-  // Check permissions - this button is just for demonstration
-  const checkPermissions = () => {
-    toast.info("You have permission to manage trainer payments", {
-      description: "You can mark payments as paid or unpaid and view payment history"
-    });
-  };
   
   // Fix zero payments function
   const fixZeroPayments = () => {
@@ -82,22 +75,6 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
       resetZeroAmounts: true
     });
     setFixZeroAmountsDialogOpen(false);
-  };
-  
-  // Verify database button functionality
-  const verifyDatabase = () => {
-    toast.loading("Verifying database records...");
-    // Force a deep refresh of all payment data
-    queryClient.invalidateQueries({ queryKey: ['trainer-payments'], refetchType: 'all' });
-    queryClient.invalidateQueries({ queryKey: ['trainer-payment-history'], refetchType: 'all' });
-    
-    setTimeout(() => {
-      toast.dismiss();
-      toast.success("Database verification complete", {
-        description: "All payment records have been refreshed from the database"
-      });
-      refetch();
-    }, 1500);
   };
 
   if (isLoading) {
@@ -137,7 +114,8 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
     lastPaymentDate: trainer.lastPaymentDate,
     classDetails: trainer.classDetails,
     hasZeroAmountPayments: trainer.classDetails.some(cls => cls.hasZeroAmountPayment && !cls.hasZeroCommission),
-    hasZeroCommissionClasses: trainer.hasZeroCommissionClasses
+    hasZeroCommissionClasses: trainer.hasZeroCommissionClasses,
+    hasUnpaidCommission: trainer.hasUnpaidCommission
   }));
 
   return (
@@ -151,26 +129,6 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
         >
           <RefreshCw className="h-4 w-4" />
           Refresh Data
-        </Button>
-        
-        <Button 
-          variant="outline" 
-          onClick={checkPermissions} 
-          size="sm"
-          className="gap-2"
-        >
-          <Info className="h-4 w-4" />
-          Check Permissions
-        </Button>
-        
-        <Button 
-          variant="outline" 
-          onClick={verifyDatabase}
-          size="sm"
-          className="gap-2"
-        >
-          <Database className="h-4 w-4" />
-          Verify Database
         </Button>
         
         {hasZeroAmountPayments && (
