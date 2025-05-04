@@ -1,70 +1,19 @@
-export interface Schedule {
-  id: string;
-  start_time: string;
-  end_time: string;
-  class_id: string;
-  trainer_id: string;
-  classes: {
-    id: string;
-    name: string;
-    trainer_fee_type?: string;
-    trainer_fee_value?: number;
-    mckaynine_commission_type?: string;
-    mckaynine_commission_value?: number;
-    admin_fee_type?: string;
-    admin_fee_value?: number;
-    course_fee?: number;
-  };
-}
 
-export interface Booking {
+// Define the necessary types for trainer payment data
+export interface TrainerPaymentData {
   id: string;
-  class_schedule_id?: string;
-  client_id?: string;
-  dog_id?: string;
-  is_enrolled: boolean;
-  status: string;
-  payment_status: string;
-  client?: {
-    id: string;
-    first_name: string;
-    last_name: string;
-    email: string;
-  };
-  dog?: {
-    id: string;
-    name: string;
-    breed: string;
-  };
-  // For backward compatibility with code using clients instead of client
-  clients?: {
-    id: string;
-    first_name: string;
-    last_name: string;
-  };
-  computed_payment_status?: string;
-}
-
-export interface InvoiceItem {
-  id: string;
-  invoice_id: string;
-  description: string;
-  quantity: number;
-  unit_price: number;
-  amount: number;
-  booking_id?: string;
-  invoices?: {
-    id: string;
-    status: string;
-    payment_date?: string;
-  };
-}
-
-export interface BookingDetail {
-  bookingId: string;
-  clientId: string;
-  handlerName: string;
-  commissionAmount: number;
+  trainerName: string;
+  trainerEmail?: string | null;
+  totalEarned: number;
+  paid: number;
+  pending: number;
+  potentialEarnings: number;
+  classesCount: number;
+  clients: number;
+  lastPaymentDate?: string;
+  classDetails: TrainerClassDetail[];
+  hasUnpaidCommission: boolean;
+  hasZeroCommissionClasses: boolean;
 }
 
 export interface TrainerClassDetail {
@@ -81,33 +30,54 @@ export interface TrainerClassDetail {
   bookingsDetails?: BookingDetail[];
 }
 
-export interface TrainerPaymentData {
-  id: string;
-  trainerName: string;
-  trainerEmail?: string;
-  totalEarned: number;
-  paid: number;
-  pending: number;
-  potentialEarnings: number;
-  classesCount: number;
-  clients: number;
-  lastPaymentDate?: string;
-  scheduleIds?: string[];
-  hasUnpaidCommission?: boolean;
-  hasZeroCommissionClasses?: boolean;
-  classDetails: TrainerClassDetail[];
+export interface BookingDetail {
+  bookingId: string;
+  clientId: string;
+  handlerName: string;
+  commissionAmount: number;
 }
 
-export interface TrainerPaymentHistoryItem {
+export interface Schedule {
   id: string;
-  paymentDate: string;
+  start_time: string;
+  end_time: string;
+  classes?: {
+    id: string;
+    name: string;
+    trainer_fee_type: 'percentage' | 'fixed';
+    trainer_fee_value: number;
+    course_fee?: number;
+  };
+  bookings?: Booking[];
+}
+
+export interface Booking {
+  id: string;
+  client_id?: string;
+  class_schedule_id: string;
+  payment_status?: string;
+  clients?: {
+    id: string;
+    first_name?: string;
+    last_name?: string;
+  };
+  client?: {
+    id?: string;
+    first_name?: string;
+    last_name?: string;
+  };
+  invoice_items?: InvoiceItem[];
+}
+
+export interface InvoiceItem {
+  id: string;
   amount: number;
-  paymentMethod: string;
-  transactionId?: string;
-  documentUrl?: string;
-  documentName?: string;
-  scheduleId: string;
-  className: string;
-  classDate: string;
-  trainerName?: string;
+  booking_id?: string;
+  invoice_id?: string;
+  invoices?: {
+    id: string;
+    status: string;
+    total?: number;
+    payment_date?: string;
+  };
 }

@@ -68,30 +68,41 @@ export function useMarkTrainerPaymentsUnpaid() {
         }
         
         // First, check if this is a zero-commission trainer (we should skip recalculation for these)
-        // This requires an additional query to get class details
         if (resetZeroAmounts) {
-          // Get one class schedule to check if it's a zero-commission class
-          const { data: scheduleData, error: scheduleError } = await supabase
-            .from('class_schedules')
-            .select(`
-              id, 
-              classes:class_id (
-                trainer_fee_type, 
-                trainer_fee_value
-              )
-            `)
-            .eq('id', scheduleIds[0])
-            .single();
+          const zeroAmountRecordsWithScheduleIds = existingPayments
+            .filter(p => p.amount === 0 || p.amount === 0.0)
+            .map(p => p.class_schedule_id);
             
-          if (!scheduleError && scheduleData?.classes) {
-            const isZeroCommissionClass = 
-              scheduleData.classes.trainer_fee_type === 'fixed' && 
-              scheduleData.classes.trainer_fee_value === 0;
+          if (zeroAmountRecordsWithScheduleIds.length > 0) {
+            // Get class schedule details for zero amount records to check if they have zero commission
+            const { data: scheduleData, error: scheduleError } = await supabase
+              .from('class_schedules')
+              .select(`
+                id, 
+                classes:class_id (
+                  trainer_fee_type, 
+                  trainer_fee_value
+                )
+              `)
+              .in('id', zeroAmountRecordsWithScheduleIds);
               
-            // If this is a zero-commission class, we should skip recalculation
-            if (isZeroCommissionClass) {
-              console.log("Skipping zero amount recalculation for zero-commission trainer");
-              resetZeroAmounts = false;
+            if (!scheduleError && scheduleData) {
+              // Filter out schedules with zero commission classes
+              const nonZeroCommissionScheduleIds = scheduleData
+                .filter(schedule => !(
+                  schedule.classes &&
+                  schedule.classes.trainer_fee_type === 'fixed' && 
+                  schedule.classes.trainer_fee_value === 0
+                ))
+                .map(schedule => schedule.id);
+                
+              console.log(`Found ${nonZeroCommissionScheduleIds.length} schedules without zero commission to reset`);
+              
+              // Update resetZeroAmounts logic to only process non-zero commission records
+              if (nonZeroCommissionScheduleIds.length === 0) {
+                console.log("All zero amount records are for zero-commission classes, skipping recalculation");
+                resetZeroAmounts = false;
+              }
             }
           }
         }

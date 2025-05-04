@@ -62,41 +62,44 @@ export function formatTrainerPaymentData(
     // Get details for all bookings in this schedule
     const bookingsDetails: BookingDetail[] = [];
     
-    // Process bookings and invoice items
-    scheduleBookings.forEach(booking => {
-      // Find invoice items for this booking
-      const bookingInvoiceItems = invoiceItems.filter(ii => ii.booking_id === booking.id);
-      
-      if (bookingInvoiceItems.length > 0) {
-        const totalAmount = bookingInvoiceItems.reduce((sum, item) => sum + item.amount, 0);
-        schedulePotentialRevenue += totalAmount;
+    // Check if zero commission is intended based on class settings
+    const hasZeroCommission = schedule.classes?.trainer_fee_type === 'fixed' && 
+                            schedule.classes?.trainer_fee_value === 0;
+    
+    // Only calculate commission if not zero-commission class
+    if (!hasZeroCommission) {
+      // Process bookings and invoice items
+      scheduleBookings.forEach(booking => {
+        // Find invoice items for this booking
+        const bookingInvoiceItems = invoiceItems.filter(ii => ii.booking_id === booking.id);
         
-        // Check if the invoice is paid
-        const isPaid = bookingInvoiceItems.some(ii => 
-          ii.invoices && ii.invoices.status === 'paid'
-        );
-        
-        if (isPaid) {
-          scheduleActualRevenue += totalAmount;
+        if (bookingInvoiceItems.length > 0) {
+          const totalAmount = bookingInvoiceItems.reduce((sum, item) => sum + item.amount, 0);
+          schedulePotentialRevenue += totalAmount;
+          
+          // Check if the invoice is paid
+          const isPaid = bookingInvoiceItems.some(ii => 
+            ii.invoices && ii.invoices.status === 'paid'
+          );
+          
+          if (isPaid) {
+            scheduleActualRevenue += totalAmount;
+          }
+          
+          // Add booking details
+          bookingsDetails.push({
+            bookingId: booking.id,
+            clientId: booking.client_id || booking.clients?.id || '',
+            handlerName: `${booking.client?.first_name || booking.clients?.first_name || ''} ${booking.client?.last_name || booking.clients?.last_name || ''}`.trim(),
+            commissionAmount: totalAmount
+          });
         }
-        
-        // Add booking details
-        bookingsDetails.push({
-          bookingId: booking.id,
-          clientId: booking.client_id || booking.clients?.id || '',
-          handlerName: `${booking.client?.first_name || booking.clients?.first_name || ''} ${booking.client?.last_name || booking.clients?.last_name || ''}`.trim(),
-          commissionAmount: totalAmount
-        });
-      }
-    });
+      });
+    }
     
     // Get payment records for this schedule
     const schedulePayments = payments.filter(p => p.class_schedule_id === schedule.id);
     const isPaid = schedulePayments.some(p => p.status === 'paid');
-    
-    // Check if zero commission is intended based on class settings
-    const hasZeroCommission = schedule.classes?.trainer_fee_type === 'fixed' && 
-                            schedule.classes?.trainer_fee_value === 0;
     
     // Only consider it a zero amount payment issue if it's not supposed to be zero commission
     const hasZeroAmountPayment = schedulePayments.some(p => p.amount === 0) && !hasZeroCommission;

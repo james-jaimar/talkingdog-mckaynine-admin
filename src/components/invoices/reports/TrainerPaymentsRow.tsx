@@ -69,7 +69,6 @@ export function TrainerPaymentsRow({
       <TableRow 
         className={hasClassDetails && !isProcessing ? "cursor-pointer hover:bg-muted/60" : 
                  isProcessing ? "opacity-70" : ""}
-        isEven={index % 2 === 0}
         onClick={hasClassDetails && !isProcessing ? toggleExpand : undefined}
       >
         <TableCell className="flex items-center gap-2">
