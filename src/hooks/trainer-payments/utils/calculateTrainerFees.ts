@@ -1,5 +1,5 @@
 
-import { Schedule, Booking, InvoiceItem } from "../types";
+import { Schedule, Booking, InvoiceItem, FeeType } from "../types";
 
 interface RevenueDetails {
   revenue: number;

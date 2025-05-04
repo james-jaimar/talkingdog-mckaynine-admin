@@ -44,16 +44,20 @@ export interface Schedule {
   classes?: {
     id: string;
     name: string;
-    trainer_fee_type: 'percentage' | 'fixed';
+    trainer_fee_type: FeeType; // Updated to use the FeeType union type
     trainer_fee_value: number;
     course_fee?: number;
   };
   bookings?: Booking[];
 }
 
+// Define a union type for fee types to handle both typed and untyped data
+export type FeeType = 'percentage' | 'fixed' | string;
+
 export interface Booking {
   id: string;
   client_id?: string;
+  dog_id?: string;
   class_schedule_id: string;
   payment_status?: string;
   clients?: {
