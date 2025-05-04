@@ -7,7 +7,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, Calendar, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
 
 export function TermSelectorRow() {
   const {
@@ -28,13 +27,13 @@ export function TermSelectorRow() {
   
   const handleYearChange = (value: string) => {
     setSelectedYear(parseInt(value));
-    toast.info(`Changing year to ${value}`, { duration: 2000 });
+    // Removed toast notification
   };
 
   const handleTermChange = (value: string) => {
     if (value === '1' || value === '2' || value === '3' || value === '4') {
       setSelectedTermNumber(value as '1' | '2' | '3' | '4');
-      toast.info(`Changing to Term ${value}`, { duration: 2000 });
+      // Removed toast notification
       
       // Force invalidate financial queries when changing terms
       setTimeout(() => {
@@ -49,7 +48,7 @@ export function TermSelectorRow() {
       refetchTerm();
       queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
-      toast.success("Term data refreshed");
+      // Removed toast notification
     }
   };
 

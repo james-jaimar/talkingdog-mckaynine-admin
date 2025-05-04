@@ -1,7 +1,6 @@
 
 import React, { createContext, useContext, useEffect, ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { toast } from '@/components/ui/use-toast';
 import { TermContextType, TermData, TermNumber } from './types';
 import { useTermQuery } from './useTermQuery';
 import { useTermSelection } from './useTermSelection';
@@ -56,11 +55,7 @@ export function TermProvider({ children }: { children: ReactNode }) {
           exact: false
         });
         
-        // Show a notification, but ensure we only do this once
-        toast({
-          title: `Term Changed`,
-          description: `Now viewing Term ${termData.term_number}, ${selectedYear}`,
-        });
+        // Remove toast notification - we don't want to show it
       });
     }
   }, [termData?.id, invalidateTermDependentQueries, queryClient, selectedYear, isChangingTerm]);
