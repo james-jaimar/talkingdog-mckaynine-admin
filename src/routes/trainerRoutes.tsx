@@ -13,6 +13,7 @@ import TrainerDashboard from "@/pages/TrainerDashboard";
 import PuppyClassForm from "@/pages/PuppyClassForm";
 import BranchManagement from "@/pages/BranchManagement";
 import InvoiceRedirect from "@/pages/InvoiceRedirect";
+import Invoices from "@/pages/Invoices";
 
 export const trainerRoutes = [
   {
@@ -124,6 +125,14 @@ export const trainerRoutes = [
     element: (
       <ProtectedRoute requiredRole="trainer">
         <InvoiceRedirect />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/invoices/list",
+    element: (
+      <ProtectedRoute requiredRole="trainer">
+        <Invoices />
       </ProtectedRoute>
     ),
   },

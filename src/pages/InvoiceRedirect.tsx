@@ -8,7 +8,7 @@ export default function InvoiceRedirect() {
   const navigate = useNavigate();
   
   useEffect(() => {
-    // Redirect to the invoice list page
+    // Redirect to the invoice list page with the correct path
     navigate('/invoices/list', { replace: true });
   }, [navigate]);
   

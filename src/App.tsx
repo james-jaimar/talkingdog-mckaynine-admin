@@ -16,6 +16,9 @@ import Dashboard from './pages/Dashboard';
 import Classes from './pages/Classes';
 import ClassSchedules from './pages/ClassSchedules';
 import ClassHandlers from './pages/ClassHandlers';
+import Invoices from './pages/Invoices';
+import InvoiceRedirect from './pages/InvoiceRedirect';
+import InvoiceDetail from './pages/InvoiceDetail';
 
 function App() {
   return (
@@ -33,6 +36,12 @@ function App() {
                 <Route path="/classes" element={<RequireAuth><Classes /></RequireAuth>} />
                 <Route path="/classes/:id/schedules" element={<RequireAuth><ClassSchedules /></RequireAuth>} />
                 <Route path="/class/:id/handlers" element={<RequireAuth><ClassHandlers /></RequireAuth>} />
+                
+                {/* Invoice routes */}
+                <Route path="/invoices" element={<RequireAuth><InvoiceRedirect /></RequireAuth>} />
+                <Route path="/invoices/list" element={<RequireAuth><Invoices /></RequireAuth>} />
+                <Route path="/invoices/:id" element={<RequireAuth><InvoiceDetail /></RequireAuth>} />
+                
                 {/* Add a 404 route */}
                 <Route path="*" element={<Navigate to="/dashboard" replace />} />
               </Routes>
