@@ -36,13 +36,18 @@ export function useTrainerPaymentData(branchId?: string, dateRange?: { from: Dat
         
         // For each trainer, get all related data in one efficient query
         const trainersPaymentData = await Promise.all(trainers.map(async (trainer) => {
-          // Step 1: Get schedules for this trainer within date range
+          // Step 1: Get schedules for this trainer
+          // Modified to fetch all schedules where start_time is in the date range OR any selected date is in the range
           const { data: schedules, error: schedulesError } = await supabase
             .from('class_schedules')
             .select(`
               id, 
               start_time,
               end_time,
+              selected_dates,
+              term_id,
+              term_number,
+              academic_year,
               classes:class_id (
                 id,
                 name,
@@ -52,8 +57,7 @@ export function useTrainerPaymentData(branchId?: string, dateRange?: { from: Dat
               )
             `)
             .eq('trainer_id', trainer.id)
-            .gte('start_time', fromDate)
-            .lte('start_time', toDate);
+            .or(`start_time.gte.${fromDate},start_time.lte.${toDate}`);
             
           if (schedulesError) {
             console.error(`Error fetching schedules for trainer ${trainer.id}:`, schedulesError);
@@ -79,7 +83,46 @@ export function useTrainerPaymentData(branchId?: string, dateRange?: { from: Dat
             };
           }
           
-          const scheduleIds = schedules.map(s => s.id);
+          // Filter schedules to include only those that start in the date range or have at least one class in the range
+          const filteredSchedules = schedules.filter(schedule => {
+            const startTime = new Date(schedule.start_time);
+            
+            // Check if start time is in range
+            if (startTime >= dateRange?.from && (!dateRange?.to || startTime <= dateRange?.to)) {
+              return true;
+            }
+            
+            // Check if any selected date is in range
+            if (schedule.selected_dates && schedule.selected_dates.length > 0) {
+              return schedule.selected_dates.some(dateStr => {
+                const classDate = new Date(dateStr);
+                return classDate >= dateRange?.from && (!dateRange?.to || classDate <= dateRange?.to);
+              });
+            }
+            
+            return false;
+          });
+          
+          const scheduleIds = filteredSchedules.map(s => s.id);
+          
+          if (scheduleIds.length === 0) {
+            // Return trainer with zero values if there are no relevant schedules
+            return {
+              id: trainer.id,
+              trainerName: `${trainer.first_name} ${trainer.last_name}`,
+              trainerEmail: trainer.email,
+              totalEarned: 0,
+              allocatedAmount: 0,
+              paid: 0,
+              pending: 0,
+              potentialEarnings: 0,
+              classesCount: 0,
+              clients: 0,
+              classDetails: [],
+              hasUnpaidCommission: false,
+              hasZeroCommissionClasses: false
+            };
+          }
           
           // Step 2: Get all bookings for these schedules
           const { data: bookings, error: bookingsError } = await supabase
@@ -87,6 +130,7 @@ export function useTrainerPaymentData(branchId?: string, dateRange?: { from: Dat
             .select(`
               id,
               client_id,
+              dog_id,
               class_schedule_id,
               payment_status,
               clients:client_id (
@@ -141,7 +185,7 @@ export function useTrainerPaymentData(branchId?: string, dateRange?: { from: Dat
           // Format all the data into a structured trainer payment record
           return formatTrainerPaymentData(
             trainer, 
-            schedules || [], 
+            filteredSchedules || [], 
             bookings || [], 
             invoiceItems || [],
             payments || []
