@@ -45,7 +45,7 @@ export default function FinancialDashboard() {
       })
     : activeInvoices;
   
-  // Calculate revenue metrics directly from invoices using total (already includes discounts)
+  // Calculate revenue metrics directly from invoices
   const totalRevenue = termFilteredInvoices.reduce((sum, inv) => sum + inv.total, 0);
   const collectedRevenue = termFilteredInvoices
     .filter(inv => inv.status === 'paid')
@@ -67,12 +67,12 @@ export default function FinancialDashboard() {
     isLoading
   } = useClassFinancialData(currentBranch?.id, fromDate, toDate);
   
-  // Calculate all financial metrics from class finances - using the NET revenue in all calculations
+  // Calculate all financial metrics from class finances
   const totalAdmin = classFinances.reduce((sum, item) => sum + item.adminFee, 0);
   const totalTrainer = classFinances.reduce((sum, item) => sum + item.instructorFee, 0);
   const totalFranchise = classFinances.reduce((sum, item) => sum + item.franchiseFee, 0);
   
-  // Calculate profit as NET revenue minus all fees
+  // Calculate profit as revenue minus all fees
   const profit = totalRevenue - totalAdmin - totalTrainer - totalFranchise;
   
   // Debug the calculated values
@@ -98,7 +98,7 @@ export default function FinancialDashboard() {
     overdueRevenue
   };
 
-  // Expense breakdown data - all based on NET revenue
+  // Expense breakdown data
   const expenseData = {
     totalAdmin,
     totalTrainer,

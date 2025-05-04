@@ -22,8 +22,7 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
       console.log(`Fetching financial data for branch: ${branchId} from ${fromDate} to ${toDate}`);
       
       try {
-        // Adjust the query to handle classes that span multiple terms
-        // We'll include classes that start within the date range OR have class sessions within the range
+        // Improved query to handle classes that span multiple terms
         let query = supabase
           .from('class_schedules')
           .select(`
@@ -77,10 +76,11 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
           
         // Add date filtering conditionally
         if (fromDate && toDate) {
-          // Include schedules that:
+          // This improved filter will include schedules that:
           // 1. Start within the date range OR
-          // 2. Have at least one class session (selected_date) within the range
-          query = query.or(`start_time.gte.${fromDate},start_time.lte.${toDate}`);
+          // 2. Have any selected_dates that fall within the range OR
+          // 3. End within the date range
+          query = query.or(`start_time.gte.${fromDate},selected_dates.cs.{${fromDate},${toDate}},end_time.lte.${toDate}`);
         }
         
         const { data, error } = await query;
@@ -90,37 +90,51 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
           throw error;
         }
         
-        // Post-process the data to filter out class sessions outside our date range
-        const filteredSchedules = data.map(schedule => {
-          // Keep the schedule if it starts within the date range
-          const scheduleStart = new Date(schedule.start_time);
-          
-          if ((!fromDate || new Date(scheduleStart) >= new Date(fromDate)) &&
-              (!toDate || new Date(scheduleStart) <= new Date(toDate))) {
-            return schedule;
-          }
-          
-          // For schedules that start outside the date range, check if any selected dates are within range
-          if (schedule.selected_dates && schedule.selected_dates.length > 0) {
-            const datesInRange = schedule.selected_dates.filter(dateStr => {
-              const classDate = new Date(dateStr);
-              return (!fromDate || classDate >= new Date(fromDate)) &&
-                     (!toDate || classDate <= new Date(toDate));
-            });
+        // Post-process the data to keep only class sessions within our date range
+        const filteredSchedules = data
+          .filter(schedule => {
+            // If no date range is provided, keep all schedules
+            if (!fromDate || !toDate) return true;
             
-            if (datesInRange.length > 0) {
-              // Some classes are in the date range, keep this schedule
-              // but only include the relevant dates
+            // Check if start_time is within range
+            const scheduleStart = new Date(schedule.start_time);
+            const scheduleEnd = new Date(schedule.end_time);
+            const fromDateObj = new Date(fromDate);
+            const toDateObj = new Date(toDate);
+            
+            // Keep if schedule period overlaps with date range
+            if ((scheduleStart >= fromDateObj && scheduleStart <= toDateObj) ||
+                (scheduleEnd >= fromDateObj && scheduleEnd <= toDateObj)) {
+              return true;
+            }
+            
+            // Check if any selected_dates fall within the date range
+            if (schedule.selected_dates && schedule.selected_dates.length > 0) {
+              return schedule.selected_dates.some(dateStr => {
+                const classDate = new Date(dateStr);
+                return classDate >= fromDateObj && classDate <= toDateObj;
+              });
+            }
+            
+            return false;
+          })
+          .map(schedule => {
+            // If we're filtering by date, only include selected_dates within the range
+            if (fromDate && toDate && schedule.selected_dates?.length > 0) {
+              const fromDateObj = new Date(fromDate);
+              const toDateObj = new Date(toDate);
+              
               return {
                 ...schedule,
-                selected_dates: datesInRange
+                selected_dates: schedule.selected_dates.filter(dateStr => {
+                  const classDate = new Date(dateStr);
+                  return classDate >= fromDateObj && classDate <= toDateObj;
+                })
               };
             }
-          }
-          
-          // No dates in range, exclude this schedule
-          return null;
-        }).filter(Boolean);
+            
+            return schedule;
+          });
         
         // Calculate revenue metrics
         let totalRevenue = 0;
@@ -137,8 +151,6 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
               // Sum up revenue from paid invoices
               booking.invoice_items?.forEach(item => {
                 if (item.invoices?.status === 'paid') {
-                  // Use the invoice total if available (this takes discounts into account)
-                  // or fall back to the item amount
                   totalRevenue += item.amount || 0;
                 }
               });
