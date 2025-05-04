@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
 import { ExternalLink, FileText, Loader2 } from "lucide-react";
 import { formatCurrency } from "@/lib/formatters";
 import { TrainerPaymentHistoryItem } from "@/hooks/trainer-payments/types";
-import Link from "next/link";
+import { Link } from "react-router-dom"; // Changed from next/link to react-router-dom
 import { PaymentMethodBadge } from "../PaymentMethodBadge";
 import { Badge } from "@/components/ui/badge";
 
@@ -68,7 +68,7 @@ export function TrainerPaymentHistory({ limit, showViewAll = false }: TrainerPay
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Recent Payments</CardTitle>
         {showViewAll && (
-          <Link href="/financial-reports/payment-documents">
+          <Link to="/payment-documents"> {/* Changed from next/link to react-router-dom Link */}
             <Button variant="outline" size="sm">
               View All Documents
             </Button>

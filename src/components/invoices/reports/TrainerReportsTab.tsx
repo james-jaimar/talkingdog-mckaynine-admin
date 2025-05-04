@@ -1,4 +1,3 @@
-
 import { useTrainerPaymentData } from "@/hooks/useTrainerPaymentData";
 import { TrainerPaymentsSummary } from "./TrainerPaymentsSummary";
 import { Loader2, AlertCircle } from "lucide-react";
@@ -10,7 +9,7 @@ import { FixZeroAmountsDialog } from "./dialogs/FixZeroAmountsDialog";
 import { ActionButtons } from "./trainer-actions/ActionButtons";
 import { Button } from "@/components/ui/button";
 import { FileCog } from "lucide-react";
-import { useRouter } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 interface TrainerReportsTabProps {
   dateRange: { from: Date; to: Date };
@@ -18,7 +17,7 @@ interface TrainerReportsTabProps {
 }
 
 export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProps) {
-  const router = useRouter();
+  const navigate = useNavigate(); // Use navigate instead of useRouter
   const { data: trainersData, isLoading, error, refetch } = useTrainerPaymentData(branchId, dateRange);
   
   const {
@@ -76,7 +75,7 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
     hasZeroCommissionClasses: trainer.hasZeroCommissionClasses,
     hasUnpaidCommission: trainer.hasUnpaidCommission
   }));
-  
+
   // Handler for global "Fix Zero Amount Payments" button
   const handleGlobalFixZeroAmounts = () => {
     const trainerWithZero = findFirstTrainerWithZeroAmounts(trainersData);
@@ -86,7 +85,7 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
   };
 
   const handleViewAllDocuments = () => {
-    router.navigate('/payment-documents');
+    navigate('/payment-documents'); // Use navigate instead of router.navigate
   };
 
   return (
