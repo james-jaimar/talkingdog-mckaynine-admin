@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { TermContextType, TermData, TermNumber, TERM_STORAGE_KEY, TERM_CHANGE_DEBOUNCE_MS } from "./types";
+import { calculateTermDateRange, getStoredTermData } from "./utils";
 
 // Create context with default values
 const TermContext = createContext<TermContextType>({
@@ -19,22 +20,18 @@ const TermContext = createContext<TermContextType>({
 });
 
 export const TermProvider = ({ children }: { children: React.ReactNode }) => {
-  // Set current year as default
-  const currentYear = new Date().getFullYear();
-  
   // Initialize from saved selection if available
-  const savedSelection = localStorage.getItem(TERM_STORAGE_KEY);
-  const parsedSelection = savedSelection ? JSON.parse(savedSelection) : null;
+  const storedData = getStoredTermData();
   
   // State for term selection
-  const [selectedYear, setSelectedYearState] = useState<number>(parsedSelection?.year || currentYear);
-  const [selectedTermNumber, setSelectedTermNumberState] = useState<TermNumber>(parsedSelection?.term || "1");
+  const [selectedYear, setSelectedYearState] = useState<number>(storedData.year);
+  const [selectedTermNumber, setSelectedTermNumberState] = useState<TermNumber>(storedData.termNumber);
   
   // State for term data
   const [termData, setTermData] = useState<TermData | null>(null);
   const [isTermLoading, setIsTermLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-  const [years, setYears] = useState<number[]>([currentYear, currentYear - 1, currentYear - 2]);
+  const [years, setYears] = useState<number[]>([new Date().getFullYear()]);
   
   // Add termDateRange state for convenience
   const [termDateRange, setTermDateRange] = useState<{ startDate: string; endDate: string } | null>(null);
@@ -74,66 +71,23 @@ export const TermProvider = ({ children }: { children: React.ReactNode }) => {
         .order('start_date', { ascending: true })
         .single();
       
-      if (termError) {
-        if (termError.code === 'PGRST116') {
-          console.log('No term found, will check for current term');
-          
-          // Try to get the current term
-          const { data: currentTermData, error: currentTermError } = await supabase
-            .from('terms')
-            .select(`
-              id,
-              term_number,
-              start_date,
-              end_date,
-              current,
-              academic_years(year)
-            `)
-            .eq('current', true)
-            .single();
-          
-          if (currentTermError) {
-            if (currentTermError.code === 'PGRST116') {
-              console.log('No current term found either, will create a default date range');
-              
-              // If no current term, create a default date range for the selected term/year
-              const defaultTermDateRange = getDefaultTermDateRange(selectedTermNumber, selectedYear);
-              
-              setTermData({
-                id: 'default',
-                term_number: selectedTermNumber,
-                start_date: defaultTermDateRange.startDate,
-                end_date: defaultTermDateRange.endDate,
-                current: false,
-                academic_years: { year: selectedYear }
-              });
-              
-              setTermDateRange(defaultTermDateRange);
-            } else {
-              throw currentTermError;
-            }
-          } else {
-            // We found the current term, use that and update the selection
-            console.log('Found current term:', currentTermData);
-            setTermData(currentTermData);
-            
-            // Update the selection to match what we found
-            if (currentTermData.academic_years?.year) {
-              setSelectedYearState(currentTermData.academic_years.year);
-            }
-            if (currentTermData.term_number) {
-              setSelectedTermNumberState(currentTermData.term_number as TermNumber);
-            }
-            
-            // Set date range
-            setTermDateRange({
-              startDate: currentTermData.start_date,
-              endDate: currentTermData.end_date
-            });
-          }
-        } else {
-          throw termError;
-        }
+      // If no exact term data found, use default date ranges
+      if (termError || !termData) {
+        console.log('No specific term found, using default date ranges');
+        
+        // Create a default term data based on the selected term/year
+        const defaultTermDateRange = calculateTermDateRange(selectedYear, selectedTermNumber);
+        
+        setTermData({
+          id: `default-${selectedYear}-${selectedTermNumber}`,
+          term_number: selectedTermNumber,
+          start_date: defaultTermDateRange.startDate,
+          end_date: defaultTermDateRange.endDate,
+          current: false,
+          academic_years: { year: selectedYear }
+        });
+        
+        setTermDateRange(defaultTermDateRange);
       } else {
         // We found the requested term
         console.log('Found requested term:', termData);
@@ -155,16 +109,20 @@ export const TermProvider = ({ children }: { children: React.ReactNode }) => {
       if (yearsError) {
         console.error('Error fetching years:', yearsError);
       } else {
-        // Process years data to ensure uniqueness
-        const fetchedYears = yearsData.map(y => y.year);
+        // Process years data
+        let availableYears = yearsData.map(y => y.year);
+        const currentYear = new Date().getFullYear();
         
         // Always ensure current year is included
-        if (!fetchedYears.includes(currentYear)) {
-          fetchedYears.unshift(currentYear);
+        if (!availableYears.includes(currentYear)) {
+          availableYears.push(currentYear);
         }
         
+        // Sort years in descending order
+        availableYears.sort((a, b) => b - a);
+        
         // Ensure uniqueness by using Set
-        setYears(Array.from(new Set(fetchedYears)));
+        setYears(Array.from(new Set(availableYears)));
       }
     } catch (err) {
       console.error('Error in fetchTermData:', err);
@@ -173,38 +131,6 @@ export const TermProvider = ({ children }: { children: React.ReactNode }) => {
       setIsTermLoading(false);
     }
   }, [selectedYear, selectedTermNumber]);
-  
-  // Helper function to get default term date range
-  const getDefaultTermDateRange = (termNumber: TermNumber, year: number) => {
-    // Define each term's start and end dates
-    switch (termNumber) {
-      case "1":
-        return {
-          startDate: `${year}-01-01`,
-          endDate: `${year}-03-31`
-        };
-      case "2":
-        return {
-          startDate: `${year}-04-01`,
-          endDate: `${year}-06-30`
-        };
-      case "3":
-        return {
-          startDate: `${year}-07-01`,
-          endDate: `${year}-09-30`
-        };
-      case "4":
-        return {
-          startDate: `${year}-10-01`,
-          endDate: `${year}-12-31`
-        };
-      default:
-        return {
-          startDate: `${year}-01-01`,
-          endDate: `${year}-12-31`
-        };
-    }
-  };
   
   // Fetch term data when selection changes
   useEffect(() => {

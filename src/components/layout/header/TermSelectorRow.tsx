@@ -27,18 +27,28 @@ export function TermSelectorRow() {
   
   const handleYearChange = (value: string) => {
     setSelectedYear(parseInt(value));
-    // Removed toast notification
+    
+    // Force invalidate queries when changing years
+    setTimeout(() => {
+      queryClient.invalidateQueries({ queryKey: ['term'] });
+      queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['classes'] });
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+    }, 100);
   };
 
   const handleTermChange = (value: string) => {
     if (value === '1' || value === '2' || value === '3' || value === '4') {
       setSelectedTermNumber(value as '1' | '2' | '3' | '4');
-      // Removed toast notification
       
-      // Force invalidate financial queries when changing terms
+      // Force invalidate all related queries when changing terms
       setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['term'] });
         queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
+        queryClient.invalidateQueries({ queryKey: ['classes'] });
         queryClient.invalidateQueries({ queryKey: ['invoices'] });
+        queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       }, 100);
     }
   };
@@ -46,9 +56,11 @@ export function TermSelectorRow() {
   const handleManualRefresh = () => {
     if (refetchTerm) {
       refetchTerm();
+      queryClient.invalidateQueries({ queryKey: ['term'] });
       queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['classes'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
-      // Removed toast notification
     }
   };
 
@@ -68,9 +80,6 @@ export function TermSelectorRow() {
 
   // Calculate if we're displaying initial data or actual loading state
   const displaySelectionControls = !isTermLoading || termData;
-
-  // Ensure years array has unique values to prevent duplicate keys
-  const uniqueYears = Array.from(new Set(years)).sort((a, b) => b - a);
 
   return (
     <div className="border-b border-mckaynine-700 bg-mckaynine-600">
@@ -119,7 +128,7 @@ export function TermSelectorRow() {
                   <SelectValue placeholder="Select year" />
                 </SelectTrigger>
                 <SelectContent className="bg-white">
-                  {uniqueYears.map((year) => (
+                  {years.map((year) => (
                     <SelectItem key={`year-${year}`} value={year.toString()}>
                       {year}
                     </SelectItem>
