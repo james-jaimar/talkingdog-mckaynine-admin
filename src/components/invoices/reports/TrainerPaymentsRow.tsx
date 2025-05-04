@@ -7,7 +7,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ExtendedBadge } from "@/components/ui/badge-variants";
 import { formatCurrency } from "@/lib/formatters";
-import { ChevronDown, ChevronUp, Wrench } from "lucide-react";
+import { ChevronDown, ChevronUp, Wrench, Loader2 } from "lucide-react";
 import { TrainerClassDetail } from "@/hooks/useTrainerPaymentData";
 import { ClassDetailsList } from "./class-details/ClassDetailsList";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -32,6 +32,7 @@ interface TrainerPaymentsRowProps {
   onMarkForPayment: (trainerId: string) => void;
   onMarkAsUnpaid?: (trainerId: string) => void;
   onFixZeroAmounts?: (trainerId: string) => void;
+  isProcessing?: boolean;
   index: number;
 }
 
@@ -40,11 +41,16 @@ export function TrainerPaymentsRow({
   onMarkForPayment, 
   onMarkAsUnpaid, 
   onFixZeroAmounts,
+  isProcessing = false,
   index 
 }: TrainerPaymentsRowProps) {
   const [expanded, setExpanded] = useState(false);
 
-  const toggleExpand = () => setExpanded((prev) => !prev);
+  const toggleExpand = () => {
+    if (!isProcessing) {
+      setExpanded((prev) => !prev);
+    }
+  };
 
   const hasClassDetails = trainer.classDetails && trainer.classDetails.length > 0;
   const classesCount = trainer.classesCount || 0;
@@ -61,13 +67,19 @@ export function TrainerPaymentsRow({
   return (
     <>
       <TableRow 
-        className={hasClassDetails ? "cursor-pointer hover:bg-muted/60" : ""}
+        className={hasClassDetails && !isProcessing ? "cursor-pointer hover:bg-muted/60" : 
+                 isProcessing ? "opacity-70" : ""}
         isEven={index % 2 === 0}
-        onClick={hasClassDetails ? toggleExpand : undefined}
+        onClick={hasClassDetails && !isProcessing ? toggleExpand : undefined}
       >
         <TableCell className="flex items-center gap-2">
           {hasClassDetails && (
-            <Button variant="ghost" size="sm" className="p-0 h-6 w-6">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="p-0 h-6 w-6"
+              disabled={isProcessing}
+            >
               {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             </Button>
           )}
@@ -128,10 +140,15 @@ export function TrainerPaymentsRow({
         <TableCell className="text-right">
           {isZeroCommissionTrainer ? (
             <Button variant="outline" size="sm" disabled>N/A</Button>
+          ) : isProcessing ? (
+            <Button variant="outline" size="sm" disabled>
+              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+              Processing...
+            </Button>
           ) : hasActualPayments && !hasPendingAmount ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" disabled={isProcessing}>
                   Actions <MoreHorizontal className="ml-1 h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -175,6 +192,7 @@ export function TrainerPaymentsRow({
                 e.stopPropagation();
                 onMarkForPayment(trainer.id);
               }}
+              disabled={isProcessing}
             >
               Mark for Payment
             </Button>
@@ -192,6 +210,7 @@ export function TrainerPaymentsRow({
                 onMarkForPayment={onMarkForPayment}
                 trainerId={trainer.id}
                 onMarkAsUnpaid={onMarkAsUnpaid}
+                isProcessing={isProcessing}
               />
             </div>
           </TableCell>

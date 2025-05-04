@@ -33,13 +33,15 @@ interface TrainerPaymentsTableProps {
   onMarkForPayment: (trainerId: string) => void;
   onMarkAsUnpaid?: (trainerId: string) => void;
   onFixZeroAmounts?: (trainerId: string) => void;
+  isProcessing?: boolean;
 }
 
 export function TrainerPaymentsTable({ 
   trainers, 
   onMarkForPayment, 
   onMarkAsUnpaid,
-  onFixZeroAmounts
+  onFixZeroAmounts,
+  isProcessing = false
 }: TrainerPaymentsTableProps) {
   console.log("TrainerPaymentsTable rendering with trainers:", trainers);
   
@@ -125,6 +127,7 @@ export function TrainerPaymentsTable({
                 onMarkForPayment={onMarkForPayment}
                 onMarkAsUnpaid={onMarkAsUnpaid}
                 onFixZeroAmounts={onFixZeroAmounts}
+                isProcessing={isProcessing}
               />
             ))}
           </TableBody>

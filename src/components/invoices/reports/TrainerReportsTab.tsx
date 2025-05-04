@@ -24,6 +24,7 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
   const [fixZeroAmountsDialogOpen, setFixZeroAmountsDialogOpen] = useState(false);
   const [selectedTrainerId, setSelectedTrainerId] = useState<string | null>(null);
   const [selectedScheduleIds, setSelectedScheduleIds] = useState<string[]>([]);
+  const [isProcessing, setIsProcessing] = useState(false);
   
   const markAsUnpaid = useMarkTrainerPaymentsUnpaid();
   
@@ -69,12 +70,38 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
       return;
     }
     
+    setIsProcessing(true);
+    
     markAsUnpaid.mutate({
       trainerId: selectedTrainerId,
       scheduleIds: selectedScheduleIds,
       resetZeroAmounts: true
+    }, {
+      onSettled: () => {
+        setIsProcessing(false);
+        setFixZeroAmountsDialogOpen(false);
+      }
     });
-    setFixZeroAmountsDialogOpen(false);
+  };
+
+  // Handle confirmation of marking as unpaid
+  const confirmMarkAsUnpaid = () => {
+    if (!selectedTrainerId) return;
+    
+    setIsProcessing(true);
+    
+    markAsUnpaid.mutate(
+      { 
+        trainerId: selectedTrainerId, 
+        scheduleIds: selectedScheduleIds
+      },
+      {
+        onSettled: () => {
+          setIsProcessing(false);
+          setMarkUnpaidDialogOpen(false);
+        }
+      }
+    );
   };
 
   if (isLoading) {
@@ -126,8 +153,9 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
           onClick={refreshAllData} 
           size="sm"
           className="gap-2"
+          disabled={isProcessing}
         >
-          <RefreshCw className="h-4 w-4" />
+          <RefreshCw className={`h-4 w-4 ${isProcessing ? 'animate-spin' : ''}`} />
           Refresh Data
         </Button>
         
@@ -145,6 +173,7 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
             }}
             size="sm"
             className="gap-2 bg-amber-50 border-amber-300 hover:bg-amber-100"
+            disabled={isProcessing}
           >
             <Wrench className="h-4 w-4" />
             Fix Zero Amount Payments
@@ -159,11 +188,17 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
         branchId={branchId}
         onMarkAsUnpaid={handleMarkAsUnpaid}
         onFixZeroAmounts={handleFixZeroAmounts}
+        isProcessing={isProcessing}
       />
       
       <TrainerPaymentHistory limit={5} showViewAll />
       
-      <AlertDialog open={markUnpaidDialogOpen} onOpenChange={setMarkUnpaidDialogOpen}>
+      <AlertDialog 
+        open={markUnpaidDialogOpen} 
+        onOpenChange={(open) => {
+          if (!isProcessing) setMarkUnpaidDialogOpen(open);
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Confirm Mark as Unpaid</AlertDialogTitle>
@@ -178,26 +213,31 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isProcessing}>Cancel</AlertDialogCancel>
             <AlertDialogAction 
-              onClick={() => {
-                if (selectedTrainerId) {
-                  markAsUnpaid.mutate({ 
-                    trainerId: selectedTrainerId, 
-                    scheduleIds: selectedScheduleIds
-                  });
-                }
-                setMarkUnpaidDialogOpen(false);
-              }}
+              onClick={confirmMarkAsUnpaid}
               className="bg-red-600 hover:bg-red-700"
+              disabled={isProcessing}
             >
-              Yes, Mark as Unpaid
+              {isProcessing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                "Yes, Mark as Unpaid"
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
       
-      <AlertDialog open={fixZeroAmountsDialogOpen} onOpenChange={setFixZeroAmountsDialogOpen}>
+      <AlertDialog 
+        open={fixZeroAmountsDialogOpen} 
+        onOpenChange={(open) => {
+          if (!isProcessing) setFixZeroAmountsDialogOpen(open);
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Fix Zero Amount Payments</AlertDialogTitle>
@@ -212,12 +252,20 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isProcessing}>Cancel</AlertDialogCancel>
             <AlertDialogAction 
               onClick={fixZeroPayments}
               className="bg-amber-600 hover:bg-amber-700"
+              disabled={isProcessing}
             >
-              Fix Payment Records
+              {isProcessing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                "Fix Payment Records"
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
