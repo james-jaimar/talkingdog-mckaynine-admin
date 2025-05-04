@@ -1,17 +1,18 @@
 
 import { useState, useCallback } from "react";
+import { OnDragStartResponder } from "react-beautiful-dnd";
+import { useTerm } from "@/context/TermContext";
 
-/**
- * Hook for managing drag state for class ordering
- */
 export function useDragStateManager() {
   const [isDragging, setIsDragging] = useState(false);
-
-  // Handle the start of drag operations
-  const handleDragStart = useCallback(() => {
-    console.log("Drag started");
+  const { termData } = useTerm();
+  
+  // Handle drag start
+  const handleDragStart: OnDragStartResponder = useCallback((start) => {
+    console.log("Drag started:", start);
+    console.log("Current term:", termData?.term_number, termData?.academic_years?.year);
     setIsDragging(true);
-  }, []);
+  }, [termData]);
   
   return {
     isDragging,

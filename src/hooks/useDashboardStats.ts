@@ -1,4 +1,3 @@
-
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useBranch } from '@/context/BranchContext';
@@ -7,7 +6,7 @@ import { useCallback, useState } from 'react';
 
 export function useDashboardStats() {
   const { currentBranch } = useBranch();
-  const { termData } = useTerm();
+  const { termData, selectedYear, selectedTermNumber } = useTerm();
   const [isLoading, setIsLoading] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   
@@ -63,28 +62,56 @@ export function useDashboardStats() {
 
   // Bookings count - term-specific
   const { data: bookingCount, refetch: refetchBookings } = useQuery({
-    queryKey: ['dashboard-stats-bookings', currentBranch?.id, termData?.id, refreshTrigger],
+    queryKey: ['dashboard-stats-bookings', currentBranch?.id, termData?.id, selectedYear, selectedTermNumber, refreshTrigger],
     queryFn: async () => {
       console.log("Fetching bookings count for branch:", currentBranch?.id, "and term:", termData?.id);
       if (!currentBranch?.id) return 0;
       
-      let query = supabase
-        .from('bookings')
-        .select('id, clients!inner(branch_id), class_schedules!inner(term_id)', { count: 'exact', head: true })
-        .eq('clients.branch_id', currentBranch.id);
-      
-      if (termData?.id) {
-        query = query.eq('class_schedules.term_id', termData.id);
-      }
-      
-      const { count, error } = await query;
-      
-      if (error) {
-        console.error("Error fetching bookings count:", error);
+      try {
+        // First get all class schedules that match our term criteria
+        let schedulesQuery = supabase.from('class_schedules').select('id');
+        
+        // Apply term filtering
+        if (termData?.id && !termData.id.startsWith('default')) {
+          // If we have a specific term ID, filter by it
+          schedulesQuery = schedulesQuery.eq('term_id', termData.id);
+        } else if (selectedTermNumber && selectedYear) {
+          // Otherwise filter by term number and academic year
+          schedulesQuery = schedulesQuery
+            .eq('term_number', selectedTermNumber)
+            .eq('academic_year', selectedYear);
+        }
+        
+        const { data: schedules, error: schedulesError } = await schedulesQuery;
+        
+        if (schedulesError) {
+          console.error('Error fetching schedules:', schedulesError);
+          return 0;
+        }
+        
+        if (!schedules || schedules.length === 0) {
+          return 0;
+        }
+        
+        const scheduleIds = schedules.map(s => s.id);
+        
+        // Now count bookings for these schedules
+        const { count, error } = await supabase
+          .from('bookings')
+          .select('id, clients!inner(branch_id)', { count: 'exact', head: true })
+          .eq('clients.branch_id', currentBranch.id)
+          .in('class_schedule_id', scheduleIds);
+        
+        if (error) {
+          console.error("Error fetching bookings count:", error);
+          return 0;
+        }
+        
+        return count || 0;
+      } catch (error) {
+        console.error("Error in booking count query:", error);
         return 0;
       }
-      
-      return count || 0;
     },
     enabled: !!currentBranch?.id,
     staleTime: 30 * 1000, // Cache for 30 seconds
@@ -92,30 +119,44 @@ export function useDashboardStats() {
 
   // Classes scheduled count - term-specific
   const { data: upcomingClassCount, refetch: refetchClasses } = useQuery({
-    queryKey: ['dashboard-stats-classes', currentBranch?.id, termData?.id, refreshTrigger],
+    queryKey: ['dashboard-stats-classes', currentBranch?.id, termData?.id, selectedYear, selectedTermNumber, refreshTrigger],
     queryFn: async () => {
       console.log("Fetching upcoming classes for branch:", currentBranch?.id, "and term:", termData?.id);
       if (!currentBranch?.id) return 0;
-      const today = new Date().toISOString();
       
-      let query = supabase
-        .from('class_schedules')
-        .select('id, classes!inner(branch_id)', { count: 'exact', head: true })
-        .eq('classes.branch_id', currentBranch.id)
-        .gte('start_time', today);
-      
-      if (termData?.id) {
-        query = query.eq('term_id', termData.id);
-      }
-      
-      const { count, error } = await query;
-      
-      if (error) {
-        console.error("Error fetching upcoming classes count:", error);
+      try {
+        const today = new Date().toISOString();
+        
+        // Build the query with our criteria
+        let query = supabase
+          .from('class_schedules')
+          .select('id, classes!inner(branch_id)', { count: 'exact', head: true })
+          .eq('classes.branch_id', currentBranch.id)
+          .gte('start_time', today);
+        
+        // Apply term filtering
+        if (termData?.id && !termData.id.startsWith('default')) {
+          // If we have a specific term ID, filter by it
+          query = query.eq('term_id', termData.id);
+        } else if (selectedTermNumber && selectedYear) {
+          // Otherwise filter by term number and academic year
+          query = query
+            .eq('term_number', selectedTermNumber)
+            .eq('academic_year', selectedYear);
+        }
+        
+        const { count, error } = await query;
+        
+        if (error) {
+          console.error("Error fetching upcoming classes count:", error);
+          return 0;
+        }
+        
+        return count || 0;
+      } catch (error) {
+        console.error("Error in class count query:", error);
         return 0;
       }
-      
-      return count || 0;
     },
     enabled: !!currentBranch?.id,
     staleTime: 30 * 1000, // Cache for 30 seconds
@@ -143,6 +184,8 @@ export function useDashboardStats() {
     upcomingClassCount,
     refetchAllStats,
     isLoading,
-    termData
+    termData,
+    selectedYear,
+    selectedTermNumber
   };
 }

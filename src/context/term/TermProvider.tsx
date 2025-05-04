@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { supabase } from "@/integrations/supabase/client";
 import { TermContextType, TermData, TermNumber, TERM_STORAGE_KEY, TERM_CHANGE_DEBOUNCE_MS } from "./types";
 import { calculateTermDateRange, getStoredTermData } from "./utils";
+import { useQueryClient } from '@tanstack/react-query';
 
 // Create context with default values
 const TermContext = createContext<TermContextType>({
@@ -22,6 +23,7 @@ const TermContext = createContext<TermContextType>({
 export const TermProvider = ({ children }: { children: React.ReactNode }) => {
   // Initialize from saved selection if available
   const storedData = getStoredTermData();
+  const queryClient = useQueryClient();
   
   // State for term selection
   const [selectedYear, setSelectedYearState] = useState<number>(storedData.year);
@@ -39,13 +41,33 @@ export const TermProvider = ({ children }: { children: React.ReactNode }) => {
   // Debounced setters to avoid excessive refetches
   const setSelectedYear = useCallback((year: number) => {
     setSelectedYearState(year);
-    localStorage.setItem(TERM_STORAGE_KEY, JSON.stringify({ year, term: selectedTermNumber }));
-  }, [selectedTermNumber]);
+    localStorage.setItem(TERM_STORAGE_KEY, JSON.stringify({ year, termNumber: selectedTermNumber }));
+    
+    // When year changes, we need to invalidate all term-dependent queries
+    setTimeout(() => {
+      queryClient.invalidateQueries({ queryKey: ['term'] });
+      queryClient.invalidateQueries({ queryKey: ['classes'] });
+      queryClient.invalidateQueries({ queryKey: ['class-handlers'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['recent-bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['upcoming-classes'] });
+    }, 100);
+  }, [selectedTermNumber, queryClient]);
   
   const setSelectedTermNumber = useCallback((termNumber: TermNumber) => {
     setSelectedTermNumberState(termNumber);
-    localStorage.setItem(TERM_STORAGE_KEY, JSON.stringify({ year: selectedYear, term: termNumber }));
-  }, [selectedYear]);
+    localStorage.setItem(TERM_STORAGE_KEY, JSON.stringify({ year: selectedYear, termNumber }));
+    
+    // When term changes, we need to invalidate all term-dependent queries
+    setTimeout(() => {
+      queryClient.invalidateQueries({ queryKey: ['term'] });
+      queryClient.invalidateQueries({ queryKey: ['classes'] });
+      queryClient.invalidateQueries({ queryKey: ['class-handlers'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['recent-bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['upcoming-classes'] });
+    }, 100);
+  }, [selectedYear, queryClient]);
   
   // Function to fetch term data
   const fetchTermData = useCallback(async () => {
@@ -78,15 +100,16 @@ export const TermProvider = ({ children }: { children: React.ReactNode }) => {
         // Create a default term data based on the selected term/year
         const defaultTermDateRange = calculateTermDateRange(selectedYear, selectedTermNumber);
         
-        setTermData({
+        const defaultTerm: TermData = {
           id: `default-${selectedYear}-${selectedTermNumber}`,
           term_number: selectedTermNumber,
           start_date: defaultTermDateRange.startDate,
           end_date: defaultTermDateRange.endDate,
           current: false,
           academic_years: { year: selectedYear }
-        });
+        };
         
+        setTermData(defaultTerm);
         setTermDateRange(defaultTermDateRange);
       } else {
         // We found the requested term
@@ -118,10 +141,8 @@ export const TermProvider = ({ children }: { children: React.ReactNode }) => {
           availableYears.push(currentYear);
         }
         
-        // Sort years in descending order
+        // Sort years in descending order and ensure uniqueness
         availableYears.sort((a, b) => b - a);
-        
-        // Ensure uniqueness by using Set
         setYears(Array.from(new Set(availableYears)));
       }
     } catch (err) {

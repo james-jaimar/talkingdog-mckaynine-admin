@@ -5,50 +5,85 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useTerm } from '@/context/TermContext';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useState, useEffect } from 'react';
 
 interface RecentBookingsProps {
   branchId?: string;
 }
 
 export function RecentBookings({ branchId }: RecentBookingsProps) {
-  const { termData } = useTerm();
+  const { termData, selectedYear, selectedTermNumber } = useTerm();
 
   const { data: bookings, isLoading } = useQuery({
-    queryKey: ['recent-bookings', branchId, termData?.id],
+    queryKey: ['recent-bookings', branchId, termData?.id, selectedYear, selectedTermNumber],
     queryFn: async () => {
       // Don't fetch data if no branch is selected
       if (!branchId) return [];
       
-      // Build the query with branch filter
-      let query = supabase
-        .from('bookings')
-        .select(`
-          id,
-          status,
-          payment_status,
-          created_at,
-          clients!inner(first_name, last_name, branch_id),
-          dogs(name),
-          class_schedules(
-            start_time,
-            term_id,
-            classes(name)
-          )
-        `)
-        .eq('clients.branch_id', branchId);
-      
-      // Filter by term if selected
-      if (termData?.id) {
-        query = query.eq('class_schedules.term_id', termData.id);
+      try {
+        console.log(`Fetching recent bookings for branch ${branchId} with term: ${termData?.id || 'none'}, year: ${selectedYear}, term: ${selectedTermNumber}`);
+        
+        // First, get all schedules that match our term criteria
+        let schedulesQuery = supabase.from('class_schedules').select('id');
+        
+        // Apply term filtering to schedules
+        if (termData?.id && !termData.id.startsWith('default')) {
+          // If we have a specific term ID, filter by it
+          schedulesQuery = schedulesQuery.eq('term_id', termData.id);
+        } else if (selectedTermNumber && selectedYear) {
+          // Otherwise filter by term number and academic year
+          schedulesQuery = schedulesQuery
+            .eq('term_number', selectedTermNumber)
+            .eq('academic_year', selectedYear);
+        }
+        
+        const { data: schedules, error: schedulesError } = await schedulesQuery;
+        
+        if (schedulesError) {
+          console.error('Error fetching schedules:', schedulesError);
+          throw schedulesError;
+        }
+        
+        if (!schedules || schedules.length === 0) {
+          console.log('No schedules found for the current term filters');
+          return [];
+        }
+        
+        const scheduleIds = schedules.map(s => s.id);
+        
+        // Now fetch bookings for these schedules
+        const { data: bookingsData, error: bookingsError } = await supabase
+          .from('bookings')
+          .select(`
+            id,
+            status,
+            payment_status,
+            created_at,
+            clients!inner(first_name, last_name, branch_id),
+            dogs(name),
+            class_schedules(
+              start_time,
+              term_id,
+              term_number,
+              academic_year,
+              classes(name)
+            )
+          `)
+          .eq('clients.branch_id', branchId)
+          .in('class_schedule_id', scheduleIds)
+          .order('created_at', { ascending: false })
+          .limit(5);
+        
+        if (bookingsError) {
+          console.error('Error fetching bookings:', bookingsError);
+          throw bookingsError;
+        }
+        
+        console.log(`Found ${bookingsData?.length || 0} recent bookings`);
+        return bookingsData || [];
+      } catch (error) {
+        console.error('Error in recent bookings query:', error);
+        throw error;
       }
-      
-      const { data, error } = await query
-        .order('created_at', { ascending: false })
-        .limit(5);
-      
-      if (error) throw error;
-      return data;
     },
     enabled: !!branchId,
     staleTime: 30 * 1000, // Cache for 30 seconds

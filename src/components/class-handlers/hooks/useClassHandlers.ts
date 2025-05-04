@@ -13,10 +13,10 @@ const validateConsentStatus = (status: string | null): "yes" | "no" | "not_marke
 };
 
 export function useClassHandlers(classId: string) {
-  const { termData } = useTerm();
+  const { termData, selectedYear, selectedTermNumber } = useTerm();
 
   return useQuery({
-    queryKey: ['class-handlers', classId, termData?.id],
+    queryKey: ['class-handlers', classId, termData?.id, selectedYear, selectedTermNumber],
     queryFn: async () => {
       // Validate classId
       if (!classId) {
@@ -25,34 +25,65 @@ export function useClassHandlers(classId: string) {
       }
       
       try {
-        console.log(`Fetching handlers for class ${classId} with term: ${termData?.id || 'none'}`);
+        console.log(`Fetching handlers for class ${classId} with term: ${termData?.id || 'none'}, year: ${selectedYear}, term number: ${selectedTermNumber}`);
         
-        // First, get all schedule IDs for this class
+        // First, get all schedules for this class
         let scheduleQuery = supabase
           .from('class_schedules')
-          .select('id')
+          .select('id, term_id, term_number, academic_year, selected_dates')
           .eq('class_id', classId);
         
-        // Filter by term if term is selected
-        if (termData?.id) {
-          scheduleQuery = scheduleQuery.eq('term_id', termData.id);
-          console.log(`Filtering schedules to those with term_id: ${termData.id}`);
-        }
-        
-        const { data: scheduleIds, error: scheduleError } = await scheduleQuery;
+        const { data: allSchedules, error: scheduleError } = await scheduleQuery;
           
         if (scheduleError) {
           console.error("Error fetching schedule IDs:", scheduleError);
           throw scheduleError;
         }
         
-        if (!scheduleIds || scheduleIds.length === 0) {
-          console.log(`No schedules found for class: ${classId}${termData?.id ? ` in term: ${termData.id}` : ''}`);
+        if (!allSchedules || allSchedules.length === 0) {
+          console.log(`No schedules found for class: ${classId}`);
           return [];
         }
         
-        const scheduleIdList = scheduleIds.map(s => s.id);
-        console.log(`Found ${scheduleIdList.length} schedules for class: ${classId}`);
+        // Filter schedules based on term criteria
+        let filteredSchedules = allSchedules;
+        
+        if (termData) {
+          filteredSchedules = allSchedules.filter(schedule => {
+            // Match by term_id if it's a real term (not default)
+            if (termData.id && !termData.id.startsWith('default') && schedule.term_id === termData.id) {
+              return true;
+            }
+            
+            // Match by term_number and academic_year if it's a default term or term_id isn't available
+            if (schedule.term_number === selectedTermNumber && schedule.academic_year === selectedYear) {
+              return true;
+            }
+            
+            // Also include schedules with dates that fall within the current term date range
+            if (termData.start_date && termData.end_date && schedule.selected_dates && schedule.selected_dates.length) {
+              // Check if any of the selected dates falls within the term date range
+              const termStart = new Date(termData.start_date);
+              const termEnd = new Date(termData.end_date);
+              
+              return schedule.selected_dates.some(dateStr => {
+                const scheduleDate = new Date(dateStr);
+                return scheduleDate >= termStart && scheduleDate <= termEnd;
+              });
+            }
+            
+            return false;
+          });
+        }
+        
+        // If no schedules match our criteria, return empty array
+        if (!filteredSchedules.length) {
+          console.log(`No schedules found for class: ${classId} in selected term`);
+          return [];
+        }
+        
+        const scheduleIdList = filteredSchedules.map(s => s.id);
+        console.log(`Found ${scheduleIdList.length} schedules for class: ${classId} in selected term`);
         
         // Then fetch bookings for these schedules
         const { data, error } = await supabase
