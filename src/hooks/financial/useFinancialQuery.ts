@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { FinancialBookingData } from "./types";
+import { FinancialBookingData, InvoiceItemWithInvoice } from "./types";
 
 export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?: string) {
   return useQuery({

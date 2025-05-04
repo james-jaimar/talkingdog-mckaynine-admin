@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useFinancialQuery } from "@/hooks/financial/useFinancialQuery";
 import { useFinancialProcessor } from "@/hooks/financial/useFinancialProcessor";
-import { ClassFinance } from "@/hooks/financial/types";
+import { ClassFinance, FinancialData } from "@/hooks/financial/types";
 import { useQueryClient } from "@tanstack/react-query";
 
 export function useClassFinancialData(branchId?: string, fromDate?: string, toDate?: string) {
@@ -10,10 +10,20 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   
   const { 
-    data: financialData, 
+    data: financialBookingData, 
     isLoading, 
     refetch
   } = useFinancialQuery(branchId, fromDate, toDate);
+  
+  // Transform FinancialBookingData to FinancialData for compatibility
+  const financialData: FinancialData | undefined = financialBookingData ? {
+    bookingsWithInvoices: financialBookingData.bookings,
+    allInvoicesCount: 0, // Will be calculated by the processor
+    invalidInvoicesCount: 0, // Will be calculated by the processor
+    totalRevenue: financialBookingData.totalRevenue,
+    invoiceItems: [], // Will be populated based on bookings
+    invoices: [] // Will be populated based on bookings
+  } : undefined;
   
   const {
     classFinances,
@@ -33,7 +43,7 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
     refreshData,
     totalInvoiceCount,
     invalidInvoicesCount,
-    totalRevenue: financialData?.totalRevenue || 0,
+    totalRevenue: financialBookingData?.totalRevenue || 0,
   };
 }
 

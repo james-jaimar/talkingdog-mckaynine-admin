@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { FinancialData, ClassFinance, BookingRevenue } from "./types";
 
@@ -16,11 +15,11 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
     }
 
     const {
-      bookingsWithInvoices,
-      allInvoicesCount,
-      invalidInvoicesCount: invalidCount,
-      totalRevenue,
-      invoices
+      bookingsWithInvoices = [],
+      allInvoicesCount = 0,
+      invalidInvoicesCount: invalidCount = 0,
+      totalRevenue = 0,
+      invoices = []
     } = financialData;
 
     // Use optional chaining for possibly undefined invoice items
