@@ -9,6 +9,18 @@ export interface FinancialData {
   invoices: InvoiceData[];
 }
 
+// Add the missing FinancialBookingData interface
+export interface FinancialBookingData {
+  bookings: any[];
+  totalRevenue: number;
+  uniqueClients: number;
+  uniqueHandlers: number;
+  uniqueSchedules: number;
+  branchId: string;
+  fromDate: string;
+  toDate: string;
+}
+
 export interface BookingWithSchedule {
   id: string;
   payment_status?: string;
