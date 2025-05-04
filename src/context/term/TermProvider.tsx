@@ -155,12 +155,16 @@ export const TermProvider = ({ children }: { children: React.ReactNode }) => {
       if (yearsError) {
         console.error('Error fetching years:', yearsError);
       } else {
-        const years = yearsData.map(y => y.year);
+        // Process years data to ensure uniqueness
+        const fetchedYears = yearsData.map(y => y.year);
+        
         // Always ensure current year is included
-        if (!years.includes(currentYear)) {
-          years.unshift(currentYear);
+        if (!fetchedYears.includes(currentYear)) {
+          fetchedYears.unshift(currentYear);
         }
-        setYears(years);
+        
+        // Ensure uniqueness by using Set
+        setYears(Array.from(new Set(fetchedYears)));
       }
     } catch (err) {
       console.error('Error in fetchTermData:', err);

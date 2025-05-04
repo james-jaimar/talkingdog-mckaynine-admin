@@ -69,6 +69,9 @@ export function TermSelectorRow() {
   // Calculate if we're displaying initial data or actual loading state
   const displaySelectionControls = !isTermLoading || termData;
 
+  // Ensure years array has unique values to prevent duplicate keys
+  const uniqueYears = Array.from(new Set(years)).sort((a, b) => b - a);
+
   return (
     <div className="border-b border-mckaynine-700 bg-mckaynine-600">
       <div className="container mx-auto px-4 py-2">
@@ -115,9 +118,9 @@ export function TermSelectorRow() {
                 <SelectTrigger className="w-[120px] bg-white text-gray-800">
                   <SelectValue placeholder="Select year" />
                 </SelectTrigger>
-                <SelectContent>
-                  {years.map((year) => (
-                    <SelectItem key={year} value={year.toString()}>
+                <SelectContent className="bg-white">
+                  {uniqueYears.map((year) => (
+                    <SelectItem key={`year-${year}`} value={year.toString()}>
                       {year}
                     </SelectItem>
                   ))}
@@ -134,9 +137,9 @@ export function TermSelectorRow() {
                 <SelectTrigger className="w-[120px] bg-white text-gray-800">
                   <SelectValue placeholder="Select term" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-white">
                   {terms.map((term) => (
-                    <SelectItem key={term} value={term}>
+                    <SelectItem key={`term-${term}`} value={term}>
                       Term {term}
                     </SelectItem>
                   ))}
