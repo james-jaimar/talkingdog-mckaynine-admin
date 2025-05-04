@@ -7,9 +7,13 @@ import { AddClassModal } from "@/components/classes/AddClassModal";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { Helmet } from "react-helmet";
+import { useBranch } from "@/context/BranchContext";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 
 export default function Classes() {
   const [isAddClassModalOpen, setIsAddClassModalOpen] = useState(false);
+  const { currentBranch } = useBranch();
 
   return (
     <DashboardLayout>
@@ -25,15 +29,26 @@ export default function Classes() {
           </Button>
         </div>
 
-        {/* Always show the class tabs on this page */}
-        <div className="mb-6">
-          <ClassesTabs alwaysShow={true} />
-        </div>
+        {!currentBranch ? (
+          <Alert variant="warning" className="bg-amber-50 border-amber-200 mb-6">
+            <AlertCircle className="h-4 w-4 text-amber-600" />
+            <AlertDescription className="text-amber-800">
+              Please select a branch to view and manage classes
+            </AlertDescription>
+          </Alert>
+        ) : (
+          <>
+            {/* Always show the class tabs on this page */}
+            <div className="mb-6">
+              <ClassesTabs alwaysShow={true} />
+            </div>
 
-        {/* Show classes table */}
-        <div className="mt-4">
-          <ClassesTable />
-        </div>
+            {/* Show classes table */}
+            <div className="mt-4">
+              <ClassesTable />
+            </div>
+          </>
+        )}
 
         <AddClassModal 
           open={isAddClassModalOpen} 

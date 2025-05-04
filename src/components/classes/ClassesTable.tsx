@@ -14,6 +14,8 @@ import { ClassesTableHeader } from "./table/ClassesTableHeader";
 import { DragDropContext, Droppable, DropResult } from "react-beautiful-dnd";
 import { ClassWithSchedules } from "./hooks/types/class-with-schedules";
 import { toast } from "@/components/ui/use-toast";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 
 export function ClassesTable() {
   const { 
@@ -24,13 +26,47 @@ export function ClassesTable() {
     isItemMoving,
     refetch,
     handleDragStart,
-    handleDragEnd: processDragEnd
+    handleDragEnd: processDragEnd,
+    hasBranch,
+    isAuthenticated
   } = useClassesData();
   
   const [editingClass, setEditingClass] = useState<ClassWithSchedules | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const queryClient = useQueryClient();
   const { currentBranch } = useBranch();
+  
+  // If no branch is selected, show a friendly message
+  if (!hasBranch) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <Alert variant="warning" className="bg-amber-50 border-amber-200">
+            <AlertCircle className="h-4 w-4 text-amber-600" />
+            <AlertDescription className="text-amber-800">
+              Please select a branch to view classes
+            </AlertDescription>
+          </Alert>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // If not authenticated, show a message
+  if (!isAuthenticated) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <Alert variant="warning" className="bg-amber-50 border-amber-200">
+            <AlertCircle className="h-4 w-4 text-amber-600" />
+            <AlertDescription className="text-amber-800">
+              You need to be logged in to view classes
+            </AlertDescription>
+          </Alert>
+        </CardContent>
+      </Card>
+    );
+  }
   
   const handleEdit = (classItem: ClassWithSchedules) => {
     setEditingClass(classItem);
