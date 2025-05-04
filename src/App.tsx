@@ -5,8 +5,8 @@ import RequireAuth from './components/auth/RequireAuth';
 import { AuthProvider } from './context/AuthContext';
 import { BranchProvider } from '@/context/BranchContext';
 import { TermProvider } from '@/context/TermContext';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import router from './router';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { queryClient } from './lib/query-client';
 
 // Import pages
 import FinancialReports from './pages/FinancialReports';
@@ -14,16 +14,6 @@ import FinancialDashboard from './pages/FinancialDashboard';
 import PaymentDocuments from './pages/PaymentDocuments';
 import Dashboard from './pages/Dashboard';
 import Classes from './pages/Classes';
-
-// Create a new query client with sane defaults
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutes
-      retry: 1,
-    },
-  },
-});
 
 function App() {
   return (

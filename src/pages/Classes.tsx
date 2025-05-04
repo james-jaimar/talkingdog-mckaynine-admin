@@ -10,6 +10,25 @@ import { Helmet } from "react-helmet";
 import { useBranch } from "@/context/BranchContext";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
+import { ErrorBoundary } from 'react-error-boundary';
+
+function ErrorFallback({ error, resetErrorBoundary }: { error: Error; resetErrorBoundary: () => void }) {
+  return (
+    <Alert variant="destructive" className="mb-6">
+      <AlertCircle className="h-4 w-4" />
+      <AlertDescription>
+        <div>Something went wrong: {error.message}</div>
+        <Button 
+          variant="outline" 
+          className="mt-4"
+          onClick={resetErrorBoundary}
+        >
+          Try again
+        </Button>
+      </AlertDescription>
+    </Alert>
+  );
+}
 
 export default function Classes() {
   const [isAddClassModalOpen, setIsAddClassModalOpen] = useState(false);
@@ -37,7 +56,13 @@ export default function Classes() {
             </AlertDescription>
           </Alert>
         ) : (
-          <>
+          <ErrorBoundary
+            FallbackComponent={ErrorFallback}
+            onReset={() => {
+              // Reset the state of your app here
+              window.location.reload();
+            }}
+          >
             {/* Always show the class tabs on this page */}
             <div className="mb-6">
               <ClassesTabs alwaysShow={true} />
@@ -47,7 +72,7 @@ export default function Classes() {
             <div className="mt-4">
               <ClassesTable />
             </div>
-          </>
+          </ErrorBoundary>
         )}
 
         <AddClassModal 

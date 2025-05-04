@@ -2,7 +2,7 @@
 import { useClassOrdering } from "./useClassOrdering";
 import { useBranch } from "@/context/BranchContext";
 import { useAuth } from "@/context/auth";
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import { ClassWithSchedules } from "./types/class-with-schedules";
 
 export function useClassesData() {
@@ -22,6 +22,22 @@ export function useClassesData() {
     refetch
   } = useClassOrdering();
   
+  // Check for authentication and branch selection
+  const isAuthenticated = !!user && !!session;
+  const hasBranch = !!currentBranch;
+  
+  // Log status on mount and when dependencies change
+  useEffect(() => {
+    console.log("useClassesData status:", {
+      isAuthenticated,
+      hasBranch,
+      branchId: currentBranch?.id,
+      branchName: currentBranch?.name,
+      userId: user?.id,
+      classesCount: orderedClasses?.length
+    });
+  }, [isAuthenticated, hasBranch, currentBranch?.id, currentBranch?.name, user?.id, orderedClasses?.length]);
+  
   // Simply pass through the data without additional filtering
   // The classes are already properly filtered at the database level
   const activeClasses = useMemo<ClassWithSchedules[]>(() => {
@@ -29,14 +45,15 @@ export function useClassesData() {
       return [];
     }
     
-    return orderedClasses;
+    // Extra check to ensure we have valid data
+    return orderedClasses.filter(cls => !!cls && typeof cls === 'object' && 'id' in cls);
   }, [orderedClasses]);
   
   return {
     activeClasses,
     isLoading,
-    hasBranch: !!currentBranch,
-    isAuthenticated: !!user && !!session,
+    hasBranch,
+    isAuthenticated,
     isMoving,
     isItemMoving,
     pendingMovements,

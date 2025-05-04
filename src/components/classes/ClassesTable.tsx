@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Table, TableBody } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
 import { ClassTableRow } from "./ClassTableRow";
@@ -16,6 +16,7 @@ import { ClassWithSchedules } from "./hooks/types/class-with-schedules";
 import { toast } from "@/components/ui/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
+import { useAuth } from "@/context/auth";
 
 export function ClassesTable() {
   const { 
@@ -35,6 +36,19 @@ export function ClassesTable() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const queryClient = useQueryClient();
   const { currentBranch } = useBranch();
+  const { user } = useAuth();
+  
+  // Initial load check
+  const [hasAttemptedInitialLoad, setHasAttemptedInitialLoad] = useState(false);
+  
+  // Attempt an initial load if needed
+  useEffect(() => {
+    if (!hasAttemptedInitialLoad && currentBranch && user) {
+      console.log("Attempting initial load of classes data");
+      refetch().catch(e => console.error("Error during initial load:", e));
+      setHasAttemptedInitialLoad(true);
+    }
+  }, [currentBranch, user, hasAttemptedInitialLoad, refetch]);
   
   // If no branch is selected, show a friendly message
   if (!hasBranch) {
