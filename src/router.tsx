@@ -10,6 +10,8 @@ import Branches from "./pages/Branches";
 import UnpaidHandlers from "./pages/UnpaidHandlers";
 import NotFound from "./pages/NotFound";
 import UserAdmin from "./pages/UserAdmin";
+import Handlers from "./pages/Handlers";
+import HandlerDetail from "./pages/HandlerDetail";
 
 // Create a dashboard route that ONLY works for staff (admin and trainer) users
 const dashboardRoute = {
@@ -17,6 +19,25 @@ const dashboardRoute = {
   element: (
     <ProtectedRoute requiredRole="trainer">
       <Dashboard />
+    </ProtectedRoute>
+  ),
+};
+
+// Create handlers routes that work for trainers and admin users
+const handlersRoute = {
+  path: "/handlers",
+  element: (
+    <ProtectedRoute requiredRole="trainer">
+      <Handlers />
+    </ProtectedRoute>
+  ),
+};
+
+const handlerDetailRoute = {
+  path: "/handlers/:id",
+  element: (
+    <ProtectedRoute requiredRole="trainer">
+      <HandlerDetail />
     </ProtectedRoute>
   ),
 };
@@ -75,6 +96,8 @@ const router = createBrowserRouter([
     ),
   })),
   dashboardRoute, // Only accessible to trainers and admins
+  handlersRoute, // Only accessible to trainers and admins
+  handlerDetailRoute, // Only accessible to trainers and admins
   branchesRoute, // Only accessible to admins
   unpaidHandlersRoute, // Only accessible to admins
   userAdminRoute, // Only accessible to admins
