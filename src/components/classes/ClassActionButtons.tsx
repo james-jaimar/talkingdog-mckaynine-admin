@@ -28,6 +28,7 @@ export function ClassActionButtons({ classId, onEdit }: ClassActionButtonsProps)
   };
 
   const handleHandlersClick = () => {
+    // Updated to use the correct URL format that matches our routes
     navigate(`/class/${classId}/handlers`);
     onClose();
   };
