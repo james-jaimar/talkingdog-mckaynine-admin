@@ -68,7 +68,7 @@ export function TrainerPaymentHistory({ limit, showViewAll = false }: TrainerPay
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Recent Payments</CardTitle>
         {showViewAll && (
-          <Link to="/payment-documents"> {/* Changed from next/link to react-router-dom Link */}
+          <Link to="/payment-documents">
             <Button variant="outline" size="sm">
               View All Documents
             </Button>
@@ -91,13 +91,13 @@ export function TrainerPaymentHistory({ limit, showViewAll = false }: TrainerPay
               {payments.map((payment) => (
                 <TableRow key={payment.id}>
                   <TableCell>
-                    {new Date(payment.paymentDate).toLocaleDateString()}
+                    {payment.paymentDate ? new Date(payment.paymentDate).toLocaleDateString() : 'N/A'}
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-col">
                       <span>{payment.className}</span>
                       <span className="text-xs text-muted-foreground">
-                        {new Date(payment.classDate).toLocaleDateString()}
+                        {payment.classDate ? new Date(payment.classDate).toLocaleDateString() : 'N/A'}
                       </span>
                     </div>
                   </TableCell>

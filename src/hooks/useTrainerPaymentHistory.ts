@@ -73,7 +73,7 @@ export function useTrainerPaymentHistory(options: UseTrainerPaymentHistoryOption
 
         return {
           id: payment.id,
-          paymentDate: payment.payment_date,
+          paymentDate: payment.payment_date || '',
           amount: payment.amount || 0,
           paymentMethod: payment.payment_method || 'other',
           transactionId: payment.transaction_id,
@@ -81,7 +81,7 @@ export function useTrainerPaymentHistory(options: UseTrainerPaymentHistoryOption
           documentName: payment.document_name,
           scheduleId: payment.class_schedule_id,
           className,
-          classDate: payment.payment_date, // As a fallback, using payment date
+          classDate: payment.payment_date || '', // As a fallback, using payment date
           trainerName
         };
       });

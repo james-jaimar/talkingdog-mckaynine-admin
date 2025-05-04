@@ -67,14 +67,20 @@ export function useMarkTrainerPaymentsUnpaid() {
           return { trainerId, scheduleIds, updatedCount: 0 };
         }
         
-        // First, check if this is a zero-commission trainer (we should skip recalculation for these)
+        // Handle zero amount payments that need to be recalculated
         if (resetZeroAmounts) {
-          const zeroAmountRecordsWithScheduleIds = existingPayments
-            .filter(p => p.amount === 0 || p.amount === 0.0)
-            .map(p => p.class_schedule_id);
+          // First, get zero amount records
+          const zeroAmountRecords = existingPayments.filter(p => 
+            (p.amount === 0 || p.amount === 0.0)
+          );
+          
+          if (zeroAmountRecords.length > 0) {
+            console.log(`Found ${zeroAmountRecords.length} records with zero amounts`);
             
-          if (zeroAmountRecordsWithScheduleIds.length > 0) {
-            // Get class schedule details for zero amount records to check if they have zero commission
+            // Get schedule IDs for the zero amount records
+            const zeroAmountScheduleIds = zeroAmountRecords.map(p => p.class_schedule_id);
+            
+            // Get class schedule details to check which ones have zero commission
             const { data: scheduleData, error: scheduleError } = await supabase
               .from('class_schedules')
               .select(`
@@ -84,39 +90,44 @@ export function useMarkTrainerPaymentsUnpaid() {
                   trainer_fee_value
                 )
               `)
-              .in('id', zeroAmountRecordsWithScheduleIds);
+              .in('id', zeroAmountScheduleIds);
               
-            if (!scheduleError && scheduleData) {
-              // Filter out schedules with zero commission classes
-              const nonZeroCommissionScheduleIds = scheduleData
-                .filter(schedule => !(
-                  schedule.classes &&
-                  schedule.classes.trainer_fee_type === 'fixed' && 
-                  schedule.classes.trainer_fee_value === 0
-                ))
-                .map(schedule => schedule.id);
-                
-              console.log(`Found ${nonZeroCommissionScheduleIds.length} schedules without zero commission to reset`);
-              
-              // Update resetZeroAmounts logic to only process non-zero commission records
-              if (nonZeroCommissionScheduleIds.length === 0) {
-                console.log("All zero amount records are for zero-commission classes, skipping recalculation");
-                resetZeroAmounts = false;
-              }
+            if (scheduleError) {
+              console.error("Error fetching class schedules:", scheduleError);
+              throw scheduleError;
             }
-          }
-        }
-        
-        // Handle records with zero amounts if requested
-        if (resetZeroAmounts) {
-          const zeroAmountRecords = existingPayments.filter(p => p.amount === 0 || p.amount === 0.0);
-          
-          if (zeroAmountRecords.length > 0) {
-            console.log(`Found ${zeroAmountRecords.length} records with zero amounts to recalculate`);
             
-            // For each zero-amount record, recalculate the correct amount
+            // Filter out schedules with intentional zero commission
+            const schedulesToProcess = scheduleData?.filter(schedule => {
+              // Skip schedules that have intentional zero commission
+              const hasZeroCommission = 
+                schedule.classes && 
+                ((schedule.classes.trainer_fee_type === 'fixed' && schedule.classes.trainer_fee_value === 0) ||
+                 (schedule.classes.trainer_fee_type === 'percentage' && schedule.classes.trainer_fee_value === 0));
+                
+              // Log each schedule's commission status
+              console.log(`Schedule ${schedule.id}: hasZeroCommission=${hasZeroCommission}, type=${schedule.classes?.trainer_fee_type}, value=${schedule.classes?.trainer_fee_value}`);
+              
+              // Return false for zero commission schedules (to exclude them)
+              return !hasZeroCommission;
+            }) || [];
+            
+            const schedulesToProcessIds = schedulesToProcess.map(s => s.id);
+            console.log(`Processing ${schedulesToProcessIds.length} schedules that don't have zero commission`);
+            
+            // Process only records that don't have intentional zero commission
             for (const record of zeroAmountRecords) {
-              if (!record.booking_id) continue;
+              // Skip if this schedule has intentional zero commission
+              if (!schedulesToProcessIds.includes(record.class_schedule_id)) {
+                console.log(`Skipping record for schedule ${record.class_schedule_id} as it has intentional zero commission`);
+                continue;
+              }
+              
+              // Skip if no booking ID (can't recalculate)
+              if (!record.booking_id) {
+                console.log(`Skipping record ${record.id} - no booking ID`);
+                continue;
+              }
               
               try {
                 // Call database function to calculate the correct amount
@@ -128,8 +139,11 @@ export function useMarkTrainerPaymentsUnpaid() {
                   continue;
                 }
                 
-                if (calculatedAmount && calculatedAmount > 0) {
-                  console.log(`Updating record ${record.id} amount from 0 to ${calculatedAmount}`);
+                console.log(`Calculated amount for record ${record.id}: ${calculatedAmount}`);
+                
+                // Only update if we got a valid calculated amount
+                if (calculatedAmount !== null && calculatedAmount !== undefined) {
+                  console.log(`Updating record ${record.id} amount from ${record.amount} to ${calculatedAmount}`);
                   
                   // Update the record with the correct amount
                   const { error: updateError } = await supabase

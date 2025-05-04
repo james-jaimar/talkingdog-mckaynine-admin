@@ -54,14 +54,21 @@ export function TrainerPaymentsTable({
   // Check for trainers with zero commission (those we don't want to flag as needing fixes)
   const anyZeroCommissionTrainers = trainers.some(t => 
     t.hasZeroCommissionClasses && 
-    (t.pending === 0 && t.paid === 0 && t.potentialEarnings === 0)
+    t.totalEarned === 0 && t.potentialEarnings === 0
   );
   
-  // Check if any trainers have zero amount payments (excluding zero commission trainers)
-  const anyZeroAmountPayments = trainers.some(t => 
-    t.hasZeroAmountPayments && 
-    !(t.hasZeroCommissionClasses && t.pending === 0 && t.paid === 0 && t.potentialEarnings === 0)
-  );
+  // Check if any trainers have zero amount payments that need fixing
+  // Improved logic: Only flag trainers who have zero amounts BUT are NOT zero commission trainers
+  const anyZeroAmountPayments = trainers.some(t => {
+    // Check if this trainer has payments that need fixing
+    const needsFixes = t.hasZeroAmountPayments;
+    
+    // Only consider it needing fixes if:
+    // 1. It has zero amount payments flagged
+    // 2. It's NOT a zero commission trainer (important filter)
+    return needsFixes && 
+      !(t.hasZeroCommissionClasses && t.totalEarned === 0 && t.potentialEarnings === 0);
+  });
   
   if (!trainers || trainers.length === 0) {
     return (

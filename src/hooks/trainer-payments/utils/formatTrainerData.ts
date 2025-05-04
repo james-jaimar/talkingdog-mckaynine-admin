@@ -63,8 +63,10 @@ export function formatTrainerPaymentData(
     const bookingsDetails: BookingDetail[] = [];
     
     // Check if zero commission is intended based on class settings
-    const hasZeroCommission = schedule.classes?.trainer_fee_type === 'fixed' && 
-                            schedule.classes?.trainer_fee_value === 0;
+    // A class has zero commission when trainer_fee_value is explicitly set to 0
+    const hasZeroCommission = 
+      schedule.classes?.trainer_fee_type === 'percentage' && schedule.classes?.trainer_fee_value === 0 ||
+      schedule.classes?.trainer_fee_type === 'fixed' && schedule.classes?.trainer_fee_value === 0;
     
     // Only calculate commission if not zero-commission class
     if (!hasZeroCommission) {
@@ -101,8 +103,12 @@ export function formatTrainerPaymentData(
     const schedulePayments = payments.filter(p => p.class_schedule_id === schedule.id);
     const isPaid = schedulePayments.some(p => p.status === 'paid');
     
-    // Only consider it a zero amount payment issue if it's not supposed to be zero commission
-    const hasZeroAmountPayment = schedulePayments.some(p => p.amount === 0) && !hasZeroCommission;
+    // Only consider it a zero amount payment issue if:
+    // 1. It has zero amount payments
+    // 2. It's NOT supposed to have zero commission (important distinction!)
+    const hasZeroAmountPayment = 
+      schedulePayments.some(p => p.amount === 0 || p.amount === 0.0) && 
+      !hasZeroCommission;
     
     // Track last payment date
     if (isPaid && schedulePayments.length > 0) {

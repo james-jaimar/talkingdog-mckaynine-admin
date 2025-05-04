@@ -57,8 +57,16 @@ export function TrainerPaymentsRow({
   const classDetailsShown = trainer.classDetails?.length || 0;
   
   // Handle trainers with zero commission classes
-  const isZeroCommissionTrainer = trainer.hasZeroCommissionClasses && 
-                                 (trainer.pending === 0 && trainer.paid === 0 && trainer.potentialEarnings === 0);
+  // A trainer is considered a zero commission trainer if:
+  // 1. They have zero commission classes flag
+  // 2. AND they have no actual earnings (both paid and pending are 0)
+  // 3. AND they have no potential earnings
+  const isZeroCommissionTrainer = 
+    trainer.hasZeroCommissionClasses && 
+    trainer.paid === 0 && 
+    trainer.pending === 0 && 
+    (!trainer.potentialEarnings || trainer.potentialEarnings === 0) &&
+    trainer.totalEarned === 0;
   
   // Determine status based on payment amounts
   const hasActualPayments = trainer.paid > 0;

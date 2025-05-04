@@ -1,13 +1,10 @@
 
 import { useState } from "react";
 import { useTrainerPaymentHistory } from "@/hooks/useTrainerPaymentHistory";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -16,38 +13,28 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { FileText, Download, Loader2 } from "lucide-react";
 import { formatCurrency } from "@/lib/formatters";
 import { TrainerPaymentHistoryItem } from "@/hooks/trainer-payments/types";
+import { FileText, Search } from "lucide-react";
 import { PaymentMethodBadge } from "../PaymentMethodBadge";
-import { TrainerPaymentSummary } from "./TrainerPaymentSummary";
 
-interface PaymentDocumentsListProps {
-  limit?: number;
-}
-
-export function PaymentDocumentsList({ limit }: PaymentDocumentsListProps) {
-  const { data: payments = [], isLoading } = useTrainerPaymentHistory({});
-  const [expandedPayment, setExpandedPayment] = useState<string | null>(null);
-
-  const handleViewDocument = (documentUrl?: string) => {
-    if (documentUrl) {
-      window.open(documentUrl, "_blank");
-    }
-  };
+export function PaymentDocumentsList() {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeTab, setActiveTab] = useState("all");
+  
+  // Get all payment history without limit
+  const { data: allPayments = [], isLoading } = useTrainerPaymentHistory({ limit: 100 });
 
   // Group payments by trainer
-  const trainerPayments = payments.reduce((acc, payment) => {
-    const trainerId = payment.id.split('-')[0]; // Assuming ID has trainer ID as prefix
-    const trainerName = payment.trainerName || 'Unknown Trainer';
+  const paymentsByTrainer = allPayments.reduce((acc, payment) => {
+    const trainerId = payment.id.split('-')[0]; // Using a part of the ID as trainer ID for grouping
     
     if (!acc[trainerId]) {
       acc[trainerId] = {
         id: trainerId,
-        name: trainerName,
+        name: payment.trainerName,
         payments: [],
-        totalAmount: 0,
+        totalAmount: 0
       };
     }
     
@@ -57,130 +44,147 @@ export function PaymentDocumentsList({ limit }: PaymentDocumentsListProps) {
     return acc;
   }, {} as Record<string, { id: string; name: string; payments: TrainerPaymentHistoryItem[]; totalAmount: number }>);
 
-  // Convert to array for display
-  const trainerSummaries = Object.values(trainerPayments);
+  // Filter payments based on search query
+  const filteredPayments = allPayments.filter(payment => 
+    payment.trainerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    payment.className.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
-  if (isLoading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Payment Documents</CardTitle>
-          <CardDescription>View and download payment records</CardDescription>
-        </CardHeader>
-        <CardContent className="flex justify-center py-8">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </CardContent>
-      </Card>
-    );
-  }
+  const filteredTrainers = Object.values(paymentsByTrainer).filter(trainer => 
+    trainer.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
-  if (payments.length === 0) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Payment Documents</CardTitle>
-          <CardDescription>View and download payment records</CardDescription>
-        </CardHeader>
-        <CardContent className="text-center py-8">
-          <p className="text-muted-foreground">No payment records found.</p>
-        </CardContent>
-      </Card>
-    );
-  }
+  // Handle document view
+  const handleViewDocument = (documentUrl?: string) => {
+    if (documentUrl) {
+      window.open(documentUrl, "_blank");
+    }
+  };
 
   return (
     <div className="space-y-6">
-      {/* Trainer payment summaries */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {trainerSummaries.map(trainer => (
-          <TrainerPaymentSummary
-            key={trainer.id}
-            trainerName={trainer.name}
-            paymentCount={trainer.payments.length}
-            totalAmount={trainer.totalAmount}
+      <div className="flex flex-col sm:flex-row justify-between gap-4">
+        <div className="relative w-full sm:w-auto">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search by trainer or class..."
+            className="pl-8 w-full sm:w-[250px]"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
           />
-        ))}
+        </div>
       </div>
 
-      {/* Payment documents table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>All Payment Documents</CardTitle>
-          <CardDescription>
-            Financial records for all trainer payments
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Trainer</TableHead>
-                  <TableHead>Class</TableHead>
-                  <TableHead>Method</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {payments.map((payment) => (
-                  <TableRow key={payment.id}>
-                    <TableCell>
-                      {new Date(payment.paymentDate).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell>
-                      {payment.trainerName || "Unknown Trainer"}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col">
-                        <span>{payment.className}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {new Date(payment.classDate).toLocaleDateString()}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <PaymentMethodBadge method={payment.paymentMethod} />
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
-                      {formatCurrency(payment.amount)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        {payment.documentUrl ? (
-                          <>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="flex items-center"
-                              onClick={() => handleViewDocument(payment.documentUrl)}
-                            >
-                              <FileText className="h-4 w-4" />
-                              <span className="hidden sm:inline ml-1">View</span>
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="flex items-center"
-                              onClick={() => handleViewDocument(payment.documentUrl)}
-                            >
-                              <Download className="h-4 w-4" />
-                              <span className="hidden sm:inline ml-1">Download</span>
-                            </Button>
-                          </>
-                        ) : (
-                          <span className="text-muted-foreground text-sm">No document</span>
-                        )}
-                      </div>
-                    </TableCell>
+      <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="all">All Payments</TabsTrigger>
+          <TabsTrigger value="byTrainer">By Trainer</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="all" className="space-y-4">
+          <Card className="p-0">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Trainer</TableHead>
+                    <TableHead>Class</TableHead>
+                    <TableHead>Method</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                    <TableHead className="text-right">Document</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
+                </TableHeader>
+                <TableBody>
+                  {isLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8">
+                        Loading payment documents...
+                      </TableCell>
+                    </TableRow>
+                  ) : filteredPayments.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8">
+                        {searchQuery ? "No payments match your search" : "No payment documents found"}
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredPayments.map((payment) => (
+                      <TableRow key={payment.id}>
+                        <TableCell>
+                          {payment.paymentDate ? new Date(payment.paymentDate).toLocaleDateString() : 'N/A'}
+                        </TableCell>
+                        <TableCell>{payment.trainerName}</TableCell>
+                        <TableCell>{payment.className}</TableCell>
+                        <TableCell>
+                          <PaymentMethodBadge method={payment.paymentMethod} />
+                        </TableCell>
+                        <TableCell className="text-right font-medium">
+                          {formatCurrency(payment.amount)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {payment.documentUrl ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleViewDocument(payment.documentUrl)}
+                            >
+                              <FileText className="h-4 w-4 mr-1" /> View
+                            </Button>
+                          ) : (
+                            <span className="text-muted-foreground text-sm">N/A</span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="byTrainer" className="space-y-4">
+          <Card className="p-0">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Trainer</TableHead>
+                    <TableHead className="text-center">Payments</TableHead>
+                    <TableHead className="text-right">Total Amount</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {isLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={3} className="text-center py-8">
+                        Loading trainer data...
+                      </TableCell>
+                    </TableRow>
+                  ) : filteredTrainers.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={3} className="text-center py-8">
+                        {searchQuery ? "No trainers match your search" : "No trainers found"}
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredTrainers.map((trainer) => (
+                      <TableRow key={trainer.id}>
+                        <TableCell>{trainer.name}</TableCell>
+                        <TableCell className="text-center">{trainer.payments.length}</TableCell>
+                        <TableCell className="text-right font-medium">
+                          {formatCurrency(trainer.totalAmount)}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

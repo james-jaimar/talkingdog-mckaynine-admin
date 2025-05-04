@@ -57,25 +57,50 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
   
   // Check if any trainer has zero-amount payments that need fixing
   // Only consider zero amounts for trainers who should actually get a commission
-  const hasZeroAmountPayments = trainersData.some(trainer => 
-    trainer.classDetails.some(cls => cls.hasZeroAmountPayment && !cls.hasZeroCommission)
-  );
+  const hasZeroAmountPayments = trainersData.some(trainer => {
+    // Check if this trainer has classes with zero amounts
+    const hasZeroAmounts = trainer.classDetails.some(cls => cls.hasZeroAmountPayment);
+    
+    // Check if this trainer is NOT a pure zero-commission trainer
+    const isNotPureZeroCommission = !(
+      trainer.hasZeroCommissionClasses && 
+      trainer.totalEarned === 0 && 
+      trainer.pending === 0 && 
+      trainer.potentialEarnings === 0
+    );
+    
+    // Only flag if both are true
+    return hasZeroAmounts && isNotPureZeroCommission;
+  });
   
-  const formattedTrainers = trainersData.map(trainer => ({
-    id: trainer.id,
-    trainerName: trainer.trainerName,
-    totalEarned: trainer.totalEarned,
-    paid: trainer.paid,
-    pending: trainer.pending,
-    potentialEarnings: trainer.potentialEarnings,
-    classesCount: trainer.classesCount,
-    clients: trainer.clients,
-    lastPaymentDate: trainer.lastPaymentDate,
-    classDetails: trainer.classDetails,
-    hasZeroAmountPayments: trainer.classDetails.some(cls => cls.hasZeroAmountPayment && !cls.hasZeroCommission),
-    hasZeroCommissionClasses: trainer.hasZeroCommissionClasses,
-    hasUnpaidCommission: trainer.hasUnpaidCommission
-  }));
+  const formattedTrainers = trainersData.map(trainer => {
+    const isZeroCommissionTrainer = 
+      trainer.hasZeroCommissionClasses && 
+      trainer.totalEarned === 0 && 
+      trainer.pending === 0 && 
+      trainer.potentialEarnings === 0;
+    
+    // Check if this trainer has zero amount payments that need fixing
+    // (exclude zero commission trainers)
+    const hasZeroAmountPayments = 
+      trainer.classDetails.some(cls => cls.hasZeroAmountPayment && !cls.hasZeroCommission);
+    
+    return {
+      id: trainer.id,
+      trainerName: trainer.trainerName,
+      totalEarned: trainer.totalEarned,
+      paid: trainer.paid,
+      pending: trainer.pending,
+      potentialEarnings: trainer.potentialEarnings,
+      classesCount: trainer.classesCount,
+      clients: trainer.clients,
+      lastPaymentDate: trainer.lastPaymentDate,
+      classDetails: trainer.classDetails,
+      hasZeroAmountPayments: hasZeroAmountPayments,
+      hasZeroCommissionClasses: isZeroCommissionTrainer,
+      hasUnpaidCommission: trainer.hasUnpaidCommission
+    };
+  });
 
   // Handler for global "Fix Zero Amount Payments" button
   const handleGlobalFixZeroAmounts = () => {

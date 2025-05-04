@@ -81,3 +81,18 @@ export interface InvoiceItem {
     payment_date?: string;
   };
 }
+
+// Add the TrainerPaymentHistoryItem type that was missing
+export interface TrainerPaymentHistoryItem {
+  id: string;
+  paymentDate: string;
+  amount: number;
+  paymentMethod: string;
+  transactionId?: string;
+  documentUrl?: string;
+  documentName?: string;
+  scheduleId: string;
+  className: string;
+  classDate: string;
+  trainerName: string;
+}
