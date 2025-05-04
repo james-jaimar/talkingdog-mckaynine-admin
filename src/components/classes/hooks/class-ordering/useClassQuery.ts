@@ -1,3 +1,4 @@
+
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { ClassWithSchedules } from "../types/class-with-schedules";
@@ -60,6 +61,7 @@ export function useClassQuery() {
             trainer_fee_value,
             duration,
             capacity,
+            branch_id,
             branches(name),
             class_schedules(
               id, 
@@ -128,7 +130,7 @@ export function useClassQuery() {
           classes = orderedClasses;
         }
         
-        // Ensure we always return an array
+        // Ensure we always return an array of properly shaped ClassWithSchedules objects
         return Array.isArray(classes) ? classes : [];
       } catch (error) {
         console.error("Error fetching classes:", error);
@@ -142,3 +144,4 @@ export function useClassQuery() {
     retry: 2
   });
 }
+

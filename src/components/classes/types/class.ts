@@ -6,7 +6,7 @@ import { ClassType } from './class-types';
 export interface Class {
   id: string;
   name: string;
-  description?: string; // Changed from required to optional to match ClassWithSchedules
+  description?: string; 
   class_type: ClassType;
   course_fee: number;
   enrollment_fee: number;
