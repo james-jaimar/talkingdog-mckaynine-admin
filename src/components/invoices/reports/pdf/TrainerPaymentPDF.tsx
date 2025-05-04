@@ -1,3 +1,4 @@
+
 import { jsPDF } from "jspdf";
 import { TrainerClassDetail } from "@/hooks/trainer-payments/types";
 import { PaymentDetailsFormValues } from "../payment-dialog/PaymentDetailsForm";
@@ -10,6 +11,9 @@ interface TrainerPaymentPDFProps {
   classes: TrainerClassDetail[];
   paymentDetails: PaymentDetailsFormValues;
   paymentDate: string;
+  branchName?: string;
+  fiscalYear?: string;
+  paymentReference?: string;
 }
 
 export async function generateTrainerPaymentPDF({
@@ -17,7 +21,10 @@ export async function generateTrainerPaymentPDF({
   trainerEmail,
   classes,
   paymentDetails,
-  paymentDate
+  paymentDate,
+  branchName = "McKaynine Training Centre",
+  fiscalYear = new Date().getFullYear().toString(),
+  paymentReference = `TR-${Date.now().toString().substring(6)}`
 }: TrainerPaymentPDFProps): Promise<string> {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.width;
@@ -40,18 +47,27 @@ export async function generateTrainerPaymentPDF({
   
   doc.setFontSize(18);
   doc.setTextColor(0, 0, 0);
-  doc.text("Payment Confirmation", 14, currentY);
+  doc.text("Payment Remittance", 14, currentY);
   currentY += 10;
   
   doc.setFontSize(12);
   doc.setTextColor(100, 100, 100);
   doc.text(`Payment Date: ${new Date(paymentDate).toLocaleDateString()}`, 14, currentY);
+  currentY += 6;
+  
+  doc.text(`Reference No: ${paymentReference}`, 14, currentY);
+  currentY += 6;
+  
+  doc.text(`Fiscal Year: ${fiscalYear}`, 14, currentY);
+  currentY += 6;
+  
+  doc.text(`Branch: ${branchName}`, 14, currentY);
   currentY += 10;
   
   // Trainer info
   doc.setFontSize(14);
   doc.setTextColor(0, 0, 0);
-  doc.text("Trainer Information", 14, currentY);
+  doc.text("Payee Information", 14, currentY);
   currentY += 8;
   
   doc.setFontSize(11);
@@ -98,7 +114,7 @@ export async function generateTrainerPaymentPDF({
   // Add header for classes
   doc.setFontSize(14);
   doc.setTextColor(0, 0, 0);
-  doc.text("Classes Included in Payment", 14, currentY);
+  doc.text("Services Rendered", 14, currentY);
   currentY += 10;
   
   // Add table
@@ -143,13 +159,48 @@ export async function generateTrainerPaymentPDF({
   doc.text(`Total Amount: ${formatCurrency(totalAmount)}`, 14, currentY);
   currentY += 15;
   
-  // Footer
+  // Add payment terms and conditions
   doc.setFontSize(10);
   doc.setFont(undefined, 'normal');
-  doc.setTextColor(100, 100, 100);
-  doc.text("This is an automatically generated payment confirmation.", 14, currentY);
+  doc.setTextColor(80, 80, 80);
+  doc.text("Payment Terms and Conditions:", 14, currentY);
   currentY += 5;
-  doc.text("McKaynine Training Centre", 14, currentY);
+  
+  const termsText = [
+    "1. This payment represents full settlement for services rendered as detailed above.",
+    "2. This document serves as an official receipt for accounting and tax purposes.",
+    "3. Please retain this document for your tax records.",
+    "4. Payment disputes must be reported within 14 days of payment date."
+  ];
+  
+  termsText.forEach(term => {
+    doc.text(term, 14, currentY);
+    currentY += 5;
+  });
+  
+  currentY += 10;
+  
+  // Add signature section
+  doc.setDrawColor(200, 200, 200);
+  doc.setLineWidth(0.5);
+  
+  doc.line(14, currentY, 80, currentY);
+  currentY += 5;
+  doc.setFontSize(9);
+  doc.text("Authorized Signature", 14, currentY);
+  
+  doc.line(120, currentY - 5, 180, currentY - 5);
+  doc.text("Date", 120, currentY);
+  
+  currentY += 15;
+  
+  // Footer
+  doc.setFontSize(9);
+  doc.setFont(undefined, 'normal');
+  doc.setTextColor(120, 120, 120);
+  doc.text("This is an automatically generated payment remittance.", 14, currentY);
+  currentY += 5;
+  doc.text(`${branchName} • Tax/Business Reg: MCKTC-2023-012345`, 14, currentY);
   
   // Return as a data URL
   return doc.output('datauristring');

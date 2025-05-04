@@ -1,4 +1,3 @@
-
 export interface Schedule {
   id: string;
   start_time: string;
@@ -110,4 +109,5 @@ export interface TrainerPaymentHistoryItem {
   scheduleId: string;
   className: string;
   classDate: string;
+  trainerName?: string;
 }

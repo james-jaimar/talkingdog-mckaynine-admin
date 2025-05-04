@@ -8,6 +8,9 @@ import { useTrainerActionHandlers } from "./hooks/useTrainerActionHandlers";
 import { MarkAsUnpaidDialog } from "./dialogs/MarkAsUnpaidDialog";
 import { FixZeroAmountsDialog } from "./dialogs/FixZeroAmountsDialog";
 import { ActionButtons } from "./trainer-actions/ActionButtons";
+import { Button } from "@/components/ui/button";
+import { FileCog } from "lucide-react";
+import { useRouter } from "react-router-dom";
 
 interface TrainerReportsTabProps {
   dateRange: { from: Date; to: Date };
@@ -15,6 +18,7 @@ interface TrainerReportsTabProps {
 }
 
 export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProps) {
+  const router = useRouter();
   const { data: trainersData, isLoading, error, refetch } = useTrainerPaymentData(branchId, dateRange);
   
   const {
@@ -81,14 +85,29 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
     }
   };
 
+  const handleViewAllDocuments = () => {
+    router.navigate('/payment-documents');
+  };
+
   return (
     <div className="space-y-6">
-      <ActionButtons 
-        onRefresh={refreshAllData}
-        onFixZeroAmounts={handleGlobalFixZeroAmounts}
-        hasZeroAmountPayments={hasZeroAmountPayments}
-        isProcessing={isProcessing}
-      />
+      <div className="flex flex-wrap gap-2 justify-between">
+        <ActionButtons 
+          onRefresh={refreshAllData}
+          onFixZeroAmounts={handleGlobalFixZeroAmounts}
+          hasZeroAmountPayments={hasZeroAmountPayments}
+          isProcessing={isProcessing}
+        />
+        
+        <Button 
+          onClick={handleViewAllDocuments}
+          variant="outline"
+          className="ml-auto"
+        >
+          <FileCog className="mr-2 h-4 w-4" />
+          View All Payment Documents
+        </Button>
+      </div>
       
       <TrainerPaymentsSummary 
         trainers={formattedTrainers}
