@@ -16,6 +16,7 @@ import Dashboard from './pages/Dashboard';
 import Classes from './pages/Classes';
 import ClassSchedules from './pages/ClassSchedules';
 import ClassHandlers from './pages/ClassHandlers';
+import Handlers from './pages/Handlers';
 import Invoices from './pages/Invoices';
 import InvoiceRedirect from './pages/InvoiceRedirect';
 import InvoiceDetail from './pages/InvoiceDetail';
@@ -34,6 +35,7 @@ function App() {
                 <Route path="/financial-reports" element={<RequireAuth><FinancialReports /></RequireAuth>} />
                 <Route path="/payment-documents" element={<RequireAuth><PaymentDocuments /></RequireAuth>} />
                 <Route path="/classes" element={<RequireAuth><Classes /></RequireAuth>} />
+                <Route path="/handlers" element={<RequireAuth><Handlers /></RequireAuth>} />
                 <Route path="/classes/:id/schedules" element={<RequireAuth><ClassSchedules /></RequireAuth>} />
                 <Route path="/class/:id/handlers" element={<RequireAuth><ClassHandlers /></RequireAuth>} />
                 

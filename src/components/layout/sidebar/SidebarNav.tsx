@@ -34,7 +34,7 @@ export function SidebarNav({ className, ...props }: SidebarNavProps) {
     { href: "/handlers", label: "Handlers", icon: User, roles: ["trainer", "admin"] },
     { href: "/classes", label: "Classes", icon: Book, roles: ["trainer", "admin"] },
     { href: "/schedules", label: "Schedules", icon: Calendar, roles: ["trainer", "admin"] },
-    { href: "/invoices/list", label: "Invoices", icon: Receipt, roles: ["trainer", "admin"] }, // Updated path
+    { href: "/invoices/list", label: "Invoices", icon: Receipt, roles: ["trainer", "admin"] },
     { href: "/trainers", label: "Trainers", icon: BookOpenCheck, roles: ["admin"] },
     { href: "/forms", label: "Forms", icon: FileText, roles: ["trainer", "admin"] },
     { href: "/messages", label: "Messages", icon: MessageCircle, roles: ["trainer", "admin"] },
