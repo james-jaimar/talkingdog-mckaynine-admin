@@ -22,7 +22,7 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
       console.log(`Fetching financial data for branch: ${branchId} from ${fromDate} to ${toDate}`);
       
       try {
-        // Improved query to handle classes that span multiple terms
+        // Improved query to explicitly handle classes that span multiple terms
         let query = supabase
           .from('class_schedules')
           .select(`
@@ -74,13 +74,14 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
           `)
           .eq('classes.branch_id', branchId);
           
-        // Add date filtering conditionally
+        // Add date filtering conditionally with improved filter logic
         if (fromDate && toDate) {
-          // This improved filter will include schedules that:
-          // 1. Start within the date range OR
-          // 2. Have any selected_dates that fall within the range OR
-          // 3. End within the date range
-          query = query.or(`start_time.gte.${fromDate},selected_dates.cs.{${fromDate},${toDate}},end_time.lte.${toDate}`);
+          // This improved filter will include schedules that overlap with our date range in any way:
+          // 1. Start within the range OR
+          // 2. End within the range OR
+          // 3. Have any selected_dates that fall within the range OR
+          // 4. Span the entire range (start before and end after)
+          query = query.or(`start_time.gte.${fromDate},end_time.lte.${toDate},selected_dates.cs.{${fromDate},${toDate}},and(start_time.lte.${fromDate},end_time.gte.${toDate})`);
         }
         
         const { data, error } = await query;
@@ -90,25 +91,36 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
           throw error;
         }
         
+        console.log(`Got ${data?.length || 0} schedule records from the database query`);
+        
         // Post-process the data to keep only class sessions within our date range
         const filteredSchedules = data
           .filter(schedule => {
             // If no date range is provided, keep all schedules
             if (!fromDate || !toDate) return true;
             
-            // Check if start_time is within range
+            // Check if schedule period overlaps with date range
             const scheduleStart = new Date(schedule.start_time);
             const scheduleEnd = new Date(schedule.end_time);
             const fromDateObj = new Date(fromDate);
             const toDateObj = new Date(toDate);
             
-            // Keep if schedule period overlaps with date range
-            if ((scheduleStart >= fromDateObj && scheduleStart <= toDateObj) ||
-                (scheduleEnd >= fromDateObj && scheduleEnd <= toDateObj)) {
+            // Case 1: Schedule starts within the range
+            if (scheduleStart >= fromDateObj && scheduleStart <= toDateObj) {
               return true;
             }
             
-            // Check if any selected_dates fall within the date range
+            // Case 2: Schedule ends within the range
+            if (scheduleEnd >= fromDateObj && scheduleEnd <= toDateObj) {
+              return true;
+            }
+            
+            // Case 3: Schedule spans the entire range
+            if (scheduleStart <= fromDateObj && scheduleEnd >= toDateObj) {
+              return true;
+            }
+            
+            // Case 4: Check if any selected_dates fall within the date range
             if (schedule.selected_dates && schedule.selected_dates.length > 0) {
               return schedule.selected_dates.some(dateStr => {
                 const classDate = new Date(dateStr);
@@ -136,6 +148,8 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
             return schedule;
           });
         
+        console.log(`Filtered to ${filteredSchedules.length} schedules within date range`);
+        
         // Calculate revenue metrics
         let totalRevenue = 0;
         const uniqueClientIds = new Set<string>();
@@ -158,6 +172,8 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
           }
           uniqueScheduleIds.add(schedule.id);
         });
+        
+        console.log(`Financial metrics: Revenue=${totalRevenue}, Clients=${uniqueClientIds.size}, Schedules=${uniqueScheduleIds.size}`);
         
         return {
           bookings: filteredSchedules,
