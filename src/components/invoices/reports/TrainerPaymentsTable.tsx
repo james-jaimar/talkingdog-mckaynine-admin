@@ -51,13 +51,16 @@ export function TrainerPaymentsTable({
   // Check if any trainers have actual paid amounts
   const anyActualPayments = trainers.some(t => t.paid > 0);
   
-  // Check if any trainers have zero amount payments
-  const anyZeroAmountPayments = trainers.some(t => t.hasZeroAmountPayments);
-  
-  // Check for trainers with zero commission
+  // Check for trainers with zero commission (those we don't want to flag as needing fixes)
   const anyZeroCommissionTrainers = trainers.some(t => 
     t.hasZeroCommissionClasses && 
     (t.pending === 0 && t.paid === 0 && t.potentialEarnings === 0)
+  );
+  
+  // Check if any trainers have zero amount payments (excluding zero commission trainers)
+  const anyZeroAmountPayments = trainers.some(t => 
+    t.hasZeroAmountPayments && 
+    !(t.hasZeroCommissionClasses && t.pending === 0 && t.paid === 0 && t.potentialEarnings === 0)
   );
   
   if (!trainers || trainers.length === 0) {

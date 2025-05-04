@@ -93,11 +93,13 @@ export function formatTrainerPaymentData(
     // Get payment records for this schedule
     const schedulePayments = payments.filter(p => p.class_schedule_id === schedule.id);
     const isPaid = schedulePayments.some(p => p.status === 'paid');
-    const hasZeroAmountPayment = schedulePayments.some(p => p.amount === 0);
     
     // Check if zero commission is intended based on class settings
     const hasZeroCommission = schedule.classes?.trainer_fee_type === 'fixed' && 
                             schedule.classes?.trainer_fee_value === 0;
+    
+    // Only consider it a zero amount payment issue if it's not supposed to be zero commission
+    const hasZeroAmountPayment = schedulePayments.some(p => p.amount === 0) && !hasZeroCommission;
     
     // Track last payment date
     if (isPaid && schedulePayments.length > 0) {

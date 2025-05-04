@@ -29,11 +29,13 @@ export function useTrainerActionHandlers() {
     setSelectedTrainerId(trainerId);
     // Find trainer data to get scheduleIds with zero amounts
     const trainer = trainersData?.find(t => t.id === trainerId);
+    
     // Find schedules with zero amount payments for this trainer
     // Don't include those that have hasZeroCommission=true as those are intentional
     const zeroPaidSchedules = trainer?.classDetails
       .filter(c => c.hasZeroAmountPayment && !c.hasZeroCommission)
       .map(c => c.scheduleId) || [];
+      
     setSelectedScheduleIds(zeroPaidSchedules);
     setFixZeroAmountsDialogOpen(true);
   };

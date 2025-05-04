@@ -67,6 +67,35 @@ export function useMarkTrainerPaymentsUnpaid() {
           return { trainerId, scheduleIds, updatedCount: 0 };
         }
         
+        // First, check if this is a zero-commission trainer (we should skip recalculation for these)
+        // This requires an additional query to get class details
+        if (resetZeroAmounts) {
+          // Get one class schedule to check if it's a zero-commission class
+          const { data: scheduleData, error: scheduleError } = await supabase
+            .from('class_schedules')
+            .select(`
+              id, 
+              classes:class_id (
+                trainer_fee_type, 
+                trainer_fee_value
+              )
+            `)
+            .eq('id', scheduleIds[0])
+            .single();
+            
+          if (!scheduleError && scheduleData?.classes) {
+            const isZeroCommissionClass = 
+              scheduleData.classes.trainer_fee_type === 'fixed' && 
+              scheduleData.classes.trainer_fee_value === 0;
+              
+            // If this is a zero-commission class, we should skip recalculation
+            if (isZeroCommissionClass) {
+              console.log("Skipping zero amount recalculation for zero-commission trainer");
+              resetZeroAmounts = false;
+            }
+          }
+        }
+        
         // Handle records with zero amounts if requested
         if (resetZeroAmounts) {
           const zeroAmountRecords = existingPayments.filter(p => p.amount === 0 || p.amount === 0.0);

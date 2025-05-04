@@ -1,3 +1,4 @@
+
 import { useTrainerPaymentData } from "@/hooks/useTrainerPaymentData";
 import { TrainerPaymentsSummary } from "./TrainerPaymentsSummary";
 import { Loader2, AlertCircle } from "lucide-react";

@@ -85,7 +85,7 @@ export function TrainerPaymentsRow({
           )}
           <span className="font-medium">{trainer.trainerName}</span>
           
-          {trainer.hasZeroAmountPayments && (
+          {trainer.hasZeroAmountPayments && !isZeroCommissionTrainer && (
             <ExtendedBadge variant="amber" className="ml-1">
               <Wrench className="h-3 w-3 mr-1" />
               Fix Needed
@@ -170,7 +170,7 @@ export function TrainerPaymentsRow({
                     Mark as Unpaid
                   </DropdownMenuItem>
                 )}
-                {onFixZeroAmounts && trainer.hasZeroAmountPayments && (
+                {onFixZeroAmounts && trainer.hasZeroAmountPayments && !isZeroCommissionTrainer && (
                   <DropdownMenuItem 
                     className="text-amber-600" 
                     onClick={(e) => {
