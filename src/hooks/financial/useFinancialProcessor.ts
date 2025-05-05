@@ -68,7 +68,7 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
       // Skip if this invoice has no associated bookings or already processed
       if (!bookingIds || bookingIds.length === 0 || processedInvoices.has(invoice.id)) return;
       
-      // Distribute the invoice total evenly among associated bookings
+      // Calculate the invoice amount per booking
       const invoiceAmountPerBooking = invoice.total / bookingIds.length;
       
       bookingIds.forEach(bookingId => {
@@ -116,26 +116,42 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
         // Update summary with invoice amount
         summary.totalRevenue += invoiceAmountPerBooking;
         
-        // Apply fee percentages from the class data
-        // Admin fee
+        // Apply fee percentages from the class data with explicit type checking
+        // Admin fee calculation
         if (classData.admin_fee_type === 'percentage') {
-          summary.adminFee += invoiceAmountPerBooking * (classData.admin_fee_value / 100);
+          const adminFeeAmount = invoiceAmountPerBooking * (classData.admin_fee_value / 100);
+          summary.adminFee += adminFeeAmount;
+          console.log(`Class ${className}: Admin fee calculation: ${invoiceAmountPerBooking} * ${classData.admin_fee_value}% = ${adminFeeAmount}`);
         } else {
-          summary.adminFee += classData.admin_fee_value;
+          // For fixed fee, we add a proportional amount based on the number of bookings
+          // This ensures fixed fees are distributed fairly across all bookings
+          const adminFixedFeePerBooking = classData.admin_fee_value / Math.max(classBookingMap.get(className)?.size || 1, 1);
+          summary.adminFee += adminFixedFeePerBooking;
+          console.log(`Class ${className}: Admin fixed fee per booking: ${classData.admin_fee_value} / ${classBookingMap.get(className)?.size} = ${adminFixedFeePerBooking}`);
         }
 
-        // Franchise fee
+        // Franchise fee calculation
         if (classData.mckaynine_commission_type === 'percentage') {
-          summary.franchiseFee += invoiceAmountPerBooking * (classData.mckaynine_commission_value / 100);
+          const franchiseFeeAmount = invoiceAmountPerBooking * (classData.mckaynine_commission_value / 100);
+          summary.franchiseFee += franchiseFeeAmount;
+          console.log(`Class ${className}: Franchise fee calculation: ${invoiceAmountPerBooking} * ${classData.mckaynine_commission_value}% = ${franchiseFeeAmount}`);
         } else {
-          summary.franchiseFee += classData.mckaynine_commission_value;
+          // For fixed fee, distribute it proportionally
+          const franchiseFixedFeePerBooking = classData.mckaynine_commission_value / Math.max(classBookingMap.get(className)?.size || 1, 1);
+          summary.franchiseFee += franchiseFixedFeePerBooking;
+          console.log(`Class ${className}: Franchise fixed fee per booking: ${classData.mckaynine_commission_value} / ${classBookingMap.get(className)?.size} = ${franchiseFixedFeePerBooking}`);
         }
         
-        // Instructor fee
+        // Instructor fee calculation
         if (classData.trainer_fee_type === 'percentage') {
-          summary.instructorFee += (invoiceAmountPerBooking * (classData.trainer_fee_value / 100));
+          const instructorFeeAmount = invoiceAmountPerBooking * (classData.trainer_fee_value / 100);
+          summary.instructorFee += instructorFeeAmount;
+          console.log(`Class ${className}: Instructor fee calculation: ${invoiceAmountPerBooking} * ${classData.trainer_fee_value}% = ${instructorFeeAmount}`);
         } else {
-          summary.instructorFee += classData.trainer_fee_value;
+          // For fixed fee, distribute it proportionally
+          const instructorFixedFeePerBooking = classData.trainer_fee_value / Math.max(classBookingMap.get(className)?.size || 1, 1);
+          summary.instructorFee += instructorFixedFeePerBooking;
+          console.log(`Class ${className}: Instructor fixed fee per booking: ${classData.trainer_fee_value} / ${classBookingMap.get(className)?.size} = ${instructorFixedFeePerBooking}`);
         }
         
         classSummaries.set(className, summary);
@@ -145,15 +161,14 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
     });
     
     // Handle unprocessed invoices (not linked to specific classes)
-    const unprocessedInvoicesTotal = invoices
-      .filter(inv => !processedInvoices.has(inv.id))
-      .reduce((sum, inv) => sum + inv.total, 0);
+    const unprocessedInvoices = invoices.filter(inv => !processedInvoices.has(inv.id));
+    const unprocessedInvoicesTotal = unprocessedInvoices.reduce((sum, inv) => sum + inv.total, 0);
+    
+    console.log(`Unprocessed invoices: ${unprocessedInvoices.length}, Total: ${unprocessedInvoicesTotal}`);
     
     if (unprocessedInvoicesTotal > 0) {
       const generalClassName = "General Training Services";
-      const unprocessedInvoiceIds = invoices
-        .filter(inv => !processedInvoices.has(inv.id))
-        .map(inv => inv.id);
+      const unprocessedInvoiceIds = unprocessedInvoices.map(inv => inv.id);
       
       // Create a general entry for unprocessed invoices
       const generalSummary = classSummaries.get(generalClassName) || {
@@ -169,42 +184,23 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
         invoiceIds: unprocessedInvoiceIds
       };
       
-      // For general entries, use the average fee percentages from the other classes
+      // For general entries, use standard default rates
       generalSummary.totalRevenue = unprocessedInvoicesTotal;
       
-      // Calculate average fee percentages from processed classes
-      let avgAdminPercent = 10; // Default to 10% if no other data
-      let avgFranchisePercent = 15; // Default to 15% if no other data
-      let avgTrainerPercent = 30; // Default to 30% if no other data
+      // Standard rates for general invoices
+      const defaultAdminPercent = 10; // 10%
+      const defaultFranchisePercent = 15; // 15%
+      const defaultTrainerPercent = 30; // 30%
       
-      if (classSummaries.size > 0) {
-        let totalAdmin = 0;
-        let totalFranchise = 0;
-        let totalTrainer = 0;
-        let totalRevenue = 0;
-        let classCount = 0;
-        
-        classSummaries.forEach(summary => {
-          if (summary.totalRevenue > 0) {
-            totalAdmin += summary.adminFee;
-            totalFranchise += summary.franchiseFee;
-            totalTrainer += summary.instructorFee;
-            totalRevenue += summary.totalRevenue;
-            classCount++;
-          }
-        });
-        
-        if (totalRevenue > 0) {
-          avgAdminPercent = (totalAdmin / totalRevenue) * 100;
-          avgFranchisePercent = (totalFranchise / totalRevenue) * 100;
-          avgTrainerPercent = (totalTrainer / totalRevenue) * 100;
-        }
-      }
+      // Apply standard rates directly for general invoices
+      generalSummary.adminFee = unprocessedInvoicesTotal * (defaultAdminPercent / 100);
+      generalSummary.franchiseFee = unprocessedInvoicesTotal * (defaultFranchisePercent / 100);
+      generalSummary.instructorFee = unprocessedInvoicesTotal * (defaultTrainerPercent / 100);
       
-      // Apply the average percentages to general invoices
-      generalSummary.adminFee = unprocessedInvoicesTotal * (avgAdminPercent / 100);
-      generalSummary.franchiseFee = unprocessedInvoicesTotal * (avgFranchisePercent / 100);
-      generalSummary.instructorFee = unprocessedInvoicesTotal * (avgTrainerPercent / 100);
+      console.log(`General Training Services calculations:`);
+      console.log(`- Admin fee: ${unprocessedInvoicesTotal} * ${defaultAdminPercent}% = ${generalSummary.adminFee}`);
+      console.log(`- Franchise fee: ${unprocessedInvoicesTotal} * ${defaultFranchisePercent}% = ${generalSummary.franchiseFee}`);
+      console.log(`- Instructor fee: ${unprocessedInvoicesTotal} * ${defaultTrainerPercent}% = ${generalSummary.instructorFee}`);
       
       // Calculate profit
       generalSummary.profit = generalSummary.totalRevenue - 
@@ -228,8 +224,8 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
           summary.bookingsCount = uniqueBookings.size;
         }
         
-        // Calculate profit as total revenue minus all fees
-        summary.profit = summary.totalRevenue - summary.franchiseFee - summary.adminFee - summary.instructorFee;
+        // Calculate profit as total revenue minus all fees, ensuring there are no rounding errors
+        summary.profit = parseFloat((summary.totalRevenue - summary.franchiseFee - summary.adminFee - summary.instructorFee).toFixed(2));
       }
     });
 
@@ -243,7 +239,16 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
 
     // Convert to array and sort by class name
     const sortedFinances = Array.from(classSummaries.values())
-      .sort((a, b) => a.className.localeCompare(b.className));
+      .sort((a, b) => a.className.localeCompare(b.className))
+      // Apply rounding for all monetary values to avoid floating point issues
+      .map(summary => ({
+        ...summary,
+        totalRevenue: parseFloat(summary.totalRevenue.toFixed(2)),
+        adminFee: parseFloat(summary.adminFee.toFixed(2)),
+        franchiseFee: parseFloat(summary.franchiseFee.toFixed(2)),
+        instructorFee: parseFloat(summary.instructorFee.toFixed(2)),
+        profit: parseFloat(summary.profit.toFixed(2))
+      }));
 
     // Log the total number of unique bookings across all classes for debugging
     const totalUniqueBookings = new Set<string>();
@@ -256,16 +261,31 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
 
     // Debug the fee calculations for each class
     sortedFinances.forEach(classItem => {
+      // Calculate percentages correctly based on the totalRevenue
+      const adminPercent = classItem.adminFee / classItem.totalRevenue * 100;
+      const franchisePercent = classItem.franchiseFee / classItem.totalRevenue * 100;
+      const instructorPercent = classItem.instructorFee / classItem.totalRevenue * 100;
+      const profitPercent = classItem.profit / classItem.totalRevenue * 100;
+      
+      // Verify that percentages add up to 100% (with small margin for rounding)
+      const totalPercent = adminPercent + franchisePercent + instructorPercent + profitPercent;
+      const percentDiff = Math.abs(100 - totalPercent);
+      
+      if (percentDiff > 0.1) {
+        console.warn(`Financial calculation warning for ${classItem.className}: Total percent = ${totalPercent.toFixed(2)}%, Difference = ${percentDiff.toFixed(2)}%`);
+      }
+      
       console.log(`Financial details for ${classItem.className}:`, {
         totalRevenue: classItem.totalRevenue,
         adminFee: classItem.adminFee,
-        adminPercent: (classItem.adminFee / classItem.totalRevenue * 100).toFixed(1) + '%',
+        adminPercent: adminPercent.toFixed(1) + '%',
         franchiseFee: classItem.franchiseFee,
-        franchisePercent: (classItem.franchiseFee / classItem.totalRevenue * 100).toFixed(1) + '%',
+        franchisePercent: franchisePercent.toFixed(1) + '%',
         instructorFee: classItem.instructorFee,
-        instructorPercent: (classItem.instructorFee / classItem.totalRevenue * 100).toFixed(1) + '%',
+        instructorPercent: instructorPercent.toFixed(1) + '%',
         profit: classItem.profit,
-        profitPercent: (classItem.profit / classItem.totalRevenue * 100).toFixed(1) + '%',
+        profitPercent: profitPercent.toFixed(1) + '%',
+        totalPercent: totalPercent.toFixed(1) + '%'
       });
     });
 
