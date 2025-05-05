@@ -43,6 +43,14 @@ export async function sendTrainerPaymentEmail({
       emailData.documentName = paymentDetails.documentName || 'Payment Confirmation';
     }
     
+    console.log("Sending email with data:", {
+      to,
+      trainerName,
+      hasPdfAttachment: !!pdfAttachment,
+      hasDocumentUrl: !!paymentDetails.documentUrl,
+      amount
+    });
+    
     // Call the Supabase Edge Function to send the email
     const { data, error } = await supabase.functions.invoke('send-trainer-payment', {
       body: emailData

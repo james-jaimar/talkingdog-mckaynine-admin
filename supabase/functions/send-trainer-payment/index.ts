@@ -1,6 +1,5 @@
 
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "npm:resend@2.0.0";
 
 // CORS headers for cross-origin requests
@@ -19,14 +18,8 @@ interface PaymentEmailRequest {
     transactionId?: string;
     notes?: string;
   };
-  // Edge function invoked from update-trainer-payments
-  trainerId?: string;
-  trainerEmail?: string;
-  scheduleIds?: string[];
-  paymentMethod?: string;
-  transactionId?: string;
-  paymentDate?: string;
   documentUrl?: string;
+  documentName?: string;
 }
 
 serve(async (req: Request) => {
@@ -38,23 +31,15 @@ serve(async (req: Request) => {
   try {
     const payload: PaymentEmailRequest = await req.json();
     console.log("Processing trainer payment email request:", {
-      ...payload,
-      pdfData: payload.pdfData ? "[PDF data truncated]" : undefined,
-      documentUrl: payload.documentUrl ? payload.documentUrl.substring(0, 50) + "..." : undefined
+      to: payload.to,
+      trainerName: payload.trainerName,
+      hasPdfData: !!payload.pdfData,
+      hasDocumentUrl: !!payload.documentUrl,
+      amount: payload.amount
     });
 
-    // Determine if we're handling a direct call or a call from update-trainer-payments
-    let trainerName = payload.trainerName || "Trainer";
-    let trainerEmail = payload.to || payload.trainerEmail;
-    let amount = payload.amount || 0;
-    let paymentMethod = payload.paymentDetails?.method || payload.paymentMethod || "Bank Transfer";
-    let transactionId = payload.paymentDetails?.transactionId || payload.transactionId || "";
-    let notes = payload.paymentDetails?.notes || "";
-    let documentUrl = payload.documentUrl;
-    let paymentDate = payload.paymentDate || new Date().toISOString();
-    
     // If no required recipient info, return error
-    if (!trainerEmail) {
+    if (!payload.to) {
       return new Response(
         JSON.stringify({ error: "Missing trainer email" }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
@@ -62,6 +47,7 @@ serve(async (req: Request) => {
     }
     
     // Format payment method for display
+    let paymentMethod = payload.paymentDetails?.method || "bank_transfer";
     let paymentMethodDisplay = "Bank Transfer";
     if (paymentMethod === 'cash') paymentMethodDisplay = "Cash";
     if (paymentMethod === 'check') paymentMethodDisplay = "Check";
@@ -76,26 +62,27 @@ serve(async (req: Request) => {
         { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
+    
     const resend = new Resend(resendApiKey);
 
     // Build email content
     const emailHtml = `
       <h1>Payment Confirmation</h1>
-      <p>Dear ${trainerName},</p>
+      <p>Dear ${payload.trainerName || "Trainer"},</p>
       
       <p>We are pleased to confirm that your payment for training services has been processed.</p>
       
       <div style="margin: 20px 0; padding: 15px; border: 1px solid #e0e0e0; border-radius: 5px;">
         <h2 style="margin-top: 0;">Payment Details</h2>
-        <p><strong>Date:</strong> ${new Date(paymentDate).toLocaleDateString()}</p>
+        <p><strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
         <p><strong>Method:</strong> ${paymentMethodDisplay}</p>
-        ${transactionId ? `<p><strong>Transaction ID:</strong> ${transactionId}</p>` : ''}
-        ${amount ? `<p><strong>Amount:</strong> R ${amount.toFixed(2)}</p>` : ''}
-        ${notes ? `<p><strong>Notes:</strong> ${notes}</p>` : ''}
+        ${payload.paymentDetails?.transactionId ? `<p><strong>Transaction ID:</strong> ${payload.paymentDetails.transactionId}</p>` : ''}
+        ${payload.amount ? `<p><strong>Amount:</strong> R ${payload.amount.toFixed(2)}</p>` : ''}
+        ${payload.paymentDetails?.notes ? `<p><strong>Notes:</strong> ${payload.paymentDetails.notes}</p>` : ''}
       </div>
       
-      ${documentUrl ? `
-      <p>You can view your payment document here: <a href="${documentUrl}" target="_blank">View Document</a></p>
+      ${payload.documentUrl ? `
+      <p>You can view your payment document here: <a href="${payload.documentUrl}" target="_blank">View Document</a></p>
       ` : ''}
       
       <p>Thank you for your services and dedication to our training program.</p>
@@ -106,7 +93,7 @@ serve(async (req: Request) => {
     // Determine if we're sending with pdf attachment or just a link
     let emailOptions: any = {
       from: "McKaynine Training <accounts@mckaynine-training.co.za>",
-      to: [trainerEmail],
+      to: [payload.to],
       subject: "Payment Confirmation for Training Services",
       html: emailHtml
     };
@@ -115,7 +102,7 @@ serve(async (req: Request) => {
     if (payload.pdfData) {
       emailOptions.attachments = [
         {
-          filename: "payment_confirmation.pdf",
+          filename: payload.documentName || "payment_confirmation.pdf",
           content: payload.pdfData
         }
       ];
@@ -123,12 +110,12 @@ serve(async (req: Request) => {
 
     // Send the email
     try {
-      console.log("Sending email to:", trainerEmail);
+      console.log("Sending email to:", payload.to);
       const emailResult = await resend.emails.send(emailOptions);
       console.log("Email sending result:", emailResult);
       
       return new Response(
-        JSON.stringify({ success: true, emailResult }),
+        JSON.stringify({ success: true, message: "Email sent successfully" }),
         { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     } catch (emailError) {
