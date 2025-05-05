@@ -117,19 +117,12 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
         // Do NOT increment bookingsCount here as we'll set it based on unique bookings later
         summary.totalRevenue += invoiceAmountPerBooking;
         
-        // Calculate fees based on invoice amount
-        if (classData.mckaynine_commission_type === 'percentage') {
-          summary.franchiseFee += (invoiceAmountPerBooking * (classData.mckaynine_commission_value / 100));
-        } else {
-          summary.franchiseFee += classData.mckaynine_commission_value;
-        }
+        // Apply FIXED percentages for admin and franchise fees - 10% for admin and 15% for franchise
+        // regardless of what's stored in the class data
+        summary.adminFee += invoiceAmountPerBooking * 0.10; // Fixed 10% admin fee
+        summary.franchiseFee += invoiceAmountPerBooking * 0.15; // Fixed 15% franchise fee
         
-        if (classData.admin_fee_type === 'percentage') {
-          summary.adminFee += (invoiceAmountPerBooking * (classData.admin_fee_value / 100));
-        } else {
-          summary.adminFee += classData.admin_fee_value;
-        }
-        
+        // For instructor fee, still use the class's configured value
         if (classData.trainer_fee_type === 'percentage') {
           summary.instructorFee += (invoiceAmountPerBooking * (classData.trainer_fee_value / 100));
         } else {
@@ -167,39 +160,33 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
         invoiceIds: unprocessedInvoiceIds
       };
       
-      // Use average fee percentages from other classes or default values
-      let avgAdminPercent = 10;
+      // Set fixed percentages for admin and franchise fees
+      generalSummary.totalRevenue = unprocessedInvoicesTotal;
+      generalSummary.adminFee = unprocessedInvoicesTotal * 0.10; // Fixed 10% admin fee
+      generalSummary.franchiseFee = unprocessedInvoicesTotal * 0.15; // Fixed 15% franchise fee
+      
+      // For trainer fees, use the average from other classes or a default
       let avgTrainerPercent = 30;
-      let avgFranchisePercent = 15;
       
       // Calculate averages if we have processed classes
       if (classSummaries.size > 0) {
-        let totalAdmin = 0;
         let totalTrainer = 0;
-        let totalFranchise = 0;
         let totalRevenue = 0;
         
         classSummaries.forEach(summary => {
           if (summary.totalRevenue > 0) {
-            totalAdmin += summary.adminFee;
             totalTrainer += summary.instructorFee;
-            totalFranchise += summary.franchiseFee;
             totalRevenue += summary.totalRevenue;
           }
         });
         
         if (totalRevenue > 0) {
-          avgAdminPercent = (totalAdmin / totalRevenue) * 100;
           avgTrainerPercent = (totalTrainer / totalRevenue) * 100;
-          avgFranchisePercent = (totalFranchise / totalRevenue) * 100;
         }
       }
       
-      // Apply average percentages to unprocessed revenue
-      generalSummary.totalRevenue = unprocessedInvoicesTotal;
-      generalSummary.adminFee = unprocessedInvoicesTotal * (avgAdminPercent / 100);
+      // Apply the average trainer percentage
       generalSummary.instructorFee = unprocessedInvoicesTotal * (avgTrainerPercent / 100);
-      generalSummary.franchiseFee = unprocessedInvoicesTotal * (avgFranchisePercent / 100);
       
       // Calculate profit
       generalSummary.profit = generalSummary.totalRevenue - 

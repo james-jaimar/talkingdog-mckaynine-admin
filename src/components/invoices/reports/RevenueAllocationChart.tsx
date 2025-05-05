@@ -23,6 +23,8 @@ export function RevenueAllocationChart({
   
   // Safely calculate percentages to avoid division by zero - using net revenue
   const safeTotal = totalRevenue || 1;
+  
+  // Calculate actual percentages based on the values
   const adminPercent = (fees.adminFee / safeTotal) * 100;
   const trainerPercent = (fees.trainerFee / safeTotal) * 100;
   const franchisePercent = (fees.franchiseFee / safeTotal) * 100;
@@ -43,11 +45,13 @@ export function RevenueAllocationChart({
     trainerFee: fees.trainerFee, 
     franchiseFee: fees.franchiseFee,
     profit: fees.profit,
-    adminPercent,
-    trainerPercent,
-    franchisePercent,
-    profitPercent,
-    totalPercent: adminPercent + trainerPercent + franchisePercent + profitPercent
+    adminPercent: adminPercent.toFixed(1) + '%',
+    trainerPercent: trainerPercent.toFixed(1) + '%',
+    franchisePercent: franchisePercent.toFixed(1) + '%',
+    profitPercent: profitPercent.toFixed(1) + '%',
+    totalPercent: (adminPercent + trainerPercent + franchisePercent + profitPercent).toFixed(1) + '%',
+    expectedAdmin: "10.0%",
+    expectedFranchise: "15.0%"
   });
   
   // Custom tooltip
