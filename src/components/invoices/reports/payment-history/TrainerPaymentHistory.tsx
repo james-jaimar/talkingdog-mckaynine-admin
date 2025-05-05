@@ -1,135 +1,422 @@
 
 import { useState } from "react";
-import { useTrainerPaymentHistory } from "@/hooks/useTrainerPaymentHistory";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { useQuery } from "@tanstack/react-query";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ExternalLink, FileText, Loader2 } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { supabase } from "@/integrations/supabase/client";
+import { format } from "date-fns";
 import { formatCurrency } from "@/lib/formatters";
-import { TrainerPaymentHistoryItem } from "@/hooks/trainer-payments/types";
-import { Link } from "react-router-dom"; // Changed from next/link to react-router-dom
-import { PaymentMethodBadge } from "../PaymentMethodBadge";
+import { ChevronRight, FileText, Loader2, RefreshCw } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { useIsMobile } from "@/hooks/useIsMobile";
+import { toast } from "sonner";
+
+interface TrainerPayment {
+  id: string;
+  trainer_id: string;
+  trainer_name: string;
+  payment_date: string;
+  amount: number;
+  payment_method: string;
+  transaction_id: string | null;
+  notes: string | null;
+  document_url: string | null;
+  document_name: string | null;
+}
 
 interface TrainerPaymentHistoryProps {
   limit?: number;
   showViewAll?: boolean;
 }
 
-export function TrainerPaymentHistory({ limit, showViewAll = false }: TrainerPaymentHistoryProps) {
-  const { data: payments = [], isLoading } = useTrainerPaymentHistory({ limit });
+export function TrainerPaymentHistory({ limit = 5, showViewAll = false }: TrainerPaymentHistoryProps) {
+  const [selectedPayment, setSelectedPayment] = useState<TrainerPayment | null>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [viewAll, setViewAll] = useState(!showViewAll);
+  const isMobile = useIsMobile();
+  
+  const fetchPaymentHistory = async () => {
+    console.log("Fetching trainer payment history");
+    
+    try {
+      // Get recent payments with trainer information
+      const query = supabase
+        .from('trainer_payments')
+        .select(`
+          id,
+          trainer_id,
+          payment_date,
+          payment_method,
+          transaction_id,
+          notes,
+          document_url,
+          document_name,
+          amount,
+          trainers (
+            first_name,
+            last_name
+          )
+        `)
+        .eq('status', 'paid')
+        .order('payment_date', { ascending: false });
+      
+      if (!viewAll) {
+        query.limit(limit);
+      }
+      
+      const { data, error } = await query;
+      
+      if (error) {
+        // Handle the case where document_url/document_name columns might not exist
+        if (error.message?.includes("column 'document_url' does not exist") ||
+            error.message?.includes("column 'document_name' does not exist")) {
+          console.log("Document URL columns don't exist yet. Using fallback query:", error.message);
+          
+          // Fall back to querying without the document columns
+          let fallbackQuery = supabase
+            .from('trainer_payments')
+            .select(`
+              id,
+              trainer_id,
+              payment_date,
+              payment_method,
+              transaction_id,
+              notes,
+              amount,
+              trainers (
+                first_name,
+                last_name
+              )
+            `)
+            .eq('status', 'paid')
+            .order('payment_date', { ascending: false });
+            
+          if (!viewAll) {
+            fallbackQuery = fallbackQuery.limit(limit);
+          }
+          
+          const { data: fallbackData, error: fallbackError } = await fallbackQuery;
+          
+          if (fallbackError) {
+            throw fallbackError;
+          }
+          
+          console.log("Payment history (fallback):", fallbackData);
+          
+          // Map the data to include null document fields
+          return (fallbackData || []).map(payment => ({
+            id: payment.id,
+            trainer_id: payment.trainer_id,
+            trainer_name: payment.trainers ? 
+              `${payment.trainers.first_name} ${payment.trainers.last_name}` : 
+              "Unknown",
+            payment_date: payment.payment_date,
+            amount: payment.amount || 0,
+            payment_method: payment.payment_method,
+            transaction_id: payment.transaction_id,
+            notes: payment.notes,
+            document_url: null, // Add missing fields with null values
+            document_name: null
+          }));
+        }
+        
+        // For other types of errors, throw them
+        console.error("Error fetching trainer payment history:", error);
+        throw error;
+      }
+      
+      console.log("Payment history:", data);
+      
+      if (!data) {
+        return [];
+      }
+      
+      // Format the data
+      return data.map(payment => ({
+        id: payment.id,
+        trainer_id: payment.trainer_id,
+        trainer_name: payment.trainers ? 
+          `${payment.trainers.first_name} ${payment.trainers.last_name}` : 
+          "Unknown",
+        payment_date: payment.payment_date,
+        amount: payment.amount || 0,
+        payment_method: payment.payment_method,
+        transaction_id: payment.transaction_id,
+        notes: payment.notes,
+        document_url: payment.document_url,
+        document_name: payment.document_name
+      }));
+    } catch (error) {
+      // Handle other general errors
+      console.error("Error fetching trainer payment history:", error);
+      toast.error("Failed to fetch payment history");
+      throw error;
+    }
+  };
+  
+  const { 
+    data: payments = [], 
+    isLoading, 
+    error, 
+    refetch,
+    isFetching 
+  } = useQuery({
+    queryKey: ['trainer-payment-history', limit, viewAll],
+    queryFn: fetchPaymentHistory,
+    refetchInterval: 15000, // Refresh every 15 seconds
+    staleTime: 5000 // Consider data stale after 5 seconds
+  });
 
-  const handleViewDocument = (documentUrl?: string) => {
-    if (documentUrl) {
-      window.open(documentUrl, "_blank");
+  const handleViewDetails = (payment: TrainerPayment) => {
+    setSelectedPayment(payment);
+    setDetailsOpen(true);
+  };
+  
+  const handleRefresh = () => {
+    refetch();
+    toast.success("Refreshing payment history");
+  };
+  
+  const formatPaymentMethod = (method: string) => {
+    if (!method) return 'N/A';
+    
+    switch(method) {
+      case 'bank_transfer': return 'Bank Transfer';
+      case 'cash': return 'Cash';
+      case 'check': return 'Check';
+      case 'other': return 'Other';
+      default: return method;
     }
   };
 
-  if (isLoading) {
+  // If there's an error with document_url column, we should inform the user
+  if (error && (error as any)?.message?.includes("column 'document_url' does not exist")) {
     return (
       <Card>
-        <CardHeader>
-          <CardTitle>Recent Payments</CardTitle>
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <CardTitle>Recent Trainer Payments</CardTitle>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleRefresh} 
+            disabled={isFetching}
+          >
+            <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
+            <span className="ml-2">Refresh</span>
+          </Button>
         </CardHeader>
-        <CardContent className="flex justify-center py-8">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (payments.length === 0) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Payments</CardTitle>
-        </CardHeader>
-        <CardContent className="text-center py-8">
-          <p className="text-muted-foreground">No payment records found.</p>
+        <CardContent>
+          <div className="text-center py-4">
+            <p className="text-amber-600 mb-2">Database update required</p>
+            <p className="text-muted-foreground">
+              Please run the SQL migration to add document storage columns to the trainer payments table.
+            </p>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleRefresh}
+              className="mt-2"
+            >
+              Try Again
+            </Button>
+          </div>
         </CardContent>
       </Card>
     );
   }
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Recent Payments</CardTitle>
-        {showViewAll && (
-          <Link to="/payment-documents">
-            <Button variant="outline" size="sm">
-              View All Documents
+    <>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <CardTitle>Recent Trainer Payments</CardTitle>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleRefresh}
+              disabled={isFetching}
+            >
+              <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
+              <span className="ml-2">Refresh</span>
             </Button>
-          </Link>
-        )}
-      </CardHeader>
-      <CardContent>
-        <div className="overflow-x-auto rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Class</TableHead>
-                <TableHead>Method</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
-                <TableHead className="text-right">Document</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {payments.map((payment) => (
-                <TableRow key={payment.id}>
-                  <TableCell>
-                    {payment.paymentDate ? new Date(payment.paymentDate).toLocaleDateString() : 'N/A'}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-col">
-                      <span>{payment.className}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {payment.classDate ? new Date(payment.classDate).toLocaleDateString() : 'N/A'}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <PaymentMethodBadge method={payment.paymentMethod} />
-                  </TableCell>
-                  <TableCell className="text-right font-medium">
-                    {formatCurrency(payment.amount)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {payment.documentUrl ? (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="flex items-center gap-2"
-                        onClick={() => handleViewDocument(payment.documentUrl)}
+            {showViewAll && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setViewAll(prev => !prev)}
+              >
+                {viewAll ? "Show Less" : "View All"}
+              </Button>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          {isLoading || isFetching ? (
+            <div className="flex justify-center p-4">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : payments && payments.length > 0 ? (
+            <div className="relative w-full overflow-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Trainer</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                    <TableHead className="text-right">Method</TableHead>
+                    {!isMobile && <TableHead>Document</TableHead>}
+                    <TableHead className="w-[50px]"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {payments.map(payment => (
+                    <TableRow key={payment.id}>
+                      <TableCell className="font-medium">{payment.trainer_name}</TableCell>
+                      <TableCell>
+                        {payment.payment_date ? 
+                          format(new Date(payment.payment_date), "MMM d, yyyy") : 
+                          "-"
+                        }
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {payment.amount > 0 
+                          ? formatCurrency(payment.amount) 
+                          : <span className="text-muted-foreground">Not specified</span>
+                        }
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {formatPaymentMethod(payment.payment_method)}
+                      </TableCell>
+                      {!isMobile && (
+                        <TableCell>
+                          {payment.document_url ? (
+                            <a 
+                              href={payment.document_url} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="flex items-center text-blue-500 hover:underline"
+                            >
+                              <FileText className="h-4 w-4 mr-1" />
+                              <span className="text-xs">View</span>
+                            </a>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">None</span>
+                          )}
+                        </TableCell>
+                      )}
+                      <TableCell>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                          onClick={() => handleViewDetails(payment)}
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                          <span className="sr-only">View details</span>
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <div className="text-center py-4">
+              <p className="text-muted-foreground">No payment history available</p>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleRefresh}
+                className="mt-2"
+              >
+                <RefreshCw className="h-4 w-4 mr-1" />
+                Check Again
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+      
+      {/* Payment Details Dialog */}
+      <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
+        <DialogContent className="sm:max-w-lg max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle>Payment Details</DialogTitle>
+          </DialogHeader>
+          
+          <ScrollArea className="max-h-[600px] pr-4">
+            {selectedPayment && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <h4 className="text-sm font-medium text-muted-foreground">Trainer</h4>
+                    <p className="text-base">{selectedPayment.trainer_name}</p>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-medium text-muted-foreground">Amount</h4>
+                    <p className="text-base font-semibold">
+                      {selectedPayment.amount > 0 
+                        ? formatCurrency(selectedPayment.amount)
+                        : <span className="text-muted-foreground">Not specified</span>
+                      }
+                    </p>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-medium text-muted-foreground">Payment Date</h4>
+                    <p className="text-base">
+                      {selectedPayment.payment_date ? 
+                        format(new Date(selectedPayment.payment_date), "PPP") : 
+                        "-"
+                      }
+                    </p>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-medium text-muted-foreground">Payment Method</h4>
+                    <p className="text-base">{formatPaymentMethod(selectedPayment.payment_method)}</p>
+                  </div>
+                </div>
+                
+                {selectedPayment.transaction_id && (
+                  <div>
+                    <h4 className="text-sm font-medium text-muted-foreground">Transaction ID</h4>
+                    <p className="text-base">{selectedPayment.transaction_id}</p>
+                  </div>
+                )}
+                
+                {selectedPayment.document_url && (
+                  <div>
+                    <h4 className="text-sm font-medium text-muted-foreground">Payment Document</h4>
+                    <div className="mt-1 border rounded-md p-3 bg-slate-50 flex items-center">
+                      <FileText className="h-5 w-5 text-blue-500 mr-2" />
+                      <a 
+                        href={selectedPayment.document_url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:underline"
                       >
-                        <FileText className="h-4 w-4" />
-                        <span className="hidden sm:inline">View</span>
-                      </Button>
-                    ) : (
-                      <Badge variant="outline" className="text-muted-foreground">
-                        N/A
-                      </Badge>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      </CardContent>
-    </Card>
+                        {selectedPayment.document_name || "Payment document.pdf"}
+                      </a>
+                    </div>
+                  </div>
+                )}
+                
+                {selectedPayment.notes && (
+                  <div>
+                    <h4 className="text-sm font-medium text-muted-foreground">Notes</h4>
+                    <div className="mt-1 border rounded-md p-3 bg-slate-50">
+                      <p className="text-sm whitespace-pre-wrap">{selectedPayment.notes}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

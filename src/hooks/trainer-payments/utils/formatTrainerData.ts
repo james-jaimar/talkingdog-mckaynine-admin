@@ -1,170 +1,216 @@
 
-import { 
-  Schedule, 
-  Booking, 
-  InvoiceItem,
-  TrainerPaymentData,
-  TrainerClassDetail,
-  BookingDetail
-} from "../types";
+import { TrainerPaymentData, TrainerClassDetail, Schedule, Booking, InvoiceItem } from "../types";
+import { calculateClassRevenue } from "./calculateTrainerFees";
 
 export function formatTrainerPaymentData(
-  trainer: any,
-  schedules: Schedule[],
-  bookings: Booking[],
-  invoiceItems: InvoiceItem[],
-  payments: any[]
+  trainer: { id: string; first_name: string; last_name: string; email?: string },
+  allSchedules: Schedule[],
+  bookings: Booking[] = [],
+  invoiceItems: InvoiceItem[] = [],
+  trainerPayments: any[] = []
 ): TrainerPaymentData {
-  // Initialize base trainer data
-  const result: TrainerPaymentData = {
-    id: trainer.id,
-    trainerName: `${trainer.first_name} ${trainer.last_name}`,
-    trainerEmail: trainer.email,
-    totalEarned: 0,
-    paid: 0,
-    pending: 0,
-    potentialEarnings: 0,
-    classesCount: schedules.length,
-    clients: 0,
-    classDetails: [],
-    hasUnpaidCommission: false,
-    hasZeroCommissionClasses: false
-  };
+  const allScheduleIds = allSchedules.map(s => s.id);
+  const uniqueClientIds = new Set(bookings?.map(b => b.client_id).filter(Boolean));
 
-  // Set of unique client IDs to count unique clients
-  const uniqueClientIds = new Set<string>();
+  // Track schedules with payment status
+  const schedulePaymentStatus = new Map<string, boolean>();
   
-  // Track the last payment date
-  let lastPaymentDate: Date | null = null;
-  
-  // Process each schedule
-  schedules.forEach(schedule => {
-    const className = schedule.classes?.name || 'Unknown class';
+  // First, populate the map with payment status from trainer_payments
+  trainerPayments.forEach(payment => {
+    if (payment.class_schedule_id) {
+      schedulePaymentStatus.set(
+        payment.class_schedule_id, 
+        payment.status === 'paid'
+      );
+    }
+  });
+
+  // Calculate totals from actual payments - these are the source of truth
+  const totalPaid = trainerPayments
+    .filter(payment => payment.status === 'paid' && payment.amount > 0)
+    .reduce((sum, payment) => sum + (payment.amount || 0), 0);
+
+  // Calculate pending amount from pending payments, filtering out zero-amount payments
+  const totalPending = trainerPayments
+    .filter(payment => payment.status === 'pending' && payment.amount > 0)
+    .reduce((sum, payment) => sum + (payment.amount || 0), 0);
+    
+  // Determine if there are any actual payments in the system
+  const hasActualPayments = trainerPayments && trainerPayments.length > 0;
+
+  // Find last payment date from actual payments
+  let lastPaymentDate: string | undefined;
+  const paidPayments = trainerPayments.filter(payment => payment.status === 'paid');
+  if (paidPayments.length > 0) {
+    const paymentDates = paidPayments
+      .map(payment => payment.payment_date)
+      .filter(Boolean) as string[];
+    if (paymentDates.length > 0) {
+      lastPaymentDate = new Date(Math.max(...paymentDates.map(d => new Date(d).getTime()))).toISOString();
+    }
+  }
+
+  // Group bookings by schedule ID for faster lookup
+  const bookingsBySchedule: Record<string, Booking[]> = {};
+  bookings.forEach(booking => {
+    const scheduleId = booking.class_schedule_id;
+    if (!scheduleId) return;
+    
+    if (!bookingsBySchedule[scheduleId]) {
+      bookingsBySchedule[scheduleId] = [];
+    }
+    bookingsBySchedule[scheduleId].push(booking);
+  });
+
+  // Map of paid schedule IDs from trainer_payments
+  const paidScheduleIds = new Set(
+    paidPayments
+      .filter(payment => payment.class_schedule_id)
+      .map(payment => payment.class_schedule_id)
+  );
+
+  // Map of schedule IDs that have payment entries with zero amounts
+  const zeroAmountScheduleIds = new Set(
+    trainerPayments
+      .filter(payment => payment.amount === 0 || payment.amount === 0.0)
+      .map(payment => payment.class_schedule_id)
+  );
+
+  // Track if this trainer has any zero-commission classes
+  let hasZeroCommissionClasses = false;
+  let totalCommission = 0; // Total earned commission across all classes
+
+  // Calculate class details and sum up earnings
+  const classDetails: TrainerClassDetail[] = allSchedules.map(schedule => {
+    const scheduleBookings = bookingsBySchedule[schedule.id] || [];
     const scheduleDate = new Date(schedule.start_time);
-    const formattedDate = scheduleDate.toLocaleDateString();
     
-    // Get bookings for this schedule
-    const scheduleBookings = bookings.filter(b => b.class_schedule_id === schedule.id);
+    // Check if this class has zero commission configured
+    const trainerFeeValue = schedule.classes?.trainer_fee_value;
+    const hasZeroCommission = trainerFeeValue === 0;
     
-    // Count unique clients from bookings
+    if (hasZeroCommission) {
+      hasZeroCommissionClasses = true;
+    }
+    
+    // Get all invoice items for this schedule's bookings
+    const scheduleInvoiceItems: InvoiceItem[] = [];
+    
     scheduleBookings.forEach(booking => {
-      if (booking.client_id) {
-        uniqueClientIds.add(booking.client_id);
-      } else if (booking.clients?.id) {
-        uniqueClientIds.add(booking.clients.id);
-      }
+      const items = invoiceItems.filter(item => item.booking_id === booking.id);
+      scheduleInvoiceItems.push(...items);
     });
-    
-    // Calculate revenue for this class
-    let schedulePotentialRevenue = 0;
-    let scheduleActualRevenue = 0;
-    
-    // Get details for all bookings in this schedule
-    const bookingsDetails: BookingDetail[] = [];
-    
-    // Check if zero commission is intended based on class settings
-    // A class has zero commission when trainer_fee_value is explicitly set to 0
-    const hasZeroCommission = 
-      schedule.classes?.trainer_fee_type === 'percentage' && schedule.classes?.trainer_fee_value === 0 ||
-      schedule.classes?.trainer_fee_type === 'fixed' && schedule.classes?.trainer_fee_value === 0;
-    
-    // Only calculate commission if not zero-commission class
+
+    // Calculate revenue for this class based on NET amounts (using invoice totals)
+    const revenueDetails = calculateClassRevenue(
+      scheduleBookings, 
+      schedule, 
+      scheduleInvoiceItems
+    );
+
+    // A class is considered paid if we have it in the paidScheduleIds set from trainer_payments
+    const classIsPaid = paidScheduleIds.has(schedule.id);
+
+    // Only add to total commission if not a zero-commission class
     if (!hasZeroCommission) {
-      // Process bookings and invoice items
-      scheduleBookings.forEach(booking => {
-        // Find invoice items for this booking
-        const bookingInvoiceItems = invoiceItems.filter(ii => ii.booking_id === booking.id);
-        
-        if (bookingInvoiceItems.length > 0) {
-          const totalAmount = bookingInvoiceItems.reduce((sum, item) => sum + item.amount, 0);
-          schedulePotentialRevenue += totalAmount;
-          
-          // Check if the invoice is paid
-          const isPaid = bookingInvoiceItems.some(ii => 
-            ii.invoices && ii.invoices.status === 'paid'
-          );
-          
-          if (isPaid) {
-            scheduleActualRevenue += totalAmount;
-          }
-          
-          // Add booking details
-          bookingsDetails.push({
-            bookingId: booking.id,
-            clientId: booking.client_id || booking.clients?.id || '',
-            handlerName: `${booking.client?.first_name || booking.clients?.first_name || ''} ${booking.client?.last_name || booking.clients?.last_name || ''}`.trim(),
-            commissionAmount: totalAmount
-          });
-        }
-      });
-    }
-    
-    // Get payment records for this schedule
-    const schedulePayments = payments.filter(p => p.class_schedule_id === schedule.id);
-    const isPaid = schedulePayments.some(p => p.status === 'paid');
-    
-    // Only consider it a zero amount payment issue if:
-    // 1. It has zero amount payments
-    // 2. It's NOT supposed to have zero commission (important distinction!)
-    const hasZeroAmountPayment = 
-      schedulePayments.some(p => p.amount === 0 || p.amount === 0.0) && 
-      !hasZeroCommission;
-    
-    // Track last payment date
-    if (isPaid && schedulePayments.length > 0) {
-      const paymentDates = schedulePayments
-        .filter(p => p.payment_date)
-        .map(p => new Date(p.payment_date));
-      
-      if (paymentDates.length > 0) {
-        const maxDate = new Date(Math.max.apply(null, paymentDates.map(d => d.getTime())));
-        if (!lastPaymentDate || maxDate > lastPaymentDate) {
-          lastPaymentDate = maxDate;
-        }
+      if (classIsPaid) {
+        totalCommission += revenueDetails.revenue;
+      } else {
+        totalCommission += revenueDetails.potentialRevenue;
       }
     }
     
-    // Add class detail to result
-    result.classDetails.push({
+    // Check if this schedule has a payment record with zero amount
+    // We'll only flag it as having a "zero amount payment" if it's not supposed to have zero commission
+    const hasZeroAmountPayment = !hasZeroCommission && zeroAmountScheduleIds.has(schedule.id);
+
+    // Build booking details for this class with actual client names
+    const bookingsDetails = scheduleBookings.map(booking => {
+      // Use the client's first and last name when available
+      let clientName = 'Unnamed Client';
+      
+      if (booking.client) {
+        const firstName = booking.client.first_name || '';
+        const lastName = booking.client.last_name || '';
+        if (firstName || lastName) {
+          clientName = `${firstName} ${lastName}`.trim();
+        }
+      } else if (booking.clients) {
+        // Fallback to clients property if client is not available
+        const firstName = booking.clients.first_name || '';
+        const lastName = booking.clients.last_name || '';
+        if (firstName || lastName) {
+          clientName = `${firstName} ${lastName}`.trim();
+        }
+      }
+        
+      // Calculate individual commission - either actual or potential
+      const perBookingCommission = scheduleBookings.length > 0 
+        ? revenueDetails.potentialRevenue / scheduleBookings.length 
+        : 0;
+        
+      return {
+        bookingId: booking.id,
+        clientId: booking.client_id || '',
+        handlerName: clientName,
+        commissionAmount: perBookingCommission
+      };
+    });
+
+    return {
       scheduleId: schedule.id,
-      className,
-      classDate: formattedDate,
+      className: schedule.classes?.name || 'Unknown Class',
+      classDate: schedule.start_time,
       scheduleDate,
+      revenue: revenueDetails.revenue,
+      potentialRevenue: revenueDetails.potentialRevenue,
       bookings: scheduleBookings.length,
-      revenue: scheduleActualRevenue,
-      potentialRevenue: schedulePotentialRevenue,
-      isPaid,
+      isPaid: classIsPaid,
       hasZeroAmountPayment,
       hasZeroCommission,
       bookingsDetails
-    });
-    
-    // Update totals
-    result.potentialEarnings += schedulePotentialRevenue;
-    
-    if (isPaid) {
-      result.totalEarned += scheduleActualRevenue;
-      result.paid += scheduleActualRevenue;
-    } else {
-      result.pending += scheduleActualRevenue;
-      if (scheduleActualRevenue > 0) {
-        result.hasUnpaidCommission = true;
-      }
-    }
-    
-    // Track if there are any zero commission classes
-    if (hasZeroCommission) {
-      result.hasZeroCommissionClasses = true;
-    }
+    };
   });
+
+  // Calculate pending amount properly
+  let pendingAmount = 0;
   
-  // Set unique clients count
-  result.clients = uniqueClientIds.size;
+  // Get all unpaid class details
+  const unpaidClassDetails = classDetails.filter(cls => !cls.isPaid && !cls.hasZeroCommission);
   
-  // Set last payment date if any
-  if (lastPaymentDate) {
-    result.lastPaymentDate = lastPaymentDate.toISOString();
+  // Sum up the potential revenue for unpaid classes
+  pendingAmount = unpaidClassDetails.reduce((sum, cls) => sum + cls.potentialRevenue, 0);
+  
+  // Make sure pending amount is accurate by checking for zero-amount payments
+  // These represent a special case where the payment record exists but has an incorrect amount
+  const zeroAmountPaymentClasses = classDetails.filter(cls => cls.hasZeroAmountPayment);
+  if (zeroAmountPaymentClasses.length > 0) {
+    // Add the potential revenue for classes with zero-amount payments
+    pendingAmount += zeroAmountPaymentClasses.reduce((sum, cls) => sum + cls.potentialRevenue, 0);
   }
+
+  // Calculate if this trainer has unpaid amounts (used for status display)
+  const hasUnpaidCommission = pendingAmount > 0;
   
-  return result;
+  // Ensure total commission matches the sum of paid + pending
+  const totalEarned = hasActualPayments ? totalPaid : totalCommission - pendingAmount;
+
+  return {
+    id: trainer.id,
+    trainerName: `${trainer.first_name} ${trainer.last_name}`,
+    trainerEmail: trainer.email,
+    totalEarned: totalCommission,
+    paid: totalPaid,
+    pending: pendingAmount,
+    potentialEarnings: totalCommission, // Same as totalEarned for consistency
+    classesCount: allSchedules.length,
+    clients: uniqueClientIds.size,
+    lastPaymentDate,
+    scheduleIds: allScheduleIds,
+    hasUnpaidCommission,
+    hasZeroCommissionClasses,
+    classDetails: classDetails.sort((a, b) => 
+      new Date(a.classDate).getTime() - new Date(b.classDate).getTime()
+    )
+  };
 }

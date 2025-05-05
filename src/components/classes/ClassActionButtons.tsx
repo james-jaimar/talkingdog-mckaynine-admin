@@ -22,15 +22,12 @@ export function ClassActionButtons({ classId, onEdit }: ClassActionButtonsProps)
   const { isOpen, setIsOpen, onClose } = useDropdownState();
 
   const handleSchedulesClick = () => {
-    console.log(`Navigating to schedules for class ID: ${classId}`);
-    // Make sure we're using the correct URL format
+    // Update to use the proper URL format that ClassSchedules component expects
     navigate(`/classes/${classId}/schedules`);
     onClose();
   };
 
   const handleHandlersClick = () => {
-    console.log(`Navigating to handlers for class ID: ${classId}`);
-    // Make sure we're using the correct URL format
     navigate(`/class/${classId}/handlers`);
     onClose();
   };

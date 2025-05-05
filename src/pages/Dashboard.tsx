@@ -7,13 +7,12 @@ import { StatsCard } from "@/components/dashboard/StatsCard";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
 import { Users, Dog, Book, Calendar } from "lucide-react";
 import { useTerm } from "@/context/TermContext";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Helmet } from "react-helmet";
 
 export default function Dashboard() {
   const { currentBranch } = useBranch();
   const { termData, isTermLoading, selectedTermNumber, selectedYear } = useTerm();
-  const [lastTermId, setLastTermId] = useState<string | null>(null);
   
   const {
     clientCount,
@@ -26,21 +25,13 @@ export default function Dashboard() {
 
   // Fetch stats when component mounts or term changes
   useEffect(() => {
-    const currentTermId = termData?.id || null;
-    
-    // Only refetch if the term actually changed
-    if (currentTermId !== lastTermId) {
-      console.log("Dashboard detected term change, refetching stats", {
-        termId: termData?.id,
-        termNumber: selectedTermNumber,
-        year: selectedYear,
-        lastTermId
-      });
-      
-      refetchAllStats();
-      setLastTermId(currentTermId);
-    }
-  }, [termData?.id, selectedTermNumber, selectedYear, refetchAllStats, lastTermId]);
+    console.log("Dashboard detected term change, refetching stats", {
+      termId: termData?.id,
+      termNumber: selectedTermNumber,
+      year: selectedYear
+    });
+    refetchAllStats();
+  }, [termData?.id, selectedTermNumber, selectedYear, refetchAllStats]);
 
   // Determine if we're in a loading state
   const isLoading = isTermLoading || statsLoading;

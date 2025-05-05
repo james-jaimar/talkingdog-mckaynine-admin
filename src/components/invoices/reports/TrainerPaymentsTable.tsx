@@ -33,15 +33,13 @@ interface TrainerPaymentsTableProps {
   onMarkForPayment: (trainerId: string) => void;
   onMarkAsUnpaid?: (trainerId: string) => void;
   onFixZeroAmounts?: (trainerId: string) => void;
-  isProcessing?: boolean;
 }
 
 export function TrainerPaymentsTable({ 
   trainers, 
   onMarkForPayment, 
   onMarkAsUnpaid,
-  onFixZeroAmounts,
-  isProcessing = false
+  onFixZeroAmounts
 }: TrainerPaymentsTableProps) {
   console.log("TrainerPaymentsTable rendering with trainers:", trainers);
   
@@ -51,24 +49,14 @@ export function TrainerPaymentsTable({
   // Check if any trainers have actual paid amounts
   const anyActualPayments = trainers.some(t => t.paid > 0);
   
-  // Check for trainers with zero commission (those we don't want to flag as needing fixes)
+  // Check if any trainers have zero amount payments
+  const anyZeroAmountPayments = trainers.some(t => t.hasZeroAmountPayments);
+  
+  // Check for trainers with zero commission
   const anyZeroCommissionTrainers = trainers.some(t => 
     t.hasZeroCommissionClasses && 
-    t.totalEarned === 0 && t.potentialEarnings === 0
+    (t.pending === 0 && t.paid === 0 && t.potentialEarnings === 0)
   );
-  
-  // Check if any trainers have zero amount payments that need fixing
-  // Improved logic: Only flag trainers who have zero amounts BUT are NOT zero commission trainers
-  const anyZeroAmountPayments = trainers.some(t => {
-    // Check if this trainer has payments that need fixing
-    const needsFixes = t.hasZeroAmountPayments;
-    
-    // Only consider it needing fixes if:
-    // 1. It has zero amount payments flagged
-    // 2. It's NOT a zero commission trainer (important filter)
-    return needsFixes && 
-      !(t.hasZeroCommissionClasses && t.totalEarned === 0 && t.potentialEarnings === 0);
-  });
   
   if (!trainers || trainers.length === 0) {
     return (
@@ -137,7 +125,6 @@ export function TrainerPaymentsTable({
                 onMarkForPayment={onMarkForPayment}
                 onMarkAsUnpaid={onMarkAsUnpaid}
                 onFixZeroAmounts={onFixZeroAmounts}
-                isProcessing={isProcessing}
               />
             ))}
           </TableBody>

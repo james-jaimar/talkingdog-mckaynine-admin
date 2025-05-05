@@ -37,15 +37,9 @@ export function DateRangePicker({ dateRange, onDateRangeChange, className }: Dat
 
   // Handle selection complete
   const handleSelection = (range: DateRange) => {
-    // Ensure range.to is set (use range.from as fallback)
-    const completeRange = {
-      from: range.from,
-      to: range.to || range.from
-    };
-    
-    setDate(completeRange);
-    if (range.from) {
-      onDateRangeChange(completeRange);
+    setDate(range);
+    if (range.from && range.to) {
+      onDateRangeChange(range);
       setIsCalendarOpen(false);
     }
   };

@@ -1,108 +1,113 @@
 
-import React from "react";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { formatCurrency } from "@/lib/formatters";
-import { TrainerClassDetail } from "@/hooks/useTrainerPaymentData";
+import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { MoreHorizontal } from "lucide-react";
 import { ExtendedBadge } from "@/components/ui/badge-variants";
-import { Loader2 } from "lucide-react";
 
-interface ClassDetailsListProps {
-  classDetails: TrainerClassDetail[];
-  trainerId: string;
-  onMarkForPayment: (trainerId: string) => void;
-  onMarkAsUnpaid?: (trainerId: string) => void;
-  isProcessing?: boolean;
+interface ClassDetail {
+  scheduleId: string;
+  className: string;
+  classDate: string;
+  bookings: number;
+  revenue: number;
+  potentialRevenue: number;
+  isPaid: boolean;
+  hasZeroAmountPayment?: boolean;
+  hasZeroCommission?: boolean;
 }
 
-export function ClassDetailsList({ 
-  classDetails, 
-  trainerId, 
-  onMarkForPayment,
-  onMarkAsUnpaid,
-  isProcessing = false
-}: ClassDetailsListProps) {
+interface ClassDetailsListProps {
+  classDetails: ClassDetail[];
+  trainerId: string;
+  onMarkForPayment: (trainerId: string, scheduleId?: string) => void;
+  onMarkAsUnpaid?: (trainerId: string) => void;
+}
+
+export function ClassDetailsList({ classDetails, trainerId, onMarkForPayment, onMarkAsUnpaid }: ClassDetailsListProps) {
+  if (!classDetails || classDetails.length === 0) {
+    return (
+      <div className="text-center py-4 text-muted-foreground">
+        No class details available
+      </div>
+    );
+  }
+  
+  // Sort by class date (oldest first)
+  const sortedDetails = [...classDetails].sort((a, b) => 
+    new Date(a.classDate).getTime() - new Date(b.classDate).getTime()
+  );
+  
   return (
     <div className="overflow-x-auto rounded-md border">
       <Table>
         <TableHeader>
           <TableRow>
             <TableHead>Class Name</TableHead>
-            <TableHead className="text-right">Date</TableHead>
-            <TableHead className="text-right">Commission</TableHead>
-            <TableHead className="text-center">Clients</TableHead>
+            <TableHead>Date</TableHead>
+            <TableHead className="text-center">Bookings</TableHead>
+            <TableHead className="text-right">Revenue</TableHead>
             <TableHead className="text-right">Status</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {classDetails.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={5} className="text-center py-4 text-muted-foreground">
-                No class details available
+          {sortedDetails.map((detail) => (
+            <TableRow key={detail.scheduleId}>
+              <TableCell>{detail.className}</TableCell>
+              <TableCell>
+                {new Date(detail.classDate).toLocaleDateString()}
+              </TableCell>
+              <TableCell className="text-center">{detail.bookings}</TableCell>
+              <TableCell className="text-right">
+                {detail.hasZeroCommission ? (
+                  <span className="text-muted-foreground">N/A</span>
+                ) : (
+                  formatCurrency(detail.isPaid ? detail.potentialRevenue : detail.potentialRevenue)
+                )}
+              </TableCell>
+              <TableCell className="text-right">
+                {detail.hasZeroCommission ? (
+                  <ExtendedBadge variant="blue">No Commission</ExtendedBadge>
+                ) : detail.isPaid ? (
+                  <ExtendedBadge variant="green">Paid</ExtendedBadge>
+                ) : detail.hasZeroAmountPayment ? (
+                  <ExtendedBadge variant="amber">Zero Amount</ExtendedBadge>
+                ) : (
+                  <ExtendedBadge variant="amber">Unpaid</ExtendedBadge>
+                )}
+              </TableCell>
+              <TableCell className="text-right">
+                {detail.hasZeroCommission ? (
+                  <span className="text-muted-foreground">N/A</span>
+                ) : (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem 
+                        onClick={() => onMarkForPayment(trainerId, detail.scheduleId)}
+                      >
+                        {detail.isPaid ? 'Update Payment' : 'Mark as Paid'}
+                      </DropdownMenuItem>
+                      {detail.isPaid && onMarkAsUnpaid && (
+                        <DropdownMenuItem 
+                          className="text-red-600" 
+                          onClick={() => onMarkAsUnpaid(trainerId)}
+                        >
+                          Mark as Unpaid
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
               </TableCell>
             </TableRow>
-          ) : (
-            classDetails.map((cls) => {
-              const hasZeroCommission = cls.hasZeroCommission;
-              
-              return (
-                <TableRow key={cls.scheduleId}>
-                  <TableCell>
-                    <span className="font-medium">{cls.className}</span>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {new Date(cls.classDate).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {hasZeroCommission ? (
-                      <span className="text-muted-foreground">N/A</span>
-                    ) : (
-                      formatCurrency(cls.potentialRevenue)
-                    )}
-                  </TableCell>
-                  <TableCell className="text-center">{cls.bookings}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      {hasZeroCommission ? (
-                        <ExtendedBadge variant="blue">No Commission</ExtendedBadge>
-                      ) : cls.isPaid ? (
-                        <>
-                          <ExtendedBadge variant="green">Paid</ExtendedBadge>
-                          {!isProcessing && onMarkAsUnpaid && (
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              className="h-7 text-red-600 hover:text-red-700 hover:bg-red-50"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onMarkAsUnpaid(trainerId);
-                              }}
-                              disabled={isProcessing}
-                            >
-                              {isProcessing ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                'Mark Unpaid'
-                              )}
-                            </Button>
-                          )}
-                        </>
-                      ) : (
-                        <ExtendedBadge variant="amber">Payment Due</ExtendedBadge>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              );
-            })
-          )}
+          ))}
         </TableBody>
       </Table>
     </div>

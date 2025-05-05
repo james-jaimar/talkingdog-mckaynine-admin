@@ -59,13 +59,12 @@ export default function FinancialReports() {
     }
   }, [termData?.id]);
 
-  // Function to refresh all financial data with more aggressive cache invalidation
+  // Function to refresh all financial data
   const refreshFinancialData = () => {
     // Invalidate all relevant queries first
     queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
     queryClient.invalidateQueries({ queryKey: ['classes-list-data'] });
     queryClient.invalidateQueries({ queryKey: ['trainer-payments'] });
-    queryClient.invalidateQueries({ queryKey: ['invoices'] });
     
     // Then refresh invoice data
     refreshAllInvoiceQueries();
@@ -99,14 +98,6 @@ export default function FinancialReports() {
               dateRange={dateRange} 
               onDateRangeChange={handleDateRangeChange} 
             />
-          </div>
-          
-          {/* Debug info - display term and date range */}
-          <div className="mb-4 text-sm text-muted-foreground">
-            <p>
-              Current term: {termData?.term_number || 'None'} | 
-              Date range: {dateRange.from.toLocaleDateString()} to {dateRange.to.toLocaleDateString()}
-            </p>
           </div>
 
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">

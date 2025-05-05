@@ -1,5 +1,4 @@
-
-import { Home, Calendar, Users, FileText, BarChart2, Settings, UserPlus, Building, Dog, Map, AlertCircle, FileArchive } from "lucide-react";
+import { Home, Calendar, Users, FileText, BarChart2, Settings, UserPlus, Building, Dog, Map, AlertCircle } from "lucide-react";
 
 export const adminNavItems = [
   {
@@ -33,10 +32,6 @@ export const adminNavItems = [
   {
     title: "Financial Reports",
     href: "/financial-reports",
-  },
-  {
-    title: "Payment Documents",
-    href: "/payment-documents",
   },
   {
     title: "Users",
@@ -88,11 +83,6 @@ export const adminSecondaryNavItems = [
     name: "Financial Reports",
     path: "/financial-reports",
     icon: BarChart2
-  },
-  {
-    name: "Payment Documents",
-    path: "/payment-documents",
-    icon: FileArchive
   },
   {
     name: "Users",

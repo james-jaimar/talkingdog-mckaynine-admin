@@ -1,3 +1,4 @@
+
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,88 +13,49 @@ interface ClassesScheduledProps {
 
 export function ClassesScheduled({ branchId }: ClassesScheduledProps) {
   const isMobile = useIsMobile();
-  const { termData, selectedYear, selectedTermNumber } = useTerm();
+  const { termData } = useTerm();
 
   const { data: classes, isLoading } = useQuery({
-    queryKey: ['upcoming-classes', branchId, termData?.id, selectedYear, selectedTermNumber],
+    queryKey: ['upcoming-classes', branchId, termData?.id],
     queryFn: async () => {
       // Don't fetch data if no branch is selected
       if (!branchId) return [];
       
-      try {
-        // Use today's date as the default start date
-        const startDate = new Date().toISOString();
-        
-        // Build the query with branch filter and date range
-        let query = supabase
-          .from('class_schedules')
-          .select(`
-            id,
-            start_time,
-            term_id,
-            term_number,
-            academic_year,
-            selected_dates,
-            classes!inner(
-              name,
-              class_type,
-              branch_id
-            ),
-            trainers(
-              first_name,
-              last_name,
-              avatar_url
-            )
-          `)
-          .eq('classes.branch_id', branchId)
-          .gte('start_time', startDate);
-        
-        // Apply term filtering
-        if (termData?.id && !termData.id.startsWith('default')) {
-          // If we have a specific term ID, filter by it
-          query = query.eq('term_id', termData.id);
-        } else if (selectedTermNumber && selectedYear) {
-          // Otherwise filter by term number and academic year
-          query = query
-            .eq('term_number', selectedTermNumber)
-            .eq('academic_year', selectedYear);
-        }
-        
-        const { data: schedulesData, error: schedulesError } = await query
-          .order('start_time', { ascending: true })
-          .limit(5);
-        
-        if (schedulesError) {
-          console.error('Error fetching class schedules:', schedulesError);
-          throw schedulesError;
-        }
-        
-        // If term date range is available but no specific term ID, filter schedules by date
-        if (termData?.start_date && termData?.end_date && (!termData.id || termData.id.startsWith('default'))) {
-          const termStart = new Date(termData.start_date);
-          const termEnd = new Date(termData.end_date);
-          
-          return schedulesData.filter(schedule => {
-            // Check if the schedule has dates within our term range
-            if (schedule.selected_dates && schedule.selected_dates.length) {
-              return schedule.selected_dates.some(dateStr => {
-                const scheduleDate = new Date(dateStr);
-                return scheduleDate >= termStart && scheduleDate <= termEnd;
-              });
-            }
-            
-            // If no selected_dates, use start_time
-            const scheduleStart = new Date(schedule.start_time);
-            return scheduleStart >= termStart && scheduleStart <= termEnd;
-          });
-        }
-        
-        console.log(`Found ${schedulesData?.length || 0} upcoming classes`);
-        return schedulesData || [];
-      } catch (error) {
-        console.error('Error in upcoming classes query:', error);
-        throw error;
+      // Use today's date as the default start date
+      const startDate = new Date().toISOString();
+      
+      // Build the query with branch filter and date range
+      let query = supabase
+        .from('class_schedules')
+        .select(`
+          id,
+          start_time,
+          term_id,
+          classes!inner(
+            name,
+            class_type,
+            branch_id
+          ),
+          trainers(
+            first_name,
+            last_name,
+            avatar_url
+          )
+        `)
+        .eq('classes.branch_id', branchId)
+        .gte('start_time', startDate);
+      
+      // Add term filter if a term is selected
+      if (termData?.id) {
+        query = query.eq('term_id', termData.id);
       }
+      
+      const { data, error } = await query
+        .order('start_time', { ascending: true })
+        .limit(5);
+      
+      if (error) throw error;
+      return data;
     },
     enabled: !!branchId,
     staleTime: 30 * 1000, // Cache for 30 seconds

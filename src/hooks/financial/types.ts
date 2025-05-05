@@ -1,3 +1,4 @@
+
 // Update the FinancialData type to include invoices
 export interface FinancialData {
   bookingsWithInvoices: BookingWithSchedule[];
@@ -7,20 +8,6 @@ export interface FinancialData {
   invoiceItems: InvoiceItemWithInvoice[];
   invoices: InvoiceData[];
 }
-
-// Add the missing FinancialBookingData interface
-export interface FinancialBookingData {
-  bookings: any[]; // This is actually BookingWithSchedule[] but might need type adjustment
-  totalRevenue: number;
-  uniqueClients: number;
-  uniqueHandlers: number;
-  uniqueSchedules: number;
-  branchId: string;
-  fromDate: string;
-  toDate: string;
-}
-
-// ... keep existing code (BookingWithSchedule, ClassFinance, etc.)
 
 export interface BookingWithSchedule {
   id: string;
@@ -40,7 +27,6 @@ export interface BookingWithSchedule {
   };
 }
 
-// ... keep existing code (all other interfaces)
 export interface ClassFinance {
   className: string;
   totalRevenue: number;

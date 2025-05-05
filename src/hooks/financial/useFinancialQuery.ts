@@ -1,197 +1,180 @@
-import { useQuery } from "@tanstack/react-query";
+
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { FinancialBookingData, InvoiceItemWithInvoice } from "./types";
+import { FinancialData } from "./types";
 
 export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?: string) {
+  const queryClient = useQueryClient();
+  const invoicesKey = ['invoices', branchId];
+  const invoicesData = queryClient.getQueryData(invoicesKey);
+
   return useQuery({
-    queryKey: ['financial-bookings', branchId, fromDate, toDate],
-    queryFn: async (): Promise<FinancialBookingData> => {
-      if (!branchId) {
-        return {
-          bookings: [],
-          totalRevenue: 0,
-          uniqueClients: 0,
-          uniqueHandlers: 0,
-          uniqueSchedules: 0,
-          branchId: '',
-          fromDate: '',
-          toDate: ''
-        };
+    queryKey: ['financial-bookings', branchId, fromDate, toDate, invoicesData],
+    queryFn: async () => {
+      if (!branchId) return {
+        bookingsWithInvoices: [],
+        allInvoicesCount: 0,
+        invalidInvoicesCount: 0,
+        totalRevenue: 0,
+        invoiceItems: [],
+        invoices: []
+      } as FinancialData;
+
+      console.log(`Fetching financial data for branch ${branchId} from ${fromDate} to ${toDate}`);
+
+      // Get all valid invoices for this branch - directly using the invoices table
+      let invoicesQuery = supabase
+        .from('invoices')
+        .select(`
+          id,
+          total, 
+          status,
+          client_id,
+          issued_date,
+          client:client_id (branch_id)
+        `)
+        .eq('client.branch_id', branchId)
+        .in('status', ['sent', 'paid', 'overdue']);
+
+      if (fromDate && toDate) {
+        invoicesQuery = invoicesQuery.gte('issued_date', fromDate).lte('issued_date', toDate);
       }
-      
-      console.log(`Fetching financial data for branch: ${branchId} from ${fromDate} to ${toDate}`);
-      
-      try {
-        // Improved query to explicitly handle classes that span multiple terms
-        let query = supabase
-          .from('class_schedules')
-          .select(`
-            id,
-            start_time,
-            end_time,
-            selected_dates,
-            term_id,
-            term_number,
-            academic_year,
-            classes!inner(
+
+      const { data: invoices, error: invoicesError } = await invoicesQuery;
+
+      if (invoicesError) {
+        console.error("Error fetching invoices:", invoicesError);
+        throw invoicesError;
+      }
+
+      // Calculate total revenue directly from invoices total column
+      const totalRevenueFromInvoices = invoices?.reduce((sum, inv) => sum + (inv.total || 0), 0) || 0;
+
+      // Set up query for confirmed bookings with their class information
+      let query = supabase
+        .from('bookings')
+        .select(`
+          id,
+          payment_status,
+          class_schedules:class_schedule_id (
+            classes:class_id (
               id,
               name,
-              class_type,
               course_fee,
-              enrollment_fee,
-              mckaynine_commission_type,
               mckaynine_commission_value,
-              admin_fee_type,
+              mckaynine_commission_type,
               admin_fee_value,
-              trainer_fee_type,
-              trainer_fee_value
-            ),
-            bookings!class_schedule_id(
-              id,
-              payment_status,
-              clients!inner(
-                id,
-                first_name,
-                last_name
-              ),
-              invoice_items(
-                id,
-                amount,
-                invoice_id,
-                invoices:invoice_id(
-                  id,
-                  status,
-                  payment_date,
-                  issued_date,
-                  total,
-                  subtotal,
-                  discount_amount,
-                  tax_amount,
-                  tax_rate
-                )
-              )
+              admin_fee_type,
+              trainer_fee_value,
+              trainer_fee_type
             )
-          `)
-          .eq('classes.branch_id', branchId);
-          
-        // Add date filtering conditionally with improved filter logic
-        if (fromDate && toDate) {
-          // This improved filter will include schedules that overlap with our date range in any way:
-          // 1. Start within the range OR
-          // 2. End within the range OR
-          // 3. Have any selected_dates that fall within the range OR
-          // 4. Span the entire range (start before and end after)
-          query = query.or(`start_time.gte.${fromDate},end_time.lte.${toDate},selected_dates.cs.{${fromDate},${toDate}},and(start_time.lte.${fromDate},end_time.gte.${toDate})`);
-        }
-        
-        const { data, error } = await query;
-        
-        if (error) {
-          console.error('Error fetching financial bookings data:', error);
-          throw error;
-        }
-        
-        console.log(`Got ${data?.length || 0} schedule records from the database query`);
-        
-        // Post-process the data to keep only class sessions within our date range
-        const filteredSchedules = data
-          .filter(schedule => {
-            // If no date range is provided, keep all schedules
-            if (!fromDate || !toDate) return true;
-            
-            // Check if schedule period overlaps with date range
-            const scheduleStart = new Date(schedule.start_time);
-            const scheduleEnd = new Date(schedule.end_time);
-            const fromDateObj = new Date(fromDate);
-            const toDateObj = new Date(toDate);
-            
-            // Case 1: Schedule starts within the range
-            if (scheduleStart >= fromDateObj && scheduleStart <= toDateObj) {
-              return true;
-            }
-            
-            // Case 2: Schedule ends within the range
-            if (scheduleEnd >= fromDateObj && scheduleEnd <= toDateObj) {
-              return true;
-            }
-            
-            // Case 3: Schedule spans the entire range
-            if (scheduleStart <= fromDateObj && scheduleEnd >= toDateObj) {
-              return true;
-            }
-            
-            // Case 4: Check if any selected_dates fall within the date range
-            if (schedule.selected_dates && schedule.selected_dates.length > 0) {
-              return schedule.selected_dates.some(dateStr => {
-                const classDate = new Date(dateStr);
-                return classDate >= fromDateObj && classDate <= toDateObj;
-              });
-            }
-            
-            return false;
-          })
-          .map(schedule => {
-            // If we're filtering by date, only include selected_dates within the range
-            if (fromDate && toDate && schedule.selected_dates?.length > 0) {
-              const fromDateObj = new Date(fromDate);
-              const toDateObj = new Date(toDate);
-              
-              return {
-                ...schedule,
-                selected_dates: schedule.selected_dates.filter(dateStr => {
-                  const classDate = new Date(dateStr);
-                  return classDate >= fromDateObj && classDate <= toDateObj;
-                })
-              };
-            }
-            
-            return schedule;
-          });
-        
-        console.log(`Filtered to ${filteredSchedules.length} schedules within date range`);
-        
-        // Calculate revenue metrics
-        let totalRevenue = 0;
-        const uniqueClientIds = new Set<string>();
-        const uniqueScheduleIds = new Set<string>();
-        
-        filteredSchedules.forEach(schedule => {
-          if (schedule.bookings) {
-            schedule.bookings.forEach(booking => {
-              if (booking.clients?.id) {
-                uniqueClientIds.add(booking.clients.id);
-              }
-              
-              // Sum up revenue from paid invoices
-              booking.invoice_items?.forEach(item => {
-                if (item.invoices?.status === 'paid') {
-                  totalRevenue += item.amount || 0;
-                }
-              });
-            });
-          }
-          uniqueScheduleIds.add(schedule.id);
-        });
-        
-        console.log(`Financial metrics: Revenue=${totalRevenue}, Clients=${uniqueClientIds.size}, Schedules=${uniqueScheduleIds.size}`);
-        
-        return {
-          bookings: filteredSchedules,
-          totalRevenue,
-          uniqueClients: uniqueClientIds.size,
-          uniqueHandlers: uniqueClientIds.size, // Clients and handlers are 1:1 in this system
-          uniqueSchedules: uniqueScheduleIds.size,
-          branchId,
-          fromDate: fromDate || '',
-          toDate: toDate || ''
-        };
-      } catch (error) {
-        console.error('Error in useFinancialQuery:', error);
-        throw error;
+          )
+        `)
+        .eq('class_schedules.classes.branch_id', branchId)
+        .eq('status', 'confirmed');
+
+      if (fromDate && toDate) {
+        query = query.gte('created_at', fromDate).lte('created_at', toDate);
       }
+
+      const { data: bookings, error: bookingsError } = await query;
+
+      if (bookingsError) {
+        console.error("Error fetching booking data for financial report:", bookingsError);
+        throw bookingsError;
+      }
+
+      // Get invoice items with full invoice details - we'll still need this to link invoices to bookings
+      let invoiceItemsQuery = supabase
+        .from('invoice_items')
+        .select(`
+          id,
+          invoice_id,
+          booking_id,
+          amount,
+          unit_price,
+          quantity,
+          description,
+          invoices:invoice_id (
+            id,
+            status,
+            payment_received,
+            total,
+            subtotal,
+            tax_amount,
+            client_id,
+            issued_date,
+            invoice_number,
+            client:client_id (
+              branch_id
+            )
+          )
+        `)
+        .in('invoices.status', ['sent', 'paid', 'overdue']);
+
+      if (fromDate && toDate) {
+        invoiceItemsQuery = invoiceItemsQuery.gte('invoices.issued_date', fromDate)
+          .lte('invoices.issued_date', toDate);
+      }
+
+      const { data: invoiceItems, error: invoiceItemsError } = await invoiceItemsQuery;
+
+      if (invoiceItemsError) {
+        console.error("Error fetching invoice items:", invoiceItemsError);
+        throw invoiceItemsError;
+      }
+
+      // Get invalid invoices count
+      let invalidQuery = supabase
+        .from('invoices')
+        .select('id, client:client_id (branch_id)', { count: 'exact' })
+        .eq('status', 'invalid')
+        .eq('client.branch_id', branchId);
+
+      if (fromDate && toDate) {
+        invalidQuery = invalidQuery.gte('issued_date', fromDate).lte('issued_date', toDate);
+      }
+
+      const { count: invalidCount, error: invalidError } = await invalidQuery;
+
+      if (invalidError) {
+        console.error("Error counting invalid invoices:", invalidError);
+      }
+
+      // Get all invoices count
+      let countQuery = supabase
+        .from('invoices')
+        .select('id, client:client_id (branch_id)', { count: 'exact' })
+        .eq('client.branch_id', branchId)
+        .in('status', ['sent', 'paid', 'overdue']);
+
+      if (fromDate && toDate) {
+        countQuery = countQuery.gte('issued_date', fromDate).lte('issued_date', toDate);
+      }
+
+      const { count: allInvoicesCount, error: countError } = await countQuery;
+
+      if (countError) {
+        console.error("Error counting invoices:", countError);
+      }
+
+      // Cast the result to FinancialData to ensure TypeScript compatibility
+      const result: FinancialData = {
+        bookingsWithInvoices: bookings || [],
+        allInvoicesCount: allInvoicesCount || 0,
+        invalidInvoicesCount: invalidCount || 0,
+        totalRevenue: totalRevenueFromInvoices,
+        invoiceItems: invoiceItems?.filter(item => 
+          item.invoices?.client?.branch_id === branchId
+        ) || [],
+        invoices: invoices || []
+      };
+      
+      return result;
     },
     enabled: !!branchId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    refetchOnWindowFocus: false
+    staleTime: 30000,
+    refetchOnWindowFocus: true,
+    gcTime: 10 * 60 * 1000,
   });
 }

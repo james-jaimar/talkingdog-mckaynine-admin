@@ -1,216 +1,194 @@
 
 import { useMemo } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer
+} from "recharts";
+import { format, subMonths, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
 import { Invoice } from "@/hooks/invoices/types";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { useInvoices } from "@/hooks/useInvoices";
 import { formatCurrency } from "@/lib/formatters";
-import { Loader2 } from "lucide-react";
-import { startOfMonth, endOfMonth, eachMonthOfInterval, format, isWithinInterval } from "date-fns";
 
 interface InvoiceRevenueChartProps {
-  invoices: Invoice[];
+  invoices?: Invoice[];
   timeframe: 'monthly' | 'quarterly' | 'yearly';
-  termDateRange?: { 
-    startDate: string;
-    endDate: string;
-  };
-  isLoading?: boolean;
+  termDateRange?: { startDate: string; endDate: string; } | null;
 }
 
-export function InvoiceRevenueChart({ invoices, timeframe, termDateRange, isLoading = false }: InvoiceRevenueChartProps) {
-  const chartData = useMemo(() => {
-    // Log incoming parameters
-    console.log("InvoiceRevenueChart - rendering with params:", {
-      invoicesCount: invoices.length,
-      timeframe,
-      termStartDate: termDateRange?.startDate,
-      termEndDate: termDateRange?.endDate
+export function InvoiceRevenueChart({
+  invoices: propsInvoices,
+  timeframe,
+  termDateRange
+}: InvoiceRevenueChartProps) {
+  // If invoices aren't passed as props, fetch them
+  const { invoices: fetchedInvoices } = useInvoices();
+  const invoices = propsInvoices?.length ? propsInvoices : fetchedInvoices;
+  
+  // Filter only valid invoice statuses (sent, paid, overdue)
+  const validInvoices = invoices?.filter(invoice => 
+    invoice.status === 'sent' || invoice.status === 'paid' || invoice.status === 'overdue'
+  ) || [];
+  
+  // Log the total revenue from invoices for debugging
+  const totalInvoiceRevenue = validInvoices.reduce((sum, inv) => sum + (inv.total || 0), 0);
+  console.log(`InvoiceRevenueChart - Total revenue from ${validInvoices.length} invoices: ${totalInvoiceRevenue}`);
+  
+  // Filter by term date range if provided
+  const filteredInvoices = useMemo(() => {
+    if (!termDateRange) return validInvoices;
+    
+    return validInvoices.filter(invoice => {
+      const invoiceDate = new Date(invoice.issued_date);
+      const startDate = new Date(termDateRange.startDate);
+      const endDate = new Date(termDateRange.endDate);
+      
+      return isWithinInterval(invoiceDate, { start: startDate, end: endDate });
     });
-    
-    if (isLoading || !invoices?.length) return [];
+  }, [validInvoices, termDateRange]);
 
-    let dateRange;
+  // Generate chart data based on timeframe
+  const chartData = useMemo(() => {
+    if (!filteredInvoices.length) return [];
+
+    // Get the time range based on timeframe
+    const now = new Date();
+    let months = 6; // Default for monthly view
     
-    // Use term date range if available, otherwise use last 6 months
-    if (termDateRange?.startDate && termDateRange?.endDate) {
-      dateRange = {
-        start: new Date(termDateRange.startDate),
-        end: new Date(termDateRange.endDate)
-      };
-    } else {
-      const end = new Date();
-      const start = new Date();
-      start.setMonth(start.getMonth() - 6);
-      dateRange = { start, end };
+    if (timeframe === 'quarterly') {
+      months = 12; // Show 4 quarters (12 months)
+    } else if (timeframe === 'yearly') {
+      months = 24; // Show 2 years
     }
     
-    console.log("InvoiceRevenueChart - using date range:", dateRange);
-    
-    // Generate month intervals for the chart
-    const months = eachMonthOfInterval(dateRange);
-    
-    // Initialize data for each month
-    const monthlyData = months.map(month => {
-      const startOfMonthDate = startOfMonth(month);
-      const endOfMonthDate = endOfMonth(month);
+    // Create an array of month data points
+    const dataPoints = [];
+    for (let i = months - 1; i >= 0; i--) {
+      const date = subMonths(now, i);
+      const startDate = startOfMonth(date);
+      const endDate = endOfMonth(date);
       
-      // Filter invoices for this month
-      const monthInvoices = invoices.filter(invoice => {
+      // Monthly format is just the month name
+      const monthLabel = format(date, 'MMM');
+      
+      // For quarterly, group by quarter
+      const quarterLabel = timeframe === 'quarterly' 
+        ? `Q${Math.floor(date.getMonth() / 3) + 1} ${date.getFullYear()}` 
+        : monthLabel;
+        
+      // For yearly, just show the year
+      const yearLabel = timeframe === 'yearly' 
+        ? date.getFullYear().toString() 
+        : quarterLabel;
+        
+      // Choose the appropriate label based on timeframe
+      const label = timeframe === 'monthly' 
+        ? monthLabel 
+        : timeframe === 'quarterly' 
+          ? quarterLabel 
+          : yearLabel;
+      
+      // Calculate revenue for this period
+      const periodInvoices = filteredInvoices.filter(invoice => {
         const invoiceDate = new Date(invoice.issued_date);
-        return isWithinInterval(invoiceDate, {
-          start: startOfMonthDate,
-          end: endOfMonthDate
-        });
+        return invoiceDate >= startDate && invoiceDate <= endDate;
       });
       
-      // Calculate revenue for this month
-      const totalRevenue = monthInvoices.reduce((sum, inv) => sum + inv.total, 0);
-      const paidRevenue = monthInvoices
-        .filter(inv => inv.status === 'paid')
-        .reduce((sum, inv) => sum + inv.total, 0);
-      const pendingRevenue = monthInvoices
-        .filter(inv => inv.status === 'sent')
-        .reduce((sum, inv) => sum + inv.total, 0);
-      const overdueRevenue = monthInvoices
-        .filter(inv => inv.status === 'overdue')
-        .reduce((sum, inv) => sum + inv.total, 0);
+      const revenue = periodInvoices.reduce((sum, invoice) => sum + invoice.total, 0);
+      const paidRevenue = periodInvoices
+        .filter(invoice => invoice.status === 'paid')
+        .reduce((sum, invoice) => sum + invoice.total, 0);
       
-      return {
-        name: format(month, 'MMM yyyy'),
-        totalRevenue,
-        paidRevenue,
-        pendingRevenue,
-        overdueRevenue,
-        month: format(month, 'yyyy-MM')
-      };
-    });
-    
-    console.log("InvoiceRevenueChart - generated monthly data:", monthlyData);
-    
-    // If timeframe is quarterly or yearly, aggregate the monthly data
-    if (timeframe === 'quarterly') {
-      const quarterlyData = monthlyData.reduce((quarters, month) => {
-        const date = new Date(month.month + '-01');
-        const quarter = Math.floor(date.getMonth() / 3) + 1;
-        const year = date.getFullYear();
-        const key = `${year}-Q${quarter}`;
-        
-        if (!quarters[key]) {
-          quarters[key] = {
-            name: `Q${quarter} ${year}`,
-            totalRevenue: 0,
-            paidRevenue: 0,
-            pendingRevenue: 0,
-            overdueRevenue: 0
-          };
-        }
-        
-        quarters[key].totalRevenue += month.totalRevenue;
-        quarters[key].paidRevenue += month.paidRevenue;
-        quarters[key].pendingRevenue += month.pendingRevenue;
-        quarters[key].overdueRevenue += month.overdueRevenue;
-        
-        return quarters;
-      }, {} as Record<string, any>);
-      
-      return Object.values(quarterlyData);
-    } else if (timeframe === 'yearly') {
-      const yearlyData = monthlyData.reduce((years, month) => {
-        const year = new Date(month.month + '-01').getFullYear().toString();
-        
-        if (!years[year]) {
-          years[year] = {
-            name: year,
-            totalRevenue: 0,
-            paidRevenue: 0,
-            pendingRevenue: 0,
-            overdueRevenue: 0
-          };
-        }
-        
-        years[year].totalRevenue += month.totalRevenue;
-        years[year].paidRevenue += month.paidRevenue;
-        years[year].pendingRevenue += month.pendingRevenue;
-        years[year].overdueRevenue += month.overdueRevenue;
-        
-        return years;
-      }, {} as Record<string, any>);
-      
-      return Object.values(yearlyData);
+      dataPoints.push({
+        name: label,
+        revenue,
+        paidRevenue
+      });
     }
     
-    return monthlyData;
-  }, [invoices, timeframe, termDateRange, isLoading]);
+    // For quarterly and yearly views, consolidate the data points
+    if (timeframe !== 'monthly') {
+      const consolidatedData: Record<string, {name: string; revenue: number; paidRevenue: number}> = {};
+      
+      dataPoints.forEach(point => {
+        if (!consolidatedData[point.name]) {
+          consolidatedData[point.name] = {
+            name: point.name,
+            revenue: 0,
+            paidRevenue: 0
+          };
+        }
+        
+        consolidatedData[point.name].revenue += point.revenue;
+        consolidatedData[point.name].paidRevenue += point.paidRevenue;
+      });
+      
+      return Object.values(consolidatedData);
+    }
+    
+    return dataPoints;
+  }, [filteredInvoices, timeframe]);
 
-  if (isLoading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Revenue Trends</CardTitle>
-        </CardHeader>
-        <CardContent className="h-80 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (chartData.length === 0) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Revenue Trends</CardTitle>
-        </CardHeader>
-        <CardContent className="h-80 flex items-center justify-center">
-          <p className="text-muted-foreground">No data available for the selected period</p>
-        </CardContent>
-      </Card>
-    );
-  }
+  // Custom tooltip
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-white p-2 border rounded shadow">
+          <p className="font-semibold">{label}</p>
+          <p className="text-green-600">Total: {formatCurrency(payload[0].value)}</p>
+          <p className="text-blue-600">Paid: {formatCurrency(payload[1].value)}</p>
+        </div>
+      );
+    }
+    return null;
+  };
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Revenue Trends</CardTitle>
+        <CardTitle>Revenue Over Time</CardTitle>
       </CardHeader>
-      <CardContent className="h-80">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={chartData}>
+      <CardContent>
+        <ResponsiveContainer width="100%" height={300}>
+          <AreaChart
+            data={chartData}
+            margin={{
+              top: 10,
+              right: 30,
+              left: 0,
+              bottom: 0,
+            }}
+          >
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="name" />
-            <YAxis tickFormatter={(value) => `${value / 1000}k`} />
-            <Tooltip formatter={(value: number) => formatCurrency(value)} />
-            <Legend />
-            <Line 
-              type="monotone" 
-              dataKey="totalRevenue" 
-              name="Total Revenue" 
-              stroke="#8884d8" 
-              activeDot={{ r: 8 }}
-              strokeWidth={2}
+            <YAxis 
+              tickFormatter={(value) => 
+                value === 0 ? '0' : `R${(value / 1000).toFixed(0)}k`
+              }
             />
-            <Line 
-              type="monotone" 
-              dataKey="paidRevenue" 
-              name="Collected Revenue" 
-              stroke="#10b981" 
-              strokeWidth={2}
+            <Tooltip content={<CustomTooltip />} />
+            <Area
+              type="monotone"
+              dataKey="revenue"
+              stackId="1"
+              stroke="#8884d8"
+              fill="rgba(136, 132, 216, 0.6)"
+              name="Total Revenue"
             />
-            <Line 
-              type="monotone" 
-              dataKey="pendingRevenue" 
-              name="Pending Revenue" 
-              stroke="#f59e0b" 
-              strokeWidth={2}
+            <Area
+              type="monotone"
+              dataKey="paidRevenue"
+              stackId="2"
+              stroke="#82ca9d"
+              fill="rgba(130, 202, 157, 0.6)"
+              name="Paid Revenue"
             />
-            <Line 
-              type="monotone" 
-              dataKey="overdueRevenue" 
-              name="Overdue Revenue" 
-              stroke="#ef4444" 
-              strokeWidth={2}
-            />
-          </LineChart>
+          </AreaChart>
         </ResponsiveContainer>
       </CardContent>
     </Card>

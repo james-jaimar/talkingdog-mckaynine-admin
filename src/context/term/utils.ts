@@ -1,84 +1,53 @@
 
-import { TERM_STORAGE_KEY, TermNumber } from "./types";
+import { TermNumber } from './types';
+import { startOfDay, endOfDay } from 'date-fns';
 
-/**
- * Gets stored term selection data from localStorage
- */
-export function getStoredTermData(): { year: number; termNumber: TermNumber } {
+// Get current term number based on month
+export const getCurrentTermNumber = (): TermNumber => {
+  const month = new Date().getMonth() + 1; // getMonth() returns 0-11
+  if (month <= 3) return '1';
+  if (month <= 6) return '2';
+  if (month <= 9) return '3';
+  return '4';
+};
+
+// Helper to get stored term data from localStorage
+export const getStoredTermData = () => {
   try {
-    const savedData = localStorage.getItem(TERM_STORAGE_KEY);
-    if (!savedData) {
-      return { 
-        year: new Date().getFullYear(), 
-        termNumber: "1" 
+    const storedData = localStorage.getItem('mckaynine-selected-term');
+    if (storedData) {
+      const parsed = JSON.parse(storedData);
+      return {
+        year: parsed.year || new Date().getFullYear(),
+        termNumber: parsed.termNumber || getCurrentTermNumber()
       };
     }
-    
-    let parsed;
-    try {
-      parsed = JSON.parse(savedData);
-    } catch (e) {
-      console.error('Invalid JSON in term storage, resetting', e);
-      localStorage.removeItem(TERM_STORAGE_KEY);
-      return { 
-        year: new Date().getFullYear(), 
-        termNumber: "1" 
-      };
-    }
-    
-    // Validate year is a number and within reasonable range
-    let year = typeof parsed.year === 'number' ? parsed.year : new Date().getFullYear();
-    if (year < 2020 || year > 2030) {
-      year = new Date().getFullYear();
-    }
-    
-    // Validate termNumber is valid
-    let termNumber: TermNumber = "1";
-    if (parsed.term && ["1", "2", "3", "4"].includes(parsed.term)) {
-      termNumber = parsed.term as TermNumber;
-    } else if (parsed.termNumber && ["1", "2", "3", "4"].includes(parsed.termNumber)) {
-      termNumber = parsed.termNumber as TermNumber;
-    }
-    
-    return { year, termNumber };
-  } catch (e) {
-    console.error('Error parsing stored term data', e);
-    return { 
-      year: new Date().getFullYear(), 
-      termNumber: "1" 
-    };
+  } catch (error) {
+    // Silent failure, don't log here
+  }
+  return { 
+    year: new Date().getFullYear(), 
+    termNumber: getCurrentTermNumber() 
+  };
+};
+
+// Helper to get start and end months for each term
+export function getTermMonths(termNumber: TermNumber): [number, number] {
+  switch(termNumber) {
+    case '1': return [0, 2];   // Jan, Feb, Mar
+    case '2': return [3, 5];   // Apr, May, Jun
+    case '3': return [6, 8];   // Jul, Aug, Sep
+    case '4': return [9, 11];  // Oct, Nov, Dec
   }
 }
 
-/**
- * Calculate term date range based on term number and year
- */
-export function calculateTermDateRange(year: number, termNumber: TermNumber) {
-  switch (termNumber) {
-    case "1":
-      return {
-        startDate: `${year}-01-01`,
-        endDate: `${year}-03-31`
-      };
-    case "2":
-      return {
-        startDate: `${year}-04-01`,
-        endDate: `${year}-06-30`
-      };
-    case "3":
-      return {
-        startDate: `${year}-07-01`,
-        endDate: `${year}-09-30`
-      };
-    case "4":
-      return {
-        startDate: `${year}-10-01`,
-        endDate: `${year}-12-31`
-      };
-    default:
-      return {
-        startDate: `${year}-01-01`,
-        endDate: `${year}-12-31`
-      };
-  }
-}
+// Helper to calculate term date range
+export const calculateTermDateRange = (
+  year: number, 
+  termNumber: TermNumber
+): { startDate: string; endDate: string } => {
+  const [startMonth, endMonth] = getTermMonths(termNumber);
+  const startDate = startOfDay(new Date(year, startMonth, 1)).toISOString();
+  const endDate = endOfDay(new Date(year, endMonth + 1, 0)).toISOString();
+  return { startDate, endDate };
+};

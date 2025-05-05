@@ -13,34 +13,22 @@ import { useClassFinancialData } from "@/hooks/useClassFinancialData";
 import { useTerm } from "@/context/TermContext";
 import { useInvoices } from "@/hooks/useInvoices";
 import { useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { RefreshCw } from "lucide-react";
-import { toast } from "sonner";
 
 export default function FinancialDashboard() {
   const [timeframe, setTimeframe] = useState<'monthly' | 'quarterly' | 'yearly'>('monthly');
   const { currentBranch } = useBranch();
   const { termDateRange, termData } = useTerm();
-  const { invoices, refreshAllInvoiceQueries } = useInvoices();
+  const { invoices } = useInvoices();
   const queryClient = useQueryClient();
-  
-  // Use effect to refresh data when component mounts
-  useEffect(() => {
-    console.log('FinancialDashboard: Component mounted, refreshing data');
-    refreshFinancialData();
-  }, []);
   
   // Use effect to refresh data when term changes
   useEffect(() => {
     if (termData?.id) {
       console.log(`FinancialDashboard: Term data changed, refreshing financial data for term ${termData.term_number}`);
-      refreshFinancialData();
+      queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
     }
-  }, [termData?.id]);
-  
-  // Format date range for query params if available
-  const fromDate = termDateRange?.startDate ? new Date(termDateRange.startDate).toISOString() : undefined;
-  const toDate = termDateRange?.endDate ? new Date(termDateRange.endDate).toISOString() : undefined;
+  }, [termData?.id, queryClient]);
   
   // Get all active invoices - filtering to only show relevant statuses
   const activeInvoices = invoices.filter(inv => 
@@ -57,14 +45,7 @@ export default function FinancialDashboard() {
       })
     : activeInvoices;
   
-  // Use the class financial data hook to get accurate financial information for the current term
-  const { 
-    classFinances, 
-    isLoading,
-    refreshData: refreshClassFinancialData
-  } = useClassFinancialData(currentBranch?.id, fromDate, toDate);
-  
-  // Calculate revenue metrics directly from invoices
+  // Calculate revenue metrics directly from invoices using total (already includes discounts)
   const totalRevenue = termFilteredInvoices.reduce((sum, inv) => sum + inv.total, 0);
   const collectedRevenue = termFilteredInvoices
     .filter(inv => inv.status === 'paid')
@@ -76,22 +57,23 @@ export default function FinancialDashboard() {
     .filter(inv => inv.status === 'overdue')
     .reduce((sum, inv) => sum + inv.total, 0);
   
-  // Calculate all financial metrics from class finances
+  // Format date range for query params if available
+  const fromDate = termDateRange?.startDate ? new Date(termDateRange.startDate).toISOString() : undefined;
+  const toDate = termDateRange?.endDate ? new Date(termDateRange.endDate).toISOString() : undefined;
+  
+  // Use the class financial data hook to get accurate financial information for the current term
+  const { 
+    classFinances, 
+    isLoading
+  } = useClassFinancialData(currentBranch?.id, fromDate, toDate);
+  
+  // Calculate all financial metrics from class finances - using the NET revenue in all calculations
   const totalAdmin = classFinances.reduce((sum, item) => sum + item.adminFee, 0);
   const totalTrainer = classFinances.reduce((sum, item) => sum + item.instructorFee, 0);
   const totalFranchise = classFinances.reduce((sum, item) => sum + item.franchiseFee, 0);
   
-  // Calculate profit as revenue minus all fees
+  // Calculate profit as NET revenue minus all fees
   const profit = totalRevenue - totalAdmin - totalTrainer - totalFranchise;
-
-  // Function to refresh all financial data with aggressive invalidation
-  const refreshFinancialData = () => {
-    queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
-    queryClient.invalidateQueries({ queryKey: ['invoices'] });
-    refreshAllInvoiceQueries();
-    refreshClassFinancialData();
-    toast.success("Financial data refreshed");
-  };
   
   // Debug the calculated values
   console.log("Financial Dashboard calculations:", {
@@ -116,7 +98,7 @@ export default function FinancialDashboard() {
     overdueRevenue
   };
 
-  // Expense breakdown data
+  // Expense breakdown data - all based on NET revenue
   const expenseData = {
     totalAdmin,
     totalTrainer,
@@ -136,33 +118,14 @@ export default function FinancialDashboard() {
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-3xl font-bold">Financial Dashboard</h1>
             
-            <div className="flex items-center gap-4">
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={refreshFinancialData}
-                disabled={isLoading}
-              >
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Refresh Data
-              </Button>
-              
-              <Tabs value={timeframe} onValueChange={(value) => setTimeframe(value as any)} className="w-fit">
-                <TabsList>
-                  <TabsTrigger value="monthly">Monthly</TabsTrigger>
-                  <TabsTrigger value="quarterly">Quarterly</TabsTrigger>
-                  <TabsTrigger value="yearly">Yearly</TabsTrigger>
-                </TabsList>
-              </Tabs>
-            </div>
+            <Tabs value={timeframe} onValueChange={(value) => setTimeframe(value as any)} className="w-fit">
+              <TabsList>
+                <TabsTrigger value="monthly">Monthly</TabsTrigger>
+                <TabsTrigger value="quarterly">Quarterly</TabsTrigger>
+                <TabsTrigger value="yearly">Yearly</TabsTrigger>
+              </TabsList>
+            </Tabs>
           </div>
-
-          {/* Term info display */}
-          {termData && (
-            <div className="mb-4 text-sm text-muted-foreground">
-              <p>Current term: {termData.term_number} | {termDateRange?.startDate.split('T')[0]} to {termDateRange?.endDate.split('T')[0]}</p>
-            </div>
-          )}
 
           {/* Financial metrics cards */}
           <FinancialMetricsCards 

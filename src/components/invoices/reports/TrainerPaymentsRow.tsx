@@ -7,7 +7,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ExtendedBadge } from "@/components/ui/badge-variants";
 import { formatCurrency } from "@/lib/formatters";
-import { ChevronDown, ChevronUp, Wrench, Loader2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Wrench } from "lucide-react";
 import { TrainerClassDetail } from "@/hooks/useTrainerPaymentData";
 import { ClassDetailsList } from "./class-details/ClassDetailsList";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -32,7 +32,6 @@ interface TrainerPaymentsRowProps {
   onMarkForPayment: (trainerId: string) => void;
   onMarkAsUnpaid?: (trainerId: string) => void;
   onFixZeroAmounts?: (trainerId: string) => void;
-  isProcessing?: boolean;
   index: number;
 }
 
@@ -41,32 +40,19 @@ export function TrainerPaymentsRow({
   onMarkForPayment, 
   onMarkAsUnpaid, 
   onFixZeroAmounts,
-  isProcessing = false,
   index 
 }: TrainerPaymentsRowProps) {
   const [expanded, setExpanded] = useState(false);
 
-  const toggleExpand = () => {
-    if (!isProcessing) {
-      setExpanded((prev) => !prev);
-    }
-  };
+  const toggleExpand = () => setExpanded((prev) => !prev);
 
   const hasClassDetails = trainer.classDetails && trainer.classDetails.length > 0;
   const classesCount = trainer.classesCount || 0;
   const classDetailsShown = trainer.classDetails?.length || 0;
   
   // Handle trainers with zero commission classes
-  // A trainer is considered a zero commission trainer if:
-  // 1. They have zero commission classes flag
-  // 2. AND they have no actual earnings (both paid and pending are 0)
-  // 3. AND they have no potential earnings
-  const isZeroCommissionTrainer = 
-    trainer.hasZeroCommissionClasses && 
-    trainer.paid === 0 && 
-    trainer.pending === 0 && 
-    (!trainer.potentialEarnings || trainer.potentialEarnings === 0) &&
-    trainer.totalEarned === 0;
+  const isZeroCommissionTrainer = trainer.hasZeroCommissionClasses && 
+                                 (trainer.pending === 0 && trainer.paid === 0 && trainer.potentialEarnings === 0);
   
   // Determine status based on payment amounts
   const hasActualPayments = trainer.paid > 0;
@@ -75,24 +61,19 @@ export function TrainerPaymentsRow({
   return (
     <>
       <TableRow 
-        className={hasClassDetails && !isProcessing ? "cursor-pointer hover:bg-muted/60" : 
-                 isProcessing ? "opacity-70" : ""}
-        onClick={hasClassDetails && !isProcessing ? toggleExpand : undefined}
+        className={hasClassDetails ? "cursor-pointer hover:bg-muted/60" : ""}
+        isEven={index % 2 === 0}
+        onClick={hasClassDetails ? toggleExpand : undefined}
       >
         <TableCell className="flex items-center gap-2">
           {hasClassDetails && (
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="p-0 h-6 w-6"
-              disabled={isProcessing}
-            >
+            <Button variant="ghost" size="sm" className="p-0 h-6 w-6">
               {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             </Button>
           )}
           <span className="font-medium">{trainer.trainerName}</span>
           
-          {trainer.hasZeroAmountPayments && !isZeroCommissionTrainer && (
+          {trainer.hasZeroAmountPayments && (
             <ExtendedBadge variant="amber" className="ml-1">
               <Wrench className="h-3 w-3 mr-1" />
               Fix Needed
@@ -147,15 +128,10 @@ export function TrainerPaymentsRow({
         <TableCell className="text-right">
           {isZeroCommissionTrainer ? (
             <Button variant="outline" size="sm" disabled>N/A</Button>
-          ) : isProcessing ? (
-            <Button variant="outline" size="sm" disabled>
-              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-              Processing...
-            </Button>
           ) : hasActualPayments && !hasPendingAmount ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" disabled={isProcessing}>
+                <Button variant="outline" size="sm">
                   Actions <MoreHorizontal className="ml-1 h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -177,7 +153,7 @@ export function TrainerPaymentsRow({
                     Mark as Unpaid
                   </DropdownMenuItem>
                 )}
-                {onFixZeroAmounts && trainer.hasZeroAmountPayments && !isZeroCommissionTrainer && (
+                {onFixZeroAmounts && trainer.hasZeroAmountPayments && (
                   <DropdownMenuItem 
                     className="text-amber-600" 
                     onClick={(e) => {
@@ -199,7 +175,6 @@ export function TrainerPaymentsRow({
                 e.stopPropagation();
                 onMarkForPayment(trainer.id);
               }}
-              disabled={isProcessing}
             >
               Mark for Payment
             </Button>
@@ -217,7 +192,6 @@ export function TrainerPaymentsRow({
                 onMarkForPayment={onMarkForPayment}
                 trainerId={trainer.id}
                 onMarkAsUnpaid={onMarkAsUnpaid}
-                isProcessing={isProcessing}
               />
             </div>
           </TableCell>

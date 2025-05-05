@@ -7,6 +7,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, Calendar, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 export function TermSelectorRow() {
   const {
@@ -27,28 +28,18 @@ export function TermSelectorRow() {
   
   const handleYearChange = (value: string) => {
     setSelectedYear(parseInt(value));
-    
-    // Force invalidate queries when changing years
-    setTimeout(() => {
-      queryClient.invalidateQueries({ queryKey: ['term'] });
-      queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
-      queryClient.invalidateQueries({ queryKey: ['classes'] });
-      queryClient.invalidateQueries({ queryKey: ['invoices'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
-    }, 100);
+    toast.info(`Changing year to ${value}`, { duration: 2000 });
   };
 
   const handleTermChange = (value: string) => {
     if (value === '1' || value === '2' || value === '3' || value === '4') {
       setSelectedTermNumber(value as '1' | '2' | '3' | '4');
+      toast.info(`Changing to Term ${value}`, { duration: 2000 });
       
-      // Force invalidate all related queries when changing terms
+      // Force invalidate financial queries when changing terms
       setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ['term'] });
         queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
-        queryClient.invalidateQueries({ queryKey: ['classes'] });
         queryClient.invalidateQueries({ queryKey: ['invoices'] });
-        queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       }, 100);
     }
   };
@@ -56,11 +47,9 @@ export function TermSelectorRow() {
   const handleManualRefresh = () => {
     if (refetchTerm) {
       refetchTerm();
-      queryClient.invalidateQueries({ queryKey: ['term'] });
       queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
-      queryClient.invalidateQueries({ queryKey: ['classes'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      toast.success("Term data refreshed");
     }
   };
 
@@ -127,9 +116,9 @@ export function TermSelectorRow() {
                 <SelectTrigger className="w-[120px] bg-white text-gray-800">
                   <SelectValue placeholder="Select year" />
                 </SelectTrigger>
-                <SelectContent className="bg-white">
+                <SelectContent>
                   {years.map((year) => (
-                    <SelectItem key={`year-${year}`} value={year.toString()}>
+                    <SelectItem key={year} value={year.toString()}>
                       {year}
                     </SelectItem>
                   ))}
@@ -146,9 +135,9 @@ export function TermSelectorRow() {
                 <SelectTrigger className="w-[120px] bg-white text-gray-800">
                   <SelectValue placeholder="Select term" />
                 </SelectTrigger>
-                <SelectContent className="bg-white">
+                <SelectContent>
                   {terms.map((term) => (
-                    <SelectItem key={`term-${term}`} value={term}>
+                    <SelectItem key={term} value={term}>
                       Term {term}
                     </SelectItem>
                   ))}

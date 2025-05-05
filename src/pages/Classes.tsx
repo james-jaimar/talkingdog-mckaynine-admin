@@ -7,32 +7,9 @@ import { AddClassModal } from "@/components/classes/AddClassModal";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { Helmet } from "react-helmet";
-import { useBranch } from "@/context/BranchContext";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
-import { ErrorBoundary } from 'react-error-boundary';
-
-function ErrorFallback({ error, resetErrorBoundary }: { error: Error; resetErrorBoundary: () => void }) {
-  return (
-    <Alert variant="destructive" className="mb-6">
-      <AlertCircle className="h-4 w-4" />
-      <AlertDescription>
-        <div>Something went wrong: {error.message}</div>
-        <Button 
-          variant="outline" 
-          className="mt-4"
-          onClick={resetErrorBoundary}
-        >
-          Try again
-        </Button>
-      </AlertDescription>
-    </Alert>
-  );
-}
 
 export default function Classes() {
   const [isAddClassModalOpen, setIsAddClassModalOpen] = useState(false);
-  const { currentBranch } = useBranch();
 
   return (
     <DashboardLayout>
@@ -48,32 +25,15 @@ export default function Classes() {
           </Button>
         </div>
 
-        {!currentBranch ? (
-          <Alert variant="warning" className="bg-amber-50 border-amber-200 mb-6">
-            <AlertCircle className="h-4 w-4 text-amber-600" />
-            <AlertDescription className="text-amber-800">
-              Please select a branch to view and manage classes
-            </AlertDescription>
-          </Alert>
-        ) : (
-          <ErrorBoundary
-            FallbackComponent={ErrorFallback}
-            onReset={() => {
-              // Reset the state of your app here
-              window.location.reload();
-            }}
-          >
-            {/* Always show the class tabs on this page */}
-            <div className="mb-6">
-              <ClassesTabs alwaysShow={true} />
-            </div>
+        {/* Always show the class tabs on this page */}
+        <div className="mb-6">
+          <ClassesTabs alwaysShow={true} />
+        </div>
 
-            {/* Show classes table */}
-            <div className="mt-4">
-              <ClassesTable />
-            </div>
-          </ErrorBoundary>
-        )}
+        {/* Show classes table */}
+        <div className="mt-4">
+          <ClassesTable />
+        </div>
 
         <AddClassModal 
           open={isAddClassModalOpen} 

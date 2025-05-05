@@ -46,11 +46,9 @@ export function ClassFinancialReport({ dateRange, onRefreshSuccess }: ClassFinan
   const revenueDiscrepancy = Math.abs(directTotalRevenue - classesTotalRevenue) > 1;
   const discrepancyAmount = directTotalRevenue - classesTotalRevenue;
 
-  // Log debug info
+  // Log the relationship between bookings and invoices for debugging
   console.log("ClassFinancialReport - total bookings:", totalBookings);
   console.log("ClassFinancialReport - total invoices:", totalInvoiceCount);
-  console.log("ClassFinancialReport - date range:", { fromDate, toDate });
-  console.log("ClassFinancialReport - class finances:", classFinances.length);
 
   const handleRefresh = async () => {
     setRefreshing(true);

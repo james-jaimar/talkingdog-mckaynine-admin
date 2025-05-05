@@ -1,3 +1,4 @@
+
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { ClassWithSchedules } from "../types/class-with-schedules";
@@ -5,7 +6,7 @@ import { useBranch } from "@/context/BranchContext";
 import { useTerm } from "@/context/TermContext";
 
 // Enable this for detailed debug logs, should be false in production
-const DEBUG_LOGGING = true;
+const DEBUG_LOGGING = false;
 
 /**
  * Log utility function for conditional logging
@@ -18,17 +19,17 @@ const logDebug = (...args: any[]) => {
 
 export function useClassQuery() {
   const { currentBranch } = useBranch();
-  const { termData, selectedYear, selectedTermNumber } = useTerm();
+  const { termData } = useTerm();
   const branchId = currentBranch?.id;
   const termId = termData?.id;
 
   return useQuery({
-    queryKey: ['classes', branchId, termId, selectedYear, selectedTermNumber],
+    queryKey: ['classes', branchId, termId],
     queryFn: async () => {
       if (!branchId) return [];
       
       try {
-        logDebug(`Fetching classes for branch: ${branchId}, year: ${selectedYear}, term: ${selectedTermNumber}, termId: ${termId || 'default'}`);
+        logDebug(`Fetching classes for branch: ${branchId} and term: ${termId || 'all terms'}`);
         
         // First, fetch the saved order for this branch if it exists
         const { data: orderData, error: orderError } = await supabase
@@ -38,7 +39,7 @@ export function useClassQuery() {
           .maybeSingle();
           
         if (orderError) {
-          logDebug('Error fetching saved order:', orderError);
+          throw orderError;
         }
         
         const savedOrder = orderData?.class_ids || [];
@@ -60,7 +61,6 @@ export function useClassQuery() {
             trainer_fee_value,
             duration,
             capacity,
-            branch_id,
             branches(name),
             class_schedules(
               id, 
@@ -68,29 +68,48 @@ export function useClassQuery() {
               end_time, 
               selected_dates,
               term_id,
-              term_number,
-              academic_year,
               bookings(id, client_id, dog_id)
             )
           `)
           .eq('branch_id', branchId);
         
-        // If a term is selected but no termId is available, filter by term number and year
-        if (termData && !termId?.startsWith('default')) {
-          // If we have a real term ID, filter by it
-          classesQuery = classesQuery.eq('class_schedules.term_id', termId);
-        } else if (selectedTermNumber && selectedYear) {
-          // Otherwise filter by term number and academic year
-          classesQuery = classesQuery
-            .eq('class_schedules.term_number', selectedTermNumber)
-            .eq('class_schedules.academic_year', selectedYear);
+        // If a term is selected, filter by term at the database level
+        if (termId) {
+          // Replace the original query with a filtered version
+          classesQuery = supabase
+            .from('classes')
+            .select(`
+              id, 
+              name, 
+              class_type,
+              course_fee,
+              enrollment_fee,
+              mckaynine_commission_type,
+              mckaynine_commission_value,
+              admin_fee_type,
+              admin_fee_value,
+              trainer_fee_type,
+              trainer_fee_value,
+              duration,
+              capacity,
+              branches(name),
+              class_schedules!inner(
+                id, 
+                start_time, 
+                end_time, 
+                selected_dates,
+                term_id,
+                bookings(id, client_id, dog_id)
+              )
+            `)
+            .eq('branch_id', branchId)
+            .eq('class_schedules.term_id', termId);
         }
         
         // Execute the query
         const { data: allClasses, error: classError } = await classesQuery;
 
         if (classError) {
-          logDebug('Error fetching classes:', classError);
           throw classError;
         }
         
@@ -129,7 +148,7 @@ export function useClassQuery() {
           classes = orderedClasses;
         }
         
-        // Ensure we always return an array of properly shaped ClassWithSchedules objects
+        // Ensure we always return an array
         return Array.isArray(classes) ? classes : [];
       } catch (error) {
         console.error("Error fetching classes:", error);
@@ -137,9 +156,7 @@ export function useClassQuery() {
       }
     },
     enabled: !!branchId,
-    staleTime: 15000, // 15 seconds - reduced for more frequent refreshes
+    staleTime: 30000, // 30 seconds
     structuralSharing: false,
-    refetchOnMount: true,
-    retry: 2
   });
 }
