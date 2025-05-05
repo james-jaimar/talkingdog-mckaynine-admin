@@ -96,7 +96,7 @@ export function ClassScheduleFormFields({
                 <SelectItem value="">No specific term</SelectItem>
                 {termData && (
                   <SelectItem value={termData.id}>
-                    Term {termData.term_number} ({termData.academic_year?.year})
+                    Term {termData.term_number} ({termData.academic_years?.year})
                   </SelectItem>
                 )}
               </SelectContent>
