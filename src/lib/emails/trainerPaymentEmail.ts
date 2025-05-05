@@ -19,6 +19,9 @@ export async function sendTrainerPaymentEmail({
   paymentDetails
 }: SendTrainerPaymentEmailParams): Promise<void> {
   try {
+    // Show a toast notification that we're sending the email
+    toast.info("Sending payment confirmation email...");
+    
     const pdfData = pdfAttachment.split(',')[1]; // Remove the data:application/pdf;base64, part
     
     // Call the Supabase Edge Function to send the email
@@ -43,6 +46,7 @@ export async function sendTrainerPaymentEmail({
     }
 
     console.log("Email sending response:", data);
+    toast.success("Payment confirmation email sent successfully");
     return data;
   } catch (error) {
     console.error("Error in sendTrainerPaymentEmail:", error);
