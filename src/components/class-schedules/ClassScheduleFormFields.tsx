@@ -85,7 +85,7 @@ export function ClassScheduleFormFields({
             <FormLabel>Term</FormLabel>
             <Select
               onValueChange={field.onChange}
-              value={field.value}
+              value={field.value || "no_term"} // Use "no_term" instead of empty string
             >
               <FormControl>
                 <SelectTrigger>
@@ -93,7 +93,7 @@ export function ClassScheduleFormFields({
                 </SelectTrigger>
               </FormControl>
               <SelectContent>
-                <SelectItem value="">No specific term</SelectItem>
+                <SelectItem value="no_term">No specific term</SelectItem>
                 {termData && (
                   <SelectItem value={termData.id}>
                     Term {termData.term_number} ({termData.academic_years?.year})

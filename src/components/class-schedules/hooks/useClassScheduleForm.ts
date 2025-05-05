@@ -42,7 +42,7 @@ export function useClassScheduleForm(
       isRecurring: schedule.recurring || false,
       referenceTitle: schedule.recurrence_pattern || "Class " + format(startDate, "MMMM/yyyy"),
       selectedDates: selectedDates.length > 0 ? selectedDates : [startDate],
-      termId: schedule.term_id || undefined,
+      termId: schedule.term_id || "no_term",
     };
   } else {
     const now = new Date();
@@ -62,7 +62,7 @@ export function useClassScheduleForm(
       isRecurring: false,
       referenceTitle: "Class " + format(nextHour, "MMMM/yyyy"),
       selectedDates: [nextHour],
-      termId: undefined,
+      termId: "no_term",
     };
   }
   

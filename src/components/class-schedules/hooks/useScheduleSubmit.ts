@@ -75,7 +75,8 @@ export function useScheduleSubmit({
         selected_dates: data.selectedDates.map(date => date.toISOString()),
         // Use No Trainer ID if 'none' is selected
         trainer_id: data.trainerId === 'none' ? NO_TRAINER_ID : data.trainerId,
-        term_id: data.termId || null
+        // Set term_id to null if 'no_term' is selected
+        term_id: data.termId === "no_term" ? null : data.termId
       };
 
       console.log("Prepared schedule data for submission:", scheduleData);
