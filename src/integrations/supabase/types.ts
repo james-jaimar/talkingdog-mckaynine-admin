@@ -346,9 +346,11 @@ export type Database = {
           created_at: string
           end_time: string
           id: string
+          multi_term_relation_id: string | null
           recurrence_pattern: string | null
           recurring: boolean | null
           selected_dates: string[] | null
+          spans_multiple_terms: boolean | null
           start_time: string
           term_id: string | null
           term_number: Database["public"]["Enums"]["term_number"] | null
@@ -361,9 +363,11 @@ export type Database = {
           created_at?: string
           end_time: string
           id?: string
+          multi_term_relation_id?: string | null
           recurrence_pattern?: string | null
           recurring?: boolean | null
           selected_dates?: string[] | null
+          spans_multiple_terms?: boolean | null
           start_time: string
           term_id?: string | null
           term_number?: Database["public"]["Enums"]["term_number"] | null
@@ -376,9 +380,11 @@ export type Database = {
           created_at?: string
           end_time?: string
           id?: string
+          multi_term_relation_id?: string | null
           recurrence_pattern?: string | null
           recurring?: boolean | null
           selected_dates?: string[] | null
+          spans_multiple_terms?: boolean | null
           start_time?: string
           term_id?: string | null
           term_number?: Database["public"]["Enums"]["term_number"] | null
