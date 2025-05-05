@@ -20,8 +20,7 @@ export function ExpenseBreakdownCards({
   // Use a safe denominator to avoid division by zero
   const safeTotal = totalRevenue || 1;
   
-  // The percentages should always be 10% admin, 15% franchise
-  // Calculate displayed percentages based on actual values (for validation)
+  // Calculate displayed percentages based on actual values
   const adminPercent = (totalAdmin / safeTotal) * 100;
   const trainerPercent = (totalTrainer / safeTotal) * 100;
   const franchisePercent = (totalFranchise / safeTotal) * 100;
@@ -47,9 +46,7 @@ export function ExpenseBreakdownCards({
     trainerPercent: trainerPercent.toFixed(1) + '%',
     franchisePercent: franchisePercent.toFixed(1) + '%',
     profitPercent: profitPercent.toFixed(1) + '%',
-    totalPercent: totalPercent.toFixed(1) + '%',
-    expectedAdmin: "10.0%",
-    expectedFranchise: "15.0%"
+    totalPercent: totalPercent.toFixed(1) + '%'
   });
 
   return (

@@ -49,9 +49,7 @@ export function RevenueAllocationChart({
     trainerPercent: trainerPercent.toFixed(1) + '%',
     franchisePercent: franchisePercent.toFixed(1) + '%',
     profitPercent: profitPercent.toFixed(1) + '%',
-    totalPercent: (adminPercent + trainerPercent + franchisePercent + profitPercent).toFixed(1) + '%',
-    expectedAdmin: "10.0%",
-    expectedFranchise: "15.0%"
+    totalPercent: (adminPercent + trainerPercent + franchisePercent + profitPercent).toFixed(1) + '%'
   });
   
   // Custom tooltip
