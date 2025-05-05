@@ -57,18 +57,14 @@ export function calculateClassRevenue(
 
   // If there are paid items, calculate actual revenue
   if (paidInvoiceItems.length > 0) {
-    let paidAmount = paidInvoiceItems.reduce((sum, item) => sum + (item.amount || 0), 0);
-    // Round to 2 decimal places to avoid floating point errors
-    paidAmount = parseFloat(paidAmount.toFixed(2));
+    const paidAmount = paidInvoiceItems.reduce((sum, item) => sum + (item.amount || 0), 0);
     
-    // Apply trainer fee calculation with proper rounding
+    // Apply trainer fee calculation
     if (trainerFeeType === 'percentage') {
-      revenue = parseFloat((paidAmount * (trainerFeeValue / 100)).toFixed(2));
-      console.log(`Trainer revenue calculation (percentage): ${paidAmount} * ${trainerFeeValue}% = ${revenue}`);
+      revenue = paidAmount * (trainerFeeValue / 100);
     } else if (trainerFeeType === 'fixed') {
       // For fixed fee, we apply the fixed amount per booking
-      revenue = parseFloat((paidInvoiceItems.length * trainerFeeValue).toFixed(2));
-      console.log(`Trainer revenue calculation (fixed): ${paidInvoiceItems.length} bookings * ${trainerFeeValue} = ${revenue}`);
+      revenue = paidInvoiceItems.length * trainerFeeValue;
     }
     
     // If there are paid invoice items, consider the class as paid
@@ -77,29 +73,23 @@ export function calculateClassRevenue(
 
   // Calculate potential revenue from all valid invoice items
   if (allValidInvoiceItems.length > 0) {
-    let totalAmount = allValidInvoiceItems.reduce((sum, item) => sum + (item.amount || 0), 0);
-    // Round to 2 decimal places
-    totalAmount = parseFloat(totalAmount.toFixed(2));
+    const totalAmount = allValidInvoiceItems.reduce((sum, item) => sum + (item.amount || 0), 0);
     
-    // Apply trainer fee calculation with proper rounding
+    // Apply trainer fee calculation
     if (trainerFeeType === 'percentage') {
-      potentialRevenue = parseFloat((totalAmount * (trainerFeeValue / 100)).toFixed(2));
-      console.log(`Trainer potential revenue calculation (percentage): ${totalAmount} * ${trainerFeeValue}% = ${potentialRevenue}`);
+      potentialRevenue = totalAmount * (trainerFeeValue / 100);
     } else if (trainerFeeType === 'fixed') {
       // For fixed fee, we apply the fixed amount per booking
-      potentialRevenue = parseFloat((allValidInvoiceItems.length * trainerFeeValue).toFixed(2));
-      console.log(`Trainer potential revenue calculation (fixed): ${allValidInvoiceItems.length} bookings * ${trainerFeeValue} = ${potentialRevenue}`);
+      potentialRevenue = allValidInvoiceItems.length * trainerFeeValue;
     }
   } else if (bookings.length > 0 && schedule.classes.course_fee) {
     // If no invoice items but bookings exist, calculate based on course fee
     const estimatedTotal = bookings.length * (schedule.classes.course_fee || 0);
     
     if (trainerFeeType === 'percentage') {
-      potentialRevenue = parseFloat((estimatedTotal * (trainerFeeValue / 100)).toFixed(2));
-      console.log(`Trainer estimated revenue calculation (percentage, no invoices): ${estimatedTotal} * ${trainerFeeValue}% = ${potentialRevenue}`);
+      potentialRevenue = estimatedTotal * (trainerFeeValue / 100);
     } else if (trainerFeeType === 'fixed') {
-      potentialRevenue = parseFloat((bookings.length * trainerFeeValue).toFixed(2));
-      console.log(`Trainer estimated revenue calculation (fixed, no invoices): ${bookings.length} bookings * ${trainerFeeValue} = ${potentialRevenue}`);
+      potentialRevenue = bookings.length * trainerFeeValue;
     }
   }
 

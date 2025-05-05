@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/table";
 import { ClassFinance } from "@/hooks/useClassFinancialData";
 import { formatCurrency } from "@/lib/formatters";
-import { Info, AlertCircle, Calendar } from "lucide-react";
+import { Info, AlertCircle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
 
@@ -51,7 +51,6 @@ export function ClassFinancialTable({
     switch(sourceType) {
       case 'class': return 'bg-green-100 text-green-800';
       case 'general': return 'bg-blue-100 text-blue-800';
-      case 'spanning': return 'bg-amber-100 text-amber-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -82,31 +81,12 @@ export function ClassFinancialTable({
               
               {classItem.sourceType && (
                 <span className={`text-xs px-2 py-0.5 rounded-full inline-flex ${getSourceBadgeColor(classItem.sourceType)}`}>
-                  {classItem.sourceType === 'class' ? 'class' : 
-                   classItem.sourceType === 'spanning' ? 'multi-term' : 'general'}
+                  {classItem.sourceType === 'class' ? 'class' : 'general'}
                 </span>
               )}
               
               {classItem.className === "General Training Services" && (
                 <span className="ml-1 text-xs text-amber-600">(unassociated invoices)</span>
-              )}
-              
-              {classItem.sourceType === 'spanning' && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <span className="ml-1 text-amber-600 cursor-help inline-flex">
-                        <Calendar className="h-4 w-4" />
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p className="w-[280px] text-sm">
-                        This class spans across multiple terms. Financial data shown reflects 
-                        all revenue from the selected date range.
-                      </p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
               )}
               
               {classItem.sourceType === 'general' && (

@@ -1,4 +1,32 @@
 
+// Update the FinancialData type to include invoices
+export interface FinancialData {
+  bookingsWithInvoices: BookingWithSchedule[];
+  allInvoicesCount: number;
+  invalidInvoicesCount: number;
+  totalRevenue: number;
+  invoiceItems: InvoiceItemWithInvoice[];
+  invoices: InvoiceData[];
+}
+
+export interface BookingWithSchedule {
+  id: string;
+  payment_status?: string;
+  class_schedules?: {
+    classes?: {
+      id: string;
+      name: string;
+      course_fee?: number;
+      mckaynine_commission_value: number;
+      mckaynine_commission_type: string;
+      admin_fee_value: number;
+      admin_fee_type: string;
+      trainer_fee_value: number;
+      trainer_fee_type: string;
+    };
+  };
+}
+
 export interface ClassFinance {
   className: string;
   totalRevenue: number;
@@ -8,70 +36,46 @@ export interface ClassFinance {
   instructorFee: number;
   profit: number;
   invoiceCount: number;
-  sourceType?: 'class' | 'general' | 'spanning';
-  invoiceIds?: string[];
+  sourceType?: 'class' | 'general';
+  invoiceIds: string[];
 }
 
-export interface BookingRevenue {
-  bookingId: string;
-  revenue: number;
-  classId: string;
-  className: string;
-  invoiceAmount: number;
-  invoiceId: string;
-}
-
-// Define the types that match the database query format
-export interface ClassBooking {
-  id: string;
-  payment_status: string;
-  class_schedules?: {
-    id?: string;
-    term_id?: string;
-    selected_dates?: string[];
-    classes?: {
-      id: string;
-      name: string;
-      course_fee: number;
-      mckaynine_commission_value: number;
-      mckaynine_commission_type: string;
-      admin_fee_value: number;
-      admin_fee_type: string;
-      trainer_fee_value: number;
-      trainer_fee_type: string;
-      branch_id?: string;
-    };
-  };
-}
-
-export interface BookingInvoice {
-  id: string;
-  invoice_id: string;
-  booking_id: string;
-  amount: number;
-  invoices?: {
-    id: string;
-    status: string;
-    payment_received?: boolean;
-  };
-}
-
-export interface Invoice {
+export interface InvoiceData {
   id: string;
   total: number;
   status: string;
   client_id: string;
   issued_date: string;
   client?: {
-    branch_id: string;
+    branch_id?: string;
   };
 }
 
-export interface FinancialData {
-  bookingsWithInvoices: ClassBooking[];
-  allInvoicesCount: number;
-  invalidInvoicesCount: number;
+export interface BookingRevenue {
   totalRevenue: number;
-  invoiceItems?: BookingInvoice[];
-  invoices: Invoice[];
+  invoiceIds: Set<string>;
+}
+
+export interface InvoiceItemWithInvoice {
+  id: string;
+  invoice_id: string;
+  booking_id?: string;
+  amount?: number;
+  unit_price?: number;
+  quantity?: number;
+  description?: string;
+  invoices?: {
+    id: string;
+    status?: string;
+    payment_received?: boolean;
+    total?: number;
+    subtotal?: number;
+    tax_amount?: number;
+    client_id?: string;
+    issued_date?: string;
+    invoice_number?: string;
+    client?: {
+      branch_id?: string;
+    };
+  };
 }

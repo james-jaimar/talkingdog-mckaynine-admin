@@ -1,7 +1,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/context/AuthContext";
 import { useBranch } from "@/context/BranchContext";
@@ -13,7 +13,6 @@ import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components
 import { SchedulesTableLoading } from "./table/SchedulesTableLoading";
 import { SchedulesTableError } from "./table/SchedulesTableError";
 import { SchedulesEditModal } from "./table/SchedulesEditModal";
-import { useClassTermSpanning } from "@/hooks/useClassTermSpanning";
 
 interface ClassSchedulesTableProps {
   classId: string;
@@ -26,12 +25,11 @@ export function ClassSchedulesTable({ classId }: ClassSchedulesTableProps) {
   const { user, session } = useAuth();
   const { currentBranch } = useBranch();
   const { termData } = useTerm();
-  const { data: spanningData, isLoading: spanningLoading } = useClassTermSpanning(classId);
 
   const { data: schedules, isLoading, error, refetch } = useQuery({
-    queryKey: ["class-schedules", classId, termData?.id, spanningData?.isSpanning],
+    queryKey: ["class-schedules", classId, termData?.id],
     queryFn: async () => {
-      console.log("Fetching class schedules for classId:", classId, "term:", termData?.id, "isSpanning:", spanningData?.isSpanning);
+      console.log("Fetching class schedules for classId:", classId, "term:", termData?.id);
       
       if (!user || !session) {
         console.log("User not authenticated, aborting fetch");
@@ -47,8 +45,7 @@ export function ClassSchedulesTable({ classId }: ClassSchedulesTableProps) {
         `)
         .eq("class_id", classId);
       
-      // Only filter by term if the class doesn't span across terms
-      if (termData?.id && (!spanningData?.isSpanning)) {
+      if (termData?.id) {
         console.log(`Adding term filter: ${termData.id}`);
         query = query.eq("term_id", termData.id);
       }
@@ -86,11 +83,7 @@ export function ClassSchedulesTable({ classId }: ClassSchedulesTableProps) {
         description: "The class schedule has been successfully deleted.",
       });
       
-      // Also invalidate spanning data after deletion
-      await Promise.all([
-        refetch(),
-        spanningData && useClassTermSpanning(classId).refetch
-      ]);
+      refetch();
     } catch (error) {
       console.error("Error deleting schedule:", error);
       toast({
@@ -137,32 +130,8 @@ export function ClassSchedulesTable({ classId }: ClassSchedulesTableProps) {
     return <SchedulesTableError error={error} />;
   }
 
-  if (isLoading || spanningLoading) {
+  if (isLoading) {
     return <SchedulesTableLoading />;
-  }
-
-  // Show a special message for spanning classes with no schedules in current term
-  if ((!schedules || schedules.length === 0) && spanningData?.isSpanning) {
-    return (
-      <div className="text-center p-8 bg-amber-50 rounded-md border border-amber-200">
-        <p className="text-amber-800 font-medium">This class spans multiple terms, but has no schedules in the current term.</p>
-        <p className="text-amber-600 text-sm mt-2">
-          Try selecting a different term or add new schedules to this term.
-        </p>
-        {spanningData.terms && spanningData.terms.length > 0 && (
-          <div className="mt-4">
-            <p className="text-sm font-semibold">Available in these terms:</p>
-            <ul className="text-sm mt-1 space-y-1">
-              {spanningData.terms.map(term => (
-                <li key={term.id} className="text-amber-700">
-                  Term {term.term_number} ({term.academic_years.year})
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </div>
-    );
   }
 
   if (!schedules || schedules.length === 0) {
@@ -176,14 +145,6 @@ export function ClassSchedulesTable({ classId }: ClassSchedulesTableProps) {
 
   return (
     <div>
-      {spanningData?.isSpanning && (
-        <div className="p-3 mb-4 bg-amber-50 border border-amber-200 rounded-md">
-          <p className="text-amber-800 text-sm">
-            This class spans across multiple terms. All schedules are shown regardless of the selected term.
-          </p>
-        </div>
-      )}
-
       <div className="rounded-md border">
         <Table>
           <TableHeader>

@@ -18,51 +18,35 @@ export function ExpenseBreakdownCards({
   totalRevenue,
 }: ExpenseBreakdownCardsProps) {
   // Use a safe denominator to avoid division by zero
-  const safeTotal = totalRevenue > 0 ? totalRevenue : 1;
+  const safeTotal = totalRevenue || 1;
   
-  // Calculate displayed percentages based on actual values with proper rounding
+  // Calculate percentages of total revenue (which is already net after discounts)
   const adminPercent = (totalAdmin / safeTotal) * 100;
   const trainerPercent = (totalTrainer / safeTotal) * 100;
   const franchisePercent = (totalFranchise / safeTotal) * 100;
   const profitPercent = (profit / safeTotal) * 100;
 
-  // Round to 2 decimal places for all monetary calculations
-  const roundedAdmin = parseFloat(totalAdmin.toFixed(2));
-  const roundedTrainer = parseFloat(totalTrainer.toFixed(2));
-  const roundedFranchise = parseFloat(totalFranchise.toFixed(2));
-  const roundedProfit = parseFloat(profit.toFixed(2));
-  const roundedRevenue = parseFloat(totalRevenue.toFixed(2));
-
   // Validate the percentages add up to approximately 100%
   const totalPercent = adminPercent + trainerPercent + franchisePercent + profitPercent;
-  if (Math.abs(100 - totalPercent) > 0.1 && totalRevenue > 0) {
+  if (Math.abs(100 - totalPercent) > 1 && totalRevenue > 0) {
     console.warn(
       `Warning: Expense percentages don't add up to 100%. ` +
-      `Total: ${totalPercent.toFixed(2)}%, Difference: ${(100 - totalPercent).toFixed(2)}%`
+      `Total: ${totalPercent}%, Difference: ${100 - totalPercent}%`
     );
-    // Also verify component total matches revenue total
-    const componentTotal = roundedAdmin + roundedTrainer + roundedFranchise + roundedProfit;
-    if (Math.abs(componentTotal - roundedRevenue) > 0.01) {
-      console.warn(
-        `Warning: Sum of expense components (${componentTotal}) doesn't match total revenue (${roundedRevenue}). ` +
-        `Difference: ${(roundedRevenue - componentTotal).toFixed(2)}`
-      );
-    }
   }
 
   // Debug values to console
   console.log("ExpenseBreakdownCards values:", {
-    totalAdmin: roundedAdmin, 
-    totalTrainer: roundedTrainer, 
-    totalFranchise: roundedFranchise, 
-    profit: roundedProfit,
-    totalRevenue: roundedRevenue,
-    componentTotal: (roundedAdmin + roundedTrainer + roundedFranchise + roundedProfit),
-    adminPercent: adminPercent.toFixed(1) + '%',
-    trainerPercent: trainerPercent.toFixed(1) + '%',
-    franchisePercent: franchisePercent.toFixed(1) + '%',
-    profitPercent: profitPercent.toFixed(1) + '%',
-    totalPercent: totalPercent.toFixed(1) + '%'
+    totalAdmin, 
+    totalTrainer, 
+    totalFranchise, 
+    profit,
+    totalRevenue,
+    adminPercent,
+    trainerPercent,
+    franchisePercent,
+    profitPercent,
+    totalPercent
   });
 
   return (
@@ -76,7 +60,7 @@ export function ExpenseBreakdownCards({
         <CardContent>
           <div className="flex items-center">
             <span className="text-2xl font-bold text-blue-600">
-              {formatCurrency(roundedAdmin)}
+              {formatCurrency(totalAdmin)}
             </span>
             <span className="ml-2 text-xs text-muted-foreground">
               ({formatPercentage(adminPercent / 100)} of revenue)
@@ -93,7 +77,7 @@ export function ExpenseBreakdownCards({
         <CardContent>
           <div className="flex items-center">
             <span className="text-2xl font-bold text-green-600">
-              {formatCurrency(roundedTrainer)}
+              {formatCurrency(totalTrainer)}
             </span>
             <span className="ml-2 text-xs text-muted-foreground">
               ({formatPercentage(trainerPercent / 100)} of revenue)
@@ -110,7 +94,7 @@ export function ExpenseBreakdownCards({
         <CardContent>
           <div className="flex items-center">
             <span className="text-2xl font-bold text-amber-600">
-              {formatCurrency(roundedFranchise)}
+              {formatCurrency(totalFranchise)}
             </span>
             <span className="ml-2 text-xs text-muted-foreground">
               ({formatPercentage(franchisePercent / 100)} of revenue)
@@ -127,7 +111,7 @@ export function ExpenseBreakdownCards({
         <CardContent>
           <div className="flex items-center">
             <span className="text-2xl font-bold text-purple-600">
-              {formatCurrency(roundedProfit)}
+              {formatCurrency(profit)}
             </span>
             <span className="ml-2 text-xs text-muted-foreground">
               ({formatPercentage(profitPercent / 100)} of revenue)
