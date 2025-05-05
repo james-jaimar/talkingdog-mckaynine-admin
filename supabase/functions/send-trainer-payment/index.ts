@@ -40,41 +40,18 @@ serve(async (req: Request) => {
     console.log("Processing trainer payment email request:", {
       ...payload,
       pdfData: payload.pdfData ? "[PDF data truncated]" : undefined,
-      documentUrl: payload.documentUrl ? "[URL redacted]" : undefined
+      documentUrl: payload.documentUrl ? payload.documentUrl.substring(0, 50) + "..." : undefined
     });
 
-    // Initialize Supabase admin client with service role
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-    );
-    
     // Determine if we're handling a direct call or a call from update-trainer-payments
-    let trainerName = payload.trainerName;
+    let trainerName = payload.trainerName || "Trainer";
     let trainerEmail = payload.to || payload.trainerEmail;
-    let amount = payload.amount;
+    let amount = payload.amount || 0;
     let paymentMethod = payload.paymentDetails?.method || payload.paymentMethod || "Bank Transfer";
-    let transactionId = payload.paymentDetails?.transactionId || payload.transactionId;
-    let notes = payload.paymentDetails?.notes;
+    let transactionId = payload.paymentDetails?.transactionId || payload.transactionId || "";
+    let notes = payload.paymentDetails?.notes || "";
     let documentUrl = payload.documentUrl;
     let paymentDate = payload.paymentDate || new Date().toISOString();
-    let classesInfo = [];
-    
-    // If trainerId is provided but trainerName or email is missing, fetch them
-    if (payload.trainerId && (!trainerName || !trainerEmail)) {
-      const { data: trainer, error: trainerError } = await supabaseAdmin
-        .from('trainers')
-        .select('email, first_name, last_name')
-        .eq('id', payload.trainerId)
-        .single();
-        
-      if (trainerError) {
-        console.error("Error fetching trainer details:", trainerError);
-      } else if (trainer) {
-        if (!trainerEmail) trainerEmail = trainer.email;
-        if (!trainerName) trainerName = `${trainer.first_name} ${trainer.last_name}`;
-      }
-    }
     
     // If no required recipient info, return error
     if (!trainerEmail) {
@@ -82,52 +59,6 @@ serve(async (req: Request) => {
         JSON.stringify({ error: "Missing trainer email" }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
-    }
-    
-    // If scheduleIds are provided, get class info
-    if (payload.scheduleIds && payload.scheduleIds.length > 0) {
-      try {
-        const { data: classData, error: classError } = await supabaseAdmin
-          .from('class_schedules')
-          .select(`
-            id,
-            start_time,
-            classes:class_id (
-              name,
-              course_fee
-            )
-          `)
-          .in('id', payload.scheduleIds);
-          
-        if (classError) {
-          console.error("Error fetching class details:", classError);
-        } else if (classData) {
-          classesInfo = classData.map(cls => ({
-            name: cls.classes?.name || "Class",
-            date: cls.start_time ? new Date(cls.start_time).toLocaleDateString() : "N/A",
-            fee: cls.classes?.course_fee || 0
-          }));
-        }
-      } catch (e) {
-        console.error("Error processing class data:", e);
-      }
-      
-      // If no amount is provided, calculate from trainer payments
-      if (!amount && payload.trainerId) {
-        try {
-          const { data: paymentsData, error: paymentsError } = await supabaseAdmin
-            .from('trainer_payments')
-            .select('amount')
-            .eq('trainer_id', payload.trainerId)
-            .in('class_schedule_id', payload.scheduleIds);
-            
-          if (!paymentsError && paymentsData) {
-            amount = paymentsData.reduce((sum, payment) => sum + (payment.amount || 0), 0);
-          }
-        } catch (e) {
-          console.error("Error calculating payments total:", e);
-        }
-      }
     }
     
     // Format payment method for display
@@ -150,7 +81,7 @@ serve(async (req: Request) => {
     // Build email content
     const emailHtml = `
       <h1>Payment Confirmation</h1>
-      <p>Dear ${trainerName || "Trainer"},</p>
+      <p>Dear ${trainerName},</p>
       
       <p>We are pleased to confirm that your payment for training services has been processed.</p>
       
@@ -163,13 +94,6 @@ serve(async (req: Request) => {
         ${notes ? `<p><strong>Notes:</strong> ${notes}</p>` : ''}
       </div>
       
-      ${classesInfo.length > 0 ? `
-      <h3>Classes Included:</h3>
-      <ul>
-        ${classesInfo.map(c => `<li>${c.name} (${c.date})</li>`).join('')}
-      </ul>
-      ` : ''}
-      
       ${documentUrl ? `
       <p>You can view your payment document here: <a href="${documentUrl}" target="_blank">View Document</a></p>
       ` : ''}
@@ -180,34 +104,26 @@ serve(async (req: Request) => {
     `;
 
     // Determine if we're sending with pdf attachment or just a link
-    let emailOptions = {};
+    let emailOptions: any = {
+      from: "McKaynine Training <accounts@mckaynine-training.co.za>",
+      to: [trainerEmail],
+      subject: "Payment Confirmation for Training Services",
+      html: emailHtml
+    };
     
+    // Add attachment if PDF data is provided
     if (payload.pdfData) {
-      // Send with PDF attachment
-      emailOptions = {
-        from: "McKaynine Training <accounts@mckaynine-training.co.za>",
-        to: [trainerEmail],
-        subject: "Payment Confirmation for Training Services",
-        html: emailHtml,
-        attachments: [
-          {
-            filename: "payment_confirmation.pdf",
-            content: payload.pdfData
-          }
-        ]
-      };
-    } else {
-      // Send with just the link
-      emailOptions = {
-        from: "McKaynine Training <accounts@mckaynine-training.co.za>",
-        to: [trainerEmail],
-        subject: "Payment Confirmation for Training Services",
-        html: emailHtml
-      };
+      emailOptions.attachments = [
+        {
+          filename: "payment_confirmation.pdf",
+          content: payload.pdfData
+        }
+      ];
     }
 
     // Send the email
     try {
+      console.log("Sending email to:", trainerEmail);
       const emailResult = await resend.emails.send(emailOptions);
       console.log("Email sending result:", emailResult);
       
