@@ -22,6 +22,7 @@ import { ClassScheduleFormValues } from "./schemas/classScheduleFormSchema";
 import { Separator } from "@/components/ui/separator";
 import { useState } from "react";
 import { subMonths, addMonths, isBefore, isAfter, startOfDay, endOfDay } from "date-fns";
+import { useTerm } from "@/context/TermContext";
 
 interface ClassScheduleFormFieldsProps {
   control: Control<ClassScheduleFormValues>;
@@ -35,6 +36,7 @@ export function ClassScheduleFormFields({
   isLoadingTrainers 
 }: ClassScheduleFormFieldsProps) {
   const [selectedDates, setSelectedDates] = useState<Date[]>([]);
+  const { terms, termData, years } = useTerm();
 
   // Calculate min/max selectable dates
   const today = new Date();
@@ -69,6 +71,39 @@ export function ClassScheduleFormFields({
                 ))}
               </SelectContent>
             </Select>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      {/* Term Selection */}
+      <FormField
+        control={control}
+        name="termId"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Term</FormLabel>
+            <Select
+              onValueChange={field.onChange}
+              value={field.value}
+            >
+              <FormControl>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a term" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                <SelectItem value="">No specific term</SelectItem>
+                {termData && (
+                  <SelectItem value={termData.id}>
+                    Term {termData.term_number} ({termData.academic_year?.year})
+                  </SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+            <FormDescription>
+              Select which term this schedule belongs to
+            </FormDescription>
             <FormMessage />
           </FormItem>
         )}
@@ -186,4 +221,3 @@ export function ClassScheduleFormFields({
     </div>
   );
 }
-
