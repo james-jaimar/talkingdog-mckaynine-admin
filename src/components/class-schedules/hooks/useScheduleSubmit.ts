@@ -75,6 +75,7 @@ export function useScheduleSubmit({
         selected_dates: data.selectedDates.map(date => date.toISOString()),
         // Use No Trainer ID if 'none' is selected
         trainer_id: data.trainerId === 'none' ? NO_TRAINER_ID : data.trainerId,
+        term_id: data.termId || null
       };
 
       console.log("Prepared schedule data for submission:", scheduleData);
@@ -125,6 +126,11 @@ export function useScheduleSubmit({
           queryKey: ["class-schedules", classId],
           // Disable refetchType to prevent automatic refetches
           refetchType: 'none'
+        });
+        
+        // Invalidate the class term spanning data
+        queryClient.invalidateQueries({
+          queryKey: ['class-term-spanning', classId]
         });
         
         // Wait a moment before triggering success callback

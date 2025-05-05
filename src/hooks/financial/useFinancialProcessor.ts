@@ -35,6 +35,8 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
     const classInvoiceMap = new Map<string, Set<string>>();
     // Create a map to track unique booking IDs per class
     const classBookingMap = new Map<string, Set<string>>();
+    // Track already processed booking-invoice pairs to prevent double counting
+    const processedBookingInvoices = new Set<string>();
 
     // First map invoices to bookings using invoice items as a connector
     const invoiceToBookingMap = new Map<string, string[]>();
@@ -75,6 +77,15 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
         
         const classData = booking.class_schedules.classes;
         const className = classData.name;
+        
+        // Create a unique key for this booking-invoice pair to prevent double counting
+        const bookingInvoiceKey = `${bookingId}-${invoice.id}`;
+        if (processedBookingInvoices.has(bookingInvoiceKey)) {
+          // Skip if we've already counted this booking-invoice pair
+          return;
+        }
+        
+        processedBookingInvoices.add(bookingInvoiceKey);
         
         // Track this invoice for this class
         if (!classInvoiceMap.has(className)) {
