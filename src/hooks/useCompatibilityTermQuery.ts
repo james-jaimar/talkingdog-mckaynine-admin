@@ -4,7 +4,7 @@ import { useTerm } from "@/context/TermContext";
 
 // A compatibility hook that transforms term data into a format used by legacy components
 export function useCompatibilityTermQuery() {
-  const { termData, termDateRange, isLoading } = useTerm();
+  const { termData, termDateRange, isTermLoading } = useTerm();
   const [compatTermData, setCompatTermData] = useState<{
     id: string | null;
     term_number: string | null;
@@ -31,6 +31,6 @@ export function useCompatibilityTermQuery() {
   
   return {
     termData: compatTermData,
-    isLoading
+    isLoading: isTermLoading
   };
 }
