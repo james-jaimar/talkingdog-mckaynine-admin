@@ -1,71 +1,94 @@
 
-import { Edit, Trash, Users } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { MoreHorizontal, Pencil, Trash } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useState } from "react";
 import { ClassSchedule } from "./types/classSchedule";
-import { useDropdownState } from "@/hooks/useDropdownState";
-import { useNavigate } from "react-router-dom";
+import { Badge } from "@/components/ui/badge";
 
 interface TableActionMenuProps {
   schedule: ClassSchedule;
-  onEdit: (schedule: ClassSchedule) => void;
-  onDelete: (id: string) => void;
+  onEdit: () => void;
+  onDelete: () => void;
 }
 
 export function TableActionMenu({ schedule, onEdit, onDelete }: TableActionMenuProps) {
-  const { isOpen, setIsOpen, onClose } = useDropdownState();
-  const navigate = useNavigate();
+  const [showDeleteAlert, setShowDeleteAlert] = useState(false);
+  const isMultiTerm = !!schedule.spans_multiple_terms && !!schedule.multi_term_relation_id;
 
-  const handleEdit = () => {
-    onEdit(schedule);
-    onClose();
-  };
-
-  const handleDelete = () => {
-    onDelete(schedule.id);
-    onClose();
-  };
-
-  const handleManageHandlers = () => {
-    navigate(`/bookings/${schedule.id}`);
-    onClose();
-  };
-  
   return (
-    <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="h-8 w-8 p-0">
-          <span className="sr-only">Open menu</span>
-          <MoreHorizontal className="h-4 w-4" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="bg-background">
-        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={handleEdit}>
-          <Edit className="mr-2 h-4 w-4" />
-          Edit
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={handleManageHandlers}>
-          <Users className="mr-2 h-4 w-4" />
-          Manage Handlers
-        </DropdownMenuItem>
-        <DropdownMenuItem 
-          className="text-destructive"
-          onClick={handleDelete}
-        >
-          <Trash className="mr-2 h-4 w-4" />
-          Delete
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" className="h-8 w-8 p-0">
+            <span className="sr-only">Open menu</span>
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={onEdit}>
+            <Pencil className="mr-2 h-4 w-4" />
+            Edit
+          </DropdownMenuItem>
+          <DropdownMenuItem 
+            onClick={() => setShowDeleteAlert(true)}
+            className="text-red-600"
+          >
+            <Trash className="mr-2 h-4 w-4" />
+            Delete
+            {isMultiTerm && (
+              <Badge variant="outline" className="ml-2 text-xs">
+                Multi-Term
+              </Badge>
+            )}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <AlertDialog open={showDeleteAlert} onOpenChange={setShowDeleteAlert}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {isMultiTerm ? (
+                <>
+                  This schedule is part of a multi-term class schedule. 
+                  Deleting it may affect schedules in other terms.
+                </>
+              ) : (
+                "This will permanently delete this class schedule and cannot be undone."
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                onDelete();
+                setShowDeleteAlert(false);
+              }}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

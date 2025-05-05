@@ -13,6 +13,8 @@ export interface ClassSchedule {
   selected_dates: string[];
   created_at: string;
   updated_at: string;
+  spans_multiple_terms?: boolean;
+  multi_term_relation_id?: string;
   trainer?: {
     first_name: string;
     last_name: string;
