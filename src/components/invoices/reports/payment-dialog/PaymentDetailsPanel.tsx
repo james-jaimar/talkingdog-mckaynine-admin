@@ -1,10 +1,10 @@
 
-import { TrainerClassDetail } from "@/hooks/trainer-payments/types";
+import { DialogTrainerClassDetail } from "./types";
 import { formatCurrency } from "@/lib/formatters";
 import { Badge } from "@/components/ui/badge";
 
 interface PaymentDetailsPanelProps {
-  classDetails: TrainerClassDetail[];
+  classDetails: DialogTrainerClassDetail[];
 }
 
 export function PaymentDetailsPanel({ classDetails }: PaymentDetailsPanelProps) {

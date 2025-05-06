@@ -3,7 +3,7 @@ import { format } from "date-fns";
 import { Checkbox } from "@/components/ui/checkbox";
 import { formatCurrency } from "@/lib/formatters";
 import { ExtendedBadge } from "@/components/ui/badge-variants";
-import { TrainerClassDetail } from "@/hooks/trainer-payments/types";
+import { DialogTrainerClassDetail } from "./types";
 import { 
   Table, 
   TableBody, 
@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/table";
 
 interface ClassTableProps {
-  classDetails: TrainerClassDetail[];
+  classDetails: DialogTrainerClassDetail[];
   selectedClasses: string[];
   toggleClass: (classId: string, checked: boolean) => void;
 }

@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { TrainerClassDetail } from "@/hooks/trainer-payments/types";
+import { DialogTrainerClassDetail } from "./types";
 import { useTerm } from "@/context/TermContext";
 
 export function useTrainerPaymentData(
@@ -14,7 +15,7 @@ export function useTrainerPaymentData(
   const [loading, setLoading] = useState(true);
   const [trainerName, setTrainerName] = useState("");
   const [trainerEmail, setTrainerEmail] = useState("");
-  const [classDetails, setClassDetails] = useState<TrainerClassDetail[]>([]);
+  const [classDetails, setClassDetails] = useState<DialogTrainerClassDetail[]>([]);
   const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
   const { termData } = useTerm();
   
@@ -95,16 +96,17 @@ export function useTrainerPaymentData(
         const scheduleDetails = await Promise.all(
           schedules.map(async (schedule) => {
             // Set base info from schedule
-            const classDetail: TrainerClassDetail = {
+            const classDetail: DialogTrainerClassDetail = {
               scheduleId: schedule.id,
               className: schedule.classes?.name || "Unnamed Class",
               classDate: schedule.start_time,
-              trainerFeeType: schedule.classes?.trainer_fee_type || "percentage",
-              trainerFeeValue: schedule.classes?.trainer_fee_value || 0,
+              scheduleDate: new Date(schedule.start_time),
               bookings: 0,
-              totalRevenue: 0,
+              revenue: 0,
               potentialRevenue: 0,
               isPaid: false,
+              trainerFeeType: schedule.classes?.trainer_fee_type || "percentage",
+              trainerFeeValue: schedule.classes?.trainer_fee_value || 0,
               hasZeroCommission: schedule.classes?.trainer_fee_value === 0,
               hasZeroAmountPayment: false,
               paidAmount: 0,
