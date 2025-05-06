@@ -17,7 +17,7 @@ export async function sendTrainerPaymentEmail({
   pdfAttachment,
   amount,
   paymentDetails
-}: SendTrainerPaymentEmailParams): Promise<void> {
+}: SendTrainerPaymentEmailParams): Promise<{success: boolean; message: string}> {
   try {
     // Show a toast notification that we're sending the email
     const toastId = toast.loading("Sending payment confirmation email...");
@@ -62,7 +62,10 @@ export async function sendTrainerPaymentEmail({
         id: toastId,
         description: error.message
       });
-      throw error;
+      return { 
+        success: false, 
+        message: `Email sending failed: ${error.message}` 
+      };
     }
 
     console.log("Email sending response:", data);
@@ -70,12 +73,20 @@ export async function sendTrainerPaymentEmail({
       id: toastId,
       description: `Email sent to ${to}`
     });
-    return data;
+    
+    return { 
+      success: true, 
+      message: "Email sent successfully" 
+    };
   } catch (error) {
     console.error("Error in sendTrainerPaymentEmail:", error);
     toast.error("Error sending payment notification email", {
       description: error instanceof Error ? error.message : String(error)
     });
-    throw error;
+    
+    return { 
+      success: false, 
+      message: error instanceof Error ? error.message : String(error) 
+    };
   }
 }

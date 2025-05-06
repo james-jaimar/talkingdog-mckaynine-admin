@@ -7,6 +7,7 @@ import { queryClient } from "./lib/query-client";
 import { AuthProvider } from '@/context/auth';
 import { BranchProvider } from '@/context/BranchContext';
 import { TermProvider } from '@/context/TermContext';
+import { Toaster } from "sonner";
 
 function App() {
   return (
@@ -15,6 +16,7 @@ function App() {
         <BranchProvider>
           <TermProvider>
             <RouterProvider router={router} />
+            <Toaster position="top-right" richColors />
           </TermProvider>
         </BranchProvider>
       </AuthProvider>

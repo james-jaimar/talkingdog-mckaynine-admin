@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { generateTrainerPaymentPDF } from "@/components/invoices/reports/pdf/TrainerPaymentPDF";
 import { TrainerClassDetail } from "./trainer-payments/types";
+import { sendTrainerPaymentEmail } from "@/lib/emails/trainerPaymentEmail";
 
 export function useMarkTrainerPaymentsPaid() {
   const queryClient = useQueryClient();
@@ -64,12 +65,13 @@ export function useMarkTrainerPaymentsPaid() {
       // Generate PDF if needed and class details are provided
       let finalDocumentUrl = documentUrl;
       let finalDocumentName = documentName;
+      let pdfDataUri: string | undefined = undefined;
       
       if (classDetails && classDetails.length > 0 && trainerName && !documentUrl) {
         try {
           // Generate PDF document
           const paymentDate = new Date().toISOString();
-          const pdfDataUri = await generateTrainerPaymentPDF({
+          pdfDataUri = await generateTrainerPaymentPDF({
             trainerName,
             trainerEmail: trainerEmail || "trainer@example.com", // Fallback
             classes: classDetails.filter(cls => scheduleIds.includes(cls.scheduleId)),
@@ -132,6 +134,41 @@ export function useMarkTrainerPaymentsPaid() {
         }
       }
       
+      // Create a variable to track if email was sent
+      let emailSent = false;
+      let emailError: string | null = null;
+      
+      // If email should be sent, do it before updating the database
+      if (sendEmail && trainerEmail && trainerName) {
+        try {
+          const emailResult = await sendTrainerPaymentEmail({
+            to: trainerEmail,
+            trainerName,
+            amount,
+            paymentDetails: {
+              paymentMethod,
+              transactionId,
+              paymentNotes: notes,
+              documentUrl: finalDocumentUrl,
+              documentName: finalDocumentName,
+              sendEmail
+            },
+            pdfAttachment: pdfDataUri
+          });
+          
+          emailSent = emailResult.success;
+          if (!emailResult.success) {
+            emailError = emailResult.message;
+            console.error("Email sending failed:", emailResult.message);
+          } else {
+            console.log("Email sent successfully to", trainerEmail);
+          }
+        } catch (err) {
+          console.error("Exception sending email:", err);
+          emailError = err instanceof Error ? err.message : String(err);
+        }
+      }
+      
       try {
         // Use the edge function to update payments with admin privileges
         const { data, error } = await supabase.functions.invoke('update-trainer-payments', {
@@ -143,7 +180,7 @@ export function useMarkTrainerPaymentsPaid() {
             notes,
             documentUrl: finalDocumentUrl,
             documentName: finalDocumentName,
-            sendEmail,
+            sendEmail: false, // We've already sent the email if needed
             amount // Include the calculated amount
           }
         });
@@ -168,7 +205,9 @@ export function useMarkTrainerPaymentsPaid() {
           createdCount: data.createdCount || 0,
           totalCount: scheduleIds.length,
           documentUrl: finalDocumentUrl,
-          amount
+          amount,
+          emailSent,
+          emailError
         };
       } catch (error) {
         console.error("Error in markTrainerPaymentsPaid:", error);
@@ -185,6 +224,8 @@ export function useMarkTrainerPaymentsPaid() {
 
       // Show more detailed success message
       const totalUpdated = (result.updatedCount || 0) + (result.createdCount || 0);
+      
+      // First show payment success toast
       toast.success(
         `${totalUpdated} payment${totalUpdated !== 1 ? 's' : ''} marked as paid successfully`,
         {
@@ -197,6 +238,17 @@ export function useMarkTrainerPaymentsPaid() {
           } : undefined
         }
       );
+      
+      // Then show email status toast if email was attempted
+      if (result.emailSent === true) {
+        toast.success("Payment confirmation email sent successfully", {
+          description: "The trainer has been notified via email"
+        });
+      } else if (result.emailError) {
+        toast.error("Could not send confirmation email", {
+          description: result.emailError
+        });
+      }
     },
     onError: (error) => {
       console.error("Error marking trainer payments as paid:", error);

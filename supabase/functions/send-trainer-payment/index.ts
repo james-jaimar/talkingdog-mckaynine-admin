@@ -41,7 +41,11 @@ serve(async (req: Request) => {
     // If no required recipient info, return error
     if (!payload.to) {
       return new Response(
-        JSON.stringify({ error: "Missing trainer email" }),
+        JSON.stringify({ 
+          success: false, 
+          message: "Missing trainer email",
+          emailSent: false
+        }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
@@ -58,7 +62,11 @@ serve(async (req: Request) => {
     if (!resendApiKey) {
       console.error("RESEND_API_KEY environment variable is not set");
       return new Response(
-        JSON.stringify({ error: "Email service configuration is incomplete" }),
+        JSON.stringify({ 
+          success: false, 
+          message: "Email service configuration is incomplete",
+          emailSent: false
+        }),
         { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
@@ -114,21 +122,45 @@ serve(async (req: Request) => {
       const emailResult = await resend.emails.send(emailOptions);
       console.log("Email sending result:", emailResult);
       
+      if (emailResult.error) {
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            message: `Failed to send email: ${emailResult.error.message}`,
+            emailSent: false
+          }),
+          { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+      
       return new Response(
-        JSON.stringify({ success: true, message: "Email sent successfully" }),
+        JSON.stringify({ 
+          success: true, 
+          message: "Email sent successfully",
+          emailSent: true,
+          emailId: emailResult.data?.id || null
+        }),
         { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     } catch (emailError) {
       console.error("Error sending email:", emailError);
       return new Response(
-        JSON.stringify({ error: `Failed to send email: ${emailError.message}` }),
+        JSON.stringify({ 
+          success: false, 
+          message: `Failed to send email: ${emailError.message}`,
+          emailSent: false
+        }),
         { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error("Unhandled error in send-trainer-payment:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        success: false, 
+        message: error.message,
+        emailSent: false
+      }),
       { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }
