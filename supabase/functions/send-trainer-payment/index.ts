@@ -100,7 +100,7 @@ serve(async (req: Request) => {
 
     // Determine if we're sending with pdf attachment or just a link
     let emailOptions: any = {
-      from: "McKaynine Training <accounts@mckaynine-training.co.za>",
+      from: "McKaynine Training <payments@admin.talkingdog.co.za>",
       to: [payload.to],
       subject: "Payment Confirmation for Training Services",
       html: emailHtml
@@ -123,11 +123,25 @@ serve(async (req: Request) => {
       console.log("Email sending result:", emailResult);
       
       if (emailResult.error) {
+        let errorMessage = emailResult.error.message || "Unknown email sending error";
+        let errorCode = emailResult.error.statusCode || 500;
+        
+        // Provide more specific error messages for common issues
+        if (errorMessage.includes("domain is not verified")) {
+          errorMessage = "Email domain is not verified in Resend. Please verify the domain 'admin.talkingdog.co.za' in your Resend account settings.";
+        }
+        
+        console.error("Email sending error:", {
+          statusCode: errorCode,
+          message: errorMessage
+        });
+        
         return new Response(
           JSON.stringify({ 
             success: false, 
-            message: `Failed to send email: ${emailResult.error.message}`,
-            emailSent: false
+            message: `Failed to send email: ${errorMessage}`,
+            emailSent: false,
+            errorCode: errorCode
           }),
           { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
         );
@@ -148,7 +162,8 @@ serve(async (req: Request) => {
         JSON.stringify({ 
           success: false, 
           message: `Failed to send email: ${emailError.message}`,
-          emailSent: false
+          emailSent: false,
+          error: emailError.name || "EmailSendingError"
         }),
         { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
@@ -158,8 +173,9 @@ serve(async (req: Request) => {
     return new Response(
       JSON.stringify({ 
         success: false, 
-        message: error.message,
-        emailSent: false
+        message: error.message || "An unexpected error occurred",
+        emailSent: false,
+        error: error.name || "UnhandledError"
       }),
       { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );

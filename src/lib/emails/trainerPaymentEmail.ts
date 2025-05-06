@@ -57,14 +57,38 @@ export async function sendTrainerPaymentEmail({
     });
 
     if (error) {
-      console.error("Error sending trainer payment email:", error);
+      console.error("Error calling trainer payment email function:", error);
       toast.error("Failed to send payment email", {
         id: toastId,
-        description: error.message
+        description: error.message || "Connection error"
       });
       return { 
         success: false, 
         message: `Email sending failed: ${error.message}` 
+      };
+    }
+
+    // Check the response from the edge function
+    if (!data?.success) {
+      console.error("Email sending failed:", data);
+      const errorMessage = data?.message || "Unknown error occurred";
+      const isVerificationError = errorMessage.includes("domain is not verified");
+      
+      if (isVerificationError) {
+        toast.error("Domain verification required", {
+          id: toastId,
+          description: "Please verify your email domain in Resend"
+        });
+      } else {
+        toast.error("Failed to send payment email", {
+          id: toastId,
+          description: errorMessage
+        });
+      }
+      
+      return { 
+        success: false, 
+        message: errorMessage 
       };
     }
 
