@@ -21,8 +21,9 @@ export async function fetchTrainers(branchId: string) {
   return trainers;
 }
 
-export async function fetchSchedules(trainerId: string): Promise<Schedule[]> {
-  const { data: schedules, error } = await supabase
+export async function fetchSchedules(trainerId: string, termId?: string): Promise<Schedule[]> {
+  // Build the query with trainer filtering
+  let query = supabase
     .from('class_schedules')
     .select(`
       id,
@@ -35,6 +36,7 @@ export async function fetchSchedules(trainerId: string): Promise<Schedule[]> {
       selected_dates,
       created_at,
       updated_at,
+      term_id,
       classes:class_id (
         id,
         name,
@@ -49,6 +51,16 @@ export async function fetchSchedules(trainerId: string): Promise<Schedule[]> {
       )
     `)
     .eq('trainer_id', trainerId);
+
+  // Add term filtering if a term ID is provided
+  if (termId) {
+    query = query.eq('term_id', termId);
+    console.log(`Filtering schedules for term: ${termId}`);
+  } else {
+    console.log("No term ID provided for schedule filtering");
+  }
+
+  const { data: schedules, error } = await query;
 
   if (error) {
     console.error(`Error fetching schedules for trainer ${trainerId}:`, error);

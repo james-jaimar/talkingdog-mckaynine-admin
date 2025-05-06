@@ -8,7 +8,8 @@ export function useTrainerPaymentData(
   open: boolean, 
   trainerId: string, 
   branchId?: string,
-  dateRange?: { from: Date; to: Date }
+  dateRange?: { from: Date; to: Date },
+  termId?: string
 ) {
   const [loading, setLoading] = useState(false);
   const [trainerName, setTrainerName] = useState("");
@@ -25,7 +26,7 @@ export function useTrainerPaymentData(
       setClassDetails([]);
       setSelectedClasses([]);
     }
-  }, [open, trainerId, branchId]);
+  }, [open, trainerId, branchId, termId]); // Add termId as a dependency
 
   const fetchTrainerData = async () => {
     if (!trainerId) return;
@@ -45,7 +46,7 @@ export function useTrainerPaymentData(
       }
 
       // Get the trainer payments data from the query cache if available
-      const cachedData = queryClient.getQueryData(['trainer-payments', branchId, dateRange]) as any[];
+      const cachedData = queryClient.getQueryData(['trainer-payments', branchId, dateRange, termId]) as any[];
       
       if (cachedData) {
         const trainerData = cachedData.find(t => t.id === trainerId);
@@ -64,7 +65,8 @@ export function useTrainerPaymentData(
       }
 
       // If we didn't find cached data, fetch data directly
-      const { data: schedules } = await supabase
+      // Add term filtering to the query
+      let scheduleQuery = supabase
         .from('class_schedules')
         .select(`
           id,
@@ -98,6 +100,14 @@ export function useTrainerPaymentData(
           )
         `)
         .eq('trainer_id', trainerId);
+        
+      // Apply term filter if provided
+      if (termId) {
+        console.log(`Filtering schedules for term: ${termId}`);
+        scheduleQuery = scheduleQuery.eq('term_id', termId);
+      }
+      
+      const { data: schedules } = await scheduleQuery;
 
       if (!schedules || schedules.length === 0) {
         setClassDetails([]);

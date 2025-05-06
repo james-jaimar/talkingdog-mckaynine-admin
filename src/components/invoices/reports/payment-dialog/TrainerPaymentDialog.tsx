@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -12,6 +11,7 @@ import { LoadingState } from "./LoadingState";
 import { useMarkTrainerPaymentsPaid } from "@/hooks/useMarkTrainerPaymentsPaid";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/useIsMobile";
+import { useTerm } from "@/context/TermContext";
 
 interface TrainerPaymentDialogProps {
   open: boolean;
@@ -36,6 +36,7 @@ export function TrainerPaymentDialog({
     sendEmail: true
   });
   const isMobile = useIsMobile();
+  const { termData } = useTerm();
 
   // Reset selected classes when the dialog opens with new scheduleIds
   useEffect(() => {
@@ -53,7 +54,7 @@ export function TrainerPaymentDialog({
     selectedClasses,
     toggleClass,
     toggleSelectAll
-  } = useTrainerPaymentData(open, trainerId, branchId, dateRange);
+  } = useTrainerPaymentData(open, trainerId, branchId, dateRange, termData?.id);
 
   const markAsPaid = useMarkTrainerPaymentsPaid();
 

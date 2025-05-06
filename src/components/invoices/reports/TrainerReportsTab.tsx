@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { useTrainerPaymentData } from "@/hooks/useTrainerPaymentData";
 import { TrainerPaymentsSummary } from "./TrainerPaymentsSummary";
@@ -11,6 +11,7 @@ import { useMarkTrainerPaymentsUnpaid } from "@/hooks/useMarkTrainerPaymentsUnpa
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useQueryClient } from "@tanstack/react-query";
+import { useTerm } from "@/context/TermContext";
 
 interface TrainerReportsTabProps {
   dateRange: { from: Date; to: Date };
@@ -26,6 +27,16 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
   const [selectedScheduleIds, setSelectedScheduleIds] = useState<string[]>([]);
   
   const markAsUnpaid = useMarkTrainerPaymentsUnpaid();
+  const { termData } = useTerm();
+  
+  // Add effect to refresh data when term changes
+  useEffect(() => {
+    if (termData?.id) {
+      console.log(`TrainerReportsTab: Term changed to ${termData.term_number}, refreshing data`);
+      queryClient.invalidateQueries({ queryKey: ['trainer-payments'] });
+      refetch();
+    }
+  }, [termData?.id, queryClient, refetch]);
   
   // Handle mark as unpaid for a specific trainer
   const handleMarkAsUnpaid = (trainerId: string) => {

@@ -9,10 +9,15 @@ import {
 } from "./queries/fetchTrainerData";
 import { formatTrainerPaymentData } from "./utils/formatTrainerData";
 import { TrainerPaymentData } from "./types";
+import { useTerm } from "@/context/TermContext";
 
 export function useTrainerPaymentData(branchId?: string, dateRange?: { from: Date; to: Date }) {
+  // Get the current term ID
+  const { termData } = useTerm();
+  const currentTermId = termData?.id;
+
   return useQuery({
-    queryKey: ['trainer-payments', branchId, dateRange],
+    queryKey: ['trainer-payments', branchId, dateRange, currentTermId],
     queryFn: async (): Promise<TrainerPaymentData[]> => {
       if (!branchId) return [];
 
@@ -23,8 +28,8 @@ export function useTrainerPaymentData(branchId?: string, dateRange?: { from: Dat
         const trainers = await fetchTrainers(branchId);
         
         const trainerPayments = await Promise.all(trainers.map(async (trainer) => {
-          // First fetch schedules for this trainer
-          const schedules = await fetchSchedules(trainer.id);
+          // First fetch schedules for this trainer, filtered by term
+          const schedules = await fetchSchedules(trainer.id, currentTermId);
           
           if (!schedules || schedules.length === 0) {
             // No schedules, return trainer with zeroed data
