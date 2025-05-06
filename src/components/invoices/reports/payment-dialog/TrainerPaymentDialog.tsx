@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -12,6 +13,7 @@ import { useMarkTrainerPaymentsPaid } from "@/hooks/useMarkTrainerPaymentsPaid";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useTerm } from "@/context/TermContext";
+import { useTrainerPaymentData } from "./useTrainerPaymentData";
 
 interface TrainerPaymentDialogProps {
   open: boolean;
@@ -105,7 +107,10 @@ export function TrainerPaymentDialog({
         notes: paymentDetails.paymentNotes,
         sendEmail: paymentDetails.sendEmail,
         documentUrl: paymentDetails.documentUrl,
-        documentName: paymentDetails.documentName
+        documentName: paymentDetails.documentName,
+        trainerName,
+        trainerEmail,
+        classDetails: classDetails.filter(c => selectedClassIds.includes(c.scheduleId))
       });
       
       toast.success("Payment recorded successfully");
@@ -192,6 +197,3 @@ export function TrainerPaymentDialog({
     </DialogComponent>
   );
 }
-
-// Import the hook at the end to avoid circular dependencies
-import { useTrainerPaymentData } from "./useTrainerPaymentData";

@@ -73,29 +73,113 @@ serve(async (req: Request) => {
     
     const resend = new Resend(resendApiKey);
 
-    // Build email content
+    // Build email content - enhanced version with better styling
     const emailHtml = `
-      <h1>Payment Confirmation</h1>
-      <p>Dear ${payload.trainerName || "Trainer"},</p>
-      
-      <p>We are pleased to confirm that your payment for training services has been processed.</p>
-      
-      <div style="margin: 20px 0; padding: 15px; border: 1px solid #e0e0e0; border-radius: 5px;">
-        <h2 style="margin-top: 0;">Payment Details</h2>
-        <p><strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
-        <p><strong>Method:</strong> ${paymentMethodDisplay}</p>
-        ${payload.paymentDetails?.transactionId ? `<p><strong>Transaction ID:</strong> ${payload.paymentDetails.transactionId}</p>` : ''}
-        ${payload.amount ? `<p><strong>Amount:</strong> R ${payload.amount.toFixed(2)}</p>` : ''}
-        ${payload.paymentDetails?.notes ? `<p><strong>Notes:</strong> ${payload.paymentDetails.notes}</p>` : ''}
-      </div>
-      
-      ${payload.documentUrl ? `
-      <p>You can view your payment document here: <a href="${payload.documentUrl}" target="_blank">View Document</a></p>
-      ` : ''}
-      
-      <p>Thank you for your services and dedication to our training program.</p>
-      
-      <p>Best regards,<br>McKaynine Training Centre</p>
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Payment Confirmation</title>
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333333;
+            margin: 0;
+            padding: 0;
+          }
+          .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+          }
+          .header {
+            background-color: #2980b9;
+            padding: 20px;
+            text-align: center;
+            color: white;
+          }
+          .content {
+            padding: 20px;
+            background-color: #f9f9f9;
+          }
+          .details-box {
+            background-color: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+          }
+          .footer {
+            text-align: center;
+            padding: 20px;
+            font-size: 12px;
+            color: #666666;
+            border-top: 1px solid #e0e0e0;
+          }
+          h1 {
+            color: #2980b9;
+            margin-top: 0;
+          }
+          h2 {
+            color: #2980b9;
+            font-size: 18px;
+            margin-top: 0;
+          }
+          .btn {
+            display: inline-block;
+            background-color: #2980b9;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 5px;
+            margin-top: 15px;
+          }
+          .amount {
+            font-size: 22px;
+            font-weight: bold;
+            color: #2980b9;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>Payment Confirmation</h1>
+          </div>
+          <div class="content">
+            <p>Dear ${payload.trainerName || "Trainer"},</p>
+            
+            <p>We are pleased to confirm that your payment for training services has been processed.</p>
+            
+            <div class="details-box">
+              <h2>Payment Details</h2>
+              <p><strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
+              <p><strong>Method:</strong> ${paymentMethodDisplay}</p>
+              ${payload.paymentDetails?.transactionId ? `<p><strong>Transaction ID:</strong> ${payload.paymentDetails.transactionId}</p>` : ''}
+              ${payload.amount ? `<p><strong>Amount:</strong> <span class="amount">R ${payload.amount.toFixed(2)}</span></p>` : ''}
+              ${payload.paymentDetails?.notes ? `<p><strong>Notes:</strong> ${payload.paymentDetails.notes}</p>` : ''}
+            </div>
+            
+            ${payload.documentUrl ? `
+            <p>Your detailed payment document is attached to this email. You can also view it online by clicking the button below:</p>
+            <p style="text-align: center;">
+              <a href="${payload.documentUrl}" class="btn" target="_blank">View Payment Document</a>
+            </p>
+            ` : ''}
+            
+            <p>Thank you for your services and dedication to our training program.</p>
+            
+            <p>Best regards,<br>McKaynine Training Centre</p>
+          </div>
+          <div class="footer">
+            <p>This is an automated email. Please do not reply to this message.</p>
+            <p>&copy; ${new Date().getFullYear()} McKaynine Training Centre. All rights reserved.</p>
+          </div>
+        </div>
+      </body>
+      </html>
     `;
 
     // Determine if we're sending with pdf attachment or just a link
@@ -107,7 +191,16 @@ serve(async (req: Request) => {
     };
     
     // Add attachment if PDF data is provided
-    if (payload.pdfData) {
+    if (payload.documentUrl && payload.pdfData) {
+      // If we have both URL and PDF data, use the PDF data as attachment
+      emailOptions.attachments = [
+        {
+          filename: payload.documentName || "payment_confirmation.pdf",
+          content: payload.pdfData
+        }
+      ];
+    } else if (payload.pdfData) {
+      // Only PDF data is provided
       emailOptions.attachments = [
         {
           filename: payload.documentName || "payment_confirmation.pdf",
@@ -115,6 +208,7 @@ serve(async (req: Request) => {
         }
       ];
     }
+    // If only URL is provided, it's already in the email body as a link
 
     // Send the email
     try {

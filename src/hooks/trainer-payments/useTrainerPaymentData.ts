@@ -71,5 +71,6 @@ export function useTrainerPaymentData(branchId?: string, dateRange?: { from: Dat
       }
     },
     enabled: !!branchId,
+    staleTime: 5 * 60 * 1000, // 5 minutes cache
   });
 }

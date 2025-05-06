@@ -1,259 +1,229 @@
 
 import { useState, useEffect } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { TrainerClassDetail } from "@/hooks/trainer-payments/types";
+import { useTerm } from "@/context/TermContext";
 
 export function useTrainerPaymentData(
-  open: boolean, 
-  trainerId: string, 
+  isOpen: boolean,
+  trainerId: string,
   branchId?: string,
   dateRange?: { from: Date; to: Date },
   termId?: string
 ) {
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [trainerName, setTrainerName] = useState("");
-  const [trainerEmail, setTrainerEmail] = useState<string | null>(null);
+  const [trainerEmail, setTrainerEmail] = useState("");
   const [classDetails, setClassDetails] = useState<TrainerClassDetail[]>([]);
   const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
-  const queryClient = useQueryClient();
+  const { termData } = useTerm();
   
-  // Fetch trainer's classes and payment data when dialog opens
   useEffect(() => {
-    if (open && trainerId) {
-      fetchTrainerData();
-    } else {
-      setClassDetails([]);
-      setSelectedClasses([]);
+    // Reset state when dialog opens/closes or trainer changes
+    if (!isOpen) {
+      return;
     }
-  }, [open, trainerId, branchId, termId]); // Add termId as a dependency
-
-  const fetchTrainerData = async () => {
-    if (!trainerId) return;
     
-    setLoading(true);
-    try {
-      // First get trainer name and email
-      const { data: trainerData } = await supabase
-        .from('trainers')
-        .select('first_name, last_name, email')
-        .eq('id', trainerId)
-        .single();
-      
-      if (trainerData) {
-        setTrainerName(`${trainerData.first_name} ${trainerData.last_name}`);
-        setTrainerEmail(trainerData.email);
-      }
-
-      // Get the trainer payments data from the query cache if available
-      const cachedData = queryClient.getQueryData(['trainer-payments', branchId, dateRange, termId]) as any[];
-      
-      if (cachedData) {
-        const trainerData = cachedData.find(t => t.id === trainerId);
-        if (trainerData && trainerData.classDetails) {
-          setClassDetails(trainerData.classDetails);
-          
-          // Pre-select unpaid classes
-          setSelectedClasses(
-            trainerData.classDetails
-              .filter((c: TrainerClassDetail) => !c.isPaid)
-              .map((c: TrainerClassDetail) => c.scheduleId)
-          );
-          setLoading(false);
-          return;
-        }
-      }
-
-      // If we didn't find cached data, fetch data directly
-      // Add term filtering to the query
-      let scheduleQuery = supabase
-        .from('class_schedules')
-        .select(`
-          id,
-          start_time,
-          end_time,
-          classes:class_id (
-            id, 
-            name,
-            trainer_fee_type,
-            trainer_fee_value,
-            course_fee
-          ),
-          bookings:bookings!class_schedule_id (
-            id,
-            client_id,
-            clients:client_id (
-              id,
-              first_name,
-              last_name
-            ),
-            invoice_items:invoice_items!booking_id (
-              id,
-              amount,
-              invoice_id,
-              invoices:invoice_id (
-                id,
-                status,
-                total
-              )
-            )
-          )
-        `)
-        .eq('trainer_id', trainerId);
-        
-      // Apply term filter if provided
-      if (termId) {
-        console.log(`Filtering schedules for term: ${termId}`);
-        scheduleQuery = scheduleQuery.eq('term_id', termId);
-      }
-      
-      const { data: schedules } = await scheduleQuery;
-
-      if (!schedules || schedules.length === 0) {
-        setClassDetails([]);
+    async function fetchTrainerDetails() {
+      if (!trainerId || !branchId) {
         setLoading(false);
         return;
       }
 
-      // Get trainer payments to determine which are already paid
-      const { data: trainerPayments } = await supabase
-        .from('trainer_payments')
-        .select('class_schedule_id, status')
-        .eq('trainer_id', trainerId)
-        .in('class_schedule_id', schedules.map(s => s.id));
+      setLoading(true);
+      
+      try {
+        // Fetch trainer details
+        const { data: trainerData, error: trainerError } = await supabase
+          .from("trainers")
+          .select("id, first_name, last_name, email")
+          .eq("id", trainerId)
+          .single();
 
-      // Process class details
-      const details: TrainerClassDetail[] = schedules.map(schedule => {
-        // Check if this schedule is already paid
-        const payment = trainerPayments?.find(p => 
-          p.class_schedule_id === schedule.id && p.status === 'paid'
-        );
-        const isPaid = !!payment;
+        if (trainerError || !trainerData) {
+          console.error("Error fetching trainer:", trainerError);
+          setLoading(false);
+          return;
+        }
         
-        // Calculate revenue for this class
-        let revenue = 0;
-        let bookingsCount = 0;
-        let bookingsDetails = [];
+        // Set trainer info
+        setTrainerName(`${trainerData.first_name} ${trainerData.last_name}`);
+        setTrainerEmail(trainerData.email || "");
         
-        if (schedule.bookings && schedule.bookings.length > 0) {
-          bookingsCount = schedule.bookings.length;
+        // Use the provided termId or fall back to current term
+        const effectiveTermId = termId || termData?.id;
+        
+        // Fetch class schedules for this trainer with term filtering
+        let query = supabase
+          .from("class_schedules")
+          .select(`
+            id,
+            start_time,
+            end_time,
+            classes:class_id (
+              id, 
+              name,
+              trainer_fee_type,
+              trainer_fee_value
+            ),
+            trainer_payments(status, payment_date, amount)
+          `)
+          .eq("trainer_id", trainerId);
           
-          for (const booking of schedule.bookings) {
-            // Add booking details
-            const clientName = booking.clients 
-              ? `${booking.clients.first_name || ''} ${booking.clients.last_name || ''}`.trim()
-              : 'Unnamed Client';
-              
-            let bookingRevenue = 0;
+        // Add term filtering when a term ID is provided
+        if (effectiveTermId) {
+          query = query.eq("term_id", effectiveTermId);
+          console.log(`Filtering dialog schedules for term: ${effectiveTermId}`);
+        }
+          
+        const { data: schedules, error: schedulesError } = await query;
+        
+        if (schedulesError) {
+          console.error("Error fetching class schedules:", schedulesError);
+          setLoading(false);
+          return;
+        }
+        
+        if (!schedules || schedules.length === 0) {
+          // No schedules found
+          setClassDetails([]);
+          setLoading(false);
+          return;
+        }
+        
+        // For each schedule, fetch related bookings
+        const scheduleDetails = await Promise.all(
+          schedules.map(async (schedule) => {
+            // Set base info from schedule
+            const classDetail: TrainerClassDetail = {
+              scheduleId: schedule.id,
+              className: schedule.classes?.name || "Unnamed Class",
+              classDate: schedule.start_time,
+              trainerFeeType: schedule.classes?.trainer_fee_type || "percentage",
+              trainerFeeValue: schedule.classes?.trainer_fee_value || 0,
+              bookings: 0,
+              totalRevenue: 0,
+              potentialRevenue: 0,
+              isPaid: false,
+              hasZeroCommission: schedule.classes?.trainer_fee_value === 0,
+              hasZeroAmountPayment: false,
+              paidAmount: 0,
+              paymentDate: null
+            };
             
-            // Calculate fees for this booking
-            if (booking.invoice_items && booking.invoice_items.length > 0 && schedule.classes) {
-              // Get paid invoice items
-              const paidItems = booking.invoice_items.filter(
-                item => item.invoices && item.invoices.status === 'paid'
-              );
+            // Check if there's a payment record for this schedule
+            if (schedule.trainer_payments && schedule.trainer_payments.length > 0) {
+              const payment = schedule.trainer_payments[0];
+              classDetail.isPaid = payment.status === "paid";
+              classDetail.paymentDate = payment.payment_date;
+              classDetail.paidAmount = payment.amount || 0;
+              classDetail.hasZeroAmountPayment = payment.status === "paid" && (!payment.amount || payment.amount === 0);
+            }
+            
+            // Fetch bookings related to this schedule
+            const { data: bookings, error: bookingsError } = await supabase
+              .from("bookings")
+              .select(`
+                id, 
+                payment_status,
+                invoice_items:invoice_items(amount)
+              `)
+              .eq("class_schedule_id", schedule.id);
+            
+            if (bookingsError) {
+              console.error(`Error fetching bookings for schedule ${schedule.id}:`, bookingsError);
+              return classDetail;
+            }
+            
+            if (bookings && bookings.length > 0) {
+              // Count bookings
+              classDetail.bookings = bookings.length;
               
-              const feeType = schedule.classes.trainer_fee_type;
-              const feeValue = schedule.classes.trainer_fee_value || 0;
-              
-              // Calculate from invoice totals for percentage fees
-              if (feeType === 'percentage') {
-                for (const item of paidItems) {
-                  // Use invoice total for more accurate calculation
-                  const invoiceTotal = item.invoices?.total || 0;
-                  bookingRevenue += (invoiceTotal * feeValue / 100);
+              // Calculate total revenue from invoice items
+              let totalRevenue = 0;
+              bookings.forEach(booking => {
+                if (booking.invoice_items && booking.invoice_items.length > 0) {
+                  totalRevenue += booking.invoice_items.reduce((sum, item) => sum + (item.amount || 0), 0);
                 }
-              } else {
-                // For fixed fee, just add the fixed amount if there are any paid invoices
-                bookingRevenue = paidItems.length > 0 ? feeValue : 0;
-              }
-            } else if (schedule.classes) {
-              // If no invoices yet, calculate potential revenue
-              const feeType = schedule.classes.trainer_fee_type;
-              const feeValue = schedule.classes.trainer_fee_value || 0;
-              const courseFee = schedule.classes.course_fee || 0;
+              });
               
-              if (feeType === 'percentage') {
-                bookingRevenue = courseFee * (feeValue / 100);
-              } else {
-                bookingRevenue = feeValue;
+              classDetail.totalRevenue = totalRevenue;
+              
+              // Calculate potential revenue based on fee type and value
+              if (classDetail.trainerFeeType === "percentage") {
+                classDetail.potentialRevenue = totalRevenue * (classDetail.trainerFeeValue / 100);
+              } else if (classDetail.trainerFeeType === "fixed") {
+                // Fixed amount per class
+                classDetail.potentialRevenue = classDetail.trainerFeeValue;
               }
             }
             
-            // Add this booking's revenue to total
-            revenue += bookingRevenue;
-            
-            // Add booking details
-            bookingsDetails.push({
-              bookingId: booking.id,
-              clientId: booking.client_id || '',
-              handlerName: clientName,
-              commissionAmount: bookingRevenue
-            });
-          }
-        }
+            return classDetail;
+          })
+        );
         
-        // Calculate potential revenue - what could be earned if all bookings pay
-        let potentialRevenue = 0;
-        if (schedule.classes && schedule.bookings) {
-          const feeType = schedule.classes.trainer_fee_type;
-          const feeValue = schedule.classes.trainer_fee_value || 0;
-          const courseFee = schedule.classes.course_fee || 0;
+        // Sort by date (newest first) and then by class name
+        const sortedDetails = scheduleDetails.sort((a, b) => {
+          // First by unpaid/paid status
+          if (!a.isPaid && b.isPaid) return -1;
+          if (a.isPaid && !b.isPaid) return 1;
           
-          if (feeType === 'percentage') {
-            potentialRevenue = courseFee * (feeValue / 100) * bookingsCount;
-          } else {
-            potentialRevenue = feeValue * bookingsCount;
-          }
-        }
+          // Then by date
+          const dateA = new Date(a.classDate).getTime();
+          const dateB = new Date(b.classDate).getTime();
+          if (dateA !== dateB) return dateB - dateA;
+          
+          // Then by name
+          return a.className.localeCompare(b.className);
+        });
         
-        return {
-          scheduleId: schedule.id,
-          className: schedule.classes?.name || 'Unknown Class',
-          classDate: schedule.start_time,
-          scheduleDate: new Date(schedule.start_time),
-          revenue,
-          potentialRevenue,
-          bookings: bookingsCount,
-          isPaid,
-          bookingsDetails
-        };
-      });
-
-      setClassDetails(details);
-      
-      // Pre-select unpaid classes
-      setSelectedClasses(details.filter(c => !c.isPaid).map(c => c.scheduleId));
-    } catch (error) {
-      console.error("Error fetching trainer data:", error);
-    } finally {
-      setLoading(false);
+        setClassDetails(sortedDetails);
+        
+        // Select all unpaid classes by default
+        const unpaidClassIds = sortedDetails
+          .filter(cls => !cls.isPaid)
+          .map(cls => cls.scheduleId);
+          
+        setSelectedClasses(unpaidClassIds);
+      } catch (error) {
+        console.error("Error loading trainer payment data:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    fetchTrainerDetails();
+  }, [isOpen, trainerId, branchId, dateRange, termId, termData?.id]);
+  
+  // Handler for toggling a class selection
+  const toggleClass = (scheduleId: string, selected: boolean) => {
+    if (selected) {
+      setSelectedClasses(prev => [...prev, scheduleId]);
+    } else {
+      setSelectedClasses(prev => prev.filter(id => id !== scheduleId));
     }
   };
-
-  const toggleSelectAll = (checked: boolean) => {
-    if (checked) {
-      setSelectedClasses(classDetails.filter(c => !c.isPaid).map(c => c.scheduleId));
+  
+  // Handler for toggling all classes
+  const toggleSelectAll = (selected: boolean) => {
+    if (selected) {
+      // Only select unpaid classes
+      const unpaidClassIds = classDetails
+        .filter(cls => !cls.isPaid)
+        .map(cls => cls.scheduleId);
+      setSelectedClasses(unpaidClassIds);
     } else {
       setSelectedClasses([]);
     }
   };
-
-  const toggleClass = (classId: string, checked: boolean) => {
-    if (checked) {
-      setSelectedClasses(prev => [...prev, classId]);
-    } else {
-      setSelectedClasses(prev => prev.filter(id => id !== classId));
-    }
-  };
-
+  
   return {
     loading,
     trainerName,
     trainerEmail,
     classDetails,
     selectedClasses,
-    toggleSelectAll,
-    toggleClass
+    toggleClass,
+    toggleSelectAll
   };
 }

@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { generateTrainerPaymentPDF } from "@/components/invoices/reports/pdf/TrainerPaymentPDF";
 import { TrainerClassDetail } from "./trainer-payments/types";
 import { sendTrainerPaymentEmail } from "@/lib/emails/trainerPaymentEmail";
+import { ensurePaymentDocumentsBucketExists } from "./trainer-payments/queries/fetchTrainerData";
 
 export function useMarkTrainerPaymentsPaid() {
   const queryClient = useQueryClient();
@@ -62,12 +63,15 @@ export function useMarkTrainerPaymentsPaid() {
         classDetails: classDetails?.length || 0
       });
       
-      // Generate PDF if needed and class details are provided
+      // Ensure the storage bucket exists
+      await ensurePaymentDocumentsBucketExists();
+      
+      // Always generate a PDF for the payment record
       let finalDocumentUrl = documentUrl;
-      let finalDocumentName = documentName;
+      let finalDocumentName = documentName || `Payment_${trainerName}_${new Date().toISOString().substring(0, 10)}.pdf`;
       let pdfDataUri: string | undefined = undefined;
       
-      if (classDetails && classDetails.length > 0 && trainerName && !documentUrl) {
+      if (classDetails && classDetails.length > 0 && trainerName) {
         try {
           // Generate PDF document
           const paymentDate = new Date().toISOString();
@@ -92,21 +96,15 @@ export function useMarkTrainerPaymentsPaid() {
             bytes[i] = decodedData.charCodeAt(i);
           }
           
-          // Create file name
-          const fileName = `trainer-payment-${new Date().getTime()}_${Math.random().toString(36).substring(2, 8)}.pdf`;
+          // Create file name with trainer's name and date
+          const timestamp = new Date().getTime();
+          const uniqueId = Math.random().toString(36).substring(2, 8);
+          const fileName = `payment_${trainerName.replace(/\s+/g, '_').toLowerCase()}_${timestamp}_${uniqueId}.pdf`;
           
           // Upload to Supabase Storage
           const file = new File([bytes], fileName, { type: 'application/pdf' });
           
-          // Ensure the bucket exists
-          const { data: bucketData, error: bucketError } = await supabase.storage.getBucket('payment-documents');
-          if (bucketError && bucketError.message.includes('does not exist')) {
-            await supabase.storage.createBucket('payment-documents', {
-              public: false // Make it private requiring signed URLs
-            });
-          }
-          
-          // Upload PDF
+          // Upload PDF to payment-documents bucket
           const { data: uploadData, error: uploadError } = await supabase.storage
             .from('payment-documents')
             .upload(`trainer-payments/${fileName}`, file);
@@ -117,14 +115,14 @@ export function useMarkTrainerPaymentsPaid() {
           } else {
             console.log("Payment PDF uploaded successfully:", uploadData);
             
-            // Generate signed URL for the PDF
+            // Generate signed URL for the PDF (valid for 7 days)
             const { data: urlData } = await supabase.storage
               .from('payment-documents')
-              .createSignedUrl(`trainer-payments/${fileName}`, 7 * 24 * 60 * 60); // 7 days
+              .createSignedUrl(`trainer-payments/${fileName}`, 7 * 24 * 60 * 60);
               
             if (urlData) {
               finalDocumentUrl = urlData.signedUrl;
-              finalDocumentName = `Payment Confirmation - ${trainerName}.pdf`;
+              finalDocumentName = `Payment_Confirmation_${trainerName.replace(/\s+/g, '_')}.pdf`;
               console.log("Generated signed URL for PDF:", finalDocumentUrl);
             }
           }
@@ -134,12 +132,12 @@ export function useMarkTrainerPaymentsPaid() {
         }
       }
       
-      // Create a variable to track if email was sent
+      // Variable to track if email was sent
       let emailSent = false;
       let emailError: string | null = null;
       
       // If email should be sent, do it before updating the database
-      if (sendEmail && trainerEmail && trainerName) {
+      if (sendEmail && trainerEmail && trainerName && finalDocumentUrl) {
         try {
           const emailResult = await sendTrainerPaymentEmail({
             to: trainerEmail,
@@ -181,7 +179,9 @@ export function useMarkTrainerPaymentsPaid() {
             documentUrl: finalDocumentUrl,
             documentName: finalDocumentName,
             sendEmail: false, // We've already sent the email if needed
-            amount // Include the calculated amount
+            amount, // Include the calculated amount
+            trainerName,
+            trainerEmail
           }
         });
 
@@ -205,6 +205,7 @@ export function useMarkTrainerPaymentsPaid() {
           createdCount: data.createdCount || 0,
           totalCount: scheduleIds.length,
           documentUrl: finalDocumentUrl,
+          documentName: finalDocumentName,
           amount,
           emailSent,
           emailError
@@ -215,7 +216,7 @@ export function useMarkTrainerPaymentsPaid() {
       }
     },
     onSuccess: (result) => {
-      // Force refresh the queries with a small delay to ensure DB has updated
+      // Force refresh the queries
       setTimeout(() => {
         queryClient.invalidateQueries({ queryKey: ['trainer-payments'] });
         queryClient.invalidateQueries({ queryKey: ['trainer-payment-history'] });

@@ -58,35 +58,14 @@ serve(async (req: Request) => {
       payment_method: payload.paymentMethod || null,
       transaction_id: payload.transactionId || null,
       notes: payload.notes || null,
-      updated_at: now
+      updated_at: now,
+      document_url: payload.documentUrl || null,
+      document_name: payload.documentName || null
     };
     
     // If amount is provided, include it
     if (payload.amount && payload.amount > 0) {
       updateData.amount = payload.amount;
-    }
-    
-    // Check if document fields exist in the table
-    try {
-      const { data: columnsData } = await supabaseAdmin
-        .from('information_schema.columns')
-        .select('column_name')
-        .eq('table_schema', 'public')
-        .eq('table_name', 'trainer_payments')
-        .in('column_name', ['document_url', 'document_name']);
-      
-      const columnNames = (columnsData || []).map(col => col.column_name);
-      
-      console.log("Document column check result:", { columns: columnNames });
-      
-      // Add document fields if they exist and values are provided
-      if (columnNames.includes('document_url') && payload.documentUrl) {
-        updateData.document_url = payload.documentUrl;
-        updateData.document_name = payload.documentName || null;
-      }
-    } catch (err) {
-      console.error("Error checking for document columns:", err);
-      // Continue with the update without document fields
     }
 
     // First, check if records exist for these schedules

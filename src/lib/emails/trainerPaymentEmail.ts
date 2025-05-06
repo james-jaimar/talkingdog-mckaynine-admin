@@ -33,14 +33,15 @@ export async function sendTrainerPaymentEmail({
       }
     };
     
-    // Only include PDF data if it exists
-    if (pdfAttachment) {
+    // Always use document URL as primary attachment method
+    // The PDF data is only used as a fallback
+    if (paymentDetails.documentUrl) {
+      emailData.documentUrl = paymentDetails.documentUrl;
+      emailData.documentName = paymentDetails.documentName || 'Payment Confirmation.pdf';
+    } else if (pdfAttachment) {
+      // Only include PDF data if no document URL exists
       const pdfData = pdfAttachment.split(',')[1]; // Remove the data:application/pdf;base64, part
       emailData.pdfData = pdfData;
-    } else if (paymentDetails.documentUrl) {
-      // If we have a document URL instead of a PDF attachment, send that
-      emailData.documentUrl = paymentDetails.documentUrl;
-      emailData.documentName = paymentDetails.documentName || 'Payment Confirmation';
     }
     
     console.log("Sending email with data:", {

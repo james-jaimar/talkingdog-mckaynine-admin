@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Schedule, Booking, InvoiceItem } from "../types";
 
@@ -175,4 +174,31 @@ export async function fetchTrainerPayments(trainerId: string, dateRange?: { from
   }
 
   return payments;
+}
+
+// New function to check if payment-documents bucket exists and create it if not
+export async function ensurePaymentDocumentsBucketExists() {
+  try {
+    // Check if bucket exists
+    const { data: bucketData, error: bucketError } = await supabase.storage.getBucket('payment-documents');
+    
+    if (bucketError && bucketError.message.includes('does not exist')) {
+      console.log('Creating payment-documents bucket...');
+      // Create the bucket
+      const { data, error } = await supabase.storage.createBucket('payment-documents', {
+        public: false,
+        fileSizeLimit: 10485760, // 10MB limit for PDF files
+      });
+      
+      if (error) {
+        console.error('Error creating payment-documents bucket:', error);
+      } else {
+        console.log('payment-documents bucket created successfully');
+      }
+    } else if (bucketData) {
+      console.log('payment-documents bucket already exists');
+    }
+  } catch (error) {
+    console.error('Error checking/creating payment-documents bucket:', error);
+  }
 }

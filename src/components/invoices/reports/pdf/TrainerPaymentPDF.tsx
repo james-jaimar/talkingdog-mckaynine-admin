@@ -1,8 +1,10 @@
+
 import { jsPDF } from "jspdf";
 import { TrainerClassDetail } from "@/hooks/trainer-payments/types";
 import { PaymentDetailsFormValues } from "../payment-dialog/PaymentDetailsForm";
 import { formatCurrency } from "@/lib/formatters";
 import autoTable from "jspdf-autotable";
+import { addLogoToPdf } from "../../../invoices/pdf/utils/pdfHelpers";
 
 interface TrainerPaymentPDFProps {
   trainerName: string;
@@ -23,83 +25,99 @@ export async function generateTrainerPaymentPDF({
   const pageWidth = doc.internal.pageSize.width;
   const totalAmount = classes.reduce((sum, c) => sum + c.potentialRevenue, 0);
   
-  // Add McKaynine logo at original size (210mm wide)
-  const logoPath = "/lovable-uploads/e55530eb-3e59-46f4-a6c6-93f2d1835712.png";
+  // Add McKaynine logo using the shared helper function
+  addLogoToPdf(doc, pageWidth);
   
-  try {
-    // Set coordinates to place the logo at the top of the page
-    const yPosition = 10; // Start 10mm from top
-    doc.addImage(logoPath, "PNG", 0, yPosition, pageWidth, 25); // Height set to 25mm for proportion
-  } catch (error) {
-    console.error("Error adding logo to PDF:", error);
-    // Continue without the logo if there's an error
-  }
-
   // Add payment details section
   let currentY = 45; // Start after logo
   
-  doc.setFontSize(18);
-  doc.setTextColor(0, 0, 0);
-  doc.text("Payment Confirmation", 14, currentY);
+  doc.setFontSize(20);
+  doc.setTextColor(41, 128, 185);
+  doc.setFont(undefined, 'bold');
+  doc.text("Trainer Payment Confirmation", 14, currentY);
+  doc.setFont(undefined, 'normal');
   currentY += 10;
   
-  doc.setFontSize(12);
+  doc.setFontSize(11);
   doc.setTextColor(100, 100, 100);
-  doc.text(`Payment Date: ${new Date(paymentDate).toLocaleDateString()}`, 14, currentY);
+  
+  // Format date for better readability
+  const formattedDate = new Date(paymentDate).toLocaleDateString('en-ZA', {
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric'
+  });
+  
+  doc.text(`Payment Date: ${formattedDate}`, 14, currentY);
   currentY += 10;
   
-  // Trainer info
-  doc.setFontSize(14);
-  doc.setTextColor(0, 0, 0);
-  doc.text("Trainer Information", 14, currentY);
-  currentY += 8;
-  
-  doc.setFontSize(11);
-  doc.text(`Name: ${trainerName}`, 14, currentY);
-  currentY += 6;
-  doc.text(`Email: ${trainerEmail}`, 14, currentY);
-  currentY += 10;
-  
-  // Payment details
-  doc.setFontSize(14);
-  doc.setTextColor(0, 0, 0);
-  doc.text("Payment Details", 14, currentY);
-  currentY += 8;
-  
-  doc.setFontSize(11);
-  doc.text(`Method: ${formatPaymentMethod(paymentDetails.paymentMethod)}`, 14, currentY);
-  currentY += 6;
-  
+  // Unique Reference Number
   if (paymentDetails.transactionId) {
-    doc.text(`Transaction ID: ${paymentDetails.transactionId}`, 14, currentY);
+    doc.text(`Reference: ${paymentDetails.transactionId}`, 14, currentY);
     currentY += 6;
   }
   
+  // Trainer info section with light gray background
+  currentY += 5;
+  doc.setFillColor(245, 245, 245);
+  doc.rect(14, currentY, pageWidth - 28, 30, 'F');
+  
+  doc.setFontSize(12);
+  doc.setTextColor(60, 60, 60);
+  doc.setFont(undefined, 'bold');
+  doc.text("Trainer Information", 18, currentY + 8);
+  doc.setFont(undefined, 'normal');
+  
+  doc.text(`Name: ${trainerName}`, 18, currentY + 16);
+  doc.text(`Email: ${trainerEmail}`, 18, currentY + 24);
+  
+  currentY += 35;
+  
+  // Payment details section with light blue background
+  doc.setFillColor(240, 248, 255);
+  doc.rect(14, currentY, pageWidth - 28, 34, 'F');
+  
+  doc.setFontSize(12);
+  doc.setTextColor(41, 128, 185);
+  doc.setFont(undefined, 'bold');
+  doc.text("Payment Details", 18, currentY + 8);
+  doc.setFont(undefined, 'normal');
+  doc.setTextColor(60, 60, 60);
+  
+  doc.text(`Method: ${formatPaymentMethod(paymentDetails.paymentMethod)}`, 18, currentY + 16);
+  doc.text(`Total Amount: ${formatCurrency(totalAmount)}`, 18, currentY + 24);
+  
+  currentY += 40;
+  
+  // Add notes if provided
   if (paymentDetails.paymentNotes) {
+    doc.setFontSize(11);
+    doc.setTextColor(80, 80, 80);
     doc.text("Notes:", 14, currentY);
     currentY += 6;
     
     const splitNotes = doc.splitTextToSize(paymentDetails.paymentNotes, pageWidth - 28);
     doc.text(splitNotes, 14, currentY);
-    currentY += splitNotes.length * 6 + 4;
+    currentY += splitNotes.length * 6 + 10;
+  } else {
+    currentY += 10;
   }
   
   // Table of classes
-  currentY += 10;
+  doc.setFontSize(12);
+  doc.setTextColor(41, 128, 185);
+  doc.setFont(undefined, 'bold');
+  doc.text("Classes Included in Payment", 14, currentY);
+  doc.setFont(undefined, 'normal');
+  currentY += 8;
   
   // Prepare data for the table
   const tableData = classes.map(cls => [
     cls.className,
-    new Date(cls.classDate).toLocaleDateString(),
+    new Date(cls.classDate).toLocaleDateString('en-ZA'),
     cls.bookings.toString(),
     formatCurrency(cls.potentialRevenue)
   ]);
-
-  // Add header for classes
-  doc.setFontSize(14);
-  doc.setTextColor(0, 0, 0);
-  doc.text("Classes Included in Payment", 14, currentY);
-  currentY += 10;
   
   // Add table
   autoTable(doc, {
@@ -109,7 +127,8 @@ export async function generateTrainerPaymentPDF({
     theme: 'grid',
     headStyles: { 
       fillColor: [41, 128, 185],
-      textColor: [255, 255, 255]
+      textColor: [255, 255, 255],
+      fontStyle: 'bold'
     },
     columnStyles: {
       0: { cellWidth: 70 },
@@ -119,18 +138,23 @@ export async function generateTrainerPaymentPDF({
     },
     styles: {
       fontSize: 10
+    },
+    alternateRowStyles: {
+      fillColor: [245, 250, 255]
     }
   });
   
   currentY = (doc as any).lastAutoTable.finalY + 15;
   
   // Summary section
-  doc.setFontSize(14);
-  doc.setTextColor(0, 0, 0);
+  doc.setFontSize(12);
+  doc.setTextColor(41, 128, 185);
+  doc.setFont(undefined, 'bold');
   doc.text("Payment Summary", 14, currentY);
   currentY += 8;
   
-  doc.setFontSize(12);
+  doc.setTextColor(60, 60, 60);
+  doc.setFont(undefined, 'normal');
   doc.text(`Total Classes: ${classes.length}`, 14, currentY);
   currentY += 6;
   
@@ -143,13 +167,15 @@ export async function generateTrainerPaymentPDF({
   doc.text(`Total Amount: ${formatCurrency(totalAmount)}`, 14, currentY);
   currentY += 15;
   
-  // Footer
-  doc.setFontSize(10);
+  // Footer with McKaynine info
+  doc.setFillColor(41, 128, 185, 0.1);
+  doc.rect(0, doc.internal.pageSize.height - 25, pageWidth, 25, 'F');
+  
+  doc.setFontSize(9);
   doc.setFont(undefined, 'normal');
-  doc.setTextColor(100, 100, 100);
-  doc.text("This is an automatically generated payment confirmation.", 14, currentY);
-  currentY += 5;
-  doc.text("McKaynine Training Centre", 14, currentY);
+  doc.setTextColor(80, 80, 80);
+  doc.text("This is an automatically generated payment confirmation.", 14, doc.internal.pageSize.height - 15);
+  doc.text("McKaynine Training Centre", 14, doc.internal.pageSize.height - 10);
   
   // Return as a data URL
   return doc.output('datauristring');
