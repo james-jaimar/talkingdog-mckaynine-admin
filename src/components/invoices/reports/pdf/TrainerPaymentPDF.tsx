@@ -29,7 +29,8 @@ export async function generateTrainerPaymentPDF({
   addLogoToPdf(doc, pageWidth);
   
   // Add payment details section
-  let currentY = 45; // Start after logo
+  // Increased the starting Y position to avoid overlapping with logo
+  let currentY = 70; // Increased from 45 to 70 to move content below the logo
   
   doc.setFontSize(20);
   doc.setTextColor(41, 128, 185);
