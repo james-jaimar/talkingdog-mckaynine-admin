@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -140,7 +141,7 @@ export function TrainerPaymentDialog({
         trainerEmail: trainer.trainerEmail,
         classDetails: trainer.classDetails?.filter(c => 
           selectedScheduleIds.includes(c.scheduleId)
-        )
+        ) as DialogTrainerClassDetail[]
       });
       
       onOpenChange(false);
