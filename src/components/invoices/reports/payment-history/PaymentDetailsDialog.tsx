@@ -66,15 +66,13 @@ export function PaymentDetailsDialog({ open, onOpenChange, payment }: PaymentDet
   const getCleanDocumentUrl = (url?: string) => {
     if (!url) return '';
     
-    // Check if the URL contains a token parameter
-    const hasToken = url.includes('token=');
-    
-    if (hasToken) {
-      // URL already has authentication token, use as is
+    // Make sure we're returning a valid, clean URL that will work in the iframe
+    try {
+      const urlObj = new URL(url);
       return url;
-    } else {
-      // If it's a direct public URL without token
-      return url;
+    } catch (e) {
+      console.error("Invalid document URL:", url, e);
+      return '';
     }
   };
   

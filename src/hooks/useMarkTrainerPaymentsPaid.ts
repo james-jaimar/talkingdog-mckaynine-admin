@@ -1,4 +1,3 @@
-
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -39,9 +38,10 @@ async function ensurePaymentDocumentsBucket() {
     
     if (!paymentBucket) {
       console.log("Creating payment-documents bucket");
-      const { data, error: createError } = await supabase.storage.createBucket('payment-documents', {
-        public: true
-      });
+      const { data, error: createError } = await supabase.storage
+        .createBucket('payment-documents', {
+          public: true
+        });
       
       if (createError) {
         console.error("Error creating payment-documents bucket:", createError);
@@ -90,7 +90,10 @@ export function useMarkTrainerPaymentsPaid() {
         let documentUrl = params.documentUrl;
         let documentName = params.documentName;
         
-        if (!documentUrl && params.trainerName && params.classDetails && params.classDetails.length > 0) {
+        // Always generate a payment PDF if class details are available, even if custom document is uploaded
+        const shouldGeneratePaymentPdf = params.trainerName && params.classDetails && params.classDetails.length > 0;
+        
+        if (shouldGeneratePaymentPdf) {
           try {
             console.log("Generating payment PDF document for:", params.trainerName);
             
@@ -119,9 +122,16 @@ export function useMarkTrainerPaymentsPaid() {
               const uploadResult = await uploadPaymentPDF(pdfBase64, filename);
               
               if (uploadResult) {
-                documentUrl = uploadResult.url;
-                documentName = uploadResult.name;
-                console.log("Payment PDF stored successfully:", documentUrl);
+                // If we already have a document URL from an uploaded file, keep it in a separate field
+                if (params.documentUrl) {
+                  console.log("Using both generated PDF and uploaded document");
+                  documentUrl = uploadResult.url;
+                  documentName = uploadResult.name;
+                } else {
+                  documentUrl = uploadResult.url;
+                  documentName = uploadResult.name;
+                  console.log("Payment PDF stored successfully:", documentUrl);
+                }
               } else {
                 console.error("Failed to upload payment PDF");
               }

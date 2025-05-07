@@ -19,7 +19,8 @@ export async function uploadPaymentPDF(
     }
     
     // Remove the data:application/pdf;base64, prefix if present
-    const base64Data = pdfBase64.split(",")[1];
+    const base64Data = pdfBase64.includes("base64,") ? pdfBase64.split(",")[1] : pdfBase64;
+    
     if (!base64Data) {
       console.error("Invalid PDF data format");
       return null;
@@ -31,13 +32,30 @@ export async function uploadPaymentPDF(
     // Generate a unique filename with timestamp
     const timestamp = new Date().getTime();
     const sanitizedFilename = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
-    const uniqueFilename = `trainer-payments/payment-document-${timestamp}-${sanitizedFilename}`;
+    const uniqueFilename = `trainer-payments/${timestamp}-${sanitizedFilename}`;
     
-    console.log(`Uploading PDF to payment-documents/${uniqueFilename}`);
+    console.log(`Attempting to upload PDF to payment-documents/${uniqueFilename}`);
+    
+    // Try to create the bucket first if it doesn't exist
+    try {
+      const { data: buckets, error: bucketError } = await supabase.storage.listBuckets();
+      
+      if (!bucketError) {
+        const bucketExists = buckets?.some(b => b.id === 'payment-documents');
+        
+        if (!bucketExists) {
+          console.log("Creating payment-documents bucket");
+          await supabase.storage.createBucket('payment-documents', {
+            public: true
+          });
+        }
+      }
+    } catch (bucketErr) {
+      console.error("Error checking/creating bucket:", bucketErr);
+    }
     
     // Upload the file to the payment-documents bucket
-    // Use 'let' instead of 'const' for uploadData since we might need to reassign it
-    let { data: uploadData, error: uploadError } = await supabase.storage
+    const { data: uploadData, error: uploadError } = await supabase.storage
       .from('payment-documents')
       .upload(uniqueFilename, pdfData, {
         contentType: 'application/pdf',
@@ -48,22 +66,16 @@ export async function uploadPaymentPDF(
     if (uploadError) {
       console.error("Error uploading PDF to storage:", uploadError);
       
-      // If the error is because the bucket doesn't exist, try to create it
-      if (uploadError.message.includes("bucket") && uploadError.message.includes("not found")) {
-        console.log("Bucket not found, attempting to create it");
-        const { error: createError } = await supabase.storage.createBucket('payment-documents', {
-          public: true
-        });
+      // If the file already exists, try with a different name
+      if (uploadError.message.includes("already exists")) {
+        const newTimestamp = new Date().getTime() + 1;
+        const newFilename = `trainer-payments/${newTimestamp}-${sanitizedFilename}`;
         
-        if (createError) {
-          console.error("Error creating bucket:", createError);
-          return null;
-        }
+        console.log(`Retrying upload with new filename: ${newFilename}`);
         
-        // Try upload again
         const { data: retryData, error: retryError } = await supabase.storage
           .from('payment-documents')
-          .upload(uniqueFilename, pdfData, {
+          .upload(newFilename, pdfData, {
             contentType: 'application/pdf',
             cacheControl: '3600',
             upsert: false
@@ -74,22 +86,30 @@ export async function uploadPaymentPDF(
           return null;
         }
         
-        uploadData = retryData;
-      } else {
-        return null;
+        // Use the data from the retry
+        const { data } = supabase.storage
+          .from('payment-documents')
+          .getPublicUrl(newFilename);
+        
+        return { 
+          url: data.publicUrl,
+          name: sanitizedFilename
+        };
       }
+      
+      return null;
     }
     
-    // Generate a public URL for the file that doesn't expire (or with a long expiry)
-    const { data: publicUrlData } = supabase.storage
+    // Generate a public URL for the file
+    const { data } = supabase.storage
       .from('payment-documents')
       .getPublicUrl(uniqueFilename);
     
-    console.log("Generated public URL:", publicUrlData?.publicUrl);
+    console.log("Generated public URL:", data?.publicUrl);
     
     return { 
-      url: publicUrlData.publicUrl,
-      name: sanitizedFilename // Return the sanitized filename for display
+      url: data.publicUrl,
+      name: sanitizedFilename
     };
   } catch (error) {
     console.error("Error in PDF upload process:", error);

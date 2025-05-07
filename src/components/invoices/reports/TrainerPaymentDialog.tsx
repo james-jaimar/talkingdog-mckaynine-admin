@@ -46,6 +46,7 @@ export function TrainerPaymentDialog({
   const [totalAmount, setTotalAmount] = useState(0);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
+  const [generatedPdfData, setGeneratedPdfData] = useState<string | null>(null);
 
   const { data: trainersData, isLoading: isLoadingTrainers } = useTrainerPaymentData(branchId, dateRange);
   const markTrainerPaymentsPaid = useMarkTrainerPaymentsPaid();
@@ -72,6 +73,7 @@ export function TrainerPaymentDialog({
       });
       setSelectedTab("classes");
       setPreviewUrl(null);
+      setGeneratedPdfData(null);
     }
   }, [open, trainer, scheduleIds]);
 
@@ -104,6 +106,7 @@ export function TrainerPaymentDialog({
     );
     // Clear any preview when classes change
     setPreviewUrl(null);
+    setGeneratedPdfData(null);
   };
 
   const toggleAllUnpaid = () => {
@@ -123,12 +126,14 @@ export function TrainerPaymentDialog({
     }
     // Clear any preview when classes change
     setPreviewUrl(null);
+    setGeneratedPdfData(null);
   };
 
   const handlePaymentDetailsChange = (values: PaymentDetailsValues) => {
     setPaymentDetails(values);
     // Clear preview when payment details change
     setPreviewUrl(null);
+    setGeneratedPdfData(null);
   };
 
   const handlePreviewPayment = async () => {
@@ -153,6 +158,7 @@ export function TrainerPaymentDialog({
       });
       
       setPreviewUrl(pdfDataUrl);
+      setGeneratedPdfData(pdfDataUrl); // Store the PDF data for later use
       setIsGeneratingPreview(false);
     } catch (error) {
       console.error("Error generating PDF preview:", error);
@@ -168,6 +174,30 @@ export function TrainerPaymentDialog({
     }
 
     try {
+      // First generate the PDF if not already generated
+      let pdfData = generatedPdfData;
+      if (!pdfData && hasSelectedClasses) {
+        try {
+          setIsGeneratingPreview(true);
+          const selectedClasses = trainer.classDetails?.filter(c => 
+            selectedScheduleIds.includes(c.scheduleId)
+          ) as DialogTrainerClassDetail[];
+          
+          pdfData = await generateTrainerPaymentPDF({
+            trainerName: trainer.trainerName,
+            trainerEmail: trainer.trainerEmail || '',
+            classes: selectedClasses,
+            paymentDetails: paymentDetails,
+            paymentDate: new Date().toISOString()
+          });
+          setIsGeneratingPreview(false);
+        } catch (error) {
+          console.error("Error auto-generating PDF:", error);
+          // Continue without PDF if generation fails
+        }
+      }
+      
+      // Process the payment with the generated PDF or uploaded document
       await markTrainerPaymentsPaid.mutateAsync({
         trainerId,
         scheduleIds: selectedScheduleIds,
@@ -181,7 +211,8 @@ export function TrainerPaymentDialog({
         trainerEmail: trainer.trainerEmail,
         classDetails: trainer.classDetails?.filter(c => 
           selectedScheduleIds.includes(c.scheduleId)
-        ) as DialogTrainerClassDetail[]
+        ) as DialogTrainerClassDetail[],
+        amount: totalAmount
       });
       
       onOpenChange(false);
