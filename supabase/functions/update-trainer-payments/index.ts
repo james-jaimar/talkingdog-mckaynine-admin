@@ -29,7 +29,7 @@ serve(async (req: Request) => {
   }
   
   try {
-    // Create Supabase client with service role key (has bypasses RLS)
+    // Create Supabase client with service role key (bypasses RLS)
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
@@ -59,142 +59,148 @@ serve(async (req: Request) => {
       payment_method: payload.paymentMethod || null,
       transaction_id: payload.transactionId || null,
       notes: payload.notes || null,
-      updated_at: now,
-      document_url: payload.documentUrl || null,
-      document_name: payload.documentName || null
+      updated_at: now
     };
     
-    // Log actual document URL being stored
-    console.log("Storing document URL:", updateData.document_url);
+    // Only add document URL and name if they are provided
+    if (payload.documentUrl) {
+      updateData.document_url = payload.documentUrl;
+      updateData.document_name = payload.documentName || null;
+      console.log("Storing document URL:", updateData.document_url);
+    }
     
     // If amount is provided, include it
     if (payload.amount && payload.amount > 0) {
       updateData.amount = payload.amount;
     }
 
-    // First, check if records exist for these schedules
+    // Find existing records to update (avoids duplicates)
     const { data: existingRecords, error: checkError } = await supabaseAdmin
       .from('trainer_payments')
-      .select('id, class_schedule_id, status')
+      .select('id, class_schedule_id, status, booking_id')
       .eq('trainer_id', payload.trainerId)
       .in('class_schedule_id', payload.scheduleIds);
     
-    console.log("Existing records check:", { 
-      count: existingRecords?.length,
-      scheduleIds: payload.scheduleIds,
-      error: checkError
-    });
+    if (checkError) {
+      console.error("Error checking existing records:", checkError);
+      return new Response(
+        JSON.stringify({ error: `Error checking records: ${checkError.message}` }),
+        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
     
-    // If there are no existing records, create them
+    console.log("Existing records:", existingRecords?.length || 0);
+    
+    // Track which schedule IDs already have records
+    const existingScheduleIds = new Set(existingRecords?.map(r => r.class_schedule_id) || []);
+    
+    // Records to update (existing records that match our criteria)
+    const recordsToUpdate = existingRecords || [];
+    const idsToUpdate = recordsToUpdate.map(r => r.id);
+    
+    // Missing schedule IDs (need to create new records)
     const missingScheduleIds = payload.scheduleIds.filter(
-      id => !existingRecords?.some(record => record.class_schedule_id === id)
+      id => !existingScheduleIds.has(id)
     );
     
-    let createdCount = 0;
-    if (missingScheduleIds.length > 0) {
-      console.log("Creating missing records for schedule IDs:", missingScheduleIds);
+    console.log({
+      recordsToUpdate: recordsToUpdate.length,
+      idsToUpdate,
+      missingScheduleIds,
+      existingScheduleIds: Array.from(existingScheduleIds)
+    });
+
+    // Transaction to handle both updates and inserts atomically
+    const { data, error } = await supabaseAdmin.rpc('batch_update_trainer_payments', {
+      p_trainer_id: payload.trainerId,
+      p_existing_ids: idsToUpdate,
+      p_missing_schedules: missingScheduleIds,
+      p_update_data: updateData
+    });
+
+    if (error) {
+      // If RPC function doesn't exist, fall back to manual updates
+      console.error("RPC error, falling back to manual updates:", error);
       
-      const newRecords = missingScheduleIds.map(scheduleId => ({
-        trainer_id: payload.trainerId,
-        class_schedule_id: scheduleId,
-        status: 'paid', // Directly mark as paid
-        payment_date: now,
-        payment_method: payload.paymentMethod || null,
-        transaction_id: payload.transactionId || null,
-        notes: payload.notes || null,
-        amount: payload.amount || 0, // Use provided amount or 0
-        document_url: payload.documentUrl || null,
-        document_name: payload.documentName || null,
-        updated_at: now
-      }));
-      
-      const { data: insertedData, error: insertError } = await supabaseAdmin
-        .from('trainer_payments')
-        .insert(newRecords)
-        .select();
-      
-      if (insertError) {
-        console.error("Error creating missing payment records:", insertError);
-        // Continue with updating existing records
-      } else {
-        createdCount = insertedData?.length || 0;
-        console.log(`Successfully created ${createdCount} new payment records`);
-      }
-    }
-    
-    // Update existing records
-    let updatedCount = 0;
-    const existingIds = existingRecords?.filter(r => payload.scheduleIds.includes(r.class_schedule_id))
-      .map(r => r.id) || [];
-      
-    if (existingIds.length > 0) {
-      console.log("Updating existing payment records:", existingIds);
-      
-      const { data: updateResult, error: updateError } = await supabaseAdmin
-        .from('trainer_payments')
-        .update(updateData)
-        .in('id', existingIds)
-        .select();
-      
-      if (updateError) {
-        console.error("Error updating payment records:", updateError);
-        return new Response(
-          JSON.stringify({ error: updateError.message }),
-          { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
-        );
+      let updatedCount = 0;
+      let createdCount = 0;
+
+      // Update existing records
+      if (idsToUpdate.length > 0) {
+        const { data: updateResult, error: updateError } = await supabaseAdmin
+          .from('trainer_payments')
+          .update(updateData)
+          .in('id', idsToUpdate)
+          .select();
+        
+        if (updateError) {
+          console.error("Error updating payment records:", updateError);
+          return new Response(
+            JSON.stringify({ error: updateError.message }),
+            { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+          );
+        }
+        
+        updatedCount = updateResult?.length || 0;
+        console.log(`Successfully updated ${updatedCount} payment records`);
       }
       
-      updatedCount = updateResult?.length || 0;
-      console.log(`Successfully updated ${updatedCount} payment records`);
+      // Insert new records for missing schedule IDs
+      if (missingScheduleIds.length > 0) {
+        const newRecords = missingScheduleIds.map(scheduleId => ({
+          trainer_id: payload.trainerId,
+          class_schedule_id: scheduleId,
+          status: 'paid',
+          payment_date: now,
+          payment_method: payload.paymentMethod || null,
+          transaction_id: payload.transactionId || null,
+          notes: payload.notes || null,
+          amount: payload.amount || 0,
+          document_url: payload.documentUrl || null,
+          document_name: payload.documentName || null,
+          updated_at: now
+        }));
+        
+        const { data: insertedData, error: insertError } = await supabaseAdmin
+          .from('trainer_payments')
+          .insert(newRecords)
+          .select();
+        
+        if (insertError) {
+          console.error("Error creating new payment records:", insertError);
+          // Continue with response, don't fail completely
+        } else {
+          createdCount = insertedData?.length || 0;
+          console.log(`Successfully created ${createdCount} new payment records`);
+        }
+      }
+      
+      // Use updatedCount and createdCount as results
+      data = { updatedCount, createdCount };
     }
-    
+
     // Send email notification if requested
     if (payload.sendEmail && payload.trainerEmail) {
       try {
-        // Get the trainer's email if not provided
-        let trainerEmail = payload.trainerEmail;
-        let trainerName = payload.trainerName || 'Trainer';
-        
-        if (!trainerEmail && payload.trainerId) {
-          const { data: trainer, error: trainerError } = await supabaseAdmin
-            .from('trainers')
-            .select('email, first_name, last_name')
-            .eq('id', payload.trainerId)
-            .single();
-          
-          if (trainerError || !trainer?.email) {
-            console.error("Error fetching trainer email:", trainerError);
-          } else {
-            trainerEmail = trainer.email;
-            trainerName = `${trainer.first_name} ${trainer.last_name}`;
+        // Send email
+        const { data: emailResult, error: emailError } = await supabaseAdmin.functions.invoke('send-trainer-payment', {
+          body: {
+            to: payload.trainerEmail,
+            trainerName: payload.trainerName || 'Trainer',
+            scheduleIds: payload.scheduleIds,
+            paymentMethod: payload.paymentMethod,
+            transactionId: payload.transactionId,
+            paymentDate: now,
+            documentUrl: payload.documentUrl,
+            documentName: payload.documentName,
+            amount: payload.amount || null
           }
-        }
+        });
         
-        if (trainerEmail) {
-          try {
-            const { data: emailResult, error: emailError } = await supabaseAdmin.functions.invoke('send-trainer-payment', {
-              body: {
-                trainerId: payload.trainerId,
-                trainerEmail: trainerEmail,
-                trainerName: trainerName,
-                scheduleIds: payload.scheduleIds,
-                paymentMethod: payload.paymentMethod,
-                transactionId: payload.transactionId,
-                paymentDate: now,
-                documentUrl: payload.documentUrl,
-                documentName: payload.documentName,
-                amount: payload.amount || null
-              }
-            });
-            
-            if (emailError) {
-              console.error("Error sending payment email:", emailError);
-            } else {
-              console.log("Email sent successfully:", emailResult);
-            }
-          } catch (e) {
-            console.error("Error invoking send-trainer-payment function:", e);
-          }
+        if (emailError) {
+          console.error("Error sending payment email:", emailError);
+        } else {
+          console.log("Email sent successfully:", emailResult);
         }
       } catch (emailErr) {
         console.error("Exception in email sending:", emailErr);
@@ -209,8 +215,7 @@ serve(async (req: Request) => {
         trainerId: payload.trainerId,
         documentUrl: payload.documentUrl || null,
         documentName: payload.documentName || null,
-        createdCount,
-        updatedCount
+        result: data
       }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );

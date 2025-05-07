@@ -2,8 +2,9 @@
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { FileText, Loader2, Download, ExternalLink } from "lucide-react";
+import { FileText, Loader2, Download, ExternalLink, AlertCircle } from "lucide-react";
 import { formatCurrency } from "@/lib/formatters";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface PaymentDetailsDialogProps {
   open: boolean;
@@ -23,14 +24,17 @@ interface PaymentDetailsDialogProps {
 
 export function PaymentDetailsDialog({ open, onOpenChange, payment }: PaymentDetailsDialogProps) {
   const [isLoadingPdf, setIsLoadingPdf] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
   
   // Reset loading state when the dialog opens or payment changes
   useEffect(() => {
     if (open && payment) {
       console.log("Payment details dialog opened:", payment);
       setIsLoadingPdf(!!payment.document_url);
+      setPdfError(null);
     } else {
       setIsLoadingPdf(false);
+      setPdfError(null);
     }
   }, [open, payment]);
   
@@ -58,28 +62,61 @@ export function PaymentDetailsDialog({ open, onOpenChange, payment }: PaymentDet
       return dateStr;
     }
   };
+
+  const getCleanDocumentUrl = (url?: string) => {
+    if (!url) return '';
+    
+    // Check if the URL contains a token parameter
+    const hasToken = url.includes('token=');
+    
+    if (hasToken) {
+      // URL already has authentication token, use as is
+      return url;
+    } else {
+      // If it's a direct public URL without token
+      return url;
+    }
+  };
   
   const handleDownloadPdf = () => {
     if (payment?.document_url) {
-      const link = document.createElement('a');
-      link.href = payment.document_url;
-      link.download = payment.document_name || 'trainer-payment.pdf';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      const url = getCleanDocumentUrl(payment.document_url);
+      
+      try {
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = payment.document_name || 'trainer-payment.pdf';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } catch (error) {
+        console.error("Error downloading document:", error);
+        setPdfError("Failed to download document. Please try opening in new tab instead.");
+      }
     }
   };
   
   const handlePdfLoad = () => {
     setIsLoadingPdf(false);
+    setPdfError(null);
   };
   
   const handlePdfError = () => {
     setIsLoadingPdf(false);
-    console.error("Failed to load PDF document");
+    setPdfError("Failed to load PDF document. The document might be private or not accessible.");
+    console.error("Failed to load PDF document:", payment?.document_url);
+  };
+  
+  const handleOpenInNewTab = () => {
+    if (payment?.document_url) {
+      const url = getCleanDocumentUrl(payment.document_url);
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
   };
   
   if (!payment) return null;
+
+  const pdfUrl = payment.document_url ? getCleanDocumentUrl(payment.document_url) : null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -130,27 +167,36 @@ export function PaymentDetailsDialog({ open, onOpenChange, payment }: PaymentDet
               <h3 className="text-sm font-medium text-muted-foreground mb-3">Payment Document</h3>
               
               <div className="flex flex-col space-y-3 items-center">
-                <div className="border rounded-lg overflow-hidden w-full aspect-[1/1.4] bg-muted/30 relative">
-                  {isLoadingPdf && (
-                    <div className="absolute inset-0 flex items-center justify-center z-10">
-                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                    </div>
-                  )}
-                  
-                  <iframe 
-                    src={payment.document_url}
-                    className="w-full h-full"
-                    title="Payment Document"
-                    onLoad={handlePdfLoad}
-                    onError={handlePdfError}
-                  />
-                </div>
+                {pdfError ? (
+                  <Alert variant="destructive" className="mb-4">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>{pdfError}</AlertDescription>
+                  </Alert>
+                ) : (
+                  <div className="border rounded-lg overflow-hidden w-full aspect-[1/1.4] bg-muted/30 relative">
+                    {isLoadingPdf && (
+                      <div className="absolute inset-0 flex items-center justify-center z-10 bg-background/80">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                      </div>
+                    )}
+                    
+                    {pdfUrl && (
+                      <iframe 
+                        src={pdfUrl}
+                        className="w-full h-full"
+                        title="Payment Document"
+                        onLoad={handlePdfLoad}
+                        onError={handlePdfError}
+                      />
+                    )}
+                  </div>
+                )}
                 
                 <div className="flex space-x-2 w-full">
                   <Button 
                     variant="outline" 
                     className="flex-1 gap-2"
-                    onClick={() => window.open(payment.document_url, '_blank', 'noopener,noreferrer')}
+                    onClick={handleOpenInNewTab}
                   >
                     <ExternalLink className="h-4 w-4" />
                     Open in New Tab

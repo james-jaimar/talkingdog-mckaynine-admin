@@ -24,6 +24,47 @@ interface MarkPaidParams {
   amount?: number;
 }
 
+// Utility function to ensure the payment-documents bucket exists and is public
+async function ensurePaymentDocumentsBucket() {
+  try {
+    // Check if bucket exists
+    const { data: buckets, error } = await supabase.storage.listBuckets();
+    
+    if (error) {
+      console.error("Error checking storage buckets:", error);
+      return false;
+    }
+    
+    const paymentBucket = buckets?.find(b => b.id === 'payment-documents');
+    
+    if (!paymentBucket) {
+      console.log("Creating payment-documents bucket");
+      const { data, error: createError } = await supabase.storage.createBucket('payment-documents', {
+        public: true
+      });
+      
+      if (createError) {
+        console.error("Error creating payment-documents bucket:", createError);
+        return false;
+      }
+      
+      console.log("Payment-documents bucket created:", data);
+      return true;
+    }
+    
+    if (!paymentBucket.public) {
+      console.log("Payment-documents bucket exists but is not public");
+      return false;
+    }
+    
+    console.log("Payment-documents bucket exists and is public");
+    return true;
+  } catch (err) {
+    console.error("Error ensuring payment-documents bucket:", err);
+    return false;
+  }
+}
+
 export function useMarkTrainerPaymentsPaid() {
   const queryClient = useQueryClient();
 
@@ -43,6 +84,10 @@ export function useMarkTrainerPaymentsPaid() {
         if (!documentUrl && params.trainerName && params.classDetails && params.classDetails.length > 0) {
           try {
             console.log("Generating payment PDF document for:", params.trainerName);
+            
+            // Check storage bucket before attempting to upload
+            await ensurePaymentDocumentsBucket();
+            
             // Generate PDF document
             const pdfBase64 = await generateTrainerPaymentPDF({
               trainerName: params.trainerName || "Trainer",
@@ -85,7 +130,11 @@ export function useMarkTrainerPaymentsPaid() {
           ? params.paymentMethod as PaymentMethod
           : 'bank_transfer';
 
-        console.log("Calling update-trainer-payments with documentUrl:", documentUrl);
+        console.log("Calling update-trainer-payments with:", {
+          trainerId: params.trainerId,
+          scheduleIds: params.scheduleIds,
+          documentUrl: documentUrl
+        });
         
         const { error, data } = await supabase.functions.invoke('update-trainer-payments', {
           body: {
@@ -113,7 +162,8 @@ export function useMarkTrainerPaymentsPaid() {
         return { 
           success: true, 
           documentUrl, 
-          documentName 
+          documentName,
+          result: data
         };
       } catch (error) {
         console.error("Error in useMarkTrainerPaymentsPaid:", error);

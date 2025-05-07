@@ -4,6 +4,8 @@ import { formatCurrency } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
 import { FileText, ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { toast } from "sonner";
 
 interface TrainerPaymentHistoryRowProps {
   payment: {
@@ -24,6 +26,7 @@ interface TrainerPaymentHistoryRowProps {
 export function TrainerPaymentHistoryRow({ payment, index, onViewDetails }: TrainerPaymentHistoryRowProps) {
   const isEven = index % 2 === 0;
   const navigate = useNavigate();
+  const [isCheckingDocument, setIsCheckingDocument] = useState(false);
   
   const formatPaymentMethod = (method: string) => {
     switch (method) {
@@ -48,12 +51,28 @@ export function TrainerPaymentHistoryRow({ payment, index, onViewDetails }: Trai
     }
   };
   
-  const handleViewDocument = (e: React.MouseEvent) => {
+  const handleViewDocument = async (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent row click from triggering
     
-    if (payment.document_url) {
-      // Open in a new tab
+    if (!payment.document_url) {
+      toast.error("No document available");
+      return;
+    }
+    
+    setIsCheckingDocument(true);
+    
+    try {
+      // Open document in new tab
       window.open(payment.document_url, '_blank', 'noopener,noreferrer');
+      
+      // Briefly wait to ensure the new tab has time to open
+      setTimeout(() => {
+        setIsCheckingDocument(false);
+      }, 500);
+    } catch (error) {
+      console.error("Error opening document:", error);
+      toast.error("Could not open document. The document might be private or not accessible.");
+      setIsCheckingDocument(false);
     }
   };
   
@@ -71,6 +90,7 @@ export function TrainerPaymentHistoryRow({ payment, index, onViewDetails }: Trai
             className="h-8 px-2 gap-1"
             onClick={handleViewDocument}
             aria-label="View payment document"
+            disabled={isCheckingDocument}
           >
             <FileText className="h-4 w-4" />
             View

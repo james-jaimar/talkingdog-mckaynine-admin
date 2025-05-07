@@ -29,32 +29,66 @@ export async function uploadPaymentPDF(
     const pdfData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
     
     // Generate a unique filename with timestamp
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const uniqueFilename = `payment-${timestamp}-${filename.replace(/\s+/g, '_')}`;
+    const timestamp = new Date().getTime();
+    const sanitizedFilename = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const uniqueFilename = `trainer-payments/payment-document-${timestamp}-${sanitizedFilename}`;
+    
+    console.log(`Uploading PDF to payment-documents/${uniqueFilename}`);
     
     // Upload the file to the payment-documents bucket
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('payment-documents')
       .upload(uniqueFilename, pdfData, {
         contentType: 'application/pdf',
-        cacheControl: '3600'
+        cacheControl: '3600',
+        upsert: false
       });
     
     if (uploadError) {
       console.error("Error uploading PDF to storage:", uploadError);
-      return null;
+      
+      // If the error is because the bucket doesn't exist, try to create it
+      if (uploadError.message.includes("bucket") && uploadError.message.includes("not found")) {
+        console.log("Bucket not found, attempting to create it");
+        const { error: createError } = await supabase.storage.createBucket('payment-documents', {
+          public: true
+        });
+        
+        if (createError) {
+          console.error("Error creating bucket:", createError);
+          return null;
+        }
+        
+        // Try upload again
+        const { data: retryData, error: retryError } = await supabase.storage
+          .from('payment-documents')
+          .upload(uniqueFilename, pdfData, {
+            contentType: 'application/pdf',
+            cacheControl: '3600',
+            upsert: false
+          });
+          
+        if (retryError) {
+          console.error("Error on retry upload:", retryError);
+          return null;
+        }
+        
+        uploadData = retryData;
+      } else {
+        return null;
+      }
     }
     
-    // Get the public URL for the uploaded file
-    const { data: { publicUrl } } = supabase.storage
+    // Generate a public URL for the file that doesn't expire (or with a long expiry)
+    const { data: publicUrlData } = supabase.storage
       .from('payment-documents')
-      .getPublicUrl(uploadData.path);
+      .getPublicUrl(uniqueFilename);
     
-    console.log("PDF uploaded successfully:", publicUrl);
+    console.log("Generated public URL:", publicUrlData?.publicUrl);
     
     return { 
-      url: publicUrl,
-      name: uniqueFilename
+      url: publicUrlData.publicUrl,
+      name: sanitizedFilename // Return the sanitized filename for display
     };
   } catch (error) {
     console.error("Error in PDF upload process:", error);
