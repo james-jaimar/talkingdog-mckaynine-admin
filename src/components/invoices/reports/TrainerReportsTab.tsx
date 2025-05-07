@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { useTrainerPaymentData } from "@/hooks/useTrainerPaymentData";
@@ -167,8 +168,8 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
         isLoading={isLoading}
         dateRange={dateRange}
         branchId={branchId}
-        onMarkAsUnpaid={onMarkAsUnpaid}
-        onFixZeroAmounts={onFixZeroAmounts}
+        onMarkAsUnpaid={handleMarkAsUnpaid}
+        onFixZeroAmounts={handleFixZeroAmounts}
       />
       
       <TrainerPaymentHistory limit={5} showViewAll={true} />
