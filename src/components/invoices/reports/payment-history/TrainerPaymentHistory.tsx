@@ -59,12 +59,15 @@ export function TrainerPaymentHistory({ limit = 10, showViewAll = false }: Train
         if (error) throw error;
 
         // Format the trainer name from the joined table
-        return data.map(payment => ({
+        const formattedPayments = data.map(payment => ({
           ...payment,
           trainer_name: payment.trainers 
             ? `${payment.trainers.first_name} ${payment.trainers.last_name}` 
             : 'Unknown'
         }));
+        
+        console.log("Trainer payment history data:", formattedPayments);
+        return formattedPayments;
 
       } catch (error) {
         console.error("Error fetching trainer payment history:", error);

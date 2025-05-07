@@ -48,8 +48,11 @@ export function TrainerPaymentHistoryRow({ payment, index, onViewDetails }: Trai
     }
   };
   
-  const handleViewDocument = () => {
+  const handleViewDocument = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent row click from triggering
+    
     if (payment.document_url) {
+      // Open in a new tab
       window.open(payment.document_url, '_blank', 'noopener,noreferrer');
     }
   };

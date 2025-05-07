@@ -26,8 +26,9 @@ export function PaymentDetailsDialog({ open, onOpenChange, payment }: PaymentDet
   
   // Reset loading state when the dialog opens or payment changes
   useEffect(() => {
-    if (open && payment?.document_url) {
-      setIsLoadingPdf(true);
+    if (open && payment) {
+      console.log("Payment details dialog opened:", payment);
+      setIsLoadingPdf(!!payment.document_url);
     } else {
       setIsLoadingPdf(false);
     }
@@ -67,6 +68,15 @@ export function PaymentDetailsDialog({ open, onOpenChange, payment }: PaymentDet
       link.click();
       document.body.removeChild(link);
     }
+  };
+  
+  const handlePdfLoad = () => {
+    setIsLoadingPdf(false);
+  };
+  
+  const handlePdfError = () => {
+    setIsLoadingPdf(false);
+    console.error("Failed to load PDF document");
   };
   
   if (!payment) return null;
@@ -122,17 +132,17 @@ export function PaymentDetailsDialog({ open, onOpenChange, payment }: PaymentDet
               <div className="flex flex-col space-y-3 items-center">
                 <div className="border rounded-lg overflow-hidden w-full aspect-[1/1.4] bg-muted/30 relative">
                   {isLoadingPdf && (
-                    <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="absolute inset-0 flex items-center justify-center z-10">
                       <Loader2 className="h-8 w-8 animate-spin text-primary" />
                     </div>
                   )}
                   
                   <iframe 
-                    src={payment.document_url} 
-                    className="w-full h-full" 
+                    src={payment.document_url}
+                    className="w-full h-full"
                     title="Payment Document"
-                    onLoad={() => setIsLoadingPdf(false)}
-                    onError={() => setIsLoadingPdf(false)}
+                    onLoad={handlePdfLoad}
+                    onError={handlePdfError}
                   />
                 </div>
                 

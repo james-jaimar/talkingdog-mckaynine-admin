@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -46,6 +47,7 @@ serve(async (req: Request) => {
     }
     
     console.log("Processing trainer payment update:", payload);
+    console.log("Document details:", { url: payload.documentUrl, name: payload.documentName });
 
     // Current timestamp for all updates
     const now = new Date().toISOString();
@@ -61,6 +63,9 @@ serve(async (req: Request) => {
       document_url: payload.documentUrl || null,
       document_name: payload.documentName || null
     };
+    
+    // Log actual document URL being stored
+    console.log("Storing document URL:", updateData.document_url);
     
     // If amount is provided, include it
     if (payload.amount && payload.amount > 0) {
@@ -203,7 +208,9 @@ serve(async (req: Request) => {
         success: true, 
         trainerId: payload.trainerId,
         documentUrl: payload.documentUrl || null,
-        documentName: payload.documentName || null
+        documentName: payload.documentName || null,
+        createdCount,
+        updatedCount
       }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );

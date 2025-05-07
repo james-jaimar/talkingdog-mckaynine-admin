@@ -42,7 +42,7 @@ export function useMarkTrainerPaymentsPaid() {
         
         if (!documentUrl && params.trainerName && params.classDetails && params.classDetails.length > 0) {
           try {
-            console.log("Generating payment PDF document");
+            console.log("Generating payment PDF document for:", params.trainerName);
             // Generate PDF document
             const pdfBase64 = await generateTrainerPaymentPDF({
               trainerName: params.trainerName || "Trainer",
@@ -67,7 +67,7 @@ export function useMarkTrainerPaymentsPaid() {
               if (uploadResult) {
                 documentUrl = uploadResult.url;
                 documentName = uploadResult.name;
-                console.log("Payment PDF stored:", documentUrl);
+                console.log("Payment PDF stored successfully:", documentUrl);
               } else {
                 console.error("Failed to upload payment PDF");
               }
@@ -76,6 +76,8 @@ export function useMarkTrainerPaymentsPaid() {
             console.error("Error generating payment PDF:", pdfError);
             // Continue with payment processing even if PDF generation fails
           }
+        } else {
+          console.log("Skipping PDF generation, using provided document:", documentUrl);
         }
 
         // Ensure paymentMethod is one of the valid options
@@ -102,9 +104,12 @@ export function useMarkTrainerPaymentsPaid() {
         });
 
         if (error) {
+          console.error("Error from update-trainer-payments:", error);
           throw new Error(`Error marking payments as paid: ${error.message}`);
         }
 
+        console.log("Response from update-trainer-payments:", data);
+        
         return { 
           success: true, 
           documentUrl, 
