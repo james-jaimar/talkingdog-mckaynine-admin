@@ -15,10 +15,19 @@ import { Button } from "@/components/ui/button";
 import { Loader2, RefreshCw } from "lucide-react";
 import { TrainerPaymentHistoryRow } from "./TrainerPaymentHistoryRow";
 import { PaymentDetailsDialog } from "./PaymentDetailsDialog";
+import { TablePagination } from "@/components/ui/table-pagination";
+import { useNavigate } from "react-router-dom";
 
-export function TrainerPaymentHistory() {
+interface TrainerPaymentHistoryProps {
+  limit?: number;
+  showViewAll?: boolean;
+}
+
+export function TrainerPaymentHistory({ limit = 10, showViewAll = false }: TrainerPaymentHistoryProps) {
   const [selectedPayment, setSelectedPayment] = useState<any>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const navigate = useNavigate();
 
   const { data: payments, isLoading, refetch } = useQuery({
     queryKey: ['trainer-payment-history'],
@@ -45,7 +54,7 @@ export function TrainerPaymentHistory() {
           `)
           .eq('status', 'paid')
           .order('payment_date', { ascending: false })
-          .limit(10);
+          .limit(limit);
 
         if (error) throw error;
 
@@ -75,6 +84,18 @@ export function TrainerPaymentHistory() {
   const handleRefresh = () => {
     refetch();
   };
+  
+  const handleViewAll = () => {
+    navigate("/financial-reports?tab=trainers");
+  };
+  
+  // Calculate total pages based on limit and total payments
+  const totalPages = payments ? Math.max(1, Math.ceil(payments.length / limit)) : 1;
+  
+  // Get current page's data
+  const paginatedPayments = payments ? 
+    payments.slice((currentPage - 1) * limit, currentPage * limit) : 
+    [];
 
   return (
     <Card className="w-full">
@@ -85,9 +106,11 @@ export function TrainerPaymentHistory() {
             <RefreshCw className="h-3.5 w-3.5" />
             Refresh
           </Button>
-          <Button variant="outline" size="sm" className="h-8">
-            View All
-          </Button>
+          {showViewAll && (
+            <Button variant="outline" size="sm" className="h-8" onClick={handleViewAll}>
+              View All
+            </Button>
+          )}
         </div>
       </CardHeader>
       <CardContent>
@@ -118,7 +141,7 @@ export function TrainerPaymentHistory() {
                 </TableCell>
               </TableRow>
             ) : (
-              payments.map((payment, index) => (
+              paginatedPayments.map((payment, index) => (
                 <TrainerPaymentHistoryRow 
                   key={payment.id} 
                   payment={payment} 
@@ -129,6 +152,16 @@ export function TrainerPaymentHistory() {
             )}
           </TableBody>
         </Table>
+        
+        {payments && payments.length > limit && (
+          <div className="mt-4 flex justify-center">
+            <TablePagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
+          </div>
+        )}
 
         <PaymentDetailsDialog 
           open={detailsOpen}
