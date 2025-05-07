@@ -13,10 +13,11 @@ import { PaymentDetailsForm, PaymentDetailsValues } from "./payment-dialog/Payme
 import { useTrainerPaymentData } from "@/hooks/useTrainerPaymentData";
 import { useMarkTrainerPaymentsPaid } from "@/hooks/useMarkTrainerPaymentsPaid";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, Loader2 } from "lucide-react";
+import { AlertCircle, FileText, Loader2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { DialogTrainerClassDetail } from "./payment-dialog/types";
+import { generateTrainerPaymentPDF } from "./pdf/TrainerPaymentPDF";
 
 interface TrainerPaymentDialogProps {
   open: boolean;
@@ -43,6 +44,8 @@ export function TrainerPaymentDialog({
   });
   const [hasSelectedClasses, setHasSelectedClasses] = useState(false);
   const [totalAmount, setTotalAmount] = useState(0);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
 
   const { data: trainersData, isLoading: isLoadingTrainers } = useTrainerPaymentData(branchId, dateRange);
   const markTrainerPaymentsPaid = useMarkTrainerPaymentsPaid();
@@ -68,6 +71,7 @@ export function TrainerPaymentDialog({
         sendEmail: true
       });
       setSelectedTab("classes");
+      setPreviewUrl(null);
     }
   }, [open, trainer, scheduleIds]);
 
@@ -98,6 +102,8 @@ export function TrainerPaymentDialog({
         ? prev.filter(id => id !== scheduleId) 
         : [...prev, scheduleId]
     );
+    // Clear any preview when classes change
+    setPreviewUrl(null);
   };
 
   const toggleAllUnpaid = () => {
@@ -115,10 +121,44 @@ export function TrainerPaymentDialog({
     } else {
       setSelectedScheduleIds(unpaidIds);
     }
+    // Clear any preview when classes change
+    setPreviewUrl(null);
   };
 
   const handlePaymentDetailsChange = (values: PaymentDetailsValues) => {
     setPaymentDetails(values);
+    // Clear preview when payment details change
+    setPreviewUrl(null);
+  };
+
+  const handlePreviewPayment = async () => {
+    if (!trainer || selectedScheduleIds.length === 0) {
+      toast.error("No classes selected for preview");
+      return;
+    }
+
+    try {
+      setIsGeneratingPreview(true);
+      
+      const selectedClasses = trainer.classDetails?.filter(c => 
+        selectedScheduleIds.includes(c.scheduleId)
+      ) as DialogTrainerClassDetail[];
+      
+      const pdfDataUrl = await generateTrainerPaymentPDF({
+        trainerName: trainer.trainerName,
+        trainerEmail: trainer.trainerEmail || '',
+        classes: selectedClasses,
+        paymentDetails: paymentDetails,
+        paymentDate: new Date().toISOString()
+      });
+      
+      setPreviewUrl(pdfDataUrl);
+      setIsGeneratingPreview(false);
+    } catch (error) {
+      console.error("Error generating PDF preview:", error);
+      toast.error("Failed to generate payment preview");
+      setIsGeneratingPreview(false);
+    }
   };
 
   const handleMarkAsPaid = async () => {
@@ -184,12 +224,15 @@ export function TrainerPaymentDialog({
               </div>
 
               <Tabs value={selectedTab} onValueChange={setSelectedTab}>
-                <TabsList className="w-full">
-                  <TabsTrigger value="classes" className="flex-1">
+                <TabsList className="grid grid-cols-3 w-full">
+                  <TabsTrigger value="classes">
                     Select Classes
                   </TabsTrigger>
-                  <TabsTrigger value="payment" className="flex-1" disabled={!hasSelectedClasses}>
+                  <TabsTrigger value="payment" disabled={!hasSelectedClasses}>
                     Payment Details
+                  </TabsTrigger>
+                  <TabsTrigger value="preview" disabled={!hasSelectedClasses}>
+                    Preview
                   </TabsTrigger>
                 </TabsList>
                 
@@ -224,6 +267,51 @@ export function TrainerPaymentDialog({
                     includeEmailOption={true}
                   />
                 </TabsContent>
+
+                <TabsContent value="preview" className="py-4">
+                  <div className="space-y-4">
+                    {!previewUrl && !isGeneratingPreview && (
+                      <div className="text-center py-8">
+                        <Button 
+                          onClick={handlePreviewPayment}
+                          className="gap-2"
+                        >
+                          <FileText className="h-4 w-4" />
+                          Generate Payment Preview
+                        </Button>
+                      </div>
+                    )}
+                    
+                    {isGeneratingPreview && (
+                      <div className="flex flex-col items-center justify-center py-12">
+                        <Loader2 className="h-8 w-8 animate-spin mb-4" />
+                        <p className="text-sm text-muted-foreground">Generating payment preview...</p>
+                      </div>
+                    )}
+                    
+                    {previewUrl && (
+                      <div className="flex flex-col items-center space-y-4">
+                        <div className="aspect-[1/1.414] w-full border rounded-md overflow-hidden">
+                          <iframe 
+                            src={previewUrl} 
+                            className="w-full h-full" 
+                            title="Payment Preview"
+                          />
+                        </div>
+                        <div className="flex justify-between w-full">
+                          <Button 
+                            variant="outline" 
+                            onClick={() => window.open(previewUrl, '_blank')}
+                            className="gap-2"
+                          >
+                            <FileText className="h-4 w-4" />
+                            Open in New Tab
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </TabsContent>
               </Tabs>
             </div>
 
@@ -244,11 +332,19 @@ export function TrainerPaymentDialog({
                 >
                   Continue to Payment Details
                 </Button>
+              ) : selectedTab === "payment" ? (
+                <Button 
+                  type="button" 
+                  onClick={() => setSelectedTab("preview")} 
+                  disabled={!canProceed}
+                >
+                  Preview Payment
+                </Button>
               ) : (
                 <Button
                   type="button"
                   onClick={handleMarkAsPaid}
-                  disabled={!canProceed}
+                  disabled={!canProceed || isSubmitting}
                   className="w-full sm:w-auto"
                 >
                   {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

@@ -182,7 +182,7 @@ serve(async (req: Request) => {
       </html>
     `;
 
-    // Determine if we're sending with pdf attachment or just a link
+    // Determine attachment strategy based on available data
     let emailOptions: any = {
       from: "McKaynine Training <payments@admin.talkingdog.co.za>",
       to: [payload.to],
@@ -190,25 +190,45 @@ serve(async (req: Request) => {
       html: emailHtml
     };
     
-    // Add attachment if PDF data is provided
-    if (payload.documentUrl && payload.pdfData) {
-      // If we have both URL and PDF data, use the PDF data as attachment
+    // Try to download the PDF from documentUrl if provided
+    if (payload.documentUrl) {
+      try {
+        console.log("Attempting to fetch document from URL for attachment:", payload.documentUrl);
+        const pdfResponse = await fetch(payload.documentUrl);
+        
+        if (pdfResponse.ok) {
+          // Convert the response to base64 for attachment
+          const pdfArrayBuffer = await pdfResponse.arrayBuffer();
+          const pdfBase64 = btoa(
+            new Uint8Array(pdfArrayBuffer)
+              .reduce((data, byte) => data + String.fromCharCode(byte), '')
+          );
+          
+          emailOptions.attachments = [
+            {
+              filename: payload.documentName || "payment_confirmation.pdf",
+              content: pdfBase64
+            }
+          ];
+          console.log("Successfully attached document from URL");
+        } else {
+          console.error("Failed to fetch PDF from URL:", pdfResponse.status, pdfResponse.statusText);
+        }
+      } catch (fetchError) {
+        console.error("Error fetching document from URL:", fetchError);
+        // Continue without attachment if fetch fails
+      }
+    } 
+    // Fallback: Use provided PDF data if available
+    else if (payload.pdfData) {
       emailOptions.attachments = [
         {
           filename: payload.documentName || "payment_confirmation.pdf",
           content: payload.pdfData
         }
       ];
-    } else if (payload.pdfData) {
-      // Only PDF data is provided
-      emailOptions.attachments = [
-        {
-          filename: payload.documentName || "payment_confirmation.pdf",
-          content: payload.pdfData
-        }
-      ];
+      console.log("Using provided PDF data for attachment");
     }
-    // If only URL is provided, it's already in the email body as a link
 
     // Send the email
     try {
@@ -246,7 +266,8 @@ serve(async (req: Request) => {
           success: true, 
           message: "Email sent successfully",
           emailSent: true,
-          emailId: emailResult.data?.id || null
+          emailId: emailResult.data?.id || null,
+          hasAttachment: !!emailOptions.attachments
         }),
         { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );

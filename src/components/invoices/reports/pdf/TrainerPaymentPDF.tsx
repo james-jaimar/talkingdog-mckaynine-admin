@@ -1,7 +1,7 @@
 
 import { jsPDF } from "jspdf";
 import { TrainerClassDetail } from "@/hooks/trainer-payments/types";
-import { PaymentDetailsFormValues } from "../payment-dialog/PaymentDetailsForm";
+import { PaymentDetailsValues } from "../payment-dialog/PaymentDetailsForm";
 import { formatCurrency } from "@/lib/formatters";
 import autoTable from "jspdf-autotable";
 import { addLogoToPdf } from "../../../invoices/pdf/utils/pdfHelpers";
@@ -10,7 +10,7 @@ interface TrainerPaymentPDFProps {
   trainerName: string;
   trainerEmail: string;
   classes: TrainerClassDetail[];
-  paymentDetails: PaymentDetailsFormValues;
+  paymentDetails: PaymentDetailsValues;
   paymentDate: string;
 }
 

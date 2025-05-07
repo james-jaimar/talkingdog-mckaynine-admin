@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -178,6 +177,7 @@ serve(async (req: Request) => {
                 transactionId: payload.transactionId,
                 paymentDate: now,
                 documentUrl: payload.documentUrl,
+                documentName: payload.documentName,
                 amount: payload.amount || null
               }
             });
@@ -201,10 +201,9 @@ serve(async (req: Request) => {
     return new Response(
       JSON.stringify({ 
         success: true, 
-        trainerId: payload.trainerId, 
-        updatedCount: updatedCount,
-        createdCount: createdCount,
-        totalSchedules: payload.scheduleIds.length
+        trainerId: payload.trainerId,
+        documentUrl: payload.documentUrl || null,
+        documentName: payload.documentName || null
       }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
