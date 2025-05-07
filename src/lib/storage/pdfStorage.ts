@@ -36,7 +36,8 @@ export async function uploadPaymentPDF(
     console.log(`Uploading PDF to payment-documents/${uniqueFilename}`);
     
     // Upload the file to the payment-documents bucket
-    const { data: uploadData, error: uploadError } = await supabase.storage
+    // Use 'let' instead of 'const' for uploadData since we might need to reassign it
+    let { data: uploadData, error: uploadError } = await supabase.storage
       .from('payment-documents')
       .upload(uniqueFilename, pdfData, {
         contentType: 'application/pdf',
