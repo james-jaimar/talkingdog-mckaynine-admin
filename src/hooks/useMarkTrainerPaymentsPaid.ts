@@ -54,19 +54,16 @@ async function ensurePaymentDocumentsBucket() {
     
     if (!paymentBucket.public) {
       console.log("Payment-documents bucket exists but is not public");
-      // Try to update the bucket to be public using our SQL migration
+      // Use a direct update query instead of the RPC function
       try {
-        const { error: updateError } = await supabase.rpc('make_bucket_public', { bucket_id: 'payment-documents' });
-        if (updateError) {
-          console.error("Error making bucket public:", updateError);
-        } else {
-          console.log("Made payment-documents bucket public");
-          return true;
-        }
+        // Only storage admin can update bucket properties, so we'll need to use
+        // an edge function or handle this through the UI notification
+        console.log("Bucket needs to be made public through the Supabase dashboard");
+        return false;
       } catch (err) {
-        console.error("Error running make_bucket_public function:", err);
+        console.error("Error making bucket public:", err);
+        return false;
       }
-      return false;
     }
     
     console.log("Payment-documents bucket exists and is public");

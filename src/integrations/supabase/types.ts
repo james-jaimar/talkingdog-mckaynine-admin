@@ -1157,6 +1157,10 @@ export type Database = {
           term_number: Database["public"]["Enums"]["term_number"]
         }[]
       }
+      fix_duplicate_trainer_payments: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       get_current_term: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -1192,6 +1196,10 @@ export type Database = {
       }
       is_trainer: {
         Args: { user_id: string }
+        Returns: boolean
+      }
+      make_bucket_public: {
+        Args: { bucket_id: string }
         Returns: boolean
       }
       mark_messages_as_read: {
