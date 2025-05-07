@@ -2,7 +2,8 @@
 import { TableRow, TableCell } from "@/components/ui/table";
 import { formatCurrency } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
-import { FileText } from "lucide-react";
+import { FileText, ChevronRight } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 interface TrainerPaymentHistoryRowProps {
   payment: {
@@ -17,10 +18,12 @@ interface TrainerPaymentHistoryRowProps {
     notes?: string;
   };
   index: number;
+  onViewDetails?: (paymentId: string) => void;
 }
 
-export function TrainerPaymentHistoryRow({ payment, index }: TrainerPaymentHistoryRowProps) {
+export function TrainerPaymentHistoryRow({ payment, index, onViewDetails }: TrainerPaymentHistoryRowProps) {
   const isEven = index % 2 === 0;
+  const navigate = useNavigate();
   
   const formatPaymentMethod = (method: string) => {
     switch (method) {
@@ -38,6 +41,12 @@ export function TrainerPaymentHistoryRow({ payment, index }: TrainerPaymentHisto
       return dateStr;
     }
   };
+
+  const handleViewDetails = () => {
+    if (onViewDetails) {
+      onViewDetails(payment.id);
+    }
+  };
   
   return (
     <TableRow isEven={isEven}>
@@ -52,6 +61,7 @@ export function TrainerPaymentHistoryRow({ payment, index }: TrainerPaymentHisto
             size="sm"
             className="h-8 px-2 gap-1"
             onClick={() => window.open(payment.document_url, '_blank')}
+            aria-label="View payment document"
           >
             <FileText className="h-4 w-4" />
             View
@@ -61,12 +71,15 @@ export function TrainerPaymentHistoryRow({ payment, index }: TrainerPaymentHisto
         )}
       </TableCell>
       <TableCell>
-        <button
-          onClick={() => {/* View details */}}
-          className="text-blue-600 hover:text-blue-800 text-sm ml-2"
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 px-2"
+          onClick={handleViewDetails}
+          aria-label="View payment details"
         >
-          Details
-        </button>
+          <ChevronRight className="h-4 w-4" />
+        </Button>
       </TableCell>
     </TableRow>
   );
