@@ -42,6 +42,7 @@ export function useMarkTrainerPaymentsPaid() {
         
         if (!documentUrl && params.trainerName && params.classDetails && params.classDetails.length > 0) {
           try {
+            console.log("Generating payment PDF document");
             // Generate PDF document
             const pdfBase64 = await generateTrainerPaymentPDF({
               trainerName: params.trainerName || "Trainer",
@@ -59,6 +60,7 @@ export function useMarkTrainerPaymentsPaid() {
               // Generate unique filename for the PDF
               const filename = generatePaymentPDFFilename(params.trainerName);
               
+              console.log("Uploading payment PDF with filename:", filename);
               // Upload PDF to storage
               const uploadResult = await uploadPaymentPDF(pdfBase64, filename);
               
@@ -66,6 +68,8 @@ export function useMarkTrainerPaymentsPaid() {
                 documentUrl = uploadResult.url;
                 documentName = uploadResult.name;
                 console.log("Payment PDF stored:", documentUrl);
+              } else {
+                console.error("Failed to upload payment PDF");
               }
             }
           } catch (pdfError) {
@@ -79,7 +83,9 @@ export function useMarkTrainerPaymentsPaid() {
           ? params.paymentMethod as PaymentMethod
           : 'bank_transfer';
 
-        const { error } = await supabase.functions.invoke('update-trainer-payments', {
+        console.log("Calling update-trainer-payments with documentUrl:", documentUrl);
+        
+        const { error, data } = await supabase.functions.invoke('update-trainer-payments', {
           body: {
             trainerId: params.trainerId,
             scheduleIds: params.scheduleIds,
@@ -99,7 +105,11 @@ export function useMarkTrainerPaymentsPaid() {
           throw new Error(`Error marking payments as paid: ${error.message}`);
         }
 
-        return { success: true, documentUrl, documentName };
+        return { 
+          success: true, 
+          documentUrl, 
+          documentName 
+        };
       } catch (error) {
         console.error("Error in useMarkTrainerPaymentsPaid:", error);
         throw error;
@@ -110,6 +120,8 @@ export function useMarkTrainerPaymentsPaid() {
       // Invalidate queries to refetch updated data
       queryClient.invalidateQueries({ queryKey: ['trainer-payments'] });
       queryClient.invalidateQueries({ queryKey: ['trainer-payment-history'] });
+      
+      console.log("Payment processed with document:", result.documentUrl);
     },
     onError: (error: Error) => {
       toast.error(`Failed to process payment: ${error.message}`);

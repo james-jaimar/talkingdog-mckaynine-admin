@@ -1,8 +1,8 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { FileText, Loader2, Download } from "lucide-react";
+import { FileText, Loader2, Download, ExternalLink } from "lucide-react";
 import { formatCurrency } from "@/lib/formatters";
 
 interface PaymentDetailsDialogProps {
@@ -23,6 +23,15 @@ interface PaymentDetailsDialogProps {
 
 export function PaymentDetailsDialog({ open, onOpenChange, payment }: PaymentDetailsDialogProps) {
   const [isLoadingPdf, setIsLoadingPdf] = useState(false);
+  
+  // Reset loading state when the dialog opens or payment changes
+  useEffect(() => {
+    if (open && payment?.document_url) {
+      setIsLoadingPdf(true);
+    } else {
+      setIsLoadingPdf(false);
+    }
+  }, [open, payment]);
   
   const formatPaymentMethod = (method?: string) => {
     if (!method) return 'Unknown';
@@ -46,6 +55,17 @@ export function PaymentDetailsDialog({ open, onOpenChange, payment }: PaymentDet
       });
     } catch (e) {
       return dateStr;
+    }
+  };
+  
+  const handleDownloadPdf = () => {
+    if (payment?.document_url) {
+      const link = document.createElement('a');
+      link.href = payment.document_url;
+      link.download = payment.document_name || 'trainer-payment.pdf';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     }
   };
   
@@ -100,7 +120,13 @@ export function PaymentDetailsDialog({ open, onOpenChange, payment }: PaymentDet
               <h3 className="text-sm font-medium text-muted-foreground mb-3">Payment Document</h3>
               
               <div className="flex flex-col space-y-3 items-center">
-                <div className="border rounded-lg overflow-hidden w-full aspect-[1/1.4] bg-muted/30">
+                <div className="border rounded-lg overflow-hidden w-full aspect-[1/1.4] bg-muted/30 relative">
+                  {isLoadingPdf && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    </div>
+                  )}
+                  
                   <iframe 
                     src={payment.document_url} 
                     className="w-full h-full" 
@@ -108,35 +134,22 @@ export function PaymentDetailsDialog({ open, onOpenChange, payment }: PaymentDet
                     onLoad={() => setIsLoadingPdf(false)}
                     onError={() => setIsLoadingPdf(false)}
                   />
-                  
-                  {isLoadingPdf && (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                    </div>
-                  )}
                 </div>
                 
                 <div className="flex space-x-2 w-full">
                   <Button 
                     variant="outline" 
                     className="flex-1 gap-2"
-                    onClick={() => window.open(payment.document_url, '_blank')}
+                    onClick={() => window.open(payment.document_url, '_blank', 'noopener,noreferrer')}
                   >
-                    <FileText className="h-4 w-4" />
+                    <ExternalLink className="h-4 w-4" />
                     Open in New Tab
                   </Button>
                   
                   <Button 
                     variant="outline"
                     className="gap-2"
-                    onClick={() => {
-                      const link = document.createElement('a');
-                      link.href = payment.document_url || '';
-                      link.download = payment.document_name || 'payment-document.pdf';
-                      document.body.appendChild(link);
-                      link.click();
-                      document.body.removeChild(link);
-                    }}
+                    onClick={handleDownloadPdf}
                   >
                     <Download className="h-4 w-4" />
                     Download

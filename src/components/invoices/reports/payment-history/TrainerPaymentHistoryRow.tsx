@@ -48,6 +48,12 @@ export function TrainerPaymentHistoryRow({ payment, index, onViewDetails }: Trai
     }
   };
   
+  const handleViewDocument = () => {
+    if (payment.document_url) {
+      window.open(payment.document_url, '_blank', 'noopener,noreferrer');
+    }
+  };
+  
   return (
     <TableRow isEven={isEven}>
       <TableCell>{payment.trainer_name}</TableCell>
@@ -60,7 +66,7 @@ export function TrainerPaymentHistoryRow({ payment, index, onViewDetails }: Trai
             variant="ghost" 
             size="sm"
             className="h-8 px-2 gap-1"
-            onClick={() => window.open(payment.document_url, '_blank')}
+            onClick={handleViewDocument}
             aria-label="View payment document"
           >
             <FileText className="h-4 w-4" />

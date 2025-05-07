@@ -54,7 +54,7 @@ export function TrainerPaymentHistory({ limit = 10, showViewAll = false }: Train
           `)
           .eq('status', 'paid')
           .order('payment_date', { ascending: false })
-          .limit(limit);
+          .limit(limit * totalPages);
 
         if (error) throw error;
 
