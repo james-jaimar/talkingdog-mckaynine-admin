@@ -7,10 +7,12 @@ import { DialogTrainerClassDetail } from "@/components/invoices/reports/payment-
 import { generateTrainerPaymentPDF } from "@/components/invoices/reports/pdf/TrainerPaymentPDF";
 import { uploadPaymentPDF, generatePaymentPDFFilename } from "@/lib/storage/pdfStorage";
 
+type PaymentMethod = 'bank_transfer' | 'cash' | 'check' | 'other';
+
 interface MarkPaidParams {
   trainerId: string;
   scheduleIds: string[];
-  paymentMethod?: string;
+  paymentMethod?: PaymentMethod;
   transactionId?: string;
   notes?: string;
   documentUrl?: string;
@@ -72,11 +74,16 @@ export function useMarkTrainerPaymentsPaid() {
           }
         }
 
+        // Ensure paymentMethod is one of the valid options
+        const validPaymentMethod = params.paymentMethod && ['bank_transfer', 'cash', 'check', 'other'].includes(params.paymentMethod)
+          ? params.paymentMethod as PaymentMethod
+          : 'bank_transfer';
+
         const { error } = await supabase.functions.invoke('update-trainer-payments', {
           body: {
             trainerId: params.trainerId,
             scheduleIds: params.scheduleIds,
-            paymentMethod: params.paymentMethod,
+            paymentMethod: validPaymentMethod,
             transactionId: params.transactionId,
             notes: params.notes,
             documentUrl: documentUrl,
