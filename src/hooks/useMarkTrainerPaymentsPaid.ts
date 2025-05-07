@@ -54,6 +54,18 @@ async function ensurePaymentDocumentsBucket() {
     
     if (!paymentBucket.public) {
       console.log("Payment-documents bucket exists but is not public");
+      // Try to update the bucket to be public using our SQL migration
+      try {
+        const { error: updateError } = await supabase.rpc('make_bucket_public', { bucket_id: 'payment-documents' });
+        if (updateError) {
+          console.error("Error making bucket public:", updateError);
+        } else {
+          console.log("Made payment-documents bucket public");
+          return true;
+        }
+      } catch (err) {
+        console.error("Error running make_bucket_public function:", err);
+      }
       return false;
     }
     
@@ -136,6 +148,21 @@ export function useMarkTrainerPaymentsPaid() {
           documentUrl: documentUrl
         });
         
+        // First check for duplicates to avoid errors
+        const { data: existingPayments, error: checkError } = await supabase
+          .from('trainer_payments')
+          .select('class_schedule_id')
+          .eq('trainer_id', params.trainerId)
+          .in('class_schedule_id', params.scheduleIds);
+          
+        if (checkError) {
+          console.error("Error checking for existing payments:", checkError);
+          // Continue anyway, the edge function will handle duplicates
+        } else {
+          console.log(`Found ${existingPayments?.length || 0} existing payments for these schedules`);
+        }
+        
+        // Call the edge function to update trainer payments
         const { error, data } = await supabase.functions.invoke('update-trainer-payments', {
           body: {
             trainerId: params.trainerId,

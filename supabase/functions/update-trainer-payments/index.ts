@@ -53,7 +53,7 @@ serve(async (req: Request) => {
     const now = new Date().toISOString();
     
     // Base update data
-    const updateData: Record<string, any> = {
+    const updateData = {
       status: 'paid',
       payment_date: now,
       payment_method: payload.paymentMethod || null,
@@ -110,16 +110,27 @@ serve(async (req: Request) => {
       existingScheduleIds: Array.from(existingScheduleIds)
     });
 
-    // Transaction to handle both updates and inserts atomically
-    const { data, error } = await supabaseAdmin.rpc('batch_update_trainer_payments', {
-      p_trainer_id: payload.trainerId,
-      p_existing_ids: idsToUpdate,
-      p_missing_schedules: missingScheduleIds,
-      p_update_data: updateData
-    });
+    // Try using the batch update function first
+    let data;
+    let error;
+    
+    try {
+      const result = await supabaseAdmin.rpc('batch_update_trainer_payments', {
+        p_trainer_id: payload.trainerId,
+        p_existing_ids: idsToUpdate,
+        p_missing_schedules: missingScheduleIds,
+        p_update_data: updateData
+      });
+      
+      data = result.data;
+      error = result.error;
+    } catch (rpcError) {
+      console.error("RPC call failed:", rpcError);
+      error = rpcError;
+    }
 
     if (error) {
-      // If RPC function doesn't exist, fall back to manual updates
+      // If RPC function doesn't exist or fails, fall back to manual updates
       console.error("RPC error, falling back to manual updates:", error);
       
       let updatedCount = 0;
@@ -130,8 +141,7 @@ serve(async (req: Request) => {
         const { data: updateResult, error: updateError } = await supabaseAdmin
           .from('trainer_payments')
           .update(updateData)
-          .in('id', idsToUpdate)
-          .select();
+          .in('id', idsToUpdate);
         
         if (updateError) {
           console.error("Error updating payment records:", updateError);
@@ -141,7 +151,7 @@ serve(async (req: Request) => {
           );
         }
         
-        updatedCount = updateResult?.length || 0;
+        updatedCount = idsToUpdate.length;
         console.log(`Successfully updated ${updatedCount} payment records`);
       }
       
@@ -158,6 +168,7 @@ serve(async (req: Request) => {
           amount: payload.amount || 0,
           document_url: payload.documentUrl || null,
           document_name: payload.documentName || null,
+          created_at: now,
           updated_at: now
         }));
         
@@ -175,7 +186,7 @@ serve(async (req: Request) => {
         }
       }
       
-      // Use updatedCount and createdCount as results
+      // Set data variable with manual update results
       data = { updatedCount, createdCount };
     }
 
