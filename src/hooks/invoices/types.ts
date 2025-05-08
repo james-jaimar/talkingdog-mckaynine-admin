@@ -53,15 +53,15 @@ export interface Invoice {
 
 export interface InvoiceItem {
   id: string;
-  invoice_id: string;
+  invoice_id?: string; // Making this optional to match actual data structure
   description: string;
   quantity: number;
   unit_price: number;
   amount: number;
   booking_id?: string;
   
-  // Add missing properties related to bookings
-  bookings?: any; // Using any temporarily since it's a complex nested structure
+  // Optional bookings field to support nested data
+  bookings?: BookingWithDetails;
 }
 
 // Add the BookingWithDetails interface for invoice item enhancer

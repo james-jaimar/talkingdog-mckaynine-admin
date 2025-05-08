@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { Invoice, InvoiceItem } from "@/hooks/invoices/types";
 import { toast } from "sonner";
@@ -27,7 +28,7 @@ export async function fetchInvoiceWithClient(invoiceId: string): Promise<Invoice
   }
 
   console.log("Fetched invoice data:", invoice);
-  return invoice as Invoice;
+  return invoice as unknown as Invoice;
 }
 
 /**
@@ -46,7 +47,7 @@ export async function fetchInvoiceItems(invoiceId: string): Promise<InvoiceItem[
   }
 
   console.log("Fetched invoice items:", items);
-  return items as InvoiceItem[];
+  return items as unknown as InvoiceItem[];
 }
 
 /**
@@ -59,7 +60,7 @@ export function createDefaultInvoiceItem(total: number): InvoiceItem {
     description: "Training services",
     quantity: 1,
     unit_price: total,
-    amount: total
-  };
+    amount: total,
+    // Note: invoice_id is now optional in the InvoiceItem interface
+  } as InvoiceItem;
 }
-

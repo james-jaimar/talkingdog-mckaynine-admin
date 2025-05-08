@@ -84,7 +84,8 @@ export function useClientInvoices(clientId?: string) {
           };
         });
         
-        return processedInvoices as Invoice[];
+        // Use explicit type assertion to resolve TypeScript error
+        return processedInvoices as unknown as Invoice[];
       } catch (error) {
         return handleQueryError(error, "Error fetching client invoices");
       }

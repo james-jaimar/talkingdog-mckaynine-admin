@@ -57,7 +57,7 @@ export function useInvoiceDetails(invoiceId: string | undefined) {
           return {
             ...normalizedInvoice,
             items: []
-          } as Invoice;
+          } as unknown as Invoice;
         }
         
         // If no items found, create a default one for display purposes
@@ -74,17 +74,17 @@ export function useInvoiceDetails(invoiceId: string | undefined) {
               unit_price: normalizedInvoice.total,
               amount: normalizedInvoice.total
             }]
-          } as Invoice;
+          } as unknown as Invoice;
         }
           
         // Return complete invoice with fetched items
         const result = {
           ...normalizedInvoice,
           items: invoiceItems
-        } as Invoice;
+        };
           
         console.log("Final invoice data with items:", result);
-        return result;
+        return result as unknown as Invoice;
       } catch (error) {
         console.error("Error in useInvoiceDetails:", error);
         throw error;

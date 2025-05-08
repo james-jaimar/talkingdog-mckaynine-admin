@@ -60,9 +60,10 @@ export function useInvoicesList() {
 
             // Process each item to include booking data
             const enhancedItems = await Promise.all((items || []).map(async (item) => {
-              // Create a properly typed invoice item
-              let enhancedItem: InvoiceItem = {
+              // Create a properly typed invoice item with invoice_id
+              let enhancedItem: Partial<InvoiceItem> = {
                 id: item.id,
+                invoice_id: item.invoice_id, // Make sure this is included
                 description: item.description || "Training services",
                 quantity: item.quantity,
                 unit_price: item.unit_price,
@@ -71,7 +72,7 @@ export function useInvoicesList() {
               };
               
               if (!item.booking_id) {
-                return enhancedItem;
+                return enhancedItem as InvoiceItem;
               }
               
               try {
@@ -95,7 +96,7 @@ export function useInvoicesList() {
 
                 if (bookingError || !booking) {
                   console.warn(`Issue fetching booking data for booking ID ${item.booking_id}:`, bookingError);
-                  return enhancedItem;
+                  return enhancedItem as InvoiceItem;
                 }
 
                 console.log(`Found booking for item ${item.id}:`, booking);
@@ -143,7 +144,7 @@ export function useInvoicesList() {
                 console.error(`Error processing booking data for item ${item.id}:`, err);
               }
               
-              return enhancedItem;
+              return enhancedItem as InvoiceItem;
             }));
             
             // Extract class and dog info for summary
@@ -183,7 +184,7 @@ export function useInvoicesList() {
         console.log("Final processed invoices for branch:", invoicesWithItems);
         
         // Return as Invoice array with type assertion to satisfy TypeScript
-        return invoicesWithItems as Invoice[];
+        return invoicesWithItems as unknown as Invoice[];
         
       } catch (error) {
         console.error("Unexpected error in useInvoicesList:", error);
