@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 /**
- * Hook to mark an invoice as sent
+ * Hook to mark an invoice as sent with improved error handling
  */
 export function useMarkInvoiceAsSent() {
   const queryClient = useQueryClient();
@@ -34,30 +34,47 @@ export function useMarkInvoiceAsSent() {
         discount_reason
       } = currentInvoice;
       
-      // Update only the status without changing discount values
-      const { error, data } = await supabase
-        .from('invoices')
-        .update({
-          status: 'sent',
-          email_sent: true,
-          // Ensure we keep the original discount values
-          discount_amount,
-          discount_type,
-          monetary_discount,
-          original_discount_amount,
-          original_discount_type,
-          discount_reason
-        })
-        .eq('id', invoiceId)
-        .select('client_id')
-        .single();
+      try {
+        // Update only the status without changing discount values
+        const { error, data } = await supabase
+          .from('invoices')
+          .update({
+            status: 'sent',
+            email_sent: true,
+            // Ensure we keep the original discount values
+            discount_amount,
+            discount_type,
+            monetary_discount,
+            original_discount_amount,
+            original_discount_type,
+            discount_reason
+          })
+          .eq('id', invoiceId)
+          .select('client_id')
+          .single();
 
-      if (error) {
-        console.error("Error marking invoice as sent:", error);
+        if (error) {
+          console.error("Error marking invoice as sent:", error);
+          throw error;
+        }
+
+        // If the update succeeded, try to fix any duplicate trainer payments
+        // that might have been created (silent operation, won't block success)
+        try {
+          const { error: fixError } = await supabase.rpc('fix_duplicate_trainer_payments');
+          if (fixError) {
+            console.warn("Non-critical: Could not fix duplicate trainer payments:", fixError);
+          }
+        } catch (fixErr) {
+          // Non-critical, just log warning
+          console.warn("Failed to run cleanup for trainer payments:", fixErr);
+        }
+
+        return { id: invoiceId, client_id: data?.client_id };
+      } catch (error) {
+        console.error("Error in invoice update:", error);
         throw error;
       }
-
-      return { id: invoiceId, client_id: data?.client_id };
     },
     onSuccess: (data) => {
       // Invalidate all invoice queries to ensure UI updates with refetch
@@ -77,11 +94,29 @@ export function useMarkInvoiceAsSent() {
       // Force refetch the invoices list
       queryClient.refetchQueries({ queryKey: ['invoices'] });
       
+      // Also update trainer payments to ensure no duplicates
+      queryClient.invalidateQueries({ queryKey: ['trainer-payments'] });
+      
       toast.success("Invoice marked as sent");
     },
     onError: (error: Error) => {
       console.error("Error marking invoice as sent:", error);
-      toast.error("Failed to update invoice status");
+      
+      // Check if this is a duplicate key violation
+      if (error.message && error.message.includes("duplicate key")) {
+        toast.error("Failed to update invoice - detected a duplicate trainer payment. Please refresh and try again.");
+      } else {
+        toast.error("Failed to update invoice status");
+      }
+      
+      // Try to recover by running the fix duplicates function
+      supabase.rpc('fix_duplicate_trainer_payments')
+        .then(() => {
+          console.log("Attempted recovery by fixing duplicate trainer payments");
+        })
+        .catch(err => {
+          console.error("Failed to run recovery function:", err);
+        });
     },
   });
 }
