@@ -1,7 +1,7 @@
 
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Check, Send, Ban } from "lucide-react";
-import { Invoice } from "@/types/invoice";
+import { Invoice, InvoiceStatus } from "@/hooks/invoices/types";
 import { 
   useMarkInvoiceAsPaid, 
   useMarkInvoiceAsSent, 

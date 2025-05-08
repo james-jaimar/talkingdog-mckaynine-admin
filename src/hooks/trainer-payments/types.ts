@@ -1,3 +1,4 @@
+
 // If this file doesn't exist yet, we'll create it
 export interface Schedule {
   id: string;
@@ -64,6 +65,25 @@ export interface InvoiceItem {
     client_id?: string;
     client?: {
       branch_id: string; // Add branch_id field
+    };
+  };
+  // Add bookings property to match what's being used in code
+  bookings?: {
+    id: string;
+    dogs?: {
+      name: string;
+      breed: string;
+    };
+    class_schedules?: {
+      id: string;
+      start_time: string;
+      class_id: string;
+      classes: {
+        id: string;
+        name: string;
+        price?: number;
+        description?: string;
+      };
     };
   };
 }

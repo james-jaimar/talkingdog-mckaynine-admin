@@ -1,7 +1,7 @@
 
 import { useMemo } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Invoice } from "@/hooks/invoices/types";
+import { Invoice, InvoiceStatus } from "@/hooks/invoices/types";
 import { formatCurrency, formatPercentage } from "@/lib/formatters";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { DollarSign, TrendingUp, Calendar, Users } from "lucide-react";
@@ -23,7 +23,7 @@ export function RevenueBreakdownCard({ invoices, dateRange, isLoading }: Revenue
   } = useMemo(() => {
     // Filter invoices by date range and exclude cancelled invoices
     const filteredInvoices = invoices
-      .filter(invoice => invoice.status !== 'cancelled') // Exclude cancelled invoices
+      .filter(invoice => invoice.status !== 'cancelled') // Fixed comparison by using string literal
       .filter(invoice => {
         const invoiceDate = new Date(invoice.issued_date);
         const endDate = dateRange.to || dateRange.from;

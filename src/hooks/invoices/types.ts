@@ -9,8 +9,11 @@ export interface Client {
   address?: string;
   city?: string;
   postal_code?: string;
-  branch_id: string; // Adding branch_id property
+  branch_id: string; // Ensuring branch_id is required
 }
+
+// Define InvoiceStatus as a type for better type checking
+export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled' | 'invalid';
 
 export interface Invoice {
   id: string;
@@ -18,7 +21,7 @@ export interface Invoice {
   client_id: string;
   issued_date: string;
   due_date: string;
-  status: 'draft' | 'sent' | 'paid' | 'overdue' | 'invalid';
+  status: InvoiceStatus;
   total: number;
   subtotal: number;
   tax_amount: number;
@@ -30,6 +33,22 @@ export interface Invoice {
   payment_date?: string;
   client?: Client; // Using the Client interface
   items?: InvoiceItem[];
+  
+  // Add missing properties that are used in the components
+  monetary_discount?: number;
+  original_discount_amount?: number;
+  original_discount_type?: string;
+  discount_reason?: string;
+  
+  // Additional fields for financial analysis
+  admin_fee?: number;
+  trainer_fee?: number;
+  franchise_fee?: number;
+  email_sent?: boolean;
+  
+  // Generated fields
+  classInfo?: string;
+  dogInfo?: string;
 }
 
 export interface InvoiceItem {
@@ -40,4 +59,48 @@ export interface InvoiceItem {
   unit_price: number;
   amount: number;
   booking_id?: string;
+  
+  // Add missing properties related to bookings
+  bookings?: any; // Using any temporarily since it's a complex nested structure
+}
+
+// Add the BookingWithDetails interface for invoice item enhancer
+export interface BookingWithDetails {
+  id: string;
+  dogs?: {
+    name: string;
+    breed: string;
+  };
+  class_schedules?: {
+    id: string;
+    start_time: string;
+    class_id: string;
+    classes: {
+      id: string;
+      name: string;
+      price?: number;
+      description?: string;
+    };
+  };
+}
+
+// Add the InvoiceFormValues type for forms
+export interface InvoiceFormValues {
+  client_id: string;
+  invoice_number: string;
+  status: InvoiceStatus;
+  issued_date: Date;
+  due_date: Date;
+  notes?: string;
+  tax_rate: number;
+  items: {
+    description: string;
+    quantity: number;
+    unit_price: number;
+    booking_id?: string | null;
+    id?: string;
+  }[];
+  discount_type: 'fixed' | 'percentage';
+  discount_amount: number;
+  discount_reason?: string;
 }

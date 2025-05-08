@@ -13,6 +13,7 @@ import { format } from "date-fns";
 import { Search, Eye, Loader2, Download } from "lucide-react";
 import { formatCurrency } from "@/lib/formatters";
 import { useQueryClient } from "@tanstack/react-query";
+import { InvoiceStatus } from "@/hooks/invoices/types";
 
 export default function CustomerInvoices() {
   const navigate = useNavigate();
@@ -34,7 +35,7 @@ export default function CustomerInvoices() {
   
   // Calculate statistics
   const totalOutstanding = invoices?.reduce(
-    (sum, invoice) => invoice.status !== 'paid' && invoice.status !== 'cancelled' ? sum + invoice.total : sum,
+    (sum, invoice) => (invoice.status !== 'paid' && invoice.status !== 'cancelled') ? sum + invoice.total : sum,
     0
   ) || 0;
   
@@ -44,7 +45,7 @@ export default function CustomerInvoices() {
   ) || 0;
   
   // Status badge helper
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: InvoiceStatus) => {
     switch (status) {
       case 'draft':
         return <Badge variant="outline">Draft</Badge>;
@@ -56,6 +57,8 @@ export default function CustomerInvoices() {
         return <Badge variant="destructive">Overdue</Badge>;
       case 'cancelled':
         return <Badge variant="outline" className="bg-gray-200 text-gray-700">Cancelled</Badge>;
+      case 'invalid':
+        return <Badge variant="outline" className="bg-yellow-200 text-yellow-700">Invalid</Badge>;
       default:
         return null;
     }
