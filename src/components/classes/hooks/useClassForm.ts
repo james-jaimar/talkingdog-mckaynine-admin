@@ -1,7 +1,8 @@
+
 import { useState, useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { Class } from "../types/class";
@@ -9,6 +10,11 @@ import { classFormSchema, ClassFormValues } from "../schemas/classFormSchema";
 import { ClassWithSchedules } from "./types/class-with-schedules";
 import { useTerm } from "@/context/TermContext";
 import { useNavigate } from "react-router-dom";
+import {
+  showClassCreatedToast,
+  showClassUpdatedToast,
+  showClassErrorToast
+} from "./utils/toast-actions";
 
 // Branch option type
 type BranchOption = {
@@ -19,11 +25,15 @@ type BranchOption = {
 // Define a union type that can be either Class or ClassWithSchedules
 type ClassData = Class | ClassWithSchedules;
 
-export function useClassForm(classData: ClassData | null, onSuccess?: () => void) {
+interface UseClassFormProps {
+  classData: ClassData | null;
+  onSuccess?: () => void;
+}
+
+export function useClassForm({ classData, onSuccess }: UseClassFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [branches, setBranches] = useState<BranchOption[]>([]);
   const [isLoadingBranches, setIsLoadingBranches] = useState(true);
-  const { toast } = useToast();
   const queryClient = useQueryClient();
   const { termData } = useTerm(); // Get current term context
   const navigate = useNavigate();
@@ -74,24 +84,6 @@ export function useClassForm(classData: ClassData | null, onSuccess?: () => void
     resolver: zodResolver(classFormSchema),
     defaultValues,
   });
-
-  // Log form values to verify they're correct
-  useEffect(() => {
-    if (classData) {
-      console.log("useClassForm - original class data:", classData);
-      console.log("useClassForm - fee values in class data:", {
-        course_fee: classData.course_fee,
-        enrollment_fee: classData.enrollment_fee,
-        mckaynine_commission_type: classData.mckaynine_commission_type,
-        mckaynine_commission_value: classData.mckaynine_commission_value,
-        admin_fee_type: classData.admin_fee_type,
-        admin_fee_value: classData.admin_fee_value,
-        trainer_fee_type: classData.trainer_fee_type,
-        trainer_fee_value: classData.trainer_fee_value,
-      });
-      console.log("useClassForm - initial form values:", form.getValues());
-    }
-  }, [classData, form]);
 
   // Make sure form gets updated if classData changes
   useEffect(() => {
@@ -160,7 +152,7 @@ export function useClassForm(classData: ClassData | null, onSuccess?: () => void
     };
     
     fetchBranches();
-  }, [toast]);
+  }, []);
   
   const onSubmit = async (values: ClassFormValues) => {
     setIsSubmitting(true);
@@ -210,10 +202,7 @@ export function useClassForm(classData: ClassData | null, onSuccess?: () => void
         if (error) throw error;
         classId = classData.id;
         
-        toast({
-          title: "Class updated successfully",
-          description: `${values.name} has been updated.`,
-        });
+        showClassUpdatedToast(values.name);
       } else {
         // Create new class
         console.log("Creating new class with branch:", values.branchId);
@@ -251,12 +240,8 @@ export function useClassForm(classData: ClassData | null, onSuccess?: () => void
         classId = newClass.id;
         console.log("Successfully created class with ID:", classId);
         
-        // Show success toast without JSX in the action
-        toast({
-          title: "Class created successfully",
-          description: `${values.name} has been added. Would you like to create a schedule for this class?`,
-          duration: 8000,
-        });
+        // Show success toast
+        showClassCreatedToast(values.name, classId);
         
         // Navigate to schedule creation page after a short delay
         // This is where the term association will happen correctly, through class_schedules.term_id
@@ -286,11 +271,7 @@ export function useClassForm(classData: ClassData | null, onSuccess?: () => void
       
     } catch (error) {
       console.error("Error saving class:", error);
-      toast({
-        title: "Failed to save class",
-        description: String(error) || "An unexpected error occurred.",
-        variant: "destructive",
-      });
+      showClassErrorToast(error);
     } finally {
       setIsSubmitting(false);
     }
