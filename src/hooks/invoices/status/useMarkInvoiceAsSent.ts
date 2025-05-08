@@ -1,6 +1,8 @@
+
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { cleanupTrainerPayments } from "../trainer-payments/utils/cleanupTrainerPayments";
 
 /**
  * Hook to mark an invoice as sent with improved error handling
@@ -110,13 +112,20 @@ export function useMarkInvoiceAsSent() {
       }
       
       // Try to recover by running the fix duplicates function
-      supabase.rpc('fix_duplicate_trainer_payments')
-        .then(() => {
+      // Fixed: Using async/await with proper Promise handling
+      (async () => {
+        try {
+          await supabase.rpc('fix_duplicate_trainer_payments');
           console.log("Attempted recovery by fixing duplicate trainer payments");
-        })
-        .catch(err => {
+        } catch (err) {
           console.error("Failed to run recovery function:", err);
-        });
+        }
+      })();
+      
+      // Also try to use the utility function for a more thorough cleanup
+      cleanupTrainerPayments().catch(err => {
+        console.error("Failed to run cleanupTrainerPayments:", err);
+      });
     },
   });
 }
