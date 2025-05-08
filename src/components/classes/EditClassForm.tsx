@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -33,7 +32,10 @@ interface EditClassFormProps {
 }
 
 export function EditClassForm({ classData, currentBranchName, onSuccess, onCancel }: EditClassFormProps) {
-  const { form, isSubmitting, branches, isLoadingBranches, onSubmit } = useClassForm(classData, onSuccess);
+  const { form, isSubmitting, branches, isLoadingBranches, onSubmit } = useClassForm({ 
+    classData, 
+    onSuccess 
+  });
 
   // Log the classData and form values to verify they are correct
   useEffect(() => {

@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -26,7 +25,10 @@ interface AddClassFormProps {
 }
 
 export function AddClassForm({ onSuccess }: AddClassFormProps) {
-  const { form, isSubmitting, branches, isLoadingBranches, onSubmit } = useClassForm(null, onSuccess);
+  const { form, isSubmitting, branches, isLoadingBranches, onSubmit } = useClassForm({ 
+    classData: null, 
+    onSuccess 
+  });
 
   return (
     <Form {...form}>

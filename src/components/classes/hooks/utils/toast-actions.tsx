@@ -11,9 +11,9 @@ export function createScheduleAction(classId: string) {
   return (
     <Button 
       onClick={() => navigate(`/classes/${classId}/schedules`)}
-      variant="primary"
+      variant="mckaynine"
       size="sm"
-      className="bg-mckaynine-600 hover:bg-mckaynine-700 text-white"
+      className="text-white"
     >
       Create Schedule
     </Button>
