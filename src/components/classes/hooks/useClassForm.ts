@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -231,6 +230,7 @@ export function useClassForm(classData: ClassData | null, onSuccess?: () => void
             duration: values.duration,
             capacity: values.capacity,
             branch_id: values.branchId,
+            term_id: termData?.id, // Add term_id to associate class with current term
           })
           .select()
           .single();
@@ -247,26 +247,26 @@ export function useClassForm(classData: ClassData | null, onSuccess?: () => void
         classId = newClass.id;
         console.log("Successfully created class with ID:", classId);
         
+        // Show success toast without JSX in the action
         toast({
           title: "Class created successfully",
           description: `${values.name} has been added. Would you like to create a schedule for this class?`,
-          action: (
-            <button 
-              onClick={() => navigate(`/classes/${classId}/schedules`)}
-              className="bg-mckaynine-600 hover:bg-mckaynine-700 text-white px-4 py-2 rounded text-xs"
-            >
-              Create Schedule
-            </button>
-          ),
           duration: 8000,
         });
+        
+        // Navigate to schedule creation page after a short delay
+        setTimeout(() => {
+          navigate(`/classes/${classId}/schedules`);
+        }, 500);
       }
       
       // Invalidate all class-related queries to ensure UI is updated
+      console.log("Invalidating class queries...");
       await queryClient.invalidateQueries({ queryKey: ["classes"] });
       
       // If a term is selected, also invalidate any term-specific queries
       if (termData?.id) {
+        console.log(`Invalidating term-specific queries for term ${termData.id}...`);
         await queryClient.invalidateQueries({ 
           queryKey: ["classes", termData.id]
         });
