@@ -9,6 +9,26 @@ export function formatTrainerPaymentData(
   invoiceItems: InvoiceItem[] = [],
   trainerPayments: any[] = []
 ): TrainerPaymentData {
+  // Validate that we're dealing with a single branch's data
+  const scheduleBranchIds = new Set(allSchedules.map(s => s.classes?.branch_id).filter(Boolean));
+  const clientBranchIds = new Set(bookings.map(b => b.client?.branch_id || b.clients?.branch_id).filter(Boolean));
+  const invoiceBranchIds = new Set(invoiceItems.map(i => i.invoices?.client?.branch_id).filter(Boolean));
+  
+  if (scheduleBranchIds.size > 1) {
+    console.warn(`Warning: Multiple branch IDs found in schedules for trainer ${trainer.first_name} ${trainer.last_name}: `, 
+                 Array.from(scheduleBranchIds));
+  }
+  
+  if (clientBranchIds.size > 1) {
+    console.warn(`Warning: Multiple branch IDs found in bookings for trainer ${trainer.first_name} ${trainer.last_name}: `, 
+                 Array.from(clientBranchIds));
+  }
+  
+  if (invoiceBranchIds.size > 1) {
+    console.warn(`Warning: Multiple branch IDs found in invoice items for trainer ${trainer.first_name} ${trainer.last_name}: `, 
+                 Array.from(invoiceBranchIds));
+  }
+  
   const allScheduleIds = allSchedules.map(s => s.id);
   const uniqueClientIds = new Set(bookings?.map(b => b.client_id).filter(Boolean));
 
@@ -84,6 +104,7 @@ export function formatTrainerPaymentData(
   const classDetails: TrainerClassDetail[] = allSchedules.map(schedule => {
     const scheduleBookings = bookingsBySchedule[schedule.id] || [];
     const scheduleDate = new Date(schedule.start_time);
+    const branchId = schedule.classes?.branch_id;
     
     // Check if this class has zero commission configured
     const trainerFeeValue = schedule.classes?.trainer_fee_value;
@@ -168,6 +189,7 @@ export function formatTrainerPaymentData(
       isPaid: classIsPaid,
       hasZeroAmountPayment,
       hasZeroCommission,
+      branchId, // Include branch ID in class details
       bookingsDetails
     };
   });

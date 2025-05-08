@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { Schedule, Booking, InvoiceItem } from "../types";
 
@@ -46,7 +47,8 @@ export async function fetchSchedules(trainerId: string, termId?: string): Promis
         admin_fee_type,
         admin_fee_value,
         course_fee,
-        enrollment_fee
+        enrollment_fee,
+        branch_id
       )
     `)
     .eq('trainer_id', trainerId);
@@ -69,9 +71,10 @@ export async function fetchSchedules(trainerId: string, termId?: string): Promis
   return schedules as Schedule[];
 }
 
-export async function fetchBookings(scheduleIds: string[], dateRange?: { from: string; to: string }): Promise<Booking[]> {
+export async function fetchBookings(scheduleIds: string[], dateRange?: { from: string; to: string }, branchId?: string): Promise<Booking[]> {
   if (scheduleIds.length === 0) return [];
 
+  // This query joins bookings with clients to filter by branch_id
   const query = supabase
     .from('bookings')
     .select(`
@@ -84,13 +87,20 @@ export async function fetchBookings(scheduleIds: string[], dateRange?: { from: s
       clients:client_id (
         id,
         first_name, 
-        last_name
+        last_name,
+        branch_id
       )
     `)
     .in('class_schedule_id', scheduleIds);
 
+  // Add date range filter if provided
   if (dateRange) {
     query.gte('created_at', dateRange.from).lte('created_at', dateRange.to);
+  }
+  
+  // Add branch filter if provided
+  if (branchId) {
+    query.eq('clients.branch_id', branchId);
   }
 
   const { data: bookings, error } = await query;
@@ -100,19 +110,23 @@ export async function fetchBookings(scheduleIds: string[], dateRange?: { from: s
     throw error;
   }
 
-  // Add client property for compatibility
-  const bookingsWithClientData = bookings.map(booking => ({
-    ...booking,
-    client: booking.clients, // Make sure both client and clients are available
-  })) as unknown as Booking[];
+  // Add client property for compatibility and filter out any bookings not belonging to the specified branch
+  const bookingsWithClientData = bookings
+    .filter(booking => !branchId || booking.clients?.branch_id === branchId)
+    .map(booking => ({
+      ...booking,
+      client: booking.clients, // Make sure both client and clients are available
+    })) as unknown as Booking[];
 
+  console.log(`Fetched ${bookingsWithClientData.length} bookings${branchId ? ` for branch ${branchId}` : ''}`);
   return bookingsWithClientData;
 }
 
-export async function fetchInvoiceItems(bookingIds: string[]): Promise<InvoiceItem[]> {
+export async function fetchInvoiceItems(bookingIds: string[], branchId?: string): Promise<InvoiceItem[]> {
   if (bookingIds.length === 0) return [];
 
-  const { data: invoiceItems, error } = await supabase
+  // Enhanced query to fetch invoice items with branch filtering
+  const query = supabase
     .from('invoice_items')
     .select(`
       id,
@@ -125,18 +139,31 @@ export async function fetchInvoiceItems(bookingIds: string[]): Promise<InvoiceIt
       invoices:invoice_id (
         id,
         status,
-        payment_date
+        payment_date,
+        client_id,
+        client:client_id (
+          branch_id
+        )
       )
     `)
     .in('booking_id', bookingIds);
+
+  const { data: invoiceItems, error } = await query;
 
   if (error) {
     console.error('Error fetching invoice items:', error);
     throw error;
   }
 
+  // Filter by branch_id if specified
+  const filteredItems = branchId 
+    ? invoiceItems.filter(item => item.invoices?.client?.branch_id === branchId)
+    : invoiceItems;
+
+  console.log(`Fetched ${filteredItems.length} invoice items${branchId ? ` for branch ${branchId}` : ''}`);
+
   // Ensure all required fields are present for the InvoiceItem interface
-  const completeInvoiceItems = invoiceItems.map(item => ({
+  const completeInvoiceItems = filteredItems.map(item => ({
     id: item.id,
     invoice_id: item.invoice_id,
     booking_id: item.booking_id,
@@ -144,7 +171,8 @@ export async function fetchInvoiceItems(bookingIds: string[]): Promise<InvoiceIt
     quantity: item.quantity || 1,
     unit_price: item.unit_price || item.amount || 0,
     amount: item.amount || 0,
-    invoices: item.invoices
+    invoices: item.invoices,
+    branch_id: item.invoices?.client?.branch_id // Add branch_id for easier filtering
   })) as InvoiceItem[];
 
   return completeInvoiceItems;

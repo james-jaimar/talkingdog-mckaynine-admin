@@ -1,63 +1,70 @@
 
+// If this file doesn't exist yet, we'll create it
 export interface Schedule {
   id: string;
-  start_time: string;
-  end_time: string;
   class_id: string;
   trainer_id: string;
+  start_time: string;
+  end_time: string;
+  recurring: boolean;
+  recurrence_pattern?: string;
+  selected_dates?: string[];
+  created_at: string;
+  updated_at: string;
+  term_id?: string;
   classes: {
     id: string;
     name: string;
-    trainer_fee_type?: string;
-    trainer_fee_value?: number;
-    mckaynine_commission_type?: string;
-    mckaynine_commission_value?: number;
-    admin_fee_type?: string;
-    admin_fee_value?: number;
-    course_fee?: number;
-  };
+    trainer_fee_type: string;
+    trainer_fee_value: number;
+    mckaynine_commission_type: string;
+    mckaynine_commission_value: number;
+    admin_fee_type: string;
+    admin_fee_value: number;
+    course_fee: number;
+    enrollment_fee: number;
+    branch_id: string; // Add branch_id field
+  }
 }
 
 export interface Booking {
   id: string;
-  class_schedule_id?: string;
-  client_id?: string;
-  dog_id?: string;
-  is_enrolled: boolean;
-  status: string;
+  client_id: string;
+  class_schedule_id: string;
   payment_status: string;
+  status: string;
+  is_enrolled: boolean;
   client?: {
     id: string;
     first_name: string;
     last_name: string;
-    email: string;
+    branch_id: string; // Add branch_id field
   };
-  dog?: {
-    id: string;
-    name: string;
-    breed: string;
-  };
-  // For backward compatibility with code using clients instead of client
   clients?: {
     id: string;
     first_name: string;
     last_name: string;
+    branch_id: string; // Add branch_id field
   };
-  computed_payment_status?: string;
 }
 
 export interface InvoiceItem {
   id: string;
   invoice_id: string;
+  booking_id?: string;
   description: string;
   quantity: number;
   unit_price: number;
   amount: number;
-  booking_id?: string;
+  branch_id?: string; // Add branch_id field
   invoices?: {
     id: string;
     status: string;
     payment_date?: string;
+    client_id?: string;
+    client?: {
+      branch_id: string; // Add branch_id field
+    };
   };
 }
 
@@ -73,13 +80,14 @@ export interface TrainerClassDetail {
   className: string;
   classDate: string;
   scheduleDate: Date;
-  bookings: number;
   revenue: number;
   potentialRevenue: number;
+  bookings: number;
   isPaid: boolean;
   hasZeroAmountPayment?: boolean;
   hasZeroCommission?: boolean;
-  bookingsDetails?: BookingDetail[];
+  branchId?: string; // Add branch_id field
+  bookingsDetails: BookingDetail[];
 }
 
 export interface TrainerPaymentData {
@@ -93,21 +101,8 @@ export interface TrainerPaymentData {
   classesCount: number;
   clients: number;
   lastPaymentDate?: string;
-  scheduleIds?: string[];
-  hasUnpaidCommission?: boolean;
+  scheduleIds: string[];
+  hasUnpaidCommission: boolean;
   hasZeroCommissionClasses?: boolean;
   classDetails: TrainerClassDetail[];
-}
-
-export interface TrainerPaymentHistoryItem {
-  id: string;
-  paymentDate: string;
-  amount: number;
-  paymentMethod: string;
-  transactionId?: string;
-  documentUrl?: string;
-  documentName?: string;
-  scheduleId: string;
-  className: string;
-  classDate: string;
 }

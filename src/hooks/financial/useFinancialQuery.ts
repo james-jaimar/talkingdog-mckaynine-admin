@@ -47,6 +47,8 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
         throw invoicesError;
       }
 
+      console.log(`Found ${invoices?.length || 0} invoices for branch ${branchId}`);
+
       // Calculate total revenue directly from invoices total column
       const totalRevenueFromInvoices = invoices?.reduce((sum, inv) => sum + (inv.total || 0), 0) || 0;
 
@@ -56,6 +58,8 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
         .select(`
           id,
           payment_status,
+          client_id,
+          clients:client_id (branch_id),
           class_schedules:class_schedule_id (
             classes:class_id (
               id,
@@ -66,12 +70,18 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
               admin_fee_value,
               admin_fee_type,
               trainer_fee_value,
-              trainer_fee_type
+              trainer_fee_type,
+              branch_id
             )
           )
         `)
-        .eq('class_schedules.classes.branch_id', branchId)
         .eq('status', 'confirmed');
+      
+      // Additional filter to ensure we only get bookings for the correct branch
+      // Either filter by the class's branch_id or by the client's branch_id
+      query = query
+        .eq('clients.branch_id', branchId)
+        .eq('class_schedules.classes.branch_id', branchId);
 
       if (fromDate && toDate) {
         query = query.gte('created_at', fromDate).lte('created_at', toDate);
@@ -83,6 +93,8 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
         console.error("Error fetching booking data for financial report:", bookingsError);
         throw bookingsError;
       }
+
+      console.log(`Found ${bookings?.length || 0} bookings for branch ${branchId}`);
 
       // Get invoice items with full invoice details - we'll still need this to link invoices to bookings
       let invoiceItemsQuery = supabase
@@ -111,9 +123,14 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
           )
         `)
         .in('invoices.status', ['sent', 'paid', 'overdue']);
+        
+      // Add branch filter to invoice items
+      invoiceItemsQuery = invoiceItemsQuery
+        .eq('invoices.client.branch_id', branchId);
 
       if (fromDate && toDate) {
-        invoiceItemsQuery = invoiceItemsQuery.gte('invoices.issued_date', fromDate)
+        invoiceItemsQuery = invoiceItemsQuery
+          .gte('invoices.issued_date', fromDate)
           .lte('invoices.issued_date', toDate);
       }
 
@@ -122,6 +139,19 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
       if (invoiceItemsError) {
         console.error("Error fetching invoice items:", invoiceItemsError);
         throw invoiceItemsError;
+      }
+
+      console.log(`Found ${invoiceItems?.length || 0} invoice items for branch ${branchId}`);
+
+      // Double-check that invoice items are for the correct branch
+      const validInvoiceItems = invoiceItems?.filter(item => 
+        item.invoices?.client?.branch_id === branchId
+      );
+
+      if (validInvoiceItems?.length !== invoiceItems?.length) {
+        console.warn(
+          `Filtered out ${(invoiceItems?.length || 0) - (validInvoiceItems?.length || 0)} invoice items that don't match branch ${branchId}`
+        );
       }
 
       // Get invalid invoices count
@@ -157,6 +187,13 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
       if (countError) {
         console.error("Error counting invoices:", countError);
       }
+      
+      // Final validation log
+      console.log(`Financial data for branch ${branchId}: ` +
+                 `${invoices?.length} invoices, ` +
+                 `${bookings?.length} bookings, ` +
+                 `${validInvoiceItems?.length} invoice items, ` +
+                 `total revenue: ${totalRevenueFromInvoices}`);
 
       // Cast the result to FinancialData to ensure TypeScript compatibility
       const result: FinancialData = {
@@ -164,9 +201,7 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
         allInvoicesCount: allInvoicesCount || 0,
         invalidInvoicesCount: invalidCount || 0,
         totalRevenue: totalRevenueFromInvoices,
-        invoiceItems: invoiceItems?.filter(item => 
-          item.invoices?.client?.branch_id === branchId
-        ) || [],
+        invoiceItems: validInvoiceItems || [],
         invoices: invoices || []
       };
       

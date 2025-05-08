@@ -13,27 +13,32 @@ import { useClassFinancialData } from "@/hooks/useClassFinancialData";
 import { useTerm } from "@/context/TermContext";
 import { useInvoices } from "@/hooks/useInvoices";
 import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
 
 export default function FinancialDashboard() {
   const [timeframe, setTimeframe] = useState<'monthly' | 'quarterly' | 'yearly'>('monthly');
   const { currentBranch } = useBranch();
   const { termDateRange, termData } = useTerm();
-  const { invoices } = useInvoices();
+  const { invoices, isLoading: isLoadingInvoices } = useInvoices();
   const queryClient = useQueryClient();
   
   // Use effect to refresh data when term changes
   useEffect(() => {
-    if (termData?.id) {
-      console.log(`FinancialDashboard: Term data changed, refreshing financial data for term ${termData.term_number}`);
-      queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
-      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+    if (termData?.id && currentBranch?.id) {
+      console.log(`FinancialDashboard: Term data changed to ${termData.term_number}, refreshing financial data for branch ${currentBranch.name}`);
+      queryClient.invalidateQueries({ queryKey: ['financial-bookings', currentBranch.id] });
+      queryClient.invalidateQueries({ queryKey: ['invoices', currentBranch.id] });
     }
-  }, [termData?.id, queryClient]);
+  }, [termData?.id, currentBranch?.id, queryClient]);
   
-  // Get all active invoices - filtering to only show relevant statuses
-  const activeInvoices = invoices.filter(inv => 
-    inv.status === 'sent' || inv.status === 'paid' || inv.status === 'overdue'
-  );
+  // Get all active invoices - filtering to only show relevant statuses AND current branch
+  const activeInvoices = invoices.filter(inv => {
+    // Check if invoice has client data with branch_id
+    const branchMatch = inv.client?.branch_id === currentBranch?.id;
+    const statusMatch = inv.status === 'sent' || inv.status === 'paid' || inv.status === 'overdue';
+    return branchMatch && statusMatch;
+  });
   
   // Filter invoices by term date range if available
   const termFilteredInvoices = termDateRange 
@@ -44,6 +49,14 @@ export default function FinancialDashboard() {
         return invDate >= startDate && invDate <= endDate;
       })
     : activeInvoices;
+  
+  // Log branch filtering information
+  useEffect(() => {
+    if (currentBranch?.id) {
+      console.log(`FinancialDashboard: Current branch is ${currentBranch.name} (${currentBranch.id})`);
+      console.log(`Total invoices: ${invoices.length}, filtered for branch: ${activeInvoices.length}, filtered for term: ${termFilteredInvoices.length}`);
+    }
+  }, [currentBranch?.id, invoices.length, activeInvoices.length, termFilteredInvoices.length]);
   
   // Calculate revenue metrics directly from invoices using total (already includes discounts)
   const totalRevenue = termFilteredInvoices.reduce((sum, inv) => sum + inv.total, 0);
@@ -75,8 +88,10 @@ export default function FinancialDashboard() {
   // Calculate profit as NET revenue minus all fees
   const profit = totalRevenue - totalAdmin - totalTrainer - totalFranchise;
   
-  // Debug the calculated values
+  // Debug the calculated values with branch ID for verification
   console.log("Financial Dashboard calculations:", {
+    branchId: currentBranch?.id,
+    branchName: currentBranch?.name,
     totalRevenue,
     collectedRevenue,
     pendingRevenue,
@@ -107,6 +122,28 @@ export default function FinancialDashboard() {
     totalRevenue
   };
 
+  // Handle refresh button click
+  const handleRefresh = () => {
+    if (currentBranch?.id) {
+      queryClient.invalidateQueries({ queryKey: ['financial-bookings', currentBranch.id] });
+      queryClient.invalidateQueries({ queryKey: ['invoices', currentBranch.id] });
+      toast.success(`Refreshing financial data for ${currentBranch.name}`);
+    }
+  };
+
+  if (isLoading || isLoadingInvoices) {
+    return (
+      <RequireAdmin>
+        <DashboardLayout>
+          <div className="container mx-auto py-6 flex flex-col items-center justify-center space-y-4">
+            <Loader2 className="h-10 w-10 animate-spin text-primary" />
+            <p className="text-lg">Loading financial data...</p>
+          </div>
+        </DashboardLayout>
+      </RequireAdmin>
+    );
+  }
+
   return (
     <RequireAdmin>
       <DashboardLayout>
@@ -116,15 +153,30 @@ export default function FinancialDashboard() {
         
         <div className="container mx-auto py-6">
           <div className="flex justify-between items-center mb-6">
-            <h1 className="text-3xl font-bold">Financial Dashboard</h1>
+            <div>
+              <h1 className="text-3xl font-bold">Financial Dashboard</h1>
+              <p className="text-muted-foreground">
+                Branch: {currentBranch?.name || 'No branch selected'} |
+                Term: {termData?.term_number || 'No term selected'}
+              </p>
+            </div>
             
-            <Tabs value={timeframe} onValueChange={(value) => setTimeframe(value as any)} className="w-fit">
-              <TabsList>
-                <TabsTrigger value="monthly">Monthly</TabsTrigger>
-                <TabsTrigger value="quarterly">Quarterly</TabsTrigger>
-                <TabsTrigger value="yearly">Yearly</TabsTrigger>
-              </TabsList>
-            </Tabs>
+            <div className="flex gap-4 items-center">
+              <button 
+                onClick={handleRefresh} 
+                className="px-3 py-1 bg-blue-100 text-blue-600 rounded-md hover:bg-blue-200 transition-colors"
+              >
+                Refresh
+              </button>
+              
+              <Tabs value={timeframe} onValueChange={(value) => setTimeframe(value as any)} className="w-fit">
+                <TabsList>
+                  <TabsTrigger value="monthly">Monthly</TabsTrigger>
+                  <TabsTrigger value="quarterly">Quarterly</TabsTrigger>
+                  <TabsTrigger value="yearly">Yearly</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
           </div>
 
           {/* Financial metrics cards */}
