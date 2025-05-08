@@ -7,6 +7,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { Class } from "@/components/classes/types/class";
 import { classFormSchema, ClassFormValues } from "@/components/classes/schemas/classFormSchema";
+import { useTerm } from "@/context/TermContext";
+import { useNavigate } from "react-router-dom";
 
 // Branch option type
 type BranchOption = {
@@ -20,6 +22,8 @@ export function useClassForm(classData: Class | null, onSuccess: () => void) {
   const [isLoadingBranches, setIsLoadingBranches] = useState(true);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { termData } = useTerm(); // Get current term context
+  const navigate = useNavigate();
   
   // Pre-populate form with class data or set defaults
   const defaultValues: ClassFormValues = classData
@@ -160,10 +164,23 @@ export function useClassForm(classData: Class | null, onSuccess: () => void) {
     setIsSubmitting(true);
     console.log("Submitting form with values:", values);
     
+    // Add validation for branch ID
+    if (!values.branchId) {
+      toast({
+        title: "Branch is required",
+        description: "Please select a branch for this class.",
+        variant: "destructive",
+      });
+      setIsSubmitting(false);
+      return;
+    }
+    
     try {
+      let classId: string;
+      
       if (classData) {
         // Update existing class
-        const { error } = await supabase
+        const { data: updatedClass, error } = await supabase
           .from("classes")
           .update({
             name: values.name,
@@ -181,9 +198,12 @@ export function useClassForm(classData: Class | null, onSuccess: () => void) {
             capacity: values.capacity,
             branch_id: values.branchId,
           })
-          .eq("id", classData.id);
+          .eq("id", classData.id)
+          .select()
+          .single();
         
         if (error) throw error;
+        classId = classData.id;
         
         toast({
           title: "Class updated successfully",
@@ -191,7 +211,7 @@ export function useClassForm(classData: Class | null, onSuccess: () => void) {
         });
       } else {
         // Create new class
-        const { error } = await supabase
+        const { data: newClass, error } = await supabase
           .from("classes")
           .insert({
             name: values.name,
@@ -208,18 +228,55 @@ export function useClassForm(classData: Class | null, onSuccess: () => void) {
             duration: values.duration,
             capacity: values.capacity,
             branch_id: values.branchId,
-          });
+          })
+          .select()
+          .single();
         
-        if (error) throw error;
+        if (error) {
+          console.error("Database error creating class:", error);
+          throw error;
+        }
+        
+        if (!newClass) {
+          throw new Error("Failed to retrieve the newly created class data");
+        }
+        
+        classId = newClass.id;
+        console.log("Successfully created class with ID:", classId);
         
         toast({
           title: "Class created successfully",
-          description: `${values.name} has been added.`,
+          description: `${values.name} has been added. Would you like to create a schedule for this class?`,
+          action: (
+            <button 
+              onClick={() => navigate(`/classes/${classId}/schedules`)}
+              className="bg-mckaynine-600 hover:bg-mckaynine-700 text-white px-4 py-2 rounded text-xs"
+            >
+              Create Schedule
+            </button>
+          ),
+          duration: 8000, // Show toast for longer to give time to click
         });
       }
       
-      queryClient.invalidateQueries({ queryKey: ["classes"] });
+      // Invalidate all class-related queries to ensure UI is updated
+      await queryClient.invalidateQueries({ queryKey: ["classes"] });
+      
+      // If a term is selected, also invalidate any term-specific queries
+      if (termData?.id) {
+        await queryClient.invalidateQueries({ 
+          queryKey: ["classes", termData.id]
+        });
+      }
+      
+      // Call onSuccess callback after everything is done
       onSuccess();
+      
+      // If this was a new class and we have term data, suggest creating a schedule
+      if (!classData && classId && termData?.id) {
+        // The toast action above will handle this
+      }
+      
     } catch (error) {
       console.error("Error saving class:", error);
       toast({

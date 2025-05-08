@@ -36,6 +36,13 @@ export function TermProvider({ children }: { children: ReactNode }) {
   // Calculate the real loading state (either fetching or changing term)
   const isTermLoading = isFetchingTerm || isChangingTerm;
 
+  // Debug logging for term data
+  useEffect(() => {
+    console.log("TermProvider - Current term data:", termData);
+    console.log("TermProvider - Selected year:", selectedYear);
+    console.log("TermProvider - Selected term number:", selectedTermNumber);
+  }, [termData, selectedYear, selectedTermNumber]);
+
   // When term data changes, invalidate and refetch relevant queries
   useEffect(() => {
     if (!termData?.id) return;
@@ -49,6 +56,9 @@ export function TermProvider({ children }: { children: ReactNode }) {
         // Refetch financial data queries explicitly
         queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
         queryClient.invalidateQueries({ queryKey: ['invoices'] });
+        
+        // Add invalidation for classes
+        queryClient.invalidateQueries({ queryKey: ['classes'] });
         
         // Refetch just the classes query (the rest will load when their components mount)
         queryClient.refetchQueries({ 
