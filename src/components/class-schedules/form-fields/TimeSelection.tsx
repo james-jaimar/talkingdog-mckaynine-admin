@@ -24,7 +24,12 @@ export function TimeSelection({ control }: TimeSelectionProps) {
           <FormItem>
             <FormLabel>Start Time</FormLabel>
             <FormControl>
-              <Input type="time" {...field} />
+              <Input 
+                type="time" 
+                {...field} 
+                aria-label="Class start time"
+                className="focus:ring-2 focus:ring-offset-1 focus:ring-primary"
+              />
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -37,7 +42,12 @@ export function TimeSelection({ control }: TimeSelectionProps) {
           <FormItem>
             <FormLabel>End Time</FormLabel>
             <FormControl>
-              <Input type="time" {...field} />
+              <Input 
+                type="time" 
+                {...field}
+                aria-label="Class end time"
+                className="focus:ring-2 focus:ring-offset-1 focus:ring-primary"
+              />
             </FormControl>
             <FormMessage />
           </FormItem>

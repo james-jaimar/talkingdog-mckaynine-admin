@@ -20,9 +20,9 @@ export function RecurringClassToggle({ control }: RecurringClassToggleProps) {
       control={control}
       name="isRecurring"
       render={({ field }) => (
-        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 hover:bg-muted/5 transition-colors">
           <div className="space-y-0.5">
-            <FormLabel className="text-base">Recurring Class</FormLabel>
+            <FormLabel className="text-base font-medium">Recurring Class</FormLabel>
             <FormDescription>
               Enable if this is a recurring class series
             </FormDescription>
@@ -31,6 +31,8 @@ export function RecurringClassToggle({ control }: RecurringClassToggleProps) {
             <Switch
               checked={field.value}
               onCheckedChange={field.onChange}
+              aria-label="Toggle recurring class"
+              className="data-[state=checked]:bg-primary"
             />
           </FormControl>
         </FormItem>

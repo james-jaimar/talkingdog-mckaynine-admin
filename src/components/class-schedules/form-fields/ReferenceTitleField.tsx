@@ -27,7 +27,12 @@ export function ReferenceTitleField({ control }: ReferenceTitleFieldProps) {
             A title to help identify this class schedule
           </FormDescription>
           <FormControl>
-            <Input {...field} />
+            <Input 
+              {...field} 
+              placeholder="Enter a descriptive title"
+              className="focus:ring-2 focus:ring-offset-1 focus:ring-primary"
+              aria-label="Schedule reference title"
+            />
           </FormControl>
           <FormMessage />
         </FormItem>
