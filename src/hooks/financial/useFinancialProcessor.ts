@@ -22,9 +22,25 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
       totalRevenue,
       invoices
     } = financialData;
-
+    
+    // Use branch ID from the first booking or invoice for validation
+    const branchId = 
+      bookingsWithInvoices[0]?.clients?.branch_id || 
+      invoices[0]?.client?.branch_id || 
+      financialData.branchId;
+    
+    // Log the branch ID we're processing data for
+    console.log(`Financial processor using branch ID: ${branchId || 'unknown'}`);
+    
     // Use optional chaining for possibly undefined invoice items
     const invoiceItems = financialData.invoiceItems || [];
+    
+    // Filter invoiceItems to ensure they belong to the correct branch
+    const branchFilteredInvoiceItems = branchId 
+      ? invoiceItems.filter(item => !item.invoices?.client?.branch_id || item.invoices?.client?.branch_id === branchId)
+      : invoiceItems;
+      
+    console.log(`Filtered ${invoiceItems.length - branchFilteredInvoiceItems.length} invoice items that don't match branch ${branchId}`);
 
     setTotalInvoiceCount(allInvoicesCount);
     setInvalidInvoicesCount(invalidCount);
@@ -40,7 +56,7 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
     const invoiceToBookingMap = new Map<string, string[]>();
     const bookingToInvoiceMap = new Map<string, Set<string>>();
     
-    invoiceItems.forEach(item => {
+    branchFilteredInvoiceItems.forEach(item => {
       if (item.booking_id && item.invoice_id) {
         // Map invoice to booking
         if (!invoiceToBookingMap.has(item.invoice_id)) {
@@ -56,11 +72,25 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
       }
     });
 
+    // Filter bookings to only use those from the correct branch
+    const branchFilteredBookings = branchId 
+      ? bookingsWithInvoices.filter(booking => !booking.clients?.branch_id || booking.clients?.branch_id === branchId)
+      : bookingsWithInvoices;
+    
+    console.log(`Filtered ${bookingsWithInvoices.length - branchFilteredBookings.length} bookings that don't match branch ${branchId}`);
+
     // Now work directly with invoices and distribute revenue proportionally
     const processedInvoices = new Set<string>();
     
+    // Filter invoices to only use those from the correct branch
+    const branchFilteredInvoices = branchId
+      ? invoices.filter(invoice => !invoice.client?.branch_id || invoice.client?.branch_id === branchId)
+      : invoices;
+      
+    console.log(`Filtered ${invoices.length - branchFilteredInvoices.length} invoices that don't match branch ${branchId}`);
+    
     // First handle invoices that can be mapped to specific classes through bookings
-    invoices.forEach(invoice => {
+    branchFilteredInvoices.forEach(invoice => {
       const bookingIds = invoiceToBookingMap.get(invoice.id);
       
       // Skip if this invoice has no associated bookings or already processed
@@ -70,11 +100,23 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
       const invoiceAmountPerBooking = invoice.total / bookingIds.length;
       
       bookingIds.forEach(bookingId => {
-        const booking = bookingsWithInvoices.find(b => b.id === bookingId);
+        const booking = branchFilteredBookings.find(b => b.id === bookingId);
         if (!booking || !booking.class_schedules?.classes) return;
+        
+        // Additional branch check
+        if (branchId && booking.clients?.branch_id && booking.clients.branch_id !== branchId) {
+          console.warn(`Skipping booking ${bookingId} due to branch mismatch. Expected ${branchId}, got ${booking.clients.branch_id}`);
+          return;
+        }
         
         const classData = booking.class_schedules.classes;
         const className = classData.name;
+        
+        // Skip if class is not from this branch
+        if (branchId && classData.branch_id && classData.branch_id !== branchId) {
+          console.warn(`Skipping class ${className} (${classData.id}) due to branch mismatch. Expected ${branchId}, got ${classData.branch_id}`);
+          return;
+        }
         
         // Track this invoice for this class
         if (!classInvoiceMap.has(className)) {
@@ -132,15 +174,15 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
     });
     
     // Handle unprocessed invoices (not linked to specific classes)
-    const unprocessedInvoicesTotal = invoices
-      .filter(inv => !processedInvoices.has(inv.id))
+    const unprocessedInvoices = branchFilteredInvoices
+      .filter(inv => !processedInvoices.has(inv.id));
+    
+    const unprocessedInvoicesTotal = unprocessedInvoices
       .reduce((sum, inv) => sum + inv.total, 0);
     
     if (unprocessedInvoicesTotal > 0) {
       const generalClassName = "General Training Services";
-      const unprocessedInvoiceIds = invoices
-        .filter(inv => !processedInvoices.has(inv.id))
-        .map(inv => inv.id);
+      const unprocessedInvoiceIds = unprocessedInvoices.map(inv => inv.id);
       
       // Create a general entry for unprocessed invoices
       const generalSummary = classSummaries.get(generalClassName) || {
@@ -237,6 +279,7 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
     
     console.log("Financial processor - total unique bookings:", totalUniqueBookings.size);
     console.log("Financial processor - total invoices:", allInvoicesCount);
+    console.log("Financial processor - final class finances count:", sortedFinances.length);
 
     setClassFinances(sortedFinances);
   }, [financialData]);

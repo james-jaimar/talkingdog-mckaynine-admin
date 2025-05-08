@@ -12,7 +12,8 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
   const { 
     data: financialData, 
     isLoading, 
-    refetch
+    refetch,
+    error
   } = useFinancialQuery(branchId, fromDate, toDate);
   
   const {
@@ -21,19 +22,28 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
     invalidInvoicesCount
   } = useFinancialProcessor(financialData);
   
+  // Add branch_id to all classFinances if not already set
+  const enrichedClassFinances = classFinances.map(cf => ({
+    ...cf,
+    branch_id: cf.branch_id || financialData?.branchId || branchId
+  }));
+  
   const refreshData = async () => {
     await queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
+    await queryClient.invalidateQueries({ queryKey: ['financial-bookings', branchId] });
+    await queryClient.removeQueries({ queryKey: ['financial-bookings'] }); // Remove any queries without branch ID
     await refetch();
     setRefreshTrigger(prev => prev + 1);
   };
   
   return {
-    classFinances,
+    classFinances: enrichedClassFinances,
     isLoading,
     refreshData,
     totalInvoiceCount,
     invalidInvoicesCount,
     totalRevenue: financialData?.totalRevenue || 0,
+    error
   };
 }
 

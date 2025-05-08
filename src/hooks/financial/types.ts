@@ -1,30 +1,12 @@
 
-// Update the FinancialData type to include invoices
-export interface FinancialData {
-  bookingsWithInvoices: BookingWithSchedule[];
-  allInvoicesCount: number;
-  invalidInvoicesCount: number;
-  totalRevenue: number;
-  invoiceItems: InvoiceItemWithInvoice[];
-  invoices: InvoiceData[];
-}
-
-export interface BookingWithSchedule {
-  id: string;
-  payment_status?: string;
-  class_schedules?: {
-    classes?: {
-      id: string;
-      name: string;
-      course_fee?: number;
-      mckaynine_commission_value: number;
-      mckaynine_commission_type: string;
-      admin_fee_value: number;
-      admin_fee_type: string;
-      trainer_fee_value: number;
-      trainer_fee_type: string;
-    };
-  };
+// If this file doesn't exist yet, create it
+export interface BookingRevenue {
+  booking_id: string;
+  client_id?: string;
+  amount: number;
+  invoice_id: string;
+  status: string;
+  branch_id?: string; // Add branch_id for better tracking
 }
 
 export interface ClassFinance {
@@ -36,46 +18,17 @@ export interface ClassFinance {
   instructorFee: number;
   profit: number;
   invoiceCount: number;
-  sourceType?: 'class' | 'general';
+  sourceType: 'class' | 'general';
   invoiceIds: string[];
+  branch_id?: string; // Add branch_id for better tracking
 }
 
-export interface InvoiceData {
-  id: string;
-  total: number;
-  status: string;
-  client_id: string;
-  issued_date: string;
-  client?: {
-    branch_id?: string;
-  };
-}
-
-export interface BookingRevenue {
+export interface FinancialData {
+  bookingsWithInvoices: any[];
+  allInvoicesCount: number;
+  invalidInvoicesCount: number;
   totalRevenue: number;
-  invoiceIds: Set<string>;
-}
-
-export interface InvoiceItemWithInvoice {
-  id: string;
-  invoice_id: string;
-  booking_id?: string;
-  amount?: number;
-  unit_price?: number;
-  quantity?: number;
-  description?: string;
-  invoices?: {
-    id: string;
-    status?: string;
-    payment_received?: boolean;
-    total?: number;
-    subtotal?: number;
-    tax_amount?: number;
-    client_id?: string;
-    issued_date?: string;
-    invoice_number?: string;
-    client?: {
-      branch_id?: string;
-    };
-  };
+  invoiceItems: any[];
+  invoices: any[];
+  branchId?: string; // Add branchId to track which branch this data is for
 }

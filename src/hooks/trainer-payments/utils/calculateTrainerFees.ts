@@ -15,6 +15,9 @@ export function calculateClassRevenue(
   schedule: Schedule,
   invoiceItems: InvoiceItem[]
 ): RevenueDetails {
+  // Get branch ID from schedule
+  const scheduleBranchId = schedule.classes?.branch_id;
+  
   // Default values
   let revenue = 0;
   let potentialRevenue = 0;
@@ -38,18 +41,30 @@ export function calculateClassRevenue(
     return { revenue: 0, potentialRevenue: 0, isPaid: false };
   }
   
-  // Get amount from paid invoice items
+  // Get booking IDs for this class
   const bookingIds = bookings.map(b => b.id);
   
+  // Filter invoice items to ensure they match the correct branch and bookings
+  const branchFilteredInvoiceItems = invoiceItems.filter(item => {
+    // Check if this invoice item is for a booking in our list
+    const matchesBooking = item.booking_id && bookingIds.includes(item.booking_id);
+    
+    // Check if this invoice belongs to the correct branch
+    const invoiceBranchId = item.invoices?.client?.branch_id;
+    const matchesBranch = !scheduleBranchId || !invoiceBranchId || scheduleBranchId === invoiceBranchId;
+    
+    return matchesBooking && matchesBranch;
+  });
+  
   // Calculate actual revenue from paid invoices
-  const paidInvoiceItems = invoiceItems.filter(item => 
+  const paidInvoiceItems = branchFilteredInvoiceItems.filter(item => 
     item.booking_id && 
     bookingIds.includes(item.booking_id) && 
     item.invoices?.status === 'paid'
   );
 
   // Calculate potential revenue from all invoice items (paid or unpaid)
-  const allValidInvoiceItems = invoiceItems.filter(item => 
+  const allValidInvoiceItems = branchFilteredInvoiceItems.filter(item => 
     item.booking_id && 
     bookingIds.includes(item.booking_id) && 
     item.invoices?.status !== 'cancelled'

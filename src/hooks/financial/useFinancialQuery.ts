@@ -17,7 +17,8 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
         invalidInvoicesCount: 0,
         totalRevenue: 0,
         invoiceItems: [],
-        invoices: []
+        invoices: [],
+        branchId: null
       } as FinancialData;
 
       console.log(`Fetching financial data for branch ${branchId} from ${fromDate} to ${toDate}`);
@@ -49,8 +50,19 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
 
       console.log(`Found ${invoices?.length || 0} invoices for branch ${branchId}`);
 
+      // Verify all invoices actually belong to the correct branch
+      const validInvoices = invoices.filter(inv => 
+        !inv.client?.branch_id || inv.client.branch_id === branchId
+      );
+
+      if (validInvoices.length !== invoices.length) {
+        console.warn(
+          `Filtered out ${invoices.length - validInvoices.length} invoices that don't match branch ${branchId}`
+        );
+      }
+
       // Calculate total revenue directly from invoices total column
-      const totalRevenueFromInvoices = invoices?.reduce((sum, inv) => sum + (inv.total || 0), 0) || 0;
+      const totalRevenueFromInvoices = validInvoices.reduce((sum, inv) => sum + (inv.total || 0), 0) || 0;
 
       // Set up query for confirmed bookings with their class information
       let query = supabase
@@ -65,10 +77,10 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
               id,
               name,
               course_fee,
-              mckaynine_commission_value,
               mckaynine_commission_type,
-              admin_fee_value,
+              mckaynine_commission_value,
               admin_fee_type,
+              admin_fee_value,
               trainer_fee_value,
               trainer_fee_type,
               branch_id
@@ -94,7 +106,19 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
         throw bookingsError;
       }
 
-      console.log(`Found ${bookings?.length || 0} bookings for branch ${branchId}`);
+      // Verify all bookings actually have the correct branch
+      const validBookings = bookings.filter(booking => 
+        (!booking.clients?.branch_id || booking.clients.branch_id === branchId) &&
+        (!booking.class_schedules?.classes?.branch_id || booking.class_schedules.classes.branch_id === branchId)
+      );
+      
+      if (validBookings.length !== bookings.length) {
+        console.warn(
+          `Filtered out ${bookings.length - validBookings.length} bookings that don't match branch ${branchId}`
+        );
+      }
+
+      console.log(`Found ${validBookings?.length || 0} valid bookings for branch ${branchId}`);
 
       // Get invoice items with full invoice details - we'll still need this to link invoices to bookings
       let invoiceItemsQuery = supabase
@@ -145,7 +169,7 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
 
       // Double-check that invoice items are for the correct branch
       const validInvoiceItems = invoiceItems?.filter(item => 
-        item.invoices?.client?.branch_id === branchId
+        !item.invoices?.client?.branch_id || item.invoices?.client?.branch_id === branchId
       );
 
       if (validInvoiceItems?.length !== invoiceItems?.length) {
@@ -190,19 +214,20 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
       
       // Final validation log
       console.log(`Financial data for branch ${branchId}: ` +
-                 `${invoices?.length} invoices, ` +
-                 `${bookings?.length} bookings, ` +
+                 `${validInvoices.length} invoices, ` +
+                 `${validBookings.length} bookings, ` +
                  `${validInvoiceItems?.length} invoice items, ` +
                  `total revenue: ${totalRevenueFromInvoices}`);
 
       // Cast the result to FinancialData to ensure TypeScript compatibility
       const result: FinancialData = {
-        bookingsWithInvoices: bookings || [],
+        bookingsWithInvoices: validBookings || [],
         allInvoicesCount: allInvoicesCount || 0,
         invalidInvoicesCount: invalidCount || 0,
         totalRevenue: totalRevenueFromInvoices,
         invoiceItems: validInvoiceItems || [],
-        invoices: invoices || []
+        invoices: validInvoices || [],
+        branchId // Include branchId in the result for reference
       };
       
       return result;
