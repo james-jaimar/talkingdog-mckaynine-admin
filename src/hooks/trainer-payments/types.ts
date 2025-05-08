@@ -1,4 +1,3 @@
-
 // If this file doesn't exist yet, we'll create it
 export interface Schedule {
   id: string;
@@ -29,11 +28,12 @@ export interface Schedule {
 
 export interface Booking {
   id: string;
-  client_id: string;
+  client_id?: string;
   class_schedule_id: string;
   payment_status: string;
   status: string;
   is_enrolled: boolean;
+  dog_id?: string;
   client?: {
     id: string;
     first_name: string;
