@@ -176,6 +176,9 @@ export function useClassForm(classData: ClassData | null, onSuccess?: () => void
       setIsSubmitting(false);
       return;
     }
+
+    // Log if we have termData available
+    console.log("Current termData during class submission:", termData);
     
     try {
       let classId: string;
@@ -213,6 +216,7 @@ export function useClassForm(classData: ClassData | null, onSuccess?: () => void
         });
       } else {
         // Create new class
+        console.log("Creating new class with branch:", values.branchId);
         const { data: newClass, error } = await supabase
           .from("classes")
           .insert({
@@ -230,7 +234,7 @@ export function useClassForm(classData: ClassData | null, onSuccess?: () => void
             duration: values.duration,
             capacity: values.capacity,
             branch_id: values.branchId,
-            term_id: termData?.id, // Add term_id to associate class with current term
+            // Removed term_id as it doesn't exist in classes table
           })
           .select()
           .single();
@@ -255,6 +259,8 @@ export function useClassForm(classData: ClassData | null, onSuccess?: () => void
         });
         
         // Navigate to schedule creation page after a short delay
+        // This is where the term association will happen correctly, through class_schedules.term_id
+        console.log(`Will navigate to schedule creation for class ${classId} in 500ms`);
         setTimeout(() => {
           navigate(`/classes/${classId}/schedules`);
         }, 500);
@@ -273,7 +279,10 @@ export function useClassForm(classData: ClassData | null, onSuccess?: () => void
       }
       
       // Call onSuccess callback if provided
-      if (onSuccess) onSuccess();
+      if (onSuccess) {
+        console.log("Calling onSuccess callback");
+        onSuccess();
+      }
       
     } catch (error) {
       console.error("Error saving class:", error);
