@@ -32,12 +32,49 @@ export async function checkForDuplicateTrainerPayments(
   scheduleId: string
 ): Promise<boolean> {
   try {
-    // Check if we already have a payment record for this combination
-    const { data, error, count } = await supabase
+    // First check if this is a multi-term class
+    const { data: scheduleData, error: scheduleError } = await supabase
+      .from('class_schedules')
+      .select('multi_term_relation_id')
+      .eq('id', scheduleId)
+      .single();
+      
+    if (scheduleError) {
+      console.error("Error checking schedule data:", scheduleError);
+      return false;
+    }
+    
+    let query = supabase
       .from('trainer_payments')
       .select('id', { count: 'exact' })
-      .eq('trainer_id', trainerId)
-      .eq('class_schedule_id', scheduleId);
+      .eq('trainer_id', trainerId);
+      
+    // If this is part of a multi-term class, we need to check for payments across related schedules
+    if (scheduleData.multi_term_relation_id) {
+      // Get all related schedule IDs
+      const { data: relatedSchedules, error: relatedError } = await supabase
+        .from('class_schedules')
+        .select('id')
+        .eq('multi_term_relation_id', scheduleData.multi_term_relation_id);
+        
+      if (relatedError) {
+        console.error("Error fetching related schedules:", relatedError);
+        return false;
+      }
+      
+      if (relatedSchedules && relatedSchedules.length > 0) {
+        const relatedIds = relatedSchedules.map(s => s.id);
+        query = query.in('class_schedule_id', relatedIds);
+      } else {
+        query = query.eq('class_schedule_id', scheduleId);
+      }
+    } else {
+      // Regular single-term class
+      query = query.eq('class_schedule_id', scheduleId);
+    }
+    
+    // Execute the final query
+    const { data, error, count } = await query;
       
     if (error) {
       console.error("Error checking for duplicate trainer payments:", error);
