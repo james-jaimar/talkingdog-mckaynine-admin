@@ -14,6 +14,11 @@ export const AdminNavigation = ({ isMobile, onMobileClose, showPrimaryOnly = tru
   const { isPlatformAdmin } = useAuth();
   const items = showPrimaryOnly ? adminPrimaryNavItems : adminSecondaryNavItems;
   
+  // Filter items that are platformAdminOnly if the user is not a platform admin
+  const filteredItems = items.filter(item => 
+    !item.platformAdminOnly || (item.platformAdminOnly && isPlatformAdmin)
+  );
+  
   return (
     <nav className={isMobile ? "flex flex-col space-y-2" : "flex space-x-4 overflow-x-auto"}>
       {isPlatformAdmin && (
@@ -24,7 +29,7 @@ export const AdminNavigation = ({ isMobile, onMobileClose, showPrimaryOnly = tru
         </div>
       )}
       
-      {items.map(item => (
+      {filteredItems.map(item => (
         <Link 
           key={item.path}
           to={item.path} 

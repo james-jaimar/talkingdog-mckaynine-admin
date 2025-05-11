@@ -1,179 +1,133 @@
-import { Home, Calendar, Users, FileText, BarChart2, Settings, UserPlus, Building, Dog, Map, AlertCircle } from "lucide-react";
 
-export const adminNavItems = [
-  {
-    title: "Dashboard",
-    href: "/dashboard",
-  },
-  {
-    title: "Classes",
-    href: "/classes",
-  },
-  {
-    title: "Schedules",
-    href: "/schedules",
-  },
-  {
-    title: "Trainers",
-    href: "/trainers",
-  },
-  {
-    title: "Handlers",
-    href: "/handlers",
-  },
-  {
-    title: "Invoices",
-    href: "/invoices",
-  },
-  {
-    title: "Financial Dashboard",
-    href: "/financial-dashboard",
-  },
-  {
-    title: "Financial Reports",
-    href: "/financial-reports",
-  },
-  {
-    title: "Users",
-    href: "/user-admin",
-  },
-  {
-    title: "Branch Management",
-    href: "/branch-management",
-  },
-];
+import { Home, Book, Calendar, Users, School, CreditCard, FileText, Settings } from "lucide-react";
 
-// Primary navigation items for admin
 export const adminPrimaryNavItems = [
   {
     name: "Dashboard",
     path: "/dashboard",
-    icon: Home
+    icon: Home,
   },
   {
     name: "Classes",
-    path: "/classes",
-    icon: Calendar
-  },
-  {
-    name: "Schedules", 
-    path: "/schedules",
-    icon: Calendar
+    path: "/admin/classes",
+    icon: School,
   },
   {
     name: "Handlers",
-    path: "/handlers",
-    icon: Users
+    path: "/admin/handlers",
+    icon: Users,
   },
   {
     name: "Invoices",
     path: "/invoices",
-    icon: FileText
-  }
+    icon: FileText,
+  },
 ];
 
-// Secondary navigation items for admin
 export const adminSecondaryNavItems = [
   {
-    name: "Financial Dashboard",
-    path: "/financial-dashboard",
-    icon: BarChart2
-  },
-  {
-    name: "Financial Reports",
-    path: "/financial-reports",
-    icon: BarChart2
-  },
-  {
-    name: "Users",
-    path: "/user-admin",
-    icon: UserPlus
-  },
-  {
-    name: "Branches",
-    path: "/branches",
-    icon: Map
-  },
-  {
-    name: "Branch Management",
-    path: "/branch-management",
-    icon: Building
+    name: "Schedules",
+    path: "/class-schedules",
+    icon: Calendar,
   },
   {
     name: "Trainers",
     path: "/trainers",
-    icon: Users
+    icon: School,
   },
   {
-    name: "Unpaid Handlers",
-    path: "/unpaid-handlers",
-    icon: AlertCircle
-  }
+    name: "Branches",
+    path: "/branches",
+    icon: Home,
+  },
+  {
+    name: "Financial Dashboard",
+    path: "/financial-dashboard",
+    icon: CreditCard,
+  },
+  {
+    name: "Financial Reports",
+    path: "/financial-reports",
+    icon: Book,
+  },
+  {
+    name: "User Management",
+    path: "/user-admin",
+    icon: Users,
+  },
+  {
+    name: "Tenant Configuration",
+    path: "/admin/tenant-configuration",
+    icon: Settings,
+    platformAdminOnly: true,
+  },
 ];
 
-// Primary navigation items for handlers
-export const primaryNavItems = [
+export const trainerPrimaryNavItems = [
   {
     name: "Dashboard",
-    path: "/customer/dashboard",
-    icon: Home
+    path: "/dashboard",
+    icon: Home,
   },
   {
-    name: "My Profile",
-    path: "/customer/profile",
-    icon: Users
-  }
-];
-
-// Additional handler navigation items
-export const handlerNavItems = [
-  {
-    name: "My Invoices",
-    path: "/customer/invoices",
-    icon: FileText
-  },
-  {
-    name: "Messages",
-    path: "/customer/messages",
-    icon: FileText
-  }
-];
-
-// Navigation items for trainers
-export const trainerNavItems = [
-  {
-    name: "Dashboard",
-    path: "/trainer/dashboard",
-    icon: Home
-  },
-  {
-    name: "Classes",
+    name: "My Classes",
     path: "/trainer/classes",
-    icon: Calendar
+    icon: School,
   },
   {
     name: "Handlers",
     path: "/trainer/handlers",
-    icon: Users
+    icon: Users,
+  },
+];
+
+export const trainerSecondaryNavItems = [
+  {
+    name: "Schedules",
+    path: "/trainer/schedules",
+    icon: Calendar,
   },
   {
-    name: "Dogs",
-    path: "/trainer/dogs",
-    icon: Dog
-  },
-  {
-    name: "Schedule",
-    path: "/trainer/schedule",
-    icon: Calendar
+    name: "Profile",
+    path: "/trainer/profile",
+    icon: Users,
   },
   {
     name: "Payments",
-    path: "/trainer/payments", 
-    icon: FileText
+    path: "/trainer/payments",
+    icon: CreditCard,
+  },
+];
+
+export const handlerNavItems = [
+  {
+    name: "Dashboard",
+    path: "/customer/dashboard",
+    icon: Home,
   },
   {
-    name: "Reports",
-    path: "/trainer/reports",
-    icon: BarChart2
-  }
+    name: "My Classes",
+    path: "/customer/classes",
+    icon: School,
+  },
+  {
+    name: "My Dogs",
+    path: "/customer/dogs",
+    icon: Users,
+  },
+  {
+    name: "Messages",
+    path: "/customer/messages",
+    icon: FileText,
+  },
+  {
+    name: "Invoices",
+    path: "/customer/invoices",
+    icon: CreditCard,
+  },
+  {
+    name: "Profile",
+    path: "/customer/profile",
+    icon: Users,
+  },
 ];
