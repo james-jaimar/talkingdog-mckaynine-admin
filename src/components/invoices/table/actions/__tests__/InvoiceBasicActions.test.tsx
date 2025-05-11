@@ -1,9 +1,13 @@
 
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render } from '@testing-library/react';
+import * as RTL from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { BrowserRouter } from 'react-router-dom';
 import { InvoiceBasicActions } from '../InvoiceBasicActions';
 import { InvoiceStatus } from '@/hooks/invoices/types';
+
+// Extract screen and fireEvent from the RTL namespace
+const { screen, fireEvent } = RTL;
 
 const mockNavigate = jest.fn();
 jest.mock('react-router-dom', () => ({

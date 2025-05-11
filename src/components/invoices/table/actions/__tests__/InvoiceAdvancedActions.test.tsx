@@ -1,8 +1,12 @@
 
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render } from '@testing-library/react';
+import * as RTL from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { InvoiceAdvancedActions } from '../InvoiceAdvancedActions';
 import { InvoiceStatus } from '@/hooks/invoices/types';
+
+// Extract screen and fireEvent from the RTL namespace
+const { screen, fireEvent } = RTL;
 
 describe('InvoiceAdvancedActions', () => {
   const mockInvoice = {
