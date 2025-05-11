@@ -1,5 +1,5 @@
 
-import { PostgrestError } from '@supabase/supabase-js';
+import { PostgrestError, PostgrestSingleResponse } from '@supabase/supabase-js';
 
 // Check if a Supabase error is due to a missing relation/table
 export function isTableNotExistError(error: PostgrestError | null): boolean {
@@ -28,5 +28,43 @@ export async function safeTableQuery<T>(
   } catch (error) {
     console.error("Error in safeTableQuery:", error);
     return fallbackValue;
+  }
+}
+
+// A more robust function that handles table queries where we expect a single row
+export async function safeSingleRowQuery<T>(
+  queryFn: () => Promise<PostgrestSingleResponse<T>>,
+  fallbackValue: T
+): Promise<T> {
+  try {
+    const { data, error } = await queryFn();
+    
+    if (isTableNotExistError(error)) {
+      console.info("Table doesn't exist yet, using fallback value");
+      return fallbackValue;
+    }
+    
+    if (error) {
+      console.error("Error executing query:", error);
+      throw error;
+    }
+    
+    return data || fallbackValue;
+  } catch (error) {
+    console.error("Error in safeSingleRowQuery:", error);
+    return fallbackValue;
+  }
+}
+
+// Safely check if a table exists in the database
+export async function checkTableExists(
+  checkFn: () => Promise<{ error: PostgrestError | null }>,
+): Promise<boolean> {
+  try {
+    const { error } = await checkFn();
+    return !isTableNotExistError(error);
+  } catch (error) {
+    console.error("Error checking if table exists:", error);
+    return false;
   }
 }

@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,6 +22,16 @@ export function TenantBrandingPanel() {
   const [secondaryColor, setSecondaryColor] = useState(branding?.secondaryColor || "#7E69AB");
   const [accentColor, setAccentColor] = useState(branding?.accentColor || "#6E59A5");
   const [appName, setAppName] = useState(branding?.appName || "McKaynine Training");
+
+  // Update state when branding data changes
+  useEffect(() => {
+    if (branding) {
+      setPrimaryColor(branding.primaryColor);
+      setSecondaryColor(branding.secondaryColor);
+      setAccentColor(branding.accentColor);
+      setAppName(branding.appName);
+    }
+  }, [branding]);
 
   const handleSave = async () => {
     try {
@@ -70,10 +79,10 @@ export function TenantBrandingPanel() {
   const handleLogoUploaded = async (url: string) => {
     try {
       await updateLogoUrl(url);
-      return;
+      return true;
     } catch (error) {
       console.error("Error updating logo URL:", error);
-      throw error;
+      return false;
     }
   };
 

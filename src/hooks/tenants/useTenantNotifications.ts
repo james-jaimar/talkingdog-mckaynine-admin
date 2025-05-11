@@ -2,9 +2,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/auth";
-import { useState } from "react";
-import { PostgrestError } from "@supabase/supabase-js";
-import { safeTableQuery } from "@/lib/supabaseUtils";
+import { useState, useEffect } from "react";
+import { checkTableExists, safeTableQuery } from "@/lib/supabaseUtils";
 
 interface EmailTemplate {
   id?: string;
@@ -57,20 +56,39 @@ interface BranchEmailTemplate {
   updated_at: string;
 }
 
-// Parameter type for updateEmailTemplate
-type UpdateEmailTemplateParams = [
-  string, // templateType
-  { subject: string; content: string } // templateData
-];
+// Template update type for updateEmailTemplate
+type EmailTemplateUpdate = [string, { subject: string; content: string }];
 
 export function useTenantNotifications() {
   const { isPlatformAdmin } = useAuth();
   const queryClient = useQueryClient();
   const [currentTenant, setCurrentTenant] = useState<string | null>(null);
+
+  // Check if notifications table exists
+  const { data: notificationsTableExists } = useQuery({
+    queryKey: ["branch-notifications-table-exists"],
+    queryFn: async () => {
+      return await checkTableExists(() => 
+        supabase.from("branch_notifications").select("id").limit(1)
+      );
+    },
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+
+  // Check if email templates table exists
+  const { data: templatesTableExists } = useQuery({
+    queryKey: ["branch-email-templates-table-exists"],
+    queryFn: async () => {
+      return await checkTableExists(() => 
+        supabase.from("branch_email_templates").select("id").limit(1)
+      );
+    },
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
   
   // Fetch notification settings for the current tenant
   const { data: notifications, isLoading } = useQuery({
-    queryKey: ["tenant-notifications", currentTenant],
+    queryKey: ["tenant-notifications", currentTenant, notificationsTableExists, templatesTableExists],
     queryFn: async () => {
       // If no tenant is selected yet, get the first one (for platform admins)
       if (!currentTenant && isPlatformAdmin) {
@@ -114,11 +132,10 @@ export function useTenantNotifications() {
           emailTemplates: []
         };
         
-        // Use try/catch to handle the case where the table doesn't exist yet
-        try {
-          // Try to get notification settings using the utility function
-          const settings = await safeTableQuery(
-            async () => supabase
+        // If notifications table exists, try to get settings
+        if (notificationsTableExists) {
+          const settings = await safeTableQuery<BranchNotification | null>(
+            () => supabase
               .from("branch_notifications")
               .select("*")
               .eq("branch_id", currentTenant)
@@ -127,30 +144,27 @@ export function useTenantNotifications() {
           );
           
           if (settings) {
-            const typedSettings = settings as unknown as BranchNotification;
             notificationSettings = {
-              id: typedSettings.id,
-              tenantId: typedSettings.branch_id,
-              fromEmail: typedSettings.from_email || "",
-              replyToEmail: typedSettings.reply_to_email || "",
-              emailFooter: typedSettings.email_footer || "",
-              sendWelcomeEmail: typedSettings.send_welcome_email !== undefined ? typedSettings.send_welcome_email : true,
-              sendInvoiceEmail: typedSettings.send_invoice_email !== undefined ? typedSettings.send_invoice_email : true,
-              sendClassReminders: typedSettings.send_class_reminders !== undefined ? typedSettings.send_class_reminders : true,
-              sendPaymentReminders: typedSettings.send_payment_reminders !== undefined ? typedSettings.send_payment_reminders : true,
-              createdAt: typedSettings.created_at,
-              updatedAt: typedSettings.updated_at,
+              id: settings.id,
+              tenantId: settings.branch_id,
+              fromEmail: settings.from_email || "",
+              replyToEmail: settings.reply_to_email || "",
+              emailFooter: settings.email_footer || "",
+              sendWelcomeEmail: settings.send_welcome_email !== undefined ? settings.send_welcome_email : true,
+              sendInvoiceEmail: settings.send_invoice_email !== undefined ? settings.send_invoice_email : true,
+              sendClassReminders: settings.send_class_reminders !== undefined ? settings.send_class_reminders : true,
+              sendPaymentReminders: settings.send_payment_reminders !== undefined ? settings.send_payment_reminders : true,
+              createdAt: settings.created_at,
+              updatedAt: settings.updated_at,
               emailTemplates: [] // Will be populated below
             };
           }
-        } catch (error) {
-          console.error("Error fetching branch_notifications:", error);
         }
         
-        try {
-          // Try to get email templates
-          const templates = await safeTableQuery(
-            async () => supabase
+        // If templates table exists, try to get email templates
+        if (templatesTableExists) {
+          const templates = await safeTableQuery<BranchEmailTemplate[]>(
+            () => supabase
               .from("branch_email_templates")
               .select("*")
               .eq("branch_id", currentTenant),
@@ -158,21 +172,18 @@ export function useTenantNotifications() {
           );
           
           if (templates && templates.length > 0) {
-            notificationSettings.emailTemplates = templates.map((template: any) => {
-              const typedTemplate = template as unknown as BranchEmailTemplate;
+            notificationSettings.emailTemplates = templates.map((template) => {
               return {
-                id: typedTemplate.id,
-                tenantId: typedTemplate.branch_id,
-                type: typedTemplate.type,
-                subject: typedTemplate.subject,
-                content: typedTemplate.content,
-                createdAt: typedTemplate.created_at,
-                updatedAt: typedTemplate.updated_at
+                id: template.id,
+                tenantId: template.branch_id,
+                type: template.type,
+                subject: template.subject,
+                content: template.content,
+                createdAt: template.created_at,
+                updatedAt: template.updated_at
               } as EmailTemplate;
             });
           }
-        } catch (error) {
-          console.error("Error fetching branch_email_templates:", error);
         }
         
         return notificationSettings;
@@ -189,6 +200,12 @@ export function useTenantNotifications() {
     mutationFn: async (updatedSettings: Partial<TenantNotificationSettings>) => {
       if (!currentTenant) throw new Error("No tenant selected");
       
+      // If table doesn't exist, just return (can't update what doesn't exist)
+      if (notificationsTableExists === false) {
+        console.log("branch_notifications table doesn't exist yet");
+        return null;
+      }
+      
       try {
         const settingsData = {
           branch_id: currentTenant,
@@ -202,54 +219,32 @@ export function useTenantNotifications() {
           updated_at: new Date().toISOString(),
         };
         
-        // Check if the branch_notifications table exists
-        try {
-          const { error: checkError } = await supabase
+        if (notifications?.id) {
+          // Update existing record
+          const { data, error } = await supabase
             .from("branch_notifications")
-            .select("id")
-            .limit(1);
+            .update(settingsData)
+            .eq("id", notifications.id)
+            .select();
             
-          const tableExists = !checkError || checkError.code !== '42P01';
-          
-          if (!tableExists) {
-            console.log("branch_notifications table doesn't exist yet");
-            return [];
-          }
-          
-          if (notifications?.id) {
-            // Update existing record
-            const { data, error } = await supabase
-              .from("branch_notifications")
-              .update(settingsData)
-              .eq("id", notifications.id)
-              .select();
-              
-            if (error) throw error;
-            return data;
-          } else {
-            // Create new record
-            const { data, error } = await supabase
-              .from("branch_notifications")
-              .insert({
-                ...settingsData,
-                created_at: new Date().toISOString(),
-              })
-              .select();
-              
-            if (error) throw error;
-            return data;
-          }
-        } catch (error) {
-          if ((error as PostgrestError).code === "42P01") {
-            console.error("branch_notifications table does not exist:", error);
-            // Just return success as we can't update what doesn't exist
-            return [];
-          }
-          throw error;
+          if (error) throw error;
+          return data;
+        } else {
+          // Create new record
+          const { data, error } = await supabase
+            .from("branch_notifications")
+            .insert({
+              ...settingsData,
+              created_at: new Date().toISOString(),
+            })
+            .select();
+            
+          if (error) throw error;
+          return data;
         }
       } catch (error) {
         console.error("Error updating notification settings:", error);
-        return [];
+        throw error;
       }
     },
     onSuccess: () => {
@@ -257,74 +252,58 @@ export function useTenantNotifications() {
     }
   });
   
-  // Update email template - Now correctly typed as an array parameter
+  // Update email template 
   const { mutateAsync: updateEmailTemplate, isPending: isUpdatingTemplate } = useMutation({
-    mutationFn: async (params: UpdateEmailTemplateParams) => {
+    mutationFn: async (params: EmailTemplateUpdate) => {
       if (!currentTenant) throw new Error("No tenant selected");
+      
+      // If table doesn't exist, just return (can't update what doesn't exist)
+      if (templatesTableExists === false) {
+        console.log("branch_email_templates table doesn't exist yet");
+        return null;
+      }
       
       const templateType = params[0];
       const templateData = params[1];
       
       try {
-        // Check if the branch_email_templates table exists
-        try {
-          const { error: checkError } = await supabase
+        // Check if template exists
+        const template = notifications?.emailTemplates?.find(t => t.type === templateType);
+        
+        if (template?.id) {
+          // Update existing template
+          const { data, error } = await supabase
             .from("branch_email_templates")
-            .select("id")
-            .limit(1);
+            .update({
+              subject: templateData.subject,
+              content: templateData.content,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", template.id)
+            .select();
             
-          const tableExists = !checkError || checkError.code !== '42P01';
-          
-          if (!tableExists) {
-            console.log("branch_email_templates table doesn't exist yet");
-            return [];
-          }
-          
-          // Check if template exists
-          const template = notifications?.emailTemplates?.find(t => t.type === templateType);
-          
-          if (template?.id) {
-            // Update existing template
-            const { data, error } = await supabase
-              .from("branch_email_templates")
-              .update({
-                subject: templateData.subject,
-                content: templateData.content,
-                updated_at: new Date().toISOString(),
-              })
-              .eq("id", template.id)
-              .select();
-              
-            if (error) throw error;
-            return data;
-          } else {
-            // Create new template
-            const { data, error } = await supabase
-              .from("branch_email_templates")
-              .insert({
-                branch_id: currentTenant,
-                type: templateType,
-                subject: templateData.subject,
-                content: templateData.content,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-              })
-              .select();
-              
-            if (error) throw error;
-            return data;
-          }
-        } catch (error) {
-          if ((error as PostgrestError).code === "42P01") {
-            console.error("branch_email_templates table does not exist:", error);
-            // Just return success as we can't update what doesn't exist
-            return [];
-          }
-          throw error;
+          if (error) throw error;
+          return data;
+        } else {
+          // Create new template
+          const { data, error } = await supabase
+            .from("branch_email_templates")
+            .insert({
+              branch_id: currentTenant,
+              type: templateType,
+              subject: templateData.subject,
+              content: templateData.content,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+            .select();
+            
+          if (error) throw error;
+          return data;
         }
       } catch (error) {
         console.error("Error updating email template:", error);
-        return [];
+        throw error;
       }
     },
     onSuccess: () => {

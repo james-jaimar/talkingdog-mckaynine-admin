@@ -9,9 +9,8 @@ interface TrainerNavigationProps {
 }
 
 export const TrainerNavigation = ({ isMobile, onMobileClose, showPrimaryOnly = true }: TrainerNavigationProps) => {
-  // Use the correct imported items
   const items = showPrimaryOnly ? trainerPrimaryNavItems : trainerSecondaryNavItems;
-
+  
   return (
     <nav className={isMobile ? "flex flex-col space-y-2" : "flex space-x-4 overflow-x-auto"}>
       {items.map(item => (
