@@ -3,24 +3,24 @@ import {
   BarChart3, 
   Calendar, 
   Dog, 
-  Home, 
   FileText, 
-  Dumbbell, 
-  Users, 
-  Building2, 
-  Settings,
-  BarChart4
+  Home, 
+  Layers, 
+  Settings, 
+  Users,
+  Building2,
+  Store,
+  UserCog
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
-// Define a type for navigation items that may have platformAdminOnly property
-interface NavItem {
+export interface NavItem {
   name: string;
   path: string;
-  icon: React.ComponentType<any>;
+  icon: LucideIcon;
   platformAdminOnly?: boolean;
 }
 
-// Admin primary navigation
 export const adminPrimaryNavItems: NavItem[] = [
   {
     name: "Dashboard",
@@ -30,94 +30,95 @@ export const adminPrimaryNavItems: NavItem[] = [
   {
     name: "Classes",
     path: "/classes",
-    icon: Calendar
+    icon: Layers
   },
   {
     name: "Handlers",
     path: "/handlers",
-    icon: Dog
+    icon: Users
+  },
+  {
+    name: "Reports",
+    path: "/financial-reports",
+    icon: BarChart3
   },
   {
     name: "Invoices",
     path: "/invoices",
     icon: FileText
+  }
+];
+
+export const adminSecondaryNavItems: NavItem[] = [
+  {
+    name: "Class Schedules",
+    path: "/class-schedules",
+    icon: Calendar
   },
   {
-    name: "Financial",
-    path: "/financial",
-    icon: BarChart3
+    name: "Trainers",
+    path: "/trainers",
+    icon: Users
   },
   {
-    name: "Reports",
-    path: "/reports",
-    icon: BarChart4
+    name: "Users",
+    path: "/user-admin",
+    icon: UserCog
   },
   {
-    name: "Tenant Configuration",
-    path: "/tenant-configuration",
+    name: "Branches",
+    path: "/branches",
+    icon: Building2,
+  },
+  {
+    name: "Tenant Config",
+    path: "/tenant-config",
     icon: Settings,
     platformAdminOnly: true
   }
 ];
 
-// Admin secondary navigation
-export const adminSecondaryNavItems: NavItem[] = [
-  {
-    name: "Trainers",
-    path: "/trainers",
-    icon: Dumbbell
-  },
-  {
-    name: "Users",
-    path: "/users",
-    icon: Users
-  },
-  {
-    name: "Branches",
-    path: "/branches",
-    icon: Building2
-  }
-];
-
-// Trainer primary navigation
 export const trainerPrimaryNavItems: NavItem[] = [
   {
     name: "Dashboard",
-    path: "/dashboard",
+    path: "/trainer-dashboard",
     icon: Home
   },
   {
-    name: "My Classes",
+    name: "Classes",
     path: "/classes",
-    icon: Calendar
+    icon: Layers
   },
   {
     name: "Handlers",
     path: "/handlers",
-    icon: Dog
+    icon: Users
   }
 ];
 
-// Trainer secondary navigation 
 export const trainerSecondaryNavItems: NavItem[] = [
   {
-    name: "Reports",
-    path: "/reports",
-    icon: BarChart3
+    name: "Class Schedules",
+    path: "/class-schedules",
+    icon: Calendar
+  },
+  {
+    name: "Forms",
+    path: "/forms",
+    icon: FileText
   }
 ];
 
-// Handler (customer) primary navigation
 export const handlerPrimaryNavItems: NavItem[] = [
   {
     name: "Dashboard",
-    path: "/dashboard",
+    path: "/customer-dashboard",
     icon: Home
   },
   {
     name: "My Classes",
     path: "/customer-classes",
-    icon: Calendar
+    icon: Layers
   },
   {
     name: "My Dogs",
@@ -125,17 +126,26 @@ export const handlerPrimaryNavItems: NavItem[] = [
     icon: Dog
   },
   {
-    name: "My Invoices",
+    name: "Messages",
+    path: "/customer-messages",
+    icon: FileText
+  },
+  {
+    name: "Invoices",
     path: "/customer-invoices",
     icon: FileText
   }
 ];
 
-// Handler (customer) secondary navigation
 export const handlerSecondaryNavItems: NavItem[] = [
   {
-    name: "Messages",
-    path: "/customer-messages",
-    icon: FileText
+    name: "Store",
+    path: "/store",
+    icon: Store
+  },
+  {
+    name: "Profile",
+    path: "/customer-profile",
+    icon: Settings
   }
 ];

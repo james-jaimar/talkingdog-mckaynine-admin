@@ -40,9 +40,18 @@ export function useTenantBranding() {
   const { data: tableExists } = useQuery({
     queryKey: ["branch-branding-table-exists"],
     queryFn: async () => {
-      return await checkTableExists(() => 
-        supabase.from("branch_branding").select("id").limit(1)
-      );
+      // Use a try-catch block to handle potential errors
+      try {
+        const { error } = await supabase
+          .from("branch_branding")
+          .select("id")
+          .limit(1);
+        
+        return !error || error.code !== "42P01";
+      } catch (error) {
+        console.error("Error checking if table exists:", error);
+        return false;
+      }
     },
     // Cache this check for a while since table structure doesn't change often
     staleTime: 1000 * 60 * 5, // 5 minutes
@@ -95,39 +104,63 @@ export function useTenantBranding() {
         }
         
         // Try to get branding data if the table exists
-        const result = await safeTableQuery<BranchBranding | null>(
-          () => supabase
+        try {
+          const { data, error } = await supabase
             .from("branch_branding")
             .select("*")
             .eq("branch_id", currentTenant)
-            .maybeSingle(),
-          null
-        );
-        
-        // If branding data exists, return it mapped to our interface
-        if (result) {
-          return {
-            id: result.id,
-            tenantId: result.branch_id,
-            appName: result.app_name || "McKaynine Training", 
-            logoUrl: result.logo_url,
-            primaryColor: result.primary_color || "#9b87f5",
-            secondaryColor: result.secondary_color || "#7E69AB",
-            accentColor: result.accent_color || "#6E59A5",
-            createdAt: result.created_at,
-            updatedAt: result.updated_at
-          } as TenantBranding;
+            .maybeSingle();
+            
+          if (isTableNotExistError(error)) {
+            return defaultBranding;
+          }
+          
+          if (error) {
+            throw error;
+          }
+          
+          // If branding data exists, return it mapped to our interface
+          if (data) {
+            return {
+              id: data.id,
+              tenantId: data.branch_id,
+              appName: data.app_name || "McKaynine Training", 
+              logoUrl: data.logo_url,
+              primaryColor: data.primary_color || "#9b87f5",
+              secondaryColor: data.secondary_color || "#7E69AB",
+              accentColor: data.accent_color || "#6E59A5",
+              createdAt: data.created_at,
+              updatedAt: data.updated_at
+            } as TenantBranding;
+          }
+        } catch (error) {
+          if (isTableNotExistError(error as PostgrestError)) {
+            return defaultBranding;
+          }
+          console.error("Error fetching tenant branding:", error);
         }
         
         // Return default branding if none exists
         return defaultBranding;
       } catch (error) {
         console.error("Error fetching tenant branding:", error);
-        throw error;
+        // Return default values in case of error
+        return {
+          tenantId: currentTenant || "",
+          appName: "McKaynine Training",
+          primaryColor: "#9b87f5",
+          secondaryColor: "#7E69AB",
+          accentColor: "#6E59A5"
+        };
       }
     },
     enabled: isPlatformAdmin,
   });
+
+  // Helper function to check if a PostgrestError is related to table not existing
+  function isTableNotExistError(error: PostgrestError | null): boolean {
+    return !!error && (error.code === "42P01" || error.message?.includes("relation") && error.message?.includes("does not exist"));
+  }
   
   // Update branding mutation
   const { mutateAsync: updateBranding, isPending: isUpdating } = useMutation({
@@ -158,25 +191,43 @@ export function useTenantBranding() {
             .eq("id", branding.id)
             .select();
             
-          if (error) throw error;
+          if (error) {
+            if (error.code === "42P01") {
+              return null; // Table doesn't exist, silent success
+            }
+            throw error;
+          }
           return data;
         } else {
           // Create new record
-          const { data, error } = await supabase
-            .from("branch_branding")
-            .insert({
-              branch_id: currentTenant,
-              app_name: brandingUpdate.appName || "McKaynine Training",
-              primary_color: brandingUpdate.primaryColor || "#9b87f5",
-              secondary_color: brandingUpdate.secondaryColor || "#7E69AB",
-              accent_color: brandingUpdate.accentColor || "#6E59A5",
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            })
-            .select();
-            
-          if (error) throw error;
-          return data;
+          try {
+            const { data, error } = await supabase
+              .from("branch_branding")
+              .insert({
+                branch_id: currentTenant,
+                app_name: brandingUpdate.appName || "McKaynine Training",
+                primary_color: brandingUpdate.primaryColor || "#9b87f5",
+                secondary_color: brandingUpdate.secondaryColor || "#7E69AB",
+                accent_color: brandingUpdate.accentColor || "#6E59A5",
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              })
+              .select();
+              
+            if (error) {
+              if (error.code === "42P01") {
+                return null; // Table doesn't exist, silent success
+              }
+              throw error;
+            }
+            return data;
+          } catch (error) {
+            if ((error as PostgrestError).code === "42P01") {
+              console.log("branch_branding table doesn't exist yet");
+              return null;
+            }
+            throw error;
+          }
         }
       } catch (error) {
         if ((error as PostgrestError).code === "42P01") {
@@ -193,13 +244,13 @@ export function useTenantBranding() {
   
   // Update logo URL mutation
   const { mutateAsync: updateLogoUrl } = useMutation({
-    mutationFn: async (logoUrl: string) => {
+    mutationFn: async (logoUrl: string): Promise<void> => {
       if (!currentTenant) throw new Error("No tenant selected");
       
       // If the table doesn't exist, just return success (can't update what doesn't exist)
       if (tableExists === false) {
         console.log("branch_branding table doesn't exist yet, can't update logo");
-        return null;
+        return;
       }
       
       try {
@@ -210,37 +261,51 @@ export function useTenantBranding() {
         
         if (branding?.id) {
           // Update existing record
-          const { data, error } = await supabase
+          const { error } = await supabase
             .from("branch_branding")
             .update(updateData)
-            .eq("id", branding.id)
-            .select();
+            .eq("id", branding.id);
             
-          if (error) throw error;
-          return data;
+          if (error) {
+            if (error.code === "42P01") {
+              return; // Table doesn't exist, silent success
+            }
+            throw error;
+          }
         } else {
           // Create new record with defaults + logo
-          const { data, error } = await supabase
-            .from("branch_branding")
-            .insert({
-              branch_id: currentTenant,
-              app_name: "McKaynine Training",
-              primary_color: "#9b87f5",
-              secondary_color: "#7E69AB",
-              accent_color: "#6E59A5",
-              logo_url: logoUrl,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            })
-            .select();
-            
-          if (error) throw error;
-          return data;
+          try {
+            const { error } = await supabase
+              .from("branch_branding")
+              .insert({
+                branch_id: currentTenant,
+                app_name: "McKaynine Training",
+                primary_color: "#9b87f5",
+                secondary_color: "#7E69AB",
+                accent_color: "#6E59A5",
+                logo_url: logoUrl,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              });
+              
+            if (error) {
+              if (error.code === "42P01") {
+                return; // Table doesn't exist, silent success
+              }
+              throw error;
+            }
+          } catch (error) {
+            if ((error as PostgrestError).code === "42P01") {
+              console.log("branch_branding table doesn't exist yet");
+              return;
+            }
+            throw error;
+          }
         }
       } catch (error) {
         if ((error as PostgrestError).code === "42P01") {
           console.log("branch_branding table doesn't exist yet");
-          return null;
+          return;
         }
         throw error;
       }
@@ -268,7 +333,12 @@ export function useTenantBranding() {
           .eq("id", branding.id)
           .select();
           
-        if (error) throw error;
+        if (error) {
+          if (error.code === "42P01") {
+            return null; // Table doesn't exist, silent success
+          }
+          throw error;
+        }
         return data;
       } catch (error) {
         if ((error as PostgrestError).code === "42P01") {

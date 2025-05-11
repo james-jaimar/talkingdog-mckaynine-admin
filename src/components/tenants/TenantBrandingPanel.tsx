@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -76,13 +77,12 @@ export function TenantBrandingPanel() {
     }
   };
 
-  const handleLogoUploaded = async (url: string) => {
+  const handleLogoUploaded = async (url: string): Promise<void> => {
     try {
       await updateLogoUrl(url);
-      return true;
     } catch (error) {
       console.error("Error updating logo URL:", error);
-      return false;
+      throw error; // Re-throw so the uploader component can handle it
     }
   };
 

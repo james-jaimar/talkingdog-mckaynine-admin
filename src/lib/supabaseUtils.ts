@@ -58,13 +58,44 @@ export async function safeSingleRowQuery<T>(
 
 // Safely check if a table exists in the database
 export async function checkTableExists(
-  checkFn: () => Promise<{ error: PostgrestError | null }>,
+  queryFn: () => Promise<{ error: PostgrestError | null }>,
 ): Promise<boolean> {
   try {
-    const { error } = await checkFn();
+    const { error } = await queryFn();
     return !isTableNotExistError(error);
   } catch (error) {
     console.error("Error checking if table exists:", error);
     return false;
+  }
+}
+
+// Use any table query to safely test if a table exists without throwing errors
+export async function safeExecuteQuery<T>(
+  tableQuery: () => Promise<{ data: T | null; error: PostgrestError | null }>,
+  customQuery: () => Promise<{ data: any; error: PostgrestError | null }>,
+  fallbackValue: T
+): Promise<T> {
+  try {
+    // First check if table exists by running a simple query
+    const { error: checkError } = await tableQuery();
+    
+    // If table doesn't exist, return fallback value
+    if (isTableNotExistError(checkError)) {
+      console.info("Table doesn't exist yet, using fallback value");
+      return fallbackValue;
+    }
+    
+    // If table exists, run the actual query
+    const { data, error } = await customQuery();
+    
+    if (error) {
+      console.error("Error executing query:", error);
+      throw error;
+    }
+    
+    return data || fallbackValue;
+  } catch (error) {
+    console.error("Error in safeExecuteQuery:", error);
+    return fallbackValue;
   }
 }
