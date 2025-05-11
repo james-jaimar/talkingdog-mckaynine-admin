@@ -16,7 +16,7 @@ export function TenantGeneralSettings() {
   const [domain, setDomain] = useState(settings?.domain || "");
   const [contactEmail, setContactEmail] = useState(settings?.contactEmail || "");
   const [description, setDescription] = useState(settings?.description || "");
-  const [isActive, setIsActive] = useState<boolean>(settings?.isActive || true);
+  const [isActive, setIsActive] = useState<boolean>(settings?.isActive ?? true);
   const [maxUsers, setMaxUsers] = useState(settings?.maxUsers?.toString() || "10");
 
   const handleSave = async () => {
@@ -118,7 +118,7 @@ export function TenantGeneralSettings() {
               <Switch
                 id="tenant-active"
                 checked={isActive}
-                onCheckedChange={(checked: boolean) => setIsActive(checked)}
+                onCheckedChange={setIsActive}
               />
               <Label htmlFor="tenant-active">Tenant Active</Label>
               <p className="text-sm text-muted-foreground ml-2">

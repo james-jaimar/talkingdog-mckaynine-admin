@@ -1,133 +1,141 @@
 
-import { Home, Book, Calendar, Users, School, CreditCard, FileText, Settings } from "lucide-react";
+import { 
+  BarChart3, 
+  Calendar, 
+  Dog, 
+  Home, 
+  FileText, 
+  Dumbbell, 
+  Users, 
+  Building2, 
+  Settings,
+  BarChart4
+} from "lucide-react";
 
-export const adminPrimaryNavItems = [
+// Define a type for navigation items that may have platformAdminOnly property
+interface NavItem {
+  name: string;
+  path: string;
+  icon: React.ComponentType<any>;
+  platformAdminOnly?: boolean;
+}
+
+// Admin primary navigation
+export const adminPrimaryNavItems: NavItem[] = [
   {
     name: "Dashboard",
     path: "/dashboard",
-    icon: Home,
+    icon: Home
   },
   {
     name: "Classes",
-    path: "/admin/classes",
-    icon: School,
+    path: "/classes",
+    icon: Calendar
   },
   {
     name: "Handlers",
-    path: "/admin/handlers",
-    icon: Users,
+    path: "/handlers",
+    icon: Dog
   },
   {
     name: "Invoices",
     path: "/invoices",
-    icon: FileText,
+    icon: FileText
   },
+  {
+    name: "Financial",
+    path: "/financial",
+    icon: BarChart3
+  },
+  {
+    name: "Reports",
+    path: "/reports",
+    icon: BarChart4
+  },
+  {
+    name: "Tenant Configuration",
+    path: "/tenant-configuration",
+    icon: Settings,
+    platformAdminOnly: true
+  }
 ];
 
-export const adminSecondaryNavItems = [
-  {
-    name: "Schedules",
-    path: "/class-schedules",
-    icon: Calendar,
-  },
+// Admin secondary navigation
+export const adminSecondaryNavItems: NavItem[] = [
   {
     name: "Trainers",
     path: "/trainers",
-    icon: School,
+    icon: Dumbbell
+  },
+  {
+    name: "Users",
+    path: "/users",
+    icon: Users
   },
   {
     name: "Branches",
     path: "/branches",
-    icon: Home,
-  },
-  {
-    name: "Financial Dashboard",
-    path: "/financial-dashboard",
-    icon: CreditCard,
-  },
-  {
-    name: "Financial Reports",
-    path: "/financial-reports",
-    icon: Book,
-  },
-  {
-    name: "User Management",
-    path: "/user-admin",
-    icon: Users,
-  },
-  {
-    name: "Tenant Configuration",
-    path: "/admin/tenant-configuration",
-    icon: Settings,
-    platformAdminOnly: true,
-  },
+    icon: Building2
+  }
 ];
 
-export const trainerPrimaryNavItems = [
+// Trainer primary navigation
+export const trainerPrimaryNavItems: NavItem[] = [
   {
     name: "Dashboard",
     path: "/dashboard",
-    icon: Home,
+    icon: Home
   },
   {
     name: "My Classes",
-    path: "/trainer/classes",
-    icon: School,
+    path: "/classes",
+    icon: Calendar
   },
   {
     name: "Handlers",
-    path: "/trainer/handlers",
-    icon: Users,
-  },
+    path: "/handlers",
+    icon: Dog
+  }
 ];
 
-export const trainerSecondaryNavItems = [
+// Trainer secondary navigation 
+export const trainerSecondaryNavItems: NavItem[] = [
   {
-    name: "Schedules",
-    path: "/trainer/schedules",
-    icon: Calendar,
-  },
-  {
-    name: "Profile",
-    path: "/trainer/profile",
-    icon: Users,
-  },
-  {
-    name: "Payments",
-    path: "/trainer/payments",
-    icon: CreditCard,
-  },
+    name: "Reports",
+    path: "/reports",
+    icon: BarChart3
+  }
 ];
 
-export const handlerNavItems = [
+// Handler (customer) primary navigation
+export const handlerPrimaryNavItems: NavItem[] = [
   {
     name: "Dashboard",
-    path: "/customer/dashboard",
-    icon: Home,
+    path: "/dashboard",
+    icon: Home
   },
   {
     name: "My Classes",
-    path: "/customer/classes",
-    icon: School,
+    path: "/customer-classes",
+    icon: Calendar
   },
   {
     name: "My Dogs",
-    path: "/customer/dogs",
-    icon: Users,
+    path: "/customer-dogs",
+    icon: Dog
   },
+  {
+    name: "My Invoices",
+    path: "/customer-invoices",
+    icon: FileText
+  }
+];
+
+// Handler (customer) secondary navigation
+export const handlerSecondaryNavItems: NavItem[] = [
   {
     name: "Messages",
-    path: "/customer/messages",
-    icon: FileText,
-  },
-  {
-    name: "Invoices",
-    path: "/customer/invoices",
-    icon: CreditCard,
-  },
-  {
-    name: "Profile",
-    path: "/customer/profile",
-    icon: Users,
-  },
+    path: "/customer-messages",
+    icon: FileText
+  }
 ];

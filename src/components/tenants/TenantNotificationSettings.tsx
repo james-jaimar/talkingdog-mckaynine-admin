@@ -28,11 +28,11 @@ export function TenantNotificationSettings() {
   const [templateSubject, setTemplateSubject] = useState("");
   const [templateContent, setTemplateContent] = useState("");
   
-  // Notification toggles - Fix type issue by using boolean instead of literal true
-  const [sendWelcomeEmail, setSendWelcomeEmail] = useState<boolean>(notifications?.sendWelcomeEmail || true);
-  const [sendInvoiceEmail, setSendInvoiceEmail] = useState<boolean>(notifications?.sendInvoiceEmail || true);
-  const [sendClassReminders, setSendClassReminders] = useState<boolean>(notifications?.sendClassReminders || true);
-  const [sendPaymentReminders, setSendPaymentReminders] = useState<boolean>(notifications?.sendPaymentReminders || true);
+  // Notification toggles - Fix type issue by using useState<boolean>
+  const [sendWelcomeEmail, setSendWelcomeEmail] = useState<boolean>(notifications?.sendWelcomeEmail ?? true);
+  const [sendInvoiceEmail, setSendInvoiceEmail] = useState<boolean>(notifications?.sendInvoiceEmail ?? true);
+  const [sendClassReminders, setSendClassReminders] = useState<boolean>(notifications?.sendClassReminders ?? true);
+  const [sendPaymentReminders, setSendPaymentReminders] = useState<boolean>(notifications?.sendPaymentReminders ?? true);
   
   // Load template content when template selection changes
   const handleTemplateChange = (value: string) => {
@@ -78,10 +78,13 @@ export function TenantNotificationSettings() {
   
   const handleSaveTemplate = async () => {
     try {
-      await updateEmailTemplate(selectedTemplate, {
+      const templateData = {
         subject: templateSubject,
         content: templateContent
-      });
+      };
+      
+      // Call updateEmailTemplate with two parameters that match the expected format
+      await updateEmailTemplate([selectedTemplate, templateData]);
       
       toast({
         title: "Email template updated",
@@ -165,7 +168,7 @@ export function TenantNotificationSettings() {
                       <Switch
                         id="welcome-email"
                         checked={sendWelcomeEmail}
-                        onCheckedChange={(checked: boolean) => setSendWelcomeEmail(checked)}
+                        onCheckedChange={setSendWelcomeEmail}
                       />
                     </div>
                     
@@ -179,7 +182,7 @@ export function TenantNotificationSettings() {
                       <Switch
                         id="invoice-email"
                         checked={sendInvoiceEmail}
-                        onCheckedChange={(checked: boolean) => setSendInvoiceEmail(checked)}
+                        onCheckedChange={setSendInvoiceEmail}
                       />
                     </div>
                     
@@ -193,7 +196,7 @@ export function TenantNotificationSettings() {
                       <Switch
                         id="class-reminders"
                         checked={sendClassReminders}
-                        onCheckedChange={(checked: boolean) => setSendClassReminders(checked)}
+                        onCheckedChange={setSendClassReminders}
                       />
                     </div>
                     
@@ -207,7 +210,7 @@ export function TenantNotificationSettings() {
                       <Switch
                         id="payment-reminders"
                         checked={sendPaymentReminders}
-                        onCheckedChange={(checked: boolean) => setSendPaymentReminders(checked)}
+                        onCheckedChange={setSendPaymentReminders}
                       />
                     </div>
                   </div>

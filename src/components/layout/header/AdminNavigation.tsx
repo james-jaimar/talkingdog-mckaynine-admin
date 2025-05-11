@@ -10,21 +10,13 @@ interface AdminNavigationProps {
   showPrimaryOnly?: boolean;
 }
 
-// Fix the admin navigation items type to include platformAdminOnly
-interface AdminNavItem {
-  name: string;
-  path: string;
-  icon: React.ComponentType<any>;
-  platformAdminOnly?: boolean;
-}
-
 export const AdminNavigation = ({ isMobile, onMobileClose, showPrimaryOnly = true }: AdminNavigationProps) => {
   const { isPlatformAdmin } = useAuth();
   const items = showPrimaryOnly ? adminPrimaryNavItems : adminSecondaryNavItems;
   
   // Filter items that are platformAdminOnly if the user is not a platform admin
   const filteredItems = items.filter(item => 
-    !('platformAdminOnly' in item) || !(item as AdminNavItem).platformAdminOnly || isPlatformAdmin
+    !item.platformAdminOnly || isPlatformAdmin
   );
   
   return (
