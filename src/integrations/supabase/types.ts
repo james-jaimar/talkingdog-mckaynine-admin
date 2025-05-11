@@ -109,6 +109,50 @@ export type Database = {
           },
         ]
       }
+      branch_branding: {
+        Row: {
+          accent_color: string
+          app_name: string
+          branch_id: string
+          created_at: string
+          id: string
+          logo_url: string | null
+          primary_color: string
+          secondary_color: string
+          updated_at: string
+        }
+        Insert: {
+          accent_color?: string
+          app_name?: string
+          branch_id: string
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          primary_color?: string
+          secondary_color?: string
+          updated_at?: string
+        }
+        Update: {
+          accent_color?: string
+          app_name?: string
+          branch_id?: string
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          primary_color?: string
+          secondary_color?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "branch_branding_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       branches: {
         Row: {
           address: string
