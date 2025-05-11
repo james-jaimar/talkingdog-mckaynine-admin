@@ -14,8 +14,10 @@ export function useAuth() {
     // Additional derived properties for convenience
     user: context.user,
     isAdmin: context.isAdmin,
+    isPlatformAdmin: context.isPlatformAdmin,
     isTrainer: context.isTrainer,
     isHandler: context.isHandler,
+    isBranchOwner: context.isBranchOwner,
     isLoading: context.isLoading,
   };
 }

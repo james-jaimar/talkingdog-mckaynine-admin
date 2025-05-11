@@ -1,280 +1,201 @@
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
-import { corsHeaders } from '../_shared/cors.ts';
+import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const APP_ID = 'mckaynine-training'; // Match the APP_ID from constants
+// Set CORS headers
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
 
-Deno.serve(async (req) => {
-  // Handle CORS
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+serve(async (req) => {
+  // Handle preflight CORS
+  if (req.method === "OPTIONS") {
+    return new Response(null, {
+      status: 204,
+      headers: corsHeaders,
+    });
   }
 
   try {
-    // Get the auth token from the request
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: 'No authorization header' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Extract the token
-    const token = authHeader.replace('Bearer ', '');
-    
-    // Create Supabase client with the service role key for privileged operations
-    const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+    // Create Supabase client with auth context from the request
+    const supabaseClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
       {
-        auth: {
-          persistSession: false,
-        }
+        global: {
+          headers: { Authorization: req.headers.get("Authorization")! },
+        },
       }
     );
-    
-    // Verify the token to get user info
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-    if (authError || !user) {
+
+    // Get the current authenticated user
+    const {
+      data: { user: authUser },
+      error: authError,
+    } = await supabaseClient.auth.getUser();
+
+    if (authError || !authUser) {
       return new Response(
-        JSON.stringify({ error: 'Invalid token', details: authError }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({
+          error: "Unauthorized",
+          details: authError?.message || "Authentication required",
+        }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
       );
     }
 
-    // Parse request body
-    const { userId, role } = await req.json();
+    // Get the request body
+    const requestData = await req.json();
+    const { userId, role } = requestData;
 
-    console.log(`[manage-user-role] Processing role update for user ${userId} to role: ${role}`);
+    console.log(`Request to update role of user ${userId} to ${role}`);
 
-    // Check if user is authorized (must be admin to change roles)
-    const { data: adminCheck, error: adminCheckError } = await supabaseAdmin
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
+    if (!userId || !role) {
+      return new Response(
+        JSON.stringify({
+          error: "Bad Request",
+          details: "userId and role are required",
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    // Check if the current user is admin or platform_admin
+    const { data: currentUserProfile, error: profileError } = await supabaseClient
+      .from("profiles")
+      .select("role")
+      .eq("id", authUser.id)
       .single();
 
-    if (adminCheckError) {
-      console.error("[manage-user-role] Error checking admin status:", adminCheckError);
+    if (profileError) {
       return new Response(
-        JSON.stringify({ error: 'Failed to verify admin permissions', details: adminCheckError }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({
+          error: "Database Error",
+          details: profileError.message,
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
       );
     }
 
-    if (!adminCheck || !adminCheck.role || !adminCheck.role.includes('admin')) {
+    const currentUserRole = currentUserProfile.role;
+    const isAdmin = currentUserRole.includes("admin");
+    const isPlatformAdmin = currentUserRole.includes("platform_admin");
+
+    // Role validation and restrictions
+    if (!isAdmin && !isPlatformAdmin) {
       return new Response(
-        JSON.stringify({ error: 'Unauthorized - admin role required' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({
+          error: "Forbidden",
+          details: "Only admins can manage user roles",
+        }),
+        {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
       );
     }
 
-    // Get user details from auth
-    const { data: userData, error: userError } = await supabaseAdmin
-      .auth.admin.getUserById(userId);
-    
-    if (userError || !userData?.user) {
-      console.error("[manage-user-role] Error fetching user:", userError);
+    // Special restriction: Only platform_admin can set platform_admin role
+    if (role === "platform_admin" && !isPlatformAdmin) {
       return new Response(
-        JSON.stringify({ error: 'Failed to get user information', details: userError }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({
+          error: "Forbidden",
+          details: "Only platform admins can grant platform_admin role",
+        }),
+        {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
       );
     }
 
-    const userEmail = userData.user.email;
-    console.log(`[manage-user-role] User email: ${userEmail}`);
-    
-    // Check if profile exists
-    const { data: existingProfile, error: profileError } = await supabaseAdmin
-      .from('profiles')
-      .select('role, app_id, full_name, username')
-      .eq('id', userId)
-      .maybeSingle();
+    // Update the user role
+    const { error: updateError } = await supabaseClient
+      .from("profiles")
+      .update({ role })
+      .eq("id", userId);
 
-    if (profileError && profileError.code !== 'PGRST116') {
-      console.error("[manage-user-role] Error checking profile:", profileError);
+    if (updateError) {
       return new Response(
-        JSON.stringify({ error: 'Failed to fetch profile data', details: profileError }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({
+          error: "Database Error",
+          details: updateError.message,
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
       );
     }
 
-    const currentRole = existingProfile?.role || '';
-    const wasTrainer = currentRole.includes('trainer');
-    const isBecomingTrainer = role.includes('trainer');
-    
-    // User's name from profile or email as fallback
-    const fullName = existingProfile?.full_name || userEmail?.split('@')[0] || '';
-    const username = existingProfile?.username || userEmail || '';
+    // If user is becoming a trainer, check if there's a trainer record already
+    if (role === "trainer") {
+      // Check if user already has a trainer record
+      const { data: existingTrainer } = await supabaseClient
+        .from("trainers")
+        .select("id")
+        .eq("user_id", userId)
+        .limit(1);
 
-    // Create or update profile
-    if (!existingProfile) {
-      // Create new profile
-      console.log("[manage-user-role] Creating new profile");
-      const { error: createError } = await supabaseAdmin
-        .from('profiles')
-        .insert({
-          id: userId,
-          role: role,
-          app_id: APP_ID,
-          full_name: fullName,
-          username: username,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        });
+      // If no trainer record exists, get user info to create one
+      if (!existingTrainer || existingTrainer.length === 0) {
+        // Get user info
+        const { data: userInfo } = await supabaseClient
+          .from("profiles")
+          .select("username, full_name")
+          .eq("id", userId)
+          .single();
 
-      if (createError) {
-        console.error("[manage-user-role] Error creating profile:", createError);
-        return new Response(
-          JSON.stringify({ error: 'Failed to create profile', details: createError }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+        if (userInfo) {
+          const names = userInfo.full_name ? userInfo.full_name.split(" ") : ["New", "Trainer"];
+          const firstName = names[0] || "New";
+          const lastName = names.length > 1 ? names.slice(1).join(" ") : "Trainer";
+          
+          // Create trainer record
+          await supabaseClient
+            .from("trainers")
+            .insert({
+              user_id: userId,
+              first_name: firstName,
+              last_name: lastName, 
+              email: userInfo.username || "noemail@example.com"
+            });
+        }
       }
-    } else {
-      // Update existing profile
-      console.log(`[manage-user-role] Updating existing profile from role '${currentRole}' to '${role}'`);
-      const { error: updateError } = await supabaseAdmin
-        .from('profiles')
-        .update({ 
-          role: role,
-          app_id: APP_ID,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', userId);
-
-      if (updateError) {
-        console.error("[manage-user-role] Error updating profile:", updateError);
-        return new Response(
-          JSON.stringify({ error: 'Failed to update profile', details: updateError }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-    }
-
-    // Handle trainer table synchronization
-    if (isBecomingTrainer && !wasTrainer) {
-      console.log(`[manage-user-role] User is becoming a trainer, ensuring trainer record exists`);
-      await syncTrainerRecord(userId, supabaseAdmin, username, fullName);
-    } else if (wasTrainer && !isBecomingTrainer) {
-      console.log(`[manage-user-role] User is no longer a trainer, handling trainer record`);
-      await handleTrainerRecordRemoval(userId, supabaseAdmin);
     }
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        message: `User role updated successfully to ${role}`,
-        userId,
-        role
+      JSON.stringify({
+        success: true,
+        message: `User role updated to ${role}`,
       }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
     );
-
   } catch (error) {
-    console.error("[manage-user-role] Unexpected error:", error);
+    console.error("Error processing request:", error);
+
     return new Response(
-      JSON.stringify({ error: 'Internal server error', details: error.message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({
+        error: "Server Error",
+        details: error.message,
+      }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
     );
   }
 });
-
-// Helper function to sync trainer record
-async function syncTrainerRecord(userId: string, supabase: any, email: string, fullName: string) {
-  try {
-    // Parse name into first and last
-    const nameParts = (fullName || '').split(' ');
-    const firstName = nameParts[0] || '';
-    const lastName = nameParts.slice(1).join(' ') || '';
-
-    // Check if trainer record exists
-    const { data: existingTrainer, error: checkError } = await supabase
-      .from('trainers')
-      .select('id')
-      .eq('user_id', userId)
-      .maybeSingle();
-
-    if (checkError) {
-      console.error("[syncTrainerRecord] Error checking existing trainer:", checkError);
-      throw checkError;
-    }
-
-    if (!existingTrainer) {
-      console.log(`[syncTrainerRecord] Creating new trainer record for user_id ${userId} with name ${firstName} ${lastName}`);
-      
-      // Create new trainer record
-      const { data: newTrainer, error: createError } = await supabase
-        .from('trainers')
-        .insert({
-          user_id: userId,
-          email: email || '',
-          first_name: firstName,
-          last_name: lastName,
-          specialties: [],
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .select()
-        .single();
-
-      if (createError) {
-        console.error("[syncTrainerRecord] Error creating trainer record:", createError);
-        throw createError;
-      }
-      
-      console.log("[syncTrainerRecord] Successfully created trainer record:", newTrainer.id);
-      return true;
-    } else {
-      console.log(`[syncTrainerRecord] Trainer record already exists for user_id ${userId}`);
-      return true;
-    }
-  } catch (error) {
-    console.error("[syncTrainerRecord] Error:", error);
-    throw error;
-  }
-}
-
-// Helper function to handle removal of trainer role
-async function handleTrainerRecordRemoval(userId: string, supabase: any) {
-  try {
-    console.log(`[handleTrainerRecordRemoval] Processing trainer record for user_id ${userId}`);
-    
-    // First try to get the trainer record
-    const { data: trainerRecord, error: getError } = await supabase
-      .from('trainers')
-      .select('id, user_id')
-      .eq('user_id', userId)
-      .maybeSingle();
-      
-    if (getError) {
-      console.error("[handleTrainerRecordRemoval] Error finding trainer record:", getError);
-      return false;
-    }
-    
-    if (!trainerRecord) {
-      console.log(`[handleTrainerRecordRemoval] No trainer record found for user_id ${userId}`);
-      return true;
-    }
-    
-    // We won't delete the trainer record, just unlink it from the user
-    const { error } = await supabase
-      .from('trainers')
-      .update({ 
-        user_id: null,
-        updated_at: new Date().toISOString()
-      })
-      .eq('user_id', userId);
-
-    if (error) {
-      console.error("[handleTrainerRecordRemoval] Error unlinking trainer record:", error);
-      throw error;
-    }
-    
-    console.log(`[handleTrainerRecordRemoval] Successfully unlinked trainer record for user_id ${userId}`);
-    return true;
-  } catch (error) {
-    console.error("[handleTrainerRecordRemoval] Error:", error);
-    throw error;
-  }
-}

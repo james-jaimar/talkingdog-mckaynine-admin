@@ -20,8 +20,10 @@ export const AuthProvider: React.FC<PropsWithChildren> = ({ children }) => {
     session,
     role,
     isAdmin,
+    isPlatformAdmin,
     isTrainer,
     isHandler,
+    isBranchOwner,
     isLoading,
     setUser,
     setSession,
@@ -40,8 +42,10 @@ export const AuthProvider: React.FC<PropsWithChildren> = ({ children }) => {
         session,
         role,
         isAdmin,
+        isPlatformAdmin,
         isTrainer,
         isHandler,
+        isBranchOwner,
         isLoading,
         trainerProfile,
         login: loginWithEmailAndPassword,
@@ -72,4 +76,4 @@ export const AuthProvider: React.FC<PropsWithChildren> = ({ children }) => {
       {children}
     </AuthContext.Provider>
   );
-};
+}

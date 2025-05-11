@@ -1,6 +1,8 @@
 
 import { Link } from "react-router-dom";
 import { adminPrimaryNavItems, adminSecondaryNavItems } from "./navigation-items";
+import { useAuth } from "@/context/auth";
+import { Badge } from "@/components/ui/badge";
 
 interface AdminNavigationProps {
   isMobile: boolean;
@@ -9,10 +11,19 @@ interface AdminNavigationProps {
 }
 
 export const AdminNavigation = ({ isMobile, onMobileClose, showPrimaryOnly = true }: AdminNavigationProps) => {
+  const { isPlatformAdmin } = useAuth();
   const items = showPrimaryOnly ? adminPrimaryNavItems : adminSecondaryNavItems;
   
   return (
     <nav className={isMobile ? "flex flex-col space-y-2" : "flex space-x-4 overflow-x-auto"}>
+      {isPlatformAdmin && (
+        <div className={`${isMobile ? 'mb-2' : 'mr-4'}`}>
+          <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300">
+            Platform Admin
+          </Badge>
+        </div>
+      )}
+      
       {items.map(item => (
         <Link 
           key={item.path}

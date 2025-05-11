@@ -2,12 +2,16 @@
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useBranch } from "@/context/BranchContext";
+import { useAuth } from "@/context/auth";
 import { BranchSelector } from "@/components/branches/BranchSelector";
 import { BranchAllocationCheck } from "@/components/branch-maintenance/BranchAllocationCheck";
 import { Helmet } from "react-helmet";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Info } from "lucide-react";
 
 export default function BranchManagement() {
   const { currentBranch } = useBranch();
+  const { isPlatformAdmin } = useAuth();
 
   return (
     <DashboardLayout>
@@ -20,6 +24,16 @@ export default function BranchManagement() {
           <h1 className="text-3xl font-bold tracking-tight">Branch Management</h1>
           <BranchSelector />
         </div>
+
+        {isPlatformAdmin && (
+          <Alert className="bg-blue-50 border-blue-200">
+            <Info className="h-4 w-4 text-blue-500" />
+            <AlertTitle>Platform Admin Access</AlertTitle>
+            <AlertDescription>
+              You have platform admin privileges. You can manage all branches and assign branch ownership.
+            </AlertDescription>
+          </Alert>
+        )}
         
         <Card className="w-full">
           <CardHeader>

@@ -1,5 +1,6 @@
 
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Helmet } from "react-helmet";
 import { useAuth } from "@/context/auth";
 import { useNavigate } from "react-router-dom";
@@ -8,15 +9,15 @@ import { UserAdminPanel } from "@/components/users/UserAdmin";
 import { useEffect } from "react";
 
 export default function UserAdmin() {
-  const { isAdmin, isLoading: authLoading } = useAuth();
+  const { isAdmin, isPlatformAdmin, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
 
   // Redirect non-admin users
   useEffect(() => {
-    if (!authLoading && !isAdmin) {
+    if (!authLoading && !isAdmin && !isPlatformAdmin) {
       navigate("/dashboard");
     }
-  }, [isAdmin, authLoading, navigate]);
+  }, [isAdmin, isPlatformAdmin, authLoading, navigate]);
 
   if (authLoading) {
     return (
@@ -29,7 +30,7 @@ export default function UserAdmin() {
     );
   }
 
-  if (!isAdmin) {
+  if (!isAdmin && !isPlatformAdmin) {
     return null; // Will be redirected
   }
 
@@ -43,9 +44,28 @@ export default function UserAdmin() {
         <div className="mb-6">
           <h1 className="text-2xl font-bold">User Administration</h1>
           <p className="text-muted-foreground mt-1">
-            Manage user accounts and their roles
+            {isPlatformAdmin 
+              ? "Manage all user accounts and assign roles (Platform Admin view)" 
+              : "Manage user accounts and assign roles for your branch"}
           </p>
         </div>
+        
+        {isPlatformAdmin && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>Platform Admin Access</CardTitle>
+              <CardDescription>
+                You have elevated privileges to manage all branches and users
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p>
+                As a Platform Admin, you can assign branch ownership and create other platform admins. 
+                Use this power responsibly as it grants full system access.
+              </p>
+            </CardContent>
+          </Card>
+        )}
         
         <UserAdminPanel />
       </div>

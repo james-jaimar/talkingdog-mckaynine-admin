@@ -5,14 +5,14 @@ import { Loader2 } from "lucide-react";
 
 interface ProtectedRouteProps {
   children?: React.ReactNode;
-  requiredRole?: 'admin' | 'trainer' | 'handler' | undefined;
+  requiredRole?: 'platform_admin' | 'admin' | 'trainer' | 'handler' | undefined;
 }
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ 
   children, 
   requiredRole 
 }) => {
-  const { user, isLoading, role, isAdmin, isTrainer, isHandler } = useAuth();
+  const { user, isLoading, role, isAdmin, isPlatformAdmin, isTrainer, isHandler } = useAuth();
   const location = useLocation();
   
   // Enhanced debug info
@@ -43,8 +43,9 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   // Role-based access check
   if (requiredRole) {
     const hasRequiredRole = 
-      (requiredRole === 'admin' && isAdmin) ||
-      (requiredRole === 'trainer' && isTrainer) ||
+      (requiredRole === 'platform_admin' && isPlatformAdmin) ||
+      (requiredRole === 'admin' && (isAdmin || isPlatformAdmin)) ||
+      (requiredRole === 'trainer' && (isTrainer || isAdmin || isPlatformAdmin)) ||
       (requiredRole === 'handler' && (role === 'handler' || role === 'user'));
       
     if (!hasRequiredRole) {
@@ -53,7 +54,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       // Role-specific redirection
       if (role === 'handler' || role === 'user') {
         return <Navigate to="/customer/dashboard" replace />;
-      } else if (role === 'admin') {
+      } else if (role === 'admin' || isPlatformAdmin) {
         return <Navigate to="/dashboard" replace />;
       } else if (role === 'trainer') {
         return <Navigate to="/dashboard" replace />;

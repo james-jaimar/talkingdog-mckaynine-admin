@@ -15,12 +15,13 @@ const LoadingScreen = () => (
 
 // Root redirect based on authentication state
 export const HandlerRedirect = () => {
-  const { user, isLoading, role } = useAuth();
+  const { user, isLoading, role, isPlatformAdmin } = useAuth();
   
   console.log("HandlerRedirect - Auth state:", { 
     user: !!user, 
     isLoading, 
     role,
+    isPlatformAdmin,
     path: window.location.pathname
   });
   
@@ -41,7 +42,7 @@ export const HandlerRedirect = () => {
     console.log("HandlerRedirect - User is a handler, redirecting to /customer/dashboard");
     return <Navigate to="/customer/dashboard" replace />;
   } else {
-    // For all other roles (admin, trainer), go to staff dashboard
+    // For all other roles (admin, trainer, platform_admin), go to staff dashboard
     console.log("HandlerRedirect - User is staff, redirecting to /dashboard");
     return <Navigate to="/dashboard" replace />;
   }

@@ -1,3 +1,4 @@
+
 import { useState, useMemo } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 
@@ -15,18 +16,28 @@ export const useAuthState = () => {
   // Derived states - simple role checks
   const isAdmin = useMemo(() => {
     if (!role) return false;
-    return role.split(',').includes('admin');
+    return role.split(',').includes('admin') || role.split(',').includes('platform_admin');
+  }, [role]);
+
+  const isPlatformAdmin = useMemo(() => {
+    if (!role) return false;
+    return role.split(',').includes('platform_admin');
   }, [role]);
 
   const isTrainer = useMemo(() => {
     if (!role) return false;
-    return role.split(',').includes('trainer') || role.split(',').includes('admin');
+    return role.split(',').includes('trainer') || role.split(',').includes('admin') || role.split(',').includes('platform_admin');
   }, [role]);
 
   const isHandler = useMemo(() => {
     if (!role) return false;
     return role.split(',').includes('handler');
   }, [role]);
+
+  const isBranchOwner = useMemo(() => {
+    if (!role) return false;
+    return isAdmin || isPlatformAdmin; // For now, admins and platform admins are considered branch owners
+  }, [isAdmin, isPlatformAdmin]);
 
   return {
     // Core state
@@ -43,8 +54,9 @@ export const useAuthState = () => {
     
     // Derived states
     isAdmin,
+    isPlatformAdmin,
     isTrainer,
-    isHandler
+    isHandler,
+    isBranchOwner
   };
 };
-

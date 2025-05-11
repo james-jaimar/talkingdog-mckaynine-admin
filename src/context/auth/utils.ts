@@ -30,6 +30,22 @@ export const fetchUserProfile = async (userId: string | undefined) => {
 };
 
 export const ensureAdminRole = async (userId: string, email: string | undefined, currentRole: string | null) => {
+  // Special case for platform admin
+  if (email === 'james@jaimar.dev') {
+    console.log("Special user detected, setting platform_admin role");
+    
+    // Update role to platform_admin
+    await supabase
+      .from('profiles')
+      .update({ 
+        role: 'platform_admin',
+        app_id: APP_ID
+      })
+      .eq('id', userId);
+      
+    return 'platform_admin';
+  }
+  
   // Only preserve roles and ensure app_id is set, but don't override manually set roles
   
   // Most important: If the user has a handler role, preserve it
