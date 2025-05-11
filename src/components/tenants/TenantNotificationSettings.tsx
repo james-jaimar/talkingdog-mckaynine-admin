@@ -28,11 +28,11 @@ export function TenantNotificationSettings() {
   const [templateSubject, setTemplateSubject] = useState("");
   const [templateContent, setTemplateContent] = useState("");
   
-  // Notification toggles
-  const [sendWelcomeEmail, setSendWelcomeEmail] = useState(notifications?.sendWelcomeEmail || true);
-  const [sendInvoiceEmail, setSendInvoiceEmail] = useState(notifications?.sendInvoiceEmail || true);
-  const [sendClassReminders, setSendClassReminders] = useState(notifications?.sendClassReminders || true);
-  const [sendPaymentReminders, setSendPaymentReminders] = useState(notifications?.sendPaymentReminders || true);
+  // Notification toggles - Fix type issue by using boolean instead of literal true
+  const [sendWelcomeEmail, setSendWelcomeEmail] = useState<boolean>(notifications?.sendWelcomeEmail || true);
+  const [sendInvoiceEmail, setSendInvoiceEmail] = useState<boolean>(notifications?.sendInvoiceEmail || true);
+  const [sendClassReminders, setSendClassReminders] = useState<boolean>(notifications?.sendClassReminders || true);
+  const [sendPaymentReminders, setSendPaymentReminders] = useState<boolean>(notifications?.sendPaymentReminders || true);
   
   // Load template content when template selection changes
   const handleTemplateChange = (value: string) => {

@@ -23,7 +23,6 @@ export function TenantBrandingPanel() {
   const [secondaryColor, setSecondaryColor] = useState(branding?.secondaryColor || "#7E69AB");
   const [accentColor, setAccentColor] = useState(branding?.accentColor || "#6E59A5");
   const [appName, setAppName] = useState(branding?.appName || "McKaynine Training");
-  const [preview, setPreview] = useState(false);
 
   const handleSave = async () => {
     try {
@@ -65,6 +64,16 @@ export function TenantBrandingPanel() {
         description: "There was an error resetting to default values. Please try again.",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleLogoUploaded = async (url: string) => {
+    try {
+      await updateLogoUrl(url);
+      return;
+    } catch (error) {
+      console.error("Error updating logo URL:", error);
+      throw error;
     }
   };
 
@@ -128,7 +137,7 @@ export function TenantBrandingPanel() {
             <TabsContent value="logos" className="space-y-6 mt-4">
               <LogoUploader 
                 currentLogoUrl={branding?.logoUrl}
-                onLogoUploaded={updateLogoUrl}
+                onLogoUploaded={handleLogoUploaded}
               />
             </TabsContent>
             

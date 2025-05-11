@@ -1,6 +1,6 @@
 
 import { Link } from "react-router-dom";
-import { trainerNavItems } from "./navigation-items";
+import { trainerPrimaryNavItems, trainerSecondaryNavItems } from "./navigation-items";
 
 interface TrainerNavigationProps {
   isMobile: boolean;
@@ -9,10 +9,8 @@ interface TrainerNavigationProps {
 }
 
 export const TrainerNavigation = ({ isMobile, onMobileClose, showPrimaryOnly = true }: TrainerNavigationProps) => {
-  // For trainers, we'll show the first items in primary nav and remaining in secondary
-  const primaryItems = trainerNavItems.slice(0, 5);
-  const secondaryItems = trainerNavItems.slice(5);
-  const items = showPrimaryOnly ? primaryItems : secondaryItems;
+  // Use the correct imported items
+  const items = showPrimaryOnly ? trainerPrimaryNavItems : trainerSecondaryNavItems;
 
   return (
     <nav className={isMobile ? "flex flex-col space-y-2" : "flex space-x-4 overflow-x-auto"}>

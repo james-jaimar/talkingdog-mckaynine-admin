@@ -16,7 +16,7 @@ export function TenantGeneralSettings() {
   const [domain, setDomain] = useState(settings?.domain || "");
   const [contactEmail, setContactEmail] = useState(settings?.contactEmail || "");
   const [description, setDescription] = useState(settings?.description || "");
-  const [isActive, setIsActive] = useState(settings?.isActive || true);
+  const [isActive, setIsActive] = useState<boolean>(settings?.isActive || true);
   const [maxUsers, setMaxUsers] = useState(settings?.maxUsers?.toString() || "10");
 
   const handleSave = async () => {
