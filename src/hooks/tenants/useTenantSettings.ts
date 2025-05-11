@@ -28,42 +28,51 @@ export function useTenantSettings() {
     queryFn: async () => {
       // If no tenant is selected yet, get the first one (for platform admins)
       if (!currentTenant && isPlatformAdmin) {
-        const { data: firstTenant } = await supabase
-          .from("tenants")
-          .select("id")
-          .limit(1)
-          .single();
-          
-        if (firstTenant) {
-          setCurrentTenant(firstTenant.id);
+        try {
+          const { data: firstTenant } = await supabase
+            .from("branches")
+            .select("id")
+            .limit(1)
+            .single();
+            
+          if (firstTenant) {
+            setCurrentTenant(firstTenant.id);
+          }
+        } catch (error) {
+          console.error("Error fetching first tenant:", error);
         }
       }
       
       if (!currentTenant) return null;
       
-      const { data, error } = await supabase
-        .from("tenants")
-        .select("*")
-        .eq("id", currentTenant)
-        .single();
+      try {
+        const { data, error } = await supabase
+          .from("branches")
+          .select("*")
+          .eq("id", currentTenant)
+          .single();
+          
+        if (error) {
+          console.error("Error fetching tenant settings:", error);
+          throw error;
+        }
         
-      if (error) {
-        console.error("Error fetching tenant settings:", error);
+        return {
+          id: data.id,
+          tenantId: data.id,
+          name: data.name,
+          domain: data.domain || '',
+          contactEmail: data.email || '',
+          description: data.description || '',
+          isActive: data.is_active !== undefined ? data.is_active : true,
+          maxUsers: data.max_users || 10,
+          createdAt: data.created_at,
+          updatedAt: data.updated_at
+        } as TenantSettings;
+      } catch (error) {
+        console.error("Error in useTenantSettings:", error);
         throw error;
       }
-      
-      return {
-        id: data.id,
-        tenantId: data.id,
-        name: data.name,
-        domain: data.domain,
-        contactEmail: data.contact_email,
-        description: data.description,
-        isActive: data.is_active,
-        maxUsers: data.max_users,
-        createdAt: data.created_at,
-        updatedAt: data.updated_at
-      } as TenantSettings;
     },
     enabled: isPlatformAdmin,
   });
@@ -74,11 +83,11 @@ export function useTenantSettings() {
       if (!currentTenant) throw new Error("No tenant selected");
       
       const { data, error } = await supabase
-        .from("tenants")
+        .from("branches")
         .update({
           name: updatedSettings.name,
           domain: updatedSettings.domain,
-          contact_email: updatedSettings.contactEmail,
+          email: updatedSettings.contactEmail,
           description: updatedSettings.description,
           is_active: updatedSettings.isActive,
           max_users: updatedSettings.maxUsers,
@@ -86,7 +95,7 @@ export function useTenantSettings() {
         })
         .eq("id", currentTenant)
         .select();
-        
+          
       if (error) throw error;
       return data;
     },

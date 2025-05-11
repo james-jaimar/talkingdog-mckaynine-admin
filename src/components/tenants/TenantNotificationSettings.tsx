@@ -165,7 +165,7 @@ export function TenantNotificationSettings() {
                       <Switch
                         id="welcome-email"
                         checked={sendWelcomeEmail}
-                        onCheckedChange={setSendWelcomeEmail}
+                        onCheckedChange={(checked: boolean) => setSendWelcomeEmail(checked)}
                       />
                     </div>
                     
@@ -179,7 +179,7 @@ export function TenantNotificationSettings() {
                       <Switch
                         id="invoice-email"
                         checked={sendInvoiceEmail}
-                        onCheckedChange={setSendInvoiceEmail}
+                        onCheckedChange={(checked: boolean) => setSendInvoiceEmail(checked)}
                       />
                     </div>
                     
@@ -193,7 +193,7 @@ export function TenantNotificationSettings() {
                       <Switch
                         id="class-reminders"
                         checked={sendClassReminders}
-                        onCheckedChange={setSendClassReminders}
+                        onCheckedChange={(checked: boolean) => setSendClassReminders(checked)}
                       />
                     </div>
                     
@@ -207,7 +207,7 @@ export function TenantNotificationSettings() {
                       <Switch
                         id="payment-reminders"
                         checked={sendPaymentReminders}
-                        onCheckedChange={setSendPaymentReminders}
+                        onCheckedChange={(checked: boolean) => setSendPaymentReminders(checked)}
                       />
                     </div>
                   </div>

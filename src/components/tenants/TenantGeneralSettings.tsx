@@ -118,7 +118,7 @@ export function TenantGeneralSettings() {
               <Switch
                 id="tenant-active"
                 checked={isActive}
-                onCheckedChange={setIsActive}
+                onCheckedChange={(checked: boolean) => setIsActive(checked)}
               />
               <Label htmlFor="tenant-active">Tenant Active</Label>
               <p className="text-sm text-muted-foreground ml-2">

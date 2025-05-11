@@ -1,6 +1,6 @@
 
 import { Link } from "react-router-dom";
-import { primaryNavItems, handlerNavItems } from "./navigation-items";
+import { handlerNavItems } from "./navigation-items";
 
 interface HandlerNavigationProps {
   isMobile: boolean;
@@ -9,8 +9,8 @@ interface HandlerNavigationProps {
 
 export const HandlerNavigation = ({ isMobile, onMobileClose }: HandlerNavigationProps) => {
   return (
-    <nav className={isMobile ? "flex flex-col space-y-2" : "hidden md:flex space-x-4 overflow-x-auto"}>
-      {[...primaryNavItems, ...(isMobile ? handlerNavItems : [])].map(item => (
+    <nav className={isMobile ? "flex flex-col space-y-2" : "flex space-x-4 overflow-x-auto"}>
+      {handlerNavItems.map(item => (
         <Link 
           key={item.path}
           to={item.path} 

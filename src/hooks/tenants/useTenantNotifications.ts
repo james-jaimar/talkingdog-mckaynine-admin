@@ -40,81 +40,90 @@ export function useTenantNotifications() {
     queryFn: async () => {
       // If no tenant is selected yet, get the first one (for platform admins)
       if (!currentTenant && isPlatformAdmin) {
-        const { data: firstTenant } = await supabase
-          .from("tenants")
-          .select("id")
-          .limit(1)
-          .single();
-          
-        if (firstTenant) {
-          setCurrentTenant(firstTenant.id);
+        try {
+          const { data: firstTenant } = await supabase
+            .from("branches")
+            .select("id")
+            .limit(1)
+            .single();
+            
+          if (firstTenant) {
+            setCurrentTenant(firstTenant.id);
+          }
+        } catch (error) {
+          console.error("Error fetching first tenant:", error);
         }
       }
       
       if (!currentTenant) return null;
       
-      // Get notification settings
-      const { data: settings, error } = await supabase
-        .from("tenant_notifications")
-        .select("*")
-        .eq("tenant_id", currentTenant)
-        .single();
+      try {
+        // Get notification settings
+        const { data: settings, error } = await supabase
+          .from("branch_notifications")
+          .select("*")
+          .eq("branch_id", currentTenant)
+          .maybeSingle();
+          
+        if (error && error.code !== 'PGRST116') {
+          console.error("Error fetching tenant notification settings:", error);
+          throw error;
+        }
         
-      if (error && error.code !== 'PGRST116') { // Not found error code
-        console.error("Error fetching tenant notification settings:", error);
+        // Get email templates
+        const { data: templates, error: templatesError } = await supabase
+          .from("branch_email_templates")
+          .select("*")
+          .eq("branch_id", currentTenant);
+          
+        if (templatesError) {
+          console.error("Error fetching tenant email templates:", templatesError);
+          throw templatesError;
+        }
+        
+        const emailTemplates = templates?.map(template => ({
+          id: template.id,
+          tenantId: template.branch_id,
+          type: template.type,
+          subject: template.subject,
+          content: template.content,
+          createdAt: template.created_at,
+          updatedAt: template.updated_at
+        })) || [];
+        
+        if (!settings) {
+          // Return default settings if none exist
+          return {
+            tenantId: currentTenant,
+            fromEmail: "",
+            replyToEmail: "",
+            emailFooter: "",
+            sendWelcomeEmail: true,
+            sendInvoiceEmail: true,
+            sendClassReminders: true,
+            sendPaymentReminders: true,
+            emailTemplates
+          } as TenantNotificationSettings;
+        }
+        
+        return {
+          id: settings.id,
+          tenantId: settings.branch_id,
+          fromEmail: settings.from_email,
+          replyToEmail: settings.reply_to_email,
+          emailFooter: settings.email_footer,
+          sendWelcomeEmail: settings.send_welcome_email,
+          sendInvoiceEmail: settings.send_invoice_email,
+          sendClassReminders: settings.send_class_reminders,
+          sendPaymentReminders: settings.send_payment_reminders,
+          emailTemplates,
+          createdAt: settings.created_at,
+          updatedAt: settings.updated_at
+        } as TenantNotificationSettings;
+      } catch (error) {
+        console.error("Error in useTenantNotifications:", error);
         throw error;
       }
-      
-      // Get email templates
-      const { data: templates, error: templatesError } = await supabase
-        .from("tenant_email_templates")
-        .select("*")
-        .eq("tenant_id", currentTenant);
-        
-      if (templatesError) {
-        console.error("Error fetching tenant email templates:", templatesError);
-        throw templatesError;
-      }
-      
-      const emailTemplates = templates?.map(template => ({
-        id: template.id,
-        tenantId: template.tenant_id,
-        type: template.type,
-        subject: template.subject,
-        content: template.content,
-        createdAt: template.created_at,
-        updatedAt: template.updated_at
-      }));
-      
-      if (!settings) {
-        // Return default settings if none exist
-        return {
-          tenantId: currentTenant,
-          fromEmail: "",
-          replyToEmail: "",
-          emailFooter: "",
-          sendWelcomeEmail: true,
-          sendInvoiceEmail: true,
-          sendClassReminders: true,
-          sendPaymentReminders: true,
-          emailTemplates
-        } as TenantNotificationSettings;
-      }
-      
-      return {
-        id: settings.id,
-        tenantId: settings.tenant_id,
-        fromEmail: settings.from_email,
-        replyToEmail: settings.reply_to_email,
-        emailFooter: settings.email_footer,
-        sendWelcomeEmail: settings.send_welcome_email,
-        sendInvoiceEmail: settings.send_invoice_email,
-        sendClassReminders: settings.send_class_reminders,
-        sendPaymentReminders: settings.send_payment_reminders,
-        emailTemplates,
-        createdAt: settings.created_at,
-        updatedAt: settings.updated_at
-      } as TenantNotificationSettings;
     },
     enabled: isPlatformAdmin,
   });
@@ -125,7 +134,7 @@ export function useTenantNotifications() {
       if (!currentTenant) throw new Error("No tenant selected");
       
       const settingsData = {
-        tenant_id: currentTenant,
+        branch_id: currentTenant,
         from_email: updatedSettings.fromEmail,
         reply_to_email: updatedSettings.replyToEmail,
         email_footer: updatedSettings.emailFooter,
@@ -139,24 +148,22 @@ export function useTenantNotifications() {
       if (notifications?.id) {
         // Update existing record
         const { data, error } = await supabase
-          .from("tenant_notifications")
+          .from("branch_notifications")
           .update(settingsData)
           .eq("id", notifications.id)
-          .select()
-          .single();
+          .select();
           
         if (error) throw error;
         return data;
       } else {
         // Create new record
         const { data, error } = await supabase
-          .from("tenant_notifications")
+          .from("branch_notifications")
           .insert({
             ...settingsData,
             created_at: new Date().toISOString(),
           })
-          .select()
-          .single();
+          .select();
           
         if (error) throw error;
         return data;
@@ -168,9 +175,11 @@ export function useTenantNotifications() {
   });
   
   // Update email template
-  const { mutateAsync: updateEmailTemplate, isPending: isUpdatingTemplate } = useMutation({
-    mutationFn: async (templateType: string, templateData: { subject: string; content: string }) => {
+  const { mutateAsync: updateEmailTemplateFunc, isPending: isUpdatingTemplate } = useMutation({
+    mutationFn: async (params: { templateType: string, templateData: { subject: string; content: string }}) => {
       if (!currentTenant) throw new Error("No tenant selected");
+      
+      const { templateType, templateData } = params;
       
       // Check if template exists
       const template = notifications?.emailTemplates?.find(t => t.type === templateType);
@@ -178,32 +187,30 @@ export function useTenantNotifications() {
       if (template?.id) {
         // Update existing template
         const { data, error } = await supabase
-          .from("tenant_email_templates")
+          .from("branch_email_templates")
           .update({
             subject: templateData.subject,
             content: templateData.content,
             updated_at: new Date().toISOString(),
           })
           .eq("id", template.id)
-          .select()
-          .single();
+          .select();
           
         if (error) throw error;
         return data;
       } else {
         // Create new template
         const { data, error } = await supabase
-          .from("tenant_email_templates")
+          .from("branch_email_templates")
           .insert({
-            tenant_id: currentTenant,
+            branch_id: currentTenant,
             type: templateType,
             subject: templateData.subject,
             content: templateData.content,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           })
-          .select()
-          .single();
+          .select();
           
         if (error) throw error;
         return data;
@@ -213,6 +220,11 @@ export function useTenantNotifications() {
       queryClient.invalidateQueries({ queryKey: ["tenant-notifications", currentTenant] });
     }
   });
+  
+  // Create a wrapper function with the correct signature
+  const updateEmailTemplate = async (templateType: string, templateData: { subject: string; content: string }) => {
+    return updateEmailTemplateFunc({ templateType, templateData });
+  };
   
   return {
     notifications,
