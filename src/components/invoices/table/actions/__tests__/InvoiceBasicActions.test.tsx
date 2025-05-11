@@ -1,13 +1,10 @@
 
 import { render } from '@testing-library/react';
-import * as reactTestingLibrary from '@testing-library/react';
+import { screen, fireEvent } from '@testing-library/dom';
 import '@testing-library/jest-dom';
 import { BrowserRouter } from 'react-router-dom';
 import { InvoiceBasicActions } from '../InvoiceBasicActions';
 import { InvoiceStatus } from '@/hooks/invoices/types';
-
-// Use the imported namespace
-const { screen, fireEvent } = reactTestingLibrary;
 
 const mockNavigate = jest.fn();
 jest.mock('react-router-dom', () => ({

@@ -1,12 +1,9 @@
 
 import { render } from '@testing-library/react';
-import * as reactTestingLibrary from '@testing-library/react';
+import { screen, fireEvent } from '@testing-library/dom';
 import '@testing-library/jest-dom';
 import { InvoiceStatusActions } from '../InvoiceStatusActions';
 import { InvoiceStatus } from '@/hooks/invoices/types';
-
-// Use the imported namespace
-const { screen, fireEvent } = reactTestingLibrary;
 
 // Mock the hooks
 const mockMarkAsPaid = { mutate: jest.fn() };
