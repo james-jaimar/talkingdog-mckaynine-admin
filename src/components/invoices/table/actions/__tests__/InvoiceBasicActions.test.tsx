@@ -1,7 +1,4 @@
-
-import { render } from '@testing-library/react';
-import { screen } from '@testing-library/dom';
-import { fireEvent } from '@testing-library/dom';
+import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { BrowserRouter } from 'react-router-dom';
 import { InvoiceBasicActions } from '../InvoiceBasicActions';
