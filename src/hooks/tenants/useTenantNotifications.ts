@@ -68,9 +68,9 @@ export function useTenantNotifications() {
   const { data: notificationsTableExists } = useQuery({
     queryKey: ["branch-notifications-table-exists"],
     queryFn: async () => {
-      return await checkTableExists(() => 
-        supabase.from("branch_notifications").select("id").limit(1)
-      );
+      return await checkTableExists(async () => {
+        return await supabase.from("branch_notifications").select("id").limit(1);
+      });
     },
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
@@ -79,9 +79,9 @@ export function useTenantNotifications() {
   const { data: templatesTableExists } = useQuery({
     queryKey: ["branch-email-templates-table-exists"],
     queryFn: async () => {
-      return await checkTableExists(() => 
-        supabase.from("branch_email_templates").select("id").limit(1)
-      );
+      return await checkTableExists(async () => {
+        return await supabase.from("branch_email_templates").select("id").limit(1);
+      });
     },
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
@@ -135,11 +135,14 @@ export function useTenantNotifications() {
         // If notifications table exists, try to get settings
         if (notificationsTableExists) {
           const settings = await safeTableQuery<BranchNotification | null>(
-            () => supabase
-              .from("branch_notifications")
-              .select("*")
-              .eq("branch_id", currentTenant)
-              .maybeSingle(),
+            async () => {
+              const result = await supabase
+                .from("branch_notifications")
+                .select("*")
+                .eq("branch_id", currentTenant)
+                .maybeSingle();
+              return result;
+            },
             null
           );
           
@@ -164,10 +167,13 @@ export function useTenantNotifications() {
         // If templates table exists, try to get email templates
         if (templatesTableExists) {
           const templates = await safeTableQuery<BranchEmailTemplate[]>(
-            () => supabase
-              .from("branch_email_templates")
-              .select("*")
-              .eq("branch_id", currentTenant),
+            async () => {
+              const result = await supabase
+                .from("branch_email_templates")
+                .select("*")
+                .eq("branch_id", currentTenant);
+              return result;
+            },
             []
           );
           

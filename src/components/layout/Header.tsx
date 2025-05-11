@@ -15,6 +15,7 @@ import { Branch } from "@/context/BranchContext";
 import { TermSelectorRow } from "./header/TermSelectorRow";
 
 export function Header() {
+  
   const { user, logout, isAdmin, isTrainer, isHandler, role } = useAuth();
   const location = useLocation();
   const isMobile = useIsMobile();
@@ -63,7 +64,7 @@ export function Header() {
                   ) : isTrainer && !isAdmin ? (
                     <TrainerNavigation isMobile={false} showPrimaryOnly={true} />
                   ) : isHandler && (
-                    <HandlerNavigation isMobile={false} />
+                    <HandlerNavigation isMobile={false} showPrimaryOnly={true} />
                   )}
                 </div>
               )}
