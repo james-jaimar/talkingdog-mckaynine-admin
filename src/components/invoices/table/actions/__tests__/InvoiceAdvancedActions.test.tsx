@@ -1,7 +1,7 @@
 
 import { render } from '@testing-library/react';
-import { screen } from '@testing-library/react';
-import { fireEvent } from '@testing-library/react';
+import { screen } from '@testing-library/dom';
+import { fireEvent } from '@testing-library/dom';
 import '@testing-library/jest-dom';
 import { InvoiceAdvancedActions } from '../InvoiceAdvancedActions';
 import { InvoiceStatus } from '@/hooks/invoices/types';
