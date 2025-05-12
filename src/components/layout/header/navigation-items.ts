@@ -72,7 +72,7 @@ export const adminSecondaryNavItems: NavItem[] = [
   },
   {
     name: "Tenant Config",
-    path: "/tenant-config",
+    path: "/admin/tenant-configuration",
     icon: Settings,
     platformAdminOnly: true
   }
