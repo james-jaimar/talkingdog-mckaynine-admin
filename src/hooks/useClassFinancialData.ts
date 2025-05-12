@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useFinancialQuery } from "@/hooks/financial/useFinancialQuery";
 import { useFinancialProcessor } from "@/hooks/financial/useFinancialProcessor";
 import { ClassFinance } from "@/hooks/financial/types";
@@ -30,7 +30,7 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
   }));
   
   // Verify that all class finances are from the correct branch
-  useState(() => {
+  useEffect(() => {
     if (branchId && classFinances.length > 0) {
       // Check if the financial data indicates mismatched branch
       const mismatch = classFinances.some(c => 
