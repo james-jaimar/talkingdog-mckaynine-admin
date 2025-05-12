@@ -43,6 +43,11 @@ export const adminPrimaryNavItems: NavItem[] = [
     icon: BarChart3
   },
   {
+    name: "Financial Dashboard",
+    path: "/financial-dashboard",
+    icon: BarChart3
+  },
+  {
     name: "Invoices",
     path: "/invoices",
     icon: FileText

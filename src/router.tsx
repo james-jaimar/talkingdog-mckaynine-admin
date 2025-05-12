@@ -11,6 +11,7 @@ import UnpaidHandlers from "./pages/UnpaidHandlers";
 import NotFound from "./pages/NotFound";
 import UserAdmin from "./pages/UserAdmin";
 import TenantConfiguration from "./pages/TenantConfiguration";
+import FinancialDashboard from "./pages/FinancialDashboard";
 
 // Create a dashboard route that ONLY works for staff (admin and trainer) users
 const dashboardRoute = {
@@ -62,6 +63,16 @@ const tenantConfigRoute = {
   ),
 };
 
+// Create a financial dashboard route that ONLY works for admin users
+const financialDashboardRoute = {
+  path: "/financial-dashboard",
+  element: (
+    <ProtectedRoute requiredRole="admin">
+      <FinancialDashboard />
+    </ProtectedRoute>
+  ),
+};
+
 // Create a 404 route for missing pages
 const notFoundRoute = {
   path: "*", // Catch all unmatched routes
@@ -90,6 +101,7 @@ const router = createBrowserRouter([
   unpaidHandlersRoute, // Only accessible to admins
   userAdminRoute, // Only accessible to admins
   tenantConfigRoute, // Only accessible to platform admins
+  financialDashboardRoute, // Only accessible to admins
   ...trainerRoutes,
   ...customerRoutes, // Customer routes with handler-specific layouts
   notFound404Route, // Explicit 404 route
