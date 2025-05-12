@@ -239,12 +239,11 @@ export function useClassForm({ classData, onSuccess }: UseClassFormProps) {
         classId = newClass.id;
         console.log("Successfully created class with ID:", classId);
         
-        // Show success toast
+        // Show success toast without depending on navigation from the toast
         showClassCreatedToast(values.name, classId);
         
-        // Navigate to schedule creation page after a short delay
-        // This is where the term association will happen correctly, through class_schedules.term_id
-        console.log(`Will navigate to schedule creation for class ${classId} in 500ms`);
+        // Directly navigate to schedule creation page
+        console.log(`Navigating to schedule creation for class ${classId}`);
         setTimeout(() => {
           navigate(`/classes/${classId}/schedules`);
         }, 500);
