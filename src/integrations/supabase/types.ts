@@ -248,8 +248,12 @@ export type Database = {
           capacity: number | null
           city: string
           created_at: string
+          description: string | null
+          domain: string | null
           email: string | null
           id: string
+          is_active: boolean | null
+          max_users: number | null
           name: string
           phone: string | null
           postal_code: string
@@ -261,8 +265,12 @@ export type Database = {
           capacity?: number | null
           city: string
           created_at?: string
+          description?: string | null
+          domain?: string | null
           email?: string | null
           id?: string
+          is_active?: boolean | null
+          max_users?: number | null
           name: string
           phone?: string | null
           postal_code: string
@@ -274,8 +282,12 @@ export type Database = {
           capacity?: number | null
           city?: string
           created_at?: string
+          description?: string | null
+          domain?: string | null
           email?: string | null
           id?: string
+          is_active?: boolean | null
+          max_users?: number | null
           name?: string
           phone?: string | null
           postal_code?: string

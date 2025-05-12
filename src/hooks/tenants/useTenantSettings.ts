@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/auth";
 import { useState } from "react";
+import { safeSingleRowQuery } from "@/lib/supabaseUtils";
 
 export interface TenantSettings {
   id?: string;
