@@ -24,6 +24,9 @@ export function useTermQuery(termNumber: string | null, year: number | null) {
         return null;
       }
 
+      // Explicitly cast termNumber to the union type that Supabase expects
+      const validTermNumber = termNumber as "1" | "2" | "3" | "4";
+      
       const { data, error } = await supabase
         .from('terms')
         .select(`
@@ -34,7 +37,7 @@ export function useTermQuery(termNumber: string | null, year: number | null) {
           current,
           academic_years(year)
         `)
-        .eq('term_number', termNumber)
+        .eq('term_number', validTermNumber)
         .eq('academic_years.year', year)
         .single();
 
