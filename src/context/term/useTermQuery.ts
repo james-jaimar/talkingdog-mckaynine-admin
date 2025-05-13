@@ -18,6 +18,12 @@ export function useTermQuery(termNumber: string | null, year: number | null) {
         return null;
       }
 
+      // Validate that term number is one of the allowed values
+      if (!["1", "2", "3", "4"].includes(termNumber)) {
+        console.error(`Invalid term number: ${termNumber}. Must be one of: "1", "2", "3", "4"`);
+        return null;
+      }
+
       const { data, error } = await supabase
         .from('terms')
         .select(`
