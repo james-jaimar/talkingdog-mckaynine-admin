@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { TrainerReportsTab } from "@/components/invoices/reports/TrainerReportsTab";
 import { useClassFinancialData } from "@/hooks/useClassFinancialData";
 import { useTerm } from "@/context/TermContext";
+import { FinancialAlerts } from "@/components/invoices/reports/FinancialAlerts";
 
 export default function FinancialReports() {
   const queryClient = useQueryClient();
@@ -65,6 +66,7 @@ export default function FinancialReports() {
     queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
     queryClient.invalidateQueries({ queryKey: ['classes-list-data'] });
     queryClient.invalidateQueries({ queryKey: ['trainer-payments'] });
+    queryClient.invalidateQueries({ queryKey: ['problematic-invoices'] });
     
     // Then refresh invoice data
     refreshAllInvoiceQueries();
@@ -98,6 +100,11 @@ export default function FinancialReports() {
               dateRange={dateRange} 
               onDateRangeChange={handleDateRangeChange} 
             />
+          </div>
+          
+          {/* Add the FinancialAlerts component */}
+          <div className="mb-6">
+            <FinancialAlerts />
           </div>
 
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">

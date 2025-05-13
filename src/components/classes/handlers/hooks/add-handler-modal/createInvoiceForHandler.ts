@@ -38,6 +38,12 @@ export const createInvoiceForHandler = async ({
       discountType, discountAmount
     });
 
+    // Validate that we have a booking ID
+    if (!bookingId) {
+      console.error("CREATE-INVOICE: Missing bookingId parameter");
+      throw new Error("Booking ID is required for invoice creation");
+    }
+
     // Generate invoice number with fallback
     let invoiceNumber: string;
     try {
@@ -76,7 +82,7 @@ export const createInvoiceForHandler = async ({
         description: `${className} training class for ${dogName}`,
         quantity: 1,
         unit_price: classPrice,
-        booking_id: bookingId,
+        booking_id: bookingId,  // Ensure booking_id is set
       }
     ];
     
@@ -85,7 +91,17 @@ export const createInvoiceForHandler = async ({
         description: `Enrollment fee for ${className}`,
         quantity: 1,
         unit_price: enrollmentFee,
-        booking_id: bookingId,
+        booking_id: bookingId,  // Also set booking_id for enrollment fee
+      });
+    }
+
+    // Double check that all items have booking IDs
+    const missingBookingIds = items.filter(item => !item.booking_id);
+    if (missingBookingIds.length > 0) {
+      console.error("CREATE-INVOICE: Some items are missing booking IDs", missingBookingIds);
+      // Ensure all items have the booking ID set
+      missingBookingIds.forEach(item => {
+        item.booking_id = bookingId;
       });
     }
 

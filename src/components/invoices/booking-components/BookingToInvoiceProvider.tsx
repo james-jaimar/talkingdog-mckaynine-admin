@@ -1,4 +1,3 @@
-
 import { useState, ReactNode } from "react";
 import { useInvoices } from "@/hooks/useInvoices";
 import { InvoiceFormValues } from "@/types/invoice";
@@ -126,7 +125,7 @@ export function BookingToInvoiceProvider({
           description: `${className} - ${dogName}`,
           quantity: 1,
           unit_price: price,
-          booking_id: booking.id, // Ensure booking_id is explicitly set
+          booking_id: booking.id, // IMPORTANT: Ensure booking_id is explicitly set
         };
       });
       
@@ -152,6 +151,13 @@ export function BookingToInvoiceProvider({
         discount_type: 'fixed',
         discount_reason: ''
       };
+      
+      // Double-check that we have all booking IDs set
+      const missingBookingIds = invoice.items.filter(item => !item.booking_id);
+      if (missingBookingIds.length > 0) {
+        console.error("WARNING: Some invoice items are missing booking IDs", missingBookingIds);
+        toast.warning(`${missingBookingIds.length} items missing booking IDs. These will appear as "General Training Services".`);
+      }
       
       // Log complete invoice data before submission
       console.log("Submitting invoice data:", invoice);

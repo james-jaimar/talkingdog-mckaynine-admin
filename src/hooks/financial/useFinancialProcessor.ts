@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { FinancialData, ClassFinance, BookingRevenue } from "./types";
 
@@ -39,7 +38,7 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
     const branchFilteredInvoiceItems = branchId 
       ? invoiceItems.filter(item => !item.invoices?.client?.branch_id || item.invoices?.client?.branch_id === branchId)
       : invoiceItems;
-      
+    
     console.log(`Filtered ${invoiceItems.length - branchFilteredInvoiceItems.length} invoice items that don't match branch ${branchId}`);
 
     setTotalInvoiceCount(allInvoicesCount);
@@ -86,50 +85,50 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
     const branchFilteredInvoices = branchId
       ? invoices.filter(invoice => !invoice.client?.branch_id || invoice.client?.branch_id === branchId)
       : invoices;
-      
-    console.log(`Filtered ${invoices.length - branchFilteredInvoices.length} invoices that don't match branch ${branchId}`);
     
+    console.log(`Filtered ${invoices.length - branchFilteredInvoices.length} invoices that don't match branch ${branchId}`);
+  
     // First handle invoices that can be mapped to specific classes through bookings
     branchFilteredInvoices.forEach(invoice => {
       const bookingIds = invoiceToBookingMap.get(invoice.id);
-      
+    
       // Skip if this invoice has no associated bookings or already processed
       if (!bookingIds || bookingIds.length === 0 || processedInvoices.has(invoice.id)) return;
-      
+    
       // Distribute the invoice total evenly among associated bookings
       const invoiceAmountPerBooking = invoice.total / bookingIds.length;
-      
+    
       bookingIds.forEach(bookingId => {
         const booking = branchFilteredBookings.find(b => b.id === bookingId);
         if (!booking || !booking.class_schedules?.classes) return;
-        
+      
         // Additional branch check
         if (branchId && booking.clients?.branch_id && booking.clients.branch_id !== branchId) {
           console.warn(`Skipping booking ${bookingId} due to branch mismatch. Expected ${branchId}, got ${booking.clients.branch_id}`);
           return;
         }
-        
+      
         const classData = booking.class_schedules.classes;
         const className = classData.name;
-        
+      
         // Skip if class is not from this branch
         if (branchId && classData.branch_id && classData.branch_id !== branchId) {
           console.warn(`Skipping class ${className} (${classData.id}) due to branch mismatch. Expected ${branchId}, got ${classData.branch_id}`);
           return;
         }
-        
+      
         // Track this invoice for this class
         if (!classInvoiceMap.has(className)) {
           classInvoiceMap.set(className, new Set());
         }
         classInvoiceMap.get(className)!.add(invoice.id);
-        
+      
         // Track unique booking IDs for each class
         if (!classBookingMap.has(className)) {
           classBookingMap.set(className, new Set());
         }
         classBookingMap.get(className)!.add(bookingId);
-        
+      
         // Get or create class summary
         const summary = classSummaries.get(className) || {
           className,
@@ -143,47 +142,118 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
           sourceType: 'class',
           invoiceIds: []
         };
-        
+      
         // Update summary with invoice amount
         // Do NOT increment bookingsCount here as we'll set it based on unique bookings later
         summary.totalRevenue += invoiceAmountPerBooking;
-        
+      
         // Calculate fees based on invoice amount
         if (classData.mckaynine_commission_type === 'percentage') {
           summary.franchiseFee += (invoiceAmountPerBooking * (classData.mckaynine_commission_value / 100));
         } else {
           summary.franchiseFee += classData.mckaynine_commission_value;
         }
-        
+      
         if (classData.admin_fee_type === 'percentage') {
           summary.adminFee += (invoiceAmountPerBooking * (classData.admin_fee_value / 100));
         } else {
           summary.adminFee += classData.admin_fee_value;
         }
-        
+      
         if (classData.trainer_fee_type === 'percentage') {
           summary.instructorFee += (invoiceAmountPerBooking * (classData.trainer_fee_value / 100));
         } else {
           summary.instructorFee += classData.trainer_fee_value;
         }
-        
+      
         classSummaries.set(className, summary);
       });
-      
+    
       processedInvoices.add(invoice.id);
     });
-    
-    // Handle unprocessed invoices (not linked to specific classes)
+
+    // Create a more detailed mapping for unprocessed invoices that aren't linked to bookings
+    // but could potentially be manually assigned to specific classes based on invoice item descriptions
     const unprocessedInvoices = branchFilteredInvoices
       .filter(inv => !processedInvoices.has(inv.id));
-    
-    const unprocessedInvoicesTotal = unprocessedInvoices
+
+    // Get all invoice items for unprocessed invoices
+    const unprocessedInvoiceItems = branchFilteredInvoiceItems
+      .filter(item => item.invoice_id && unprocessedInvoices.some(inv => inv.id === item.invoice_id));
+
+    // Try to guess the class from the invoice item description
+    const classNamesToMatch = Array.from(classSummaries.keys());
+
+    // Try to match unprocessed invoice items to classes by description
+    if (classNamesToMatch.length > 0) {
+      unprocessedInvoiceItems.forEach(item => {
+        if (!item.description || !item.invoice_id) return;
+      
+        const matchingClass = classNamesToMatch.find(className => 
+          item.description.toLowerCase().includes(className.toLowerCase())
+        );
+      
+        if (matchingClass) {
+          console.log(`Found potential class match for invoice item: "${item.description}" -> "${matchingClass}"`);
+        
+          // Get the invoice for this item
+          const invoice = branchFilteredInvoices.find(inv => inv.id === item.invoice_id);
+          if (!invoice) return;
+        
+          // Skip if already processed
+          if (processedInvoices.has(invoice.id)) return;
+        
+          // Update the class summary with this item
+          const summary = classSummaries.get(matchingClass) || {
+            className: matchingClass,
+            totalRevenue: 0,
+            bookingsCount: 0,
+            franchiseFee: 0,
+            adminFee: 0,
+            instructorFee: 0,
+            profit: 0,
+            invoiceCount: 0,
+            sourceType: 'class',
+            invoiceIds: []
+          };
+        
+          // Just add the item amount since we don't have booking info
+          const itemAmount = item.amount || (item.quantity * item.unit_price) || 0;
+          summary.totalRevenue += itemAmount;
+        
+          // Track this invoice for this class
+          if (!classInvoiceMap.has(matchingClass)) {
+            classInvoiceMap.set(matchingClass, new Set());
+          }
+          classInvoiceMap.get(matchingClass)!.add(invoice.id);
+        
+          // Use average fee percentages from other instances of this class
+          // or default to standard percentages
+          const avgFranchisePercent = 15;
+          const avgAdminPercent = 10;
+          const avgTrainerPercent = 30;
+        
+          summary.franchiseFee += itemAmount * (avgFranchisePercent / 100);
+          summary.adminFee += itemAmount * (avgAdminPercent / 100);
+          summary.instructorFee += itemAmount * (avgTrainerPercent / 100);
+        
+          classSummaries.set(matchingClass, summary);
+          processedInvoices.add(invoice.id);
+        }
+      });
+    }
+
+    // Handle remaining unprocessed invoices that couldn't be matched to classes
+    const remainingUnprocessedInvoices = branchFilteredInvoices
+      .filter(inv => !processedInvoices.has(inv.id));
+  
+    const unprocessedInvoicesTotal = remainingUnprocessedInvoices
       .reduce((sum, inv) => sum + inv.total, 0);
-    
+  
     if (unprocessedInvoicesTotal > 0) {
       const generalClassName = "General Training Services";
-      const unprocessedInvoiceIds = unprocessedInvoices.map(inv => inv.id);
-      
+      const unprocessedInvoiceIds = remainingUnprocessedInvoices.map(inv => inv.id);
+    
       // Create a general entry for unprocessed invoices
       const generalSummary = classSummaries.get(generalClassName) || {
         className: generalClassName,
@@ -197,19 +267,19 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
         sourceType: 'general',
         invoiceIds: unprocessedInvoiceIds
       };
-      
+    
       // Use average fee percentages from other classes or default values
       let avgAdminPercent = 10;
       let avgTrainerPercent = 30;
       let avgFranchisePercent = 15;
-      
+    
       // Calculate averages if we have processed classes
       if (classSummaries.size > 0) {
         let totalAdmin = 0;
         let totalTrainer = 0;
         let totalFranchise = 0;
         let totalRevenue = 0;
-        
+      
         classSummaries.forEach(summary => {
           if (summary.totalRevenue > 0) {
             totalAdmin += summary.adminFee;
@@ -218,26 +288,26 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
             totalRevenue += summary.totalRevenue;
           }
         });
-        
+      
         if (totalRevenue > 0) {
           avgAdminPercent = (totalAdmin / totalRevenue) * 100;
           avgTrainerPercent = (totalTrainer / totalRevenue) * 100;
           avgFranchisePercent = (totalFranchise / totalRevenue) * 100;
         }
       }
-      
+    
       // Apply average percentages to unprocessed revenue
       generalSummary.totalRevenue = unprocessedInvoicesTotal;
       generalSummary.adminFee = unprocessedInvoicesTotal * (avgAdminPercent / 100);
       generalSummary.instructorFee = unprocessedInvoicesTotal * (avgTrainerPercent / 100);
       generalSummary.franchiseFee = unprocessedInvoicesTotal * (avgFranchisePercent / 100);
-      
+    
       // Calculate profit
       generalSummary.profit = generalSummary.totalRevenue - 
-                             generalSummary.adminFee - 
-                             generalSummary.instructorFee - 
-                             generalSummary.franchiseFee;
-      
+                           generalSummary.adminFee - 
+                           generalSummary.instructorFee - 
+                           generalSummary.franchiseFee;
+    
       classSummaries.set(generalClassName, generalSummary);
     }
 
@@ -247,13 +317,13 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
       if (summary) {
         summary.invoiceCount = invoiceIds.size;
         summary.invoiceIds = Array.from(invoiceIds);
-        
+      
         // Set bookingsCount based on unique booking IDs
         const uniqueBookings = classBookingMap.get(className);
         if (uniqueBookings) {
           summary.bookingsCount = uniqueBookings.size;
         }
-        
+      
         // Calculate profit as total revenue minus all fees
         summary.profit = summary.totalRevenue - summary.franchiseFee - summary.adminFee - summary.instructorFee;
       }
@@ -276,7 +346,7 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
     classBookingMap.forEach((bookings) => {
       bookings.forEach(id => totalUniqueBookings.add(id));
     });
-    
+  
     console.log("Financial processor - total unique bookings:", totalUniqueBookings.size);
     console.log("Financial processor - total invoices:", allInvoicesCount);
     console.log("Financial processor - final class finances count:", sortedFinances.length);
