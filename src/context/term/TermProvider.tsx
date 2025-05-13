@@ -1,8 +1,5 @@
 
-import React, { createContext, useContext, useState, useCallback } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { invalidateTermRelatedData } from "@/lib/query-client";
+import React, { createContext, useContext } from "react";
 import { TermData, TermContextType, TermDateRange } from "./types";
 import { useTermSelection } from "./useTermSelection";
 import { useTermQuery } from "./useTermQuery";
@@ -16,7 +13,9 @@ export function TermProvider({ children }: { children: React.ReactNode }) {
     selectedTermNumber, 
     selectedYear, 
     setSelectedTermNumber, 
-    setSelectedYear 
+    setSelectedYear,
+    years,
+    terms
   } = useTermSelection();
   
   // Term data loading with React Query
@@ -46,7 +45,9 @@ export function TermProvider({ children }: { children: React.ReactNode }) {
     selectedYear,
     setSelectedTermNumber,
     setSelectedYear,
-    termDateRange
+    termDateRange,
+    years,
+    terms
   };
 
   return (

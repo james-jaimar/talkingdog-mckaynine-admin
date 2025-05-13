@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { TermData } from "./types";
 
-export function useTermQuery(termNumber: number | null, year: number | null) {
+export function useTermQuery(termNumber: string | null, year: number | null) {
   const {
     data: termData,
     isLoading: isTermLoading,
@@ -25,6 +25,7 @@ export function useTermQuery(termNumber: number | null, year: number | null) {
           term_number,
           start_date,
           end_date,
+          current,
           academic_years(year)
         `)
         .eq('term_number', termNumber)

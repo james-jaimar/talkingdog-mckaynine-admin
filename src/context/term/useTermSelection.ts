@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 
 export function useTermSelection() {
-  const [selectedTermNumber, setSelectedTermNumber] = useState<number | null>(null);
+  const [selectedTermNumber, setSelectedTermNumber] = useState<string | null>(null);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   
   // Initialize with current term if not set
@@ -14,7 +14,7 @@ export function useTermSelection() {
       
       // Simple logic to determine current term
       // Terms 1: Jan-Mar, 2: Apr-Jun, 3: Jul-Sep, 4: Oct-Dec
-      const currentTerm = Math.ceil(currentMonth / 3);
+      const currentTerm = Math.ceil(currentMonth / 3).toString(); // Convert to string
       
       setSelectedTermNumber(currentTerm);
       setSelectedYear(currentDate.getFullYear());
@@ -23,10 +23,19 @@ export function useTermSelection() {
     }
   }, [selectedTermNumber]);
   
+  // Generate available years (current year and 2 years before/after)
+  const currentYear = new Date().getFullYear();
+  const years = [currentYear-2, currentYear-1, currentYear, currentYear+1, currentYear+2];
+  
+  // Available terms
+  const terms = ['1', '2', '3', '4'];
+  
   return {
     selectedTermNumber,
     selectedYear,
     setSelectedTermNumber,
-    setSelectedYear
+    setSelectedYear,
+    years,
+    terms
   };
 }

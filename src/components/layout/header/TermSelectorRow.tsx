@@ -33,7 +33,7 @@ export function TermSelectorRow() {
 
   const handleTermChange = (value: string) => {
     if (value === '1' || value === '2' || value === '3' || value === '4') {
-      setSelectedTermNumber(value as '1' | '2' | '3' | '4');
+      setSelectedTermNumber(value);
       toast.info(`Changing to Term ${value}`, { duration: 2000 });
       
       // Force invalidate financial queries when changing terms
@@ -109,7 +109,7 @@ export function TermSelectorRow() {
           <div className="flex items-center gap-4">
             <div>
               <Select
-                value={selectedYear.toString()}
+                value={selectedYear?.toString()}
                 onValueChange={handleYearChange}
                 disabled={isTermLoading && !termData}
               >
@@ -128,7 +128,7 @@ export function TermSelectorRow() {
 
             <div>
               <Select
-                value={selectedTermNumber}
+                value={selectedTermNumber || undefined}
                 onValueChange={handleTermChange}
                 disabled={isTermLoading && !termData}
               >
