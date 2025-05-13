@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/auth";
@@ -27,6 +26,15 @@ export interface TenantNotificationSettings {
   emailTemplates?: EmailTemplate[];
   createdAt?: string;
   updatedAt?: string;
+}
+
+// Email template update params type
+export interface EmailTemplateUpdateParams {
+  0: string; // template type
+  1: {
+    subject: string;
+    content: string;
+  }
 }
 
 // Interface for branch_notifications to match database schema
@@ -247,9 +255,9 @@ export function useTenantNotifications() {
     }
   });
   
-  // Update email template
+  // Update email template - Fix the type to match what the component is passing
   const { mutateAsync: updateEmailTemplate, isPending: isUpdatingTemplate } = useMutation({
-    mutationFn: async (params: { 0: string, 1: { subject: string; content: string } }) => {
+    mutationFn: async (params: EmailTemplateUpdateParams) => {
       if (!currentTenant) throw new Error("No tenant selected");
       
       const templateType = params[0];

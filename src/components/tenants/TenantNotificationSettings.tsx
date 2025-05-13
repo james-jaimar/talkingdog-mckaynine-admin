@@ -78,10 +78,13 @@ export function TenantNotificationSettings() {
   
   const handleSaveTemplate = async () => {
     try {
-      // Pass the template type and template data as separate arguments
-      await updateEmailTemplate(selectedTemplate, {
-        subject: templateSubject,
-        content: templateContent
+      // Fix: Pass the parameters in the expected format - as an object with 0 and 1 properties
+      await updateEmailTemplate({
+        0: selectedTemplate,
+        1: {
+          subject: templateSubject,
+          content: templateContent
+        }
       });
       
       toast({
