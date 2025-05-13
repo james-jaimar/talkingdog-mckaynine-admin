@@ -16,7 +16,7 @@ export function useInvoicesList() {
   return useQuery({
     queryKey: ['invoices', branchId], // Include branchId in the query key for proper cache invalidation
     queryFn: async () => {
-      console.log("Fetching invoices filtered by branch:", currentBranch?.name);
+      console.log("📊 Fetching invoices filtered by branch:", currentBranch?.name);
       
       try {
         // First, fetch invoices with client data, filtered by branch
@@ -30,11 +30,11 @@ export function useInvoicesList() {
           .order('created_at', { ascending: false });
 
         if (invoicesError) {
-          console.error("Error fetching invoices basic data:", invoicesError);
+          console.error("❌ Error fetching invoices basic data:", invoicesError);
           return handleQueryError(invoicesError, "Error fetching invoices");
         }
         
-        console.log(`Retrieved ${invoicesData?.length || 0} invoices for branch ${currentBranch?.name}`);
+        console.log(`✅ Retrieved ${invoicesData?.length || 0} invoices for branch ${currentBranch?.name}`);
         
         if (!invoicesData || invoicesData.length === 0) {
           return [];
@@ -50,7 +50,7 @@ export function useInvoicesList() {
               .eq('invoice_id', invoice.id);
               
             if (itemsError) {
-              console.error(`Error fetching items for invoice ${invoice.id}:`, itemsError);
+              console.error(`❌ Error fetching items for invoice ${invoice.id}:`, itemsError);
               return {
                 ...invoice,
                 client: invoice.clients,
@@ -87,6 +87,7 @@ export function useInvoicesList() {
                     class_schedules (
                       id, 
                       start_time,
+                      term_id,
                       class_id,
                       classes (id, name, description, course_fee)
                     )
@@ -95,20 +96,20 @@ export function useInvoicesList() {
                   .maybeSingle();
 
                 if (bookingError || !booking) {
-                  console.warn(`Issue fetching booking data for booking ID ${item.booking_id}:`, bookingError);
+                  console.warn(`⚠️ Issue fetching booking data for booking ID ${item.booking_id}:`, bookingError);
                   return enhancedItem as InvoiceItem;
                 }
 
-                console.log(`Found booking for item ${item.id}:`, booking);
-                
                 // Now create the bookings property with proper structure
                 if (booking.dogs && booking.class_schedules?.classes) {
                   const dogName = booking.dogs.name;
                   const className = booking.class_schedules.classes.name;
                   const classDescription = booking.class_schedules.classes.description;
                   const classPrice = booking.class_schedules.classes.course_fee;
+                  const termId = booking.class_schedules.term_id;
                   
-                  console.log(`Enhanced item with class: ${className} and dog: ${dogName}`);
+                  // Include term_id in the enhanced item
+                  enhancedItem.term_id = termId;
                   
                   // Update description with class and dog info
                   enhancedItem.description = `${className} - ${dogName}`;
@@ -129,6 +130,7 @@ export function useInvoicesList() {
                     class_schedules: {
                       id: booking.class_schedules.id,
                       start_time: booking.class_schedules.start_time || new Date().toISOString(),
+                      term_id: termId,
                       class_id: booking.class_schedules.class_id,
                       classes: {
                         id: booking.class_schedules.classes.id,
@@ -141,7 +143,7 @@ export function useInvoicesList() {
                 }
                 
               } catch (err) {
-                console.error(`Error processing booking data for item ${item.id}:`, err);
+                console.error(`❌ Error processing booking data for item ${item.id}:`, err);
               }
               
               return enhancedItem as InvoiceItem;
@@ -150,6 +152,7 @@ export function useInvoicesList() {
             // Extract class and dog info for summary
             let classInfo = null;
             let dogInfo = null;
+            let termId = null;
             
             for (const item of enhancedItems) {
               if (item.bookings) {
@@ -159,7 +162,10 @@ export function useInvoicesList() {
                 if (!classInfo && item.bookings.class_schedules?.classes?.name) {
                   classInfo = item.bookings.class_schedules.classes.name;
                 }
-                if (dogInfo && classInfo) break;
+                if (!termId && item.bookings.class_schedules?.term_id) {
+                  termId = item.bookings.class_schedules.term_id;
+                }
+                if (dogInfo && classInfo && termId) break;
               }
             }
             
@@ -168,11 +174,12 @@ export function useInvoicesList() {
               client: invoice.clients || null,
               items: enhancedItems,
               classInfo,
-              dogInfo
+              dogInfo,
+              term_id: termId  // Store the term_id at invoice level for easier filtering
             };
             
           } catch (error) {
-            console.error(`Error processing invoice ${invoice.id}:`, error);
+            console.error(`❌ Error processing invoice ${invoice.id}:`, error);
             return {
               ...invoice,
               client: invoice.clients || null,
@@ -181,13 +188,13 @@ export function useInvoicesList() {
           }
         }));
 
-        console.log("Final processed invoices for branch:", invoicesWithItems);
+        console.log("✅ Final processed invoices for branch:", invoicesWithItems.length);
         
         // Return as Invoice array with type assertion to satisfy TypeScript
         return invoicesWithItems as unknown as Invoice[];
         
       } catch (error) {
-        console.error("Unexpected error in useInvoicesList:", error);
+        console.error("❌ Unexpected error in useInvoicesList:", error);
         throw error;
       }
     },

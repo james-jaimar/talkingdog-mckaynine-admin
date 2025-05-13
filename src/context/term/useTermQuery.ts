@@ -12,16 +12,16 @@ export function useTermQuery(termNumber: string | null, year: number | null) {
   } = useQuery({
     queryKey: ['term', termNumber, year],
     queryFn: async (): Promise<TermData | null> => {
-      console.log(`Fetching term data for Term ${termNumber}, Year ${year}`);
+      console.log(`📆 Fetching term data for Term ${termNumber}, Year ${year}`);
       
       if (!termNumber || !year) {
-        console.log("No term number or year provided, returning null");
+        console.log("⚠️ No term number or year provided, returning null");
         return null;
       }
 
       // Validate that term number is one of the allowed values
       if (!["1", "2", "3", "4"].includes(termNumber)) {
-        console.error(`Invalid term number: ${termNumber}. Must be one of: "1", "2", "3", "4"`);
+        console.error(`❌ Invalid term number: ${termNumber}. Must be one of: "1", "2", "3", "4"`);
         return null;
       }
 
@@ -30,7 +30,7 @@ export function useTermQuery(termNumber: string | null, year: number | null) {
       
       try {
         // First check if there's a current term in this year and term number
-        const { data: currentTerm } = await supabase
+        const { data: currentTerm, error: currentTermError } = await supabase
           .from('terms')
           .select(`
             id, 
@@ -44,10 +44,14 @@ export function useTermQuery(termNumber: string | null, year: number | null) {
           .eq('academic_years.year', year)
           .eq('current', true)
           .maybeSingle();
+          
+        if (currentTermError) {
+          console.error("❌ Error fetching current term:", currentTermError);
+        }
         
         // If there's a current term, return it
         if (currentTerm) {
-          console.log("Found current term:", currentTerm);
+          console.log("✅ Found current term:", currentTerm);
           return currentTerm as TermData;
         }
         
@@ -68,19 +72,19 @@ export function useTermQuery(termNumber: string | null, year: number | null) {
           .limit(1);
 
         if (error) {
-          console.error("Error fetching term:", error);
+          console.error("❌ Error fetching term:", error);
           throw error;
         }
         
         if (!data || data.length === 0) {
-          console.log("No terms found with the given criteria");
+          console.log("⚠️ No terms found with the given criteria");
           return null;
         }
         
-        console.log("Term data fetched:", data[0]);
+        console.log("✅ Term data fetched:", data[0]);
         return data[0] as TermData;
       } catch (error) {
-        console.error("Error fetching term:", error);
+        console.error("❌ Error fetching term:", error);
         throw error;
       }
     },

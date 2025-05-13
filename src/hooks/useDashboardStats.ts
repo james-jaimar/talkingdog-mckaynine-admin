@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useBranch } from '@/context/BranchContext';
 import { useTerm } from '@/context/TermContext';
 import { useCallback, useState } from 'react';
+import { toast } from 'sonner';
 
 export function useDashboardStats() {
   const { currentBranch } = useBranch();
@@ -20,7 +21,7 @@ export function useDashboardStats() {
   const { data: clientCount, refetch: refetchClients } = useQuery({
     queryKey: ['dashboard-stats-clients', currentBranch?.id],
     queryFn: async () => {
-      console.log("Fetching clients count for branch:", currentBranch?.id);
+      console.log("📊 Fetching clients count for branch:", currentBranch?.id);
       if (!currentBranch?.id) return 0;
       const { count } = await supabase
         .from('clients')
@@ -36,7 +37,7 @@ export function useDashboardStats() {
   const { data: dogCount, refetch: refetchDogs } = useQuery({
     queryKey: ['dashboard-stats-dogs', currentBranch?.id],
     queryFn: async () => {
-      console.log("Fetching dogs count for branch:", currentBranch?.id);
+      console.log("📊 Fetching dogs count for branch:", currentBranch?.id);
       if (!currentBranch?.id) return 0;
       
       // Use a different approach: first get all clients from this branch
@@ -65,7 +66,7 @@ export function useDashboardStats() {
   const { data: bookingCount, refetch: refetchBookings } = useQuery({
     queryKey: ['dashboard-stats-bookings', currentBranch?.id, termData?.id, refreshTrigger],
     queryFn: async () => {
-      console.log("Fetching bookings count for branch:", currentBranch?.id, "and term:", termData?.id);
+      console.log("📊 Fetching bookings count for branch:", currentBranch?.id, "and term:", termData?.id);
       if (!currentBranch?.id) return 0;
       
       let query = supabase
@@ -74,15 +75,18 @@ export function useDashboardStats() {
         .eq('clients.branch_id', currentBranch.id);
       
       if (termData?.id) {
+        console.log(`📅 Filtering bookings by term ID: ${termData.id}`);
         query = query.eq('class_schedules.term_id', termData.id);
       }
       
       const { count, error } = await query;
       
       if (error) {
-        console.error("Error fetching bookings count:", error);
+        console.error("❌ Error fetching bookings count:", error);
         return 0;
       }
+
+      console.log(`✅ Found ${count} bookings for term ${termData?.id || 'any'}`);
       
       return count || 0;
     },
@@ -94,7 +98,7 @@ export function useDashboardStats() {
   const { data: upcomingClassCount, refetch: refetchClasses } = useQuery({
     queryKey: ['dashboard-stats-classes', currentBranch?.id, termData?.id, refreshTrigger],
     queryFn: async () => {
-      console.log("Fetching upcoming classes for branch:", currentBranch?.id, "and term:", termData?.id);
+      console.log("📊 Fetching upcoming classes for branch:", currentBranch?.id, "and term:", termData?.id);
       if (!currentBranch?.id) return 0;
       const today = new Date().toISOString();
       
@@ -105,15 +109,18 @@ export function useDashboardStats() {
         .gte('start_time', today);
       
       if (termData?.id) {
+        console.log(`📅 Filtering classes by term ID: ${termData.id}`);
         query = query.eq('term_id', termData.id);
       }
       
       const { count, error } = await query;
       
       if (error) {
-        console.error("Error fetching upcoming classes count:", error);
+        console.error("❌ Error fetching upcoming classes count:", error);
         return 0;
       }
+
+      console.log(`✅ Found ${count} upcoming classes for term ${termData?.id || 'any'}`);
       
       return count || 0;
     },
@@ -123,7 +130,7 @@ export function useDashboardStats() {
 
   // Function to refetch all stats
   const refetchAllStats = useCallback(() => {
-    console.log("Refetching all dashboard stats");
+    console.log("🔄 Refetching all dashboard stats");
     setIsLoading(true);
     
     Promise.all([
@@ -131,7 +138,13 @@ export function useDashboardStats() {
       refetchDogs(),
       refetchBookings(),
       refetchClasses()
-    ]).finally(() => {
+    ]).then(() => {
+      console.log("✅ All dashboard stats refreshed successfully");
+      toast.success("Dashboard stats refreshed");
+    }).catch((err) => {
+      console.error("❌ Error refreshing dashboard stats:", err);
+      toast.error("Failed to refresh dashboard stats");
+    }).finally(() => {
       setTimeout(() => setIsLoading(false), 500);
     });
   }, [refetchClients, refetchDogs, refetchBookings, refetchClasses]);

@@ -1,3 +1,4 @@
+
 import { format } from "date-fns";
 import { useTerm } from "@/context/TermContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -7,6 +8,7 @@ import { Loader2, Calendar, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { invalidateTermRelatedData } from "@/lib/query-client";
 
 export function TermSelectorRow() {
   const {
@@ -19,7 +21,8 @@ export function TermSelectorRow() {
     error,
     years,
     terms,
-    refetchTerm
+    refetchTerm,
+    termDateRange
   } = useTerm();
   
   const queryClient = useQueryClient();
@@ -32,23 +35,38 @@ export function TermSelectorRow() {
 
   const handleTermChange = (value: string) => {
     if (value === '1' || value === '2' || value === '3' || value === '4') {
+      console.log(`🔄 Term selector: Changing to Term ${value}`);
       setSelectedTermNumber(value);
       toast.info(`Changing to Term ${value}`, { duration: 2000 });
       
-      // Force invalidate financial queries when changing terms
+      // Force invalidate all related queries when changing terms
       setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
-        queryClient.invalidateQueries({ queryKey: ['invoices'] });
+        console.log("🔄 Term changed via selector - invalidating all term-related queries");
+        invalidateTermRelatedData()
+          .then(() => {
+            console.log("✅ Data refresh complete after term change");
+          })
+          .catch((err) => {
+            console.error("❌ Failed to refresh data after term change:", err);
+          });
       }, 100);
     }
   };
 
   const handleManualRefresh = () => {
     if (refetchTerm) {
+      console.log("🔄 Manual term refresh requested");
       refetchTerm();
-      queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
-      queryClient.invalidateQueries({ queryKey: ['invoices'] });
-      toast.success("Term data refreshed");
+      
+      invalidateTermRelatedData()
+        .then(() => {
+          toast.success("Data refreshed for the current term");
+          console.log("✅ Manual term refresh complete");
+        })
+        .catch((err) => {
+          toast.error("Failed to refresh data");
+          console.error("❌ Manual term refresh failed:", err);
+        });
     }
   };
 

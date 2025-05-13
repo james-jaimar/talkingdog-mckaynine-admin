@@ -9,10 +9,11 @@ import { Users, Dog, Book, Calendar } from "lucide-react";
 import { useTerm } from "@/context/TermContext";
 import { useEffect } from "react";
 import { Helmet } from "react-helmet";
+import { toast } from "sonner";
 
 export default function Dashboard() {
   const { currentBranch } = useBranch();
-  const { termData, isTermLoading, selectedTermNumber, selectedYear } = useTerm();
+  const { termData, isTermLoading, selectedTermNumber, selectedYear, termDateRange } = useTerm();
   
   const {
     clientCount,
@@ -25,13 +26,20 @@ export default function Dashboard() {
 
   // Fetch stats when component mounts or term changes
   useEffect(() => {
-    console.log("Dashboard detected term change, refetching stats", {
+    console.log("📊 Dashboard detected term change, refetching stats", {
       termId: termData?.id,
       termNumber: selectedTermNumber,
-      year: selectedYear
+      year: selectedYear,
+      dateRange: termDateRange
     });
+    
+    if (termData) {
+      // Only show toast if there's actual term data
+      toast.info(`Term ${termData.term_number} data loaded`);
+    }
+    
     refetchAllStats();
-  }, [termData?.id, selectedTermNumber, selectedYear, refetchAllStats]);
+  }, [termData?.id, selectedTermNumber, selectedYear, refetchAllStats, termDateRange]);
 
   // Determine if we're in a loading state
   const isLoading = isTermLoading || statsLoading;
@@ -44,6 +52,16 @@ export default function Dashboard() {
       <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
         <div className="flex items-center justify-between">
           <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
+          {termData && (
+            <div className="text-sm text-muted-foreground">
+              Current term: Term {termData.term_number}, {selectedYear || ''}
+              {termDateRange && (
+                <span className="ml-2">
+                  ({new Date(termDateRange.startDate).toLocaleDateString()} - {new Date(termDateRange.endDate).toLocaleDateString()})
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Stats Cards */}

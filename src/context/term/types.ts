@@ -1,13 +1,17 @@
 
+export type TermNumber = '1' | '2' | '3' | '4';
+
+export interface AcademicYear {
+  year: number;
+}
+
 export interface TermData {
   id: string;
-  term_number: string; // Changed from number to string to match database
+  term_number: TermNumber;
   start_date: string;
   end_date: string;
-  academic_years?: {
-    year: number;
-  };
-  current?: boolean; // Added to match actual data structure
+  current: boolean;
+  academic_years?: AcademicYear;
 }
 
 export interface TermDateRange {
@@ -19,13 +23,12 @@ export interface TermContextType {
   termData: TermData | null;
   isTermLoading: boolean;
   error: Error | null;
-  refetchTerm: () => Promise<any>;
-  selectedTermNumber: string | null; // Changed from number to string
+  refetchTerm: () => void;
+  selectedTermNumber: string | null;
   selectedYear: number | null;
-  setSelectedTermNumber: (termNumber: string) => void; // Changed parameter type
-  setSelectedYear: (year: number) => void;
+  setSelectedTermNumber: React.Dispatch<React.SetStateAction<string | null>>;
+  setSelectedYear: React.Dispatch<React.SetStateAction<number | null>>;
   termDateRange: TermDateRange | null;
-  // Add missing properties needed by TermSelectorRow
   years: number[];
   terms: string[];
 }
