@@ -7,10 +7,9 @@ import { toast } from "sonner";
  */
 export async function cleanupTrainerPayments() {
   try {
-    // Note: Using the native rpc function since the custom function was removed
+    // Use only the valid parameters for the function
     const { data, error } = await supabase.rpc('calculate_trainer_payment', {
-      p_booking_id: null,
-      cleanup_duplicates: true
+      p_booking_id: null
     });
 
     if (error) {

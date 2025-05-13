@@ -51,16 +51,16 @@ export const TermProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, [availableTerms, selectedTermId]);
 
-  // Calculate date range for selected term
-  const termDateRange = termData ? {
-    startDate: termData.startDate,
-    endDate: termData.endDate
-  } : null;
-
   // Get the data for the selected term
-  const termData = selectedTermId
+  const selectedTermData = selectedTermId
     ? availableTerms.find(term => term.id === selectedTermId) || null
     : availableTerms.find(term => term.current) || availableTerms[0] || null;
+
+  // Calculate date range for selected term
+  const termDateRange = selectedTermData ? {
+    startDate: selectedTermData.startDate,
+    endDate: selectedTermData.endDate
+  } : null;
 
   // Get available years and terms for the selector
   const years = Array.from(
@@ -84,7 +84,7 @@ export const TermProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   return (
     <TermContext.Provider
       value={{
-        termData,
+        termData: selectedTermData,
         loading: termQuery.isPending,
         isTermLoading: termQuery.isPending,
         error: termQuery.error as Error | null,

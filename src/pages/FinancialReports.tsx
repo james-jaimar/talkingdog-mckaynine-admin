@@ -54,7 +54,7 @@ export default function FinancialReports() {
   // Also refresh when term changes
   useEffect(() => {
     if (termData?.id) {
-      console.log(`FinancialReports: Term changed to ${termData.term_number}, refreshing data`);
+      console.log(`FinancialReports: Term changed to ${termData.termNumber}, refreshing data`);
       refreshFinancialData();
     }
   }, [termData?.id]);

@@ -60,10 +60,9 @@ export function useMarkInvoiceAsSent() {
       
       // Run cleanup function for any duplicate trainer payments
       try {
-        // Note: Temporarily using the native rpc function here since the previous function was deleted
+        // Use only the parameters that are valid
         await supabase.rpc('calculate_trainer_payment', {
-          p_booking_id: null,
-          cleanup_duplicates: true
+          p_booking_id: null
         });
       } catch (cleanupError) {
         console.error("Error cleaning up duplicate trainer payments:", cleanupError);
@@ -92,10 +91,9 @@ export function useMarkInvoiceAsSent() {
       
       // Try to run the trainer payment cleanup again
       try {
-        // Note: Temporarily using the native rpc function here
+        // Use only the parameters that are valid
         supabase.rpc('calculate_trainer_payment', {
-          p_booking_id: null,
-          cleanup_duplicates: true
+          p_booking_id: null
         });
       } catch (error) {
         console.error("Error in secondary cleanup attempt:", error);

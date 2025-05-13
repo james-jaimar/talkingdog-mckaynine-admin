@@ -32,7 +32,7 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
   // Add effect to refresh data when term changes
   useEffect(() => {
     if (termData?.id) {
-      console.log(`TrainerReportsTab: Term changed to ${termData.term_number}, refreshing data`);
+      console.log(`TrainerReportsTab: Term changed to ${termData.termNumber}, refreshing data`);
       queryClient.invalidateQueries({ queryKey: ['trainer-payments'] });
       refetch();
     }
