@@ -1,12 +1,12 @@
 
 import { useTerm } from "@/context/TermContext";
 import { Card, CardContent } from "@/components/ui/card";
-import { format, parseISO } from "date-fns";
+import { format } from "date-fns";
 import { CalendarDays, Clock, Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export function TermDisplay() {
-  const { termData, isTermLoading, error } = useTerm();
+  const { termData, isTermLoading, error, selectedYear } = useTerm();
   const errorMessage = error?.message || null;
 
   if (isTermLoading) {
@@ -39,8 +39,18 @@ export function TermDisplay() {
   }
 
   // Ensure we have valid dates by parsing them properly
-  const startDate = termData.start_date ? parseISO(termData.start_date) : new Date();
-  const endDate = termData.end_date ? parseISO(termData.end_date) : new Date();
+  // Explicitly create new Date objects to ensure proper date handling
+  const startDate = termData.start_date ? new Date(termData.start_date) : new Date();
+  const endDate = termData.end_date ? new Date(termData.end_date) : new Date();
+  
+  // Log date information for debugging
+  console.log("TermDisplay dates:", {
+    startDateRaw: termData.start_date,
+    endDateRaw: termData.end_date,
+    startDateObj: startDate,
+    endDateObj: endDate,
+    year: termData.academic_years?.year || selectedYear
+  });
 
   return (
     <Card>
@@ -48,7 +58,7 @@ export function TermDisplay() {
         <div className="flex items-center mb-3">
           <CalendarDays className="h-5 w-5 mr-3 text-mckaynine-600" />
           <h3 className="text-lg font-semibold">
-            Term {termData.term_number}, {termData.academic_years?.year || startDate.getFullYear()}
+            Term {termData.term_number}, {termData.academic_years?.year || selectedYear}
           </h3>
         </div>
         <div className="flex items-center text-sm text-gray-600 ml-8">

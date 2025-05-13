@@ -47,9 +47,23 @@ export default function Dashboard() {
 
   // Format date range for display, ensuring we use the correct year
   const formattedDateRange = termDateRange ? {
-    startDate: format(parseISO(termDateRange.startDate), 'M/d/yyyy'),
-    endDate: format(parseISO(termDateRange.endDate), 'M/d/yyyy')
+    startDate: termDateRange.startDate ? format(new Date(termDateRange.startDate), 'M/d/yyyy') : '',
+    endDate: termDateRange.endDate ? format(new Date(termDateRange.endDate), 'M/d/yyyy') : ''
   } : null;
+
+  // Add debug logging for term dates to help troubleshoot
+  useEffect(() => {
+    if (termData) {
+      console.log("Term data in Dashboard:", {
+        termNumber: termData.term_number,
+        year: termData.academic_years?.year || selectedYear,
+        startDate: termData.start_date,
+        endDate: termData.end_date,
+        parsedStartDate: termData.start_date ? new Date(termData.start_date) : null,
+        parsedEndDate: termData.end_date ? new Date(termData.end_date) : null
+      });
+    }
+  }, [termData, selectedYear]);
 
   return (
     <DashboardLayout>

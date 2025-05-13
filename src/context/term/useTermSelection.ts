@@ -17,10 +17,10 @@ export function useTermSelection() {
       // Terms 1: Jan-Mar, 2: Apr-Jun, 3: Jul-Sep, 4: Oct-Dec
       const currentTerm = Math.ceil(currentMonth / 3).toString(); // Convert to string
       
+      console.log(`Initializing term selection to Term ${currentTerm}, ${currentYear} based on current date`);
+      
       setSelectedTermNumber(currentTerm);
       setSelectedYear(currentYear);
-      
-      console.log(`Term initialized to Term ${currentTerm}, ${currentYear}`);
     }
   }, [selectedTermNumber, selectedYear]);
   

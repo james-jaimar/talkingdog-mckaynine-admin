@@ -1,3 +1,4 @@
+
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { TermData } from "./types";
@@ -49,7 +50,8 @@ export function useTermQuery(termNumber: string | null, year: number | null) {
         const academicYearId = academicYearData?.id;
         
         // Try to find a current term in this year and term number first
-        let query = supabase
+        // FIX: Use a more explicit approach to find the correct term
+        let termQuery = supabase
           .from('terms')
           .select(`
             id, 
@@ -59,64 +61,60 @@ export function useTermQuery(termNumber: string | null, year: number | null) {
             current,
             academic_years(year)
           `);
-          
-        // If we have a valid academic year ID, use it for the query
+        
+        // Step 1: If we have a valid academic year ID, prioritize finding a term with matching academic_year_id
         if (academicYearId) {
-          query = query
+          // First try to find a term that matches BOTH academic year AND term number
+          const { data: yearTermMatch, error: yearTermError } = await termQuery
             .eq('academic_year_id', academicYearId)
-            .eq('term_number', validTermNumber);
-        } else {
-          // Otherwise, try to join with academic_years and filter
-          query = query
             .eq('term_number', validTermNumber)
-            .eq('academic_years.year', year);
-        }
-        
-        // Try to get the current term for this period first
-        const { data: currentTerm, error: currentTermError } = await query
-          .eq('current', true)
-          .maybeSingle();  // Use maybeSingle instead of single to avoid errors when no row is found
+            .order('current', { ascending: false }) // Prioritize current terms
+            .maybeSingle();
           
-        if (currentTermError && currentTermError.code !== 'PGRST116') {
-          console.error("❌ Error fetching current term:", currentTermError);
-          throw currentTermError;
+          if (yearTermMatch) {
+            console.log(`✅ Found term ${termNumber} for year ${year}:`, yearTermMatch);
+            return yearTermMatch as TermData;
+          } else {
+            console.log(`⚠️ No term ${termNumber} found for academic year ${year}, falling back to other methods`);
+          }
         }
         
-        // If there's a current term, return it
-        if (currentTerm) {
-          console.log("✅ Found current term:", currentTerm);
-          return currentTerm as TermData;
+        // Step 2: Try to join with academic_years and filter explicitly by year and term_number
+        const { data: yearJoinMatch, error: yearJoinError } = await supabase
+          .from('terms')
+          .select(`
+            id, 
+            term_number,
+            start_date,
+            end_date,
+            current,
+            academic_years(id, year)
+          `)
+          .eq('term_number', validTermNumber)
+          .eq('academic_years.year', year)
+          .order('current', { ascending: false }) // Prioritize current terms
+          .maybeSingle();
+        
+        if (yearJoinMatch) {
+          console.log(`✅ Found term ${termNumber} by joining with academic year ${year}:`, yearJoinMatch);
+          return yearJoinMatch as TermData;
         }
         
-        // Otherwise get any term matching criteria
-        const { data, error } = await query
-          .order('start_date', { ascending: false })
-          .limit(1);
-
-        if (error) {
-          console.error("❌ Error fetching term:", error);
-          throw error;
-        }
+        // Step 3: If we still don't have a match, create a default term with proper dates for the specified year
+        console.log(`⚠️ No term ${termNumber} found for year ${year}, creating default term data`);
         
-        if (!data || data.length === 0) {
-          console.log(`⚠️ No terms found for Term ${termNumber}, Year ${year}`);
-          
-          // Create a default term data with reasonable dates for the current year
-          const defaultTerm: TermData = {
-            id: 'default-term',
-            term_number: validTermNumber,
-            start_date: getDefaultStartDate(validTermNumber, year),
-            end_date: getDefaultEndDate(validTermNumber, year),
-            current: false,
-            academic_years: { year: year }
-          };
-          
-          console.log("✅ Created default term data:", defaultTerm);
-          return defaultTerm;
-        }
+        // Create a default term data with reasonable dates for the SELECTED year
+        const defaultTerm: TermData = {
+          id: 'default-term',
+          term_number: validTermNumber,
+          start_date: getDefaultStartDate(validTermNumber, year),
+          end_date: getDefaultEndDate(validTermNumber, year),
+          current: false,
+          academic_years: { year: year }
+        };
         
-        console.log("✅ Term data fetched:", data[0]);
-        return data[0] as TermData;
+        console.log("✅ Created default term data:", defaultTerm);
+        return defaultTerm;
       } catch (error) {
         console.error("❌ Error fetching term:", error);
         throw error;
@@ -136,6 +134,7 @@ export function useTermQuery(termNumber: string | null, year: number | null) {
 
 // Helper function to get default start date for a term in a specific year
 function getDefaultStartDate(termNumber: string, year: number): string {
+  // Ensure we're using the specified year, not a hardcoded one
   switch (termNumber) {
     case "1": return `${year}-01-01`; // Term 1: Jan-Mar
     case "2": return `${year}-04-01`; // Term 2: Apr-Jun
@@ -147,6 +146,7 @@ function getDefaultStartDate(termNumber: string, year: number): string {
 
 // Helper function to get default end date for a term in a specific year
 function getDefaultEndDate(termNumber: string, year: number): string {
+  // Ensure we're using the specified year, not a hardcoded one
   switch (termNumber) {
     case "1": return `${year}-03-31`; // Term 1: Jan-Mar
     case "2": return `${year}-06-30`; // Term 2: Apr-Jun
