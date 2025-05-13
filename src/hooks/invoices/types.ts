@@ -64,7 +64,7 @@ export interface BookingWithDetails {
     id: string;
     term_id?: string;
     start_time: string;
-    class_id?: string; // Add the missing class_id property
+    class_id: string; // Added the missing class_id property
     classes: {
       id: string;
       name: string;
@@ -107,4 +107,29 @@ export interface Invoice {
   trainer_fee?: number;
   franchise_fee?: number;
   admin_fee?: number;
+}
+
+// Add the InvoiceFormValues interface that was missing
+export interface InvoiceFormValues {
+  client_id: string;
+  invoice_number: string;
+  status: "draft" | "sent" | "paid" | "overdue" | "cancelled";
+  issued_date: Date;
+  due_date: Date;
+  notes?: string;
+  tax_rate: number;
+  items: Array<{
+    id?: string;
+    description: string;
+    quantity: number;
+    unit_price: number;
+    booking_id?: string | null;
+    amount?: number;
+  }>;
+  discount_type: 'fixed' | 'percentage';
+  discount_amount: number;
+  discount_reason?: string;
+  subtotal?: number;
+  total?: number;
+  tax_amount?: number;
 }
