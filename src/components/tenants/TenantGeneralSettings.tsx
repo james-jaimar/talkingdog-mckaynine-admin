@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,20 +16,8 @@ export function TenantGeneralSettings() {
   const [domain, setDomain] = useState(settings?.domain || "");
   const [contactEmail, setContactEmail] = useState(settings?.contactEmail || "");
   const [description, setDescription] = useState(settings?.description || "");
-  const [isActive, setIsActive] = useState(settings?.isActive ?? true);
+  const [isActive, setIsActive] = useState<boolean>(settings?.isActive || true);
   const [maxUsers, setMaxUsers] = useState(settings?.maxUsers?.toString() || "10");
-
-  // Update local state when settings change
-  useEffect(() => {
-    if (settings) {
-      setName(settings.name || "");
-      setDomain(settings.domain || "");
-      setContactEmail(settings.contactEmail || "");
-      setDescription(settings.description || "");
-      setIsActive(settings.isActive ?? true);
-      setMaxUsers(settings.maxUsers?.toString() || "10");
-    }
-  }, [settings]);
 
   const handleSave = async () => {
     try {
@@ -130,7 +118,7 @@ export function TenantGeneralSettings() {
               <Switch
                 id="tenant-active"
                 checked={isActive}
-                onCheckedChange={(checked) => setIsActive(checked)}
+                onCheckedChange={(checked: boolean) => setIsActive(checked)}
               />
               <Label htmlFor="tenant-active">Tenant Active</Label>
               <p className="text-sm text-muted-foreground ml-2">

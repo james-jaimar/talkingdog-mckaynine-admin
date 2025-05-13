@@ -1,4 +1,3 @@
-
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
@@ -21,8 +20,6 @@ export function RecentBookings({ branchId }: RecentBookingsProps) {
       // Don't fetch data if no branch is selected
       if (!branchId) return [];
       
-      console.log("Fetching recent bookings for branch:", branchId, "and term:", termData?.id || "no term selected");
-      
       // Build the query with branch filter
       let query = supabase
         .from('bookings')
@@ -43,7 +40,6 @@ export function RecentBookings({ branchId }: RecentBookingsProps) {
       
       // Filter by term if selected
       if (termData?.id) {
-        console.log(`Adding term filter: ${termData.id}`);
         query = query.eq('class_schedules.term_id', termData.id);
       }
       
@@ -51,12 +47,7 @@ export function RecentBookings({ branchId }: RecentBookingsProps) {
         .order('created_at', { ascending: false })
         .limit(5);
       
-      if (error) {
-        console.error("Error fetching recent bookings:", error);
-        throw error;
-      }
-
-      console.log(`Retrieved ${data?.length || 0} recent bookings`);
+      if (error) throw error;
       return data;
     },
     enabled: !!branchId,

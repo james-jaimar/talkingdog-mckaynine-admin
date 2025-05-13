@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useFinancialQuery } from "@/hooks/financial/useFinancialQuery";
 import { useFinancialProcessor } from "@/hooks/financial/useFinancialProcessor";
 import { ClassFinance } from "@/hooks/financial/types";
@@ -8,7 +8,6 @@ import { useQueryClient } from "@tanstack/react-query";
 export function useClassFinancialData(branchId?: string, fromDate?: string, toDate?: string) {
   const queryClient = useQueryClient();
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [branchMismatch, setBranchMismatch] = useState(false);
   
   const { 
     data: financialData, 
@@ -29,23 +28,6 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
     branch_id: cf.branch_id || financialData?.branchId || branchId
   }));
   
-  // Verify that all class finances are from the correct branch
-  useEffect(() => {
-    if (branchId && classFinances.length > 0) {
-      // Check if the financial data indicates mismatched branch
-      const mismatch = classFinances.some(c => 
-        c.branch_id && c.branch_id !== branchId
-      );
-      
-      if (mismatch) {
-        console.error(`Found financial data for incorrect branch. Current branch: ${branchId}, but some data belongs to other branches.`);
-        setBranchMismatch(true);
-      } else {
-        setBranchMismatch(false);
-      }
-    }
-  }, [classFinances, branchId]);
-  
   const refreshData = async () => {
     await queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
     await queryClient.invalidateQueries({ queryKey: ['financial-bookings', branchId] });
@@ -61,8 +43,7 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
     totalInvoiceCount,
     invalidInvoicesCount,
     totalRevenue: financialData?.totalRevenue || 0,
-    error,
-    branchMismatch
+    error
   };
 }
 

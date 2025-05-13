@@ -62,7 +62,7 @@ export function InvoiceDetailsPanel({ invoice }: InvoiceDetailsPanelProps) {
         
         <div className="mt-6">
           <h3 className="font-medium text-base mb-3">Items</h3>
-          <InvoiceItemsTable items={invoice.items || []} />
+          <InvoiceItemsTable items={invoice.items} />
         </div>
       </CardContent>
     </Card>

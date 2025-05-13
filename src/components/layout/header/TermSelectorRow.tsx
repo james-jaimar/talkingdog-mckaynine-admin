@@ -8,7 +8,6 @@ import { Loader2, Calendar, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { invalidateTermRelatedData } from "@/lib/query-client";
 
 export function TermSelectorRow() {
   const {
@@ -21,8 +20,7 @@ export function TermSelectorRow() {
     error,
     years,
     terms,
-    refetchTerm,
-    termDateRange
+    refetchTerm
   } = useTerm();
   
   const queryClient = useQueryClient();
@@ -35,110 +33,35 @@ export function TermSelectorRow() {
 
   const handleTermChange = (value: string) => {
     if (value === '1' || value === '2' || value === '3' || value === '4') {
-      console.log(`🔄 Term selector: Changing to Term ${value}`);
-      setSelectedTermNumber(value);
+      setSelectedTermNumber(value as '1' | '2' | '3' | '4');
       toast.info(`Changing to Term ${value}`, { duration: 2000 });
       
-      // Force invalidate all related queries when changing terms
+      // Force invalidate financial queries when changing terms
       setTimeout(() => {
-        console.log("🔄 Term changed via selector - invalidating all term-related queries");
-        invalidateTermRelatedData()
-          .then(() => {
-            console.log("✅ Data refresh complete after term change");
-          })
-          .catch((err) => {
-            console.error("❌ Failed to refresh data after term change:", err);
-          });
+        queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
+        queryClient.invalidateQueries({ queryKey: ['invoices'] });
       }, 100);
     }
   };
 
   const handleManualRefresh = () => {
     if (refetchTerm) {
-      console.log("🔄 Manual term refresh requested");
       refetchTerm();
-      
-      invalidateTermRelatedData()
-        .then(() => {
-          toast.success("Data refreshed for the current term");
-          console.log("✅ Manual term refresh complete");
-        })
-        .catch((err) => {
-          toast.error("Failed to refresh data");
-          console.error("❌ Manual term refresh failed:", err);
-        });
+      queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      toast.success("Term data refreshed");
     }
   };
 
-  // If there's an error, show a user-friendly error banner
   if (error) {
     return (
       <div className="border-b border-mckaynine-700 bg-mckaynine-600">
         <div className="container mx-auto px-4 py-2">
-          <div className="flex items-center justify-between">
-            <Alert variant="destructive" className="w-auto bg-red-50 border-red-200 mb-0">
-              <AlertDescription className="flex items-center">
-                <span>Error loading term data.</span>
-                <button 
-                  onClick={handleManualRefresh}
-                  className="ml-4 bg-red-100 hover:bg-red-200 text-red-800 px-2 py-1 rounded text-sm flex items-center"
-                >
-                  <RefreshCw className="h-3 w-3 mr-1" /> Try again
-                </button>
-              </AlertDescription>
-            </Alert>
-            
-            {/* Keep the term/year selectors available even when there's an error */}
-            <div className="flex items-center gap-4">
-              <div>
-                <Select
-                  value={selectedYear?.toString()}
-                  onValueChange={handleYearChange}
-                >
-                  <SelectTrigger className="w-[120px] bg-white text-gray-800">
-                    <SelectValue placeholder="Select year" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {years.map((year) => (
-                      <SelectItem key={year} value={year.toString()}>
-                        {year}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Select
-                  value={selectedTermNumber || undefined}
-                  onValueChange={handleTermChange}
-                >
-                  <SelectTrigger className="w-[120px] bg-white text-gray-800">
-                    <SelectValue placeholder="Select term" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {terms.map((term) => (
-                      <SelectItem key={term} value={term}>
-                        Term {term}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <button
-                onClick={handleManualRefresh}
-                className="p-2 rounded-full hover:bg-mckaynine-700 transition-colors"
-                title="Refresh term data"
-              >
-                {isTermLoading ? (
-                  <Loader2 className="h-5 w-5 animate-spin text-white" />
-                ) : (
-                  <RefreshCw className="h-5 w-5 text-white" />
-                )}
-              </button>
-            </div>
-          </div>
+          <Alert variant="destructive">
+            <AlertDescription>
+              {errorMessage || "Error loading term data. Please try again."}
+            </AlertDescription>
+          </Alert>
         </div>
       </div>
     );
@@ -147,7 +70,6 @@ export function TermSelectorRow() {
   // Calculate if we're displaying initial data or actual loading state
   const displaySelectionControls = !isTermLoading || termData;
 
-  // The rest of the component for normal display
   return (
     <div className="border-b border-mckaynine-700 bg-mckaynine-600">
       <div className="container mx-auto px-4 py-2">
@@ -187,7 +109,7 @@ export function TermSelectorRow() {
           <div className="flex items-center gap-4">
             <div>
               <Select
-                value={selectedYear?.toString()}
+                value={selectedYear.toString()}
                 onValueChange={handleYearChange}
                 disabled={isTermLoading && !termData}
               >
@@ -206,7 +128,7 @@ export function TermSelectorRow() {
 
             <div>
               <Select
-                value={selectedTermNumber || undefined}
+                value={selectedTermNumber}
                 onValueChange={handleTermChange}
                 disabled={isTermLoading && !termData}
               >

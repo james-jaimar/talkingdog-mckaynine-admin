@@ -1,135 +1,106 @@
 
-export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled' | 'invalid';
-
-export interface InvoiceClient {
+// Add or update the Client interface to include branch_id
+export interface Client {
   id: string;
   first_name: string;
   last_name: string;
   email: string;
-  branch_id?: string;
-  // Add missing properties used in ClientInfoCard and ClientInfo
   phone?: string;
   address?: string;
   city?: string;
   postal_code?: string;
+  branch_id: string; // Ensuring branch_id is required
 }
 
-export interface BookingDetails {
-  id: string;
-  dogs: {
-    name: string;
-    breed: string;
-  };
-  class_schedules: {
-    id: string;
-    start_time: string;
-    term_id?: string;
-    class_id: string;
-    classes: {
-      id: string;
-      name: string;
-      description: string;
-      course_fee: number;
-    };
-  };
-}
-
-export interface InvoiceItem {
-  id: string;
-  invoice_id: string;
-  description: string;
-  quantity: number;
-  unit_price: number;
-  amount: number;
-  booking_id?: string | null;
-  term_id?: string | null;
-  bookings?: BookingDetails;
-  created_at?: string;
-  updated_at?: string;
-}
-
-export interface BookingWithDetails {
-  id?: string; 
-  dog_id?: string;
-  client_id?: string;
-  class_schedule_id?: string;
-  booking_id?: string;
-  status?: string;
-  payment_status?: string;
-  dogs?: {
-    name: string;
-    breed?: string;
-  };
-  class_schedules?: {
-    id: string;
-    term_id?: string;
-    start_time: string;
-    class_id: string; // Added the missing class_id property
-    classes: {
-      id: string;
-      name: string;
-      price?: number;
-      course_fee?: number;
-    };
-  };
-}
+// Define InvoiceStatus as a type for better type checking
+export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled' | 'invalid';
 
 export interface Invoice {
   id: string;
   invoice_number: string;
   client_id: string;
-  client?: InvoiceClient;
   issued_date: string;
   due_date: string;
-  subtotal: number;
-  tax_rate: number;
-  tax_amount: number;
-  discount_type: 'percentage' | 'fixed';
-  discount_amount: number;
-  total: number;
   status: InvoiceStatus;
+  total: number;
+  subtotal: number;
+  tax_amount: number;
+  tax_rate: number;
+  discount_amount: number;
+  discount_type: 'fixed' | 'percentage';
+  notes?: string;
   payment_received?: boolean;
   payment_date?: string;
+  client?: Client; // Using the Client interface
   items?: InvoiceItem[];
-  email_sent?: boolean;
-  created_at?: string;
-  updated_at?: string;
-  notes?: string;
-  term_id?: string;
-  original_discount_type?: 'percentage' | 'fixed';
-  original_discount_amount?: number;
-  monetary_discount?: number;
-  discount_reason?: string;
-  classInfo?: string;
-  dogInfo?: string;
   
-  // Add missing properties used in AllocationChartData
+  // Add missing properties that are used in the components
+  monetary_discount?: number;
+  original_discount_amount?: number;
+  original_discount_type?: string;
+  discount_reason?: string;
+  
+  // Additional fields for financial analysis
+  admin_fee?: number;
   trainer_fee?: number;
   franchise_fee?: number;
-  admin_fee?: number;
+  email_sent?: boolean;
+  
+  // Generated fields
+  classInfo?: string;
+  dogInfo?: string;
 }
 
-// Add the InvoiceFormValues interface that was missing
+export interface InvoiceItem {
+  id: string;
+  invoice_id?: string; // Making this optional to match actual data structure
+  description: string;
+  quantity: number;
+  unit_price: number;
+  amount: number;
+  booking_id?: string;
+  
+  // Optional bookings field to support nested data
+  bookings?: BookingWithDetails;
+}
+
+// Add the BookingWithDetails interface for invoice item enhancer
+export interface BookingWithDetails {
+  id: string;
+  dogs?: {
+    name: string;
+    breed: string;
+  };
+  class_schedules?: {
+    id: string;
+    start_time: string;
+    class_id: string;
+    classes: {
+      id: string;
+      name: string;
+      price?: number;
+      description?: string;
+    };
+  };
+}
+
+// Add the InvoiceFormValues type for forms
 export interface InvoiceFormValues {
   client_id: string;
   invoice_number: string;
-  status: "draft" | "sent" | "paid" | "overdue" | "cancelled";
+  status: InvoiceStatus;
   issued_date: Date;
   due_date: Date;
   notes?: string;
   tax_rate: number;
-  items: Array<{
-    id?: string;
+  items: {
     description: string;
     quantity: number;
     unit_price: number;
     booking_id?: string | null;
-    amount?: number;
-  }>;
+    id?: string;
+  }[];
   discount_type: 'fixed' | 'percentage';
   discount_amount: number;
   discount_reason?: string;
-  subtotal?: number;
-  total?: number;
-  tax_amount?: number;
 }

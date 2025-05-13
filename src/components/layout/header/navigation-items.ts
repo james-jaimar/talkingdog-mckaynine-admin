@@ -1,156 +1,133 @@
 
-import { 
-  BarChart3, 
-  Calendar, 
-  Dog, 
-  FileText, 
-  Home, 
-  Layers, 
-  Settings, 
-  Users,
-  Building2,
-  Store,
-  UserCog
-} from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { Home, Book, Calendar, Users, School, CreditCard, FileText, Settings } from "lucide-react";
 
-export interface NavItem {
-  name: string;
-  path: string;
-  icon: LucideIcon;
-  platformAdminOnly?: boolean;
-}
-
-export const adminPrimaryNavItems: NavItem[] = [
+export const adminPrimaryNavItems = [
   {
     name: "Dashboard",
     path: "/dashboard",
-    icon: Home
+    icon: Home,
   },
   {
     name: "Classes",
-    path: "/classes",
-    icon: Layers
+    path: "/admin/classes",
+    icon: School,
   },
   {
     name: "Handlers",
-    path: "/handlers",
-    icon: Users
-  },
-  {
-    name: "Reports",
-    path: "/financial-reports",
-    icon: BarChart3
-  },
-  {
-    name: "Financial Dashboard",
-    path: "/financial-dashboard",
-    icon: BarChart3
+    path: "/admin/handlers",
+    icon: Users,
   },
   {
     name: "Invoices",
     path: "/invoices",
-    icon: FileText
-  }
+    icon: FileText,
+  },
 ];
 
-export const adminSecondaryNavItems: NavItem[] = [
+export const adminSecondaryNavItems = [
   {
-    name: "Class Schedules",
+    name: "Schedules",
     path: "/class-schedules",
-    icon: Calendar
+    icon: Calendar,
   },
   {
     name: "Trainers",
     path: "/trainers",
-    icon: Users
-  },
-  {
-    name: "Users",
-    path: "/user-admin",
-    icon: UserCog
+    icon: School,
   },
   {
     name: "Branches",
     path: "/branches",
-    icon: Building2,
+    icon: Home,
   },
   {
-    name: "Tenant Config",
+    name: "Financial Dashboard",
+    path: "/financial-dashboard",
+    icon: CreditCard,
+  },
+  {
+    name: "Financial Reports",
+    path: "/financial-reports",
+    icon: Book,
+  },
+  {
+    name: "User Management",
+    path: "/user-admin",
+    icon: Users,
+  },
+  {
+    name: "Tenant Configuration",
     path: "/admin/tenant-configuration",
     icon: Settings,
-    platformAdminOnly: true
-  }
+    platformAdminOnly: true,
+  },
 ];
 
-export const trainerPrimaryNavItems: NavItem[] = [
+export const trainerPrimaryNavItems = [
   {
     name: "Dashboard",
-    path: "/trainer-dashboard",
-    icon: Home
-  },
-  {
-    name: "Classes",
-    path: "/classes",
-    icon: Layers
-  },
-  {
-    name: "Handlers",
-    path: "/handlers",
-    icon: Users
-  }
-];
-
-export const trainerSecondaryNavItems: NavItem[] = [
-  {
-    name: "Class Schedules",
-    path: "/class-schedules",
-    icon: Calendar
-  },
-  {
-    name: "Forms",
-    path: "/forms",
-    icon: FileText
-  }
-];
-
-export const handlerPrimaryNavItems: NavItem[] = [
-  {
-    name: "Dashboard",
-    path: "/customer-dashboard",
-    icon: Home
+    path: "/dashboard",
+    icon: Home,
   },
   {
     name: "My Classes",
-    path: "/customer-classes",
-    icon: Layers
+    path: "/trainer/classes",
+    icon: School,
   },
   {
-    name: "My Dogs",
-    path: "/customer-dogs",
-    icon: Dog
+    name: "Handlers",
+    path: "/trainer/handlers",
+    icon: Users,
   },
-  {
-    name: "Messages",
-    path: "/customer-messages",
-    icon: FileText
-  },
-  {
-    name: "Invoices",
-    path: "/customer-invoices",
-    icon: FileText
-  }
 ];
 
-export const handlerSecondaryNavItems: NavItem[] = [
+export const trainerSecondaryNavItems = [
   {
-    name: "Store",
-    path: "/store",
-    icon: Store
+    name: "Schedules",
+    path: "/trainer/schedules",
+    icon: Calendar,
   },
   {
     name: "Profile",
-    path: "/customer-profile",
-    icon: Settings
-  }
+    path: "/trainer/profile",
+    icon: Users,
+  },
+  {
+    name: "Payments",
+    path: "/trainer/payments",
+    icon: CreditCard,
+  },
+];
+
+export const handlerNavItems = [
+  {
+    name: "Dashboard",
+    path: "/customer/dashboard",
+    icon: Home,
+  },
+  {
+    name: "My Classes",
+    path: "/customer/classes",
+    icon: School,
+  },
+  {
+    name: "My Dogs",
+    path: "/customer/dogs",
+    icon: Users,
+  },
+  {
+    name: "Messages",
+    path: "/customer/messages",
+    icon: FileText,
+  },
+  {
+    name: "Invoices",
+    path: "/customer/invoices",
+    icon: CreditCard,
+  },
+  {
+    name: "Profile",
+    path: "/customer/profile",
+    icon: Users,
+  },
 ];

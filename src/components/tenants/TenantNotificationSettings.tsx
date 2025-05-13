@@ -1,53 +1,56 @@
 
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useTenantNotifications } from "@/hooks/tenants/useTenantNotifications";
 import { toast } from "@/components/ui/use-toast";
 
 export function TenantNotificationSettings() {
   const { 
     notifications, 
-    isLoading,
+    isLoading, 
     updateNotificationSettings,
     updateEmailTemplate
   } = useTenantNotifications();
   
-  // Email settings state
   const [fromEmail, setFromEmail] = useState(notifications?.fromEmail || "");
   const [replyToEmail, setReplyToEmail] = useState(notifications?.replyToEmail || "");
   const [emailFooter, setEmailFooter] = useState(notifications?.emailFooter || "");
-  const [sendWelcomeEmail, setSendWelcomeEmail] = useState(notifications?.sendWelcomeEmail ?? true);
-  const [sendInvoiceEmail, setSendInvoiceEmail] = useState(notifications?.sendInvoiceEmail ?? true);
-  const [sendClassReminders, setSendClassReminders] = useState(notifications?.sendClassReminders ?? true);
-  const [sendPaymentReminders, setSendPaymentReminders] = useState(notifications?.sendPaymentReminders ?? true);
   
-  // Welcome email template state
-  const welcomeEmailTemplate = notifications?.emailTemplates?.find(t => t.type === 'welcome') || {
-    type: 'welcome',
-    subject: 'Welcome to McKaynine Training',
-    content: 'Thank you for joining McKaynine Training. We look forward to working with you and your dog.'
+  // Email templates state
+  const [selectedTemplate, setSelectedTemplate] = useState<string>("welcome");
+  const [templateSubject, setTemplateSubject] = useState("");
+  const [templateContent, setTemplateContent] = useState("");
+  
+  // Notification toggles - Fix type issue by using boolean instead of literal true
+  const [sendWelcomeEmail, setSendWelcomeEmail] = useState<boolean>(notifications?.sendWelcomeEmail || true);
+  const [sendInvoiceEmail, setSendInvoiceEmail] = useState<boolean>(notifications?.sendInvoiceEmail || true);
+  const [sendClassReminders, setSendClassReminders] = useState<boolean>(notifications?.sendClassReminders || true);
+  const [sendPaymentReminders, setSendPaymentReminders] = useState<boolean>(notifications?.sendPaymentReminders || true);
+  
+  // Load template content when template selection changes
+  const handleTemplateChange = (value: string) => {
+    setSelectedTemplate(value);
+    
+    // Find the selected template in notifications
+    const template = notifications?.emailTemplates?.find(t => t.type === value);
+    if (template) {
+      setTemplateSubject(template.subject);
+      setTemplateContent(template.content);
+    } else {
+      // Default empty values
+      setTemplateSubject("");
+      setTemplateContent("");
+    }
   };
   
-  const [welcomeSubject, setWelcomeSubject] = useState(welcomeEmailTemplate.subject);
-  const [welcomeContent, setWelcomeContent] = useState(welcomeEmailTemplate.content);
-  
-  // Invoice email template state
-  const invoiceEmailTemplate = notifications?.emailTemplates?.find(t => t.type === 'invoice') || {
-    type: 'invoice',
-    subject: 'Your McKaynine Training Invoice',
-    content: 'Please find attached your invoice for McKaynine Training services.'
-  };
-  
-  const [invoiceSubject, setInvoiceSubject] = useState(invoiceEmailTemplate.subject);
-  const [invoiceContent, setInvoiceContent] = useState(invoiceEmailTemplate.content);
-  
-  const handleSaveEmailSettings = async () => {
+  const handleSaveSettings = async () => {
     try {
       await updateNotificationSettings({
         fromEmail,
@@ -60,62 +63,35 @@ export function TenantNotificationSettings() {
       });
       
       toast({
-        title: "Email settings saved",
-        description: "Your notification settings have been updated."
+        title: "Notification settings updated",
+        description: "Your notification settings have been saved."
       });
     } catch (error) {
-      console.error("Error saving email settings:", error);
+      console.error("Error updating notification settings:", error);
       toast({
-        title: "Error saving settings",
-        description: "There was an error saving your notification settings.",
+        title: "Error updating settings",
+        description: "There was a problem updating notification settings.",
         variant: "destructive"
       });
     }
   };
   
-  const handleSaveWelcomeTemplate = async () => {
+  const handleSaveTemplate = async () => {
     try {
-      // Create a tuple with the template type and data
-      const templateUpdate: [string, { subject: string; content: string }] = [
-        'welcome',
-        { subject: welcomeSubject, content: welcomeContent }
-      ];
-      
-      await updateEmailTemplate(templateUpdate);
+      await updateEmailTemplate(selectedTemplate, {
+        subject: templateSubject,
+        content: templateContent
+      });
       
       toast({
-        title: "Welcome email template saved",
-        description: "Your welcome email template has been updated."
+        title: "Email template updated",
+        description: `The ${selectedTemplate} email template has been saved.`
       });
     } catch (error) {
-      console.error("Error saving welcome email template:", error);
+      console.error("Error updating email template:", error);
       toast({
-        title: "Error saving template",
-        description: "There was an error saving your welcome email template.",
-        variant: "destructive"
-      });
-    }
-  };
-  
-  const handleSaveInvoiceTemplate = async () => {
-    try {
-      // Create a tuple with the template type and data
-      const templateUpdate: [string, { subject: string; content: string }] = [
-        'invoice',
-        { subject: invoiceSubject, content: invoiceContent }
-      ];
-      
-      await updateEmailTemplate(templateUpdate);
-      
-      toast({
-        title: "Invoice email template saved",
-        description: "Your invoice email template has been updated."
-      });
-    } catch (error) {
-      console.error("Error saving invoice email template:", error);
-      toast({
-        title: "Error saving template",
-        description: "There was an error saving your invoice email template.",
+        title: "Error updating template",
+        description: "There was a problem updating the email template.",
         variant: "destructive"
       });
     }
@@ -123,180 +99,197 @@ export function TenantNotificationSettings() {
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Notification Settings</CardTitle>
-          <CardDescription>
-            Configure email notifications and message templates
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Tabs defaultValue="general">
-            <TabsList>
-              <TabsTrigger value="general">General Settings</TabsTrigger>
-              <TabsTrigger value="welcome-email">Welcome Email</TabsTrigger>
-              <TabsTrigger value="invoice-email">Invoice Email</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="general" className="space-y-6 mt-4">
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="from-email">From Email Address</Label>
-                  <Input
-                    id="from-email"
-                    type="email"
-                    placeholder="noreply@example.com"
-                    value={fromEmail}
-                    onChange={(e) => setFromEmail(e.target.value)}
-                  />
-                  <p className="text-sm text-muted-foreground">
-                    Email address that will appear in the From field of all emails
-                  </p>
+      <Tabs defaultValue="settings">
+        <TabsList className="mb-4">
+          <TabsTrigger value="settings">Notification Settings</TabsTrigger>
+          <TabsTrigger value="templates">Email Templates</TabsTrigger>
+        </TabsList>
+        
+        {/* Settings Tab */}
+        <TabsContent value="settings">
+          <Card>
+            <CardHeader>
+              <CardTitle>Email Settings</CardTitle>
+              <CardDescription>
+                Configure email sender and notification preferences
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="from-email">From Email Address</Label>
+                    <Input
+                      id="from-email"
+                      type="email"
+                      value={fromEmail}
+                      onChange={(e) => setFromEmail(e.target.value)}
+                      placeholder="notifications@yourcompany.com"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="reply-to-email">Reply-To Email Address</Label>
+                    <Input
+                      id="reply-to-email"
+                      type="email"
+                      value={replyToEmail}
+                      onChange={(e) => setReplyToEmail(e.target.value)}
+                      placeholder="support@yourcompany.com"
+                    />
+                  </div>
                 </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="reply-to-email">Reply-To Email Address</Label>
-                  <Input
-                    id="reply-to-email"
-                    type="email"
-                    placeholder="support@example.com"
-                    value={replyToEmail}
-                    onChange={(e) => setReplyToEmail(e.target.value)}
-                  />
-                  <p className="text-sm text-muted-foreground">
-                    Email address recipients will reply to
-                  </p>
-                </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="email-footer">Email Footer Text</Label>
                   <Textarea
                     id="email-footer"
-                    placeholder="Footer text to include in all emails"
                     value={emailFooter}
                     onChange={(e) => setEmailFooter(e.target.value)}
+                    placeholder="Company address, contact information, and unsubscribe instructions"
                     rows={3}
                   />
                 </div>
-                
-                <div className="space-y-4 mt-4">
-                  <h3 className="text-lg font-medium">Notification Types</h3>
+
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">Notification Preferences</h3>
                   
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      id="welcome-email"
-                      checked={sendWelcomeEmail}
-                      onCheckedChange={(checked) => setSendWelcomeEmail(checked)}
-                    />
-                    <Label htmlFor="welcome-email">Send welcome email to new handlers</Label>
-                  </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      id="invoice-email"
-                      checked={sendInvoiceEmail}
-                      onCheckedChange={(checked) => setSendInvoiceEmail(checked)}
-                    />
-                    <Label htmlFor="invoice-email">Send invoice notification emails</Label>
-                  </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      id="class-reminders"
-                      checked={sendClassReminders}
-                      onCheckedChange={(checked) => setSendClassReminders(checked)}
-                    />
-                    <Label htmlFor="class-reminders">Send class reminders</Label>
-                  </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      id="payment-reminders"
-                      checked={sendPaymentReminders}
-                      onCheckedChange={(checked) => setSendPaymentReminders(checked)}
-                    />
-                    <Label htmlFor="payment-reminders">Send payment reminder emails</Label>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between border-b pb-2">
+                      <div>
+                        <Label htmlFor="welcome-email">Welcome Email</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Send a welcome email when new users are created
+                        </p>
+                      </div>
+                      <Switch
+                        id="welcome-email"
+                        checked={sendWelcomeEmail}
+                        onCheckedChange={(checked: boolean) => setSendWelcomeEmail(checked)}
+                      />
+                    </div>
+                    
+                    <div className="flex items-center justify-between border-b pb-2">
+                      <div>
+                        <Label htmlFor="invoice-email">Invoice Email</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Send emails when invoices are created or updated
+                        </p>
+                      </div>
+                      <Switch
+                        id="invoice-email"
+                        checked={sendInvoiceEmail}
+                        onCheckedChange={(checked: boolean) => setSendInvoiceEmail(checked)}
+                      />
+                    </div>
+                    
+                    <div className="flex items-center justify-between border-b pb-2">
+                      <div>
+                        <Label htmlFor="class-reminders">Class Reminders</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Send reminder emails before scheduled classes
+                        </p>
+                      </div>
+                      <Switch
+                        id="class-reminders"
+                        checked={sendClassReminders}
+                        onCheckedChange={(checked: boolean) => setSendClassReminders(checked)}
+                      />
+                    </div>
+                    
+                    <div className="flex items-center justify-between pb-2">
+                      <div>
+                        <Label htmlFor="payment-reminders">Payment Reminders</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Send reminders for overdue payments
+                        </p>
+                      </div>
+                      <Switch
+                        id="payment-reminders"
+                        checked={sendPaymentReminders}
+                        onCheckedChange={(checked: boolean) => setSendPaymentReminders(checked)}
+                      />
+                    </div>
                   </div>
                 </div>
+
+                <div className="flex justify-end">
+                  <Button onClick={handleSaveSettings} disabled={isLoading}>
+                    {isLoading ? "Saving..." : "Save Notification Settings"}
+                  </Button>
+                </div>
               </div>
-              
-              <div className="flex justify-end">
-                <Button onClick={handleSaveEmailSettings} disabled={isLoading}>
-                  {isLoading ? "Saving..." : "Save Email Settings"}
-                </Button>
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="welcome-email" className="space-y-6 mt-4">
-              <div className="space-y-4">
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        {/* Templates Tab */}
+        <TabsContent value="templates">
+          <Card>
+            <CardHeader>
+              <CardTitle>Email Templates</CardTitle>
+              <CardDescription>
+                Customize email templates sent to users
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
                 <div className="space-y-2">
-                  <Label htmlFor="welcome-subject">Email Subject</Label>
+                  <Label htmlFor="template-select">Select Template</Label>
+                  <Select 
+                    value={selectedTemplate}
+                    onValueChange={handleTemplateChange}
+                  >
+                    <SelectTrigger id="template-select" className="w-full">
+                      <SelectValue placeholder="Select a template" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="welcome">Welcome Email</SelectItem>
+                      <SelectItem value="invoice">Invoice Email</SelectItem>
+                      <SelectItem value="reminder">Class Reminder</SelectItem>
+                      <SelectItem value="payment_reminder">Payment Reminder</SelectItem>
+                      <SelectItem value="password_reset">Password Reset</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="template-subject">Email Subject</Label>
                   <Input
-                    id="welcome-subject"
-                    placeholder="Welcome to McKaynine Training"
-                    value={welcomeSubject}
-                    onChange={(e) => setWelcomeSubject(e.target.value)}
+                    id="template-subject"
+                    value={templateSubject}
+                    onChange={(e) => setTemplateSubject(e.target.value)}
+                    placeholder="Subject line for the email"
                   />
                 </div>
-                
+
                 <div className="space-y-2">
-                  <Label htmlFor="welcome-content">Email Content</Label>
+                  <div className="flex justify-between">
+                    <Label htmlFor="template-content">Email Content</Label>
+                    <div className="text-xs text-muted-foreground">
+                      You can use variables like {"{user_name}"} or {"{company_name}"}
+                    </div>
+                  </div>
                   <Textarea
-                    id="welcome-content"
-                    placeholder="Email body content"
-                    value={welcomeContent}
-                    onChange={(e) => setWelcomeContent(e.target.value)}
+                    id="template-content"
+                    value={templateContent}
+                    onChange={(e) => setTemplateContent(e.target.value)}
+                    placeholder="Email content"
                     rows={10}
-                  />
-                  <p className="text-sm text-muted-foreground">
-                    You can use variables like {'{name}'}, {'{company}'}, etc.
-                  </p>
-                </div>
-              </div>
-              
-              <div className="flex justify-end">
-                <Button onClick={handleSaveWelcomeTemplate} disabled={isLoading}>
-                  {isLoading ? "Saving..." : "Save Welcome Template"}
-                </Button>
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="invoice-email" className="space-y-6 mt-4">
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="invoice-subject">Email Subject</Label>
-                  <Input
-                    id="invoice-subject"
-                    placeholder="Your McKaynine Training Invoice"
-                    value={invoiceSubject}
-                    onChange={(e) => setInvoiceSubject(e.target.value)}
+                    className="font-mono"
                   />
                 </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="invoice-content">Email Content</Label>
-                  <Textarea
-                    id="invoice-content"
-                    placeholder="Email body content"
-                    value={invoiceContent}
-                    onChange={(e) => setInvoiceContent(e.target.value)}
-                    rows={10}
-                  />
-                  <p className="text-sm text-muted-foreground">
-                    You can use variables like {'{name}'}, {'{invoice_number}'}, {'{amount}'}, etc.
-                  </p>
+
+                <div className="flex justify-end">
+                  <Button onClick={handleSaveTemplate} disabled={isLoading}>
+                    {isLoading ? "Saving..." : "Save Template"}
+                  </Button>
                 </div>
               </div>
-              
-              <div className="flex justify-end">
-                <Button onClick={handleSaveInvoiceTemplate} disabled={isLoading}>
-                  {isLoading ? "Saving..." : "Save Invoice Template"}
-                </Button>
-              </div>
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

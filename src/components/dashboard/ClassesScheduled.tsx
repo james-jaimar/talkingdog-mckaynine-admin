@@ -21,8 +21,6 @@ export function ClassesScheduled({ branchId }: ClassesScheduledProps) {
       // Don't fetch data if no branch is selected
       if (!branchId) return [];
       
-      console.log("Fetching upcoming classes for branch:", branchId, "and term:", termData?.id || "no term selected");
-      
       // Use today's date as the default start date
       const startDate = new Date().toISOString();
       
@@ -49,7 +47,6 @@ export function ClassesScheduled({ branchId }: ClassesScheduledProps) {
       
       // Add term filter if a term is selected
       if (termData?.id) {
-        console.log(`Adding term filter: ${termData.id}`);
         query = query.eq('term_id', termData.id);
       }
       
@@ -57,12 +54,7 @@ export function ClassesScheduled({ branchId }: ClassesScheduledProps) {
         .order('start_time', { ascending: true })
         .limit(5);
       
-      if (error) {
-        console.error("Error fetching upcoming classes:", error);
-        throw error;
-      }
-      
-      console.log(`Retrieved ${data?.length || 0} upcoming classes`);
+      if (error) throw error;
       return data;
     },
     enabled: !!branchId,

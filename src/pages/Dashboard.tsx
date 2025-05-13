@@ -9,12 +9,10 @@ import { Users, Dog, Book, Calendar } from "lucide-react";
 import { useTerm } from "@/context/TermContext";
 import { useEffect } from "react";
 import { Helmet } from "react-helmet";
-import { toast } from "sonner";
-import { format, parseISO } from "date-fns";
 
 export default function Dashboard() {
   const { currentBranch } = useBranch();
-  const { termData, isTermLoading, selectedTermNumber, selectedYear, termDateRange } = useTerm();
+  const { termData, isTermLoading, selectedTermNumber, selectedYear } = useTerm();
   
   const {
     clientCount,
@@ -27,43 +25,16 @@ export default function Dashboard() {
 
   // Fetch stats when component mounts or term changes
   useEffect(() => {
-    console.log("📊 Dashboard detected term change, refetching stats", {
+    console.log("Dashboard detected term change, refetching stats", {
       termId: termData?.id,
       termNumber: selectedTermNumber,
-      year: selectedYear,
-      dateRange: termDateRange
+      year: selectedYear
     });
-    
-    if (termData) {
-      // Only show toast if there's actual term data
-      toast.info(`Term ${termData.term_number} data loaded`);
-    }
-    
     refetchAllStats();
-  }, [termData?.id, selectedTermNumber, selectedYear, refetchAllStats, termDateRange]);
+  }, [termData?.id, selectedTermNumber, selectedYear, refetchAllStats]);
 
   // Determine if we're in a loading state
   const isLoading = isTermLoading || statsLoading;
-
-  // Format date range for display, ensuring we use the correct year
-  const formattedDateRange = termDateRange ? {
-    startDate: termDateRange.startDate ? format(new Date(termDateRange.startDate), 'M/d/yyyy') : '',
-    endDate: termDateRange.endDate ? format(new Date(termDateRange.endDate), 'M/d/yyyy') : ''
-  } : null;
-
-  // Add debug logging for term dates to help troubleshoot
-  useEffect(() => {
-    if (termData) {
-      console.log("Term data in Dashboard:", {
-        termNumber: termData.term_number,
-        year: termData.academic_years?.year || selectedYear,
-        startDate: termData.start_date,
-        endDate: termData.end_date,
-        parsedStartDate: termData.start_date ? new Date(termData.start_date) : null,
-        parsedEndDate: termData.end_date ? new Date(termData.end_date) : null
-      });
-    }
-  }, [termData, selectedYear]);
 
   return (
     <DashboardLayout>
@@ -73,16 +44,6 @@ export default function Dashboard() {
       <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
         <div className="flex items-center justify-between">
           <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
-          {termData && (
-            <div className="text-sm text-muted-foreground">
-              Current term: Term {termData.term_number}, {termData.academic_years?.year || selectedYear} 
-              {formattedDateRange && (
-                <span className="ml-2">
-                  ({formattedDateRange.startDate} - {formattedDateRange.endDate})
-                </span>
-              )}
-            </div>
-          )}
         </div>
 
         {/* Stats Cards */}

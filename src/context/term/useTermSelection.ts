@@ -1,42 +1,77 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useCallback, useRef } from 'react';
+import { TermNumber, TERM_STORAGE_KEY, TERM_CHANGE_DEBOUNCE_MS } from './types';
+import { getStoredTermData } from './utils';
 
 export function useTermSelection() {
-  const [selectedTermNumber, setSelectedTermNumber] = useState<string | null>(null);
-  const [selectedYear, setSelectedYear] = useState<number | null>(null);
+  // Initialize from localStorage if available
+  const storedData = getStoredTermData();
   
-  // Initialize with current term if not set
-  useEffect(() => {
-    if (selectedTermNumber === null || selectedYear === null) {
-      // Default to current term based on date
-      const currentDate = new Date();
-      const currentMonth = currentDate.getMonth() + 1;
-      const currentYear = currentDate.getFullYear();
-      
-      // Simple logic to determine current term
-      // Terms 1: Jan-Mar, 2: Apr-Jun, 3: Jul-Sep, 4: Oct-Dec
-      const currentTerm = Math.ceil(currentMonth / 3).toString(); // Convert to string
-      
-      console.log(`Initializing term selection to Term ${currentTerm}, ${currentYear} based on current date`);
-      
-      setSelectedTermNumber(currentTerm);
-      setSelectedYear(currentYear);
+  const [selectedYear, setSelectedYearState] = useState<number>(storedData.year);
+  const [selectedTermNumber, setSelectedTermNumberState] = useState<TermNumber>(storedData.termNumber);
+  const [error, setError] = useState<Error | null>(null);
+  const [isChangingTerm, setIsChangingTerm] = useState(false);
+  
+  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
+  const changeCounter = useRef(0);
+  
+  // Wrapper functions to update state and persist to localStorage with debouncing
+  const setSelectedYear = useCallback((year: number) => {
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
     }
-  }, [selectedTermNumber, selectedYear]);
+    
+    const currentChangeId = ++changeCounter.current;
+    setIsChangingTerm(true);
+    setSelectedYearState(year);
+    
+    localStorage.setItem(
+      TERM_STORAGE_KEY, 
+      JSON.stringify({ year, termNumber: selectedTermNumber })
+    );
+    setError(null);
+    
+    // Use debouncing to prevent rapid consecutive changes
+    debounceTimer.current = setTimeout(() => {
+      // Only proceed if this is still the most recent change
+      if (currentChangeId === changeCounter.current) {
+        setIsChangingTerm(false);
+      }
+    }, TERM_CHANGE_DEBOUNCE_MS);
+  }, [selectedTermNumber]);
   
-  // Generate available years (current year and 2 years before/after)
-  const currentYear = new Date().getFullYear();
-  const years = [currentYear-2, currentYear-1, currentYear, currentYear+1, currentYear+2];
-  
-  // Available terms
-  const terms = ['1', '2', '3', '4'];
-  
+  const setSelectedTermNumber = useCallback((termNumber: TermNumber) => {
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+    }
+    
+    const currentChangeId = ++changeCounter.current;
+    setIsChangingTerm(true);
+    setSelectedTermNumberState(termNumber);
+    
+    localStorage.setItem(
+      TERM_STORAGE_KEY, 
+      JSON.stringify({ year: selectedYear, termNumber })
+    );
+    setError(null);
+    
+    // Use debouncing to prevent rapid consecutive changes
+    debounceTimer.current = setTimeout(() => {
+      // Only proceed if this is still the most recent change
+      if (currentChangeId === changeCounter.current) {
+        setIsChangingTerm(false);
+      }
+    }, TERM_CHANGE_DEBOUNCE_MS);
+  }, [selectedYear]);
+
   return {
-    selectedTermNumber,
     selectedYear,
-    setSelectedTermNumber,
     setSelectedYear,
-    years,
-    terms
+    selectedTermNumber,
+    setSelectedTermNumber,
+    error,
+    setError,
+    isChangingTerm,
+    changeCounter,
   };
 }

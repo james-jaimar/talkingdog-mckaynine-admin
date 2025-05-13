@@ -20,30 +20,25 @@ export default function Invoices() {
   const [monthFilter, setMonthFilter] = useState<string>("current");
   const { invoices, isLoading, refreshAllInvoiceQueries } = useInvoices();
   const queryClient = useQueryClient();
-  const { termDateRange, termData } = useTerm();
+  const { termDateRange } = useTerm();
 
   // Set the month filter to "term" if a term is selected
   useEffect(() => {
     if (termDateRange) {
-      console.log("📆 Term date range available - setting month filter to 'term'", {
-        termNumber: termData?.term_number,
-        startDate: termDateRange.startDate,
-        endDate: termDateRange.endDate
-      });
       setMonthFilter("term");
     }
-  }, [termDateRange?.startDate, termDateRange?.endDate, termData?.term_number]);
+  }, [termDateRange?.startDate, termDateRange?.endDate]);
 
   // Auto-refresh data when component mounts
   useEffect(() => {
-    console.log("📊 Invoices page: Refreshing data");
+    console.log("Invoices page: Refreshing data");
     refreshAllInvoiceQueries();
   }, [refreshAllInvoiceQueries]);
 
   // Refresh data when create dialog closes
   useEffect(() => {
     if (!createDialogOpen) {
-      console.log("📊 Create dialog closed, refreshing invoice data");
+      console.log("Create dialog closed, refreshing data");
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
     }
   }, [createDialogOpen, queryClient]);
@@ -77,85 +72,26 @@ export default function Invoices() {
       ? { 
           start: new Date(termDateRange.startDate), 
           end: new Date(termDateRange.endDate), 
-          label: `Term ${termData?.term_number} Period (${format(new Date(termDateRange.startDate), "dd MMM")} - ${format(new Date(termDateRange.endDate), "dd MMM yyyy")})` 
+          label: `Term Period ${format(new Date(termDateRange.startDate), "dd MMM")} - ${format(new Date(termDateRange.endDate), "dd MMM yyyy")}` 
         }
       : getCurrentMonthRange(),
     "all": { start: new Date(0), end: new Date(8640000000000000), label: "All Time" }
   };
 
-  // Debug log for term date range
-  useEffect(() => {
-    console.log("📆 Current term data:", termData);
-    console.log("📆 Term date range:", termDateRange);
-    console.log("📅 Current month filter:", monthFilter);
-    console.log("📅 Month ranges:", monthRanges);
-    
-    // Add additional debugging for the term filter
-    if (monthFilter === "term" && termData) {
-      console.log(`🔍 Filtering invoices for Term ${termData.term_number} with date range:`, {
-        start: termDateRange?.startDate,
-        end: termDateRange?.endDate,
-      });
-    }
-  }, [termData, termDateRange, monthFilter, monthRanges]);
-
   // Filter invoices by status and month
   const filteredInvoices = invoices?.filter(invoice => {
-    // First apply status filter
     const statusMatch = statusFilter === 'all' || invoice.status === statusFilter;
     
-    // If we want all dates, only apply status filter
     if (monthFilter === "all") {
       return statusMatch;
     }
     
-    // For term filter, try to match by term_id first if available
-    if (monthFilter === "term" && termData?.id) {
-      // First, try to filter by term_id if it's available on the invoice
-      if (invoice.term_id) {
-        const termIdMatch = invoice.term_id === termData.id;
-        if (termIdMatch) {
-          console.log(`🎯 Invoice ${invoice.invoice_number} matches term ID: ${termData.id}`);
-        }
-        return statusMatch && termIdMatch;
-      }
-      
-      // If term_id not available on invoice, fall back to date range filtering
-      if (termDateRange) {
-        const invoiceDate = new Date(invoice.issued_date);
-        const start = new Date(termDateRange.startDate);
-        const end = new Date(termDateRange.endDate);
-        const dateInRange = invoiceDate >= start && invoiceDate <= end;
-        
-        if (dateInRange) {
-          console.log(`📅 Invoice ${invoice.invoice_number} date ${invoiceDate.toISOString()} in term date range from ${start.toISOString()} to ${end.toISOString()}`);
-        }
-        
-        return statusMatch && dateInRange;
-      }
-      
-      // If we don't have term date range, we can't filter
-      return statusMatch;
-    }
-    
-    // For other month filters, use date range filtering
     const invoiceDate = new Date(invoice.issued_date);
     const range = monthRanges[monthFilter as keyof typeof monthRanges];
     const dateMatch = invoiceDate >= range.start && invoiceDate <= range.end;
     
     return statusMatch && dateMatch;
   }) || [];
-
-  // Log filter results
-  useEffect(() => {
-    console.log(`🔍 Filtered invoices: ${filteredInvoices.length} out of ${invoices?.length || 0}`);
-    console.log(`🔍 Current filter: status=${statusFilter}, month=${monthFilter}`);
-    
-    // Additional logging for term filtering
-    if (monthFilter === "term" && termData) {
-      console.log(`📊 Term ${termData.term_number} invoices count: ${filteredInvoices.length}`);
-    }
-  }, [filteredInvoices.length, invoices?.length, statusFilter, monthFilter, termData]);
 
   return (
     <DashboardLayout>
@@ -181,7 +117,6 @@ export default function Invoices() {
           onMonthFilterChange={setMonthFilter}
           onStatusFilterChange={setStatusFilter}
           showTermOption={!!termDateRange}
-          currentMonthFilter={monthFilter}
         />
         
         <InvoicesList 

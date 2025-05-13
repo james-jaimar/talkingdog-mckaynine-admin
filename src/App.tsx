@@ -1,12 +1,13 @@
 
-import "./App.css";
+// We'll use the router.tsx file instead of defining routes directly here
 import { RouterProvider } from "react-router-dom";
-import { AuthProvider } from "./context/AuthContext";
-import { BranchProvider } from "./context/BranchContext";
-import { TermProvider } from "./context/TermContext";
-import router from "./router";
+import router from './router';
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/query-client";
+import { AuthProvider } from '@/context/auth';
+import { BranchProvider } from '@/context/BranchContext';
+import { TermProvider } from '@/context/TermContext';
+import { Toaster } from "sonner";
 
 function App() {
   return (
@@ -15,6 +16,7 @@ function App() {
         <BranchProvider>
           <TermProvider>
             <RouterProvider router={router} />
+            <Toaster position="top-right" richColors />
           </TermProvider>
         </BranchProvider>
       </AuthProvider>

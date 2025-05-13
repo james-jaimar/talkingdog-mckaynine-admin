@@ -4,30 +4,19 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 
-// Component to be used inside toast actions
-export function ScheduleActionButton({ classId }: { classId: string }) {
+// Export a function that returns JSX for the toast action button
+export function createScheduleAction(classId: string) {
   const navigate = useNavigate();
-  
-  const handleClick = () => {
-    navigate(`/classes/${classId}/schedules`);
-  };
   
   return (
     <Button 
-      onClick={handleClick}
+      onClick={() => navigate(`/classes/${classId}/schedules`)}
       variant="mckaynine"
       size="sm"
       className="text-white"
     >
       Create Schedule
     </Button>
-  );
-}
-
-// Helper function to render the toast action content
-export function createScheduleAction(classId: string) {
-  return (
-    <ScheduleActionButton classId={classId} />
   );
 }
 

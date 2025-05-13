@@ -3,37 +3,32 @@ import { Link } from "react-router-dom";
 import { trainerPrimaryNavItems, trainerSecondaryNavItems } from "./navigation-items";
 
 interface TrainerNavigationProps {
-  className?: string;
-  isMobile?: boolean;
-  showPrimaryOnly?: boolean;
+  isMobile: boolean;
   onMobileClose?: () => void;
+  showPrimaryOnly?: boolean;
 }
 
-export function TrainerNavigation({ 
-  className,
-  isMobile = false,
-  showPrimaryOnly = true,
-  onMobileClose
-}: TrainerNavigationProps) {
-  // Determine which navigation items to show
+export const TrainerNavigation = ({ isMobile, onMobileClose, showPrimaryOnly = true }: TrainerNavigationProps) => {
+  // Use the correct imported items
   const items = showPrimaryOnly ? trainerPrimaryNavItems : trainerSecondaryNavItems;
-  
+
   return (
-    <nav className={className}>
-      <ul className={`${isMobile ? "flex flex-col space-y-2" : "flex items-center space-x-4"}`}>
-        {items.map((item) => (
-          <li key={item.path}>
-            <Link 
-              to={item.path} 
-              className={`flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-primary ${isMobile ? "py-2" : ""}`}
-              onClick={onMobileClose}
-            >
-              <item.icon className="h-4 w-4" />
-              {item.name}
-            </Link>
-          </li>
-        ))}
-      </ul>
+    <nav className={isMobile ? "flex flex-col space-y-2" : "flex space-x-4 overflow-x-auto"}>
+      {items.map(item => (
+        <Link 
+          key={item.path}
+          to={item.path} 
+          className={`text-white hover:text-gray-200 px-2 ${isMobile ? 'py-2' : 'py-1'} rounded ${isMobile ? 'flex items-center' : 'whitespace-nowrap'}`}
+          onClick={onMobileClose}
+        >
+          {item.icon && (
+            <item.icon 
+              className={`inline-block mr-1 h-4 w-4 ${isMobile ? 'mr-2' : ''}`} 
+            />
+          )}
+          <span>{item.name}</span>
+        </Link>
+      ))}
     </nav>
   );
-}
+};
