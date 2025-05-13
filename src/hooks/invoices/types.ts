@@ -7,6 +7,11 @@ export interface InvoiceClient {
   last_name: string;
   email: string;
   branch_id?: string;
+  // Add missing properties used in ClientInfoCard and ClientInfo
+  phone?: string;
+  address?: string;
+  city?: string;
+  postal_code?: string;
 }
 
 export interface BookingDetails {
@@ -59,6 +64,7 @@ export interface BookingWithDetails {
     id: string;
     term_id?: string;
     start_time: string;
+    class_id?: string; // Add the missing class_id property
     classes: {
       id: string;
       name: string;
@@ -89,11 +95,16 @@ export interface Invoice {
   created_at?: string;
   updated_at?: string;
   notes?: string;
-  term_id?: string; // Add term_id to make filtering easier
+  term_id?: string;
   original_discount_type?: 'percentage' | 'fixed';
   original_discount_amount?: number;
   monetary_discount?: number;
   discount_reason?: string;
   classInfo?: string;
   dogInfo?: string;
+  
+  // Add missing properties used in AllocationChartData
+  trainer_fee?: number;
+  franchise_fee?: number;
+  admin_fee?: number;
 }

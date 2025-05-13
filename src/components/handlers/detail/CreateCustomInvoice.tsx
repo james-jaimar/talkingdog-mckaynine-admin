@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -113,7 +112,8 @@ export function CreateCustomInvoice({
       }
     });
     
-    return () => subscription.unsubscribe();
+    // Return the unsubscribe function correctly
+    return () => subscription.unsubscribe?.();
   }, [form.watch]);
   
   // Calculate total
