@@ -1,117 +1,68 @@
 
-import React, { createContext, useContext, useEffect, ReactNode } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import { toast } from '@/components/ui/use-toast';
-import { TermContextType, TermData, TermNumber } from './types';
-import { useTermQuery } from './useTermQuery';
-import { useTermSelection } from './useTermSelection';
-import { useTermCacheInvalidation } from './useTermCacheInvalidation';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import type { TermData } from "./types";
+import { useTermQuery } from "./useTermQuery";
+import { useTermSelection } from "./useTermSelection";
+import { useTermCacheInvalidation } from "./useTermCacheInvalidation";
 
-// Create context with default values
+type TermContextType = {
+  termData: TermData | null;
+  loading: boolean;
+  error: Error | null;
+  refreshTerms: () => void;
+  selectTerm: (termId: string | null) => void;
+  availableTerms: TermData[];
+};
+
 const TermContext = createContext<TermContextType | undefined>(undefined);
 
-export function TermProvider({ children }: { children: ReactNode }) {
-  const queryClient = useQueryClient();
+export const TermProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const [selectedTermId, setSelectedTermId] = useState<string | null>(null);
+  const { termQuery, availableTerms, refreshTerms } = useTermQuery();
+  const { selectTerm } = useTermSelection({ setSelectedTermId });
   
-  // Use our custom hooks for term selection and cache invalidation
-  const {
-    selectedYear,
-    setSelectedYear,
-    selectedTermNumber,
-    setSelectedTermNumber,
-    error,
-    setError,
-    isChangingTerm,
-  } = useTermSelection();
+  // Use the cache invalidation hook
+  useTermCacheInvalidation();
   
-  const { lastTermId, invalidateTermDependentQueries } = useTermCacheInvalidation();
-
-  // Fetch term data based on selected year and term number
-  const { 
-    data: termData, 
-    isLoading: isFetchingTerm,
-    refetch: refetchTerm
-  } = useTermQuery(selectedYear, selectedTermNumber, setError);
-
-  // Calculate the real loading state (either fetching or changing term)
-  const isTermLoading = isFetchingTerm || isChangingTerm;
-
-  // Debug logging for term data
+  // Effect to select current term on initial load or when terms change
   useEffect(() => {
-    console.log("TermProvider - Current term data:", termData);
-    console.log("TermProvider - Selected year:", selectedYear);
-    console.log("TermProvider - Selected term number:", selectedTermNumber);
-  }, [termData, selectedYear, selectedTermNumber]);
-
-  // When term data changes, invalidate and refetch relevant queries
-  useEffect(() => {
-    if (!termData?.id) return;
-    
-    // Only invalidate queries when a term is actually changed
-    if (termData?.id !== lastTermId.current && !isChangingTerm) {
-      console.log(`Term changed: ${termData.term_number}, ${selectedYear} - invalidating term-dependent queries`);
-      
-      // Invalidate queries for the new term and trigger refetch
-      invalidateTermDependentQueries(termData.id).then(() => {
-        // Refetch financial data queries explicitly
-        queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
-        queryClient.invalidateQueries({ queryKey: ['invoices'] });
-        
-        // Add invalidation for classes
-        queryClient.invalidateQueries({ queryKey: ['classes'] });
-        
-        // Refetch just the classes query (the rest will load when their components mount)
-        queryClient.refetchQueries({ 
-          queryKey: ['classes'],
-          exact: false
-        });
-        
-        // Show a notification, but ensure we only do this once
-        toast({
-          title: `Term Changed`,
-          description: `Now viewing Term ${termData.term_number}, ${selectedYear}`,
-        });
-      });
+    if (availableTerms.length > 0 && !selectedTermId) {
+      // Find current term or first available term
+      const currentTerm = availableTerms.find(term => term.current) || availableTerms[0];
+      if (currentTerm) {
+        setSelectedTermId(currentTerm.id);
+      }
     }
-  }, [termData?.id, invalidateTermDependentQueries, queryClient, selectedYear, isChangingTerm]);
+  }, [availableTerms, selectedTermId]);
 
-  // Generate years array (current year to current year + 4)
-  const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() + i);
-  
-  // Generate terms array (1 to 4)
-  const terms: TermNumber[] = ['1', '2', '3', '4'];
-  
-  // Get date range for the selected term
-  const termDateRange = termData ? {
-    startDate: termData.start_date,
-    endDate: termData.end_date
-  } : null;
-
-  const contextValue: TermContextType = {
-    selectedYear,
-    setSelectedYear,
-    selectedTermNumber,
-    setSelectedTermNumber,
-    termData,
-    isTermLoading,
-    error,
-    termDateRange,
-    years,
-    terms,
-    refetchTerm
-  };
+  // Get the data for the selected term
+  const termData = selectedTermId
+    ? availableTerms.find(term => term.id === selectedTermId) || null
+    : availableTerms.find(term => term.current) || availableTerms[0] || null;
 
   return (
-    <TermContext.Provider value={contextValue}>
+    <TermContext.Provider
+      value={{
+        termData,
+        loading: termQuery.isPending,
+        error: termQuery.error as Error | null,
+        refreshTerms,
+        selectTerm,
+        availableTerms,
+      }}
+    >
       {children}
     </TermContext.Provider>
   );
-}
+};
 
-export const useTerm = () => {
+export const useTerm = (): TermContextType => {
   const context = useContext(TermContext);
   if (context === undefined) {
-    throw new Error('useTerm must be used within a TermProvider');
+    throw new Error("useTerm must be used within a TermProvider");
   }
   return context;
 };

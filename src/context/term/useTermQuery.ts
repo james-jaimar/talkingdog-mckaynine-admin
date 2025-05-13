@@ -1,57 +1,69 @@
 
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { TermData, TermNumber } from './types';
-import { calculateTermDateRange } from './utils';
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { TermData } from "./types";
+import { getDefaultTermsForCurrentYear } from "./utils";
 
-export function useTermQuery(
-  selectedYear: number,
-  selectedTermNumber: TermNumber, // Fixed: Use the TermNumber type instead of string
-  onError: (error: Error) => void
-) {
-  return useQuery({
-    queryKey: ['term', selectedYear, selectedTermNumber],
-    queryFn: async () => {
+export function useTermQuery() {
+  // Query for fetching terms from the database
+  const termQuery = useQuery({
+    queryKey: ["terms"],
+    queryFn: async (): Promise<TermData[]> => {
       try {
-        const { data, error: dbError } = await supabase
-          .from('terms')
+        const { data: termsData, error } = await supabase
+          .from("terms")
           .select(`
             id,
             term_number,
             start_date,
             end_date,
-            academic_years!inner (
+            current,
+            academic_years (
+              id,
               year
             )
           `)
-          .eq('academic_years.year', selectedYear)
-          .eq('term_number', selectedTermNumber)
-          .limit(1);
+          .order("academic_years(year)", { ascending: false })
+          .order("term_number", { ascending: true });
 
-        if (dbError) {
-          onError(new Error(`Error fetching term: ${dbError.message}`));
-          return null;
-        }
-        
-        if (!data || data.length === 0) {
-          onError(new Error(`No term found for ${selectedYear}, Term ${selectedTermNumber}`));
-          return null;
+        if (error) throw error;
+
+        // Transform the data to match our TermData type
+        const terms: TermData[] = termsData.map((term) => ({
+          id: term.id,
+          termNumber: term.term_number,
+          year: term.academic_years?.year || new Date().getFullYear(),
+          startDate: term.start_date,
+          endDate: term.end_date,
+          current: term.current || false,
+        }));
+
+        // If there are no terms in the database, return the default ones
+        if (terms.length === 0) {
+          return getDefaultTermsForCurrentYear();
         }
 
-        // Apply the term date range calculation
-        const termData = data[0] as TermData;
-        const { startDate, endDate } = calculateTermDateRange(selectedYear, termData.term_number);
+        return terms;
+      } catch (error) {
+        console.error("Error fetching terms:", error);
         
-        termData.start_date = startDate;
-        termData.end_date = endDate;
-        
-        return termData;
-      } catch (err) {
-        const errorMsg = err instanceof Error ? err.message : 'Unknown error';
-        onError(new Error(errorMsg));
-        return null;
+        // Return default terms if there's an error
+        return getDefaultTermsForCurrentYear();
       }
     },
-    staleTime: 30 * 1000, // Cache term data for 30 seconds
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    refetchOnWindowFocus: false,
   });
+
+  // Get available terms or defaults if none available
+  const availableTerms = termQuery.data?.length 
+    ? termQuery.data 
+    : getDefaultTermsForCurrentYear();
+
+  // Function to refresh terms data
+  const refreshTerms = () => {
+    termQuery.refetch();
+  };
+
+  return { termQuery, availableTerms, refreshTerms };
 }
