@@ -1,57 +1,52 @@
 
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { TermData, TermNumber } from './types';
-import { calculateTermDateRange } from './utils';
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { TermData } from "./types";
 
-export function useTermQuery(
-  selectedYear: number,
-  selectedTermNumber: TermNumber, // Fixed: Use the TermNumber type instead of string
-  onError: (error: Error) => void
-) {
-  return useQuery({
-    queryKey: ['term', selectedYear, selectedTermNumber],
-    queryFn: async () => {
-      try {
-        const { data, error: dbError } = await supabase
-          .from('terms')
-          .select(`
-            id,
-            term_number,
-            start_date,
-            end_date,
-            academic_years!inner (
-              year
-            )
-          `)
-          .eq('academic_years.year', selectedYear)
-          .eq('term_number', selectedTermNumber)
-          .limit(1);
-
-        if (dbError) {
-          onError(new Error(`Error fetching term: ${dbError.message}`));
-          return null;
-        }
-        
-        if (!data || data.length === 0) {
-          onError(new Error(`No term found for ${selectedYear}, Term ${selectedTermNumber}`));
-          return null;
-        }
-
-        // Apply the term date range calculation
-        const termData = data[0] as TermData;
-        const { startDate, endDate } = calculateTermDateRange(selectedYear, termData.term_number);
-        
-        termData.start_date = startDate;
-        termData.end_date = endDate;
-        
-        return termData;
-      } catch (err) {
-        const errorMsg = err instanceof Error ? err.message : 'Unknown error';
-        onError(new Error(errorMsg));
+export function useTermQuery(termNumber: number | null, year: number | null) {
+  const {
+    data: termData,
+    isLoading: isTermLoading,
+    error,
+    refetch: refetchTerm
+  } = useQuery({
+    queryKey: ['term', termNumber, year],
+    queryFn: async (): Promise<TermData | null> => {
+      console.log(`Fetching term data for Term ${termNumber}, Year ${year}`);
+      
+      if (!termNumber || !year) {
         return null;
       }
+
+      const { data, error } = await supabase
+        .from('terms')
+        .select(`
+          id, 
+          term_number,
+          start_date,
+          end_date,
+          academic_years(year)
+        `)
+        .eq('term_number', termNumber)
+        .eq('academic_years.year', year)
+        .single();
+
+      if (error) {
+        console.error("Error fetching term:", error);
+        throw error;
+      }
+      
+      console.log("Term data fetched:", data);
+      return data as TermData;
     },
-    staleTime: 30 * 1000, // Cache term data for 30 seconds
+    enabled: !!termNumber && !!year,
+    staleTime: 1000 * 60 * 5, // 5 minutes
   });
+
+  return {
+    termData,
+    isTermLoading,
+    error,
+    refetchTerm
+  };
 }

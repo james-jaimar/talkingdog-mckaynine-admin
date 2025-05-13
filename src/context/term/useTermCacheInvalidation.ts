@@ -1,26 +1,20 @@
 
-import { useCallback, useRef } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { invalidateTermRelatedData } from "@/lib/query-client";
 
-export function useTermCacheInvalidation() {
+export function useTermCacheInvalidation(termId: string | undefined) {
   const queryClient = useQueryClient();
-  const lastTermId = useRef<string | undefined>(undefined);
   
-  // Centralized function to invalidate all term-dependent queries
-  const invalidateTermDependentQueries = useCallback(async (termId: string | undefined) => {
-    // More selective query invalidation
-    await Promise.all([
-      queryClient.removeQueries({ queryKey: ['classes', undefined, lastTermId.current], exact: false }),
-      queryClient.removeQueries({ queryKey: ['class-schedules', lastTermId.current], exact: false }),
-      queryClient.removeQueries({ queryKey: ['dashboard-stats', undefined, lastTermId.current], exact: false })
-    ]);
-    
-    // Update the last term ID reference
-    lastTermId.current = termId;
-  }, [queryClient, lastTermId]);
+  // When term changes, invalidate related queries
+  useEffect(() => {
+    if (termId) {
+      console.log(`Term changed to ID: ${termId}, invalidating related data...`);
+      invalidateTermRelatedData()
+        .then(() => console.log("Term-related cache invalidation complete"))
+        .catch(error => console.error("Error invalidating term-related cache:", error));
+    }
+  }, [termId, queryClient]);
   
-  return { 
-    lastTermId,
-    invalidateTermDependentQueries 
-  };
+  return null;
 }
