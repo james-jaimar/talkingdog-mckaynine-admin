@@ -1,4 +1,3 @@
-
 import { format } from "date-fns";
 import { useTerm } from "@/context/TermContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -53,15 +52,75 @@ export function TermSelectorRow() {
     }
   };
 
+  // If there's an error, show a user-friendly error banner
   if (error) {
     return (
       <div className="border-b border-mckaynine-700 bg-mckaynine-600">
         <div className="container mx-auto px-4 py-2">
-          <Alert variant="destructive">
-            <AlertDescription>
-              {errorMessage || "Error loading term data. Please try again."}
-            </AlertDescription>
-          </Alert>
+          <div className="flex items-center justify-between">
+            <Alert variant="destructive" className="w-auto bg-red-50 border-red-200 mb-0">
+              <AlertDescription className="flex items-center">
+                <span>Error loading term data.</span>
+                <button 
+                  onClick={handleManualRefresh}
+                  className="ml-4 bg-red-100 hover:bg-red-200 text-red-800 px-2 py-1 rounded text-sm flex items-center"
+                >
+                  <RefreshCw className="h-3 w-3 mr-1" /> Try again
+                </button>
+              </AlertDescription>
+            </Alert>
+            
+            {/* Keep the term/year selectors available even when there's an error */}
+            <div className="flex items-center gap-4">
+              <div>
+                <Select
+                  value={selectedYear?.toString()}
+                  onValueChange={handleYearChange}
+                >
+                  <SelectTrigger className="w-[120px] bg-white text-gray-800">
+                    <SelectValue placeholder="Select year" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {years.map((year) => (
+                      <SelectItem key={year} value={year.toString()}>
+                        {year}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Select
+                  value={selectedTermNumber || undefined}
+                  onValueChange={handleTermChange}
+                >
+                  <SelectTrigger className="w-[120px] bg-white text-gray-800">
+                    <SelectValue placeholder="Select term" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {terms.map((term) => (
+                      <SelectItem key={term} value={term}>
+                        Term {term}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <button
+                onClick={handleManualRefresh}
+                className="p-2 rounded-full hover:bg-mckaynine-700 transition-colors"
+                title="Refresh term data"
+              >
+                {isTermLoading ? (
+                  <Loader2 className="h-5 w-5 animate-spin text-white" />
+                ) : (
+                  <RefreshCw className="h-5 w-5 text-white" />
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -70,6 +129,7 @@ export function TermSelectorRow() {
   // Calculate if we're displaying initial data or actual loading state
   const displaySelectionControls = !isTermLoading || termData;
 
+  // The rest of the component for normal display
   return (
     <div className="border-b border-mckaynine-700 bg-mckaynine-600">
       <div className="container mx-auto px-4 py-2">

@@ -1,4 +1,3 @@
-
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { TermData } from "./types";
@@ -27,27 +26,61 @@ export function useTermQuery(termNumber: string | null, year: number | null) {
       // Explicitly cast termNumber to the union type that Supabase expects
       const validTermNumber = termNumber as "1" | "2" | "3" | "4";
       
-      const { data, error } = await supabase
-        .from('terms')
-        .select(`
-          id, 
-          term_number,
-          start_date,
-          end_date,
-          current,
-          academic_years(year)
-        `)
-        .eq('term_number', validTermNumber)
-        .eq('academic_years.year', year)
-        .single();
+      try {
+        // First check if there's a current term in this year and term number
+        const { data: currentTerm } = await supabase
+          .from('terms')
+          .select(`
+            id, 
+            term_number,
+            start_date,
+            end_date,
+            current,
+            academic_years(year)
+          `)
+          .eq('term_number', validTermNumber)
+          .eq('academic_years.year', year)
+          .eq('current', true)
+          .maybeSingle();
+        
+        // If there's a current term, return it
+        if (currentTerm) {
+          console.log("Found current term:", currentTerm);
+          return currentTerm as TermData;
+        }
+        
+        // Otherwise get all terms matching criteria and take the first one
+        const { data, error } = await supabase
+          .from('terms')
+          .select(`
+            id, 
+            term_number,
+            start_date,
+            end_date,
+            current,
+            academic_years(year)
+          `)
+          .eq('term_number', validTermNumber)
+          .eq('academic_years.year', year)
+          .order('start_date', { ascending: false })
+          .limit(1);
 
-      if (error) {
+        if (error) {
+          console.error("Error fetching term:", error);
+          throw error;
+        }
+        
+        if (!data || data.length === 0) {
+          console.log("No terms found with the given criteria");
+          return null;
+        }
+        
+        console.log("Term data fetched:", data[0]);
+        return data[0] as TermData;
+      } catch (error) {
         console.error("Error fetching term:", error);
         throw error;
       }
-      
-      console.log("Term data fetched:", data);
-      return data as TermData;
     },
     enabled: !!termNumber && !!year,
     staleTime: 1000 * 60 * 5, // 5 minutes
