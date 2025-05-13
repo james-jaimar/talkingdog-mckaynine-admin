@@ -17,10 +17,10 @@ export const TERM_CHANGE_DEBOUNCE_MS = 500;
 // For backwards compatibility with existing code using the old property names
 export interface LegacyTermData {
   id: string;
-  term_number: string;
+  term_number: string;  // Snake case version
   year: number;
-  start_date: string;
-  end_date: string;
+  start_date: string;   // Snake case version
+  end_date: string;     // Snake case version
   current: boolean;
   academic_years?: {
     year: number;

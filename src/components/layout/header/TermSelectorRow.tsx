@@ -40,6 +40,7 @@ export function TermSelectorRow() {
       setTimeout(() => {
         queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
         queryClient.invalidateQueries({ queryKey: ['invoices'] });
+        queryClient.invalidateQueries({ queryKey: ['terms'] }); // Added to ensure term data is refreshed
       }, 100);
     }
   };
@@ -49,6 +50,7 @@ export function TermSelectorRow() {
       refetchTerm();
       queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['terms'] }); // Added to ensure term data is refreshed
       toast.success("Term data refreshed");
     }
   };

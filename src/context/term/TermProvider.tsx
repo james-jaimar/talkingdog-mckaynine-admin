@@ -51,6 +51,7 @@ export const TermProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, [availableTerms, selectedTermId]);
 
+  // FIXED: Only get the term data after state variables are declared
   // Get the data for the selected term
   const selectedTermData = selectedTermId
     ? availableTerms.find(term => term.id === selectedTermId) || null

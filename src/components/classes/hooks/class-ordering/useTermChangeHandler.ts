@@ -42,6 +42,12 @@ export function useTermChangeHandler(
         queryKey: ['classes', branchId, lastTermId.current],
         exact: true
       });
+      
+      // Additionally invalidate term-related data
+      queryClient.invalidateQueries({
+        queryKey: ['terms'],
+        exact: false
+      });
     }
   }, [
     termData?.id, 

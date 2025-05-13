@@ -1,8 +1,20 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { TermData } from "./types";
+import { TermData, LegacyTermData } from "./types";
 import { getDefaultTermsForCurrentYear } from "./utils";
+
+// Helper function to convert database term format to our frontend model
+function mapDbTermToTermData(dbTerm: LegacyTermData): TermData {
+  return {
+    id: dbTerm.id,
+    termNumber: dbTerm.term_number, // Map from snake_case to camelCase
+    year: dbTerm.academic_years?.year || new Date().getFullYear(),
+    startDate: dbTerm.start_date,
+    endDate: dbTerm.end_date,
+    current: dbTerm.current || false,
+  };
+}
 
 export function useTermQuery() {
   // Query for fetching terms from the database
@@ -29,17 +41,11 @@ export function useTermQuery() {
         if (error) throw error;
 
         // Transform the data to match our TermData type
-        const terms: TermData[] = termsData.map((term) => ({
-          id: term.id,
-          termNumber: term.term_number,
-          year: term.academic_years?.year || new Date().getFullYear(),
-          startDate: term.start_date,
-          endDate: term.end_date,
-          current: term.current || false,
-        }));
+        const terms: TermData[] = termsData.map(mapDbTermToTermData);
 
         // If there are no terms in the database, return the default ones
         if (terms.length === 0) {
+          console.log("No terms found in database, using defaults");
           return getDefaultTermsForCurrentYear();
         }
 

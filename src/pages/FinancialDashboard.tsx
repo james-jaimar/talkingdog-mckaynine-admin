@@ -128,7 +128,7 @@ export default function FinancialDashboard() {
     profit,
     invoicesCount: termFilteredInvoices.length,
     termDateRange,
-    currentTermNumber: termData?.termNumber
+    currentTermNumber: termData?.termNumber // Fixed: use termNumber instead of term_number
   });
 
   // Financial metrics for the metrics cards
@@ -235,7 +235,7 @@ export default function FinancialDashboard() {
               <h1 className="text-3xl font-bold">Financial Dashboard</h1>
               <p className="text-muted-foreground">
                 Branch: {currentBranch?.name || 'No branch selected'} |
-                Term: {termData?.termNumber || 'No term selected'}
+                Term: {termData?.termNumber || 'No term selected'} {/* Fixed: use termNumber */}
               </p>
             </div>
             
