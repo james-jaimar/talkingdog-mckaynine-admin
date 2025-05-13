@@ -10,6 +10,7 @@ import { useTerm } from "@/context/TermContext";
 import { useEffect } from "react";
 import { Helmet } from "react-helmet";
 import { toast } from "sonner";
+import { format, parseISO } from "date-fns";
 
 export default function Dashboard() {
   const { currentBranch } = useBranch();
@@ -44,6 +45,12 @@ export default function Dashboard() {
   // Determine if we're in a loading state
   const isLoading = isTermLoading || statsLoading;
 
+  // Format date range for display, ensuring we use the correct year
+  const formattedDateRange = termDateRange ? {
+    startDate: format(parseISO(termDateRange.startDate), 'M/d/yyyy'),
+    endDate: format(parseISO(termDateRange.endDate), 'M/d/yyyy')
+  } : null;
+
   return (
     <DashboardLayout>
       <Helmet>
@@ -54,10 +61,10 @@ export default function Dashboard() {
           <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
           {termData && (
             <div className="text-sm text-muted-foreground">
-              Current term: Term {termData.term_number}, {selectedYear || ''}
-              {termDateRange && (
+              Current term: Term {termData.term_number}, {termData.academic_years?.year || selectedYear} 
+              {formattedDateRange && (
                 <span className="ml-2">
-                  ({new Date(termDateRange.startDate).toLocaleDateString()} - {new Date(termDateRange.endDate).toLocaleDateString()})
+                  ({formattedDateRange.startDate} - {formattedDateRange.endDate})
                 </span>
               )}
             </div>

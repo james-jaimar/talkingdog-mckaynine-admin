@@ -1,7 +1,7 @@
 
 import { useTerm } from "@/context/TermContext";
 import { Card, CardContent } from "@/components/ui/card";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { CalendarDays, Clock, Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
@@ -38,19 +38,23 @@ export function TermDisplay() {
     );
   }
 
+  // Ensure we have valid dates by parsing them properly
+  const startDate = termData.start_date ? parseISO(termData.start_date) : new Date();
+  const endDate = termData.end_date ? parseISO(termData.end_date) : new Date();
+
   return (
     <Card>
       <CardContent className="p-4">
         <div className="flex items-center mb-3">
           <CalendarDays className="h-5 w-5 mr-3 text-mckaynine-600" />
           <h3 className="text-lg font-semibold">
-            Term {termData.term_number}, {termData.academic_years?.year || "Unknown Year"}
+            Term {termData.term_number}, {termData.academic_years?.year || startDate.getFullYear()}
           </h3>
         </div>
         <div className="flex items-center text-sm text-gray-600 ml-8">
           <Clock className="h-4 w-4 mr-2" />
           <span>
-            {format(new Date(termData.start_date), 'dd MMM yyyy')} - {format(new Date(termData.end_date), 'dd MMM yyyy')}
+            {format(startDate, 'dd MMM yyyy')} - {format(endDate, 'dd MMM yyyy')}
           </span>
         </div>
       </CardContent>

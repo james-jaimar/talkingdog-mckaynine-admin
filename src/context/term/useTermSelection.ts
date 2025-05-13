@@ -7,21 +7,22 @@ export function useTermSelection() {
   
   // Initialize with current term if not set
   useEffect(() => {
-    if (selectedTermNumber === null) {
+    if (selectedTermNumber === null || selectedYear === null) {
       // Default to current term based on date
       const currentDate = new Date();
       const currentMonth = currentDate.getMonth() + 1;
+      const currentYear = currentDate.getFullYear();
       
       // Simple logic to determine current term
       // Terms 1: Jan-Mar, 2: Apr-Jun, 3: Jul-Sep, 4: Oct-Dec
       const currentTerm = Math.ceil(currentMonth / 3).toString(); // Convert to string
       
       setSelectedTermNumber(currentTerm);
-      setSelectedYear(currentDate.getFullYear());
+      setSelectedYear(currentYear);
       
-      console.log(`Term initialized to Term ${currentTerm}, ${currentDate.getFullYear()}`);
+      console.log(`Term initialized to Term ${currentTerm}, ${currentYear}`);
     }
-  }, [selectedTermNumber]);
+  }, [selectedTermNumber, selectedYear]);
   
   // Generate available years (current year and 2 years before/after)
   const currentYear = new Date().getFullYear();
