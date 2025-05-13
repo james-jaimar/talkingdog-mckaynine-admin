@@ -16,11 +16,11 @@ export function TermSelectorRow() {
     selectedTermNumber,
     setSelectedTermNumber,
     termData,
-    isTermLoading,
+    loading: isTermLoading,
     error,
     years,
     terms,
-    refetchTerm
+    refreshTerms: refetchTerm
   } = useTerm();
   
   const queryClient = useQueryClient();
@@ -89,15 +89,15 @@ export function TermSelectorRow() {
                 <div>
                   <div className="flex items-center gap-2">
                     <p className="text-lg font-semibold">
-                      Term {termData.term_number}, {selectedYear}
+                      Term {termData.termNumber}, {selectedYear}
                     </p>
                     {termData.current && (
                       <Badge variant="secondary" className="bg-green-500 text-white">Current</Badge>
                     )}
                   </div>
                   <p className="text-sm text-gray-200">
-                    {termData.start_date ? format(new Date(termData.start_date), 'dd MMM yyyy') : ''} - 
-                    {termData.end_date ? format(new Date(termData.end_date), 'dd MMM yyyy') : ''}
+                    {termData.startDate ? format(new Date(termData.startDate), 'dd MMM yyyy') : ''} - 
+                    {termData.endDate ? format(new Date(termData.endDate), 'dd MMM yyyy') : ''}
                   </p>
                 </div>
               </div>

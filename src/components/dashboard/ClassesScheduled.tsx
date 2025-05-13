@@ -124,7 +124,7 @@ export function ClassesScheduled({ branchId }: ClassesScheduledProps) {
           </div>
         ) : (
           <div className="text-center py-4 text-gray-500 text-sm sm:text-base">
-            {termData ? `No upcoming classes scheduled for Term ${termData.term_number}` : 'No upcoming classes scheduled'}
+            {termData ? `No upcoming classes scheduled for Term ${termData.termNumber}` : 'No upcoming classes scheduled'}
           </div>
         )}
       </CardContent>

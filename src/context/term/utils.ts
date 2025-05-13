@@ -1,10 +1,34 @@
 
-import { TermData } from "./types";
+import { TermData, TermNumber, TERM_STORAGE_KEY } from "./types";
 
 // Generate unique string IDs for default terms
-const generateDefaultTermId = (year: number, termNumber: string): string => {
+export const generateDefaultTermId = (year: number, termNumber: string): string => {
   return `default-term-${year}-${termNumber}`;
 };
+
+// Check if current date is within range
+export function isCurrentDateInRange(startDate: Date, endDate: Date): boolean {
+  const currentDate = new Date();
+  return currentDate >= startDate && currentDate <= endDate;
+}
+
+// Get stored term data from localStorage
+export function getStoredTermData(): { year: number; termNumber: TermNumber } {
+  try {
+    const storedData = localStorage.getItem(TERM_STORAGE_KEY);
+    if (storedData) {
+      return JSON.parse(storedData);
+    }
+  } catch (error) {
+    console.error("Error reading term data from localStorage:", error);
+  }
+  
+  // Default to current year and term 1
+  return {
+    year: new Date().getFullYear(),
+    termNumber: "1" as TermNumber
+  };
+}
 
 // Get default terms for current year
 export function getDefaultTermsForCurrentYear(): TermData[] {
@@ -56,12 +80,6 @@ export function getDefaultTermsForCurrentYear(): TermData[] {
       ),
     },
   ];
-}
-
-// Check if current date is within range
-function isCurrentDateInRange(startDate: Date, endDate: Date): boolean {
-  const currentDate = new Date();
-  return currentDate >= startDate && currentDate <= endDate;
 }
 
 // Format the term display name

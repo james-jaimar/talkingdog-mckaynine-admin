@@ -18,7 +18,7 @@ import { useClassOrderingLogger, logDebug } from "./class-ordering/useClassOrder
 export function useClassOrdering() {
   const queryClient = useQueryClient();
   const { currentBranch } = useBranch();
-  const { termData, selectedTermNumber, selectedYear } = useTerm();
+  const { termData } = useTerm();
   const branchId = currentBranch?.id;
   
   // Fetch classes with the saved order - includes term in the query key
@@ -75,8 +75,8 @@ export function useClassOrdering() {
     fetchedClassesCount: fetchedClasses?.length || 0,
     orderedClassesCount: orderedClasses.length,
     hasInitialized: hasInitialized.current,
-    selectedTerm: selectedTermNumber,
-    selectedYear
+    selectedTerm: termData?.termNumber,
+    selectedYear: termData?.year
   });
 
   // Handler for drag end events

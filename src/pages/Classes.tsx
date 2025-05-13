@@ -13,7 +13,7 @@ import { InfoIcon } from "lucide-react";
 
 export default function Classes() {
   const [isAddClassModalOpen, setIsAddClassModalOpen] = useState(false);
-  const { termData, selectedYear, selectedTermNumber } = useTerm();
+  const { termData } = useTerm();
 
   return (
     <DashboardLayout>
@@ -26,7 +26,7 @@ export default function Classes() {
             <h1 className="text-2xl font-bold">Class Management</h1>
             <p className="text-sm text-muted-foreground">
               {termData ? 
-                `Currently viewing Term ${termData.term_number}, ${selectedYear}` : 
+                `Currently viewing Term ${termData.termNumber}, ${termData.year}` : 
                 "No term selected"}
             </p>
           </div>

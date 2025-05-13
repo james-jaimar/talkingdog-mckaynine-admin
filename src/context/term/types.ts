@@ -7,3 +7,22 @@ export interface TermData {
   endDate: string;
   current: boolean;
 }
+
+export type TermNumber = '1' | '2' | '3' | '4';
+
+// Constants for term data handling
+export const TERM_STORAGE_KEY = 'mckaynine-selected-term';
+export const TERM_CHANGE_DEBOUNCE_MS = 500;
+
+// For backwards compatibility with existing code using the old property names
+export interface LegacyTermData {
+  id: string;
+  term_number: string;
+  year: number;
+  start_date: string;
+  end_date: string;
+  current: boolean;
+  academic_years?: {
+    year: number;
+  };
+}
