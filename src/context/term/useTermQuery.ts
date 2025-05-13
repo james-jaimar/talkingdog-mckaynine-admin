@@ -1,3 +1,4 @@
+
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { TermData } from "./types";
@@ -14,6 +15,7 @@ export function useTermQuery(termNumber: string | null, year: number | null) {
       console.log(`Fetching term data for Term ${termNumber}, Year ${year}`);
       
       if (!termNumber || !year) {
+        console.log("No term number or year provided, returning null");
         return null;
       }
 

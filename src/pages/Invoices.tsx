@@ -20,11 +20,12 @@ export default function Invoices() {
   const [monthFilter, setMonthFilter] = useState<string>("current");
   const { invoices, isLoading, refreshAllInvoiceQueries } = useInvoices();
   const queryClient = useQueryClient();
-  const { termDateRange } = useTerm();
+  const { termDateRange, termData } = useTerm();
 
   // Set the month filter to "term" if a term is selected
   useEffect(() => {
     if (termDateRange) {
+      console.log("Setting month filter to 'term' because termDateRange is available");
       setMonthFilter("term");
     }
   }, [termDateRange?.startDate, termDateRange?.endDate]);
@@ -78,6 +79,14 @@ export default function Invoices() {
     "all": { start: new Date(0), end: new Date(8640000000000000), label: "All Time" }
   };
 
+  // Debug log for term date range
+  useEffect(() => {
+    console.log("Current term data:", termData);
+    console.log("Term date range:", termDateRange);
+    console.log("Current month filter:", monthFilter);
+    console.log("Month ranges:", monthRanges);
+  }, [termData, termDateRange, monthFilter]);
+
   // Filter invoices by status and month
   const filteredInvoices = invoices?.filter(invoice => {
     const statusMatch = statusFilter === 'all' || invoice.status === statusFilter;
@@ -88,10 +97,19 @@ export default function Invoices() {
     
     const invoiceDate = new Date(invoice.issued_date);
     const range = monthRanges[monthFilter as keyof typeof monthRanges];
+    
+    console.log(`Filtering invoice ${invoice.invoice_number} date ${invoiceDate} against range: ${range.start} to ${range.end}`);
+    
     const dateMatch = invoiceDate >= range.start && invoiceDate <= range.end;
     
     return statusMatch && dateMatch;
   }) || [];
+
+  // Log filter results
+  useEffect(() => {
+    console.log(`Filtered invoices: ${filteredInvoices.length} out of ${invoices?.length || 0}`);
+    console.log(`Current filter: status=${statusFilter}, month=${monthFilter}`);
+  }, [filteredInvoices.length, invoices?.length, statusFilter, monthFilter]);
 
   return (
     <DashboardLayout>
@@ -117,6 +135,7 @@ export default function Invoices() {
           onMonthFilterChange={setMonthFilter}
           onStatusFilterChange={setStatusFilter}
           showTermOption={!!termDateRange}
+          currentMonthFilter={monthFilter}
         />
         
         <InvoicesList 
