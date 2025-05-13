@@ -72,10 +72,10 @@ export function enhanceInvoiceItem(item: InvoiceItem): InvoiceItem {
       ...item,
       bookings: {
         id: booking.id,
-        dogs: {
+        dogs: booking.dogs ? {
           name: booking.dogs.name,
           breed: booking.dogs.breed
-        },
+        } : undefined,
         class_schedules: classSchedule as any
       }
     };

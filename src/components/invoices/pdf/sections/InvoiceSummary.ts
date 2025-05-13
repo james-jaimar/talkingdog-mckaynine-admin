@@ -27,7 +27,7 @@ export function addInvoiceSummary(doc: any, invoice: Invoice, startY: number): n
   currentY += 6;
   
   // Discount (if applicable)
-  if (monetary_discount > 0) {
+  if (monetary_discount && monetary_discount > 0) {
     const discountLabel = discount_type === 'percentage'
       ? `Discount (${original_discount_amount || discount_amount}%):`
       : 'Discount:';
