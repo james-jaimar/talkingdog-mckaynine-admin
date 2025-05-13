@@ -105,7 +105,7 @@ export function useTermQuery(termNumber: string | null, year: number | null) {
         
         // Create a default term data with reasonable dates for the SELECTED year
         const defaultTerm: TermData = {
-          id: 'default-term',
+          id: `default-term-${termNumber}-${year}`,  // Use a unique string ID that won't trigger UUID validation errors
           term_number: validTermNumber,
           start_date: getDefaultStartDate(validTermNumber, year),
           end_date: getDefaultEndDate(validTermNumber, year),
