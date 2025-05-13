@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import {
   Card,
@@ -50,8 +49,7 @@ export function ProblematicInvoicesManager() {
   
   // Get details of the selected invoice
   const { data: selectedInvoice, isLoading: isLoadingInvoiceDetails } = useInvoiceDetails(
-    selectedInvoiceId || "", 
-    { enabled: !!selectedInvoiceId }
+    selectedInvoiceId || ""
   );
   
   // Get the client's bookings for linking

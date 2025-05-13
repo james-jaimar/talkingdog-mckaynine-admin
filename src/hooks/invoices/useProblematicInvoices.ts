@@ -5,6 +5,22 @@ import { toast } from "sonner";
 import { Invoice, InvoiceItem } from "./types";
 import { useBranch } from "@/context/BranchContext";
 
+// Define simplified types for problematic invoices
+interface ProblematicInvoice {
+  id: string;
+  invoice_number: string;
+  client_id: string;
+  clients: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+  };
+  status: string;
+  total: number;
+  created_at: string;
+}
+
 /**
  * Hook to fetch invoices with items that have no booking associations
  */
@@ -71,7 +87,7 @@ export function useProblematicInvoices() {
       });
 
       return { 
-        invoices: problematic as Invoice[], 
+        invoices: problematic as ProblematicInvoice[], 
         count: problematic.length,
         itemsByInvoice
       };
