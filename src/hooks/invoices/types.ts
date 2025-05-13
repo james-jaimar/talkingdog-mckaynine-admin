@@ -85,9 +85,10 @@ export interface BookingWithDetails {
     start_time?: string;
     class_id?: string;
     classes?: {
+      id?: string;
       name: string;
       description?: string;
-      id?: string;
+      course_fee?: number; // Use course_fee instead of price to match DB schema
     };
   };
 }

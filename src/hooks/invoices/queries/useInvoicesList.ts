@@ -1,7 +1,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Invoice, InvoiceItem } from "../types";
+import { Invoice, InvoiceItem, BookingWithDetails } from "../types";
 import { handleQueryError } from "./useQueryUtils";
 import { useBranch } from "@/context/BranchContext";
 
@@ -133,8 +133,8 @@ export function useInvoicesList() {
                       classes: {
                         id: booking.class_schedules.classes.id,
                         name: className,
-                        price: classPrice || 0,
-                        description: classDescription || ''
+                        description: classDescription || '',
+                        course_fee: classPrice || 0  // Use course_fee instead of price
                       }
                     }
                   };
