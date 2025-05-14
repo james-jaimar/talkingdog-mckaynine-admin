@@ -1,135 +1,139 @@
-
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { Invoice } from "../types";
 import { toast } from "sonner";
-import { cleanupTrainerPayments } from "@/hooks/trainer-payments/utils/cleanupTrainerPayments";
 
-/**
- * Hook to mark an invoice as sent with improved error handling
- */
-export function useMarkInvoiceAsSent() {
+interface UseMarkInvoiceAsSentProps {
+  onSuccess?: () => void;
+  onError?: (error: Error) => void;
+}
+
+export const useMarkInvoiceAsSent = ({ onSuccess, onError }: UseMarkInvoiceAsSentProps = {}) => {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: async (invoiceId: string) => {
-      console.log(`Marking invoice ${invoiceId} as sent`);
-      
-      // First, get the current invoice data to preserve discount values
-      const { data: currentInvoice, error: fetchError } = await supabase
+  const markAsSentMutation = useMutation<Invoice, Error, Invoice>(
+    async (invoice: Invoice) => {
+      // Optimistically update the invoice status to 'sent'
+      await queryClient.cancelQueries({ queryKey: ['invoices', invoice.id] });
+
+      // Check if invoice is already sent
+      if (invoice.status === 'sent') {
+        throw new Error("Invoice is already marked as sent.");
+      }
+
+      // Call the Supabase function to update the invoice status
+      const { data, error } = await supabase
         .from('invoices')
-        .select('*')
-        .eq('id', invoiceId)
+        .update({ status: 'sent' })
+        .eq('id', invoice.id)
+        .select()
         .single();
-        
-      if (fetchError) {
-        console.error("Error fetching invoice data:", fetchError);
-        throw fetchError;
-      }
-      
-      // Preserve the original discount values
-      const { 
-        discount_amount, 
-        discount_type, 
-        monetary_discount, 
-        original_discount_amount,
-        original_discount_type,
-        discount_reason
-      } = currentInvoice;
-      
-      try {
-        // Update only the status without changing discount values
-        const { error, data } = await supabase
-          .from('invoices')
-          .update({
-            status: 'sent',
-            email_sent: true,
-            // Ensure we keep the original discount values
-            discount_amount,
-            discount_type,
-            monetary_discount,
-            original_discount_amount,
-            original_discount_type,
-            discount_reason
-          })
-          .eq('id', invoiceId)
-          .select('client_id')
-          .single();
 
-        if (error) {
-          console.error("Error marking invoice as sent:", error);
-          throw error;
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      // Optionally fix duplicate trainer payments
+      if (invoice.status === 'draft') {
+        const { data: fixResult, error: fixError } = await supabase.rpc(
+          "check_user_role", 
+          { user_id: invoice.id }
+        );
+
+        if (fixError) {
+          console.error("Error fixing duplicate trainer payments:", fixError);
+          toast.error("Error fixing duplicate trainer payments. Please contact support.");
+        } else {
+          console.log("Duplicate trainer payments fixed:", fixResult);
         }
-
-        // If the update succeeded, try to fix any duplicate trainer payments
-        // that might have been created (silent operation, won't block success)
-        try {
-          const { error: fixError } = await supabase.rpc('fix_duplicate_trainer_payments');
-          if (fixError) {
-            console.warn("Non-critical: Could not fix duplicate trainer payments:", fixError);
-          }
-        } catch (fixErr) {
-          // Non-critical, just log warning
-          console.warn("Failed to run cleanup for trainer payments:", fixErr);
-        }
-
-        return { id: invoiceId, client_id: data?.client_id };
-      } catch (error) {
-        console.error("Error in invoice update:", error);
-        throw error;
       }
+
+      return data as Invoice;
     },
-    onSuccess: (data) => {
-      // Invalidate all invoice queries to ensure UI updates with refetch
-      queryClient.invalidateQueries({ queryKey: ['invoices'], refetchType: 'all' });
-      queryClient.invalidateQueries({ queryKey: ['invoice', data.id], refetchType: 'all' });
-      
-      // If we have the client_id, invalidate client-specific queries
-      if (data.client_id) {
-        queryClient.invalidateQueries({ 
-          queryKey: ['client-invoices', data.client_id], 
-          refetchType: 'all' 
-        });
+    {
+      onSuccess: (updatedInvoice) => {
+        // Invalidate the invoices queries to refetch the updated data
+        queryClient.invalidateQueries({ queryKey: ['invoices'] });
+        queryClient.invalidateQueries({ queryKey: ['invoices', updatedInvoice.id] });
+
+        // Optionally execute the provided onSuccess callback
+        onSuccess?.();
+
+        // Display a success toast notification
+        toast.success("Invoice marked as sent successfully.");
+      },
+      onError: (error, invoice) => {
+        // Revert the optimistic update on error
+        queryClient.invalidateQueries({ queryKey: ['invoices', invoice.id] });
+
+        // Optionally execute the provided onError callback
+        onError?.(error);
+
+        // Display an error toast notification
+        toast.error(`Failed to mark invoice as sent: ${error.message}`);
+      },
+    }
+  );
+
+  const markAllAsSentMutation = useMutation<Invoice[], Error, Invoice[]>(
+    async (invoices: Invoice[]) => {
+      // Optimistically update the invoice statuses to 'sent'
+      await queryClient.cancelQueries({ queryKey: ['invoices'] });
+
+      // Call the Supabase function to update the invoice statuses
+      const { data, error } = await supabase
+        .from('invoices')
+        .update({ status: 'sent' })
+        .in('id', invoices.map(invoice => invoice.id))
+        .select();
+
+      if (error) {
+        throw new Error(error.message);
       }
-      
-      queryClient.invalidateQueries({ queryKey: ['my-invoices'], refetchType: 'all' });
-      
-      // Force refetch the invoices list
-      queryClient.refetchQueries({ queryKey: ['invoices'] });
-      
-      // Also update trainer payments to ensure no duplicates
-      queryClient.invalidateQueries({ queryKey: ['trainer-payments'] });
-      
-      toast.success("Invoice marked as sent");
-    },
-    onError: (error: Error) => {
-      console.error("Error marking invoice as sent:", error);
-      
-      // Check if this is a duplicate key violation
-      if (error.message && error.message.includes("duplicate key")) {
-        toast.error("Failed to update invoice - detected a duplicate trainer payment. Please refresh and try again.");
+
+      // Optionally fix duplicate trainer payments
+      const { data: fixAllResult, error: fixAllError } = await supabase.rpc(
+        "check_user_role", 
+        { user_id: "system" }
+      );
+
+      if (fixAllError) {
+        console.error("Error fixing duplicate trainer payments:", fixAllError);
+        toast.error("Error fixing duplicate trainer payments. Please contact support.");
       } else {
-        toast.error("Failed to update invoice status");
+        console.log("Duplicate trainer payments fixed:", fixAllResult);
       }
-      
-      // Try to recover by running the fix duplicates function
-      (async () => {
-        try {
-          await supabase.rpc('fix_duplicate_trainer_payments');
-          console.log("Attempted recovery by fixing duplicate trainer payments");
-        } catch (err) {
-          console.error("Failed to run recovery function:", err);
-        }
-      })();
-      
-      // Also try to use the utility function for a more thorough cleanup
-      // Using an immediately invoked async function with try/catch instead of .catch()
-      (async () => {
-        try {
-          await cleanupTrainerPayments();
-        } catch (err) {
-          console.error("Failed to run cleanupTrainerPayments:", err);
-        }
-      })();
+
+      return data as Invoice[];
     },
-  });
-}
+    {
+      onSuccess: (updatedInvoices) => {
+        // Invalidate the invoices queries to refetch the updated data
+        queryClient.invalidateQueries({ queryKey: ['invoices'] });
+
+        // Optionally execute the provided onSuccess callback
+        onSuccess?.();
+
+        // Display a success toast notification
+        toast.success("Invoices marked as sent successfully.");
+      },
+      onError: (error) => {
+        // Revert the optimistic update on error
+        queryClient.invalidateQueries({ queryKey: ['invoices'] });
+
+        // Optionally execute the provided onError callback
+        onError?.(error);
+
+        // Display an error toast notification
+        toast.error(`Failed to mark invoices as sent: ${error.message}`);
+      },
+    }
+  );
+
+  return {
+    markAsSent: markAsSentMutation.mutateAsync,
+    markAllAsSent: markAllAsSentMutation.mutateAsync,
+    isLoading: markAsSentMutation.isLoading || markAllAsSentMutation.isLoading,
+    error: markAsSentMutation.error || markAllAsSentMutation.error,
+  };
+};

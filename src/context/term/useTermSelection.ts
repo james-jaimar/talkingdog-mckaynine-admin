@@ -1,6 +1,10 @@
 
 import { useState, useCallback, useRef } from 'react';
-import { TermNumber, TERM_STORAGE_KEY, TERM_CHANGE_DEBOUNCE_MS } from './types';
+import { 
+  TermNumber, 
+  TERM_STORAGE_KEY, 
+  TERM_CHANGE_DEBOUNCE_MS 
+} from './types';
 import { getStoredTermData } from './utils';
 
 export function useTermSelection() {

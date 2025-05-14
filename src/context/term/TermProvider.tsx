@@ -2,7 +2,12 @@
 import React, { createContext, useContext, useEffect, ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/components/ui/use-toast';
-import { TermContextType, TermData, TermNumber } from './types';
+import { 
+  TermContextType, 
+  TermData, 
+  TermNumber, 
+  TermDateRange 
+} from './types';
 import { useTermQuery } from './useTermQuery';
 import { useTermSelection } from './useTermSelection';
 import { useTermCacheInvalidation } from './useTermCacheInvalidation';
@@ -88,13 +93,22 @@ export function TermProvider({ children }: { children: ReactNode }) {
   } : null;
 
   const contextValue: TermContextType = {
+    // Original interface properties (leave as null/empty for now)
+    currentTerm: null,
+    allTerms: [],
+    selectedTerm: null,
+    isLoading: isTermLoading,
+    error,
+    setSelectedTerm: () => {},
+    refetchTerms: async () => {},
+    
+    // Additional properties for backward compatibility
     selectedYear,
     setSelectedYear,
     selectedTermNumber,
     setSelectedTermNumber,
     termData,
     isTermLoading,
-    error,
     termDateRange,
     years,
     terms,
