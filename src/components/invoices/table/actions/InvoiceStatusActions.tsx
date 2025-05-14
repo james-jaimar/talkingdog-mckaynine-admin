@@ -6,7 +6,7 @@ import {
   useMarkInvoiceAsPaid, 
   useMarkInvoiceAsSent, 
   useCancelInvoice 
-} from "@/hooks/useInvoices";
+} from "@/hooks/invoices/status";
 
 interface InvoiceStatusActionsProps {
   invoice: Invoice;
@@ -19,24 +19,24 @@ export function InvoiceStatusActions({ invoice, isPending, onCloseDropdown }: In
   const markAsSent = useMarkInvoiceAsSent();
   const cancelInvoice = useCancelInvoice();
 
-  const handleMarkAsPaid = () => {
+  const handleMarkAsPaid = async () => {
     onCloseDropdown();
     if (invoice.status !== 'paid') {
-      markAsPaid.mutate(invoice.id);
+      await markAsPaid.markAsPaid(invoice);
     }
   };
 
-  const handleMarkAsSent = () => {
+  const handleMarkAsSent = async () => {
     onCloseDropdown();
     if (invoice.status !== 'sent' && invoice.status !== 'paid') {
-      markAsSent.mutate(invoice.id);
+      await markAsSent.markAsSent(invoice);
     }
   };
 
-  const handleCancel = () => {
+  const handleCancel = async () => {
     onCloseDropdown();
     if (invoice.status !== 'cancelled') {
-      cancelInvoice.mutate(invoice.id);
+      await cancelInvoice.cancelInvoice(invoice);
     }
   };
 

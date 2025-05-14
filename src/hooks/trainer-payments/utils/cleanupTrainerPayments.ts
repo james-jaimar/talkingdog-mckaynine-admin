@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 export const cleanupTrainerPayments = async () => {
@@ -11,7 +12,7 @@ export const cleanupTrainerPayments = async () => {
     
     const { data: fixResult, error: fixError } = await supabase.rpc(
       "check_user_role", 
-      { user_id: "system" }
+      { required_role: "system" }
     );
 
     if (fixError) {

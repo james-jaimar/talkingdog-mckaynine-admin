@@ -1,3 +1,4 @@
+
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Invoice } from "../types";
@@ -11,8 +12,8 @@ interface UseMarkInvoiceAsSentProps {
 export const useMarkInvoiceAsSent = ({ onSuccess, onError }: UseMarkInvoiceAsSentProps = {}) => {
   const queryClient = useQueryClient();
 
-  const markAsSentMutation = useMutation<Invoice, Error, Invoice>(
-    async (invoice: Invoice) => {
+  const markAsSentMutation = useMutation({
+    mutationFn: async (invoice: Invoice) => {
       // Optimistically update the invoice status to 'sent'
       await queryClient.cancelQueries({ queryKey: ['invoices', invoice.id] });
 
@@ -37,7 +38,7 @@ export const useMarkInvoiceAsSent = ({ onSuccess, onError }: UseMarkInvoiceAsSen
       if (invoice.status === 'draft') {
         const { data: fixResult, error: fixError } = await supabase.rpc(
           "check_user_role", 
-          { user_id: invoice.id }
+          { required_role: invoice.id }
         );
 
         if (fixError) {
@@ -50,33 +51,31 @@ export const useMarkInvoiceAsSent = ({ onSuccess, onError }: UseMarkInvoiceAsSen
 
       return data as Invoice;
     },
-    {
-      onSuccess: (updatedInvoice) => {
-        // Invalidate the invoices queries to refetch the updated data
-        queryClient.invalidateQueries({ queryKey: ['invoices'] });
-        queryClient.invalidateQueries({ queryKey: ['invoices', updatedInvoice.id] });
+    onSuccess: (updatedInvoice) => {
+      // Invalidate the invoices queries to refetch the updated data
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['invoices', updatedInvoice.id] });
 
-        // Optionally execute the provided onSuccess callback
-        onSuccess?.();
+      // Optionally execute the provided onSuccess callback
+      onSuccess?.();
 
-        // Display a success toast notification
-        toast.success("Invoice marked as sent successfully.");
-      },
-      onError: (error, invoice) => {
-        // Revert the optimistic update on error
-        queryClient.invalidateQueries({ queryKey: ['invoices', invoice.id] });
+      // Display a success toast notification
+      toast.success("Invoice marked as sent successfully.");
+    },
+    onError: (error, invoice) => {
+      // Revert the optimistic update on error
+      queryClient.invalidateQueries({ queryKey: ['invoices', invoice.id] });
 
-        // Optionally execute the provided onError callback
-        onError?.(error);
+      // Optionally execute the provided onError callback
+      onError?.(error);
 
-        // Display an error toast notification
-        toast.error(`Failed to mark invoice as sent: ${error.message}`);
-      },
-    }
-  );
+      // Display an error toast notification
+      toast.error(`Failed to mark invoice as sent: ${error.message}`);
+    },
+  });
 
-  const markAllAsSentMutation = useMutation<Invoice[], Error, Invoice[]>(
-    async (invoices: Invoice[]) => {
+  const markAllAsSentMutation = useMutation({
+    mutationFn: async (invoices: Invoice[]) => {
       // Optimistically update the invoice statuses to 'sent'
       await queryClient.cancelQueries({ queryKey: ['invoices'] });
 
@@ -94,7 +93,7 @@ export const useMarkInvoiceAsSent = ({ onSuccess, onError }: UseMarkInvoiceAsSen
       // Optionally fix duplicate trainer payments
       const { data: fixAllResult, error: fixAllError } = await supabase.rpc(
         "check_user_role", 
-        { user_id: "system" }
+        { required_role: "system" }
       );
 
       if (fixAllError) {
@@ -106,34 +105,32 @@ export const useMarkInvoiceAsSent = ({ onSuccess, onError }: UseMarkInvoiceAsSen
 
       return data as Invoice[];
     },
-    {
-      onSuccess: (updatedInvoices) => {
-        // Invalidate the invoices queries to refetch the updated data
-        queryClient.invalidateQueries({ queryKey: ['invoices'] });
+    onSuccess: (updatedInvoices) => {
+      // Invalidate the invoices queries to refetch the updated data
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
 
-        // Optionally execute the provided onSuccess callback
-        onSuccess?.();
+      // Optionally execute the provided onSuccess callback
+      onSuccess?.();
 
-        // Display a success toast notification
-        toast.success("Invoices marked as sent successfully.");
-      },
-      onError: (error) => {
-        // Revert the optimistic update on error
-        queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      // Display a success toast notification
+      toast.success("Invoices marked as sent successfully.");
+    },
+    onError: (error) => {
+      // Revert the optimistic update on error
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
 
-        // Optionally execute the provided onError callback
-        onError?.(error);
+      // Optionally execute the provided onError callback
+      onError?.(error);
 
-        // Display an error toast notification
-        toast.error(`Failed to mark invoices as sent: ${error.message}`);
-      },
-    }
-  );
+      // Display an error toast notification
+      toast.error(`Failed to mark invoices as sent: ${error.message}`);
+    },
+  });
 
   return {
     markAsSent: markAsSentMutation.mutateAsync,
     markAllAsSent: markAllAsSentMutation.mutateAsync,
-    isLoading: markAsSentMutation.isLoading || markAllAsSentMutation.isLoading,
+    isLoading: markAsSentMutation.isPending || markAllAsSentMutation.isPending,
     error: markAsSentMutation.error || markAllAsSentMutation.error,
   };
 };
