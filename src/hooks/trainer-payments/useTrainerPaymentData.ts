@@ -16,7 +16,7 @@ export function useTrainerPaymentData(branchId?: string, dateRange?: { from: Dat
   const { termData } = useTerm();
   const currentTermId = termData?.id;
 
-  const query = useQuery({
+  return useQuery({
     queryKey: ['trainer-payments', branchId, dateRange, currentTermId],
     queryFn: async (): Promise<TrainerPaymentData[]> => {
       if (!branchId) return [];
@@ -87,12 +87,4 @@ export function useTrainerPaymentData(branchId?: string, dateRange?: { from: Dat
     enabled: !!branchId,
     staleTime: 5 * 60 * 1000, // 5 minutes cache
   });
-
-  // Return both the query result and derived/helper values
-  return {
-    trainerPaymentsData: query.data || [],
-    isLoading: query.isLoading,
-    error: query.error,
-    refreshTrainerPayments: () => query.refetch()
-  };
 }

@@ -51,13 +51,9 @@ export function EmailInvoiceDialog({
       });
       
       // Mark the invoice as sent after successful email
-      if (selectedInvoice.status === 'draft' && selectedInvoice.client_id) {
+      if (selectedInvoice.status === 'draft') {
         try {
-          await markAsSent.mutateAsync({
-            invoiceId: selectedInvoice.id,
-            clientId: selectedInvoice.client_id,
-            sendEmail: false // We already sent the email
-          });
+          await markAsSent.mutateAsync(selectedInvoice.id);
           console.log(`Invoice ${selectedInvoice.invoice_number} marked as sent`);
         } catch (error) {
           console.error("Error marking invoice as sent:", error);

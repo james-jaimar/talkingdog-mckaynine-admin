@@ -29,7 +29,7 @@ export default function FinancialDashboard() {
   // Use effect to refresh data when term changes
   useEffect(() => {
     if (termData?.id && currentBranch?.id) {
-      console.log(`FinancialDashboard: Term data changed to ${termData.termNumber}, refreshing financial data for branch ${currentBranch.name}`);
+      console.log(`FinancialDashboard: Term data changed to ${termData.term_number}, refreshing financial data for branch ${currentBranch.name}`);
       queryClient.invalidateQueries({ queryKey: ['financial-bookings', currentBranch.id] });
       queryClient.invalidateQueries({ queryKey: ['invoices', currentBranch.id] });
     }
@@ -128,7 +128,7 @@ export default function FinancialDashboard() {
     profit,
     invoicesCount: termFilteredInvoices.length,
     termDateRange,
-    currentTermNumber: termData?.termNumber // Fixed: use termNumber instead of term_number
+    currentTermNumber: termData?.term_number
   });
 
   // Financial metrics for the metrics cards
@@ -235,7 +235,7 @@ export default function FinancialDashboard() {
               <h1 className="text-3xl font-bold">Financial Dashboard</h1>
               <p className="text-muted-foreground">
                 Branch: {currentBranch?.name || 'No branch selected'} |
-                Term: {termData?.termNumber || 'No term selected'} {/* Fixed: use termNumber */}
+                Term: {termData?.term_number || 'No term selected'}
               </p>
             </div>
             

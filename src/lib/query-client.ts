@@ -39,26 +39,19 @@ export async function invalidateTermRelatedData() {
       try {
         isInvalidating = true;
         
-        console.log("Invalidating term-related data across the application");
-        
         // First, remove cached data to ensure fresh fetch
         await queryClient.removeQueries({ queryKey: ['classes'], exact: false });
         await queryClient.removeQueries({ queryKey: ['class-schedules'], exact: false });
         await queryClient.removeQueries({ queryKey: ['dashboard-stats'], exact: false });
-        await queryClient.removeQueries({ queryKey: ['terms'], exact: false }); // Added to refresh term data
-        await queryClient.removeQueries({ queryKey: ['financial-bookings'], exact: false }); // Added to refresh financial data
         
         // Then trigger refetches
         await Promise.all([
           queryClient.refetchQueries({ queryKey: ['classes'], exact: false }),
-          queryClient.refetchQueries({ queryKey: ['dashboard-stats'], exact: false }),
-          queryClient.refetchQueries({ queryKey: ['terms'], exact: false }),
-          queryClient.refetchQueries({ queryKey: ['financial-bookings'], exact: false })
+          queryClient.refetchQueries({ queryKey: ['dashboard-stats'], exact: false })
         ]);
         
         resolve();
       } catch (error) {
-        console.error("Error invalidating term-related data:", error);
         reject(error);
       } finally {
         isInvalidating = false;

@@ -48,11 +48,11 @@ export function TrainerPaymentDialog({
   const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
   const [generatedPdfData, setGeneratedPdfData] = useState<string | null>(null);
 
-  const { trainerPaymentsData, isLoading: isLoadingTrainers } = useTrainerPaymentData(branchId, dateRange);
+  const { data: trainersData, isLoading: isLoadingTrainers } = useTrainerPaymentData(branchId, dateRange);
   const markTrainerPaymentsPaid = useMarkTrainerPaymentsPaid();
 
   // Get the trainer data
-  const trainer = trainerPaymentsData?.find(t => t.id === trainerId);
+  const trainer = trainersData?.find(t => t.id === trainerId);
   
   // Reset selections when dialog opens
   useEffect(() => {

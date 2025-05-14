@@ -12,7 +12,7 @@ import { Helmet } from "react-helmet";
 
 export default function Dashboard() {
   const { currentBranch } = useBranch();
-  const { termData, loading: isTermLoading } = useTerm();
+  const { termData, isTermLoading, selectedTermNumber, selectedYear } = useTerm();
   
   const {
     clientCount,
@@ -27,11 +27,11 @@ export default function Dashboard() {
   useEffect(() => {
     console.log("Dashboard detected term change, refetching stats", {
       termId: termData?.id,
-      termNumber: termData?.termNumber,
-      year: termData?.year
+      termNumber: selectedTermNumber,
+      year: selectedYear
     });
     refetchAllStats();
-  }, [termData?.id, termData?.termNumber, termData?.year, refetchAllStats]);
+  }, [termData?.id, selectedTermNumber, selectedYear, refetchAllStats]);
 
   // Determine if we're in a loading state
   const isLoading = isTermLoading || statsLoading;
@@ -64,13 +64,13 @@ export default function Dashboard() {
             title="Bookings"
             value={isLoading ? "Loading..." : bookingCount ?? "-"}
             icon={Book}
-            description={`Bookings ${termData ? `in Term ${termData.termNumber}` : ''}`}
+            description={`Bookings ${termData ? `in Term ${termData.term_number}` : ''}`}
           />
           <StatsCard
             title="Upcoming Classes"
             value={isLoading ? "Loading..." : upcomingClassCount ?? "-"}
             icon={Calendar}
-            description={`Classes ${termData ? `in Term ${termData.termNumber}` : 'scheduled'}`}
+            description={`Classes ${termData ? `in Term ${termData.term_number}` : 'scheduled'}`}
           />
         </div>
 

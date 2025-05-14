@@ -21,7 +21,7 @@ export function useTermChangeHandler(
   resetFn: () => void
 ) {
   const queryClient = useQueryClient();
-  const { termData } = useTerm();
+  const { termData, selectedTermNumber, selectedYear } = useTerm();
 
   // Reset when term changes to get fresh data
   useEffect(() => {
@@ -29,8 +29,8 @@ export function useTermChangeHandler(
       logDebug("Term changed in useClassOrdering, resetting state", { 
         from: lastTermId.current, 
         to: termData?.id,
-        selectedTerm: termData?.termNumber,
-        selectedYear: termData?.year
+        selectedTerm: selectedTermNumber,
+        selectedYear
       });
       
       // Call the reset function
@@ -42,19 +42,13 @@ export function useTermChangeHandler(
         queryKey: ['classes', branchId, lastTermId.current],
         exact: true
       });
-      
-      // Additionally invalidate term-related data
-      queryClient.invalidateQueries({
-        queryKey: ['terms'],
-        exact: false
-      });
     }
   }, [
     termData?.id, 
     resetFn, 
     queryClient,
-    termData?.termNumber,
-    termData?.year,
+    selectedTermNumber,
+    selectedYear,
     branchId,
     lastTermId
   ]);

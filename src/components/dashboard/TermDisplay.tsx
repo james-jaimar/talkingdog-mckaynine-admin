@@ -6,7 +6,7 @@ import { CalendarDays, Clock, Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export function TermDisplay() {
-  const { termData, loading: isTermLoading, error } = useTerm();
+  const { termData, isTermLoading, error } = useTerm();
   const errorMessage = error?.message || null;
 
   if (isTermLoading) {
@@ -44,13 +44,13 @@ export function TermDisplay() {
         <div className="flex items-center mb-3">
           <CalendarDays className="h-5 w-5 mr-3 text-mckaynine-600" />
           <h3 className="text-lg font-semibold">
-            Term {termData.termNumber}, {termData.year || "Unknown Year"}
+            Term {termData.term_number}, {termData.academic_years?.year || "Unknown Year"}
           </h3>
         </div>
         <div className="flex items-center text-sm text-gray-600 ml-8">
           <Clock className="h-4 w-4 mr-2" />
           <span>
-            {format(new Date(termData.startDate), 'dd MMM yyyy')} - {format(new Date(termData.endDate), 'dd MMM yyyy')}
+            {format(new Date(termData.start_date), 'dd MMM yyyy')} - {format(new Date(termData.end_date), 'dd MMM yyyy')}
           </span>
         </div>
       </CardContent>

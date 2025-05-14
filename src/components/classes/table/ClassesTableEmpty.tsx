@@ -12,7 +12,7 @@ export function ClassesTableEmpty() {
         <Calendar className="h-12 w-12 mx-auto mb-4 text-gray-400" />
         <h3 className="text-lg font-semibold mb-2">
           {termData ? (
-            `No classes found for Term ${termData.termNumber}, ${termData.year}`
+            `No classes found for Term ${termData.term_number}, ${termData.academic_years?.year}`
           ) : (
             "No classes found"
           )}

@@ -109,138 +109,6 @@ export type Database = {
           },
         ]
       }
-      branch_branding: {
-        Row: {
-          accent_color: string
-          app_name: string
-          branch_id: string
-          created_at: string
-          id: string
-          logo_url: string | null
-          primary_color: string
-          secondary_color: string
-          updated_at: string
-        }
-        Insert: {
-          accent_color?: string
-          app_name?: string
-          branch_id: string
-          created_at?: string
-          id?: string
-          logo_url?: string | null
-          primary_color?: string
-          secondary_color?: string
-          updated_at?: string
-        }
-        Update: {
-          accent_color?: string
-          app_name?: string
-          branch_id?: string
-          created_at?: string
-          id?: string
-          logo_url?: string | null
-          primary_color?: string
-          secondary_color?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "branch_branding_branch_id_fkey"
-            columns: ["branch_id"]
-            isOneToOne: false
-            referencedRelation: "branches"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      branch_email_templates: {
-        Row: {
-          branch_id: string
-          content: string
-          created_at: string
-          id: string
-          subject: string
-          type: string
-          updated_at: string
-        }
-        Insert: {
-          branch_id: string
-          content: string
-          created_at?: string
-          id?: string
-          subject: string
-          type: string
-          updated_at?: string
-        }
-        Update: {
-          branch_id?: string
-          content?: string
-          created_at?: string
-          id?: string
-          subject?: string
-          type?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "branch_email_templates_branch_id_fkey"
-            columns: ["branch_id"]
-            isOneToOne: false
-            referencedRelation: "branches"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      branch_notifications: {
-        Row: {
-          branch_id: string
-          created_at: string
-          email_footer: string | null
-          from_email: string | null
-          id: string
-          reply_to_email: string | null
-          send_class_reminders: boolean | null
-          send_invoice_email: boolean | null
-          send_payment_reminders: boolean | null
-          send_welcome_email: boolean | null
-          updated_at: string
-        }
-        Insert: {
-          branch_id: string
-          created_at?: string
-          email_footer?: string | null
-          from_email?: string | null
-          id?: string
-          reply_to_email?: string | null
-          send_class_reminders?: boolean | null
-          send_invoice_email?: boolean | null
-          send_payment_reminders?: boolean | null
-          send_welcome_email?: boolean | null
-          updated_at?: string
-        }
-        Update: {
-          branch_id?: string
-          created_at?: string
-          email_footer?: string | null
-          from_email?: string | null
-          id?: string
-          reply_to_email?: string | null
-          send_class_reminders?: boolean | null
-          send_invoice_email?: boolean | null
-          send_payment_reminders?: boolean | null
-          send_welcome_email?: boolean | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "branch_notifications_branch_id_fkey"
-            columns: ["branch_id"]
-            isOneToOne: false
-            referencedRelation: "branches"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       branches: {
         Row: {
           address: string
@@ -248,12 +116,8 @@ export type Database = {
           capacity: number | null
           city: string
           created_at: string
-          description: string | null
-          domain: string | null
           email: string | null
           id: string
-          is_active: boolean | null
-          max_users: number | null
           name: string
           phone: string | null
           postal_code: string
@@ -265,12 +129,8 @@ export type Database = {
           capacity?: number | null
           city: string
           created_at?: string
-          description?: string | null
-          domain?: string | null
           email?: string | null
           id?: string
-          is_active?: boolean | null
-          max_users?: number | null
           name: string
           phone?: string | null
           postal_code: string
@@ -282,12 +142,8 @@ export type Database = {
           capacity?: number | null
           city?: string
           created_at?: string
-          description?: string | null
-          domain?: string | null
           email?: string | null
           id?: string
-          is_active?: boolean | null
-          max_users?: number | null
           name?: string
           phone?: string | null
           postal_code?: string
@@ -1300,6 +1156,10 @@ export type Database = {
           academic_year: number
           term_number: Database["public"]["Enums"]["term_number"]
         }[]
+      }
+      fix_duplicate_trainer_payments: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
       }
       get_current_term: {
         Args: Record<PropertyKey, never>

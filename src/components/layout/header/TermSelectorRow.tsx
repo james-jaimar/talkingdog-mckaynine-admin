@@ -16,11 +16,11 @@ export function TermSelectorRow() {
     selectedTermNumber,
     setSelectedTermNumber,
     termData,
-    loading: isTermLoading,
+    isTermLoading,
     error,
     years,
     terms,
-    refreshTerms: refetchTerm
+    refetchTerm
   } = useTerm();
   
   const queryClient = useQueryClient();
@@ -40,7 +40,6 @@ export function TermSelectorRow() {
       setTimeout(() => {
         queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
         queryClient.invalidateQueries({ queryKey: ['invoices'] });
-        queryClient.invalidateQueries({ queryKey: ['terms'] }); // Added to ensure term data is refreshed
       }, 100);
     }
   };
@@ -50,7 +49,6 @@ export function TermSelectorRow() {
       refetchTerm();
       queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
-      queryClient.invalidateQueries({ queryKey: ['terms'] }); // Added to ensure term data is refreshed
       toast.success("Term data refreshed");
     }
   };
@@ -91,15 +89,15 @@ export function TermSelectorRow() {
                 <div>
                   <div className="flex items-center gap-2">
                     <p className="text-lg font-semibold">
-                      Term {termData.termNumber}, {selectedYear}
+                      Term {termData.term_number}, {selectedYear}
                     </p>
                     {termData.current && (
                       <Badge variant="secondary" className="bg-green-500 text-white">Current</Badge>
                     )}
                   </div>
                   <p className="text-sm text-gray-200">
-                    {termData.startDate ? format(new Date(termData.startDate), 'dd MMM yyyy') : ''} - 
-                    {termData.endDate ? format(new Date(termData.endDate), 'dd MMM yyyy') : ''}
+                    {termData.start_date ? format(new Date(termData.start_date), 'dd MMM yyyy') : ''} - 
+                    {termData.end_date ? format(new Date(termData.end_date), 'dd MMM yyyy') : ''}
                   </p>
                 </div>
               </div>

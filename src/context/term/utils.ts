@@ -1,90 +1,53 @@
 
-import { TermData, TermNumber, TERM_STORAGE_KEY } from "./types";
+import { TermNumber } from './types';
+import { startOfDay, endOfDay } from 'date-fns';
 
-// Generate unique string IDs for default terms
-export const generateDefaultTermId = (year: number, termNumber: string): string => {
-  return `default-term-${year}-${termNumber}`;
+// Get current term number based on month
+export const getCurrentTermNumber = (): TermNumber => {
+  const month = new Date().getMonth() + 1; // getMonth() returns 0-11
+  if (month <= 3) return '1';
+  if (month <= 6) return '2';
+  if (month <= 9) return '3';
+  return '4';
 };
 
-// Check if current date is within range
-export function isCurrentDateInRange(startDate: Date, endDate: Date): boolean {
-  const currentDate = new Date();
-  return currentDate >= startDate && currentDate <= endDate;
-}
-
-// Get stored term data from localStorage
-export function getStoredTermData(): { year: number; termNumber: TermNumber } {
+// Helper to get stored term data from localStorage
+export const getStoredTermData = () => {
   try {
-    const storedData = localStorage.getItem(TERM_STORAGE_KEY);
+    const storedData = localStorage.getItem('mckaynine-selected-term');
     if (storedData) {
-      return JSON.parse(storedData);
+      const parsed = JSON.parse(storedData);
+      return {
+        year: parsed.year || new Date().getFullYear(),
+        termNumber: parsed.termNumber || getCurrentTermNumber()
+      };
     }
   } catch (error) {
-    console.error("Error reading term data from localStorage:", error);
+    // Silent failure, don't log here
   }
-  
-  // Default to current year and term 1
-  return {
-    year: new Date().getFullYear(),
-    termNumber: "1" as TermNumber
+  return { 
+    year: new Date().getFullYear(), 
+    termNumber: getCurrentTermNumber() 
   };
+};
+
+// Helper to get start and end months for each term
+export function getTermMonths(termNumber: TermNumber): [number, number] {
+  switch(termNumber) {
+    case '1': return [0, 2];   // Jan, Feb, Mar
+    case '2': return [3, 5];   // Apr, May, Jun
+    case '3': return [6, 8];   // Jul, Aug, Sep
+    case '4': return [9, 11];  // Oct, Nov, Dec
+  }
 }
 
-// Get default terms for current year
-export function getDefaultTermsForCurrentYear(): TermData[] {
-  const currentYear = new Date().getFullYear();
-  
-  return [
-    {
-      id: generateDefaultTermId(currentYear, "1"),
-      termNumber: "1",
-      year: currentYear,
-      startDate: `${currentYear}-01-01`, // January 1
-      endDate: `${currentYear}-03-31`, // March 31
-      current: isCurrentDateInRange(
-        new Date(`${currentYear}-01-01`), 
-        new Date(`${currentYear}-03-31`)
-      ),
-    },
-    {
-      id: generateDefaultTermId(currentYear, "2"),
-      termNumber: "2",
-      year: currentYear,
-      startDate: `${currentYear}-04-01`, // April 1
-      endDate: `${currentYear}-06-30`, // June 30
-      current: isCurrentDateInRange(
-        new Date(`${currentYear}-04-01`), 
-        new Date(`${currentYear}-06-30`)
-      ),
-    },
-    {
-      id: generateDefaultTermId(currentYear, "3"),
-      termNumber: "3",
-      year: currentYear,
-      startDate: `${currentYear}-07-01`, // July 1
-      endDate: `${currentYear}-09-30`, // September 30
-      current: isCurrentDateInRange(
-        new Date(`${currentYear}-07-01`), 
-        new Date(`${currentYear}-09-30`)
-      ),
-    },
-    {
-      id: generateDefaultTermId(currentYear, "4"),
-      termNumber: "4",
-      year: currentYear,
-      startDate: `${currentYear}-10-01`, // October 1
-      endDate: `${currentYear}-12-31`, // December 31
-      current: isCurrentDateInRange(
-        new Date(`${currentYear}-10-01`), 
-        new Date(`${currentYear}-12-31`)
-      ),
-    },
-  ];
-}
-
-// Format the term display name
-export function formatTermDisplay(termData: TermData | null): string {
-  if (!termData) return "No term selected";
-  
-  return `Term ${termData.termNumber} ${termData.year}`;
-}
+// Helper to calculate term date range
+export const calculateTermDateRange = (
+  year: number, 
+  termNumber: TermNumber
+): { startDate: string; endDate: string } => {
+  const [startMonth, endMonth] = getTermMonths(termNumber);
+  const startDate = startOfDay(new Date(year, startMonth, 1)).toISOString();
+  const endDate = endOfDay(new Date(year, endMonth + 1, 0)).toISOString();
+  return { startDate, endDate };
+};

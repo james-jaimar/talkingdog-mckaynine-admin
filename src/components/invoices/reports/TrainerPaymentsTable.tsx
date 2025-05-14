@@ -1,3 +1,4 @@
+
 import {
   Table,
   TableBody,
@@ -10,24 +11,35 @@ import { Card, CardContent } from "@/components/ui/card";
 import { TrainerPaymentsRow } from "./TrainerPaymentsRow";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Info, AlertTriangle } from "lucide-react";
-import { TrainerPaymentData } from "@/hooks/trainer-payments/types";
 
 interface TrainerPaymentsTableProps {
-  trainers: TrainerPaymentData[];
+  trainers: Array<{
+    id: string;
+    trainerName: string;
+    totalEarned: number;
+    paid: number;
+    pending: number;
+    potentialEarnings?: number;
+    classesCount: number;
+    clients: number;
+    lastPaymentDate?: string;
+    classDetails?: any[];
+    invoicesCount?: number;
+    scheduleIds?: string[];
+    hasZeroAmountPayments?: boolean;
+    hasZeroCommissionClasses?: boolean;
+    hasUnpaidCommission?: boolean;
+  }>;
   onMarkForPayment: (trainerId: string) => void;
   onMarkAsUnpaid?: (trainerId: string) => void;
   onFixZeroAmounts?: (trainerId: string) => void;
-  branchId?: string;
-  dateRange?: { from: Date; to: Date };
 }
 
 export function TrainerPaymentsTable({ 
   trainers, 
   onMarkForPayment, 
   onMarkAsUnpaid,
-  onFixZeroAmounts,
-  branchId,
-  dateRange
+  onFixZeroAmounts
 }: TrainerPaymentsTableProps) {
   console.log("TrainerPaymentsTable rendering with trainers:", trainers);
   
@@ -38,7 +50,7 @@ export function TrainerPaymentsTable({
   const anyActualPayments = trainers.some(t => t.paid > 0);
   
   // Check if any trainers have zero amount payments
-  const anyZeroAmountPayments = trainers.some(t => t.hasZeroAmountPayments === true);
+  const anyZeroAmountPayments = trainers.some(t => t.hasZeroAmountPayments);
   
   // Check for trainers with zero commission
   const anyZeroCommissionTrainers = trainers.some(t => 

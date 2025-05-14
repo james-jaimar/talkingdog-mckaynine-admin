@@ -131,7 +131,7 @@ export function RecentBookings({ branchId }: RecentBookingsProps) {
           </Table>
         ) : (
           <div className="text-center py-4 text-gray-500">
-            {termData ? `No recent bookings found for Term ${termData.termNumber}` : 'No recent bookings found'}
+            {termData ? `No recent bookings found for Term ${termData.term_number}` : 'No recent bookings found'}
           </div>
         )}
       </CardContent>

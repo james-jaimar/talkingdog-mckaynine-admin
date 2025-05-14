@@ -28,12 +28,8 @@ export function InvoiceStatusActions({ invoice, isPending, onCloseDropdown }: In
 
   const handleMarkAsSent = () => {
     onCloseDropdown();
-    if (invoice.status !== 'sent' && invoice.status !== 'paid' && invoice.client_id) {
-      markAsSent.mutate({
-        invoiceId: invoice.id,
-        clientId: invoice.client_id,
-        sendEmail: false
-      });
+    if (invoice.status !== 'sent' && invoice.status !== 'paid') {
+      markAsSent.mutate(invoice.id);
     }
   };
 
@@ -55,7 +51,7 @@ export function InvoiceStatusActions({ invoice, isPending, onCloseDropdown }: In
       
       <DropdownMenuItem 
         onClick={handleMarkAsSent}
-        disabled={isPending || invoice.status === 'sent' || invoice.status === 'paid' || invoice.status === 'cancelled' || !invoice.client_id}
+        disabled={isPending || invoice.status === 'sent' || invoice.status === 'paid' || invoice.status === 'cancelled'}
       >
         <Send className="mr-2 h-4 w-4 text-blue-600" /> Mark as Sent
       </DropdownMenuItem>

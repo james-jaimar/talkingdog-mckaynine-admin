@@ -11,11 +11,8 @@ export function useTermSelection() {
   
   return {
     termData: termContext.termData,
-    termDateRange: termContext.termDateRange || {
-      startDate: termContext.termData?.startDate || '',
-      endDate: termContext.termData?.endDate || ''
-    },
-    isTermLoading: termContext.loading,
+    termDateRange: termContext.termDateRange,
+    isTermLoading: termContext.isTermLoading,
     error: termContext.error
   };
 }

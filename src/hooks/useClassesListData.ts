@@ -22,13 +22,7 @@ export interface ClassGroup {
 
 export function useClassesListData() {
   const { currentBranch } = useBranch();
-  const { termData } = useTerm();
-  
-  // Compute date range if needed
-  const termDateRange = termData ? {
-    startDate: termData.startDate,
-    endDate: termData.endDate
-  } : null;
+  const { termData, termDateRange } = useTerm();
 
   return useQuery({
     queryKey: ['classes-list-data', currentBranch?.id, termData?.id],
