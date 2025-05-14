@@ -124,5 +124,6 @@ export interface TrainerPaymentData {
   scheduleIds: string[];
   hasUnpaidCommission: boolean;
   hasZeroCommissionClasses?: boolean;
+  hasZeroAmountPayments?: boolean;
   classDetails: TrainerClassDetail[];
 }

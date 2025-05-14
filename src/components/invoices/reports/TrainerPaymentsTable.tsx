@@ -1,4 +1,3 @@
-
 import {
   Table,
   TableBody,
@@ -39,7 +38,7 @@ export function TrainerPaymentsTable({
   const anyActualPayments = trainers.some(t => t.paid > 0);
   
   // Check if any trainers have zero amount payments
-  const anyZeroAmountPayments = trainers.some(t => t.hasZeroAmountPayments);
+  const anyZeroAmountPayments = trainers.some(t => t.hasZeroAmountPayments === true);
   
   // Check for trainers with zero commission
   const anyZeroCommissionTrainers = trainers.some(t => 
