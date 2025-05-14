@@ -1,3 +1,4 @@
+
 import { Home, Calendar, Users, FileText, BarChart2, Settings, UserPlus, Building, Dog, Map, AlertCircle } from "lucide-react";
 
 export const adminNavItems = [
@@ -12,6 +13,7 @@ export const adminNavItems = [
   {
     title: "Schedules",
     href: "/schedules",
+    developerOnly: true,
   },
   {
     title: "Trainers",
@@ -40,6 +42,7 @@ export const adminNavItems = [
   {
     title: "Branch Management",
     href: "/branch-management",
+    developerOnly: true,
   },
 ];
 
@@ -58,7 +61,8 @@ export const adminPrimaryNavItems = [
   {
     name: "Schedules", 
     path: "/schedules",
-    icon: Calendar
+    icon: Calendar,
+    developerOnly: true
   },
   {
     name: "Handlers",
@@ -97,7 +101,8 @@ export const adminSecondaryNavItems = [
   {
     name: "Branch Management",
     path: "/branch-management",
-    icon: Building
+    icon: Building,
+    developerOnly: true
   },
   {
     name: "Trainers",

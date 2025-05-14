@@ -1,30 +1,26 @@
 
-export type TermNumber = '1' | '2' | '3' | '4';
-
-export interface TermData {
+export interface Term {
   id: string;
-  term_number: TermNumber;
-  start_date: string;
-  end_date: string;
-  current?: boolean;
-  academic_years?: {
-    year: number;
-  };
+  termNumber: string;
+  startDate: string;
+  endDate: string;
+  academicYear: number;
+  isCurrent: boolean;
 }
 
 export interface TermContextType {
-  selectedYear: number;
-  setSelectedYear: (year: number) => void;
-  selectedTermNumber: TermNumber;
-  setSelectedTermNumber: (termNumber: TermNumber) => void;
-  termData: TermData | null;
-  isTermLoading: boolean;
+  currentTerm: Term | null;
+  allTerms: Term[];
+  selectedTerm: Term | null;
+  isLoading: boolean;
   error: Error | null;
-  termDateRange: { startDate: string; endDate: string } | null;
-  years: number[];
-  terms: TermNumber[];
-  refetchTerm: () => Promise<any>;
+  setSelectedTerm: (term: Term | null) => void;
+  refetchTerms: () => Promise<any>;
 }
 
-export const TERM_STORAGE_KEY = 'mckaynine-selected-term';
-export const TERM_CHANGE_DEBOUNCE_MS = 500; // Debounce time in ms
+export interface NavigationItem {
+  name: string;
+  path: string;
+  icon?: any;
+  developerOnly?: boolean; // Add this property
+}
