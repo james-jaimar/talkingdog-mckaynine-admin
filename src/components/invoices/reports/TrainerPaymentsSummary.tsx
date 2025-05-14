@@ -3,21 +3,10 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { TrainerPaymentsTable } from "./TrainerPaymentsTable";
 import { TrainerPaymentDialog } from "./TrainerPaymentDialog";
 import { useState } from "react";
+import { TrainerPaymentData } from "@/hooks/trainer-payments/types";
 
 interface TrainerPaymentsSummaryProps {
-  trainers: Array<{
-    id: string;
-    trainerName: string;
-    totalEarned: number;
-    paid: number;
-    pending: number;
-    classesCount: number;
-    clients: number;
-    lastPaymentDate?: string;
-    scheduleIds?: string[];
-    invoicesCount?: number;
-    hasZeroAmountPayments?: boolean;
-  }>;
+  trainers: TrainerPaymentData[];
   isLoading: boolean;
   dateRange?: { from: Date; to: Date };
   branchId?: string;

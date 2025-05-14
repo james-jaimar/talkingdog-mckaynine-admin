@@ -5,7 +5,7 @@ import { TermData, LegacyTermData } from "./types";
 import { getDefaultTermsForCurrentYear } from "./utils";
 
 // Helper function to convert database term format to our frontend model
-function mapDbTermToTermData(dbTerm: LegacyTermData): TermData {
+function mapDbTermToTermData(dbTerm: any): TermData {
   return {
     id: dbTerm.id,
     termNumber: dbTerm.term_number, // Map from snake_case to camelCase

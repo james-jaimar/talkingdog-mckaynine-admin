@@ -11,35 +11,24 @@ import { Card, CardContent } from "@/components/ui/card";
 import { TrainerPaymentsRow } from "./TrainerPaymentsRow";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Info, AlertTriangle } from "lucide-react";
+import { TrainerPaymentData } from "@/hooks/trainer-payments/types";
 
 interface TrainerPaymentsTableProps {
-  trainers: Array<{
-    id: string;
-    trainerName: string;
-    totalEarned: number;
-    paid: number;
-    pending: number;
-    potentialEarnings?: number;
-    classesCount: number;
-    clients: number;
-    lastPaymentDate?: string;
-    classDetails?: any[];
-    invoicesCount?: number;
-    scheduleIds?: string[];
-    hasZeroAmountPayments?: boolean;
-    hasZeroCommissionClasses?: boolean;
-    hasUnpaidCommission?: boolean;
-  }>;
+  trainers: TrainerPaymentData[];
   onMarkForPayment: (trainerId: string) => void;
   onMarkAsUnpaid?: (trainerId: string) => void;
   onFixZeroAmounts?: (trainerId: string) => void;
+  branchId?: string;
+  dateRange?: { from: Date; to: Date };
 }
 
 export function TrainerPaymentsTable({ 
   trainers, 
   onMarkForPayment, 
   onMarkAsUnpaid,
-  onFixZeroAmounts
+  onFixZeroAmounts,
+  branchId,
+  dateRange
 }: TrainerPaymentsTableProps) {
   console.log("TrainerPaymentsTable rendering with trainers:", trainers);
   

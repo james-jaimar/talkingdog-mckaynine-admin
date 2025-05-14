@@ -27,7 +27,7 @@ export const TrainerReportsTab: React.FC<TrainerReportsTabProps> = ({ dateRange,
   // Format date range for display
   const dateRangeStr = `${format(effectiveDateRange.from, 'MMM d, yyyy')} - ${format(effectiveDateRange.to, 'MMM d, yyyy')}`;
   
-  // Get trainer payments data
+  // Get trainer payments data using the hook
   const { 
     trainerPaymentsData, 
     isLoading, 
@@ -95,12 +95,17 @@ export const TrainerReportsTab: React.FC<TrainerReportsTabProps> = ({ dateRange,
         </div>
       ) : (
         <>
-          <TrainerPaymentsSummary data={trainerPaymentsData} />
+          <TrainerPaymentsSummary 
+            trainers={trainerPaymentsData} 
+            isLoading={isLoading} 
+            dateRange={effectiveDateRange}
+            branchId={branchId}
+          />
           <TrainerPaymentsTable 
-            data={trainerPaymentsData} 
+            trainers={trainerPaymentsData} 
             branchId={branchId}
             dateRange={effectiveDateRange}
-            onRefresh={refreshTrainerPayments}
+            onMarkForPayment={() => {}} 
           />
         </>
       )}
