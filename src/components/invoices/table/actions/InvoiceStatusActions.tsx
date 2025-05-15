@@ -15,28 +15,28 @@ interface InvoiceStatusActionsProps {
 }
 
 export function InvoiceStatusActions({ invoice, isPending, onCloseDropdown }: InvoiceStatusActionsProps) {
-  const markAsPaid = useMarkInvoiceAsPaid();
-  const markAsSent = useMarkInvoiceAsSent();
-  const cancelInvoice = useCancelInvoice();
+  const markAsPaidMutation = useMarkInvoiceAsPaid();
+  const markAsSentMutation = useMarkInvoiceAsSent();
+  const cancelInvoiceMutation = useCancelInvoice();
 
   const handleMarkAsPaid = async () => {
     onCloseDropdown();
     if (invoice.status !== 'paid') {
-      await markAsPaid.markAsPaid(invoice);
+      await markAsPaidMutation.markAsPaid(invoice);
     }
   };
 
   const handleMarkAsSent = async () => {
     onCloseDropdown();
     if (invoice.status !== 'sent' && invoice.status !== 'paid') {
-      await markAsSent.markAsSent(invoice);
+      await markAsSentMutation.markAsSent(invoice);
     }
   };
 
   const handleCancel = async () => {
     onCloseDropdown();
     if (invoice.status !== 'cancelled') {
-      await cancelInvoice.cancelInvoice(invoice);
+      await cancelInvoiceMutation.cancelInvoice(invoice);
     }
   };
 

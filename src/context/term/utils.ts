@@ -29,26 +29,26 @@ export const calculateTermDateRange = (year: number, termNumber: string) => {
   const yearStart = startOfYear(new Date(year, 0, 1));
   const yearEnd = endOfYear(new Date(year, 0, 1));
   
-  // Define term date ranges
+  // Define term date ranges with exact calendar quarter boundaries
   switch(termNumber) {
     case '1':
       return {
-        startDate: format(new Date(year, 0, 15), 'yyyy-MM-dd'),  // Jan 15
-        endDate: format(new Date(year, 3, 15), 'yyyy-MM-dd')     // Apr 15
+        startDate: format(new Date(year, 0, 1), 'yyyy-MM-dd'),   // Jan 1
+        endDate: format(new Date(year, 2, 31), 'yyyy-MM-dd')     // Mar 31
       };
     case '2':
       return {
-        startDate: format(new Date(year, 3, 16), 'yyyy-MM-dd'),  // Apr 16
-        endDate: format(new Date(year, 6, 15), 'yyyy-MM-dd')     // Jul 15
+        startDate: format(new Date(year, 3, 1), 'yyyy-MM-dd'),   // Apr 1
+        endDate: format(new Date(year, 5, 30), 'yyyy-MM-dd')     // Jun 30
       };
     case '3':
       return {
-        startDate: format(new Date(year, 6, 16), 'yyyy-MM-dd'),  // Jul 16
-        endDate: format(new Date(year, 9, 15), 'yyyy-MM-dd')     // Oct 15
+        startDate: format(new Date(year, 6, 1), 'yyyy-MM-dd'),   // Jul 1
+        endDate: format(new Date(year, 8, 30), 'yyyy-MM-dd')     // Sep 30
       };
     case '4':
       return {
-        startDate: format(new Date(year, 9, 16), 'yyyy-MM-dd'),  // Oct 16
+        startDate: format(new Date(year, 9, 1), 'yyyy-MM-dd'),   // Oct 1
         endDate: format(new Date(year, 11, 31), 'yyyy-MM-dd')    // Dec 31
       };
     default:
