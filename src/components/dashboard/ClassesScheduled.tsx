@@ -21,10 +21,11 @@ export function ClassesScheduled({ branchId }: ClassesScheduledProps) {
       // Don't fetch data if no branch is selected
       if (!branchId) return [];
       
-      // Use today's date as the default start date
-      const startDate = new Date().toISOString();
+      // Use today's date and time for accurate filtering
+      const now = new Date();
+      const startDate = now.toISOString();
       
-      // Build the query with branch filter and date range
+      // Build the query with branch filter and date range - using more precise filtering
       let query = supabase
         .from('class_schedules')
         .select(`
@@ -43,7 +44,7 @@ export function ClassesScheduled({ branchId }: ClassesScheduledProps) {
           )
         `)
         .eq('classes.branch_id', branchId)
-        .gte('start_time', startDate);
+        .gte('start_time', startDate); // Only classes that haven't started yet
       
       // Add term filter if a term is selected
       if (termData?.id) {
@@ -51,10 +52,12 @@ export function ClassesScheduled({ branchId }: ClassesScheduledProps) {
       }
       
       const { data, error } = await query
-        .order('start_time', { ascending: true })
-        .limit(5);
+        .order('start_time', { ascending: true }) // Ensure proper ordering by date
+        .limit(5); // Limit to 5 upcoming classes
       
       if (error) throw error;
+      
+      console.log('Upcoming classes fetched:', data);
       return data;
     },
     enabled: !!branchId,

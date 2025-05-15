@@ -1,3 +1,4 @@
+
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
@@ -5,7 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useTerm } from '@/context/TermContext';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useState, useEffect } from 'react';
 
 interface RecentBookingsProps {
   branchId?: string;
@@ -20,7 +20,7 @@ export function RecentBookings({ branchId }: RecentBookingsProps) {
       // Don't fetch data if no branch is selected
       if (!branchId) return [];
       
-      // Build the query with branch filter
+      // Build the query with branch filter - join with invoice_items and invoices to get accurate payment status
       let query = supabase
         .from('bookings')
         .select(`
@@ -34,6 +34,14 @@ export function RecentBookings({ branchId }: RecentBookingsProps) {
             start_time,
             term_id,
             classes(name)
+          ),
+          invoice_items:invoice_items(
+            invoice_id,
+            invoices:invoice_id(
+              id,
+              status,
+              payment_received
+            )
           )
         `)
         .eq('clients.branch_id', branchId);
@@ -48,7 +56,21 @@ export function RecentBookings({ branchId }: RecentBookingsProps) {
         .limit(5);
       
       if (error) throw error;
-      return data;
+
+      // Process data to determine the actual payment status from invoices
+      return data.map(booking => {
+        // Check if booking has any related invoice that is paid
+        const hasPaidInvoice = booking.invoice_items?.some(item => 
+          item.invoices && 
+          (item.invoices.payment_received || item.invoices.status === 'paid')
+        );
+        
+        // Update the payment_status based on invoice data
+        return {
+          ...booking,
+          computed_payment_status: hasPaidInvoice ? 'paid' : booking.payment_status
+        };
+      });
     },
     enabled: !!branchId,
     staleTime: 30 * 1000, // Cache for 30 seconds
@@ -121,8 +143,8 @@ export function RecentBookings({ branchId }: RecentBookingsProps) {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={getPaymentStatusVariant(booking.payment_status)}>
-                      {booking.payment_status}
+                    <Badge variant={getPaymentStatusVariant(booking.computed_payment_status || booking.payment_status)}>
+                      {booking.computed_payment_status || booking.payment_status}
                     </Badge>
                   </TableCell>
                 </TableRow>
