@@ -22,7 +22,7 @@ export function InvoiceStatusActions({ invoice, isPending, onCloseDropdown }: In
   const handleMarkAsPaid = async () => {
     onCloseDropdown();
     if (invoice.status !== 'paid') {
-      await markAsPaidMutation.markAsPaid(invoice);
+      await markAsPaidMutation.mutateAsync(invoice.id);
     }
   };
 
@@ -36,7 +36,7 @@ export function InvoiceStatusActions({ invoice, isPending, onCloseDropdown }: In
   const handleCancel = async () => {
     onCloseDropdown();
     if (invoice.status !== 'cancelled') {
-      await cancelInvoiceMutation.cancelInvoice(invoice);
+      await cancelInvoiceMutation.mutateAsync(invoice.id);
     }
   };
 
