@@ -113,12 +113,12 @@ export function TermSelectorRow() {
                 onValueChange={handleYearChange}
                 disabled={isTermLoading && !termData}
               >
-                <SelectTrigger className="w-[120px] bg-white text-gray-800 border-gray-300">
-                  <SelectValue placeholder="Select year" />
+                <SelectTrigger className="w-[120px] bg-white text-black border-gray-300">
+                  <SelectValue placeholder="Select year" className="text-black" />
                 </SelectTrigger>
                 <SelectContent className="bg-white border-gray-300">
                   {years.map((year) => (
-                    <SelectItem key={year} value={year.toString()} className="text-gray-800">
+                    <SelectItem key={year} value={year.toString()} className="text-black hover:bg-gray-100">
                       {year}
                     </SelectItem>
                   ))}
@@ -132,12 +132,12 @@ export function TermSelectorRow() {
                 onValueChange={handleTermChange}
                 disabled={isTermLoading && !termData}
               >
-                <SelectTrigger className="w-[120px] bg-white text-gray-800 border-gray-300">
-                  <SelectValue placeholder="Select term" />
+                <SelectTrigger className="w-[120px] bg-white text-black border-gray-300">
+                  <SelectValue placeholder="Select term" className="text-black" />
                 </SelectTrigger>
                 <SelectContent className="bg-white border-gray-300">
                   {terms.map((term) => (
-                    <SelectItem key={term} value={term} className="text-gray-800">
+                    <SelectItem key={term} value={term} className="text-black hover:bg-gray-100">
                       Term {term}
                     </SelectItem>
                   ))}
