@@ -114,6 +114,7 @@
   }
 }
 
+/* Header select component specific overrides with high specificity */
 @layer components {
   .mobile-container {
     @apply px-3 py-3 sm:px-4 sm:py-4 md:px-6 md:py-6;
@@ -129,6 +130,39 @@
   
   .touch-feedback {
     @apply active:opacity-70 transition-opacity;
+  }
+
+  /* High specificity rules for header select components */
+  .header-select-trigger,
+  .header-select-trigger *,
+  .header-select-trigger span,
+  .header-select-value {
+    color: #1f2937 !important;
+    background-color: #ffffff !important;
+  }
+
+  .header-select-content,
+  .header-select-content *,
+  .header-select-item,
+  .header-select-item * {
+    color: #1f2937 !important;
+    background-color: #ffffff !important;
+  }
+
+  .header-select-item:hover,
+  .header-select-item[data-highlighted] {
+    background-color: #f3f4f6 !important;
+    color: #1f2937 !important;
+  }
+
+  /* Override any potential conflicting styles in header area */
+  header .header-select-trigger,
+  header .header-select-trigger *,
+  header .header-select-content,
+  header .header-select-content *,
+  header .header-select-item,
+  header .header-select-item * {
+    color: #1f2937 !important;
   }
 }
 

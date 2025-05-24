@@ -1,7 +1,13 @@
 
 import { format } from "date-fns";
 import { useTerm } from "@/context/TermContext";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { 
+  HeaderSelect, 
+  HeaderSelectContent, 
+  HeaderSelectItem, 
+  HeaderSelectTrigger, 
+  HeaderSelectValue 
+} from "@/components/ui/header-select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, Calendar, RefreshCw } from "lucide-react";
@@ -108,51 +114,41 @@ export function TermSelectorRow() {
           
           <div className="flex items-center gap-4">
             <div>
-              <Select
+              <HeaderSelect
                 value={selectedYear.toString()}
                 onValueChange={handleYearChange}
                 disabled={isTermLoading && !termData}
               >
-                <SelectTrigger className="w-[120px] bg-white border-gray-300" style={{ color: '#000000' }}>
-                  <SelectValue placeholder="Select year" style={{ color: '#000000' }} />
-                </SelectTrigger>
-                <SelectContent className="bg-white border-gray-300" style={{ color: '#000000' }}>
+                <HeaderSelectTrigger className="w-[120px]">
+                  <HeaderSelectValue placeholder="Select year" />
+                </HeaderSelectTrigger>
+                <HeaderSelectContent>
                   {years.map((year) => (
-                    <SelectItem 
-                      key={year} 
-                      value={year.toString()} 
-                      className="hover:bg-gray-100" 
-                      style={{ color: '#000000' }}
-                    >
+                    <HeaderSelectItem key={year} value={year.toString()}>
                       {year}
-                    </SelectItem>
+                    </HeaderSelectItem>
                   ))}
-                </SelectContent>
-              </Select>
+                </HeaderSelectContent>
+              </HeaderSelect>
             </div>
 
             <div>
-              <Select
+              <HeaderSelect
                 value={selectedTermNumber}
                 onValueChange={handleTermChange}
                 disabled={isTermLoading && !termData}
               >
-                <SelectTrigger className="w-[120px] bg-white border-gray-300" style={{ color: '#000000' }}>
-                  <SelectValue placeholder="Select term" style={{ color: '#000000' }} />
-                </SelectTrigger>
-                <SelectContent className="bg-white border-gray-300" style={{ color: '#000000' }}>
+                <HeaderSelectTrigger className="w-[120px]">
+                  <HeaderSelectValue placeholder="Select term" />
+                </HeaderSelectTrigger>
+                <HeaderSelectContent>
                   {terms.map((term) => (
-                    <SelectItem 
-                      key={term} 
-                      value={term} 
-                      className="hover:bg-gray-100" 
-                      style={{ color: '#000000' }}
-                    >
+                    <HeaderSelectItem key={term} value={term}>
                       Term {term}
-                    </SelectItem>
+                    </HeaderSelectItem>
                   ))}
-                </SelectContent>
-              </Select>
+                </HeaderSelectContent>
+              </HeaderSelect>
             </div>
             
             <button
