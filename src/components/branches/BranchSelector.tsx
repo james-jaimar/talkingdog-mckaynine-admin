@@ -61,12 +61,17 @@ export function BranchSelector() {
         value={currentBranch?.id || ""}
         onValueChange={handleBranchChange}
       >
-        <SelectTrigger className="w-[180px] bg-background border-input text-foreground">
-          <SelectValue placeholder="Select branch" className="text-foreground" />
+        <SelectTrigger className="w-[180px] bg-white border-gray-300" style={{ color: '#000000' }}>
+          <SelectValue placeholder="Select branch" style={{ color: '#000000' }} />
         </SelectTrigger>
-        <SelectContent className="z-50 bg-popover border-border text-popover-foreground">
+        <SelectContent className="z-50 bg-white border-gray-300" style={{ color: '#000000' }}>
           {branches.map((branch) => (
-            <SelectItem key={branch.id} value={branch.id} className="text-popover-foreground hover:bg-accent hover:text-accent-foreground">
+            <SelectItem 
+              key={branch.id} 
+              value={branch.id} 
+              className="hover:bg-gray-100" 
+              style={{ color: '#000000' }}
+            >
               {branch.name}
             </SelectItem>
           ))}

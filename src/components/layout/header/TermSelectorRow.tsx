@@ -113,12 +113,17 @@ export function TermSelectorRow() {
                 onValueChange={handleYearChange}
                 disabled={isTermLoading && !termData}
               >
-                <SelectTrigger className="w-[120px] bg-white text-black border-gray-300">
-                  <SelectValue placeholder="Select year" className="text-black" />
+                <SelectTrigger className="w-[120px] bg-white border-gray-300" style={{ color: '#000000' }}>
+                  <SelectValue placeholder="Select year" style={{ color: '#000000' }} />
                 </SelectTrigger>
-                <SelectContent className="bg-white border-gray-300">
+                <SelectContent className="bg-white border-gray-300" style={{ color: '#000000' }}>
                   {years.map((year) => (
-                    <SelectItem key={year} value={year.toString()} className="text-black hover:bg-gray-100">
+                    <SelectItem 
+                      key={year} 
+                      value={year.toString()} 
+                      className="hover:bg-gray-100" 
+                      style={{ color: '#000000' }}
+                    >
                       {year}
                     </SelectItem>
                   ))}
@@ -132,12 +137,17 @@ export function TermSelectorRow() {
                 onValueChange={handleTermChange}
                 disabled={isTermLoading && !termData}
               >
-                <SelectTrigger className="w-[120px] bg-white text-black border-gray-300">
-                  <SelectValue placeholder="Select term" className="text-black" />
+                <SelectTrigger className="w-[120px] bg-white border-gray-300" style={{ color: '#000000' }}>
+                  <SelectValue placeholder="Select term" style={{ color: '#000000' }} />
                 </SelectTrigger>
-                <SelectContent className="bg-white border-gray-300">
+                <SelectContent className="bg-white border-gray-300" style={{ color: '#000000' }}>
                   {terms.map((term) => (
-                    <SelectItem key={term} value={term} className="text-black hover:bg-gray-100">
+                    <SelectItem 
+                      key={term} 
+                      value={term} 
+                      className="hover:bg-gray-100" 
+                      style={{ color: '#000000' }}
+                    >
                       Term {term}
                     </SelectItem>
                   ))}
