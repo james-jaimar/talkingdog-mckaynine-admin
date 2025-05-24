@@ -66,7 +66,7 @@ export function BranchSelector() {
         </SelectTrigger>
         <SelectContent className="z-50 bg-background border-input">
           {branches.map((branch) => (
-            <SelectItem key={branch.id} value={branch.id}>
+            <SelectItem key={branch.id} value={branch.id} className="text-foreground">
               {branch.name}
             </SelectItem>
           ))}
