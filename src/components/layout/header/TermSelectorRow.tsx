@@ -77,7 +77,7 @@ export function TermSelectorRow() {
   const displaySelectionControls = !isTermLoading || termData;
 
   return (
-    <div className="border-b border-mckaynine-700 bg-mckaynine-600 header-context">
+    <div className="border-b border-mckaynine-700 bg-mckaynine-600">
       <div className="container mx-auto px-4 py-2">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center space-x-4 text-white">
@@ -119,7 +119,7 @@ export function TermSelectorRow() {
                 onValueChange={handleYearChange}
                 disabled={isTermLoading && !termData}
               >
-                <SelectTrigger className="w-[120px]">
+                <SelectTrigger className="w-[120px] text-black">
                   <SelectValue placeholder="Select year" data-radix-select-value="" />
                 </SelectTrigger>
                 <SelectContent>
@@ -138,7 +138,7 @@ export function TermSelectorRow() {
                 onValueChange={handleTermChange}
                 disabled={isTermLoading && !termData}
               >
-                <SelectTrigger className="w-[120px]">
+                <SelectTrigger className="w-[120px] text-black">
                   <SelectValue placeholder="Select term" data-radix-select-value="" />
                 </SelectTrigger>
                 <SelectContent>

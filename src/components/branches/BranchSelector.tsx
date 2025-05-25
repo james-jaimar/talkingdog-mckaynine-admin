@@ -61,7 +61,7 @@ export function BranchSelector() {
         value={currentBranch?.id || ""}
         onValueChange={handleBranchChange}
       >
-        <SelectTrigger className="w-[180px]">
+        <SelectTrigger className="w-[180px] text-black">
           <SelectValue placeholder="Select branch" data-radix-select-value="" />
         </SelectTrigger>
         <SelectContent>
