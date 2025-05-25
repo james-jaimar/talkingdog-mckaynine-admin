@@ -1,3 +1,4 @@
+
 import { GitBranch } from "lucide-react";
 import { useBranch } from "@/context/BranchContext";
 import { 
@@ -60,10 +61,10 @@ export function BranchSelector() {
         value={currentBranch?.id || ""}
         onValueChange={handleBranchChange}
       >
-        <SelectTrigger className="w-[180px] bg-white border-gray-300 header-select">
+        <SelectTrigger className="w-[180px] bg-white border-gray-300">
           <SelectValue placeholder="Select branch" />
         </SelectTrigger>
-        <SelectContent className="bg-white z-50 header-select">
+        <SelectContent className="bg-white z-50">
           {branches.map((branch) => (
             <SelectItem key={branch.id} value={branch.id}>
               {branch.name}

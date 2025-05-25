@@ -1,5 +1,4 @@
 
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -168,35 +167,6 @@
   .touch-feedback {
     @apply active:opacity-70 transition-opacity;
   }
-
-  /* Clean header select component styling */
-  .header-select [data-radix-select-trigger] {
-    color: rgb(17 24 39) !important;
-    background-color: white !important;
-  }
-  
-  .header-select [data-radix-select-trigger] span {
-    color: rgb(17 24 39) !important;
-  }
-  
-  .header-select [data-radix-select-content] {
-    background-color: white !important;
-    z-index: 50 !important;
-  }
-  
-  .header-select [data-radix-select-item] {
-    color: rgb(17 24 39) !important;
-  }
-  
-  .header-select [data-radix-select-item]:hover {
-    background-color: rgb(243 244 246) !important;
-    color: rgb(17 24 39) !important;
-  }
-  
-  .header-select [data-radix-select-item][data-highlighted] {
-    background-color: rgb(243 244 246) !important;
-    color: rgb(17 24 39) !important;
-  }
 }
 
 /* Improve scrolling experience */
@@ -256,4 +226,3 @@
 .read-the-docs {
   color: #888;
 }
-

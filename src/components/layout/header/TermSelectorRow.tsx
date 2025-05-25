@@ -1,3 +1,4 @@
+
 import { format } from "date-fns";
 import { useTerm } from "@/context/TermContext";
 import { 
@@ -112,7 +113,7 @@ export function TermSelectorRow() {
           </div>
           
           <div className="flex items-center gap-4">
-            <div className="header-select">
+            <div>
               <Select
                 value={selectedYear.toString()}
                 onValueChange={handleYearChange}
@@ -131,7 +132,7 @@ export function TermSelectorRow() {
               </Select>
             </div>
 
-            <div className="header-select">
+            <div>
               <Select
                 value={selectedTermNumber}
                 onValueChange={handleTermChange}
