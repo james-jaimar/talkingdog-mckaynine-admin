@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useBranch } from "@/context/BranchContext";
@@ -46,7 +47,7 @@ export function Header() {
   };
 
   return (
-    <header className="bg-mckaynine-600 text-white sticky top-0 z-50 shadow-md">
+    <header className="bg-mckaynine-600 text-white sticky top-0 z-50 shadow-md header-context">
       {/* Main Row: Logo, Primary Navigation, Branch Selector, and User Info */}
       <div className="border-b border-mckaynine-700">
         <div className="container mx-auto px-4 py-2">

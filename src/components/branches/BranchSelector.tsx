@@ -2,12 +2,12 @@
 import { GitBranch } from "lucide-react";
 import { useBranch } from "@/context/BranchContext";
 import { 
-  HeaderSelect, 
-  HeaderSelectContent, 
-  HeaderSelectItem, 
-  HeaderSelectTrigger, 
-  HeaderSelectValue 
-} from "@/components/ui/header-select";
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ExtendedBadge } from "@/components/ui/badge-variants";
 
@@ -57,21 +57,21 @@ export function BranchSelector() {
   return (
     <div className="flex items-center gap-2">
       <GitBranch className="w-4 h-4 text-muted-foreground" />
-      <HeaderSelect
+      <Select
         value={currentBranch?.id || ""}
         onValueChange={handleBranchChange}
       >
-        <HeaderSelectTrigger className="w-[180px]">
-          <HeaderSelectValue placeholder="Select branch" />
-        </HeaderSelectTrigger>
-        <HeaderSelectContent>
+        <SelectTrigger className="w-[180px]">
+          <SelectValue placeholder="Select branch" data-radix-select-value="" />
+        </SelectTrigger>
+        <SelectContent>
           {branches.map((branch) => (
-            <HeaderSelectItem key={branch.id} value={branch.id}>
+            <SelectItem key={branch.id} value={branch.id}>
               {branch.name}
-            </HeaderSelectItem>
+            </SelectItem>
           ))}
-        </HeaderSelectContent>
-      </HeaderSelect>
+        </SelectContent>
+      </Select>
     </div>
   );
 }

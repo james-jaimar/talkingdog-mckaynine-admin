@@ -72,6 +72,17 @@
     --mckaynine-800: 215 30% 20%;
     --mckaynine-900: 215 30% 10%;
   }
+
+  /* Header context with proper select styling */
+  .header-context {
+    --select-background: 0 0% 100%;
+    --select-foreground: 222.2 84% 4.9%;
+    --select-border: 214.3 31.8% 91.4%;
+    --select-popover: 0 0% 100%;
+    --select-popover-foreground: 222.2 84% 4.9%;
+    --select-accent: 210 40% 96.1%;
+    --select-accent-foreground: 222.2 47.4% 11.2%;
+  }
 }
 
 @layer base {
@@ -132,37 +143,39 @@
     @apply active:opacity-70 transition-opacity;
   }
 
-  /* High specificity rules for header select components */
-  .header-select-trigger,
-  .header-select-trigger *,
-  .header-select-trigger span,
-  .header-select-value {
-    color: #1f2937 !important;
-    background-color: #ffffff !important;
+  /* Header context select styling using CSS variables */
+  .header-context [data-radix-select-trigger] {
+    background-color: hsl(var(--select-background)) !important;
+    color: hsl(var(--select-foreground)) !important;
+    border-color: hsl(var(--select-border)) !important;
   }
 
-  .header-select-content,
-  .header-select-content *,
-  .header-select-item,
-  .header-select-item * {
-    color: #1f2937 !important;
-    background-color: #ffffff !important;
+  .header-context [data-radix-select-value] {
+    color: hsl(var(--select-foreground)) !important;
   }
 
-  .header-select-item:hover,
-  .header-select-item[data-highlighted] {
-    background-color: #f3f4f6 !important;
-    color: #1f2937 !important;
+  .header-context [data-radix-select-icon] {
+    color: hsl(var(--select-foreground)) !important;
   }
 
-  /* Override any potential conflicting styles in header area */
-  header .header-select-trigger,
-  header .header-select-trigger *,
-  header .header-select-content,
-  header .header-select-content *,
-  header .header-select-item,
-  header .header-select-item * {
-    color: #1f2937 !important;
+  .header-context [data-radix-select-content] {
+    background-color: hsl(var(--select-popover)) !important;
+    color: hsl(var(--select-popover-foreground)) !important;
+    border-color: hsl(var(--select-border)) !important;
+  }
+
+  .header-context [data-radix-select-item] {
+    color: hsl(var(--select-popover-foreground)) !important;
+  }
+
+  .header-context [data-radix-select-item][data-highlighted] {
+    background-color: hsl(var(--select-accent)) !important;
+    color: hsl(var(--select-accent-foreground)) !important;
+  }
+
+  .header-context [data-radix-select-item]:hover {
+    background-color: hsl(var(--select-accent)) !important;
+    color: hsl(var(--select-accent-foreground)) !important;
   }
 }
 

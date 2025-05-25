@@ -2,12 +2,12 @@
 import { format } from "date-fns";
 import { useTerm } from "@/context/TermContext";
 import { 
-  HeaderSelect, 
-  HeaderSelectContent, 
-  HeaderSelectItem, 
-  HeaderSelectTrigger, 
-  HeaderSelectValue 
-} from "@/components/ui/header-select";
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, Calendar, RefreshCw } from "lucide-react";
@@ -77,7 +77,7 @@ export function TermSelectorRow() {
   const displaySelectionControls = !isTermLoading || termData;
 
   return (
-    <div className="border-b border-mckaynine-700 bg-mckaynine-600">
+    <div className="border-b border-mckaynine-700 bg-mckaynine-600 header-context">
       <div className="container mx-auto px-4 py-2">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center space-x-4 text-white">
@@ -114,41 +114,41 @@ export function TermSelectorRow() {
           
           <div className="flex items-center gap-4">
             <div>
-              <HeaderSelect
+              <Select
                 value={selectedYear.toString()}
                 onValueChange={handleYearChange}
                 disabled={isTermLoading && !termData}
               >
-                <HeaderSelectTrigger className="w-[120px]">
-                  <HeaderSelectValue placeholder="Select year" />
-                </HeaderSelectTrigger>
-                <HeaderSelectContent>
+                <SelectTrigger className="w-[120px]">
+                  <SelectValue placeholder="Select year" data-radix-select-value="" />
+                </SelectTrigger>
+                <SelectContent>
                   {years.map((year) => (
-                    <HeaderSelectItem key={year} value={year.toString()}>
+                    <SelectItem key={year} value={year.toString()}>
                       {year}
-                    </HeaderSelectItem>
+                    </SelectItem>
                   ))}
-                </HeaderSelectContent>
-              </HeaderSelect>
+                </SelectContent>
+              </Select>
             </div>
 
             <div>
-              <HeaderSelect
+              <Select
                 value={selectedTermNumber}
                 onValueChange={handleTermChange}
                 disabled={isTermLoading && !termData}
               >
-                <HeaderSelectTrigger className="w-[120px]">
-                  <HeaderSelectValue placeholder="Select term" />
-                </HeaderSelectTrigger>
-                <HeaderSelectContent>
+                <SelectTrigger className="w-[120px]">
+                  <SelectValue placeholder="Select term" data-radix-select-value="" />
+                </SelectTrigger>
+                <SelectContent>
                   {terms.map((term) => (
-                    <HeaderSelectItem key={term} value={term}>
+                    <SelectItem key={term} value={term}>
                       Term {term}
-                    </HeaderSelectItem>
+                    </SelectItem>
                   ))}
-                </HeaderSelectContent>
-              </HeaderSelect>
+                </SelectContent>
+              </Select>
             </div>
             
             <button
