@@ -61,12 +61,12 @@ export function BranchSelector() {
         value={currentBranch?.id || ""}
         onValueChange={handleBranchChange}
       >
-        <SelectTrigger className="w-[180px] text-black">
-          <SelectValue placeholder="Select branch" data-radix-select-value="" />
+        <SelectTrigger className="w-[180px] bg-white text-gray-900 border-gray-300">
+          <SelectValue placeholder="Select branch" />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className="bg-white">
           {branches.map((branch) => (
-            <SelectItem key={branch.id} value={branch.id}>
+            <SelectItem key={branch.id} value={branch.id} className="text-gray-900">
               {branch.name}
             </SelectItem>
           ))}

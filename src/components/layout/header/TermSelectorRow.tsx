@@ -119,12 +119,12 @@ export function TermSelectorRow() {
                 onValueChange={handleYearChange}
                 disabled={isTermLoading && !termData}
               >
-                <SelectTrigger className="w-[120px] text-black">
-                  <SelectValue placeholder="Select year" data-radix-select-value="" />
+                <SelectTrigger className="w-[120px] bg-white text-gray-900 border-gray-300">
+                  <SelectValue placeholder="Select year" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-white">
                   {years.map((year) => (
-                    <SelectItem key={year} value={year.toString()}>
+                    <SelectItem key={year} value={year.toString()} className="text-gray-900">
                       {year}
                     </SelectItem>
                   ))}
@@ -138,12 +138,12 @@ export function TermSelectorRow() {
                 onValueChange={handleTermChange}
                 disabled={isTermLoading && !termData}
               >
-                <SelectTrigger className="w-[120px] text-black">
-                  <SelectValue placeholder="Select term" data-radix-select-value="" />
+                <SelectTrigger className="w-[120px] bg-white text-gray-900 border-gray-300">
+                  <SelectValue placeholder="Select term" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-white">
                   {terms.map((term) => (
-                    <SelectItem key={term} value={term}>
+                    <SelectItem key={term} value={term} className="text-gray-900">
                       Term {term}
                     </SelectItem>
                   ))}
