@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -165,6 +166,35 @@
   
   .touch-feedback {
     @apply active:opacity-70 transition-opacity;
+  }
+
+  /* Fix for header select components - override Radix UI styles */
+  header [data-radix-select-trigger] {
+    color: rgb(17 24 39) !important; /* gray-900 */
+    background-color: white !important;
+  }
+  
+  header [data-radix-select-trigger] span {
+    color: rgb(17 24 39) !important; /* gray-900 */
+  }
+  
+  header [data-radix-select-content] {
+    background-color: white !important;
+    z-index: 50 !important;
+  }
+  
+  header [data-radix-select-item] {
+    color: rgb(17 24 39) !important; /* gray-900 */
+  }
+  
+  header [data-radix-select-item]:hover {
+    background-color: rgb(243 244 246) !important; /* gray-100 */
+    color: rgb(17 24 39) !important; /* gray-900 */
+  }
+  
+  header [data-radix-select-item][data-highlighted] {
+    background-color: rgb(243 244 246) !important; /* gray-100 */
+    color: rgb(17 24 39) !important; /* gray-900 */
   }
 }
 
