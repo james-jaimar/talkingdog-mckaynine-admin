@@ -1,12 +1,8 @@
 
-import { render } from '@testing-library/react';
-import * as reactTestingLibrary from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { InvoiceAdvancedActions } from '../InvoiceAdvancedActions';
 import { InvoiceStatus } from '@/hooks/invoices/types';
-
-// Use the imported namespace
-const { screen, fireEvent } = reactTestingLibrary;
 
 describe('InvoiceAdvancedActions', () => {
   const mockInvoice = {
