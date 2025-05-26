@@ -1,4 +1,6 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { BrowserRouter } from 'react-router-dom';
 import { InvoiceBasicActions } from '../InvoiceBasicActions';
@@ -52,26 +54,28 @@ describe('InvoiceBasicActions', () => {
     expect(screen.getByText('Edit')).toBeInTheDocument();
   });
 
-  it('navigates to view page when view button is clicked', () => {
+  it('navigates to view page when view button is clicked', async () => {
+    const user = userEvent.setup();
     render(
       <BrowserRouter>
         <InvoiceBasicActions {...mockProps} />
       </BrowserRouter>
     );
 
-    fireEvent.click(screen.getByText('View'));
+    await user.click(screen.getByText('View'));
     expect(mockNavigate).toHaveBeenCalledWith('/invoices/123');
     expect(mockProps.onCloseDropdown).toHaveBeenCalled();
   });
 
-  it('navigates to edit page when edit button is clicked', () => {
+  it('navigates to edit page when edit button is clicked', async () => {
+    const user = userEvent.setup();
     render(
       <BrowserRouter>
         <InvoiceBasicActions {...mockProps} />
       </BrowserRouter>
     );
 
-    fireEvent.click(screen.getByText('Edit'));
+    await user.click(screen.getByText('Edit'));
     expect(mockNavigate).toHaveBeenCalledWith('/invoices/123/edit');
     expect(mockProps.onCloseDropdown).toHaveBeenCalled();
   });

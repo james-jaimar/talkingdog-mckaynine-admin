@@ -1,4 +1,6 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { InvoiceAdvancedActions } from '../InvoiceAdvancedActions';
 import { InvoiceStatus } from '@/hooks/invoices/types';
@@ -43,18 +45,20 @@ describe('InvoiceAdvancedActions', () => {
     expect(screen.getByText('Delete Invoice')).toBeInTheDocument();
   });
 
-  it('handles transfer action', () => {
+  it('handles transfer action', async () => {
+    const user = userEvent.setup();
     render(<InvoiceAdvancedActions {...mockProps} />);
 
-    fireEvent.click(screen.getByText('Transfer Invoice'));
+    await user.click(screen.getByText('Transfer Invoice'));
     expect(mockProps.onOpenTransferDialog).toHaveBeenCalledWith(mockInvoice);
     expect(mockProps.onCloseDropdown).toHaveBeenCalled();
   });
 
-  it('handles delete action', () => {
+  it('handles delete action', async () => {
+    const user = userEvent.setup();
     render(<InvoiceAdvancedActions {...mockProps} />);
 
-    fireEvent.click(screen.getByText('Delete Invoice'));
+    await user.click(screen.getByText('Delete Invoice'));
     expect(mockProps.onOpenDeleteDialog).toHaveBeenCalled();
     expect(mockProps.onCloseDropdown).toHaveBeenCalled();
   });

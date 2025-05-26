@@ -1,4 +1,6 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { InvoiceStatusActions } from '../InvoiceStatusActions';
 import { InvoiceStatus } from '@/hooks/invoices/types';
@@ -53,26 +55,29 @@ describe('InvoiceStatusActions', () => {
     expect(screen.getByText('Cancel Invoice')).toBeInTheDocument();
   });
 
-  it('handles mark as paid action', () => {
+  it('handles mark as paid action', async () => {
+    const user = userEvent.setup();
     render(<InvoiceStatusActions {...mockProps} />);
 
-    fireEvent.click(screen.getByText('Mark as Paid'));
+    await user.click(screen.getByText('Mark as Paid'));
     expect(mockMarkAsPaid.mutate).toHaveBeenCalledWith('123');
     expect(mockProps.onCloseDropdown).toHaveBeenCalled();
   });
 
-  it('handles mark as sent action', () => {
+  it('handles mark as sent action', async () => {
+    const user = userEvent.setup();
     render(<InvoiceStatusActions {...mockProps} />);
 
-    fireEvent.click(screen.getByText('Mark as Sent'));
+    await user.click(screen.getByText('Mark as Sent'));
     expect(mockMarkAsSent.mutate).toHaveBeenCalledWith('123');
     expect(mockProps.onCloseDropdown).toHaveBeenCalled();
   });
 
-  it('handles cancel invoice action', () => {
+  it('handles cancel invoice action', async () => {
+    const user = userEvent.setup();
     render(<InvoiceStatusActions {...mockProps} />);
 
-    fireEvent.click(screen.getByText('Cancel Invoice'));
+    await user.click(screen.getByText('Cancel Invoice'));
     expect(mockCancelInvoice.mutate).toHaveBeenCalledWith('123');
     expect(mockProps.onCloseDropdown).toHaveBeenCalled();
   });
