@@ -15,12 +15,10 @@ export function ClassesListReport() {
     termLabel: string;
   } | null>(null);
 
-  const handleGenerateFranchiseReport = (termId: string, reportType: string) => {
-    // Find the term label for display
-    // For now, we'll use a basic label, but this could be enhanced
+  const handleGenerateFranchiseReport = (termId: string, reportType: string, termLabel: string) => {
     setFranchiseReportConfig({
       termId,
-      termLabel: `Term ${termId.substring(0, 8)}...` // Shortened for display
+      termLabel
     });
   };
 

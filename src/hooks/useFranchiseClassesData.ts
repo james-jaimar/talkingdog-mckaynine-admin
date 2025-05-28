@@ -58,11 +58,15 @@ export function useFranchiseClassesData(termId?: string) {
   return useQuery({
     queryKey: ['franchise-classes-data', currentBranch?.id, selectedTermId],
     queryFn: async (): Promise<FranchiseReportData> => {
-      if (!currentBranch?.id) return { classes: [], reportTotals: { totalRevenue: 0, totalFranchiseFees: 0, totalAdminFees: 0, totalMckaynineCommission: 0, totalHandlers: 0 } };
+      if (!currentBranch?.id || !selectedTermId) {
+        console.log('Missing branch or term ID:', { branchId: currentBranch?.id, termId: selectedTermId });
+        return { classes: [], reportTotals: { totalRevenue: 0, totalFranchiseFees: 0, totalAdminFees: 0, totalMckaynineCommission: 0, totalHandlers: 0 } };
+      }
 
       console.log(`Fetching franchise data for branch ${currentBranch.name} with term:`, selectedTermId);
 
-      let query = supabase
+      // First, get all classes for the branch
+      const { data: classes, error: classesError } = await supabase
         .from('classes')
         .select(`
           id,
@@ -74,57 +78,50 @@ export function useFranchiseClassesData(termId?: string) {
           admin_fee_type,
           admin_fee_value,
           mckaynine_commission_type,
-          mckaynine_commission_value,
-          class_schedules(
+          mckaynine_commission_value
+        `)
+        .eq('branch_id', currentBranch.id);
+
+      if (classesError) {
+        console.error("Error fetching classes:", classesError);
+        throw classesError;
+      }
+
+      console.log(`Retrieved ${classes?.length || 0} classes for branch`);
+
+      // Now get schedules and bookings for the specific term
+      const { data: scheduleData, error: scheduleError } = await supabase
+        .from('class_schedules')
+        .select(`
+          id,
+          class_id,
+          selected_dates,
+          start_time,
+          bookings(
             id,
-            selected_dates,
-            start_time,
-            term_id,
-            bookings(
-              id,
-              payment_status,
-              clients(id, first_name, last_name),
-              dogs(id, name, breed),
-              attendances:class_attendance(attendance_status),
-              invoice_items(
-                amount,
-                invoices:invoice_id (
-                  status,
-                  payment_received
-                )
+            payment_status,
+            clients(id, first_name, last_name),
+            dogs(id, name, breed),
+            attendances:class_attendance(attendance_status),
+            invoice_items(
+              amount,
+              invoices:invoice_id (
+                status,
+                payment_received
               )
             )
           )
         `)
-        .eq('branch_id', currentBranch.id);
+        .eq('term_id', selectedTermId);
 
-      const { data: classes, error: classesError } = await query;
-
-      if (classesError) {
-        console.error("Error fetching franchise classes data:", classesError);
-        throw classesError;
+      if (scheduleError) {
+        console.error("Error fetching schedules:", scheduleError);
+        throw scheduleError;
       }
 
-      console.log(`Retrieved ${classes?.length || 0} classes for franchise report`);
+      console.log(`Retrieved ${scheduleData?.length || 0} schedules for term ${selectedTermId}`);
 
-      // Filter schedules to only include those for the selected term
-      const filteredClasses = classes.map(classItem => {
-        if (selectedTermId) {
-          classItem.class_schedules = classItem.class_schedules.filter(schedule => {
-            return schedule.term_id === selectedTermId;
-          });
-        }
-        
-        return classItem;
-      });
-
-      // Only include classes that have schedules for the selected term
-      const classesWithSchedules = selectedTermId
-        ? filteredClasses?.filter(classItem => classItem.class_schedules.length > 0)
-        : filteredClasses;
-      
-      console.log(`Filtered to ${classesWithSchedules?.length || 0} classes with schedules for term`);
-      
+      // Combine classes with their schedule data
       const franchiseClasses: FranchiseClassGroup[] = [];
       let reportTotals = {
         totalRevenue: 0,
@@ -134,7 +131,14 @@ export function useFranchiseClassesData(termId?: string) {
         totalHandlers: 0
       };
 
-      classesWithSchedules.forEach(classItem => {
+      classes?.forEach(classItem => {
+        const classSchedules = scheduleData?.filter(schedule => schedule.class_id === classItem.id) || [];
+        
+        if (classSchedules.length === 0) {
+          console.log(`No schedules found for class ${classItem.name} in term ${selectedTermId}`);
+          return;
+        }
+
         const handlers: FranchiseHandler[] = [];
         let classTotals = {
           totalRevenue: 0,
@@ -142,8 +146,8 @@ export function useFranchiseClassesData(termId?: string) {
           totalAdminFees: 0,
           totalMckaynineCommission: 0
         };
-        
-        classItem.class_schedules?.forEach(schedule => {
+
+        classSchedules.forEach(schedule => {
           const totalClasses = (schedule.selected_dates || []).length;
           
           schedule.bookings?.forEach(booking => {
@@ -233,10 +237,10 @@ export function useFranchiseClassesData(termId?: string) {
         }
       });
 
-      console.log(`Processed ${franchiseClasses.length} franchise classes with financial data`);
+      console.log(`Processed ${franchiseClasses.length} franchise classes with financial data for term ${selectedTermId}`);
       return { classes: franchiseClasses, reportTotals };
     },
-    enabled: !!currentBranch?.id,
+    enabled: !!currentBranch?.id && !!selectedTermId,
     staleTime: 30000, // 30 seconds
     refetchOnWindowFocus: true,
     refetchOnReconnect: true

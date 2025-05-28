@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { HeaderSelect, HeaderSelectContent, HeaderSelectItem, HeaderSelectTrigger, HeaderSelectValue } from "@/components/ui/header-select";
 import { Label } from "@/components/ui/label";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,7 +11,7 @@ import { Loader2 } from "lucide-react";
 interface FranchiseReportModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onGenerateReport: (termId: string, reportType: string) => void;
+  onGenerateReport: (termId: string, reportType: string, termLabel: string) => void;
 }
 
 export function FranchiseReportModal({
@@ -46,7 +46,12 @@ export function FranchiseReportModal({
 
   const handleGenerate = () => {
     if (selectedTerm && reportType) {
-      onGenerateReport(selectedTerm, reportType);
+      const selectedTermData = terms?.find(term => term.id === selectedTerm);
+      const termLabel = selectedTermData 
+        ? `${selectedTermData.academic_years?.year} - Term ${selectedTermData.term_number}`
+        : `Term ${selectedTerm.substring(0, 8)}...`;
+      
+      onGenerateReport(selectedTerm, reportType, termLabel);
       onOpenChange(false);
     }
   };
@@ -75,31 +80,31 @@ export function FranchiseReportModal({
                 <span className="text-sm text-muted-foreground">Loading terms...</span>
               </div>
             ) : (
-              <Select value={selectedTerm} onValueChange={setSelectedTerm}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a term" />
-                </SelectTrigger>
-                <SelectContent>
+              <HeaderSelect value={selectedTerm} onValueChange={setSelectedTerm}>
+                <HeaderSelectTrigger className="w-full">
+                  <HeaderSelectValue placeholder="Select a term" />
+                </HeaderSelectTrigger>
+                <HeaderSelectContent>
                   {terms?.map((term) => (
-                    <SelectItem key={term.id} value={term.id}>
+                    <HeaderSelectItem key={term.id} value={term.id}>
                       {formatTermLabel(term)}
-                    </SelectItem>
+                    </HeaderSelectItem>
                   ))}
-                </SelectContent>
-              </Select>
+                </HeaderSelectContent>
+              </HeaderSelect>
             )}
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="report-type">Report Type</Label>
-            <Select value={reportType} onValueChange={setReportType}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select report type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="classes-list">Classes List Report</SelectItem>
-              </SelectContent>
-            </Select>
+            <HeaderSelect value={reportType} onValueChange={setReportType}>
+              <HeaderSelectTrigger className="w-full">
+                <HeaderSelectValue placeholder="Select report type" />
+              </HeaderSelectTrigger>
+              <HeaderSelectContent>
+                <HeaderSelectItem value="classes-list">Classes List Report</HeaderSelectItem>
+              </HeaderSelectContent>
+            </HeaderSelect>
           </div>
         </div>
 
