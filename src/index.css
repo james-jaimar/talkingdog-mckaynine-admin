@@ -169,22 +169,6 @@
   }
 }
 
-/* Fix select component text visibility in header */
-header [data-radix-select-trigger],
-header [data-radix-select-trigger] span {
-  color: rgb(17 24 39) !important;
-}
-
-header [data-radix-select-content] [data-radix-select-item] {
-  color: rgb(17 24 39) !important;
-}
-
-header [data-radix-select-content] [data-radix-select-item]:hover,
-header [data-radix-select-content] [data-radix-select-item][data-highlighted] {
-  background-color: rgb(243 244 246) !important;
-  color: rgb(17 24 39) !important;
-}
-
 /* Improve scrolling experience */
 .overflow-auto, .overflow-y-auto, .overflow-x-auto {
   -webkit-overflow-scrolling: touch;
