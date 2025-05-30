@@ -22,10 +22,12 @@ export function FranchiseReportModal({
   const [selectedTerm, setSelectedTerm] = useState<string>("");
   const [reportType, setReportType] = useState<string>("classes-list");
 
-  // Fetch available terms
+  // Fetch available terms with better prioritization
   const { data: terms, isLoading: termsLoading } = useQuery({
     queryKey: ['franchise-terms'],
     queryFn: async () => {
+      console.log('Fetching terms for franchise report...');
+      
       const { data, error } = await supabase
         .from('terms')
         .select(`
@@ -33,13 +35,36 @@ export function FranchiseReportModal({
           term_number,
           start_date,
           end_date,
-          academic_years!inner(year)
+          current,
+          academic_years!inner(id, year)
         `)
         .order('academic_years(year)', { ascending: false })
-        .order('term_number', { ascending: false });
+        .order('current', { ascending: false })
+        .order('start_date', { ascending: false });
 
-      if (error) throw error;
-      return data;
+      if (error) {
+        console.error('Error fetching terms:', error);
+        throw error;
+      }
+
+      console.log('Fetched terms:', data);
+      
+      // Group terms by year and term_number, prioritizing current terms
+      const groupedTerms = new Map();
+      
+      data.forEach(term => {
+        const key = `${term.academic_years?.year}-${term.term_number}`;
+        const existing = groupedTerms.get(key);
+        
+        if (!existing || term.current) {
+          groupedTerms.set(key, term);
+        }
+      });
+      
+      const prioritizedTerms = Array.from(groupedTerms.values());
+      console.log('Prioritized terms:', prioritizedTerms);
+      
+      return prioritizedTerms;
     },
     enabled: open
   });
@@ -47,6 +72,12 @@ export function FranchiseReportModal({
   const handleGenerate = () => {
     if (selectedTerm && reportType) {
       const selectedTermData = terms?.find(term => term.id === selectedTerm);
+      console.log('Generating report for term:', {
+        selectedTermId: selectedTerm,
+        selectedTermData,
+        reportType
+      });
+      
       const termLabel = selectedTermData 
         ? `${selectedTermData.academic_years?.year} - Term ${selectedTermData.term_number}`
         : `Term ${selectedTerm.substring(0, 8)}...`;
@@ -58,7 +89,8 @@ export function FranchiseReportModal({
 
   const formatTermLabel = (term: any) => {
     const year = term.academic_years?.year;
-    return `${year} - Term ${term.term_number}`;
+    const currentBadge = term.current ? ' (Current)' : '';
+    return `${year} - Term ${term.term_number}${currentBadge}`;
   };
 
   return (

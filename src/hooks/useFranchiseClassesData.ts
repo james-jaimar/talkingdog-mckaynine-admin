@@ -59,13 +59,45 @@ export function useFranchiseClassesData(termId?: string) {
     queryKey: ['franchise-classes-data', currentBranch?.id, selectedTermId],
     queryFn: async (): Promise<FranchiseReportData> => {
       if (!currentBranch?.id || !selectedTermId) {
-        console.log('Missing branch or term ID:', { branchId: currentBranch?.id, termId: selectedTermId });
-        return { classes: [], reportTotals: { totalRevenue: 0, totalFranchiseFees: 0, totalAdminFees: 0, totalMckaynineCommission: 0, totalHandlers: 0 } };
+        console.log('Missing required data:', { 
+          branchId: currentBranch?.id, 
+          termId: selectedTermId 
+        });
+        return { 
+          classes: [], 
+          reportTotals: { 
+            totalRevenue: 0, 
+            totalFranchiseFees: 0, 
+            totalAdminFees: 0, 
+            totalMckaynineCommission: 0, 
+            totalHandlers: 0 
+          } 
+        };
       }
 
-      console.log(`Fetching franchise data for branch ${currentBranch.name} with term:`, selectedTermId);
+      console.log(`Starting franchise data fetch for branch: ${currentBranch.name} (${currentBranch.id}), term: ${selectedTermId}`);
 
-      // First, get all classes for the branch
+      // First, verify the term exists and get its details
+      const { data: termInfo, error: termError } = await supabase
+        .from('terms')
+        .select(`
+          id,
+          term_number,
+          start_date,
+          end_date,
+          academic_years(year)
+        `)
+        .eq('id', selectedTermId)
+        .single();
+
+      if (termError) {
+        console.error("Error fetching term info:", termError);
+        throw termError;
+      }
+
+      console.log('Term info:', termInfo);
+
+      // Get all classes for the current branch
       const { data: classes, error: classesError } = await supabase
         .from('classes')
         .select(`
@@ -87,9 +119,9 @@ export function useFranchiseClassesData(termId?: string) {
         throw classesError;
       }
 
-      console.log(`Retrieved ${classes?.length || 0} classes for branch`);
+      console.log(`Retrieved ${classes?.length || 0} classes for branch ${currentBranch.name}`);
 
-      // Now get schedules and bookings for the specific term
+      // Get schedules for the specific term with enhanced debugging
       const { data: scheduleData, error: scheduleError } = await supabase
         .from('class_schedules')
         .select(`
@@ -97,6 +129,7 @@ export function useFranchiseClassesData(termId?: string) {
           class_id,
           selected_dates,
           start_time,
+          term_id,
           bookings(
             id,
             payment_status,
@@ -120,8 +153,18 @@ export function useFranchiseClassesData(termId?: string) {
       }
 
       console.log(`Retrieved ${scheduleData?.length || 0} schedules for term ${selectedTermId}`);
+      
+      // Debug: log schedule details
+      scheduleData?.forEach((schedule, index) => {
+        console.log(`Schedule ${index + 1}:`, {
+          id: schedule.id,
+          class_id: schedule.class_id,
+          term_id: schedule.term_id,
+          bookings_count: schedule.bookings?.length || 0
+        });
+      });
 
-      // Combine classes with their schedule data
+      // Process the data
       const franchiseClasses: FranchiseClassGroup[] = [];
       let reportTotals = {
         totalRevenue: 0,
@@ -133,6 +176,8 @@ export function useFranchiseClassesData(termId?: string) {
 
       classes?.forEach(classItem => {
         const classSchedules = scheduleData?.filter(schedule => schedule.class_id === classItem.id) || [];
+        
+        console.log(`Processing class "${classItem.name}": found ${classSchedules.length} schedules`);
         
         if (classSchedules.length === 0) {
           console.log(`No schedules found for class ${classItem.name} in term ${selectedTermId}`);
@@ -149,9 +194,13 @@ export function useFranchiseClassesData(termId?: string) {
 
         classSchedules.forEach(schedule => {
           const totalClasses = (schedule.selected_dates || []).length;
+          console.log(`Schedule ${schedule.id} has ${schedule.bookings?.length || 0} bookings`);
           
           schedule.bookings?.forEach(booking => {
-            if (!booking.clients || !booking.dogs) return;
+            if (!booking.clients || !booking.dogs) {
+              console.log(`Skipping booking ${booking.id} - missing client or dog data`);
+              return;
+            }
 
             // Check attendance count
             const attendanceCount = booking.attendances?.filter(
@@ -213,6 +262,8 @@ export function useFranchiseClassesData(termId?: string) {
           });
         });
 
+        console.log(`Class "${classItem.name}" processed: ${handlers.length} handlers found`);
+
         if (handlers.length > 0) {
           franchiseClasses.push({
             className: classItem.name,
@@ -237,7 +288,12 @@ export function useFranchiseClassesData(termId?: string) {
         }
       });
 
-      console.log(`Processed ${franchiseClasses.length} franchise classes with financial data for term ${selectedTermId}`);
+      console.log(`Final result: ${franchiseClasses.length} franchise classes with ${reportTotals.totalHandlers} total handlers`);
+      
+      if (franchiseClasses.length === 0) {
+        console.warn(`No franchise data found for term ${selectedTermId} (${termInfo?.academic_years?.year} - Term ${termInfo?.term_number})`);
+      }
+
       return { classes: franchiseClasses, reportTotals };
     },
     enabled: !!currentBranch?.id && !!selectedTermId,
