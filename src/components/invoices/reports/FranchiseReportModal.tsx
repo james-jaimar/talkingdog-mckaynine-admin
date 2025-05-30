@@ -49,15 +49,19 @@ export function FranchiseReportModal({
 
       console.log('Fetched terms:', data);
       
-      // Group terms by year and term_number, prioritizing current terms
+      // Enhanced grouping logic to handle duplicate term numbers
       const groupedTerms = new Map();
       
       data.forEach(term => {
         const key = `${term.academic_years?.year}-${term.term_number}`;
         const existing = groupedTerms.get(key);
         
-        if (!existing || term.current) {
+        // Prioritize current terms, then by start date
+        if (!existing || 
+            (term.current && !existing.current) || 
+            (term.current === existing.current && new Date(term.start_date) > new Date(existing.start_date))) {
           groupedTerms.set(key, term);
+          console.log(`Selected term for ${key}:`, term.id, term.current ? '(current)' : '');
         }
       });
       
@@ -95,7 +99,7 @@ export function FranchiseReportModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md w-[95vw] max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Generate Franchise Report</DialogTitle>
           <DialogDescription>
@@ -116,7 +120,7 @@ export function FranchiseReportModal({
                 <HeaderSelectTrigger className="w-full">
                   <HeaderSelectValue placeholder="Select a term" />
                 </HeaderSelectTrigger>
-                <HeaderSelectContent>
+                <HeaderSelectContent className="max-h-[200px] overflow-y-auto">
                   {terms?.map((term) => (
                     <HeaderSelectItem key={term.id} value={term.id}>
                       {formatTermLabel(term)}
@@ -140,13 +144,14 @@ export function FranchiseReportModal({
           </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+        <DialogFooter className="flex-col sm:flex-row gap-2">
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">
             Cancel
           </Button>
           <Button 
             onClick={handleGenerate}
             disabled={!selectedTerm || !reportType}
+            className="w-full sm:w-auto"
           >
             Generate Report
           </Button>
