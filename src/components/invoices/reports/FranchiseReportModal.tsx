@@ -120,7 +120,7 @@ export function FranchiseReportModal({
                 <HeaderSelectTrigger className="w-full">
                   <HeaderSelectValue placeholder="Select a term" />
                 </HeaderSelectTrigger>
-                <HeaderSelectContent className="max-h-[200px] overflow-y-auto">
+                <HeaderSelectContent>
                   {terms?.map((term) => (
                     <HeaderSelectItem key={term.id} value={term.id}>
                       {formatTermLabel(term)}
