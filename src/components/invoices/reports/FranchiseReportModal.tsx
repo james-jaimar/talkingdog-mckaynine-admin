@@ -99,30 +99,30 @@ export function FranchiseReportModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md w-[95vw] max-w-[500px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[95vw] max-w-[425px] max-h-[90vh] overflow-y-auto mx-auto">
         <DialogHeader>
-          <DialogTitle>Generate Franchise Report</DialogTitle>
-          <DialogDescription>
+          <DialogTitle className="text-lg sm:text-xl">Generate Franchise Report</DialogTitle>
+          <DialogDescription className="text-sm">
             Select the term and report type to generate a comprehensive franchise report.
           </DialogDescription>
         </DialogHeader>
         
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="term-select">Term</Label>
+            <Label htmlFor="term-select" className="text-sm font-medium">Term</Label>
             {termsLoading ? (
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-2 py-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 <span className="text-sm text-muted-foreground">Loading terms...</span>
               </div>
             ) : (
               <HeaderSelect value={selectedTerm} onValueChange={setSelectedTerm}>
-                <HeaderSelectTrigger className="w-full">
+                <HeaderSelectTrigger className="w-full h-10">
                   <HeaderSelectValue placeholder="Select a term" />
                 </HeaderSelectTrigger>
-                <HeaderSelectContent>
+                <HeaderSelectContent className="max-h-[40vh] overflow-y-auto">
                   {terms?.map((term) => (
-                    <HeaderSelectItem key={term.id} value={term.id}>
+                    <HeaderSelectItem key={term.id} value={term.id} className="py-2">
                       {formatTermLabel(term)}
                     </HeaderSelectItem>
                   ))}
@@ -132,26 +132,30 @@ export function FranchiseReportModal({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="report-type">Report Type</Label>
+            <Label htmlFor="report-type" className="text-sm font-medium">Report Type</Label>
             <HeaderSelect value={reportType} onValueChange={setReportType}>
-              <HeaderSelectTrigger className="w-full">
+              <HeaderSelectTrigger className="w-full h-10">
                 <HeaderSelectValue placeholder="Select report type" />
               </HeaderSelectTrigger>
               <HeaderSelectContent>
-                <HeaderSelectItem value="classes-list">Classes List Report</HeaderSelectItem>
+                <HeaderSelectItem value="classes-list" className="py-2">Classes List Report</HeaderSelectItem>
               </HeaderSelectContent>
             </HeaderSelect>
           </div>
         </div>
 
-        <DialogFooter className="flex-col sm:flex-row gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">
+        <DialogFooter className="flex flex-col sm:flex-row gap-2 pt-4">
+          <Button 
+            variant="outline" 
+            onClick={() => onOpenChange(false)} 
+            className="w-full sm:w-auto order-2 sm:order-1"
+          >
             Cancel
           </Button>
           <Button 
             onClick={handleGenerate}
             disabled={!selectedTerm || !reportType}
-            className="w-full sm:w-auto"
+            className="w-full sm:w-auto order-1 sm:order-2"
           >
             Generate Report
           </Button>
