@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -120,7 +119,7 @@ export function FranchiseReportModal({
                 <HeaderSelectTrigger className="w-full h-10">
                   <HeaderSelectValue placeholder="Select a term" />
                 </HeaderSelectTrigger>
-                <HeaderSelectContent className="max-h-[40vh] overflow-y-auto">
+                <HeaderSelectContent>
                   {terms?.map((term) => (
                     <HeaderSelectItem key={term.id} value={term.id} className="py-2">
                       {formatTermLabel(term)}
