@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -19,7 +20,7 @@ import {
 import { useClassForm } from "./hooks/useClassForm";
 import { Class } from "./types/class";
 import { FeeFields } from "./form-sections/FeeFields";
-import { CLASS_TYPES } from "./types/class-types";
+import { CLASS_TYPES } from "./schemas/classFormSchema";
 import { useEffect } from "react";
 import { ClassWithSchedules } from "./hooks/types/class-with-schedules";
 

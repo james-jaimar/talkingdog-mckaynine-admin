@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -18,7 +19,7 @@ import {
 } from "@/components/ui/select";
 import { useClassForm } from "./hooks/useClassForm";
 import { FeeFields } from "./form-sections/FeeFields";
-import { CLASS_TYPES } from "./types/class-types";
+import { CLASS_TYPES } from "./schemas/classFormSchema";
 
 interface AddClassFormProps {
   onSuccess: () => void;

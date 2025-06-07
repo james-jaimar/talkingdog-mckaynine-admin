@@ -1,11 +1,16 @@
 
 import * as z from "zod";
-import { CLASS_TYPES } from "../types/class-types";
+
+// Define the class types as a const array for better type safety
+export const CLASS_TYPES = ['Puppy', 'EO', 'CGC Bronze', 'CGC Silver', 'Beginner', 'Novice', 'WT', 'A-Test', 'Yoga'] as const;
 
 export const classFormSchema = z.object({
   name: z.string().min(1, { message: "Name is required" }),
   description: z.string().optional(),
-  class_type: z.enum(['Puppy', 'EO', 'CGC Bronze', 'CGC Silver', 'Beginner', 'Novice', 'WT', 'A-Test', 'Yoga']),
+  class_type: z.enum(CLASS_TYPES, { 
+    required_error: "Please select a class type",
+    invalid_type_error: "Please select a valid class type"
+  }),
   duration: z.coerce.number().min(1, { message: "Duration must be at least 1 minute" }),
   capacity: z.coerce.number().min(1, { message: "Capacity must be at least 1" }),
   course_fee: z.coerce.number().min(0),

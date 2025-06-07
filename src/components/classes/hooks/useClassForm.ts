@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -5,7 +6,7 @@ import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { Class } from "../types/class";
-import { classFormSchema, ClassFormValues } from "../schemas/classFormSchema";
+import { classFormSchema, ClassFormValues, CLASS_TYPES } from "../schemas/classFormSchema";
 import { ClassWithSchedules } from "./types/class-with-schedules";
 import { useTerm } from "@/context/TermContext";
 import { useNavigate } from "react-router-dom";
@@ -42,7 +43,9 @@ export function useClassForm({ classData, onSuccess }: UseClassFormProps) {
     ? {
         name: classData.name || "",
         description: classData.description || "",
-        class_type: classData.class_type || "Puppy",
+        class_type: (classData.class_type && CLASS_TYPES.includes(classData.class_type as any)) 
+          ? classData.class_type as typeof CLASS_TYPES[number]
+          : "Puppy",
         course_fee: typeof classData.course_fee === 'number' ? classData.course_fee : 
                     parseFloat(String(classData.course_fee)) || 0,
         enrollment_fee: typeof classData.enrollment_fee === 'number' ? classData.enrollment_fee : 
@@ -90,7 +93,9 @@ export function useClassForm({ classData, onSuccess }: UseClassFormProps) {
       form.reset({
         name: classData.name || "",
         description: classData.description || "",
-        class_type: classData.class_type || "Puppy",
+        class_type: (classData.class_type && CLASS_TYPES.includes(classData.class_type as any)) 
+          ? classData.class_type as typeof CLASS_TYPES[number]
+          : "Puppy",
         course_fee: typeof classData.course_fee === 'number' ? classData.course_fee : 
                     parseFloat(String(classData.course_fee)) || 0,
         enrollment_fee: typeof classData.enrollment_fee === 'number' ? classData.enrollment_fee : 

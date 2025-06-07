@@ -1,14 +1,5 @@
 
-export type ClassType = 'Puppy' | 'EO' | 'CGC Bronze' | 'CGC Silver' | 'Beginner' | 'Novice' | 'WT' | 'A-Test' | 'Yoga';
+// Export the same class types used in the schema for consistency
+export const CLASS_TYPES = ['Puppy', 'EO', 'CGC Bronze', 'CGC Silver', 'Beginner', 'Novice', 'WT', 'A-Test', 'Yoga'] as const;
 
-export const CLASS_TYPES: ClassType[] = [
-  'Puppy',
-  'EO',
-  'CGC Bronze',
-  'CGC Silver',
-  'Beginner',
-  'Novice',
-  'WT',
-  'A-Test',
-  'Yoga'
-];
+export type ClassType = typeof CLASS_TYPES[number];
