@@ -155,10 +155,11 @@ export function useClassForm({ classData, onSuccess }: UseClassFormProps) {
     }
     
     try {
+      // Ensure class_type is exactly what the database expects
       const classPayload = {
         name: values.name,
         description: values.description || null,
-        class_type: values.class_type,
+        class_type: values.class_type, // This should now match the database enum exactly
         course_fee: values.course_fee,
         enrollment_fee: values.enrollment_fee,
         mckaynine_commission_type: values.mckaynine_commission_type,
@@ -183,7 +184,10 @@ export function useClassForm({ classData, onSuccess }: UseClassFormProps) {
           .select()
           .single();
         
-        if (error) throw error;
+        if (error) {
+          console.error("Database error updating class:", error);
+          throw error;
+        }
         showClassUpdatedToast(values.name);
       } else {
         // Create new class
