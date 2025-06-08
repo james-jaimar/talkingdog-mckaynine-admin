@@ -35,7 +35,7 @@ export function useClassForm({ classData, onSuccess }: UseClassFormProps) {
   const [branches, setBranches] = useState<BranchOption[]>([]);
   const [isLoadingBranches, setIsLoadingBranches] = useState(true);
   const queryClient = useQueryClient();
-  const { termData } = useTerm(); // Get current term context
+  const { termData } = useTerm();
   const navigate = useNavigate();
   
   // Pre-populate form with class data or set defaults
@@ -46,23 +46,16 @@ export function useClassForm({ classData, onSuccess }: UseClassFormProps) {
         class_type: (classData.class_type && CLASS_TYPES.includes(classData.class_type as any)) 
           ? classData.class_type as typeof CLASS_TYPES[number]
           : "Puppy",
-        course_fee: typeof classData.course_fee === 'number' ? classData.course_fee : 
-                    parseFloat(String(classData.course_fee)) || 0,
-        enrollment_fee: typeof classData.enrollment_fee === 'number' ? classData.enrollment_fee : 
-                        parseFloat(String(classData.enrollment_fee)) || 0,
+        course_fee: Number(classData.course_fee) || 0,
+        enrollment_fee: Number(classData.enrollment_fee) || 0,
         mckaynine_commission_type: classData.mckaynine_commission_type || "percentage",
-        mckaynine_commission_value: typeof classData.mckaynine_commission_value === 'number' ? classData.mckaynine_commission_value :
-                                  parseFloat(String(classData.mckaynine_commission_value)) || 0,
+        mckaynine_commission_value: Number(classData.mckaynine_commission_value) || 0,
         admin_fee_type: classData.admin_fee_type || "percentage",
-        admin_fee_value: typeof classData.admin_fee_value === 'number' ? classData.admin_fee_value :
-                        parseFloat(String(classData.admin_fee_value)) || 0,
+        admin_fee_value: Number(classData.admin_fee_value) || 0,
         trainer_fee_type: classData.trainer_fee_type || "percentage",
-        trainer_fee_value: typeof classData.trainer_fee_value === 'number' ? classData.trainer_fee_value :
-                          parseFloat(String(classData.trainer_fee_value)) || 0,
-        duration: typeof classData.duration === 'number' ? classData.duration :
-                 parseInt(String(classData.duration)) || 60,
-        capacity: typeof classData.capacity === 'number' ? classData.capacity :
-                 parseInt(String(classData.capacity)) || 8,
+        trainer_fee_value: Number(classData.trainer_fee_value) || 0,
+        duration: Number(classData.duration) || 60,
+        capacity: Number(classData.capacity) || 8,
         branchId: classData.branch_id || "",
       }
     : {
@@ -87,34 +80,28 @@ export function useClassForm({ classData, onSuccess }: UseClassFormProps) {
     defaultValues,
   });
 
-  // Make sure form gets updated if classData changes
+  // Update form when classData changes
   useEffect(() => {
     if (classData) {
-      form.reset({
+      const updateValues: ClassFormValues = {
         name: classData.name || "",
         description: classData.description || "",
         class_type: (classData.class_type && CLASS_TYPES.includes(classData.class_type as any)) 
           ? classData.class_type as typeof CLASS_TYPES[number]
           : "Puppy",
-        course_fee: typeof classData.course_fee === 'number' ? classData.course_fee : 
-                    parseFloat(String(classData.course_fee)) || 0,
-        enrollment_fee: typeof classData.enrollment_fee === 'number' ? classData.enrollment_fee : 
-                        parseFloat(String(classData.enrollment_fee)) || 0,
+        course_fee: Number(classData.course_fee) || 0,
+        enrollment_fee: Number(classData.enrollment_fee) || 0,
         mckaynine_commission_type: classData.mckaynine_commission_type || "percentage",
-        mckaynine_commission_value: typeof classData.mckaynine_commission_value === 'number' ? classData.mckaynine_commission_value :
-                                  parseFloat(String(classData.mckaynine_commission_value)) || 0,
+        mckaynine_commission_value: Number(classData.mckaynine_commission_value) || 0,
         admin_fee_type: classData.admin_fee_type || "percentage",
-        admin_fee_value: typeof classData.admin_fee_value === 'number' ? classData.admin_fee_value :
-                        parseFloat(String(classData.admin_fee_value)) || 0,
+        admin_fee_value: Number(classData.admin_fee_value) || 0,
         trainer_fee_type: classData.trainer_fee_type || "percentage",
-        trainer_fee_value: typeof classData.trainer_fee_value === 'number' ? classData.trainer_fee_value :
-                          parseFloat(String(classData.trainer_fee_value)) || 0,
-        duration: typeof classData.duration === 'number' ? classData.duration :
-                parseInt(String(classData.duration)) || 60,
-        capacity: typeof classData.capacity === 'number' ? classData.capacity :
-                parseInt(String(classData.capacity)) || 8,
+        trainer_fee_value: Number(classData.trainer_fee_value) || 0,
+        duration: Number(classData.duration) || 60,
+        capacity: Number(classData.capacity) || 8,
         branchId: classData.branch_id || "",
-      });
+      };
+      form.reset(updateValues);
     }
   }, [classData, form]);
   
@@ -128,20 +115,14 @@ export function useClassForm({ classData, onSuccess }: UseClassFormProps) {
           .select("id, name")
           .order("name");
         
-        if (error) {
-          throw error;
-        }
+        if (error) throw error;
         
-        if (data && Array.isArray(data)) {
-          const branchOptions = data.map(branch => ({
-            value: branch.id,
-            label: branch.name
-          }));
-          
-          setBranches(branchOptions);
-        } else {
-          setBranches([]);
-        }
+        const branchOptions = data?.map(branch => ({
+          value: branch.id,
+          label: branch.name
+        })) || [];
+        
+        setBranches(branchOptions);
       } catch (error) {
         console.error("Error fetching branches:", error);
         toast({
@@ -162,7 +143,7 @@ export function useClassForm({ classData, onSuccess }: UseClassFormProps) {
     setIsSubmitting(true);
     console.log("Submitting form with values:", values);
     
-    // Add validation for branch ID
+    // Validate branch ID
     if (!values.branchId) {
       toast({
         title: "Branch is required",
@@ -172,63 +153,43 @@ export function useClassForm({ classData, onSuccess }: UseClassFormProps) {
       setIsSubmitting(false);
       return;
     }
-
-    // Log if we have termData available
-    console.log("Current termData during class submission:", termData);
     
     try {
-      let classId: string;
+      const classPayload = {
+        name: values.name,
+        description: values.description || null,
+        class_type: values.class_type,
+        course_fee: values.course_fee,
+        enrollment_fee: values.enrollment_fee,
+        mckaynine_commission_type: values.mckaynine_commission_type,
+        mckaynine_commission_value: values.mckaynine_commission_value, 
+        admin_fee_type: values.admin_fee_type,
+        admin_fee_value: values.admin_fee_value,
+        trainer_fee_type: values.trainer_fee_type,
+        trainer_fee_value: values.trainer_fee_value,
+        duration: values.duration,
+        capacity: values.capacity,
+        branch_id: values.branchId,
+      };
+
+      console.log("Submitting class payload:", classPayload);
       
       if (classData) {
         // Update existing class
         const { data: updatedClass, error } = await supabase
           .from("classes")
-          .update({
-            name: values.name,
-            description: values.description,
-            class_type: values.class_type,
-            course_fee: values.course_fee,
-            enrollment_fee: values.enrollment_fee,
-            mckaynine_commission_type: values.mckaynine_commission_type,
-            mckaynine_commission_value: values.mckaynine_commission_value, 
-            admin_fee_type: values.admin_fee_type,
-            admin_fee_value: values.admin_fee_value,
-            trainer_fee_type: values.trainer_fee_type,
-            trainer_fee_value: values.trainer_fee_value,
-            duration: values.duration,
-            capacity: values.capacity,
-            branch_id: values.branchId,
-          })
+          .update(classPayload)
           .eq("id", classData.id)
           .select()
           .single();
         
         if (error) throw error;
-        classId = classData.id;
-        
         showClassUpdatedToast(values.name);
       } else {
         // Create new class
-        console.log("Creating new class with branch:", values.branchId);
         const { data: newClass, error } = await supabase
           .from("classes")
-          .insert({
-            name: values.name,
-            description: values.description,
-            class_type: values.class_type,
-            course_fee: values.course_fee,
-            enrollment_fee: values.enrollment_fee,
-            mckaynine_commission_type: values.mckaynine_commission_type,
-            mckaynine_commission_value: values.mckaynine_commission_value, 
-            admin_fee_type: values.admin_fee_type,
-            admin_fee_value: values.admin_fee_value,
-            trainer_fee_type: values.trainer_fee_type,
-            trainer_fee_value: values.trainer_fee_value,
-            duration: values.duration,
-            capacity: values.capacity,
-            branch_id: values.branchId,
-            // Removed term_id as it doesn't exist in classes table
-          })
+          .insert(classPayload)
           .select()
           .single();
         
@@ -241,35 +202,26 @@ export function useClassForm({ classData, onSuccess }: UseClassFormProps) {
           throw new Error("Failed to retrieve the newly created class data");
         }
         
-        classId = newClass.id;
-        console.log("Successfully created class with ID:", classId);
+        console.log("Successfully created class:", newClass);
+        showClassCreatedToast(values.name, newClass.id);
         
-        // Show success toast
-        showClassCreatedToast(values.name, classId);
-        
-        // Navigate to schedule creation page after a short delay
-        // This is where the term association will happen correctly, through class_schedules.term_id
-        console.log(`Will navigate to schedule creation for class ${classId} in 500ms`);
+        // Navigate to schedule creation after a short delay
         setTimeout(() => {
-          navigate(`/classes/${classId}/schedules`);
+          navigate(`/classes/${newClass.id}/schedules`);
         }, 500);
       }
       
-      // Invalidate all class-related queries to ensure UI is updated
-      console.log("Invalidating class queries...");
+      // Invalidate queries to refresh UI
       await queryClient.invalidateQueries({ queryKey: ["classes"] });
       
-      // If a term is selected, also invalidate any term-specific queries
       if (termData?.id) {
-        console.log(`Invalidating term-specific queries for term ${termData.id}...`);
         await queryClient.invalidateQueries({ 
           queryKey: ["classes", termData.id]
         });
       }
       
-      // Call onSuccess callback if provided
+      // Call success callback
       if (onSuccess) {
-        console.log("Calling onSuccess callback");
         onSuccess();
       }
       

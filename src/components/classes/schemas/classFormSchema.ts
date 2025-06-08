@@ -1,7 +1,7 @@
 
 import * as z from "zod";
 
-// Define the class types as a const array for better type safety
+// Define the class types to match the database enum exactly
 export const CLASS_TYPES = ['Puppy', 'EO', 'CGC Bronze', 'CGC Silver', 'Beginner', 'Novice', 'WT', 'A-Test', 'Yoga'] as const;
 
 export const classFormSchema = z.object({
