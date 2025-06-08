@@ -9,7 +9,7 @@ export function createDefaultFormValues(classData: ClassData | null): ClassFormV
   if (!classData) {
     return {
       name: "",
-      description: "",
+      description: "", // Always empty string, never undefined
       class_type: "Puppy",
       course_fee: 0,
       enrollment_fee: 0,
@@ -27,7 +27,7 @@ export function createDefaultFormValues(classData: ClassData | null): ClassFormV
 
   return {
     name: classData.name || "",
-    description: classData.description || "",
+    description: classData.description || "", // Always empty string, never null/undefined
     class_type: (classData.class_type && CLASS_TYPES.includes(classData.class_type as any)) 
       ? classData.class_type as typeof CLASS_TYPES[number]
       : "Puppy",

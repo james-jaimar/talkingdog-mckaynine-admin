@@ -28,9 +28,10 @@ export function useClassSubmission() {
     }
     
     // Prepare class payload with explicit type conversion
+    // FIX: Send empty string instead of null for description
     const classPayload = {
       name: values.name.trim(),
-      description: values.description?.trim() || null,
+      description: values.description?.trim() || "", // Send empty string instead of null
       class_type: values.class_type,
       course_fee: Number(values.course_fee),
       enrollment_fee: Number(values.enrollment_fee),

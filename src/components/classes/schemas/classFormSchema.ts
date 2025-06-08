@@ -6,7 +6,7 @@ export const CLASS_TYPES = ['Puppy', 'EO', 'CGC Bronze', 'CGC Silver', 'Beginner
 
 export const classFormSchema = z.object({
   name: z.string().min(1, { message: "Name is required" }),
-  description: z.string().optional(),
+  description: z.string().min(0, { message: "Description is required" }), // Required but can be empty string
   class_type: z.enum(CLASS_TYPES, { 
     required_error: "Please select a class type",
     invalid_type_error: "Please select a valid class type"
