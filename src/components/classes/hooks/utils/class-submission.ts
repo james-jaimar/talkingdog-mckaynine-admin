@@ -27,11 +27,10 @@ export function useClassSubmission() {
       throw new Error("Branch is required. Please select a branch for this class.");
     }
     
-    // Prepare class payload with explicit type conversion
-    // FIX: Send empty string instead of null for description
+    // Prepare class payload - description is guaranteed to be a string by schema
     const classPayload = {
       name: values.name.trim(),
-      description: values.description?.trim() || "", // Send empty string instead of null
+      description: values.description, // Already guaranteed to be a string by schema
       class_type: values.class_type,
       course_fee: Number(values.course_fee),
       enrollment_fee: Number(values.enrollment_fee),
