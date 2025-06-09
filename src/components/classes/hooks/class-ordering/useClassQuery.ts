@@ -44,8 +44,9 @@ export function useClassQuery() {
         
         const savedOrder = orderData?.class_ids || [];
         
-        // Build our base query with proper filtering at the database level
-        let classesQuery = supabase
+        // Always fetch ALL classes for the branch with LEFT JOIN to schedules
+        // This ensures new classes without schedules are still included
+        const { data: allClasses, error: classError } = await supabase
           .from('classes')
           .select(`
             id, 
@@ -72,42 +73,6 @@ export function useClassQuery() {
             )
           `)
           .eq('branch_id', branchId);
-        
-        // If a term is selected, filter by term at the database level
-        if (termId) {
-          // Replace the original query with a filtered version
-          classesQuery = supabase
-            .from('classes')
-            .select(`
-              id, 
-              name, 
-              class_type,
-              course_fee,
-              enrollment_fee,
-              mckaynine_commission_type,
-              mckaynine_commission_value,
-              admin_fee_type,
-              admin_fee_value,
-              trainer_fee_type,
-              trainer_fee_value,
-              duration,
-              capacity,
-              branches(name),
-              class_schedules!inner(
-                id, 
-                start_time, 
-                end_time, 
-                selected_dates,
-                term_id,
-                bookings(id, client_id, dog_id)
-              )
-            `)
-            .eq('branch_id', branchId)
-            .eq('class_schedules.term_id', termId);
-        }
-        
-        // Execute the query
-        const { data: allClasses, error: classError } = await classesQuery;
 
         if (classError) {
           throw classError;
@@ -117,8 +82,19 @@ export function useClassQuery() {
         
         // If no classes were found, return an empty array
         if (!classes || classes.length === 0) {
-          logDebug(`No classes found for branch ${branchId} ${termId ? `and term ${termId}` : ''}`);
+          logDebug(`No classes found for branch ${branchId}`);
           return [];
+        }
+        
+        // If a term is selected, filter schedules to only include those for the selected term
+        // But still include all classes (even those without schedules for this term)
+        if (termId) {
+          classes = classes.map(classItem => ({
+            ...classItem,
+            class_schedules: classItem.class_schedules?.filter(schedule => 
+              schedule.term_id === termId
+            ) || []
+          }));
         }
         
         logDebug(`Found ${classes.length} classes for branch ${branchId} ${termId ? `and term ${termId}` : ''}`);
