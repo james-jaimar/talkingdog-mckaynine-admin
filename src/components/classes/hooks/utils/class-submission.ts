@@ -95,7 +95,7 @@ export function useClassSubmission() {
       }
       
       console.log("DEBUG: Successfully created class:", newClass);
-      showClassCreatedToast(values.name, newClass.id);
+      showClassCreatedToast(values.name, newClass.id, navigate);
       
       // Navigate to schedule creation after a short delay
       setTimeout(() => {
