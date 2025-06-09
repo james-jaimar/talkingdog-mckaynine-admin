@@ -94,13 +94,13 @@ export function InvoicesTable({
         
       return (
         <span className="text-red-600">
-          {formatCurrency(invoice.monetary_discount)} ({percentValue}%)
+          R {invoice.monetary_discount.toFixed(2)} ({percentValue}%)
         </span>
       );
     }
     
     // For fixed discounts, just show the amount
-    return <span className="text-red-600">{formatCurrency(invoice.monetary_discount)}</span>;
+    return <span className="text-red-600">R {invoice.monetary_discount.toFixed(2)}</span>;
   };
   
   return (
@@ -158,7 +158,7 @@ export function InvoicesTable({
                 <TableCell>{format(new Date(invoice.issued_date), "PP")}</TableCell>
                 <TableCell>{format(new Date(invoice.due_date), "PP")}</TableCell>
                 <TableCell>{getStatusBadge(invoice.status)}</TableCell>
-                <TableCell>{formatCurrency(invoice.total)}</TableCell>
+                <TableCell>R {invoice.total.toFixed(2)}</TableCell>
                 <TableCell>
                   {renderDiscountCell(invoice)}
                 </TableCell>
@@ -192,19 +192,19 @@ export function InvoicesTable({
               <TableCell>
                 <div className="space-y-1">
                   <div className="text-xs text-muted-foreground">Paid</div>
-                  <div className="font-medium text-green-600">{formatCurrency(totals.paidAmount)}</div>
+                  <div className="font-medium text-green-600">R {totals.paidAmount.toFixed(2)}</div>
                 </div>
               </TableCell>
               <TableCell>
                 <div className="space-y-1">
                   <div className="text-xs text-muted-foreground">Total</div>
-                  <div className="font-medium">{formatCurrency(totals.totalAmount)}</div>
+                  <div className="font-medium">R {totals.totalAmount.toFixed(2)}</div>
                 </div>
               </TableCell>
               <TableCell className="text-right">
                 <div className="space-y-1">
                   <div className="text-xs text-muted-foreground">Outstanding</div>
-                  <div className="font-medium text-amber-600">{formatCurrency(totals.outstandingAmount)}</div>
+                  <div className="font-medium text-amber-600">R {totals.outstandingAmount.toFixed(2)}</div>
                 </div>
               </TableCell>
             </TableRow>

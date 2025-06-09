@@ -87,18 +87,21 @@ export function RevenueBreakdownCard({ invoices, dateRange, isLoading }: Revenue
     ? `${format(dateRange.from, "MMM d, yyyy")} - ${format(dateRange.to, "MMM d, yyyy")}`
     : format(dateRange.from, "MMM d, yyyy");
 
+  // Custom currency formatter without dollar symbol
+  const formatRandCurrency = (amount: number) => `R ${amount.toFixed(2)}`;
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
       <StatsCard
         title="Total Revenue"
-        value={formatCurrency(totalRevenue)}
+        value={formatRandCurrency(totalRevenue)}
         icon={DollarSign}
         description={`Period: ${dateRangeDisplay}`}
       />
       
       <StatsCard
         title="Collected Revenue"
-        value={formatCurrency(collectedRevenue)}
+        value={formatRandCurrency(collectedRevenue)}
         icon={TrendingUp}
         description={`${formatPercentage(percentages.collected)} of total revenue`}
         className="border-l-4 border-green-500"
@@ -106,7 +109,7 @@ export function RevenueBreakdownCard({ invoices, dateRange, isLoading }: Revenue
       
       <StatsCard
         title="Pending Revenue"
-        value={formatCurrency(pendingRevenue)}
+        value={formatRandCurrency(pendingRevenue)}
         icon={Calendar}
         description={`${formatPercentage(percentages.pending)} of total revenue`}
         className="border-l-4 border-amber-500"
@@ -114,7 +117,7 @@ export function RevenueBreakdownCard({ invoices, dateRange, isLoading }: Revenue
       
       <StatsCard
         title="Overdue Revenue"
-        value={formatCurrency(overdueRevenue)}
+        value={formatRandCurrency(overdueRevenue)}
         icon={Users}
         description={`${formatPercentage(percentages.overdue)} of total revenue`}
         className="border-l-4 border-red-500"

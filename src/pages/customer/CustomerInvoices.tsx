@@ -45,6 +45,9 @@ export default function CustomerInvoices() {
     navigate(`/customer/invoices/${invoiceId}`);
   };
 
+  // Custom currency formatter without dollar symbol
+  const formatRandCurrency = (amount: number) => `R ${amount.toFixed(2)}`;
+
   return (
     <CustomerDashboardLayout>
       <Helmet>
@@ -123,7 +126,7 @@ export default function CustomerInvoices() {
                       <TableRow key={invoice.id}>
                         <TableCell className="font-medium">{invoice.invoice_number}</TableCell>
                         <TableCell>{format(new Date(invoice.issued_date), "dd MMM yyyy")}</TableCell>
-                        <TableCell>{formatCurrency(invoice.total)}</TableCell>
+                        <TableCell>{formatRandCurrency(invoice.total)}</TableCell>
                         <TableCell>{getStatusBadge(invoice.status)}</TableCell>
                         <TableCell>
                           {format(new Date(invoice.due_date), "dd MMM yyyy")}

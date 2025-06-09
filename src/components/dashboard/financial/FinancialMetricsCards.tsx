@@ -18,6 +18,9 @@ export function FinancialMetricsCards({
 }: MetricsProps) {
   const collectionRate = totalRevenue ? (collectedRevenue / totalRevenue) * 100 : 0;
   
+  // Custom currency formatter without dollar symbol
+  const formatRandCurrency = (amount: number) => `R ${amount.toFixed(2)}`;
+  
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
       <Card className="relative">
@@ -25,7 +28,7 @@ export function FinancialMetricsCards({
           <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{formatCurrency(totalRevenue)}</div>
+          <div className="text-2xl font-bold">{formatRandCurrency(totalRevenue)}</div>
         </CardContent>
       </Card>
 
@@ -34,7 +37,7 @@ export function FinancialMetricsCards({
           <CardTitle className="text-sm font-medium">Collected Revenue</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{formatCurrency(collectedRevenue)}</div>
+          <div className="text-2xl font-bold">{formatRandCurrency(collectedRevenue)}</div>
           <p className="text-xs text-muted-foreground">{collectionRate.toFixed(1)}% collection rate</p>
         </CardContent>
       </Card>
@@ -44,7 +47,7 @@ export function FinancialMetricsCards({
           <CardTitle className="text-sm font-medium">Pending Revenue</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{formatCurrency(pendingRevenue)}</div>
+          <div className="text-2xl font-bold">{formatRandCurrency(pendingRevenue)}</div>
           <p className="text-xs text-muted-foreground">Sent but not paid</p>
         </CardContent>
       </Card>
@@ -54,7 +57,7 @@ export function FinancialMetricsCards({
           <CardTitle className="text-sm font-medium">Overdue Revenue</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{formatCurrency(overdueRevenue)}</div>
+          <div className="text-2xl font-bold">{formatRandCurrency(overdueRevenue)}</div>
           <p className="text-xs text-muted-foreground">Past due date</p>
         </CardContent>
       </Card>
