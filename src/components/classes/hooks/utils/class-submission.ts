@@ -20,17 +20,26 @@ export function useClassSubmission() {
   const navigate = useNavigate();
 
   const submitClass = async (values: ClassFormValues, classData: ClassData | null, onSuccess?: () => void) => {
-    console.log("Submitting form with values:", values);
+    console.log("DEBUG: Submitting form with values:", values);
+    console.log("DEBUG: Description type:", typeof values.description);
+    console.log("DEBUG: Description value:", values.description);
+    console.log("DEBUG: Description === null:", values.description === null);
+    console.log("DEBUG: Description === undefined:", values.description === undefined);
     
     // Validate branch ID
     if (!values.branchId) {
       throw new Error("Branch is required. Please select a branch for this class.");
     }
     
-    // Prepare class payload - description is guaranteed to be a string by schema
+    // Extra safety: Ensure description is always a string
+    const description = typeof values.description === 'string' ? values.description : "";
+    console.log("DEBUG: Final description value being sent:", description);
+    console.log("DEBUG: Final description type:", typeof description);
+    
+    // Prepare class payload
     const classPayload = {
       name: values.name.trim(),
-      description: values.description, // Already guaranteed to be a string by schema
+      description: description, // Guaranteed string
       class_type: values.class_type,
       course_fee: Number(values.course_fee),
       enrollment_fee: Number(values.enrollment_fee),
@@ -45,10 +54,13 @@ export function useClassSubmission() {
       branch_id: values.branchId,
     };
 
-    console.log("Submitting class payload:", classPayload);
+    console.log("DEBUG: Final class payload being sent to database:", classPayload);
+    console.log("DEBUG: Payload description type:", typeof classPayload.description);
+    console.log("DEBUG: Payload description value:", classPayload.description);
     
     if (classData) {
       // Update existing class
+      console.log("DEBUG: Updating existing class with ID:", classData.id);
       const { data: updatedClass, error } = await supabase
         .from("classes")
         .update(classPayload)
@@ -57,12 +69,14 @@ export function useClassSubmission() {
         .single();
       
       if (error) {
-        console.error("Database error updating class:", error);
+        console.error("DEBUG: Database error updating class:", error);
+        console.error("DEBUG: Error details:", JSON.stringify(error, null, 2));
         throw error;
       }
       showClassUpdatedToast(values.name);
     } else {
       // Create new class
+      console.log("DEBUG: Creating new class");
       const { data: newClass, error } = await supabase
         .from("classes")
         .insert(classPayload)
@@ -70,7 +84,9 @@ export function useClassSubmission() {
         .single();
       
       if (error) {
-        console.error("Database error creating class:", error);
+        console.error("DEBUG: Database error creating class:", error);
+        console.error("DEBUG: Error details:", JSON.stringify(error, null, 2));
+        console.error("DEBUG: Payload that caused error:", JSON.stringify(classPayload, null, 2));
         throw error;
       }
       
@@ -78,7 +94,7 @@ export function useClassSubmission() {
         throw new Error("Failed to retrieve the newly created class data");
       }
       
-      console.log("Successfully created class:", newClass);
+      console.log("DEBUG: Successfully created class:", newClass);
       showClassCreatedToast(values.name, newClass.id);
       
       // Navigate to schedule creation after a short delay

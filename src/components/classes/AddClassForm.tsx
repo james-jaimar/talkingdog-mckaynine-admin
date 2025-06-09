@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -59,6 +58,7 @@ export function AddClassForm({ onSuccess }: AddClassFormProps) {
                   placeholder="Describe what the class covers..." 
                   className="min-h-[100px]" 
                   {...field} 
+                  value={field.value || ""} // Ensure value is always a string
                 />
               </FormControl>
               <FormMessage />

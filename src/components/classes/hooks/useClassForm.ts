@@ -26,6 +26,7 @@ export function useClassForm({ classData, onSuccess }: UseClassFormProps) {
   
   // Initialize form with default values
   const defaultValues = createDefaultFormValues(classData);
+  console.log("DEBUG: useClassForm defaultValues:", defaultValues);
   
   const form = useForm<ClassFormValues>({
     resolver: zodResolver(classFormSchema),
@@ -36,17 +37,19 @@ export function useClassForm({ classData, onSuccess }: UseClassFormProps) {
   useEffect(() => {
     if (classData) {
       const updateValues = createDefaultFormValues(classData);
+      console.log("DEBUG: useClassForm effect updateValues:", updateValues);
       form.reset(updateValues);
     }
   }, [classData, form]);
   
   const onSubmit = async (values: ClassFormValues) => {
+    console.log("DEBUG: useClassForm onSubmit called with values:", values);
     setIsSubmitting(true);
     
     try {
       await submitClass(values, classData, onSuccess);
     } catch (error) {
-      console.error("Error saving class:", error);
+      console.error("DEBUG: Error in useClassForm onSubmit:", error);
       showClassErrorToast(error);
     } finally {
       setIsSubmitting(false);
