@@ -1,28 +1,21 @@
 
 import { TableCell } from "@/components/ui/table";
 import { formatCurrency } from "@/lib/formatters";
+import { ClassWithSchedules } from "../../hooks/types/class-with-schedules";
 
 interface ClassMetadataCellProps {
-  duration: number;
-  courseFee: number;
-  capacity: number;
+  classItem: ClassWithSchedules;
 }
 
-export function ClassMetadataCell({
-  duration,
-  courseFee,
-  capacity
-}: ClassMetadataCellProps) {
+export function ClassMetadataCell({ classItem }: ClassMetadataCellProps) {
   return (
-    <>
-      {/* Duration cell */}
-      <TableCell>{duration} min</TableCell>
-      
-      {/* Price cell */}
-      <TableCell>{formatCurrency(courseFee)}</TableCell>
-      
-      {/* Capacity cell */}
-      <TableCell>{capacity}</TableCell>
-    </>
+    <TableCell>
+      <div className="space-y-1">
+        <div className="font-medium">{classItem.name}</div>
+        <div className="text-sm text-muted-foreground">
+          {classItem.description || "No description"}
+        </div>
+      </div>
+    </TableCell>
   );
 }

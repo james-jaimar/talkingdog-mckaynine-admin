@@ -1,20 +1,26 @@
 
 import { Badge } from "@/components/ui/badge";
 import { getAvailableSlotsBadgeVariant, getCustomBadgeClass } from "./utils/classSlotUtils";
+import { ClassWithSchedules } from "./hooks/types/class-with-schedules";
 
 interface ClassAvailabilityBadgeProps {
-  availableSlots: number;
-  capacity: number;
+  classItem: ClassWithSchedules;
 }
 
-export function ClassAvailabilityBadge({ availableSlots, capacity }: ClassAvailabilityBadgeProps) {
-  const slotVariant = getAvailableSlotsBadgeVariant(availableSlots, capacity);
+export function ClassAvailabilityBadge({ classItem }: ClassAvailabilityBadgeProps) {
+  // Calculate total enrolled from all schedules
+  const totalEnrolled = classItem.class_schedules?.reduce((total, schedule) => {
+    return total + (schedule.bookings?.length || 0);
+  }, 0) || 0;
+
+  const availableSlots = classItem.capacity - totalEnrolled;
+  const slotVariant = getAvailableSlotsBadgeVariant(availableSlots, classItem.capacity);
   const customBadgeClass = getCustomBadgeClass(slotVariant);
   
-  if (availableSlots === 0) {
+  if (availableSlots <= 0) {
     return (
       <Badge variant="destructive">
-        No slots left
+        Fully booked
       </Badge>
     );
   }
