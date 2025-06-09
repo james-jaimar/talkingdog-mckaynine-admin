@@ -5,6 +5,7 @@ import { Class } from "../../types/class";
 import { ClassWithSchedules } from "../types/class-with-schedules";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTerm } from "@/context/TermContext";
+import { useBranch } from "@/context/BranchContext";
 import { useNavigate } from "react-router-dom";
 import {
   showClassCreatedToast,
@@ -17,6 +18,7 @@ type ClassData = Class | ClassWithSchedules;
 export function useClassSubmission() {
   const queryClient = useQueryClient();
   const { termData } = useTerm();
+  const { currentBranch } = useBranch();
   const navigate = useNavigate();
 
   const submitClass = async (values: ClassFormValues, classData: ClassData | null, onSuccess?: () => void) => {
@@ -33,13 +35,11 @@ export function useClassSubmission() {
     
     // Extra safety: Ensure description is always a string
     const description = typeof values.description === 'string' ? values.description : "";
-    console.log("DEBUG: Final description value being sent:", description);
-    console.log("DEBUG: Final description type:", typeof description);
     
     // Prepare class payload
     const classPayload = {
       name: values.name.trim(),
-      description: description, // Guaranteed string
+      description: description,
       class_type: values.class_type,
       course_fee: Number(values.course_fee),
       enrollment_fee: Number(values.enrollment_fee),
@@ -53,14 +53,9 @@ export function useClassSubmission() {
       capacity: Number(values.capacity),
       branch_id: values.branchId,
     };
-
-    console.log("DEBUG: Final class payload being sent to database:", classPayload);
-    console.log("DEBUG: Payload description type:", typeof classPayload.description);
-    console.log("DEBUG: Payload description value:", classPayload.description);
     
     if (classData) {
       // Update existing class
-      console.log("DEBUG: Updating existing class with ID:", classData.id);
       const { data: updatedClass, error } = await supabase
         .from("classes")
         .update(classPayload)
@@ -70,13 +65,11 @@ export function useClassSubmission() {
       
       if (error) {
         console.error("DEBUG: Database error updating class:", error);
-        console.error("DEBUG: Error details:", JSON.stringify(error, null, 2));
         throw error;
       }
       showClassUpdatedToast(values.name);
     } else {
       // Create new class
-      console.log("DEBUG: Creating new class");
       const { data: newClass, error } = await supabase
         .from("classes")
         .insert(classPayload)
@@ -85,8 +78,6 @@ export function useClassSubmission() {
       
       if (error) {
         console.error("DEBUG: Database error creating class:", error);
-        console.error("DEBUG: Error details:", JSON.stringify(error, null, 2));
-        console.error("DEBUG: Payload that caused error:", JSON.stringify(classPayload, null, 2));
         throw error;
       }
       
@@ -103,12 +94,40 @@ export function useClassSubmission() {
       }, 500);
     }
     
-    // Invalidate queries to refresh UI
-    await queryClient.invalidateQueries({ queryKey: ["classes"] });
+    // Comprehensive cache invalidation to ensure UI updates immediately
+    await Promise.all([
+      // Invalidate all classes queries for the current branch
+      queryClient.invalidateQueries({ 
+        queryKey: ["classes", currentBranch?.id],
+        exact: false 
+      }),
+      // Invalidate classes queries with term data
+      queryClient.invalidateQueries({ 
+        queryKey: ["classes", currentBranch?.id, termData?.id],
+        exact: false 
+      }),
+      // Invalidate general classes queries
+      queryClient.invalidateQueries({ 
+        queryKey: ["classes"],
+        exact: false 
+      }),
+      // Invalidate class tab order
+      queryClient.invalidateQueries({ 
+        queryKey: ["class-tab-order"],
+        exact: false 
+      }),
+      // Invalidate dashboard stats that might show class counts
+      queryClient.invalidateQueries({ 
+        queryKey: ["dashboard-stats"],
+        exact: false 
+      })
+    ]);
     
-    if (termData?.id) {
-      await queryClient.invalidateQueries({ 
-        queryKey: ["classes", termData.id]
+    // Force immediate refetch of classes data
+    if (currentBranch?.id) {
+      await queryClient.refetchQueries({ 
+        queryKey: ["classes", currentBranch.id],
+        exact: false 
       });
     }
     
