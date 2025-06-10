@@ -8,6 +8,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import RequireAdmin from "@/components/auth/RequireAdmin";
 import { ClassFinancialReport } from "@/components/invoices/reports/ClassFinancialReport";
 import { ClassesListReport } from "@/components/invoices/reports/ClassesListReport";
+import { FranchiseClassesReport } from "@/components/invoices/reports/FranchiseClassesReport";
 import { DateRangePicker } from "@/components/dashboard/financial/DateRangePicker";
 import { startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -84,6 +85,11 @@ export default function FinancialReports() {
     setActiveTab(value);
   };
 
+  // Generate term label for franchise report
+  const termLabel = termData 
+    ? `${termData.academic_years?.year} - Term ${termData.term_number}`
+    : 'Current Term';
+
   return (
     <RequireAdmin>
       <DashboardLayout>
@@ -104,6 +110,7 @@ export default function FinancialReports() {
             <TabsList className="mb-4">
               <TabsTrigger value="financial">Financial Report</TabsTrigger>
               <TabsTrigger value="classes">Classes List</TabsTrigger>
+              <TabsTrigger value="franchise">Franchise Report</TabsTrigger>
               <TabsTrigger value="trainers">Trainers</TabsTrigger>
             </TabsList>
 
@@ -121,6 +128,19 @@ export default function FinancialReports() {
 
             <TabsContent value="classes">
               <ClassesListReport />
+            </TabsContent>
+
+            <TabsContent value="franchise">
+              {termData?.id ? (
+                <FranchiseClassesReport 
+                  termId={termData.id}
+                  termLabel={termLabel}
+                />
+              ) : (
+                <div className="text-center py-12">
+                  <p className="text-muted-foreground">Please select a term to view the franchise report.</p>
+                </div>
+              )}
             </TabsContent>
             
             <TabsContent value="trainers">

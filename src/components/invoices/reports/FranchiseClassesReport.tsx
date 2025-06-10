@@ -1,8 +1,12 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { useFranchiseClassesData } from "@/hooks/useFranchiseClassesData";
-import { Loader2 } from "lucide-react";
+import { Loader2, Download } from "lucide-react";
 import { formatCurrency } from "@/lib/formatters";
+import { FranchiseReportPDFGenerator } from "./pdf/FranchiseReportPDFGenerator";
+import { toast } from "sonner";
+import { useState } from "react";
 
 interface FranchiseClassesReportProps {
   termId: string;
@@ -11,6 +15,34 @@ interface FranchiseClassesReportProps {
 
 export function FranchiseClassesReport({ termId, termLabel }: FranchiseClassesReportProps) {
   const { data: franchiseData, isLoading, error } = useFranchiseClassesData(termId);
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+
+  const handleDownloadPDF = async () => {
+    if (!franchiseData) return;
+    
+    setIsGeneratingPDF(true);
+    try {
+      const pdfGenerator = new FranchiseReportPDFGenerator();
+      const pdfBlob = await pdfGenerator.generateReport(franchiseData, termLabel);
+      
+      // Create download link
+      const url = URL.createObjectURL(pdfBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Franchise-Classes-Report-${termLabel.replace(/\s+/g, '-')}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      toast.success("PDF report downloaded successfully!");
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      toast.error("Failed to generate PDF report");
+    } finally {
+      setIsGeneratingPDF(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -73,7 +105,21 @@ export function FranchiseClassesReport({ termId, termLabel }: FranchiseClassesRe
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Franchise Classes Report - {termLabel}</CardTitle>
+          <div className="flex justify-between items-center">
+            <CardTitle>Franchise Classes Report - {termLabel}</CardTitle>
+            <Button 
+              onClick={handleDownloadPDF} 
+              disabled={isGeneratingPDF}
+              className="flex items-center gap-2"
+            >
+              {isGeneratingPDF ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4" />
+              )}
+              {isGeneratingPDF ? 'Generating...' : 'Download PDF'}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
