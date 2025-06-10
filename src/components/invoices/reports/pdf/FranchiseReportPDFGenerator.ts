@@ -26,7 +26,7 @@ export class FranchiseReportPDFGenerator {
   }
 
   private addHeader(termLabel: string) {
-    // Clean, minimal header
+    // Clean header with proper spacing
     this.doc.setFillColor(249, 250, 251);
     this.doc.rect(0, 0, this.pageWidth, 35, 'F');
     
@@ -93,22 +93,22 @@ export class FranchiseReportPDFGenerator {
     cards.forEach((card, index) => {
       const x = this.margin + (index * (cardWidth + 1));
       
-      // Card background (clean rounded rectangle)
+      // Card background
       this.doc.setFillColor(card.bgColor[0], card.bgColor[1], card.bgColor[2]);
       this.doc.roundedRect(x, currentY, cardWidth, cardHeight, 1.5, 1.5, 'F');
       
-      // Subtle border
+      // Card border
       this.doc.setDrawColor(card.textColor[0], card.textColor[1], card.textColor[2]);
       this.doc.setLineWidth(0.2);
       this.doc.roundedRect(x, currentY, cardWidth, cardHeight, 1.5, 1.5, 'S');
       
-      // Title
+      // Title text
       this.doc.setTextColor(card.textColor[0], card.textColor[1], card.textColor[2]);
       this.doc.setFontSize(6);
       this.doc.setFont('helvetica', 'bold');
       this.doc.text(card.title, x + 2, currentY + 4);
       
-      // Value
+      // Value text
       this.doc.setFontSize(9);
       this.doc.setFont('helvetica', 'bold');
       this.doc.text(card.value, x + 2, currentY + 10);
@@ -122,62 +122,45 @@ export class FranchiseReportPDFGenerator {
     let currentY = startY + 5;
 
     // Check if we need a new page
-    if (currentY > this.pageHeight - 50) {
+    if (currentY > this.pageHeight - 60) {
       this.doc.addPage();
       currentY = 20;
     }
 
-    // Class card container (like the web version)
-    const cardWidth = this.pageWidth - 30;
     const cardX = this.margin;
+    const cardWidth = this.pageWidth - 30;
     
-    // Card shadow (very subtle)
-    this.doc.setFillColor(0, 0, 0, 0.02);
-    this.doc.roundedRect(cardX + 0.5, currentY + 0.5, cardWidth, 0, 2, 2, 'F');
+    // Step 1: Calculate header height
+    const headerHeight = 14;
     
-    // Card background
-    this.doc.setFillColor(255, 255, 255);
-    this.doc.roundedRect(cardX, currentY, cardWidth, 0, 2, 2, 'F');
+    // Step 2: Add class header with blue background (like screen)
+    this.doc.setFillColor(59, 130, 246); // Blue background like screen
+    this.doc.roundedRect(cardX, currentY, cardWidth, headerHeight, 2, 2, 'F');
     
-    // Blue left border (like web version)
-    this.doc.setFillColor(59, 130, 246);
-    this.doc.rect(cardX, currentY, 2, 0, 'F');
-    
-    // Card border
-    this.doc.setDrawColor(229, 231, 235);
-    this.doc.setLineWidth(0.2);
-    this.doc.roundedRect(cardX, currentY, cardWidth, 0, 2, 2, 'S');
-
-    // Class header (blue background like web)
-    const headerHeight = 12;
-    this.doc.setFillColor(239, 246, 255);
-    this.doc.rect(cardX, currentY, cardWidth, headerHeight, 'F');
-    
-    // Class name
+    // Class name in white text
     this.doc.setFontSize(10);
     this.doc.setFont('helvetica', 'bold');
-    this.doc.setTextColor(30, 64, 175);
-    this.doc.text(`${classGroup.className}`, cardX + 3, currentY + 5);
+    this.doc.setTextColor(255, 255, 255);
+    this.doc.text(classGroup.className, cardX + 4, currentY + 6);
     
     // Class type badge
-    const badgeX = cardX + 3 + this.doc.getTextWidth(classGroup.className) + 2;
-    this.doc.setFillColor(59, 130, 246);
-    this.doc.roundedRect(badgeX, currentY + 2, this.doc.getTextWidth(classGroup.classType) + 4, 5, 1, 1, 'F');
+    const classNameWidth = this.doc.getTextWidth(classGroup.className);
+    const badgeX = cardX + 6 + classNameWidth;
+    this.doc.setFillColor(255, 255, 255, 0.2);
+    this.doc.roundedRect(badgeX, currentY + 3, this.doc.getTextWidth(classGroup.classType) + 4, 6, 1, 1, 'F');
     this.doc.setTextColor(255, 255, 255);
     this.doc.setFontSize(6);
-    this.doc.text(classGroup.classType, badgeX + 2, currentY + 5);
+    this.doc.text(classGroup.classType, badgeX + 2, currentY + 7);
     
-    // Course details
+    // Course details in smaller white text
     this.doc.setFontSize(7);
     this.doc.setFont('helvetica', 'normal');
-    this.doc.setTextColor(75, 85, 99);
     this.doc.text(`Course Fee: ${this.formatCurrency(classGroup.courseFee)} • ${classGroup.handlers.length} handlers enrolled`, 
-                  cardX + 3, currentY + 9.5);
+                  cardX + 4, currentY + 11);
     
-    this.doc.setTextColor(0, 0, 0);
     currentY += headerHeight;
-
-    // Integrated table (part of the card, no separate borders)
+    
+    // Step 3: Prepare table data
     const tableData = classGroup.handlers.map((handler: any) => [
       handler.clientName,
       `${handler.dogName}\n(${handler.dogBreed})`,
@@ -189,6 +172,7 @@ export class FranchiseReportPDFGenerator {
       this.formatCurrency(handler.mckaynineCommission)
     ]);
 
+    // Step 4: Add table with proper integration
     this.doc.autoTable({
       startY: currentY,
       head: [['Handler', 'Dog', 'Attendance', 'Payment', 'Invoice Amount', 'Franchise Fee', 'Admin Fee', 'Commission']],
@@ -198,15 +182,13 @@ export class FranchiseReportPDFGenerator {
         fontSize: 6,
         cellPadding: 1.5,
         lineColor: [229, 231, 235],
-        lineWidth: 0.1,
-        lineHeight: 1.1
+        lineWidth: 0.1
       },
       headStyles: { 
         fillColor: [249, 250, 251],
         textColor: [75, 85, 99],
         fontStyle: 'bold',
-        fontSize: 6,
-        cellPadding: 1.5
+        fontSize: 6
       },
       columnStyles: {
         0: { cellWidth: 24, fontStyle: 'bold' },
@@ -221,26 +203,7 @@ export class FranchiseReportPDFGenerator {
       alternateRowStyles: { 
         fillColor: [248, 250, 252]
       },
-      tableLineColor: [229, 231, 235],
-      tableLineWidth: 0.1,
       didParseCell: (data: any) => {
-        // Remove outer borders to integrate with card
-        if (data.row.index === 0 && data.section === 'head') {
-          data.cell.styles.lineWidth = { top: 0, right: 0.1, bottom: 0.1, left: 0 };
-        } else if (data.row.index === tableData.length - 1 && data.section === 'body') {
-          data.cell.styles.lineWidth = { top: 0.1, right: 0.1, bottom: 0, left: 0 };
-        } else {
-          data.cell.styles.lineWidth = { top: 0.1, right: 0.1, bottom: 0.1, left: 0 };
-        }
-        
-        // First and last columns get side borders
-        if (data.column.index === 0) {
-          data.cell.styles.lineWidth.left = 0;
-        }
-        if (data.column.index === 7) {
-          data.cell.styles.lineWidth.right = 0;
-        }
-        
         // Style payment status cells
         if (data.column.index === 3) {
           if (data.cell.text[0] === 'Paid') {
@@ -261,13 +224,21 @@ export class FranchiseReportPDFGenerator {
       }
     });
 
-    currentY = (this.doc as any).lastAutoTable.finalY;
-
-    // Clean totals section (integrated with card)
-    this.doc.setFillColor(249, 250, 251);
-    this.doc.rect(cardX, currentY, cardWidth, 12, 'F');
+    // Step 5: Get table end position
+    const tableEndY = (this.doc as any).lastAutoTable.finalY;
     
-    // Totals labels and values - properly right-justified
+    // Step 6: Add totals footer
+    const totalsHeight = 12;
+    this.doc.setFillColor(249, 250, 251);
+    this.doc.rect(cardX, tableEndY, cardWidth, totalsHeight, 'F');
+    
+    // Totals content
+    this.doc.setFontSize(6);
+    this.doc.setFont('helvetica', 'bold');
+    this.doc.setTextColor(75, 85, 99);
+    this.doc.text('Class Totals:', cardX + 4, tableEndY + 4);
+
+    // Right-aligned totals
     const totals = [
       { label: 'Revenue:', value: this.formatCurrency(classGroup.classTotals.totalRevenue) },
       { label: 'Franchise:', value: this.formatCurrency(classGroup.classTotals.totalFranchiseFees) },
@@ -275,49 +246,33 @@ export class FranchiseReportPDFGenerator {
       { label: 'Commission:', value: this.formatCurrency(classGroup.classTotals.totalMckaynineCommission) }
     ];
 
-    this.doc.setFontSize(6);
-    this.doc.setFont('helvetica', 'bold');
-    this.doc.setTextColor(75, 85, 99);
-    this.doc.text('Class Totals:', cardX + 3, currentY + 4);
-
-    // Right-align the totals values properly
-    let totalX = cardX + cardWidth - 3;
-    totals.forEach((total, index) => {
-      const yPos = currentY + 4 + (index * 2);
-      
-      // Value (right-aligned)
+    let totalX = cardX + cardWidth - 4;
+    totals.reverse().forEach((total) => {
       this.doc.setTextColor(59, 130, 246);
       const valueWidth = this.doc.getTextWidth(total.value);
-      this.doc.text(total.value, totalX - valueWidth, yPos);
+      this.doc.text(total.value, totalX - valueWidth, tableEndY + 4);
       
-      // Label (positioned to the left of value)
       this.doc.setTextColor(75, 85, 99);
       const labelWidth = this.doc.getTextWidth(total.label);
-      this.doc.text(total.label, totalX - valueWidth - labelWidth - 2, yPos);
+      this.doc.text(total.label, totalX - valueWidth - labelWidth - 2, tableEndY + 4);
       
-      // Adjust position for next total
       totalX -= (valueWidth + labelWidth + 8);
     });
 
-    // Complete the card
-    currentY += 12;
+    const cardEndY = tableEndY + totalsHeight;
     
-    // Update card height and redraw with proper height
-    const cardHeight = currentY - startY - 5;
-    this.doc.setFillColor(0, 0, 0, 0.02);
-    this.doc.roundedRect(cardX + 0.5, startY + 5.5, cardWidth, cardHeight, 2, 2, 'F');
-    
-    this.doc.setFillColor(255, 255, 255);
-    this.doc.roundedRect(cardX, startY + 5, cardWidth, cardHeight, 2, 2, 'F');
-    
-    this.doc.setFillColor(59, 130, 246);
-    this.doc.rect(cardX, startY + 5, 2, cardHeight, 'F');
-    
+    // Step 7: Draw complete card outline
     this.doc.setDrawColor(229, 231, 235);
     this.doc.setLineWidth(0.2);
-    this.doc.roundedRect(cardX, startY + 5, cardWidth, cardHeight, 2, 2, 'S');
+    this.doc.roundedRect(cardX, currentY - headerHeight, cardWidth, cardEndY - (currentY - headerHeight), 2, 2, 'S');
+    
+    // Add blue left border accent
+    this.doc.setDrawColor(59, 130, 246);
+    this.doc.setLineWidth(1);
+    this.doc.line(cardX, currentY - headerHeight + 2, cardX, cardEndY - 2);
 
-    return currentY + 8;
+    this.doc.setTextColor(0, 0, 0);
+    return cardEndY + 8;
   }
 
   async generateReport(reportData: FranchiseReportData, termLabel: string): Promise<Blob> {
@@ -329,11 +284,11 @@ export class FranchiseReportPDFGenerator {
     currentY = this.addSummaryCards(reportData.reportTotals, currentY);
 
     // Add each class section
-    reportData.classes.forEach((classGroup, index) => {
+    reportData.classes.forEach((classGroup) => {
       currentY = this.addClassSection(classGroup, currentY);
     });
 
-    // Clean footer
+    // Add footer to all pages
     const pageCount = this.doc.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
       this.doc.setPage(i);
@@ -343,8 +298,6 @@ export class FranchiseReportPDFGenerator {
       this.doc.text('McKaynine Training Centre - Franchise Report', this.margin, this.pageHeight - 6);
     }
 
-    // Convert to blob
-    const pdfOutput = this.doc.output('blob');
-    return pdfOutput;
+    return this.doc.output('blob');
   }
 }
