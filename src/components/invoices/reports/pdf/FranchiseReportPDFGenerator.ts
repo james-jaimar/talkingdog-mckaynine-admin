@@ -122,7 +122,7 @@ export class FranchiseReportPDFGenerator {
     let currentY = startY + 5;
 
     // Check if we need a new page
-    if (currentY > this.pageHeight - 60) {
+    if (currentY > this.pageHeight - 80) {
       this.doc.addPage();
       currentY = 20;
     }
@@ -133,8 +133,8 @@ export class FranchiseReportPDFGenerator {
     // Step 1: Calculate header height
     const headerHeight = 14;
     
-    // Step 2: Add class header with blue background (like screen)
-    this.doc.setFillColor(59, 130, 246); // Blue background like screen
+    // Step 2: Add class header with blue background
+    this.doc.setFillColor(59, 130, 246);
     this.doc.roundedRect(cardX, currentY, cardWidth, headerHeight, 2, 2, 'F');
     
     // Class name in white text
@@ -172,17 +172,23 @@ export class FranchiseReportPDFGenerator {
       this.formatCurrency(handler.mckaynineCommission)
     ]);
 
-    // Step 4: Add table with proper integration
+    // Step 4: Calculate available table width
+    const tableMargin = 2;
+    const availableTableWidth = cardWidth - (tableMargin * 2);
+
+    // Step 5: Add table with percentage-based column widths
     this.doc.autoTable({
       startY: currentY,
       head: [['Handler', 'Dog', 'Attendance', 'Payment', 'Invoice Amount', 'Franchise Fee', 'Admin Fee', 'Commission']],
       body: tableData,
-      margin: { left: cardX, right: this.margin },
+      margin: { left: cardX + tableMargin, right: this.margin + tableMargin },
+      tableWidth: availableTableWidth,
       styles: { 
         fontSize: 6,
         cellPadding: 1.5,
         lineColor: [229, 231, 235],
-        lineWidth: 0.1
+        lineWidth: 0.1,
+        overflow: 'linebreak'
       },
       headStyles: { 
         fillColor: [249, 250, 251],
@@ -191,14 +197,14 @@ export class FranchiseReportPDFGenerator {
         fontSize: 6
       },
       columnStyles: {
-        0: { cellWidth: 24, fontStyle: 'bold' },
-        1: { cellWidth: 20 },
-        2: { halign: 'center', cellWidth: 14 },
-        3: { halign: 'center', cellWidth: 12 },
-        4: { halign: 'right', cellWidth: 18, fontStyle: 'bold' },
-        5: { halign: 'right', cellWidth: 16 },
-        6: { halign: 'right', cellWidth: 14 },
-        7: { halign: 'right', cellWidth: 18, fontStyle: 'bold' }
+        0: { cellWidth: 'auto', fontStyle: 'bold', minCellWidth: 20 }, // Handler - auto width with min
+        1: { cellWidth: 'auto', minCellWidth: 18 }, // Dog - auto width with min
+        2: { halign: 'center', cellWidth: 'auto', minCellWidth: 12 }, // Attendance - centered, auto width
+        3: { halign: 'center', cellWidth: 'auto', minCellWidth: 10 }, // Payment - centered, auto width
+        4: { halign: 'right', cellWidth: 'auto', fontStyle: 'bold', minCellWidth: 16 }, // Invoice Amount - right aligned, bold
+        5: { halign: 'right', cellWidth: 'auto', minCellWidth: 14 }, // Franchise Fee - right aligned
+        6: { halign: 'right', cellWidth: 'auto', minCellWidth: 12 }, // Admin Fee - right aligned
+        7: { halign: 'right', cellWidth: 'auto', fontStyle: 'bold', minCellWidth: 16 } // Commission - right aligned, bold
       },
       alternateRowStyles: { 
         fillColor: [248, 250, 252]
@@ -221,24 +227,28 @@ export class FranchiseReportPDFGenerator {
         if ([4, 7].includes(data.column.index)) {
           data.cell.styles.textColor = [59, 130, 246];
         }
+      },
+      didDrawPage: (data: any) => {
+        // Reset text color after table
+        this.doc.setTextColor(0, 0, 0);
       }
     });
 
-    // Step 5: Get table end position
-    const tableEndY = (this.doc as any).lastAutoTable.finalY;
+    // Step 6: Get table end position and ensure proper positioning
+    const tableEndY = (this.doc as any).lastAutoTable.finalY || currentY + 20;
     
-    // Step 6: Add totals footer
+    // Step 7: Add totals footer with proper positioning
     const totalsHeight = 12;
     this.doc.setFillColor(249, 250, 251);
     this.doc.rect(cardX, tableEndY, cardWidth, totalsHeight, 'F');
     
-    // Totals content
+    // Totals content - left aligned label
     this.doc.setFontSize(6);
     this.doc.setFont('helvetica', 'bold');
     this.doc.setTextColor(75, 85, 99);
-    this.doc.text('Class Totals:', cardX + 4, tableEndY + 4);
+    this.doc.text('Class Totals:', cardX + 4, tableEndY + 7);
 
-    // Right-aligned totals
+    // Right-aligned totals with improved spacing
     const totals = [
       { label: 'Revenue:', value: this.formatCurrency(classGroup.classTotals.totalRevenue) },
       { label: 'Franchise:', value: this.formatCurrency(classGroup.classTotals.totalFranchiseFees) },
@@ -247,30 +257,33 @@ export class FranchiseReportPDFGenerator {
     ];
 
     let totalX = cardX + cardWidth - 4;
-    totals.reverse().forEach((total) => {
+    
+    // Draw totals from right to left with consistent spacing
+    totals.reverse().forEach((total, index) => {
+      // Value in blue
       this.doc.setTextColor(59, 130, 246);
+      this.doc.setFont('helvetica', 'bold');
       const valueWidth = this.doc.getTextWidth(total.value);
-      this.doc.text(total.value, totalX - valueWidth, tableEndY + 4);
+      this.doc.text(total.value, totalX - valueWidth, tableEndY + 7);
       
+      // Label in gray
       this.doc.setTextColor(75, 85, 99);
+      this.doc.setFont('helvetica', 'normal');
       const labelWidth = this.doc.getTextWidth(total.label);
-      this.doc.text(total.label, totalX - valueWidth - labelWidth - 2, tableEndY + 4);
+      this.doc.text(total.label, totalX - valueWidth - labelWidth - 2, tableEndY + 7);
       
-      totalX -= (valueWidth + labelWidth + 8);
+      // Move position for next total (consistent spacing)
+      totalX -= (valueWidth + labelWidth + 12);
     });
 
     const cardEndY = tableEndY + totalsHeight;
     
-    // Step 7: Draw complete card outline
+    // Step 8: Draw complete card outline (removed blue left border)
     this.doc.setDrawColor(229, 231, 235);
     this.doc.setLineWidth(0.2);
     this.doc.roundedRect(cardX, currentY - headerHeight, cardWidth, cardEndY - (currentY - headerHeight), 2, 2, 'S');
-    
-    // Add blue left border accent
-    this.doc.setDrawColor(59, 130, 246);
-    this.doc.setLineWidth(1);
-    this.doc.line(cardX, currentY - headerHeight + 2, cardX, cardEndY - 2);
 
+    // Reset text color
     this.doc.setTextColor(0, 0, 0);
     return cardEndY + 8;
   }
@@ -283,8 +296,13 @@ export class FranchiseReportPDFGenerator {
     // Add summary cards
     currentY = this.addSummaryCards(reportData.reportTotals, currentY);
 
-    // Add each class section
-    reportData.classes.forEach((classGroup) => {
+    // Add each class section with better page break handling
+    reportData.classes.forEach((classGroup, index) => {
+      // Add extra spacing between classes
+      if (index > 0) {
+        currentY += 3;
+      }
+      
       currentY = this.addClassSection(classGroup, currentY);
     });
 
