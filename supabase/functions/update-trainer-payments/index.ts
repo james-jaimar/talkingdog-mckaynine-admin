@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -52,8 +51,18 @@ serve(async (req: Request) => {
     // Current timestamp for all updates
     const now = new Date().toISOString();
     
+    // Calculate per-schedule amount if a total amount is provided
+    const scheduleCount = payload.scheduleIds.length;
+    const perScheduleAmount = payload.amount && scheduleCount > 0 
+      ? payload.amount / scheduleCount 
+      : null;
+
+    if (perScheduleAmount !== null) {
+      console.log(`Distributing total amount ${payload.amount} across ${scheduleCount} schedules. Per schedule amount: ${perScheduleAmount}`);
+    }
+
     // Base update data
-    const updateData = {
+    const updateData: any = {
       status: 'paid',
       payment_date: now,
       payment_method: payload.paymentMethod || null,
@@ -69,9 +78,9 @@ serve(async (req: Request) => {
       console.log("Storing document URL:", updateData.document_url);
     }
     
-    // If amount is provided, include it
-    if (payload.amount && payload.amount > 0) {
-      updateData.amount = payload.amount;
+    // If a per-schedule amount was calculated, include it
+    if (perScheduleAmount !== null) {
+      updateData.amount = perScheduleAmount;
     }
 
     // Find existing records to update (avoids duplicates)
@@ -165,7 +174,7 @@ serve(async (req: Request) => {
           payment_method: payload.paymentMethod || null,
           transaction_id: payload.transactionId || null,
           notes: payload.notes || null,
-          amount: payload.amount || 0,
+          amount: perScheduleAmount !== null ? perScheduleAmount : 0,
           document_url: payload.documentUrl || null,
           document_name: payload.documentName || null,
           created_at: now,
