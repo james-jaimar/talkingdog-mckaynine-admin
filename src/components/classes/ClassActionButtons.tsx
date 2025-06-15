@@ -58,19 +58,19 @@ export function ClassActionButtons({ classId, onEdit, onDelete }: ClassActionBut
   // Utility: fetch enrolled handlers and mark as completed
   const markHandlersCompleted = async () => {
     // 1. Get enrolled bookings for this class
+    const { data: classSchedulesData, error: classSchedulesError } = await supabase
+      .from("class_schedules")
+      .select("id")
+      .eq("class_id", classId);
+
+    const scheduleIds = classSchedulesData?.map(cs => cs.id) || [];
+
     const { data: bookings, error: bookingsError } = await supabase
       .from("bookings")
       .select("id, client_id")
       .eq("is_enrolled", true)
-      .in("class_schedule_id", 
-        // Get all schedules for this class
-        (
-          await supabase
-            .from("class_schedules")
-            .select("id")
-            .eq("class_id", classId)
-        ).data?.map(cs => cs.id) || []
-      );
+      .in("class_schedule_id", scheduleIds);
+
     if (bookingsError) throw bookingsError;
     if (!bookings || bookings.length === 0) return 0;
 
@@ -91,6 +91,8 @@ export function ClassActionButtons({ classId, onEdit, onDelete }: ClassActionBut
       .maybeSingle();
     if (termData && typeof termData === "object" && "term_number" in termData && "year" in termData) {
       currentTerm = `Term ${termData.term_number} ${termData.year}`;
+    } else {
+      currentTerm = "Current term";
     }
 
     // 4. Upsert handler completions
