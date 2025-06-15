@@ -29,4 +29,5 @@ export interface ClassWithSchedules {
   // Other fields from Class that might be needed
   created_at?: string;
   updated_at?: string;
+  status: string;
 }
