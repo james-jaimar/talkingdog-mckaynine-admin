@@ -45,7 +45,7 @@ export function BookingRow({
   return (
     <TableRow key={booking.id}>
       <TableCell className="font-medium">
-        <BookingHandlerInfo booking={booking} />
+        <BookingHandlerInfo booking={booking} handlerClassStatus={booking.handlerClassStatus} />
       </TableCell>
       
       <TableCell className="text-center">

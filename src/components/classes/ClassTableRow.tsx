@@ -1,3 +1,4 @@
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,14 +23,18 @@ import {
 import { MoreHorizontal, Pencil, Trash } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { ClassActionButtons } from "./ClassActionButtons";
+import { ClassWithSchedules } from "./hooks/types/class-with-schedules";
 
-interface ClassTableRowProps {
-  classItem: any;
+interface ClassRowProps {
+  classItem: ClassWithSchedules;
+  index: number;
+  totalClasses?: number;
   onEdit: (id: string) => void;
-  onDelete: (id: string) => void;
+  isLoading?: boolean;
+  isMoving?: boolean;
 }
 
-export function ClassTableRow({ classItem, onEdit, onDelete }: ClassTableRowProps) {
+export function ClassTableRow({ classItem, index, totalClasses, onEdit, isLoading, isMoving }: ClassRowProps) {
   const navigate = useNavigate();
 
   const {
@@ -115,7 +120,7 @@ export function ClassTableRow({ classItem, onEdit, onDelete }: ClassTableRowProp
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
                   <AlertDialogAction
                     className="bg-red-600 hover:bg-red-500 text-white"
-                    onClick={() => onDelete(id)}
+                    onClick={() => onEdit(id)}
                   >
                     Delete
                   </AlertDialogAction>
