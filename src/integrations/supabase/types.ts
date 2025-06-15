@@ -483,71 +483,6 @@ export type Database = {
           },
         ]
       }
-      class_group_memberships: {
-        Row: {
-          added_at: string
-          group_id: string
-          handler_id: string
-          id: string
-        }
-        Insert: {
-          added_at?: string
-          group_id: string
-          handler_id: string
-          id?: string
-        }
-        Update: {
-          added_at?: string
-          group_id?: string
-          handler_id?: string
-          id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "class_group_memberships_group_id_fkey"
-            columns: ["group_id"]
-            isOneToOne: false
-            referencedRelation: "class_groups"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "class_group_memberships_handler_id_fkey"
-            columns: ["handler_id"]
-            isOneToOne: false
-            referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      class_groups: {
-        Row: {
-          class_id: string
-          created_at: string
-          group_name: string
-          id: string
-        }
-        Insert: {
-          class_id: string
-          created_at?: string
-          group_name: string
-          id?: string
-        }
-        Update: {
-          class_id?: string
-          created_at?: string
-          group_name?: string
-          id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "class_groups_class_id_fkey"
-            columns: ["class_id"]
-            isOneToOne: false
-            referencedRelation: "classes"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       class_schedules: {
         Row: {
           academic_year: number | null
@@ -675,7 +610,6 @@ export type Database = {
           mckaynine_commission_type: string
           mckaynine_commission_value: number
           name: string
-          status: string
           trainer_fee_type: string
           trainer_fee_value: number
           updated_at: string
@@ -695,7 +629,6 @@ export type Database = {
           mckaynine_commission_type?: string
           mckaynine_commission_value?: number
           name: string
-          status?: string
           trainer_fee_type?: string
           trainer_fee_value?: number
           updated_at?: string
@@ -715,7 +648,6 @@ export type Database = {
           mckaynine_commission_type?: string
           mckaynine_commission_value?: number
           name?: string
-          status?: string
           trainer_fee_type?: string
           trainer_fee_value?: number
           updated_at?: string
@@ -940,8 +872,6 @@ export type Database = {
         Row: {
           class_type: string
           client_id: string
-          completion_date: string | null
-          completion_status: string
           created_at: string
           id: string
           period: string | null
@@ -951,8 +881,6 @@ export type Database = {
         Insert: {
           class_type: string
           client_id: string
-          completion_date?: string | null
-          completion_status?: string
           created_at?: string
           id?: string
           period?: string | null
@@ -962,8 +890,6 @@ export type Database = {
         Update: {
           class_type?: string
           client_id?: string
-          completion_date?: string | null
-          completion_status?: string
           created_at?: string
           id?: string
           period?: string | null
