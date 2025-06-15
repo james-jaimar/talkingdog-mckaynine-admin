@@ -8,6 +8,7 @@ export interface Booking {
   info_eo: string | null;
   info_pg: string | null;
   class_schedule_id: string;
+  class_id?: string; // ADDED: Needed for completion check in BookingRow
   dog_id?: string;
   client_id?: string;
   status: string;

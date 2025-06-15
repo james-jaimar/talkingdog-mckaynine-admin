@@ -1,4 +1,3 @@
-
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
@@ -113,31 +112,36 @@ export function useHandlersData() {
         }
         
         // Fetch class statuses for all handlers in a single query
-        const { data: classStatusData, error: classStatusError } = await supabase
-          .from('handler_class_status')
-          .select('*')
-          .in('client_id', (clientsData || []).map(client => client.id));
+        // *** DISABLED old merge: handler_class_status now uses handler_id, with no 'client_id' nor 'status' columns ***
+        // const { data: classStatusData, error: classStatusError } = await supabase
+        //   .from('handler_class_status')
+        //   .select('*')
+        //   .in('client_id', (clientsData || []).map(client => client.id));
         
-        if (classStatusError) {
-          console.error("Error fetching class statuses:", classStatusError);
-          throw classStatusError;
-        }
+        // if (classStatusError) {
+        //   console.error("Error fetching class statuses:", classStatusError);
+        //   throw classStatusError;
+        // }
         
-        // Merge class status data with client data
-        const handlersWithClassStatus = (clientsData || []).map(client => {
-          const classStatuses = classStatusData?.filter(status => status.client_id === client.id) || [];
-          return {
-            ...client,
-            class_statuses: classStatuses.map(status => ({
-              class_type: status.class_type,
-              status: status.status as 'completed' | 'interested' | 'not-interested',
-              period: status.period
-            }))
-          };
-        });
+        // // Merge class status data with client data
+        // const handlersWithClassStatus = (clientsData || []).map(client => {
+        //   const classStatuses = classStatusData?.filter(status => status.client_id === client.id) || [];
+        //   return {
+        //     ...client,
+        //     class_statuses: classStatuses.map(status => ({
+        //       class_type: status.class_type,
+        //       status: status.status as 'completed' | 'interested' | 'not-interested',
+        //       period: status.period
+        //     }))
+        //   };
+        // });
         
-        console.log(`Fetched ${handlersWithClassStatus?.length || 0} handlers for branch: ${currentBranch?.name || 'all'}`);
-        return (handlersWithClassStatus || []) as Handler[];
+        // console.log(`Fetched ${handlersWithClassStatus?.length || 0} handlers for branch: ${currentBranch?.name || 'all'}`);
+        // return (handlersWithClassStatus || []) as Handler[];
+
+        // Just return clients (handlers) until merge strategy is clarified
+        console.log(`Fetched ${clientsData?.length || 0} handlers for branch: ${currentBranch?.name || 'all'}`);
+        return (clientsData || []) as Handler[];
       } catch (error) {
         console.error("Error in handlers query:", error);
         return [] as Handler[];

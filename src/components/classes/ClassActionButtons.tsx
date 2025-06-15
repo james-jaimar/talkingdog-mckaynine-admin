@@ -89,7 +89,7 @@ export function ClassActionButtons({ classId, onEdit, onDelete }: ClassActionBut
       .select("term_number, year")
       .eq("current", true)
       .maybeSingle();
-    if (termData) {
+    if (termData && typeof termData === "object" && "term_number" in termData && "year" in termData) {
       currentTerm = `Term ${termData.term_number} ${termData.year}`;
     }
 

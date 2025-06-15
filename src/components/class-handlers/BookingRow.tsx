@@ -35,9 +35,11 @@ export function BookingRow({
 }: BookingRowProps) {
   // Use the extracted hook for invoice status
   const { data: invoiceData, isLoading: isLoadingInvoice } = useInvoiceStatus(booking.id);
+
+  // Fix: Use class_id if present on the booking
   const { data: completion } = useHandlerCompletion({
-    handlerId: booking.client_id,
-    classId: booking.class_id,
+    handlerId: booking.client_id || "",
+    classId: booking.class_id || "", // Use optional chaining/fallback
   });
 
   const renderInfoStatus = (hasInfo: boolean | null) => {
@@ -52,7 +54,7 @@ export function BookingRow({
       <TableCell className="font-medium">
         <BookingHandlerInfo booking={booking} />
         {/* Show completion status if available */}
-        {completion?.completed ? (
+        {(completion && completion.completed) ? (
           <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded bg-green-100 text-green-800 text-xs">
             Completed {completion.completed_at ? `(${new Date(completion.completed_at).toLocaleDateString()})` : ""}
             {completion.completion_method === "auto" && (
