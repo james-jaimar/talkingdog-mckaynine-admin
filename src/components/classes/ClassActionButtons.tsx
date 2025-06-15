@@ -14,6 +14,9 @@ import * as React from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { getCurrentTermString } from "./utils/getCurrentTermString";
+import { useMarkHandlersCompleted } from "./hooks/useMarkHandlersCompleted";
+import { useTerm } from "@/context/TermContext";
 
 interface ClassActionButtonsProps {
   classId: string;
@@ -28,6 +31,7 @@ export function ClassActionButtons({ classId, onEdit, onDelete }: ClassActionBut
   const [closeDialogOpen, setCloseDialogOpen] = React.useState(false);
   const [isClosing, setIsClosing] = React.useState(false);
   const { toast } = useToast();
+  const { termData } = useTerm();
 
   const handleSchedulesClick = () => {
     navigate(`/classes/${classId}/schedules`);
@@ -55,83 +59,6 @@ export function ClassActionButtons({ classId, onEdit, onDelete }: ClassActionBut
     onClose();
   };
 
-  // Utility: fetch enrolled handlers and mark as completed
-  const markHandlersCompleted = async () => {
-    // 1. Get enrolled bookings for this class
-    const { data: classSchedulesData, error: classSchedulesError } = await supabase
-      .from("class_schedules")
-      .select("id")
-      .eq("class_id", classId);
-
-    const scheduleIds = classSchedulesData?.map(cs => cs.id) || [];
-
-    const { data: bookings, error: bookingsError } = await supabase
-      .from("bookings")
-      .select("id, client_id")
-      .eq("is_enrolled", true)
-      .in("class_schedule_id", scheduleIds);
-
-    if (bookingsError) throw bookingsError;
-    if (!bookings || bookings.length === 0) return 0;
-
-    // 2. Get class meta
-    const { data: classData, error: classErr } = await supabase
-      .from("classes")
-      .select("id, class_type")
-      .eq("id", classId)
-      .maybeSingle();
-    if (classErr) throw classErr;
-
-    // 3. Get current term as text (optional, fallback to year)
-    let currentTerm = "Current term";
-    const { data: termData } = await supabase
-      .from("terms")
-      .select("term_number, year")
-      .eq("current", true)
-      .maybeSingle();
-
-    if (
-      termData &&
-      typeof termData === "object" &&
-      "term_number" in termData &&
-      "year" in termData &&
-      termData.term_number &&
-      termData.year
-    ) {
-      currentTerm = `Term ${termData.term_number} ${termData.year}`;
-    } else {
-      currentTerm = "Current term";
-    }
-
-    // 4. Upsert handler completions
-    let completedCount = 0;
-    for (const b of bookings) {
-      // Only insert if not already completed (avoid double insert)
-      const { data: already, error: alreadyErr } = await supabase
-        .from("handler_class_status")
-        .select("id")
-        .eq("handler_id", b.client_id)
-        .eq("class_id", classId)
-        .eq("completed", true)
-        .limit(1)
-        .maybeSingle();
-      if (!already && !alreadyErr) {
-        await supabase.from("handler_class_status").insert({
-          booking_id: b.id,
-          class_id: classId,
-          handler_id: b.client_id,
-          class_type: classData?.class_type || "",
-          completed: true,
-          completed_at: new Date().toISOString(),
-          completion_method: "auto",
-          period: currentTerm,
-        });
-        completedCount++;
-      }
-    }
-    return completedCount;
-  };
-
   const handleConfirmCloseClass = async () => {
     setIsClosing(true);
 
@@ -152,9 +79,24 @@ export function ClassActionButtons({ classId, onEdit, onDelete }: ClassActionBut
       return;
     }
 
-    // 2. Mark all enrolled handlers as completed for this class
+    // 2. Prepare currentTerm string and class type safely
+    const currentTerm = getCurrentTermString(termData);
+
+    // 3. Get classType safely
+    let classType = "";
+    if (termData && typeof termData === "object" && "term_number" in termData && "year" in termData) {
+      // Fetch the class type from supabase for this class, fallback to ""
+      const { data: classData } = await supabase
+        .from("classes")
+        .select("class_type")
+        .eq("id", classId)
+        .maybeSingle();
+      classType = classData?.class_type || "";
+    }
+
+    // 4. Mark all enrolled handlers as completed for this class
     try {
-      const completedCount = await markHandlersCompleted();
+      const completedCount = await useMarkHandlersCompleted(classId, currentTerm, classType);
       toast({
         title: "Class closed",
         description:
