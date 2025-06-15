@@ -8,6 +8,7 @@ import { ClassWithSchedules } from "./hooks/types/class-with-schedules";
 import { Draggable } from "react-beautiful-dnd";
 import { useState } from "react";
 import { DeleteClassDialog } from "./DeleteClassDialog";
+import { ClosedBadge } from "./ClosedBadge";
 
 interface ClassTableRowProps {
   classItem: ClassWithSchedules;
@@ -42,6 +43,7 @@ export function ClassTableRow({
             className={`
               ${snapshot.isDragging ? "shadow-lg bg-accent/50" : ""}
               ${isMoving ? "opacity-50" : ""}
+              ${classItem.status === "closed" ? "bg-zinc-100 opacity-60" : ""}
               relative
             `}
             data-testid={`class-row-${classItem.id}`}
@@ -83,12 +85,21 @@ export function ClassTableRow({
             <TableCell className="text-center">
               <ClassAvailabilityBadge classItem={classItem} />
             </TableCell>
+
+            <TableCell className="text-center">
+              {/* NEW: Show Closed/Open status badge */}
+              {classItem.status === "closed" 
+                ? <ClosedBadge /> 
+                : <span className="inline-block bg-green-50 text-green-600 text-xs font-semibold rounded px-2 py-1">Open</span>
+              }
+            </TableCell>
             
             <TableCell className="text-right">
               <ClassActionButtons 
                 classId={classItem.id} 
                 onEdit={onEdit}
                 onDelete={handleDelete}
+                isClosed={classItem.status === "closed"}
               />
             </TableCell>
           </TableRow>

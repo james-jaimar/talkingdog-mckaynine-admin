@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Table, TableBody } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
@@ -88,6 +87,14 @@ export function ClassesTable() {
     return <ClassesTableEmpty />;
   }
 
+  // No filter: ALWAYS include closed classes in the list, so status is visible
+  const sortedActiveClasses = activeClasses?.slice().sort((a, b) => {
+    // Sort closed classes to the bottom of the list
+    if (a.status === "closed" && b.status !== "closed") return 1;
+    if (b.status === "closed" && a.status !== "closed") return -1;
+    return 0;
+  }) ?? [];
+
   return (
     <>
       <DragDropContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
@@ -103,12 +110,12 @@ export function ClassesTable() {
                     ref={provided.innerRef}
                     {...provided.droppableProps}
                   >
-                    {Array.isArray(activeClasses) && activeClasses.map((classItem, index) => (
+                    {Array.isArray(sortedActiveClasses) && sortedActiveClasses.map((classItem, index) => (
                       <ClassTableRow
                         key={classItem.id}
                         classItem={classItem}
                         index={index}
-                        totalClasses={activeClasses.length}
+                        totalClasses={sortedActiveClasses.length}
                         onEdit={() => handleEdit(classItem)}
                         isLoading={isLoading}
                         isMoving={isMoving || isItemMoving(classItem.id)}

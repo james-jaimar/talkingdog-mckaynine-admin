@@ -1,4 +1,3 @@
-
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTerm } from "@/context/TermContext";
@@ -94,25 +93,23 @@ export function useClassHandlers(classId: string) {
             )
           `)
           .in('class_schedule_id', scheduleIdList);
-        
+
         if (error) {
           console.error("Error fetching bookings:", error);
           throw error;
         }
 
-        console.log(`Found ${data.length} handlers for class ${classId}`);
-
+        // IMPORTANT: Always include classId in every booking for handler completion display!
         return data.map(booking => {
-          // Ensure consent statuses conform to the expected type
           const whatsAppStatus = validateConsentStatus(booking.clients?.uses_whatsapp_status);
           const socialMediaStatus = validateConsentStatus(booking.clients?.social_media_consent_status);
 
           return {
             ...booking,
+            class_id: classId, // ensure completion hooks work!
             computed_payment_status: booking.payment_status,
             info_eo_status: booking.info_eo ? true : null,
             info_pg_status: booking.info_pg ? true : null,
-            // Make sure clients object has properly typed status fields
             clients: booking.clients ? {
               ...booking.clients,
               uses_whatsapp_status: whatsAppStatus,

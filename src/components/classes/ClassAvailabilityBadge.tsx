@@ -1,14 +1,18 @@
-
 import { Badge } from "@/components/ui/badge";
 import { getAvailableSlotsBadgeVariant, getCustomBadgeClass } from "./utils/classSlotUtils";
 import { ClassWithSchedules } from "./hooks/types/class-with-schedules";
+import { ClosedBadge } from "./ClosedBadge";
 
 interface ClassAvailabilityBadgeProps {
   classItem: ClassWithSchedules;
 }
 
 export function ClassAvailabilityBadge({ classItem }: ClassAvailabilityBadgeProps) {
-  // Calculate total enrolled from all schedules
+  // NEW: Priority—if status is closed, don't show slots, show closed
+  if (classItem.status === "closed") {
+    return <ClosedBadge />;
+  }
+
   const totalEnrolled = classItem.class_schedules?.reduce((total, schedule) => {
     return total + (schedule.bookings?.length || 0);
   }, 0) || 0;

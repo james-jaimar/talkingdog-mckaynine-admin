@@ -17,14 +17,16 @@ import { useToast } from "@/hooks/use-toast";
 import { getCurrentTermString } from "./utils/getCurrentTermString";
 import { useMarkHandlersCompleted } from "./hooks/useMarkHandlersCompleted";
 import { useTerm } from "@/context/TermContext";
+import { ClosedBadge } from "./ClosedBadge";
 
 interface ClassActionButtonsProps {
   classId: string;
   onEdit: () => void;
   onDelete: () => void;
+  isClosed?: boolean; // new
 }
 
-export function ClassActionButtons({ classId, onEdit, onDelete }: ClassActionButtonsProps) {
+export function ClassActionButtons({ classId, onEdit, onDelete, isClosed = false }: ClassActionButtonsProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { isOpen, setIsOpen, onClose } = useDropdownState();
@@ -114,14 +116,20 @@ export function ClassActionButtons({ classId, onEdit, onDelete }: ClassActionBut
     setCloseDialogOpen(false);
   };
 
+  // For closed classes, disable or visually inform user
   return (
-    <div className="flex items-center">
+    <div className="flex items-center gap-1">
+      {isClosed && (
+        <ClosedBadge />
+      )}
+
+      {/* Disable most actions if closed */}
       <Button 
         variant="ghost" 
         size="icon" 
         onClick={handleEditClick}
-        disabled={!user}
-        title="Edit class"
+        disabled={!user || isClosed}
+        title={isClosed ? "Cannot edit a closed class" : "Edit class"}
       >
         <Edit className="h-4 w-4" />
       </Button>
@@ -131,6 +139,7 @@ export function ClassActionButtons({ classId, onEdit, onDelete }: ClassActionBut
         size="icon" 
         onClick={handleSchedulesClick}
         title="View schedules"
+        disabled={isClosed}
       >
         <CalendarRange className="h-4 w-4" />
       </Button>
@@ -140,41 +149,46 @@ export function ClassActionButtons({ classId, onEdit, onDelete }: ClassActionBut
         size="icon" 
         onClick={handleHandlersClick}
         title="View handlers"
+        disabled={isClosed}
       >
         <Users className="h-4 w-4" />
       </Button>
       
       <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon">
+          <Button variant="ghost" size="icon" disabled={isClosed}>
             <MoreHorizontal className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="bg-background z-50">
-          <DropdownMenuItem onClick={handleSchedulesClick}>
+          <DropdownMenuItem onClick={handleSchedulesClick} disabled={isClosed}>
             View Schedules
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={handleHandlersClick}>
+          <DropdownMenuItem onClick={handleHandlersClick} disabled={isClosed}>
             View Handlers
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={handleEditClick}>
+          <DropdownMenuItem onClick={handleEditClick} disabled={isClosed}>
             Edit Class
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem 
-            onClick={handleCloseClassClick}
-          >
-            <CircleX className="h-4 w-4 mr-2" />
-              Close Class
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem 
-            onClick={handleDeleteClick}
-            className="text-destructive hover:text-destructive"
-          >
-            <Trash2 className="h-4 w-4 mr-2" />
-            Delete Class
-          </DropdownMenuItem>
+          {!isClosed && (
+            <>
+              <DropdownMenuItem 
+                onClick={handleCloseClassClick}
+              >
+                <CircleX className="h-4 w-4 mr-2" />
+                  Close Class
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem 
+                onClick={handleDeleteClick}
+                className="text-destructive hover:text-destructive"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete Class
+              </DropdownMenuItem>
+            </>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
       {/* Close Class Dialog */}
