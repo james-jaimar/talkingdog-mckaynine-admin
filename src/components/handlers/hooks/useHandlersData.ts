@@ -96,58 +96,73 @@ export function useHandlersData() {
               id
             )
           `);
-        
+
         // Filter by branch if one is selected
         if (currentBranch) {
           query = query.eq('branch_id', currentBranch.id);
         }
-        
+
         query = query.order('first_name', { ascending: true });
-        
+
         const { data: clientsData, error } = await query;
-        
+
         if (error) {
           console.error("Error fetching handlers:", error);
           throw error;
         }
-        
-        // Fetch class statuses for all handlers in a single query
-        // *** DISABLED old merge: handler_class_status now uses handler_id, with no 'client_id' nor 'status' columns ***
-        // const { data: classStatusData, error: classStatusError } = await supabase
-        //   .from('handler_class_status')
-        //   .select('*')
-        //   .in('client_id', (clientsData || []).map(client => client.id));
-        
-        // if (classStatusError) {
-        //   console.error("Error fetching class statuses:", classStatusError);
-        //   throw classStatusError;
-        // }
-        
-        // // Merge class status data with client data
-        // const handlersWithClassStatus = (clientsData || []).map(client => {
-        //   const classStatuses = classStatusData?.filter(status => status.client_id === client.id) || [];
-        //   return {
-        //     ...client,
-        //     class_statuses: classStatuses.map(status => ({
-        //       class_type: status.class_type,
-        //       status: status.status as 'completed' | 'interested' | 'not-interested',
-        //       period: status.period
-        //     }))
-        //   };
-        // });
-        
-        // console.log(`Fetched ${handlersWithClassStatus?.length || 0} handlers for branch: ${currentBranch?.name || 'all'}`);
-        // return (handlersWithClassStatus || []) as Handler[];
 
-        // Just return clients (handlers) until merge strategy is clarified
-        console.log(`Fetched ${clientsData?.length || 0} handlers for branch: ${currentBranch?.name || 'all'}`);
-        return (clientsData || []) as Handler[];
+        // Fetch class statuses for all handlers in a single query
+        const clientIds = (clientsData || []).map(client => client.id);
+        let classStatusesMap: Record<string, any[]> = {};
+        if (clientIds.length > 0) {
+          const { data: classStatusData, error: classStatusError } = await supabase
+            .from('handler_class_status')
+            .select('*')
+            .in('handler_id', clientIds);
+
+          if (classStatusError) {
+            console.error("Error fetching class statuses:", classStatusError);
+          } else {
+            for (let status of classStatusData || []) {
+              const arr = classStatusesMap[status.handler_id] || [];
+              arr.push(status);
+              classStatusesMap[status.handler_id] = arr;
+            }
+          }
+        }
+
+        // Merge class statuses into client data
+        const handlersWithClassStatus = (clientsData || []).map(client => {
+          const classStatuses = classStatusesMap[client.id] || [];
+          // Group by class_type, keep most recent completion per type for each handler
+          const classTypeMap: Record<string, any> = {};
+          for (let status of classStatuses) {
+            if (!status.class_type) continue;
+            const key = status.class_type;
+            if (!classTypeMap[key] || (status.completed && status.completed_at > classTypeMap[key].completed_at)) {
+              classTypeMap[key] = status;
+            }
+          }
+          // Convert to array of compact statuses
+          const class_statuses = Object.entries(classTypeMap).map(([class_type, status]) => ({
+            class_type,
+            status: status.completed ? 'completed' : undefined, // You may add other status logic
+            period: status.period
+          }));
+          return {
+            ...client,
+            class_statuses,
+          };
+        });
+
+        console.log(`Fetched ${handlersWithClassStatus?.length || 0} handlers for branch: ${currentBranch?.name || 'all'}`);
+        return handlersWithClassStatus as Handler[];
       } catch (error) {
         console.error("Error in handlers query:", error);
         return [] as Handler[];
       }
     },
-    enabled: !!currentBranch, // Only run query when a branch is selected
+    enabled: !!currentBranch,
     refetchOnWindowFocus: false,
   });
 

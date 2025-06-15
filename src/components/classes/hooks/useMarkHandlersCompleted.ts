@@ -6,6 +6,7 @@ interface Booking {
   client_id: string;
 }
 
+// Now ensure class_type is looked up and used
 export async function useMarkHandlersCompleted(classId: string, currentTerm: string, classType: string) {
   // 1. Get enrolled bookings for this class
   const { data: classSchedulesData, error: classSchedulesError } = await supabase
@@ -24,6 +25,17 @@ export async function useMarkHandlersCompleted(classId: string, currentTerm: str
   if (bookingsError) throw bookingsError;
   if (!bookings || bookings.length === 0) return 0;
 
+  // Fetch the class to get the correct class_type if it's empty/missing
+  let classTypeToUse = classType;
+  if (!classTypeToUse) {
+    const { data: classData, error: classDataErr } = await supabase
+      .from("classes")
+      .select("class_type")
+      .eq("id", classId)
+      .maybeSingle();
+    if (classData && classData.class_type) classTypeToUse = classData.class_type;
+  }
+
   // 2. Upsert handler completions
   let completedCount = 0;
   for (const b of bookings as Booking[]) {
@@ -41,7 +53,7 @@ export async function useMarkHandlersCompleted(classId: string, currentTerm: str
         booking_id: b.id,
         class_id: classId,
         handler_id: b.client_id,
-        class_type: classType || "",
+        class_type: classTypeToUse || "",
         completed: true,
         completed_at: new Date().toISOString(),
         completion_method: "auto",
@@ -52,3 +64,4 @@ export async function useMarkHandlersCompleted(classId: string, currentTerm: str
   }
   return completedCount;
 }
+
