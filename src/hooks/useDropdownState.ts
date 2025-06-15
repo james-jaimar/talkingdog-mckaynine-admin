@@ -25,7 +25,13 @@ export function useDropdownState(initialState = false) {
 
   const onOpen = useCallback(() => setIsOpen(true), [setIsOpen]);
   const onClose = useCallback(() => setIsOpen(false), [setIsOpen]);
-  const onToggle = useCallback(() => setIsOpen((prev) => !prev), [setIsOpen]);
+  const onToggle = useCallback(() => {
+    setIsOpen(prev => {
+      const newVal = !isOpen;
+      setIsOpen(newVal);
+      return newVal;
+    });
+  }, [isOpen, setIsOpen]);
 
   // Ensure on dropdown close, pointer-events are always reset
   useEffect(() => {
@@ -46,3 +52,4 @@ export function useDropdownState(initialState = false) {
     onToggle,
   };
 }
+
