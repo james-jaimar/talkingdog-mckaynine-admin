@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { MoreHorizontal, Edit, CalendarRange, Users, Trash2, CircleX } from "lucide-react";
 import {
@@ -164,10 +163,9 @@ export function ClassActionButtons({ classId, onEdit, onDelete }: ClassActionBut
             <Button
               variant="destructive"
               onClick={handleConfirmCloseClass}
-              loading={isClosing}
               disabled={isClosing}
             >
-              Close Class
+              {isClosing ? "Closing..." : "Close Class"}
             </Button>
           </DialogFooter>
         </DialogContent>
