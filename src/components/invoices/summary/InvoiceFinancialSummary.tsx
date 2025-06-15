@@ -1,4 +1,3 @@
-
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { DollarSign, BadgePercent, AlertCircle } from "lucide-react";
 import { Invoice } from "@/types/invoice";
