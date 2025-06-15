@@ -6,7 +6,7 @@ interface Booking {
   client_id: string;
 }
 
-// Now ensure class_type is looked up and used
+// Ensure class_type is always saved as lowercase string
 export async function useMarkHandlersCompleted(classId: string, currentTerm: string, classType: string) {
   // 1. Get enrolled bookings for this class
   const { data: classSchedulesData, error: classSchedulesError } = await supabase
@@ -35,6 +35,8 @@ export async function useMarkHandlersCompleted(classId: string, currentTerm: str
       .maybeSingle();
     if (classData && classData.class_type) classTypeToUse = classData.class_type;
   }
+  // Force lowercasing of classType
+  classTypeToUse = classTypeToUse ? classTypeToUse.toLowerCase() : "";
 
   // 2. Upsert handler completions
   let completedCount = 0;
@@ -53,7 +55,7 @@ export async function useMarkHandlersCompleted(classId: string, currentTerm: str
         booking_id: b.id,
         class_id: classId,
         handler_id: b.client_id,
-        class_type: classTypeToUse || "",
+        class_type: classTypeToUse,
         completed: true,
         completed_at: new Date().toISOString(),
         completion_method: "auto",
@@ -64,4 +66,3 @@ export async function useMarkHandlersCompleted(classId: string, currentTerm: str
   }
   return completedCount;
 }
-

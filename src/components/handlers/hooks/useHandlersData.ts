@@ -1,8 +1,10 @@
+
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
 import { alphabetGroups } from "../HandlerAlphabetPagination";
 import { useBranch } from "@/context/BranchContext";
+import { CLASS_TYPES } from "@/components/classes/types/class-types";
 
 // Define explicit types for handlers and dogs
 interface Dog {
@@ -47,6 +49,10 @@ export interface Handler {
   social_media_consent_status: 'yes' | 'no' | 'not_marked';
   invoices: any[];
   class_statuses?: ClassStatus[];
+}
+
+function normalizeClassType(input: string): string {
+  return input?.toLowerCase().replace(/\s+/g, " ").trim();
 }
 
 export function useHandlersData() {
@@ -97,13 +103,10 @@ export function useHandlersData() {
             )
           `);
 
-        // Filter by branch if one is selected
         if (currentBranch) {
           query = query.eq('branch_id', currentBranch.id);
         }
-
         query = query.order('first_name', { ascending: true });
-
         const { data: clientsData, error } = await query;
 
         if (error) {
@@ -124,31 +127,31 @@ export function useHandlersData() {
             console.error("Error fetching class statuses:", classStatusError);
           } else {
             for (let status of classStatusData || []) {
+              if (!status.class_type) continue;
+              // always lowercase/normalize the class_type for mapping
+              const key = normalizeClassType(status.class_type);
               const arr = classStatusesMap[status.handler_id] || [];
-              arr.push(status);
+              arr.push({ ...status, class_type: key });
               classStatusesMap[status.handler_id] = arr;
             }
           }
         }
 
-        // Merge class statuses into client data
+        // The mapping between UI columns (CLASS_TYPES) and completions is based on normalized types
         const handlersWithClassStatus = (clientsData || []).map(client => {
-          const classStatuses = classStatusesMap[client.id] || [];
-          // Group by class_type, keep most recent completion per type for each handler
-          const classTypeMap: Record<string, any> = {};
-          for (let status of classStatuses) {
-            if (!status.class_type) continue;
-            const key = status.class_type;
-            if (!classTypeMap[key] || (status.completed && status.completed_at > classTypeMap[key].completed_at)) {
-              classTypeMap[key] = status;
-            }
-          }
-          // Convert to array of compact statuses
-          const class_statuses = Object.entries(classTypeMap).map(([class_type, status]) => ({
-            class_type,
-            status: status.completed ? 'completed' : undefined, // You may add other status logic
-            period: status.period
-          }));
+          const allStatuses = classStatusesMap[client.id] || [];
+          // For each possible type, pick status (e.g., completed) if available
+          const class_statuses = CLASS_TYPES.map((ct) => {
+            const typeKey = normalizeClassType(ct);
+            // find latest completion or interest
+            const found = allStatuses.find(s => s.class_type === typeKey);
+            if (!found) return { class_type: typeKey, status: undefined, period: undefined };
+            return {
+              class_type: typeKey,
+              status: found.completed ? "completed" : found.status,
+              period: found.period,
+            };
+          });
           return {
             ...client,
             class_statuses,
