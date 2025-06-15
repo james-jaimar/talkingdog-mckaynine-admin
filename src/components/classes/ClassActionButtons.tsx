@@ -55,10 +55,77 @@ export function ClassActionButtons({ classId, onEdit, onDelete }: ClassActionBut
     onClose();
   };
 
+  // Utility: fetch enrolled handlers and mark as completed
+  const markHandlersCompleted = async () => {
+    // 1. Get enrolled bookings for this class
+    const { data: bookings, error: bookingsError } = await supabase
+      .from("bookings")
+      .select("id, client_id")
+      .eq("is_enrolled", true)
+      .in("class_schedule_id", 
+        // Get all schedules for this class
+        (
+          await supabase
+            .from("class_schedules")
+            .select("id")
+            .eq("class_id", classId)
+        ).data?.map(cs => cs.id) || []
+      );
+    if (bookingsError) throw bookingsError;
+    if (!bookings || bookings.length === 0) return 0;
+
+    // 2. Get class meta
+    const { data: classData, error: classErr } = await supabase
+      .from("classes")
+      .select("id, class_type")
+      .eq("id", classId)
+      .maybeSingle();
+    if (classErr) throw classErr;
+
+    // 3. Get current term as text (optional, fallback to year)
+    let currentTerm = "";
+    const { data: termData } = await supabase
+      .from("terms")
+      .select("term_number, year")
+      .eq("current", true)
+      .maybeSingle();
+    if (termData) {
+      currentTerm = `Term ${termData.term_number} ${termData.year}`;
+    }
+
+    // 4. Upsert handler completions
+    let completedCount = 0;
+    for (const b of bookings) {
+      // Only insert if not already completed (avoid double insert)
+      const { data: already, error: alreadyErr } = await supabase
+        .from("handler_class_status")
+        .select("id")
+        .eq("handler_id", b.client_id)
+        .eq("class_id", classId)
+        .eq("completed", true)
+        .limit(1)
+        .maybeSingle();
+      if (!already && !alreadyErr) {
+        await supabase.from("handler_class_status").insert({
+          booking_id: b.id,
+          class_id: classId,
+          handler_id: b.client_id,
+          class_type: classData?.class_type || "",
+          completed: true,
+          completed_at: new Date().toISOString(),
+          completion_method: "auto",
+          period: currentTerm,
+        });
+        completedCount++;
+      }
+    }
+    return completedCount;
+  };
+
   const handleConfirmCloseClass = async () => {
     setIsClosing(true);
 
-    // Call supabase to update the status to "closed"
+    // 1. Call supabase to update the status to "closed"
     const { error } = await supabase
       .from("classes")
       .update({ status: "closed" })
@@ -70,12 +137,27 @@ export function ClassActionButtons({ classId, onEdit, onDelete }: ClassActionBut
         description: error.message,
         variant: "destructive",
       });
-    } else {
+      setIsClosing(false);
+      setCloseDialogOpen(false);
+      return;
+    }
+
+    // 2. Mark all enrolled handlers as completed for this class
+    try {
+      const completedCount = await markHandlersCompleted();
       toast({
         title: "Class closed",
-        description: "This class is now marked as closed. Handler completion can be managed in handlers tab.",
+        description:
+          `This class is now marked as closed. ${completedCount} handler(s) marked as completed for this class. Handler completion is now visible in the handlers table, and will enable future certificate/comms features.`,
+      });
+    } catch (handlerErr) {
+      toast({
+        title: "Some handler completions failed",
+        description: String(handlerErr),
+        variant: "destructive",
       });
     }
+
     setIsClosing(false);
     setCloseDialogOpen(false);
   };

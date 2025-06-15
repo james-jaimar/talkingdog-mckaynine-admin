@@ -8,6 +8,7 @@ import { BookingActionButtons } from "./booking-row/BookingActionButtons";
 import { useInvoiceStatus } from "./booking-row/useInvoiceStatus";
 import { ConsentStatusBadge } from "@/components/handlers/status/ConsentStatusBadge";
 import { Check, Minus } from "lucide-react";
+import { useHandlerCompletion } from "./hooks/useHandlerCompletion";
 
 interface BookingRowProps {
   booking: Booking;
@@ -34,6 +35,10 @@ export function BookingRow({
 }: BookingRowProps) {
   // Use the extracted hook for invoice status
   const { data: invoiceData, isLoading: isLoadingInvoice } = useInvoiceStatus(booking.id);
+  const { data: completion } = useHandlerCompletion({
+    handlerId: booking.client_id,
+    classId: booking.class_id,
+  });
 
   const renderInfoStatus = (hasInfo: boolean | null) => {
     if (hasInfo === true) {
@@ -46,6 +51,15 @@ export function BookingRow({
     <TableRow key={booking.id}>
       <TableCell className="font-medium">
         <BookingHandlerInfo booking={booking} />
+        {/* Show completion status if available */}
+        {completion?.completed ? (
+          <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded bg-green-100 text-green-800 text-xs">
+            Completed {completion.completed_at ? `(${new Date(completion.completed_at).toLocaleDateString()})` : ""}
+            {completion.completion_method === "auto" && (
+              <span className="ml-1 italic text-xs text-green-600">(Class closed)</span>
+            )}
+          </span>
+        ) : null}
       </TableCell>
       
       <TableCell className="text-center">

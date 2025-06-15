@@ -938,44 +938,54 @@ export type Database = {
       }
       handler_class_status: {
         Row: {
-          class_type: string
-          client_id: string
-          completion_date: string | null
-          completion_status: string
-          created_at: string
+          booking_id: string | null
+          class_id: string | null
+          class_type: string | null
+          completed: boolean | null
+          completed_at: string | null
+          completion_method: string | null
+          created_at: string | null
+          handler_id: string | null
           id: string
           period: string | null
-          status: string
-          updated_at: string
         }
         Insert: {
-          class_type: string
-          client_id: string
-          completion_date?: string | null
-          completion_status?: string
-          created_at?: string
+          booking_id?: string | null
+          class_id?: string | null
+          class_type?: string | null
+          completed?: boolean | null
+          completed_at?: string | null
+          completion_method?: string | null
+          created_at?: string | null
+          handler_id?: string | null
           id?: string
           period?: string | null
-          status: string
-          updated_at?: string
         }
         Update: {
-          class_type?: string
-          client_id?: string
-          completion_date?: string | null
-          completion_status?: string
-          created_at?: string
+          booking_id?: string | null
+          class_id?: string | null
+          class_type?: string | null
+          completed?: boolean | null
+          completed_at?: string | null
+          completion_method?: string | null
+          created_at?: string | null
+          handler_id?: string | null
           id?: string
           period?: string | null
-          status?: string
-          updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "handler_class_status_client_id_fkey"
-            columns: ["client_id"]
+            foreignKeyName: "handler_class_status_booking_id_fkey"
+            columns: ["booking_id"]
             isOneToOne: false
-            referencedRelation: "clients"
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "handler_class_status_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
             referencedColumns: ["id"]
           },
         ]
