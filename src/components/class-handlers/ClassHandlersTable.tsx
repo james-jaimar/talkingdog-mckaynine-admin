@@ -1,4 +1,3 @@
-
 import { useClassHandlers } from "./hooks/useClassHandlers";
 import { useScheduleDates } from "./hooks/useScheduleDates";
 import { useHandlerForm } from "./hooks/useHandlerForm";
@@ -14,6 +13,7 @@ import { TableActions } from "./table-actions/TableActions";
 import { HandlersTableContainer } from "./table/HandlersTableContainer";
 import { MobileHandlersList } from "./mobile/MobileHandlersList";
 import { Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ClassHandlersTableProps {
   classId: string;
@@ -112,6 +112,25 @@ export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
     setBatchAttendanceOpen(false);
   };
 
+  // Batch complete function for manual marking
+  const handleMarkAllManualCompleted = async () => {
+    if (!window.confirm("Mark all handlers as completed manually? This is for historic data only.")) return;
+    // Manual mark
+    if (handlers && handlers.length > 0) {
+      for (const h of handlers) {
+        await supabase
+          .from("handler_class_status")
+          .update({
+            completion_status: "manual",
+            completion_date: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", h.id);
+      }
+    }
+    refetch();
+  };
+
   if (error) {
     return (
       <div className="text-center p-6">
@@ -205,6 +224,14 @@ export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
         classId={classId}
         onAttendanceUpdated={handleBatchAttendanceUpdated}
       />
+      <div className="mb-2 flex justify-end">
+        <button
+          className="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600 text-sm"
+          onClick={handleMarkAllManualCompleted}
+        >
+          Mark All Completed (Manual)
+        </button>
+      </div>
     </>
   );
 }
