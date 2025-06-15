@@ -1,3 +1,4 @@
+
 import { Badge } from "@/components/ui/badge";
 import { getAvailableSlotsBadgeVariant, getCustomBadgeClass } from "./utils/classSlotUtils";
 import { ClassWithSchedules } from "./hooks/types/class-with-schedules";
@@ -8,7 +9,7 @@ interface ClassAvailabilityBadgeProps {
 }
 
 export function ClassAvailabilityBadge({ classItem }: ClassAvailabilityBadgeProps) {
-  // NEW: Priority—if status is closed, don't show slots, show closed
+  // Show closed badge for closed classes
   if (classItem.status === "closed") {
     return <ClosedBadge />;
   }
@@ -20,7 +21,7 @@ export function ClassAvailabilityBadge({ classItem }: ClassAvailabilityBadgeProp
   const availableSlots = classItem.capacity - totalEnrolled;
   const slotVariant = getAvailableSlotsBadgeVariant(availableSlots, classItem.capacity);
   const customBadgeClass = getCustomBadgeClass(slotVariant);
-  
+
   if (availableSlots <= 0) {
     return (
       <Badge variant="destructive">
@@ -28,7 +29,7 @@ export function ClassAvailabilityBadge({ classItem }: ClassAvailabilityBadgeProp
       </Badge>
     );
   }
-  
+
   return (
     <Badge 
       variant={slotVariant === "success" || slotVariant === "info" || slotVariant === "warning" ? "outline" : "destructive"}

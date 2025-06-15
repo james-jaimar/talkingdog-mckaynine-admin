@@ -1,4 +1,3 @@
-
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { ClassWithSchedules } from "../types/class-with-schedules";
@@ -61,6 +60,7 @@ export function useClassQuery() {
             duration,
             capacity,
             branches(name),
+            status,
             class_schedules(
               id, 
               start_time, 
@@ -92,6 +92,7 @@ export function useClassQuery() {
               duration,
               capacity,
               branches(name),
+              status,
               class_schedules!inner(
                 id, 
                 start_time, 

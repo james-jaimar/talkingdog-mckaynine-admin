@@ -87,7 +87,7 @@ export function ClassTableRow({
             </TableCell>
 
             <TableCell className="text-center">
-              {/* NEW: Show Closed/Open status badge */}
+              {/* Only show the class status here */}
               {classItem.status === "closed" 
                 ? <ClosedBadge /> 
                 : <span className="inline-block bg-green-50 text-green-600 text-xs font-semibold rounded px-2 py-1">Open</span>
