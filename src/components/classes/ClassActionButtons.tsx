@@ -83,12 +83,13 @@ export function ClassActionButtons({ classId, onEdit, onDelete }: ClassActionBut
     if (classErr) throw classErr;
 
     // 3. Get current term as text (optional, fallback to year)
-    let currentTerm = "";
+    let currentTerm = "Current term";
     const { data: termData } = await supabase
       .from("terms")
       .select("term_number, year")
       .eq("current", true)
       .maybeSingle();
+
     if (
       termData &&
       typeof termData === "object" &&
