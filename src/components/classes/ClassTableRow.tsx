@@ -1,31 +1,15 @@
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Pencil, Trash } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Edit, Calendar, Users, MoreHorizontal, CheckCircle, XCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { ClassActionButtons } from "./ClassActionButtons";
 import { ClassWithSchedules } from "./hooks/types/class-with-schedules";
+import { ClassActionButtons } from "./ClassActionButtons";
+import { ClassAvailabilityBadge } from "./ClassAvailabilityBadge";
+import clsx from "clsx";
 
-interface ClassRowProps {
+interface ClassTableRowProps {
   classItem: ClassWithSchedules;
   index: number;
   totalClasses?: number;
@@ -34,7 +18,7 @@ interface ClassRowProps {
   isMoving?: boolean;
 }
 
-export function ClassTableRow({ classItem, index, totalClasses, onEdit, isLoading, isMoving }: ClassRowProps) {
+export function ClassTableRow({ classItem, index, totalClasses, onEdit, isLoading, isMoving }: ClassTableRowProps) {
   const navigate = useNavigate();
 
   const {
@@ -44,94 +28,109 @@ export function ClassTableRow({ classItem, index, totalClasses, onEdit, isLoadin
     capacity,
     duration,
     course_fee,
-    enrollment_fee,
-    admin_fee_value,
-    admin_fee_type,
-    mckaynine_commission_value,
-    mckaynine_commission_type,
-    trainer_fee_value,
-    trainer_fee_type,
+    branch_id,
     status,
+    class_schedules,
   } = classItem;
 
-  const handleViewSchedules = () => {
-    navigate(`/class-schedules?classId=${id}`);
-  };
+  // Calculate total handlers (enrolled)
+  const handlerCount =
+    class_schedules?.reduce((acc, s) => acc + (Array.isArray(s.bookings) ? s.bookings.length : 0), 0) || 0;
 
-  const handleViewHandlers = () => {
-    navigate(`/class-handlers?classId=${id}`);
-  };
-
+  // Display slot badge
+  const slotsLeft = capacity - handlerCount;
+  
+  // Color striping for alternate rows
+  const isStriped = index % 2 === 1;
+  
+  // Show only icon actions in action column
   return (
-    <tr>
-      <td>{name}</td>
-      <td>{class_type}</td>
+    <tr className={clsx(isStriped ? "bg-blue-50" : "bg-white", isMoving && "opacity-50")}>
+      {/* Drag handle cell: could be rendered, if supported by drag lib, e.g. a grippy icon */}
+      <td className="pl-4">{/* Optionally add drag handle icon here if needed */}</td>
+      <td className="font-medium">{name}</td>
+      <td>
+        <Badge>{class_type}</Badge>
+      </td>
+      <td>{duration} min</td>
+      <td>
+        R {Number(course_fee).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+      </td>
       <td>{capacity}</td>
-      <td>{duration}</td>
-      <td>{course_fee}</td>
-      <td>{enrollment_fee}</td>
+      {/* Replace with branch/location display here if desired */}
+      <td>{"Delta"}</td>
       <td>
-        {admin_fee_value} ({admin_fee_type})
+        <ClassAvailabilityBadge classItem={classItem} />
+        <div className="text-xs text-muted-foreground">{handlerCount} handler{handlerCount !== 1 ? "s" : ""}</div>
       </td>
-      <td>
-        {mckaynine_commission_value} ({mckaynine_commission_type})
-      </td>
-      <td>
-        {trainer_fee_value} ({trainer_fee_type})
-      </td>
-      <td>
-        <Badge
-          variant={status === "open" ? "default" : "secondary"}
+      {/* Actions */}
+      <td className="flex gap-2 items-center">
+        <Button
+          variant="ghost"
+          className="p-2"
+          onClick={() => onEdit(id)}
+          title="Edit class"
         >
-          {status}
-        </Badge>
-      </td>
-      <td>
+          <Edit className="w-4 h-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          className="p-2"
+          onClick={() => navigate(`/class-schedules?classId=${id}`)}
+          title="View schedules"
+        >
+          <Calendar className="w-4 h-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          className="p-2"
+          onClick={() => navigate(`/class-handlers?classId=${id}`)}
+          title="View handlers"
+        >
+          <Users className="w-4 h-4" />
+        </Button>
+        {/* ...Extra actions dropdown if needed */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">Open menu</span>
-              <MoreHorizontal className="h-4 w-4" />
+            <Button variant="ghost" className="p-2">
+              <MoreHorizontal className="w-4 h-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
+          <DropdownMenuContent align="end" className="z-40 bg-white">
             <DropdownMenuLabel>Actions</DropdownMenuLabel>
             <DropdownMenuItem onClick={() => onEdit(id)}>
-              <Pencil className="mr-2 h-4 w-4" /> Edit
+              <Edit className="mr-2 w-4 h-4" />
+              Edit
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleViewSchedules}>View Schedules</DropdownMenuItem>
-            <DropdownMenuItem onClick={handleViewHandlers}>View Handlers</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate(`/class-schedules?classId=${id}`)}>
+              <Calendar className="mr-2 w-4 h-4" />
+              View Schedules
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate(`/class-handlers?classId=${id}`)}>
+              <Users className="mr-2 w-4 h-4" />
+              View Handlers
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <DropdownMenuItem className="text-red-600 focus:text-red-600">
-                  <Trash className="mr-2 h-4 w-4" /> Delete
-                </DropdownMenuItem>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This action cannot be undone. This will permanently delete
-                    the class and remove its data from our servers.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    className="bg-red-600 hover:bg-red-500 text-white"
-                    onClick={() => onEdit(id)}
-                  >
-                    Delete
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+            {status === "closed" ? (
+              <DropdownMenuItem className="text-green-600">
+                <CheckCircle className="mr-2 w-4 h-4" /> Closed
+              </DropdownMenuItem>
+            ) : (
+              <ClassActionButtons classId={id} classStatus={status ?? "open"} />
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
-      </td>
-      <td>
-        <ClassActionButtons classId={classItem.id} classStatus={classItem.status ?? "open"} />
+        {/* Subtle "Close Class" icon (only if open) */}
+        {status === "open" && (
+          <span>
+            <ClassActionButtons classId={id} classStatus={status ?? "open"} />
+          </span>
+        )}
+        {status === "closed" && (
+          <span className="text-xs px-2 py-0.5 rounded bg-green-200 text-green-800 flex items-center">
+            <CheckCircle className="w-4 h-4 mr-1" /> Closed
+          </span>
+        )}
       </td>
     </tr>
   );
