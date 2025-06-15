@@ -1,6 +1,6 @@
 
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, Edit, CalendarRange, Users, Trash2 } from "lucide-react";
+import { MoreHorizontal, Edit, CalendarRange, Users, Trash2, CircleX } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,6 +11,10 @@ import {
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/auth";
 import { useDropdownState } from "@/hooks/useDropdownState";
+import * as React from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface ClassActionButtonsProps {
   classId: string;
@@ -22,6 +26,9 @@ export function ClassActionButtons({ classId, onEdit, onDelete }: ClassActionBut
   const navigate = useNavigate();
   const { user } = useAuth();
   const { isOpen, setIsOpen, onClose } = useDropdownState();
+  const [closeDialogOpen, setCloseDialogOpen] = React.useState(false);
+  const [isClosing, setIsClosing] = React.useState(false);
+  const { toast } = useToast();
 
   const handleSchedulesClick = () => {
     navigate(`/classes/${classId}/schedules`);
@@ -41,6 +48,37 @@ export function ClassActionButtons({ classId, onEdit, onDelete }: ClassActionBut
   const handleDeleteClick = () => {
     onDelete();
     onClose();
+  };
+
+  const handleCloseClassClick = (e?: React.MouseEvent) => {
+    e?.preventDefault();
+    setCloseDialogOpen(true);
+    onClose();
+  };
+
+  const handleConfirmCloseClass = async () => {
+    setIsClosing(true);
+
+    // Call supabase to update the status to "closed"
+    const { error } = await supabase
+      .from("classes")
+      .update({ status: "closed" })
+      .eq("id", classId);
+
+    if (error) {
+      toast({
+        title: "Failed to close class",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Class closed",
+        description: "This class is now marked as closed. Handler completion can be managed in handlers tab.",
+      });
+    }
+    setIsClosing(false);
+    setCloseDialogOpen(false);
   };
 
   return (
@@ -91,6 +129,13 @@ export function ClassActionButtons({ classId, onEdit, onDelete }: ClassActionBut
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem 
+            onClick={handleCloseClassClick}
+          >
+            <CircleX className="h-4 w-4 mr-2" />
+              Close Class
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem 
             onClick={handleDeleteClick}
             className="text-destructive hover:text-destructive"
           >
@@ -99,6 +144,34 @@ export function ClassActionButtons({ classId, onEdit, onDelete }: ClassActionBut
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      {/* Close Class Dialog */}
+      <Dialog open={closeDialogOpen} onOpenChange={setCloseDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Close this Class?</DialogTitle>
+            <DialogDescription>
+              Closing a class will prevent any new enrollments or changes. Existing handlers can be managed in the handlers tab. This action is reversible by an admin.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setCloseDialogOpen(false)}
+              disabled={isClosing}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmCloseClass}
+              loading={isClosing}
+              disabled={isClosing}
+            >
+              Close Class
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

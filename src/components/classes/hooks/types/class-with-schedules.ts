@@ -1,4 +1,4 @@
-import { Class } from "../../types/class";
+
 import { ClassType } from "../../types/class-types";
 import { ClassScheduleBasic } from "../../types/class-schedule";
 
@@ -18,15 +18,15 @@ export interface ClassWithSchedules {
   duration: number;
   capacity: number;
   branch_id: string;
+  status: string; // Closed/Open/other
   branches?: {
     name: string;
   };
   class_schedules?: ClassScheduleBasic[];
-  
+
   // Visual indicator for UI - will be set by components as needed
   isMoving?: boolean;
   
-  // Other fields from Class that might be needed
   created_at?: string;
   updated_at?: string;
 }
