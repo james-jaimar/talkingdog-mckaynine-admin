@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -46,8 +47,8 @@ export function ClassStatusCell({
       const { error } = await supabase
         .from('handler_class_status')
         .upsert({
-          handler_id: clientId, // Use handler_id to match the database schema
-          class_type: classType.toLowerCase(), // Ensure lowercase for consistency
+          handler_id: clientId,
+          class_type: classType, // Use exact classType without lowercasing
           status: newStatus,
           period: newPeriod
         }, { 

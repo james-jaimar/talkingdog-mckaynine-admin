@@ -1,4 +1,3 @@
-
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
@@ -49,10 +48,6 @@ export interface Handler {
   social_media_consent_status: 'yes' | 'no' | 'not_marked';
   invoices: any[];
   class_statuses?: ClassStatus[];
-}
-
-function normalizeClassType(input: string): string {
-  return input?.toLowerCase().replace(/\s+/g, " ").trim();
 }
 
 export function useHandlersData() {
@@ -128,26 +123,23 @@ export function useHandlersData() {
           } else {
             for (let status of classStatusData || []) {
               if (!status.class_type) continue;
-              // always lowercase/normalize the class_type for mapping
-              const key = normalizeClassType(status.class_type);
+              // Use exact class_type without normalization
               const arr = classStatusesMap[status.handler_id] || [];
-              arr.push({ ...status, class_type: key });
+              arr.push(status);
               classStatusesMap[status.handler_id] = arr;
             }
           }
         }
 
-        // The mapping between UI columns (CLASS_TYPES) and completions is based on normalized types
+        // Map class statuses using exact CLASS_TYPES matching
         const handlersWithClassStatus = (clientsData || []).map(client => {
           const allStatuses = classStatusesMap[client.id] || [];
-          // For each possible type, pick status (e.g., completed) if available
-          const class_statuses = CLASS_TYPES.map((ct) => {
-            const typeKey = normalizeClassType(ct);
-            // find latest completion or interest
-            const found = allStatuses.find(s => s.class_type === typeKey);
-            if (!found) return { class_type: typeKey, status: undefined, period: undefined };
+          // For each possible type, find exact match
+          const class_statuses = CLASS_TYPES.map((classType) => {
+            const found = allStatuses.find(s => s.class_type === classType);
+            if (!found) return { class_type: classType, status: undefined, period: undefined };
             return {
-              class_type: typeKey,
+              class_type: classType,
               status: found.completed ? "completed" : found.status,
               period: found.period,
             };
