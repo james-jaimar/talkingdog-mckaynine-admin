@@ -72,9 +72,9 @@ export function useClassQuery() {
           `)
           .eq('branch_id', branchId);
 
-        // If a term is selected, only fetch classes that have schedules for this term
+        // If a term is selected, fetch classes with schedules for this term OR classes with no schedules
         if (termId) {
-          // Use EXISTS to only get classes that have schedules for the selected term
+          // Use left join to get all classes, including those without schedules
           const { data: classesWithSchedules, error: classError } = await supabase
             .from('classes')
             .select(`
@@ -93,7 +93,7 @@ export function useClassQuery() {
               capacity,
               branches(name),
               status,
-              class_schedules!inner(
+              class_schedules(
                 id, 
                 start_time, 
                 end_time, 
@@ -102,16 +102,26 @@ export function useClassQuery() {
                 bookings(id, client_id, dog_id)
               )
             `)
-            .eq('branch_id', branchId)
-            .eq('class_schedules.term_id', termId);
+            .eq('branch_id', branchId);
 
           if (classError) {
             throw classError;
           }
 
-          let classes = classesWithSchedules as ClassWithSchedules[];
+          // Filter classes to include:
+          // 1. Classes with schedules for the selected term
+          // 2. Classes with no schedules at all (so users can add schedules)
+          let classes = (classesWithSchedules as ClassWithSchedules[]).filter(classItem => {
+            if (!classItem.class_schedules || classItem.class_schedules.length === 0) {
+              // Include classes with no schedules
+              return true;
+            }
+            
+            // Include classes that have at least one schedule for the selected term
+            return classItem.class_schedules.some(schedule => schedule.term_id === termId);
+          });
           
-          logDebug(`Found ${classes.length} classes with schedules for term ${termId}`);
+          logDebug(`Found ${classes.length} classes (with schedules for term ${termId} or no schedules)`);
           
           // Apply the saved order if available
           if (savedOrder.length > 0) {
