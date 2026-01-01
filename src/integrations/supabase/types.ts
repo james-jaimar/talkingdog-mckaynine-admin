@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
@@ -1375,14 +1375,8 @@ export type Database = {
         Args: { p_booking_id: string }
         Returns: number
       }
-      check_user_role: {
-        Args: { required_role: string }
-        Returns: boolean
-      }
-      count_invoices_with_prefix: {
-        Args: { prefix: string }
-        Returns: number
-      }
+      check_user_role: { Args: { required_role: string }; Returns: boolean }
+      count_invoices_with_prefix: { Args: { prefix: string }; Returns: number }
       determine_term_from_date: {
         Args: { date_to_check: string }
         Returns: {
@@ -1391,31 +1385,28 @@ export type Database = {
         }[]
       }
       get_current_term: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
+          end_date: string
+          start_date: string
           term_id: string
           term_number: Database["public"]["Enums"]["term_number"]
           year: number
-          start_date: string
-          end_date: string
         }[]
       }
-      get_default_branch_name: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      get_default_branch_name: { Args: never; Returns: string }
       get_invoice_items_with_details: {
         Args: { p_invoice_id: string }
         Returns: {
+          amount: number
+          booking_details: Json
+          booking_id: string
+          created_at: string
+          description: string
           id: string
           invoice_id: string
-          description: string
           quantity: number
           unit_price: number
-          amount: number
-          booking_id: string
-          booking_details: Json
-          created_at: string
           updated_at: string
         }[]
       }
@@ -1423,14 +1414,8 @@ export type Database = {
         Args: { p_client_id: string }
         Returns: number
       }
-      is_trainer: {
-        Args: { user_id: string }
-        Returns: boolean
-      }
-      make_bucket_public: {
-        Args: { bucket_id: string }
-        Returns: boolean
-      }
+      is_trainer: { Args: { user_id: string }; Returns: boolean }
+      make_bucket_public: { Args: { bucket_id: string }; Returns: boolean }
       mark_messages_as_read: {
         Args: { p_client_id: string; p_message_ids: string[] }
         Returns: undefined
