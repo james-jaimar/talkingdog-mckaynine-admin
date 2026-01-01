@@ -80,8 +80,9 @@ export function TermProvider({ children }: { children: ReactNode }) {
     }
   }, [termData?.id, invalidateTermDependentQueries, queryClient, selectedYear, isChangingTerm]);
 
-  // Generate years array (current year to current year + 4)
-  const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() + i);
+  // Generate years array (current year - 3 to current year + 4) for historical and future data
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: 8 }, (_, i) => currentYear - 3 + i);
   
   // Generate terms array (1 to 4)
   const terms: TermNumber[] = ['1', '2', '3', '4'];
