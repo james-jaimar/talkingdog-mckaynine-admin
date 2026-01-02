@@ -32,10 +32,10 @@ export function ProgressIndicator({ currentStep }: ProgressIndicatorProps) {
                 className={cn(
                   "flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all duration-300",
                   currentStep > step.number
-                    ? "bg-green-500 border-green-500 text-white"
+                    ? "bg-customer-accent border-customer-accent text-white"
                     : currentStep === step.number
-                    ? "bg-primary border-primary text-primary-foreground scale-110 shadow-lg"
-                    : "bg-background border-muted-foreground/30 text-muted-foreground"
+                    ? "bg-customer-accent border-customer-accent text-white scale-110 shadow-lg shadow-customer-accent/30"
+                    : "bg-white border-gray-200 text-gray-400"
                 )}
               >
                 {currentStep > step.number ? (
@@ -48,8 +48,8 @@ export function ProgressIndicator({ currentStep }: ProgressIndicatorProps) {
                 className={cn(
                   "mt-2 text-xs font-medium hidden sm:block",
                   currentStep >= step.number
-                    ? "text-foreground"
-                    : "text-muted-foreground"
+                    ? "text-customer-accent"
+                    : "text-gray-400"
                 )}
               >
                 {step.title}
@@ -63,8 +63,8 @@ export function ProgressIndicator({ currentStep }: ProgressIndicatorProps) {
                   className={cn(
                     "h-1 rounded-full transition-all duration-500",
                     currentStep > step.number
-                      ? "bg-green-500"
-                      : "bg-muted-foreground/20"
+                      ? "bg-customer-accent"
+                      : "bg-gray-200"
                   )}
                 />
               </div>
@@ -75,7 +75,7 @@ export function ProgressIndicator({ currentStep }: ProgressIndicatorProps) {
       
       {/* Mobile step label */}
       <div className="sm:hidden text-center mt-4">
-        <span className="text-sm font-medium text-foreground">
+        <span className="text-sm font-medium text-customer-accent">
           Step {currentStep} of {steps.length}: {steps[currentStep - 1]?.title}
         </span>
       </div>

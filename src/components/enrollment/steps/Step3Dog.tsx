@@ -2,7 +2,6 @@ import { UseFormReturn } from "react-hook-form";
 import { FullEnrollmentFormValues } from "../types";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Dog, Calendar, Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -30,11 +29,11 @@ export function Step3Dog({ form }: Step3DogProps) {
     <div className="space-y-6 animate-in fade-in duration-500">
       {/* Header */}
       <div className="text-center space-y-2">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-2">
-          <Dog className="h-8 w-8 text-primary" />
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-customer-accent/10 mb-2">
+          <Dog className="h-8 w-8 text-customer-accent" />
         </div>
         <h2 className="text-2xl font-bold text-foreground">Your Pup's Details</h2>
-        <p className="text-muted-foreground">Tell us about your furry friend</p>
+        <p className="text-gray-500">Tell us about your furry friend</p>
       </div>
 
       {/* Form Fields */}
@@ -43,14 +42,14 @@ export function Step3Dog({ form }: Step3DogProps) {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="dogName" className="flex items-center gap-2">
-              <Dog className="h-4 w-4 text-muted-foreground" />
+              <Dog className="h-4 w-4 text-gray-400" />
               Dog's Name *
             </Label>
             <Input
               id="dogName"
               placeholder="What's your pup called?"
               {...register("dogName")}
-              className="h-12"
+              className="h-12 border-gray-200 focus:border-customer-accent focus:ring-customer-accent"
             />
             {errors.dogName && (
               <p className="text-destructive text-sm">{errors.dogName.message}</p>
@@ -59,14 +58,14 @@ export function Step3Dog({ form }: Step3DogProps) {
 
           <div className="space-y-2">
             <Label htmlFor="birthDate" className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <Calendar className="h-4 w-4 text-gray-400" />
               Birth Date *
             </Label>
             <Input
               id="birthDate"
               type="date"
               {...register("birthDate")}
-              className="h-12"
+              className="h-12 border-gray-200 focus:border-customer-accent focus:ring-customer-accent"
             />
             {errors.birthDate && (
               <p className="text-destructive text-sm">{errors.birthDate.message}</p>
@@ -86,8 +85,8 @@ export function Step3Dog({ form }: Step3DogProps) {
                 className={cn(
                   "p-4 rounded-xl border-2 transition-all duration-200 flex flex-col items-center gap-2",
                   gender === option
-                    ? "border-primary bg-primary/5 ring-2 ring-primary/20"
-                    : "border-border hover:border-primary/50"
+                    ? "border-customer-accent bg-customer-accent/5 ring-2 ring-customer-accent/20"
+                    : "border-gray-200 hover:border-customer-accent/50"
                 )}
               >
                 <span className="text-2xl">{option === "Male" ? "♂️" : "♀️"}</span>
@@ -107,7 +106,7 @@ export function Step3Dog({ form }: Step3DogProps) {
             id="breed"
             placeholder="e.g., Golden Retriever, Mixed Breed"
             {...register("breed")}
-            className="h-12"
+            className="h-12 border-gray-200 focus:border-customer-accent focus:ring-customer-accent"
           />
           {errors.breed && (
             <p className="text-destructive text-sm">{errors.breed.message}</p>
@@ -117,7 +116,7 @@ export function Step3Dog({ form }: Step3DogProps) {
         {/* Spay/Neuter Status */}
         <div className="space-y-3">
           <Label className="flex items-center gap-2">
-            <Heart className="h-4 w-4 text-muted-foreground" />
+            <Heart className="h-4 w-4 text-gray-400" />
             Spay/Neuter Status *
           </Label>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -133,8 +132,8 @@ export function Step3Dog({ form }: Step3DogProps) {
                 className={cn(
                   "p-3 rounded-xl border-2 transition-all duration-200 text-sm font-medium",
                   spayNeuterStatus === option.value
-                    ? "border-primary bg-primary/5"
-                    : "border-border hover:border-primary/50"
+                    ? "border-customer-accent bg-customer-accent/5"
+                    : "border-gray-200 hover:border-customer-accent/50"
                 )}
               >
                 {option.label}
@@ -158,8 +157,8 @@ export function Step3Dog({ form }: Step3DogProps) {
                 className={cn(
                   "p-2 rounded-lg border-2 transition-all duration-200 text-xs sm:text-sm",
                   acquiredFrom === option
-                    ? "border-primary bg-primary/5"
-                    : "border-border hover:border-primary/50"
+                    ? "border-customer-accent bg-customer-accent/5"
+                    : "border-gray-200 hover:border-customer-accent/50"
                 )}
               >
                 {option}
@@ -170,7 +169,7 @@ export function Step3Dog({ form }: Step3DogProps) {
             <Input
               placeholder="Please specify..."
               {...register("acquiredFromOther")}
-              className="mt-2"
+              className="mt-2 border-gray-200 focus:border-customer-accent focus:ring-customer-accent"
             />
           )}
           {errors.acquiredFrom && (
@@ -190,8 +189,8 @@ export function Step3Dog({ form }: Step3DogProps) {
                 className={cn(
                   "p-3 rounded-xl border-2 transition-all duration-200 text-sm",
                   ageAtAcquisition === option
-                    ? "border-primary bg-primary/5"
-                    : "border-border hover:border-primary/50"
+                    ? "border-customer-accent bg-customer-accent/5"
+                    : "border-gray-200 hover:border-customer-accent/50"
                 )}
               >
                 {option}

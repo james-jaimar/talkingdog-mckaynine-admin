@@ -16,13 +16,13 @@ export function Step1Privacy({ form }: Step1PrivacyProps) {
     <div className="space-y-8 animate-in fade-in duration-500">
       {/* Welcome Header */}
       <div className="text-center space-y-4">
-        <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-primary/10 mb-4">
-          <PawPrint className="h-10 w-10 text-primary" />
+        <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-customer-accent/10 mb-4">
+          <PawPrint className="h-10 w-10 text-customer-accent" />
         </div>
         <h2 className="text-2xl sm:text-3xl font-bold text-foreground">
           Welcome to McKaynine!
         </h2>
-        <p className="text-muted-foreground max-w-md mx-auto">
+        <p className="text-gray-500 max-w-md mx-auto">
           We're excited to have you and your furry friend join our training family. 
           Let's get you enrolled in just a few easy steps.
         </p>
@@ -30,36 +30,36 @@ export function Step1Privacy({ form }: Step1PrivacyProps) {
 
       {/* Benefits Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 py-6">
-        <div className="bg-card border rounded-xl p-4 text-center space-y-2">
-          <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mx-auto">
-            <Heart className="h-6 w-6 text-green-600" />
+        <div className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 border border-emerald-200/50 rounded-xl p-4 text-center space-y-2">
+          <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center mx-auto">
+            <Heart className="h-6 w-6 text-emerald-600" />
           </div>
-          <h3 className="font-semibold text-sm">Expert Training</h3>
-          <p className="text-xs text-muted-foreground">Professional trainers with years of experience</p>
+          <h3 className="font-semibold text-sm text-emerald-900">Expert Training</h3>
+          <p className="text-xs text-emerald-700">Professional trainers with years of experience</p>
         </div>
-        <div className="bg-card border rounded-xl p-4 text-center space-y-2">
-          <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mx-auto">
-            <PawPrint className="h-6 w-6 text-blue-600" />
+        <div className="bg-gradient-to-br from-customer-accent/5 to-customer-accent/10 border border-customer-accent/20 rounded-xl p-4 text-center space-y-2">
+          <div className="w-12 h-12 rounded-full bg-customer-accent/20 flex items-center justify-center mx-auto">
+            <PawPrint className="h-6 w-6 text-customer-accent" />
           </div>
-          <h3 className="font-semibold text-sm">Happy Pups</h3>
-          <p className="text-xs text-muted-foreground">Socialization and fun for your dog</p>
+          <h3 className="font-semibold text-sm text-gray-900">Happy Pups</h3>
+          <p className="text-xs text-gray-600">Socialization and fun for your dog</p>
         </div>
-        <div className="bg-card border rounded-xl p-4 text-center space-y-2">
-          <div className="w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center mx-auto">
-            <Shield className="h-6 w-6 text-purple-600" />
+        <div className="bg-gradient-to-br from-violet-50 to-violet-100/50 border border-violet-200/50 rounded-xl p-4 text-center space-y-2">
+          <div className="w-12 h-12 rounded-full bg-violet-100 flex items-center justify-center mx-auto">
+            <Shield className="h-6 w-6 text-violet-600" />
           </div>
-          <h3 className="font-semibold text-sm">Safe Environment</h3>
-          <p className="text-xs text-muted-foreground">Controlled, safe training spaces</p>
+          <h3 className="font-semibold text-sm text-violet-900">Safe Environment</h3>
+          <p className="text-xs text-violet-700">Controlled, safe training spaces</p>
         </div>
       </div>
 
       {/* Privacy Policy Agreement */}
-      <div className="bg-muted/50 rounded-xl p-6 space-y-4">
+      <div className="bg-gray-50 rounded-xl p-6 space-y-4 border border-gray-100">
         <h3 className="font-semibold text-lg flex items-center gap-2">
-          <Shield className="h-5 w-5 text-primary" />
+          <Shield className="h-5 w-5 text-customer-accent" />
           Privacy & Consent
         </h3>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-gray-500">
           By proceeding with this enrollment, you acknowledge that you have read and agree to our 
           Privacy Policy. We take your privacy seriously and will only use your information to 
           provide you with the best training experience for you and your dog.
@@ -70,7 +70,7 @@ export function Step1Privacy({ form }: Step1PrivacyProps) {
             id="privacyPolicyAgreed"
             checked={privacyAgreed}
             onCheckedChange={(checked) => setValue("privacyPolicyAgreed", checked === true)}
-            className="mt-1"
+            className="mt-1 data-[state=checked]:bg-customer-accent data-[state=checked]:border-customer-accent"
           />
           <div className="space-y-1">
             <Label 
@@ -79,7 +79,7 @@ export function Step1Privacy({ form }: Step1PrivacyProps) {
             >
               I agree to the Privacy Policy
             </Label>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-gray-400">
               You can view our full privacy policy on our website
             </p>
           </div>

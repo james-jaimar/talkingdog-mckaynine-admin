@@ -73,11 +73,11 @@ export function Step6Class({ form, branches }: Step6ClassProps) {
     <div className="space-y-8 animate-in fade-in duration-500">
       {/* Header */}
       <div className="text-center space-y-2">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-2">
-          <ClipboardList className="h-8 w-8 text-primary" />
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-customer-accent/10 mb-2">
+          <ClipboardList className="h-8 w-8 text-customer-accent" />
         </div>
         <h2 className="text-2xl font-bold text-foreground">Almost There!</h2>
-        <p className="text-muted-foreground">Select your class and complete the final steps</p>
+        <p className="text-gray-500">Select your class and complete the final steps</p>
       </div>
 
       <div className="space-y-8 max-w-xl mx-auto">
@@ -93,8 +93,8 @@ export function Step6Class({ form, branches }: Step6ClassProps) {
                 className={cn(
                   "p-3 rounded-xl border-2 transition-all duration-200 flex flex-col items-center gap-1",
                   classType === type.value
-                    ? "border-primary bg-primary/10"
-                    : "border-border hover:border-primary/50"
+                    ? "border-customer-accent bg-customer-accent/10"
+                    : "border-gray-200 hover:border-customer-accent/50"
                 )}
               >
                 <span className="text-xl">{type.icon}</span>
@@ -106,7 +106,7 @@ export function Step6Class({ form, branches }: Step6ClassProps) {
             <Input
               placeholder="Please specify..."
               {...register("classTypeOther")}
-              className="mt-2"
+              className="mt-2 border-gray-200 focus:border-customer-accent focus:ring-customer-accent"
             />
           )}
           {errors.classType && (
@@ -129,8 +129,8 @@ export function Step6Class({ form, branches }: Step6ClassProps) {
                 className={cn(
                   "p-3 rounded-xl border-2 transition-all duration-200 text-sm font-medium",
                   branchId === branch.id
-                    ? "border-primary bg-primary/10"
-                    : "border-border hover:border-primary/50"
+                    ? "border-customer-accent bg-customer-accent/10"
+                    : "border-gray-200 hover:border-customer-accent/50"
                 )}
               >
                 {branch.name}
@@ -157,8 +157,8 @@ export function Step6Class({ form, branches }: Step6ClassProps) {
                 className={cn(
                   "px-4 py-2 rounded-full border-2 transition-all duration-200 text-sm font-medium",
                   heardFrom?.[option.id]
-                    ? "border-primary bg-primary/10"
-                    : "border-border hover:border-primary/50"
+                    ? "border-customer-accent bg-customer-accent/10"
+                    : "border-gray-200 hover:border-customer-accent/50"
                 )}
               >
                 {heardFrom?.[option.id] && <Check className="h-3 w-3 inline mr-1" />}
@@ -169,12 +169,12 @@ export function Step6Class({ form, branches }: Step6ClassProps) {
         </div>
 
         {/* WhatsApp Permission */}
-        <div className="bg-muted/50 rounded-xl p-4 space-y-3">
+        <div className="bg-gray-50 rounded-xl p-4 space-y-3 border border-gray-100">
           <div className="flex items-start gap-3">
-            <MessageCircle className="h-5 w-5 text-green-500 mt-0.5" />
+            <MessageCircle className="h-5 w-5 text-emerald-500 mt-0.5" />
             <div className="flex-1">
               <Label className="font-semibold">WhatsApp Group Permission</Label>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-gray-500">
                 May we add you to a class WhatsApp group for urgent notifications?
               </p>
             </div>
@@ -189,11 +189,11 @@ export function Step6Class({ form, branches }: Step6ClassProps) {
                   "px-4 py-2 rounded-lg border-2 transition-all duration-200 text-sm font-medium flex-1",
                   whatsappPermission === option.value
                     ? option.color === "green"
-                      ? "border-green-500 bg-green-500/10 text-green-700"
+                      ? "border-emerald-500 bg-emerald-50 text-emerald-700"
                       : option.color === "red"
-                      ? "border-red-500 bg-red-500/10 text-red-700"
-                      : "border-yellow-500 bg-yellow-500/10 text-yellow-700"
-                    : "border-border hover:border-primary/50"
+                      ? "border-rose-500 bg-rose-50 text-rose-700"
+                      : "border-amber-500 bg-amber-50 text-amber-700"
+                    : "border-gray-200 hover:border-customer-accent/50"
                 )}
               >
                 {option.label}
@@ -203,12 +203,12 @@ export function Step6Class({ form, branches }: Step6ClassProps) {
         </div>
 
         {/* Photo Permission */}
-        <div className="bg-muted/50 rounded-xl p-4 space-y-3">
+        <div className="bg-gray-50 rounded-xl p-4 space-y-3 border border-gray-100">
           <div className="flex items-start gap-3">
-            <Camera className="h-5 w-5 text-blue-500 mt-0.5" />
+            <Camera className="h-5 w-5 text-sky-500 mt-0.5" />
             <div className="flex-1">
               <Label className="font-semibold">Photo Permission</Label>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-gray-500">
                 May we post graduation/class photos on our social media?
               </p>
             </div>
@@ -223,11 +223,11 @@ export function Step6Class({ form, branches }: Step6ClassProps) {
                   "px-4 py-2 rounded-lg border-2 transition-all duration-200 text-sm font-medium flex-1",
                   photoPermission === option.value
                     ? option.color === "green"
-                      ? "border-green-500 bg-green-500/10 text-green-700"
+                      ? "border-emerald-500 bg-emerald-50 text-emerald-700"
                       : option.color === "red"
-                      ? "border-red-500 bg-red-500/10 text-red-700"
-                      : "border-yellow-500 bg-yellow-500/10 text-yellow-700"
-                    : "border-border hover:border-primary/50"
+                      ? "border-rose-500 bg-rose-50 text-rose-700"
+                      : "border-amber-500 bg-amber-50 text-amber-700"
+                    : "border-gray-200 hover:border-customer-accent/50"
                 )}
               >
                 {option.label}
@@ -242,22 +242,21 @@ export function Step6Class({ form, branches }: Step6ClassProps) {
           <div className="space-y-2">
             {acknowledgements.map((ack) => {
               const isChecked = watch(ack.id as any);
-              const error = errors[ack.id as keyof typeof errors];
               return (
                 <div
                   key={ack.id}
                   className={cn(
                     "flex items-start gap-3 p-3 rounded-lg border transition-all",
                     isChecked
-                      ? "border-green-500/50 bg-green-50 dark:bg-green-900/10"
-                      : "border-border"
+                      ? "border-emerald-200 bg-emerald-50"
+                      : "border-gray-200"
                   )}
                 >
                   <Checkbox
                     id={ack.id}
                     checked={isChecked}
                     onCheckedChange={(checked) => setValue(ack.id as any, checked === true)}
-                    className="mt-0.5"
+                    className="mt-0.5 data-[state=checked]:bg-customer-accent data-[state=checked]:border-customer-accent"
                   />
                   <Label htmlFor={ack.id} className="text-sm cursor-pointer flex-1">
                     {ack.text}
@@ -269,13 +268,13 @@ export function Step6Class({ form, branches }: Step6ClassProps) {
         </div>
 
         {/* Terms & Signature */}
-        <div className="bg-primary/5 rounded-xl p-5 space-y-4 border border-primary/20">
+        <div className="bg-customer-accent/5 rounded-xl p-5 space-y-4 border border-customer-accent/20">
           <div className="flex items-start gap-3">
             <Checkbox
               id="termsAgreed"
               checked={termsAgreed}
               onCheckedChange={(checked) => setValue("termsAgreed", checked === true)}
-              className="mt-0.5"
+              className="mt-0.5 data-[state=checked]:bg-customer-accent data-[state=checked]:border-customer-accent"
             />
             <Label htmlFor="termsAgreed" className="text-sm cursor-pointer">
               By signing below, I affirm that I voluntarily agree to the McKaynine Terms & Conditions 
@@ -296,6 +295,7 @@ export function Step6Class({ form, branches }: Step6ClassProps) {
                 id="signatureName"
                 placeholder="Type your full name"
                 {...register("signatureName")}
+                className="border-gray-200 focus:border-customer-accent focus:ring-customer-accent"
               />
               {errors.signatureName && (
                 <p className="text-destructive text-sm">{errors.signatureName.message}</p>
@@ -307,6 +307,7 @@ export function Step6Class({ form, branches }: Step6ClassProps) {
                 id="signatureDate"
                 type="date"
                 {...register("signatureDate")}
+                className="border-gray-200 focus:border-customer-accent focus:ring-customer-accent"
               />
               {errors.signatureDate && (
                 <p className="text-destructive text-sm">{errors.signatureDate.message}</p>
