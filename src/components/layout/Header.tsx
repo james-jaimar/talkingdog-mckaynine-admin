@@ -53,8 +53,12 @@ export function Header() {
         <div className="container mx-auto px-4 py-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-6">
-              <Link to={isHandler ? "/customer/dashboard" : "/"} className="text-white font-bold text-xl">
-                McKaynine
+              <Link to={isHandler ? "/customer/dashboard" : "/"} className="hover:opacity-90 transition-opacity">
+                <img 
+                  src="/lovable-uploads/mckaynine_delta_long_2025.png" 
+                  alt="McKaynine Delta" 
+                  className="h-10 w-auto"
+                />
               </Link>
               
               {user && !isMobile && (

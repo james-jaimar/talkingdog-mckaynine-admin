@@ -6,12 +6,12 @@ import { jsPDF } from "jspdf";
  */
 export const addLogoToPdf = (doc: jsPDF, pageWidth: number) => {
   try {
-    // Use the McKaynine logo with paws on both sides
-    const logoPath = "/lovable-uploads/bb90b920-3e7c-4462-a0f1-d47b855c07b7.png";
+    // Use the new McKaynine Delta logo
+    const logoPath = "/lovable-uploads/mckaynine_delta_long_2025.png";
     
-    // Set logo dimensions for proper display
-    const imgWidth = 170;
-    const imgHeight = 55;
+    // Set logo dimensions for proper display (wider aspect ratio for new logo)
+    const imgWidth = 120;
+    const imgHeight = 35;
     const xPosition = (pageWidth - imgWidth) / 2; // Center horizontally
     
     // Add the logo image

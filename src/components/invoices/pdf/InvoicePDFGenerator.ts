@@ -14,14 +14,16 @@ export async function generateInvoicePDF(invoice: Invoice, returnBase64: boolean
   const pageWidth = doc.internal.pageSize.width;
   const pageHeight = doc.internal.pageSize.height;
 
-  // Add new McKaynine logo at original size (210mm wide)
-  const logoPath = "/lovable-uploads/3647f206-d732-423e-91db-6a150b7df9b6.png";
+  // Add new McKaynine Delta logo
+  const logoPath = "/lovable-uploads/mckaynine_delta_long_2025.png";
   
   try {
-    // Set coordinates to place the logo at the top of the page
-    // The logo is exactly 210mm wide (A4 page width)
+    // Set coordinates to place the logo at the top of the page, centered
+    const logoWidth = 120;
+    const logoHeight = 35;
+    const xPosition = (pageWidth - logoWidth) / 2;
     const yPosition = 10; // Start 10mm from top
-    doc.addImage(logoPath, "PNG", 0, yPosition, pageWidth, 25); // Height set to 25mm for proportion
+    doc.addImage(logoPath, "PNG", xPosition, yPosition, logoWidth, logoHeight);
 
     // Start content after logo
     const startY = 40; // Adjusted spacing after logo

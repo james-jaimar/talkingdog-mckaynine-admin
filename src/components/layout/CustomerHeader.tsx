@@ -58,12 +58,13 @@ export function CustomerHeader() {
           {/* Logo */}
           <Link 
             to="/customer/dashboard" 
-            className="flex items-center gap-2 text-foreground font-bold text-xl hover:text-customer-accent transition-colors"
+            className="flex items-center hover:opacity-90 transition-opacity"
           >
-            <div className="w-8 h-8 rounded-lg bg-customer-accent flex items-center justify-center">
-              <Dog className="h-5 w-5 text-customer-accent-foreground" />
-            </div>
-            <span className="hidden sm:inline">McKaynine</span>
+            <img 
+              src="/lovable-uploads/mckaynine_delta_long_2025.png" 
+              alt="McKaynine Delta" 
+              className="h-10 w-auto"
+            />
           </Link>
 
           {/* Desktop Navigation */}

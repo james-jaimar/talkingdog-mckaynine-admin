@@ -13,9 +13,9 @@ export function PuppyClassLayout({ children }: PuppyClassLayoutProps) {
         {/* McKaynine Logo and Header */}
         <div className="flex justify-center items-center">
           <img 
-            src="/lovable-uploads/f4902c8b-8f3d-4afb-9961-f70f61ca1cc0.png" 
-            alt="McKaynine Training Centre" 
-            className="max-w-full h-auto"
+            src="/lovable-uploads/mckaynine_delta_long_2025.png" 
+            alt="McKaynine Delta" 
+            className="max-w-md h-auto"
           />
         </div>
         

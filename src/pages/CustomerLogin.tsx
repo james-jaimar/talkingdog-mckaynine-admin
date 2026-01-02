@@ -90,11 +90,11 @@ export default function CustomerLogin() {
       <div className="w-full max-w-md px-4">
         <div className="text-center mb-6">
           <img 
-            src="/lovable-uploads/02f80db5-fcad-4633-862b-5c42a27cf712.png" 
-            alt="McKaynine Logo" 
-            className="h-12 mx-auto mb-4"
+            src="/lovable-uploads/mckaynine_delta_long_2025.png" 
+            alt="McKaynine Delta" 
+            className="h-16 mx-auto mb-4"
           />
-          <h1 className="text-2xl font-bold text-mckaynine-700">McKaynine Training Centre</h1>
+          <h1 className="text-2xl font-bold text-mckaynine-700">McKaynine Delta Training Centre</h1>
           <p className="text-gray-600 mt-1">Login to access your account</p>
         </div>
         
