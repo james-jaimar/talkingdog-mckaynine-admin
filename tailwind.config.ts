@@ -75,7 +75,20 @@ export default {
                     '800': 'hsl(var(--mckaynine-800))',
                     '900': 'hsl(var(--mckaynine-900))',
                 },
-                'alternate-row': '#d4f3ff'
+                'alternate-row': '#d4f3ff',
+                customer: {
+                    bg: 'hsl(var(--customer-bg))',
+                    card: 'hsl(var(--customer-card))',
+                    accent: 'hsl(var(--customer-accent))',
+                    'accent-light': 'hsl(var(--customer-accent-light))',
+                    'accent-foreground': 'hsl(var(--customer-accent-foreground))',
+                    warm: 'hsl(var(--customer-warm))',
+                    'warm-light': 'hsl(var(--customer-warm-light))',
+                    'header-bg': 'hsl(var(--customer-header-bg))',
+                    'header-border': 'hsl(var(--customer-header-border))',
+                    'nav-active': 'hsl(var(--customer-nav-active))',
+                    'nav-hover': 'hsl(var(--customer-nav-hover))',
+                }
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
