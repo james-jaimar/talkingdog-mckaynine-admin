@@ -3,9 +3,9 @@ import { FullEnrollmentFormValues } from "../types";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Target, Trophy, Heart, AlertCircle, Upload, FileText, X } from "lucide-react";
+import { Target, AlertCircle, Upload, FileText, X, Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 
 interface Step5TrainingProps {
@@ -56,11 +56,11 @@ export function Step5Training({ form, onFileUpload, uploadedFileName, onRemoveFi
     <div className="space-y-8 animate-in fade-in duration-500">
       {/* Header */}
       <div className="text-center space-y-2">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-2">
-          <Target className="h-8 w-8 text-primary" />
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-customer-accent/10 mb-2">
+          <Target className="h-8 w-8 text-customer-accent" />
         </div>
         <h2 className="text-2xl font-bold text-foreground">Training Goals & Health</h2>
-        <p className="text-muted-foreground">Let us know your goals and any health considerations</p>
+        <p className="text-gray-500">Let us know your goals and any health considerations</p>
       </div>
 
       <div className="space-y-8 max-w-xl mx-auto">
@@ -76,13 +76,13 @@ export function Step5Training({ form, onFileUpload, uploadedFileName, onRemoveFi
                 className={cn(
                   "p-5 rounded-xl border-2 transition-all duration-200 text-left",
                   trainingGoal === goal.value
-                    ? "border-primary bg-primary/5 ring-2 ring-primary/20"
-                    : "border-border hover:border-primary/50"
+                    ? "border-customer-accent bg-customer-accent/5 ring-2 ring-customer-accent/20"
+                    : "border-gray-200 hover:border-customer-accent/50"
                 )}
               >
                 <span className="text-3xl block mb-2">{goal.icon}</span>
                 <span className="font-semibold block">{goal.label}</span>
-                <span className="text-sm text-muted-foreground">{goal.description}</span>
+                <span className="text-sm text-gray-500">{goal.description}</span>
               </button>
             ))}
           </div>
@@ -92,18 +92,19 @@ export function Step5Training({ form, onFileUpload, uploadedFileName, onRemoveFi
         </div>
 
         {/* Behavior Problems */}
-        <div className="bg-muted/50 rounded-xl p-5 space-y-4">
+        <div className="bg-gray-50 rounded-xl p-5 space-y-4 border border-gray-100">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <AlertCircle className="h-5 w-5 text-amber-500" />
               <div>
                 <Label className="text-base font-semibold">Any Behavior Problems?</Label>
-                <p className="text-sm text-muted-foreground">Existing issues we should know about</p>
+                <p className="text-sm text-gray-500">Existing issues we should know about</p>
               </div>
             </div>
             <Switch
               checked={hasBehaviorProblems}
               onCheckedChange={(checked) => setValue("hasBehaviorProblems", checked)}
+              className="data-[state=checked]:bg-customer-accent"
             />
           </div>
           
@@ -111,24 +112,25 @@ export function Step5Training({ form, onFileUpload, uploadedFileName, onRemoveFi
             <Textarea
               placeholder="Please describe the behavior problems..."
               {...register("behaviorProblemsDetails")}
-              className="min-h-[100px] animate-in slide-in-from-top-2 duration-300"
+              className="min-h-[100px] animate-in slide-in-from-top-2 duration-300 border-gray-200 focus:border-customer-accent focus:ring-customer-accent"
             />
           )}
         </div>
 
         {/* Health Problems */}
-        <div className="bg-muted/50 rounded-xl p-5 space-y-4">
+        <div className="bg-gray-50 rounded-xl p-5 space-y-4 border border-gray-100">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Heart className="h-5 w-5 text-red-500" />
+              <Heart className="h-5 w-5 text-rose-500" />
               <div>
                 <Label className="text-base font-semibold">Any Health Problems?</Label>
-                <p className="text-sm text-muted-foreground">Medical conditions or disabilities</p>
+                <p className="text-sm text-gray-500">Medical conditions or disabilities</p>
               </div>
             </div>
             <Switch
               checked={hasHealthProblems}
               onCheckedChange={(checked) => setValue("hasHealthProblems", checked)}
+              className="data-[state=checked]:bg-customer-accent"
             />
           </div>
           
@@ -136,7 +138,7 @@ export function Step5Training({ form, onFileUpload, uploadedFileName, onRemoveFi
             <Textarea
               placeholder="Please describe the health problems or disabilities..."
               {...register("healthProblemsDetails")}
-              className="min-h-[100px] animate-in slide-in-from-top-2 duration-300"
+              className="min-h-[100px] animate-in slide-in-from-top-2 duration-300 border-gray-200 focus:border-customer-accent focus:ring-customer-accent"
             />
           )}
         </div>
@@ -144,28 +146,28 @@ export function Step5Training({ form, onFileUpload, uploadedFileName, onRemoveFi
         {/* Vet Clearance Upload */}
         <div className="space-y-3">
           <div className="flex items-center gap-2">
-            <FileText className="h-5 w-5 text-primary" />
+            <FileText className="h-5 w-5 text-customer-accent" />
             <Label className="text-base font-semibold">Vet Clearance Document *</Label>
           </div>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-gray-500">
             Please upload a copy of your veterinary clearance form (PDF or image)
           </p>
           
           {uploadedFileName ? (
-            <div className="flex items-center justify-between bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-4">
+            <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-xl p-4">
               <div className="flex items-center gap-3">
-                <FileText className="h-8 w-8 text-green-600" />
+                <FileText className="h-8 w-8 text-emerald-600" />
                 <div>
-                  <p className="font-medium text-green-800 dark:text-green-300">{uploadedFileName}</p>
-                  <p className="text-sm text-green-600 dark:text-green-400">Uploaded successfully</p>
+                  <p className="font-medium text-emerald-800">{uploadedFileName}</p>
+                  <p className="text-sm text-emerald-600">Uploaded successfully</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={onRemoveFile}
-                className="p-2 hover:bg-green-100 dark:hover:bg-green-900/30 rounded-lg transition-colors"
+                className="p-2 hover:bg-emerald-100 rounded-lg transition-colors"
               >
-                <X className="h-5 w-5 text-green-600" />
+                <X className="h-5 w-5 text-emerald-600" />
               </button>
             </div>
           ) : (
@@ -174,16 +176,16 @@ export function Step5Training({ form, onFileUpload, uploadedFileName, onRemoveFi
               className={cn(
                 "border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-200",
                 isDragActive
-                  ? "border-primary bg-primary/5"
-                  : "border-border hover:border-primary/50 hover:bg-muted/50"
+                  ? "border-customer-accent bg-customer-accent/5"
+                  : "border-gray-200 hover:border-customer-accent/50 hover:bg-gray-50"
               )}
             >
               <input {...getInputProps()} />
-              <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-              <p className="font-medium">
+              <Upload className="h-10 w-10 mx-auto text-gray-400 mb-3" />
+              <p className="font-medium text-gray-600">
                 {isDragActive ? "Drop your file here" : "Drag & drop or click to upload"}
               </p>
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-sm text-gray-400 mt-1">
                 PDF, JPEG, or PNG (max 10MB)
               </p>
             </div>

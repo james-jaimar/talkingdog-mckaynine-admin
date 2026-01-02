@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Loader2, ArrowLeft, ArrowRight, Check } from "lucide-react";
+import { Loader2, ArrowLeft, ArrowRight, Check, PawPrint } from "lucide-react";
 import { ProgressIndicator } from "./ProgressIndicator";
 import { Step1Privacy, Step2Owner, Step3Dog, Step4Home, Step5Training, Step6Class } from "./steps";
 import { useEnrollmentSubmission } from "./hooks/useEnrollmentSubmission";
@@ -132,10 +132,21 @@ export function EnrollmentForm() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted/30 py-8 px-4">
+    <div className="min-h-screen bg-customer-bg py-8 px-4">
       <div className="max-w-2xl mx-auto">
-        <Card className="overflow-hidden">
-          <div className="bg-primary/5 border-b px-6 py-4">
+        {/* Header with decorative gradient */}
+        <div className="relative mb-6 text-center">
+          <div className="absolute inset-0 bg-gradient-to-r from-customer-accent/20 via-customer-accent/10 to-transparent rounded-2xl blur-xl" />
+          <div className="relative flex items-center justify-center gap-3 py-4">
+            <div className="p-2 bg-customer-accent/10 rounded-xl">
+              <PawPrint className="h-6 w-6 text-customer-accent" />
+            </div>
+            <h1 className="text-xl font-semibold text-foreground">Class Registration</h1>
+          </div>
+        </div>
+
+        <Card className="overflow-hidden border-0 shadow-lg bg-white">
+          <div className="bg-gradient-to-r from-customer-accent/5 to-customer-accent/10 border-b border-customer-accent/10 px-6 py-4">
             <ProgressIndicator currentStep={currentStep} />
           </div>
 
@@ -143,25 +154,33 @@ export function EnrollmentForm() {
             {renderStep()}
 
             {/* Navigation Buttons */}
-            <div className="flex justify-between mt-8 pt-6 border-t">
+            <div className="flex justify-between mt-8 pt-6 border-t border-gray-100">
               <Button
                 type="button"
                 variant="outline"
                 onClick={handleBack}
                 disabled={currentStep === 1}
-                className="gap-2"
+                className="gap-2 border-gray-200 hover:bg-gray-50"
               >
                 <ArrowLeft className="h-4 w-4" />
                 Back
               </Button>
 
               {currentStep < 6 ? (
-                <Button type="button" onClick={handleNext} className="gap-2">
+                <Button 
+                  type="button" 
+                  onClick={handleNext} 
+                  className="gap-2 bg-customer-accent hover:bg-customer-accent/90 text-white"
+                >
                   Next
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               ) : (
-                <Button type="submit" disabled={isSubmitting} className="gap-2">
+                <Button 
+                  type="submit" 
+                  disabled={isSubmitting} 
+                  className="gap-2 bg-customer-accent hover:bg-customer-accent/90 text-white"
+                >
                   {isSubmitting ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (

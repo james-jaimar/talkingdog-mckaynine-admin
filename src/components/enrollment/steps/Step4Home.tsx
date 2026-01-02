@@ -1,9 +1,8 @@
 import { UseFormReturn } from "react-hook-form";
 import { FullEnrollmentFormValues } from "../types";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
-import { Home, Dog, Cat, Bird, Users } from "lucide-react";
+import { Home } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Step4HomeProps {
@@ -46,11 +45,11 @@ export function Step4Home({ form }: Step4HomeProps) {
     <div className="space-y-8 animate-in fade-in duration-500">
       {/* Header */}
       <div className="text-center space-y-2">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-2">
-          <Home className="h-8 w-8 text-primary" />
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-customer-accent/10 mb-2">
+          <Home className="h-8 w-8 text-customer-accent" />
         </div>
         <h2 className="text-2xl font-bold text-foreground">Home & Social Life</h2>
-        <p className="text-muted-foreground">Help us understand your pup's environment</p>
+        <p className="text-gray-500">Help us understand your pup's environment</p>
       </div>
 
       <div className="space-y-8 max-w-xl mx-auto">
@@ -66,8 +65,8 @@ export function Step4Home({ form }: Step4HomeProps) {
                 className={cn(
                   "p-4 rounded-xl border-2 transition-all duration-200 flex flex-col items-center gap-2",
                   otherPets?.[pet.id]
-                    ? "border-primary bg-primary/10"
-                    : "border-border hover:border-primary/50"
+                    ? "border-customer-accent bg-customer-accent/10"
+                    : "border-gray-200 hover:border-customer-accent/50"
                 )}
               >
                 <span className="text-2xl">{pet.icon}</span>
@@ -89,8 +88,8 @@ export function Step4Home({ form }: Step4HomeProps) {
                 className={cn(
                   "p-4 rounded-xl border-2 transition-all duration-200 flex flex-col items-center gap-2",
                   childrenAtHome === option.value
-                    ? "border-primary bg-primary/10"
-                    : "border-border hover:border-primary/50"
+                    ? "border-customer-accent bg-customer-accent/10"
+                    : "border-gray-200 hover:border-customer-accent/50"
                 )}
               >
                 <span className="text-2xl">{option.icon}</span>
@@ -107,14 +106,14 @@ export function Step4Home({ form }: Step4HomeProps) {
         <div className="space-y-4">
           <div className="space-y-1">
             <Label className="text-base font-semibold">Social Behavior *</Label>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-gray-500">
               How does your puppy/dog get along with...
             </p>
           </div>
 
           <div className="space-y-4">
             {socialCategories.map((category) => (
-              <div key={category.key} className="bg-muted/50 rounded-xl p-4">
+              <div key={category.key} className="bg-gray-50 rounded-xl p-4 border border-gray-100">
                 <div className="flex items-center gap-2 mb-3">
                   <span className="text-xl">{category.icon}</span>
                   <span className="font-medium">{category.label}</span>
@@ -129,11 +128,11 @@ export function Step4Home({ form }: Step4HomeProps) {
                         "flex-1 py-2 px-3 rounded-lg border-2 transition-all duration-200 text-sm font-medium",
                         socialBehavior?.[category.key] === rating
                           ? rating === "Great"
-                            ? "border-green-500 bg-green-500/10 text-green-700 dark:text-green-400"
+                            ? "border-emerald-500 bg-emerald-50 text-emerald-700"
                             : rating === "OK"
-                            ? "border-yellow-500 bg-yellow-500/10 text-yellow-700 dark:text-yellow-400"
-                            : "border-red-500 bg-red-500/10 text-red-700 dark:text-red-400"
-                          : "border-border hover:border-primary/50"
+                            ? "border-amber-500 bg-amber-50 text-amber-700"
+                            : "border-rose-500 bg-rose-50 text-rose-700"
+                          : "border-gray-200 hover:border-customer-accent/50"
                       )}
                     >
                       {rating === "Great" && "😊 "}{rating === "OK" && "😐 "}{rating === "Not good" && "😟 "}
@@ -150,13 +149,13 @@ export function Step4Home({ form }: Step4HomeProps) {
         <div className="space-y-2">
           <Label htmlFor="socialBehaviorDetails">
             Additional Details
-            <span className="text-muted-foreground text-xs ml-2">(optional)</span>
+            <span className="text-gray-400 text-xs ml-2">(optional)</span>
           </Label>
           <Textarea
             id="socialBehaviorDetails"
             placeholder="Any specific behaviors or situations we should know about?"
             {...form.register("socialBehaviorDetails")}
-            className="min-h-[100px]"
+            className="min-h-[100px] border-gray-200 focus:border-customer-accent focus:ring-customer-accent"
           />
         </div>
       </div>
