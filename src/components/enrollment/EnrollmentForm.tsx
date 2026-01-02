@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/card";
 import { Loader2, ArrowLeft, ArrowRight, Check } from "lucide-react";
 import { ProgressIndicator } from "./ProgressIndicator";
 import { Step1Privacy, Step2Owner, Step3Dog, Step4Home, Step5Training, Step6Class } from "./steps";
+import { useEnrollmentSubmission } from "./hooks/useEnrollmentSubmission";
 import { 
   FullEnrollmentFormValues, 
   defaultFormValues,
@@ -36,6 +37,7 @@ export function EnrollmentForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const navigate = useNavigate();
+  const { submitEnrollment } = useEnrollmentSubmission();
 
   const form = useForm<FullEnrollmentFormValues>({
     resolver: zodResolver(fullEnrollmentSchema),
@@ -104,29 +106,14 @@ export function EnrollmentForm() {
 
     setIsSubmitting(true);
     try {
-      // Upload vet clearance file
-      const fileExt = uploadedFile.name.split(".").pop();
-      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-      
-      const { error: uploadError } = await supabase.storage
-        .from("vet-clearance-docs")
-        .upload(fileName, uploadedFile);
+      const result = await submitEnrollment(data, uploadedFile);
+      console.log("Enrollment submitted successfully:", result);
 
-      if (uploadError) throw uploadError;
-
-      const { data: urlData } = supabase.storage
-        .from("vet-clearance-docs")
-        .getPublicUrl(fileName);
-
-      // TODO: Save to database (client, dog, enrollment_registration)
-      console.log("Form data:", data);
-      console.log("File URL:", urlData.publicUrl);
-
-      toast.success("Enrollment submitted successfully!");
+      toast.success("Enrollment submitted successfully! We'll be in touch soon.");
       navigate("/dashboard");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Submission error:", error);
-      toast.error("Failed to submit enrollment. Please try again.");
+      toast.error(error.message || "Failed to submit enrollment. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
