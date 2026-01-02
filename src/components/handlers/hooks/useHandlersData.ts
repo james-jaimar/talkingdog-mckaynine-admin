@@ -95,6 +95,11 @@ export function useHandlersData() {
             ),
             invoices (
               id
+            ),
+            enrollment_registrations (
+              whatsapp_permission,
+              photo_permission,
+              created_at
             )
           `);
 
@@ -131,6 +136,22 @@ export function useHandlersData() {
           }
         }
 
+        // Helper to get consent from latest enrollment registration
+        const getConsentFromRegistrations = (registrations: any[], fallbackWhatsapp: string, fallbackPhoto: string) => {
+          if (!registrations || registrations.length === 0) {
+            return { whatsapp: fallbackWhatsapp, photo: fallbackPhoto };
+          }
+          // Sort by created_at descending and get latest
+          const sorted = [...registrations].sort((a, b) => 
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          );
+          const latest = sorted[0];
+          return {
+            whatsapp: latest.whatsapp_permission || fallbackWhatsapp,
+            photo: latest.photo_permission || fallbackPhoto
+          };
+        };
+
         // Map class statuses using exact CLASS_TYPES matching
         const handlersWithClassStatus = (clientsData || []).map(client => {
           const allStatuses = classStatusesMap[client.id] || [];
@@ -144,9 +165,19 @@ export function useHandlersData() {
               period: found.period,
             };
           });
+          
+          // Get consent statuses from enrollment_registrations (priority) or fallback to client fields
+          const consent = getConsentFromRegistrations(
+            client.enrollment_registrations,
+            client.uses_whatsapp_status,
+            client.social_media_consent_status
+          );
+          
           return {
             ...client,
             class_statuses,
+            uses_whatsapp_status: consent.whatsapp as 'yes' | 'no' | 'not_marked',
+            social_media_consent_status: consent.photo as 'yes' | 'no' | 'not_marked',
           };
         });
 

@@ -99,10 +99,54 @@ export function useClassHandlers(classId: string) {
           throw error;
         }
 
+        // Fetch enrollment_registrations for all unique client_ids
+        const clientIds = [...new Set(data.map(b => b.client_id).filter(Boolean))];
+        let enrollmentMap: Record<string, any[]> = {};
+        
+        if (clientIds.length > 0) {
+          const { data: enrollmentData, error: enrollmentError } = await supabase
+            .from('enrollment_registrations')
+            .select('client_id, whatsapp_permission, photo_permission, created_at')
+            .in('client_id', clientIds);
+          
+          if (!enrollmentError && enrollmentData) {
+            for (const reg of enrollmentData) {
+              if (!enrollmentMap[reg.client_id]) {
+                enrollmentMap[reg.client_id] = [];
+              }
+              enrollmentMap[reg.client_id].push(reg);
+            }
+          }
+        }
+
+        // Helper to get consent from latest enrollment registration
+        const getConsentFromRegistrations = (registrations: any[], fallbackWhatsapp: string | null, fallbackPhoto: string | null) => {
+          if (!registrations || registrations.length === 0) {
+            return { 
+              whatsapp: validateConsentStatus(fallbackWhatsapp), 
+              photo: validateConsentStatus(fallbackPhoto) 
+            };
+          }
+          // Sort by created_at descending and get latest
+          const sorted = [...registrations].sort((a, b) => 
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          );
+          const latest = sorted[0];
+          return {
+            whatsapp: validateConsentStatus(latest.whatsapp_permission || fallbackWhatsapp),
+            photo: validateConsentStatus(latest.photo_permission || fallbackPhoto)
+          };
+        };
+
         // IMPORTANT: Always include classId in every booking for handler completion display!
         return data.map(booking => {
-          const whatsAppStatus = validateConsentStatus(booking.clients?.uses_whatsapp_status);
-          const socialMediaStatus = validateConsentStatus(booking.clients?.social_media_consent_status);
+          // Get consent from enrollment_registrations (priority) or fallback to client fields
+          const clientEnrollments = booking.client_id ? enrollmentMap[booking.client_id] : [];
+          const consent = getConsentFromRegistrations(
+            clientEnrollments,
+            booking.clients?.uses_whatsapp_status ?? null,
+            booking.clients?.social_media_consent_status ?? null
+          );
 
           return {
             ...booking,
@@ -112,8 +156,8 @@ export function useClassHandlers(classId: string) {
             info_pg_status: booking.info_pg ? true : null,
             clients: booking.clients ? {
               ...booking.clients,
-              uses_whatsapp_status: whatsAppStatus,
-              social_media_consent_status: socialMediaStatus
+              uses_whatsapp_status: consent.whatsapp,
+              social_media_consent_status: consent.photo
             } : undefined
           };
         });
