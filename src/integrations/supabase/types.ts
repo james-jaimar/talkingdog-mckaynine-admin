@@ -786,6 +786,7 @@ export type Database = {
         Row: {
           account_holder_name: string | null
           address: string | null
+          auth_user_id: string | null
           branch_id: string | null
           city: string | null
           created_at: string
@@ -795,6 +796,7 @@ export type Database = {
           last_name: string
           notes: string | null
           occupation: string | null
+          onboarding_status: string
           phone: string | null
           postal_code: string | null
           social_media_consent_status: string
@@ -805,6 +807,7 @@ export type Database = {
         Insert: {
           account_holder_name?: string | null
           address?: string | null
+          auth_user_id?: string | null
           branch_id?: string | null
           city?: string | null
           created_at?: string
@@ -814,6 +817,7 @@ export type Database = {
           last_name: string
           notes?: string | null
           occupation?: string | null
+          onboarding_status?: string
           phone?: string | null
           postal_code?: string | null
           social_media_consent_status?: string
@@ -824,6 +828,7 @@ export type Database = {
         Update: {
           account_holder_name?: string | null
           address?: string | null
+          auth_user_id?: string | null
           branch_id?: string | null
           city?: string | null
           created_at?: string
@@ -833,6 +838,7 @@ export type Database = {
           last_name?: string
           notes?: string | null
           occupation?: string | null
+          onboarding_status?: string
           phone?: string | null
           postal_code?: string | null
           social_media_consent_status?: string
@@ -1155,6 +1161,38 @@ export type Database = {
             columns: ["class_id"]
             isOneToOne: false
             referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      handler_onboarding: {
+        Row: {
+          client_id: string | null
+          created_at: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "handler_onboarding_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
             referencedColumns: ["id"]
           },
         ]
@@ -1510,6 +1548,27 @@ export type Database = {
           },
         ]
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       problematic_invoices: {
@@ -1578,6 +1637,13 @@ export type Database = {
         Args: { p_client_id: string }
         Returns: number
       }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       is_trainer: { Args: { user_id: string }; Returns: boolean }
       make_bucket_public: { Args: { bucket_id: string }; Returns: boolean }
       mark_messages_as_read: {
@@ -1586,6 +1652,7 @@ export type Database = {
       }
     }
     Enums: {
+      app_role: "platform_admin" | "admin" | "trainer" | "handler" | "user"
       class_type:
         | "Puppy"
         | "EO"
@@ -1724,6 +1791,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_role: ["platform_admin", "admin", "trainer", "handler", "user"],
       class_type: [
         "Puppy",
         "EO",

@@ -18,7 +18,16 @@ serve(async (req) => {
   }
 
   try {
-    // Create Supabase client with auth context from the request
+    // Create Supabase client with service role for admin operations
+    const supabaseAdmin = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      {
+        auth: { persistSession: false },
+      }
+    );
+
+    // Create client with user auth for permission checks
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_ANON_KEY") ?? "",
@@ -67,18 +76,17 @@ serve(async (req) => {
       );
     }
 
-    // Check if the current user is admin or platform_admin
-    const { data: currentUserProfile, error: profileError } = await supabaseClient
-      .from("profiles")
+    // Check if the current user is admin or platform_admin using user_roles table
+    const { data: currentUserRoles, error: rolesError } = await supabaseAdmin
+      .from("user_roles")
       .select("role")
-      .eq("id", authUser.id)
-      .single();
+      .eq("user_id", authUser.id);
 
-    if (profileError) {
+    if (rolesError) {
       return new Response(
         JSON.stringify({
           error: "Database Error",
-          details: profileError.message,
+          details: rolesError.message,
         }),
         {
           status: 500,
@@ -87,9 +95,9 @@ serve(async (req) => {
       );
     }
 
-    const currentUserRole = currentUserProfile.role;
-    const isAdmin = currentUserRole.includes("admin");
-    const isPlatformAdmin = currentUserRole.includes("platform_admin");
+    const rolesList = currentUserRoles?.map(r => r.role) || [];
+    const isAdmin = rolesList.includes("admin") || rolesList.includes("platform_admin");
+    const isPlatformAdmin = rolesList.includes("platform_admin");
 
     // Role validation and restrictions
     if (!isAdmin && !isPlatformAdmin) {
@@ -119,17 +127,27 @@ serve(async (req) => {
       );
     }
 
-    // Update the user role
-    const { error: updateError } = await supabaseClient
-      .from("profiles")
-      .update({ role })
-      .eq("id", userId);
+    // Update/insert the user role in user_roles table
+    // First, remove existing role of the same type if updating
+    await supabaseAdmin
+      .from("user_roles")
+      .delete()
+      .eq("user_id", userId)
+      .neq("role", "platform_admin"); // Don't remove platform_admin roles
 
-    if (updateError) {
+    // Insert the new role
+    const { error: insertError } = await supabaseAdmin
+      .from("user_roles")
+      .upsert(
+        { user_id: userId, role },
+        { onConflict: "user_id,role" }
+      );
+
+    if (insertError) {
       return new Response(
         JSON.stringify({
           error: "Database Error",
-          details: updateError.message,
+          details: insertError.message,
         }),
         {
           status: 500,
@@ -138,10 +156,16 @@ serve(async (req) => {
       );
     }
 
+    // Also update profiles.role for backwards compatibility
+    await supabaseAdmin
+      .from("profiles")
+      .update({ role })
+      .eq("id", userId);
+
     // If user is becoming a trainer, check if there's a trainer record already
     if (role === "trainer") {
       // Check if user already has a trainer record
-      const { data: existingTrainer } = await supabaseClient
+      const { data: existingTrainer } = await supabaseAdmin
         .from("trainers")
         .select("id")
         .eq("user_id", userId)
@@ -150,7 +174,7 @@ serve(async (req) => {
       // If no trainer record exists, get user info to create one
       if (!existingTrainer || existingTrainer.length === 0) {
         // Get user info
-        const { data: userInfo } = await supabaseClient
+        const { data: userInfo } = await supabaseAdmin
           .from("profiles")
           .select("username, full_name")
           .eq("id", userId)
@@ -162,7 +186,7 @@ serve(async (req) => {
           const lastName = names.length > 1 ? names.slice(1).join(" ") : "Trainer";
           
           // Create trainer record
-          await supabaseClient
+          await supabaseAdmin
             .from("trainers")
             .insert({
               user_id: userId,

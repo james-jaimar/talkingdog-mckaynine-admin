@@ -58,10 +58,11 @@ export default function CustomerLogin() {
     setError(null);
 
     try {
-      // Register with handler role in metadata
+      // Register with handler role and signup_intent in metadata
       const result = await signup(email, password, { 
         full_name: "",
-        role: "handler" 
+        role: "handler",
+        signup_intent: "handler"
       });
       
       if (result.success) {
