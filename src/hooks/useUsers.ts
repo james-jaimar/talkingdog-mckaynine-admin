@@ -203,6 +203,49 @@ export function useUsers() {
     }
   });
 
+  // Delete user
+  const deleteUser = useMutation({
+    mutationFn: async ({ userId }: { userId: string }) => {
+      try {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError || !session) {
+          throw new Error("Not authenticated");
+        }
+        
+        const { data, error } = await supabase.functions.invoke('user-role', {
+          method: 'POST',
+          body: { 
+            operation: 'delete_user',
+            userId 
+          },
+          headers: {
+            Authorization: `Bearer ${session.access_token}`
+          }
+        });
+        
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+        
+        return { success: true };
+      } catch (error) {
+        console.error("Error deleting user:", error);
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      toast({ title: "User deleted", description: "User has been deleted successfully" });
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "User deletion failed",
+        description: error.message || "Failed to delete user",
+        variant: "destructive",
+      });
+    }
+  });
+
   return {
     users,
     isLoading,
@@ -210,6 +253,7 @@ export function useUsers() {
     refetch,
     addUser,
     updateRole,
-    resetPassword
+    resetPassword,
+    deleteUser
   };
 }
