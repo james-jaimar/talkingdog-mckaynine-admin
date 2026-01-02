@@ -133,7 +133,7 @@ export function EnrollmentForm() {
 
   return (
     <div className="min-h-screen bg-customer-bg py-4 sm:py-6 lg:py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-7xl mx-auto">
         {/* Header with decorative gradient */}
         <div className="relative mb-4 sm:mb-6 text-center">
           <div className="absolute inset-0 bg-gradient-to-r from-customer-accent/20 via-customer-accent/10 to-transparent rounded-2xl blur-xl" />
