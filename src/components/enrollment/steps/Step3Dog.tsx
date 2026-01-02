@@ -36,10 +36,10 @@ export function Step3Dog({ form }: Step3DogProps) {
         <p className="text-gray-500">Tell us about your furry friend</p>
       </div>
 
-      {/* Form Fields */}
-      <div className="space-y-6 max-w-xl mx-auto">
-        {/* Dog Name & Birth Date */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {/* Form Fields - use full width with grid layout */}
+      <div className="space-y-6">
+        {/* Dog Name & Birth Date - 2 columns */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
           <div className="space-y-2">
             <Label htmlFor="dogName" className="flex items-center gap-2">
               <Dog className="h-4 w-4 text-gray-400" />
@@ -73,10 +73,12 @@ export function Step3Dog({ form }: Step3DogProps) {
           </div>
         </div>
 
-        {/* Gender Selection */}
-        <div className="space-y-3">
-          <Label>Gender *</Label>
-          <div className="grid grid-cols-2 gap-3">
+        {/* Gender and Breed - side by side on larger screens */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
+          {/* Gender Selection */}
+          <div className="space-y-3">
+            <Label>Gender *</Label>
+            <div className="grid grid-cols-2 gap-3">
             {["Male", "Female"].map((option) => (
               <button
                 key={option}
@@ -94,32 +96,32 @@ export function Step3Dog({ form }: Step3DogProps) {
               </button>
             ))}
           </div>
-          {errors.gender && (
-            <p className="text-destructive text-sm">{errors.gender.message}</p>
-          )}
-        </div>
+            {errors.gender && (
+              <p className="text-destructive text-sm">{errors.gender.message}</p>
+            )}
+          </div>
 
-        {/* Breed */}
-        <div className="space-y-2">
-          <Label htmlFor="breed">Breed *</Label>
-          <Input
-            id="breed"
-            placeholder="e.g., Golden Retriever, Mixed Breed"
-            {...register("breed")}
-            className="h-12 border-gray-200 focus:border-customer-accent focus:ring-customer-accent"
-          />
-          {errors.breed && (
-            <p className="text-destructive text-sm">{errors.breed.message}</p>
-          )}
+          {/* Breed */}
+          <div className="space-y-3">
+            <Label htmlFor="breed">Breed *</Label>
+            <Input
+              id="breed"
+              placeholder="e.g., Golden Retriever, Mixed Breed"
+              {...register("breed")}
+              className="h-12 border-gray-200 focus:border-customer-accent focus:ring-customer-accent"
+            />
+            {errors.breed && (
+              <p className="text-destructive text-sm">{errors.breed.message}</p>
+            )}
+          </div>
         </div>
-
-        {/* Spay/Neuter Status */}
+        {/* Spay/Neuter Status - wider layout */}
         <div className="space-y-3">
           <Label className="flex items-center gap-2">
             <Heart className="h-4 w-4 text-gray-400" />
             Spay/Neuter Status *
           </Label>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             {[
               { value: "When old enough", label: "When old enough" },
               { value: "Already done", label: "Already done" },
@@ -145,10 +147,10 @@ export function Step3Dog({ form }: Step3DogProps) {
           )}
         </div>
 
-        {/* Acquired From */}
+        {/* Acquired From - 3x3 grid on larger screens */}
         <div className="space-y-3">
           <Label>Where Did You Get Your Dog? *</Label>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-9 gap-2">
             {acquiredFromOptions.map((option) => (
               <button
                 key={option}
@@ -177,10 +179,10 @@ export function Step3Dog({ form }: Step3DogProps) {
           )}
         </div>
 
-        {/* Age at Acquisition */}
+        {/* Age at Acquisition - 4 columns on larger screens */}
         <div className="space-y-3">
           <Label>Age When You Got Them *</Label>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {ageAtAcquisitionOptions.map((option) => (
               <button
                 key={option}
