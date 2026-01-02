@@ -17,6 +17,20 @@ interface DogsListProps {
     medical_notes?: string;
     avatar_url?: string;
     date_of_birth?: string;
+    gender?: string;
+    spay_neuter_status?: string;
+    acquired_from?: string;
+    acquired_from_other?: string;
+    age_at_acquisition?: string;
+    other_pets?: unknown;
+    children_at_home?: string;
+    social_behavior?: unknown;
+    social_behavior_details?: string;
+    training_goal?: string;
+    has_behavior_problems?: boolean;
+    behavior_problems_details?: string;
+    has_health_problems?: boolean;
+    health_problems_details?: string;
   }>;
   onDogsUpdated?: () => void;
 }
