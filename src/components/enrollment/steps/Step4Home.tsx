@@ -14,6 +14,7 @@ const petOptions = [
   { id: "cats" as const, label: "Cat/s", icon: "🐱" },
   { id: "birds" as const, label: "Bird/s", icon: "🐦" },
   { id: "livestock" as const, label: "Livestock", icon: "🐄" },
+  { id: "none" as const, label: "None", icon: "—" },
 ];
 
 const childrenOptions = [
@@ -38,7 +39,14 @@ export function Step4Home({ form }: Step4HomeProps) {
   const socialBehavior = watch("socialBehavior");
 
   const togglePet = (petId: keyof typeof otherPets) => {
-    setValue(`otherPets.${petId}`, !otherPets?.[petId]);
+    if (petId === "none") {
+      // If selecting "None", clear all other pets
+      setValue("otherPets", { dogs: false, cats: false, birds: false, livestock: false, none: true });
+    } else {
+      // If selecting any pet, clear "None" and toggle the pet
+      setValue(`otherPets.none`, false);
+      setValue(`otherPets.${petId}`, !otherPets?.[petId]);
+    }
   };
 
   return (
