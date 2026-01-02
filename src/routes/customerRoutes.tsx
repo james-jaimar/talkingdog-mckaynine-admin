@@ -6,6 +6,7 @@ import CustomerProfile from "@/pages/CustomerProfile";
 import CustomerMessages from "@/pages/CustomerMessages";
 import CustomerInvoices from "@/pages/CustomerInvoices";
 import CustomerInvoiceDetail from "@/pages/CustomerInvoiceDetail";
+import CustomerPuppyClassForm from "@/pages/CustomerPuppyClassForm";
 
 export const customerRoutes = [
   {
@@ -62,6 +63,14 @@ export const customerRoutes = [
     element: (
       <RequireAuth>
         <Navigate to="/customer/dashboard" replace />
+      </RequireAuth>
+    ),
+  },
+  {
+    path: "/customer/forms/puppy-class",
+    element: (
+      <RequireAuth>
+        <CustomerPuppyClassForm />
       </RequireAuth>
     ),
   },
