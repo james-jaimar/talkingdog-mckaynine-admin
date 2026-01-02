@@ -1,12 +1,13 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { GitBranch, Mail, MapPin, Phone, Briefcase, Stethoscope, MessageCircle, Camera, Check, X, HelpCircle } from "lucide-react";
+import { GitBranch, Mail, MapPin, Phone, Briefcase, Stethoscope, Check, X, HelpCircle } from "lucide-react";
 import { formatPhoneNumber } from "../utils/handlerUtils";
 import { useBranch } from "@/context/BranchContext";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
+import { EnrollmentRegistration } from "@/types/handler";
 
-type ConsentStatus = 'yes' | 'no' | 'not_marked';
+type ConsentStatus = 'yes' | 'no' | 'not_marked' | 'unsure';
 
 interface HandlerInfoProps {
   handler: {
@@ -26,29 +27,33 @@ interface HandlerInfoProps {
     created_at: string;
     uses_whatsapp_status?: ConsentStatus;
     social_media_consent_status?: ConsentStatus;
+    enrollment_registrations?: EnrollmentRegistration[];
   };
 }
 
-function ConsentBadge({ status, label }: { status?: ConsentStatus; label: string }) {
+function ConsentBadge({ status, label }: { status?: ConsentStatus | string; label: string }) {
+  const normalizedStatus = status?.toLowerCase();
   const getStatusDetails = () => {
-    switch (status) {
+    switch (normalizedStatus) {
       case 'yes':
-        return { icon: Check, variant: 'default' as const, className: 'bg-green-100 text-green-800 hover:bg-green-100' };
+        return { icon: Check, className: 'bg-green-100 text-green-800 hover:bg-green-100', text: 'Yes' };
       case 'no':
-        return { icon: X, variant: 'destructive' as const, className: 'bg-red-100 text-red-800 hover:bg-red-100' };
+        return { icon: X, className: 'bg-red-100 text-red-800 hover:bg-red-100', text: 'No' };
+      case 'unsure':
+        return { icon: HelpCircle, className: 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100', text: 'Unsure' };
       default:
-        return { icon: HelpCircle, variant: 'secondary' as const, className: 'bg-gray-100 text-gray-600 hover:bg-gray-100' };
+        return { icon: HelpCircle, className: 'bg-gray-100 text-gray-600 hover:bg-gray-100', text: 'Not marked' };
     }
   };
 
-  const { icon: Icon, className } = getStatusDetails();
+  const { icon: Icon, className, text } = getStatusDetails();
 
   return (
     <div className="flex items-center justify-between">
       <span className="text-sm text-muted-foreground">{label}</span>
       <Badge variant="outline" className={className}>
         <Icon className="h-3 w-3 mr-1" />
-        {status === 'yes' ? 'Yes' : status === 'no' ? 'No' : 'Not marked'}
+        {text}
       </Badge>
     </div>
   );
@@ -66,6 +71,25 @@ export function HandlerInfo({ handler }: HandlerInfoProps) {
       }
     }
   }, [handler.branch_id, branches]);
+
+  // Get consent statuses from the most recent enrollment registration
+  const consentStatuses = useMemo(() => {
+    const registrations = handler.enrollment_registrations;
+    if (!registrations || registrations.length === 0) {
+      return {
+        whatsapp: handler.uses_whatsapp_status,
+        photo: handler.social_media_consent_status
+      };
+    }
+    // Get the most recent registration
+    const latestRegistration = [...registrations].sort((a, b) => 
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    )[0];
+    return {
+      whatsapp: latestRegistration.whatsapp_permission || handler.uses_whatsapp_status,
+      photo: latestRegistration.photo_permission || handler.social_media_consent_status
+    };
+  }, [handler.enrollment_registrations, handler.uses_whatsapp_status, handler.social_media_consent_status]);
 
   return (
     <Card className="col-span-1">
@@ -153,8 +177,8 @@ export function HandlerInfo({ handler }: HandlerInfoProps) {
         <div className="space-y-2">
           <h3 className="font-semibold text-muted-foreground text-sm">Permissions</h3>
           <div className="space-y-2">
-            <ConsentBadge status={handler.uses_whatsapp_status} label="WhatsApp" />
-            <ConsentBadge status={handler.social_media_consent_status} label="Photo/Social Media" />
+            <ConsentBadge status={consentStatuses.whatsapp} label="WhatsApp" />
+            <ConsentBadge status={consentStatuses.photo} label="Photo/Social Media" />
           </div>
         </div>
         
