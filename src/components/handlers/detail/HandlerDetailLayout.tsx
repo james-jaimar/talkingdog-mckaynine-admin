@@ -6,6 +6,7 @@ import { HandlerInfo } from "./HandlerInfo";
 import { HandlerCommunications } from "./HandlerCommunications";
 import { DogsList } from "./DogsList";
 import { HandlerInvoices } from "./HandlerInvoices";
+import { EnrollmentRegistrations } from "./EnrollmentRegistrations";
 import { HandlerData } from "@/types/handler";
 import { transformToClientType } from "@/utils/clientDataTransform";
 
@@ -47,6 +48,10 @@ export function HandlerDetailLayout({
           <div className="md:col-span-2 space-y-6">
             {clientData && (
               <HandlerInvoices clientData={clientData} />
+            )}
+            
+            {handler.enrollment_registrations && handler.enrollment_registrations.length > 0 && (
+              <EnrollmentRegistrations registrations={handler.enrollment_registrations} />
             )}
             
             <DogsList 

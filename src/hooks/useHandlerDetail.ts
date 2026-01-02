@@ -16,7 +16,22 @@ export function useHandlerDetail(id: string | undefined) {
         .from('clients')
         .select(`
           *, 
-          dogs(*)
+          dogs(*),
+          enrollment_registrations(
+            id,
+            class_type,
+            class_type_other,
+            heard_from,
+            whatsapp_permission,
+            photo_permission,
+            vet_clearance_url,
+            signature_name,
+            signature_date,
+            status,
+            submitted_at,
+            created_at,
+            dogs(id, name)
+          )
         `)
         .eq('id', id)
         .single();
@@ -34,7 +49,8 @@ export function useHandlerDetail(id: string | undefined) {
       const typedData: HandlerData = {
         ...data,
         uses_whatsapp_status: (data.uses_whatsapp_status as ConsentStatus) || 'not_marked',
-        social_media_consent_status: (data.social_media_consent_status as ConsentStatus) || 'not_marked'
+        social_media_consent_status: (data.social_media_consent_status as ConsentStatus) || 'not_marked',
+        enrollment_registrations: data.enrollment_registrations || []
       };
 
       return typedData;
