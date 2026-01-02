@@ -1,3 +1,4 @@
+import { supabase } from "@/integrations/supabase/client";
 
 /**
  * API functions for handlers management
@@ -10,15 +11,30 @@
  */
 export const deleteHandler = async (id: string) => {
   try {
-    const response = await fetch(`/api/handlers/${id}`, {
-      method: 'DELETE',
-    });
+    // First delete related records to avoid FK constraints
+    // Delete dogs belonging to this handler
+    const { error: dogsError } = await supabase
+      .from('dogs')
+      .delete()
+      .eq('client_id', id);
     
-    if (!response.ok) {
-      throw new Error('Failed to delete handler');
+    if (dogsError) {
+      console.error("Error deleting handler's dogs:", dogsError);
+      throw dogsError;
+    }
+
+    // Delete the handler (client) record
+    const { error } = await supabase
+      .from('clients')
+      .delete()
+      .eq('id', id);
+    
+    if (error) {
+      console.error("Error deleting handler:", error);
+      throw error;
     }
     
-    return await response.json();
+    return { success: true };
   } catch (error) {
     console.error("Error in deleteHandler:", error);
     throw error;
