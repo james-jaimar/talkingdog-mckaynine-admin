@@ -43,14 +43,15 @@ export const homeSchema = z.object({
     cats: z.boolean().default(false),
     birds: z.boolean().default(false),
     livestock: z.boolean().default(false),
+    none: z.boolean().default(false),
   }),
   childrenAtHome: z.enum(["Babies/toddlers", "Children", "Teenagers", "None"], {
     required_error: "Please select children at home option"
   }),
   socialBehavior: z.object({
-    dogs: z.enum(["Great", "OK", "Not good"]),
-    animals: z.enum(["Great", "OK", "Not good"]),
-    people: z.enum(["Great", "OK", "Not good"]),
+    dogs: z.enum(["Great", "OK", "Not good", ""]).optional(),
+    animals: z.enum(["Great", "OK", "Not good", ""]).optional(),
+    people: z.enum(["Great", "OK", "Not good", ""]).optional(),
   }),
   socialBehaviorDetails: z.string().optional(),
 });
@@ -133,8 +134,8 @@ export const defaultFormValues: Partial<FullEnrollmentFormValues> = {
   dogName: "",
   birthDate: "",
   breed: "",
-  otherPets: { dogs: false, cats: false, birds: false, livestock: false },
-  socialBehavior: { dogs: "Great", animals: "Great", people: "Great" },
+  otherPets: { dogs: false, cats: false, birds: false, livestock: false, none: false },
+  socialBehavior: { dogs: "", animals: "", people: "" },
   socialBehaviorDetails: "",
   hasBehaviorProblems: false,
   behaviorProblemsDetails: "",
