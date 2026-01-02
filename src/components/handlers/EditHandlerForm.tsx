@@ -12,8 +12,6 @@ import { BasicInfoFields } from "./form/BasicInfoFields";
 import { ContactInfoFields } from "./form/ContactInfoFields";
 import { AddressFields } from "./form/AddressFields";
 import { NotesField } from "./form/NotesField";
-import { FormField, FormItem, FormLabel, FormControl } from "@/components/ui/form";
-import { ConsentStatusSelect } from "./status/ConsentStatusSelect";
 
 interface HandlerData {
   id: string;
@@ -131,32 +129,20 @@ export function EditHandlerForm({ handler, onSuccess }: EditHandlerFormProps) {
         <AddressFields control={form.control} />
         <NotesField control={form.control} />
         
+        {/* WhatsApp and Social Media consent are now managed via enrollment forms */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="uses_whatsapp_status"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>WhatsApp Status</FormLabel>
-                <FormControl>
-                  <ConsentStatusSelect {...field} />
-                </FormControl>
-              </FormItem>
-            )}
-          />
-          
-          <FormField
-            control={form.control}
-            name="social_media_consent_status"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Social Media Consent</FormLabel>
-                <FormControl>
-                  <ConsentStatusSelect {...field} />
-                </FormControl>
-              </FormItem>
-            )}
-          />
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-muted-foreground">WhatsApp Status</p>
+            <p className="text-sm text-muted-foreground italic">
+              Managed via enrollment form
+            </p>
+          </div>
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-muted-foreground">Social Media Consent</p>
+            <p className="text-sm text-muted-foreground italic">
+              Managed via enrollment form
+            </p>
+          </div>
         </div>
 
         <div className="flex justify-end gap-2 pt-2">
