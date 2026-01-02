@@ -74,6 +74,8 @@ Deno.serve(async (req) => {
       return await handleCreateUser(requestData, supabaseAdmin, corsHeaders);
     } else if (requestData.operation === 'reset_password') {
       return await handleResetPassword(requestData, supabaseAdmin, corsHeaders);
+    } else if (requestData.operation === 'delete_user') {
+      return await handleDeleteUser(requestData, supabaseAdmin, corsHeaders, user.id);
     } else {
       // Default to role update operation
       return await handleRoleUpdate(requestData, supabaseAdmin, corsHeaders);
@@ -294,5 +296,69 @@ async function createTrainerRecord(supabase, userId, email, fullName) {
     }
   } catch (error) {
     console.error("Trainer record creation error:", error);
+  }
+}
+
+// Function to handle user deletion
+async function handleDeleteUser(data, supabase, corsHeaders, requestingUserId) {
+  const { userId } = data;
+  
+  if (!userId) {
+    return new Response(
+      JSON.stringify({ error: 'Missing userId for deletion' }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+  
+  // Prevent self-deletion
+  if (userId === requestingUserId) {
+    return new Response(
+      JSON.stringify({ error: 'You cannot delete your own account' }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+  
+  try {
+    console.log("Deleting user:", userId);
+    
+    // Unlink any trainer records first
+    await supabase
+      .from('trainers')
+      .update({ 
+        user_id: null,
+        updated_at: new Date().toISOString()
+      })
+      .eq('user_id', userId);
+    
+    // Delete the profile record
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .delete()
+      .eq('id', userId);
+    
+    if (profileError) {
+      console.error("Profile deletion error:", profileError);
+      // Continue anyway - we still want to delete the auth user
+    }
+    
+    // Delete the auth user using admin API
+    const { error } = await supabase.auth.admin.deleteUser(userId);
+    
+    if (error) {
+      console.error("User deletion error:", error);
+      throw error;
+    }
+    
+    return new Response(
+      JSON.stringify({ success: true }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+    
+  } catch (error) {
+    console.error("Delete user error:", error);
+    return new Response(
+      JSON.stringify({ error: error.message || 'Error deleting user' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   }
 }

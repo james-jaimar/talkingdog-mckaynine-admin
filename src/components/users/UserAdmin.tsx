@@ -27,7 +27,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { format } from "date-fns";
-import { Search, RefreshCw, UserPlus, MoreHorizontal, User, Key } from "lucide-react";
+import { Search, RefreshCw, UserPlus, MoreHorizontal, User, Key, Trash2 } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -47,6 +47,7 @@ export function UserAdminPanel() {
   const [addUserOpen, setAddUserOpen] = useState(false);
   const [manageUserOpen, setManageUserOpen] = useState(false);
   const [resetPasswordOpen, setResetPasswordOpen] = useState(false);
+  const [deleteUserOpen, setDeleteUserOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   
@@ -61,7 +62,7 @@ export function UserAdminPanel() {
 
   // Hook
   const { 
-    users, isLoading, refetch, addUser, updateRole, resetPassword 
+    users, isLoading, refetch, addUser, updateRole, resetPassword, deleteUser 
   } = useUsers();
 
   // Filter users
@@ -88,6 +89,23 @@ export function UserAdminPanel() {
     setSelectedUser(user);
     setNewPassword("");
     setResetPasswordOpen(true);
+  };
+
+  const handleDeleteUser = (user) => {
+    setSelectedUser(user);
+    setDeleteUserOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!selectedUser) return;
+    try {
+      setFormError(null);
+      await deleteUser.mutateAsync({ userId: selectedUser.id });
+      setDeleteUserOpen(false);
+      setSelectedUser(null);
+    } catch (error) {
+      setFormError(error.message);
+    }
   };
 
   const handleAddUser = async () => {
@@ -286,6 +304,15 @@ export function UserAdminPanel() {
                           <Key className="h-4 w-4 mr-2" />
                           Reset Password
                         </DropdownMenuItem>
+                        {!user.isCurrentUser && (
+                          <DropdownMenuItem 
+                            onClick={() => handleDeleteUser(user)}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete User
+                          </DropdownMenuItem>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -474,6 +501,47 @@ export function UserAdminPanel() {
                   </>
                 ) : (
                   "Reset Password"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        )}
+      </Dialog>
+      
+      {/* Delete User Confirmation Dialog */}
+      <Dialog open={deleteUserOpen} onOpenChange={setDeleteUserOpen}>
+        {selectedUser && (
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete User</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to delete {selectedUser.full_name || selectedUser.email}? This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            
+            {formError && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{formError}</AlertDescription>
+              </Alert>
+            )}
+            
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDeleteUserOpen(false)} disabled={deleteUser.isPending}>
+                Cancel
+              </Button>
+              <Button 
+                variant="destructive" 
+                onClick={handleConfirmDelete} 
+                disabled={deleteUser.isPending}
+              >
+                {deleteUser.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  "Delete User"
                 )}
               </Button>
             </DialogFooter>
