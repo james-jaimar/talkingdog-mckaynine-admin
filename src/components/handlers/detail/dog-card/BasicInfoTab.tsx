@@ -1,6 +1,8 @@
 
 import { formatDate } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { useMemo } from "react";
+import { differenceInYears, differenceInMonths, parseISO } from "date-fns";
 
 interface BasicInfoTabProps {
   age?: number;
@@ -55,6 +57,25 @@ export function BasicInfoTab({
 }: BasicInfoTabProps) {
   console.log("BasicInfoTab received date_of_birth:", date_of_birth);
   
+  // Calculate age from date of birth
+  const calculatedAge = useMemo(() => {
+    if (!date_of_birth) return null;
+    try {
+      const dob = parseISO(date_of_birth);
+      const years = differenceInYears(new Date(), dob);
+      if (years === 0) {
+        const months = differenceInMonths(new Date(), dob);
+        return `${months} month${months !== 1 ? 's' : ''}`;
+      }
+      return `${years} year${years !== 1 ? 's' : ''}`;
+    } catch {
+      return null;
+    }
+  }, [date_of_birth]);
+  
+  // Use calculated age if available, otherwise fall back to stored age
+  const displayAge = calculatedAge || (age !== undefined ? `${age} years` : null);
+  
   const hasBasicInfo = date_of_birth || age !== undefined || weight !== undefined || gender || spay_neuter_status;
   const hasAcquisitionInfo = acquired_from || age_at_acquisition;
   const hasHomeInfo = children_at_home || other_pets || social_behavior || training_goal;
@@ -78,10 +99,10 @@ export function BasicInfoTab({
                 <span className="text-sm ml-2">{formatDate(date_of_birth)}</span>
               </div>
             )}
-            {age !== undefined && (
+            {displayAge && (
               <div>
                 <span className="text-sm text-muted-foreground">Age:</span>
-                <span className="text-sm ml-2">{age} years</span>
+                <span className="text-sm ml-2">{displayAge}</span>
               </div>
             )}
             {weight !== undefined && (

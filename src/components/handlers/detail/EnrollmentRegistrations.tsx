@@ -2,9 +2,12 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ExternalLink, FileText, Dog } from "lucide-react";
+import { ExternalLink, FileText, Dog, Loader2 } from "lucide-react";
 import { EnrollmentRegistration } from "@/types/handler";
 import { formatDate } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { useState } from "react";
+import { useToast } from "@/components/ui/use-toast";
 
 interface EnrollmentRegistrationsProps {
   registrations: EnrollmentRegistration[];
@@ -41,6 +44,64 @@ function formatHeardFrom(heardFrom?: unknown) {
       return labels[key] || key;
     });
   return sources.length > 0 ? sources.join(', ') : null;
+}
+
+function VetClearanceButton({ vetClearanceUrl }: { vetClearanceUrl: string }) {
+  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
+
+  const handleViewDocument = async () => {
+    setIsLoading(true);
+    try {
+      // Extract the file path from the public URL
+      // URL format: https://xxx.supabase.co/storage/v1/object/public/vet-clearance-docs/userId/filename
+      const urlParts = vetClearanceUrl.split('/vet-clearance-docs/');
+      if (urlParts.length < 2) {
+        throw new Error("Invalid vet clearance URL format");
+      }
+      const filePath = urlParts[1];
+
+      // Generate a signed URL (valid for 1 hour)
+      const { data, error } = await supabase.storage
+        .from('vet-clearance-docs')
+        .createSignedUrl(filePath, 3600);
+
+      if (error) {
+        throw error;
+      }
+
+      if (data?.signedUrl) {
+        window.open(data.signedUrl, '_blank');
+      }
+    } catch (error) {
+      console.error("Error accessing vet clearance document:", error);
+      toast({
+        title: "Error",
+        description: "Could not access the vet clearance document. Please check permissions.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="pt-2">
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={handleViewDocument}
+        disabled={isLoading}
+      >
+        {isLoading ? (
+          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+        ) : (
+          <ExternalLink className="h-4 w-4 mr-2" />
+        )}
+        View Vet Clearance Document
+      </Button>
+    </div>
+  );
 }
 
 export function EnrollmentRegistrations({ registrations }: EnrollmentRegistrationsProps) {
@@ -118,16 +179,7 @@ export function EnrollmentRegistrations({ registrations }: EnrollmentRegistratio
               )}
 
               {registration.vet_clearance_url && (
-                <div className="pt-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => window.open(registration.vet_clearance_url!, '_blank')}
-                  >
-                    <ExternalLink className="h-4 w-4 mr-2" />
-                    View Vet Clearance Document
-                  </Button>
-                </div>
+                <VetClearanceButton vetClearanceUrl={registration.vet_clearance_url} />
               )}
             </div>
           ))}
