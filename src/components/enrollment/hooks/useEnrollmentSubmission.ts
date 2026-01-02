@@ -10,8 +10,16 @@ interface SubmissionResult {
 export function useEnrollmentSubmission() {
   
   const uploadVetClearance = async (file: File): Promise<string> => {
+    // Get current user for folder-based separation (compliance/security)
+    const { data: authData } = await supabase.auth.getUser();
+    const userId = authData?.user?.id;
+    
+    if (!userId) {
+      throw new Error("User must be authenticated to upload documents");
+    }
+    
     const fileExt = file.name.split(".").pop();
-    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+    const fileName = `${userId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
     
     const { error: uploadError } = await supabase.storage
       .from("vet-clearance-docs")
@@ -22,6 +30,8 @@ export function useEnrollmentSubmission() {
       throw new Error("Failed to upload vet clearance document");
     }
 
+    // Since bucket is private, we need to generate a signed URL for admin access
+    // Store the path for later retrieval by admins
     const { data: urlData } = supabase.storage
       .from("vet-clearance-docs")
       .getPublicUrl(fileName);
