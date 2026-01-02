@@ -33,6 +33,10 @@ export function useEnrollmentSubmission() {
     data: FullEnrollmentFormValues,
     branchId: string
   ): Promise<{ id: string; isNew: boolean }> => {
+    // Get current user for auth_user_id linking
+    const { data: authData } = await supabase.auth.getUser();
+    const authUserId = authData?.user?.id;
+    
     // Check if client with email already exists
     const { data: existingClient, error: checkError } = await supabase
       .from("clients")
@@ -46,7 +50,7 @@ export function useEnrollmentSubmission() {
     }
 
     if (existingClient) {
-      // Update existing client with new details
+      // Update existing client with new details and mark onboarding complete
       const { error: updateError } = await supabase
         .from("clients")
         .update({
@@ -56,6 +60,8 @@ export function useEnrollmentSubmission() {
           occupation: data.occupation || null,
           vet_name: data.vetName,
           account_holder_name: data.accountHolderName || null,
+          auth_user_id: authUserId || undefined,
+          onboarding_status: 'completed',
         })
         .eq("id", existingClient.id);
 
@@ -78,6 +84,8 @@ export function useEnrollmentSubmission() {
       vet_name: data.vetName,
       account_holder_name: data.accountHolderName || null,
       branch_id: branchId,
+      auth_user_id: authUserId || undefined,
+      onboarding_status: 'completed',
     };
 
     const { data: newClient, error: insertError } = await supabase
@@ -179,6 +187,34 @@ export function useEnrollmentSubmission() {
     return enrollment.id;
   };
 
+  const completeOnboarding = async (clientId: string): Promise<void> => {
+    // Get current user
+    const { data: authData } = await supabase.auth.getUser();
+    const userId = authData?.user?.id;
+    
+    if (!userId) {
+      console.log("No authenticated user, skipping onboarding completion");
+      return;
+    }
+
+    // Update handler_onboarding status
+    const { error } = await supabase
+      .from("handler_onboarding")
+      .update({
+        status: 'completed',
+        client_id: clientId,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("user_id", userId);
+
+    if (error) {
+      console.error("Error updating handler onboarding:", error);
+      // Don't throw - this is a non-critical update
+    } else {
+      console.log("Handler onboarding marked as completed");
+    }
+  };
+
   const submitEnrollment = async (
     data: FullEnrollmentFormValues,
     vetClearanceFile: File
@@ -189,7 +225,7 @@ export function useEnrollmentSubmission() {
     const vetClearanceUrl = await uploadVetClearance(vetClearanceFile);
     console.log("Vet clearance uploaded:", vetClearanceUrl);
 
-    // 2. Find or create client
+    // 2. Find or create client (also updates onboarding_status)
     const { id: clientId } = await findOrCreateClient(data, data.branchId);
 
     // 3. Create dog record
@@ -202,6 +238,9 @@ export function useEnrollmentSubmission() {
       dogId,
       vetClearanceUrl
     );
+
+    // 5. Complete onboarding tracking
+    await completeOnboarding(clientId);
 
     return { clientId, dogId, enrollmentId };
   };

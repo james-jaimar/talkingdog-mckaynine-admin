@@ -41,10 +41,11 @@ export default function Auth() {
   const handleSignUp = async (email: string, password: string, metadata?: any) => {
     setAuthLoading(true);
     try {
-      // Include handler role in metadata for new signups
+      // Include handler role and signup_intent in metadata for new signups
       const signupMetadata = {
         ...metadata,
-        role: "handler"
+        role: "handler",
+        signup_intent: "handler"
       };
       const result = await signup(email, password, signupMetadata);
       setAuthLoading(false);

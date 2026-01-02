@@ -42,14 +42,16 @@ Deno.serve(async (req) => {
     // Parse request body
     const { userId, role, password, appId } = await req.json();
 
-    // Check if user is authorized (must be admin to change roles)
-    const { data: adminCheck } = await supabaseAdmin
-      .from('profiles')
+    // Check if user is authorized (must be admin to change roles) - use user_roles table
+    const { data: userRoles } = await supabaseAdmin
+      .from('user_roles')
       .select('role')
-      .eq('id', user.id)
-      .single();
+      .eq('user_id', user.id);
 
-    if (!adminCheck?.role?.includes('admin')) {
+    const rolesList = userRoles?.map(r => r.role) || [];
+    const isAdmin = rolesList.includes('admin') || rolesList.includes('platform_admin');
+
+    if (!isAdmin) {
       return new Response(
         JSON.stringify({ success: false, message: 'Unauthorized - admin role required' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -78,7 +80,29 @@ Deno.serve(async (req) => {
 
     // If role update is requested
     if (role) {
-      // Update profile with new role
+      // Update user_roles table - first remove existing roles (except platform_admin)
+      await supabaseAdmin
+        .from('user_roles')
+        .delete()
+        .eq('user_id', userId)
+        .neq('role', 'platform_admin');
+
+      // Insert the new role
+      const { error: roleInsertError } = await supabaseAdmin
+        .from('user_roles')
+        .upsert(
+          { user_id: userId, role },
+          { onConflict: 'user_id,role' }
+        );
+
+      if (roleInsertError) {
+        return new Response(
+          JSON.stringify({ success: false, message: 'Role update failed', error: roleInsertError.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Also update profiles for backwards compatibility
       const { error: updateError } = await supabaseAdmin
         .from('profiles')
         .update({ 
@@ -89,10 +113,7 @@ Deno.serve(async (req) => {
         .eq('id', userId);
 
       if (updateError) {
-        return new Response(
-          JSON.stringify({ success: false, message: 'Role update failed', error: updateError.message }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+        console.error('Profile update error (non-critical):', updateError.message);
       }
 
       return new Response(

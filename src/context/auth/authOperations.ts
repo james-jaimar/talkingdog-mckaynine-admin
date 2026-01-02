@@ -24,14 +24,21 @@ export const loginWithEmailAndPassword = async (email: string, password: string)
 
 /**
  * Sign up with email and password
+ * For handler signups, include signup_intent: 'handler' in metadata
  */
 export const signupWithEmailAndPassword = async (email: string, password: string, metadata?: any) => {
   try {
+    // If role is handler, add signup_intent for the database trigger
+    const enhancedMetadata = {
+      ...metadata,
+      signup_intent: metadata?.role === 'handler' ? 'handler' : undefined
+    };
+    
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: metadata
+        data: enhancedMetadata
       }
     });
     
