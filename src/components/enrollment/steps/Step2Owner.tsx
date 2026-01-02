@@ -22,8 +22,8 @@ export function Step2Owner({ form }: Step2OwnerProps) {
         <p className="text-gray-500">Let's start with your contact details</p>
       </div>
 
-      {/* Form Fields */}
-      <div className="space-y-5 max-w-lg mx-auto">
+      {/* Form Fields - 2 column grid on larger screens */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
         {/* Owner Name */}
         <div className="space-y-2">
           <Label htmlFor="ownerName" className="flex items-center gap-2">

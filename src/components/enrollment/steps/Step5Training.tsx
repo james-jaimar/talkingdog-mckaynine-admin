@@ -63,7 +63,7 @@ export function Step5Training({ form, onFileUpload, uploadedFileName, onRemoveFi
         <p className="text-gray-500">Let us know your goals and any health considerations</p>
       </div>
 
-      <div className="space-y-8 max-w-xl mx-auto">
+      <div className="space-y-6 lg:space-y-8">
         {/* Training Goal */}
         <div className="space-y-3">
           <Label className="text-base font-semibold">What's Your Training Goal? *</Label>
@@ -91,8 +91,10 @@ export function Step5Training({ form, onFileUpload, uploadedFileName, onRemoveFi
           )}
         </div>
 
-        {/* Behavior Problems */}
-        <div className="bg-gray-50 rounded-xl p-5 space-y-4 border border-gray-100">
+        {/* Behavior and Health Problems - side by side on larger screens */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
+          {/* Behavior Problems */}
+          <div className="bg-gray-50 rounded-xl p-5 space-y-4 border border-gray-100">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <AlertCircle className="h-5 w-5 text-amber-500" />
@@ -115,10 +117,10 @@ export function Step5Training({ form, onFileUpload, uploadedFileName, onRemoveFi
               className="min-h-[100px] animate-in slide-in-from-top-2 duration-300 border-gray-200 focus:border-customer-accent focus:ring-customer-accent"
             />
           )}
-        </div>
+          </div>
 
-        {/* Health Problems */}
-        <div className="bg-gray-50 rounded-xl p-5 space-y-4 border border-gray-100">
+          {/* Health Problems */}
+          <div className="bg-gray-50 rounded-xl p-5 space-y-4 border border-gray-100">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Heart className="h-5 w-5 text-rose-500" />
@@ -141,6 +143,7 @@ export function Step5Training({ form, onFileUpload, uploadedFileName, onRemoveFi
               className="min-h-[100px] animate-in slide-in-from-top-2 duration-300 border-gray-200 focus:border-customer-accent focus:ring-customer-accent"
             />
           )}
+          </div>
         </div>
 
         {/* Vet Clearance Upload */}

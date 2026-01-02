@@ -132,25 +132,25 @@ export function EnrollmentForm() {
   };
 
   return (
-    <div className="min-h-screen bg-customer-bg py-8 px-4">
-      <div className="max-w-2xl mx-auto">
+    <div className="min-h-screen bg-customer-bg py-4 sm:py-6 lg:py-8 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-4xl mx-auto">
         {/* Header with decorative gradient */}
-        <div className="relative mb-6 text-center">
+        <div className="relative mb-4 sm:mb-6 text-center">
           <div className="absolute inset-0 bg-gradient-to-r from-customer-accent/20 via-customer-accent/10 to-transparent rounded-2xl blur-xl" />
-          <div className="relative flex items-center justify-center gap-3 py-4">
+          <div className="relative flex items-center justify-center gap-3 py-3 sm:py-4">
             <div className="p-2 bg-customer-accent/10 rounded-xl">
-              <PawPrint className="h-6 w-6 text-customer-accent" />
+              <PawPrint className="h-5 w-5 sm:h-6 sm:w-6 text-customer-accent" />
             </div>
-            <h1 className="text-xl font-semibold text-foreground">Class Registration</h1>
+            <h1 className="text-lg sm:text-xl font-semibold text-foreground">Class Registration</h1>
           </div>
         </div>
 
         <Card className="overflow-hidden border-0 shadow-lg bg-white">
-          <div className="bg-gradient-to-r from-customer-accent/5 to-customer-accent/10 border-b border-customer-accent/10 px-6 py-4">
+          <div className="bg-gradient-to-r from-customer-accent/5 to-customer-accent/10 border-b border-customer-accent/10 px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
             <ProgressIndicator currentStep={currentStep} />
           </div>
 
-          <form onSubmit={form.handleSubmit(onSubmit)} className="p-6 sm:p-8">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="p-4 sm:p-6 lg:p-8">
             {renderStep()}
 
             {/* Navigation Buttons */}

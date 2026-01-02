@@ -29,7 +29,7 @@ export function Step1Privacy({ form }: Step1PrivacyProps) {
       </div>
 
       {/* Benefits Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 py-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 py-4 sm:py-6">
         <div className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 border border-emerald-200/50 rounded-xl p-4 text-center space-y-2">
           <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center mx-auto">
             <Heart className="h-6 w-6 text-emerald-600" />

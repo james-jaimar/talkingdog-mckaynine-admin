@@ -52,7 +52,7 @@ export function Step4Home({ form }: Step4HomeProps) {
         <p className="text-gray-500">Help us understand your pup's environment</p>
       </div>
 
-      <div className="space-y-8 max-w-xl mx-auto">
+      <div className="space-y-6 lg:space-y-8">
         {/* Other Pets */}
         <div className="space-y-3">
           <Label className="text-base font-semibold">Other Pets at Home</Label>
