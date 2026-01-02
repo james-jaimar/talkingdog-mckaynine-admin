@@ -37,12 +37,26 @@ export default function Auth() {
     }
   };
 
-  // Handle sign up submission
+  // Handle sign up submission - redirect new handlers to enrollment form
   const handleSignUp = async (email: string, password: string, metadata?: any) => {
     setAuthLoading(true);
     try {
-      const result = await signup(email, password, metadata);
+      // Include handler role in metadata for new signups
+      const signupMetadata = {
+        ...metadata,
+        role: "handler"
+      };
+      const result = await signup(email, password, signupMetadata);
       setAuthLoading(false);
+      
+      // On successful signup, redirect to the puppy class registration form
+      if (result.success) {
+        // Small delay to allow auth state to settle
+        setTimeout(() => {
+          navigate("/customer/forms/puppy-class", { replace: true });
+        }, 100);
+      }
+      
       return result;
     } catch (error) {
       setAuthLoading(false);
