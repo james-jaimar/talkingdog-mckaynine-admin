@@ -784,6 +784,7 @@ export type Database = {
       }
       clients: {
         Row: {
+          account_holder_name: string | null
           address: string | null
           branch_id: string | null
           city: string | null
@@ -793,13 +794,16 @@ export type Database = {
           id: string
           last_name: string
           notes: string | null
+          occupation: string | null
           phone: string | null
           postal_code: string | null
           social_media_consent_status: string
           updated_at: string
           uses_whatsapp_status: string
+          vet_name: string | null
         }
         Insert: {
+          account_holder_name?: string | null
           address?: string | null
           branch_id?: string | null
           city?: string | null
@@ -809,13 +813,16 @@ export type Database = {
           id?: string
           last_name: string
           notes?: string | null
+          occupation?: string | null
           phone?: string | null
           postal_code?: string | null
           social_media_consent_status?: string
           updated_at?: string
           uses_whatsapp_status?: string
+          vet_name?: string | null
         }
         Update: {
+          account_holder_name?: string | null
           address?: string | null
           branch_id?: string | null
           city?: string | null
@@ -825,11 +832,13 @@ export type Database = {
           id?: string
           last_name?: string
           notes?: string | null
+          occupation?: string | null
           phone?: string | null
           postal_code?: string | null
           social_media_consent_status?: string
           updated_at?: string
           uses_whatsapp_status?: string
+          vet_name?: string | null
         }
         Relationships: [
           {
@@ -843,47 +852,89 @@ export type Database = {
       }
       dogs: {
         Row: {
+          acquired_from: string | null
+          acquired_from_other: string | null
           age: number | null
+          age_at_acquisition: string | null
           avatar_url: string | null
           behavior_notes: string | null
+          behavior_problems_details: string | null
           breed: string
+          children_at_home: string | null
           client_id: string
           created_at: string
           date_of_birth: string | null
+          gender: string | null
+          has_behavior_problems: boolean | null
+          has_health_problems: boolean | null
+          health_problems_details: string | null
           id: string
           medical_notes: string | null
           name: string
           notes: string | null
+          other_pets: Json | null
+          social_behavior: Json | null
+          social_behavior_details: string | null
+          spay_neuter_status: string | null
+          training_goal: string | null
           updated_at: string
           weight: number | null
         }
         Insert: {
+          acquired_from?: string | null
+          acquired_from_other?: string | null
           age?: number | null
+          age_at_acquisition?: string | null
           avatar_url?: string | null
           behavior_notes?: string | null
+          behavior_problems_details?: string | null
           breed: string
+          children_at_home?: string | null
           client_id: string
           created_at?: string
           date_of_birth?: string | null
+          gender?: string | null
+          has_behavior_problems?: boolean | null
+          has_health_problems?: boolean | null
+          health_problems_details?: string | null
           id?: string
           medical_notes?: string | null
           name: string
           notes?: string | null
+          other_pets?: Json | null
+          social_behavior?: Json | null
+          social_behavior_details?: string | null
+          spay_neuter_status?: string | null
+          training_goal?: string | null
           updated_at?: string
           weight?: number | null
         }
         Update: {
+          acquired_from?: string | null
+          acquired_from_other?: string | null
           age?: number | null
+          age_at_acquisition?: string | null
           avatar_url?: string | null
           behavior_notes?: string | null
+          behavior_problems_details?: string | null
           breed?: string
+          children_at_home?: string | null
           client_id?: string
           created_at?: string
           date_of_birth?: string | null
+          gender?: string | null
+          has_behavior_problems?: boolean | null
+          has_health_problems?: boolean | null
+          health_problems_details?: string | null
           id?: string
           medical_notes?: string | null
           name?: string
           notes?: string | null
+          other_pets?: Json | null
+          social_behavior?: Json | null
+          social_behavior_details?: string | null
+          spay_neuter_status?: string | null
+          training_goal?: string | null
           updated_at?: string
           weight?: number | null
         }
@@ -893,6 +944,119 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      enrollment_registrations: {
+        Row: {
+          branch_id: string
+          class_schedule_id: string | null
+          class_type: string
+          class_type_other: string | null
+          client_id: string
+          created_at: string
+          dog_id: string
+          equipment_supervision_acknowledged: boolean | null
+          heard_from: Json | null
+          id: string
+          onlead_socializing_acknowledged: boolean | null
+          photo_permission: string | null
+          privacy_policy_agreed: boolean | null
+          signature_data: string | null
+          signature_date: string | null
+          signature_name: string | null
+          status: string | null
+          submitted_at: string | null
+          terms_agreed: boolean | null
+          training_equipment_acknowledged: boolean | null
+          treats_acknowledged: boolean | null
+          updated_at: string
+          vet_clearance_url: string | null
+          waste_disposal_acknowledged: boolean | null
+          whatsapp_permission: string | null
+        }
+        Insert: {
+          branch_id: string
+          class_schedule_id?: string | null
+          class_type: string
+          class_type_other?: string | null
+          client_id: string
+          created_at?: string
+          dog_id: string
+          equipment_supervision_acknowledged?: boolean | null
+          heard_from?: Json | null
+          id?: string
+          onlead_socializing_acknowledged?: boolean | null
+          photo_permission?: string | null
+          privacy_policy_agreed?: boolean | null
+          signature_data?: string | null
+          signature_date?: string | null
+          signature_name?: string | null
+          status?: string | null
+          submitted_at?: string | null
+          terms_agreed?: boolean | null
+          training_equipment_acknowledged?: boolean | null
+          treats_acknowledged?: boolean | null
+          updated_at?: string
+          vet_clearance_url?: string | null
+          waste_disposal_acknowledged?: boolean | null
+          whatsapp_permission?: string | null
+        }
+        Update: {
+          branch_id?: string
+          class_schedule_id?: string | null
+          class_type?: string
+          class_type_other?: string | null
+          client_id?: string
+          created_at?: string
+          dog_id?: string
+          equipment_supervision_acknowledged?: boolean | null
+          heard_from?: Json | null
+          id?: string
+          onlead_socializing_acknowledged?: boolean | null
+          photo_permission?: string | null
+          privacy_policy_agreed?: boolean | null
+          signature_data?: string | null
+          signature_date?: string | null
+          signature_name?: string | null
+          status?: string | null
+          submitted_at?: string | null
+          terms_agreed?: boolean | null
+          training_equipment_acknowledged?: boolean | null
+          treats_acknowledged?: boolean | null
+          updated_at?: string
+          vet_clearance_url?: string | null
+          waste_disposal_acknowledged?: boolean | null
+          whatsapp_permission?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "enrollment_registrations_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrollment_registrations_class_schedule_id_fkey"
+            columns: ["class_schedule_id"]
+            isOneToOne: false
+            referencedRelation: "class_schedules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrollment_registrations_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrollment_registrations_dog_id_fkey"
+            columns: ["dog_id"]
+            isOneToOne: false
+            referencedRelation: "dogs"
             referencedColumns: ["id"]
           },
         ]

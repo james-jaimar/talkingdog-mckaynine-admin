@@ -1,0 +1,208 @@
+import { UseFormReturn } from "react-hook-form";
+import { FullEnrollmentFormValues } from "../types";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Dog, Calendar, Heart } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+interface Step3DogProps {
+  form: UseFormReturn<FullEnrollmentFormValues>;
+}
+
+const acquiredFromOptions = [
+  "KUSA", "Breeder", "SPCA/AACL", "Rescue org", "Family/friends", 
+  "Advert", "Born in home", "Stray", "Other"
+];
+
+const ageAtAcquisitionOptions = [
+  "Less than 2 months", "2-4 months", "4-12 months", "Older than 1 year"
+];
+
+export function Step3Dog({ form }: Step3DogProps) {
+  const { register, watch, setValue, formState: { errors } } = form;
+  const gender = watch("gender");
+  const spayNeuterStatus = watch("spayNeuterStatus");
+  const acquiredFrom = watch("acquiredFrom");
+  const ageAtAcquisition = watch("ageAtAcquisition");
+
+  return (
+    <div className="space-y-6 animate-in fade-in duration-500">
+      {/* Header */}
+      <div className="text-center space-y-2">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-2">
+          <Dog className="h-8 w-8 text-primary" />
+        </div>
+        <h2 className="text-2xl font-bold text-foreground">Your Pup's Details</h2>
+        <p className="text-muted-foreground">Tell us about your furry friend</p>
+      </div>
+
+      {/* Form Fields */}
+      <div className="space-y-6 max-w-xl mx-auto">
+        {/* Dog Name & Birth Date */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="dogName" className="flex items-center gap-2">
+              <Dog className="h-4 w-4 text-muted-foreground" />
+              Dog's Name *
+            </Label>
+            <Input
+              id="dogName"
+              placeholder="What's your pup called?"
+              {...register("dogName")}
+              className="h-12"
+            />
+            {errors.dogName && (
+              <p className="text-destructive text-sm">{errors.dogName.message}</p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="birthDate" className="flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+              Birth Date *
+            </Label>
+            <Input
+              id="birthDate"
+              type="date"
+              {...register("birthDate")}
+              className="h-12"
+            />
+            {errors.birthDate && (
+              <p className="text-destructive text-sm">{errors.birthDate.message}</p>
+            )}
+          </div>
+        </div>
+
+        {/* Gender Selection */}
+        <div className="space-y-3">
+          <Label>Gender *</Label>
+          <div className="grid grid-cols-2 gap-3">
+            {["Male", "Female"].map((option) => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => setValue("gender", option as "Male" | "Female")}
+                className={cn(
+                  "p-4 rounded-xl border-2 transition-all duration-200 flex flex-col items-center gap-2",
+                  gender === option
+                    ? "border-primary bg-primary/5 ring-2 ring-primary/20"
+                    : "border-border hover:border-primary/50"
+                )}
+              >
+                <span className="text-2xl">{option === "Male" ? "♂️" : "♀️"}</span>
+                <span className="font-medium">{option}</span>
+              </button>
+            ))}
+          </div>
+          {errors.gender && (
+            <p className="text-destructive text-sm">{errors.gender.message}</p>
+          )}
+        </div>
+
+        {/* Breed */}
+        <div className="space-y-2">
+          <Label htmlFor="breed">Breed *</Label>
+          <Input
+            id="breed"
+            placeholder="e.g., Golden Retriever, Mixed Breed"
+            {...register("breed")}
+            className="h-12"
+          />
+          {errors.breed && (
+            <p className="text-destructive text-sm">{errors.breed.message}</p>
+          )}
+        </div>
+
+        {/* Spay/Neuter Status */}
+        <div className="space-y-3">
+          <Label className="flex items-center gap-2">
+            <Heart className="h-4 w-4 text-muted-foreground" />
+            Spay/Neuter Status *
+          </Label>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {[
+              { value: "When old enough", label: "When old enough" },
+              { value: "Already done", label: "Already done" },
+              { value: "Not planning", label: "Not planning to" }
+            ].map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => setValue("spayNeuterStatus", option.value as any)}
+                className={cn(
+                  "p-3 rounded-xl border-2 transition-all duration-200 text-sm font-medium",
+                  spayNeuterStatus === option.value
+                    ? "border-primary bg-primary/5"
+                    : "border-border hover:border-primary/50"
+                )}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          {errors.spayNeuterStatus && (
+            <p className="text-destructive text-sm">{errors.spayNeuterStatus.message}</p>
+          )}
+        </div>
+
+        {/* Acquired From */}
+        <div className="space-y-3">
+          <Label>Where Did You Get Your Dog? *</Label>
+          <div className="grid grid-cols-3 gap-2">
+            {acquiredFromOptions.map((option) => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => setValue("acquiredFrom", option as any)}
+                className={cn(
+                  "p-2 rounded-lg border-2 transition-all duration-200 text-xs sm:text-sm",
+                  acquiredFrom === option
+                    ? "border-primary bg-primary/5"
+                    : "border-border hover:border-primary/50"
+                )}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+          {acquiredFrom === "Other" && (
+            <Input
+              placeholder="Please specify..."
+              {...register("acquiredFromOther")}
+              className="mt-2"
+            />
+          )}
+          {errors.acquiredFrom && (
+            <p className="text-destructive text-sm">{errors.acquiredFrom.message}</p>
+          )}
+        </div>
+
+        {/* Age at Acquisition */}
+        <div className="space-y-3">
+          <Label>Age When You Got Them *</Label>
+          <div className="grid grid-cols-2 gap-3">
+            {ageAtAcquisitionOptions.map((option) => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => setValue("ageAtAcquisition", option as any)}
+                className={cn(
+                  "p-3 rounded-xl border-2 transition-all duration-200 text-sm",
+                  ageAtAcquisition === option
+                    ? "border-primary bg-primary/5"
+                    : "border-border hover:border-primary/50"
+                )}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+          {errors.ageAtAcquisition && (
+            <p className="text-destructive text-sm">{errors.ageAtAcquisition.message}</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
