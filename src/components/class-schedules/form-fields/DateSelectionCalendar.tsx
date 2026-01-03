@@ -32,7 +32,7 @@ export function DateSelectionCalendar({ control }: DateSelectionCalendarProps) {
   
   // Calculate min/max selectable dates
   const today = new Date();
-  const minDate = startOfDay(subMonths(today, 2));
+  const minDate = startOfDay(subMonths(today, 6));
   const maxDate = endOfDay(addMonths(today, 6));
 
   // Fetch available terms for multiple term selection
@@ -92,7 +92,7 @@ export function DateSelectionCalendar({ control }: DateSelectionCalendarProps) {
           <FormDescription>
             Click on days to select multiple dates for this class.
             <br />
-            You may select dates up to 2 months in the past and up to 6 months into the future.
+            You may select dates up to 6 months in the past and up to 6 months into the future.
             {terms && terms.length > 0 && selectedDates.length > 0 && (
               <>
                 <br />
