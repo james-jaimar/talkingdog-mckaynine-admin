@@ -300,10 +300,8 @@ export function ClassStatusCell({
     );
   }
 
-  // Display compact status with indicators
-  const displayText = passPercentage 
-    ? `${passPercentage}%` 
-    : period || status?.replace('_', ' ') || '';
+  // Display compact status with indicators - always show period/date, percentage visible in popover
+  const displayText = period || status?.replace('_', ' ') || '';
 
   return (
     <TableCell className={cn("text-center p-1", className)}>
