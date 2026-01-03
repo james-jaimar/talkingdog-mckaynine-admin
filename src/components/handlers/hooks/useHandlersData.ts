@@ -30,8 +30,11 @@ interface ClassEnrollment {
 
 interface ClassStatus {
   class_type: string;
-  status: 'completed' | 'interested' | 'not-interested';
+  status: 'completed' | 'passed' | 'no_pass' | 'incomplete' | 'did_not_grade' | 'did_not_attend' | 'interested' | 'not-interested';
   period?: string;
+  pass_percentage?: number | null;
+  next_action?: 'continuing' | 'wants_info' | 'stopping' | 'none' | null;
+  result_notes?: string;
 }
 
 export interface Handler {
@@ -50,9 +53,12 @@ export interface Handler {
   class_statuses?: ClassStatus[];
 }
 
+export type ActionFilter = 'all' | 'wants_info' | 'continuing' | 'stopping' | 'has_tasks';
+
 export function useHandlersData() {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentGroup, setCurrentGroup] = useState("A");
+  const [actionFilter, setActionFilter] = useState<ActionFilter>('all');
   const itemsPerPage = 50;
   const { currentBranch } = useBranch();
 
@@ -161,8 +167,11 @@ export function useHandlersData() {
             if (!found) return { class_type: classType, status: undefined, period: undefined };
             return {
               class_type: classType,
-              status: found.completed ? "completed" : found.status,
+              status: found.result_status || (found.completed ? "completed" : found.status),
               period: found.period,
+              pass_percentage: found.pass_percentage,
+              next_action: found.next_action,
+              result_notes: found.result_notes,
             };
           });
           
@@ -193,7 +202,7 @@ export function useHandlersData() {
   });
 
   // Filter handlers by search query
-  const filteredHandlers = handlers.filter(handler => 
+  const filteredBySearch = handlers.filter(handler => 
     handler.first_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     handler.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
     handler.phone?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -203,10 +212,32 @@ export function useHandlersData() {
     )
   );
 
-  // Filter by current alphabet group
-  const currentGroupHandlers = searchQuery 
-    ? filteredHandlers 
-    : filteredHandlers.filter(handler => {
+  // Filter by action filter
+  const filteredByAction = actionFilter === 'all' 
+    ? filteredBySearch 
+    : filteredBySearch.filter(handler => {
+        const hasNextAction = (action: string) => 
+          handler.class_statuses?.some(s => s.next_action === action);
+        
+        switch (actionFilter) {
+          case 'wants_info':
+            return hasNextAction('wants_info');
+          case 'continuing':
+            return hasNextAction('continuing');
+          case 'stopping':
+            return hasNextAction('stopping');
+          case 'has_tasks':
+            // This would require loading tasks - for now just check next_action
+            return hasNextAction('wants_info') || hasNextAction('continuing');
+          default:
+            return true;
+        }
+      });
+
+  // Filter by current alphabet group (only when not searching and filter is 'all')
+  const currentGroupHandlers = (searchQuery || actionFilter !== 'all')
+    ? filteredByAction 
+    : filteredByAction.filter(handler => {
         const firstLetter = handler.first_name.charAt(0).toUpperCase();
         const group = alphabetGroups.find(group => 
           group.range.some(letter => firstLetter === letter)
@@ -214,13 +245,26 @@ export function useHandlersData() {
         return group?.label === currentGroup;
       });
 
+  // Calculate filter counts
+  const filterCounts = {
+    all: handlers.length,
+    wants_info: handlers.filter(h => h.class_statuses?.some(s => s.next_action === 'wants_info')).length,
+    continuing: handlers.filter(h => h.class_statuses?.some(s => s.next_action === 'continuing')).length,
+    stopping: handlers.filter(h => h.class_statuses?.some(s => s.next_action === 'stopping')).length,
+    has_tasks: handlers.filter(h => h.class_statuses?.some(s => s.next_action === 'wants_info' || s.next_action === 'continuing')).length,
+  };
+
   return {
     handlers: currentGroupHandlers,
+    allHandlers: handlers,
     isLoading,
     searchQuery,
     setSearchQuery,
     currentGroup,
     setCurrentGroup,
+    actionFilter,
+    setActionFilter,
+    filterCounts,
     itemsPerPage,
     currentBranch,
     refetch

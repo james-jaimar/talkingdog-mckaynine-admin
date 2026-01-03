@@ -1,0 +1,290 @@
+import { useState, useEffect } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { useTerm } from "@/context/TermContext";
+import { getCurrentTermString } from "../utils/getCurrentTermString";
+import { useEnrolledHandlers } from "./useEnrolledHandlers";
+import { HandlerCompletionRow } from "./HandlerCompletionRow";
+import { ClassClosureModalProps, HandlerCompletionData } from "./types";
+
+// Next class mapping for auto-task creation
+const NEXT_CLASS_MAP: Record<string, string> = {
+  "Puppy": "EO",
+  "EO": "CGC Bronze",
+  "CGC Bronze": "CGC Silver",
+  "Beginner": "Novice",
+};
+
+export function ClassClosureModal({
+  isOpen,
+  onClose,
+  classId,
+  className,
+  classType,
+  onClassClosed,
+}: ClassClosureModalProps) {
+  const { toast } = useToast();
+  const { termData } = useTerm();
+  const currentTerm = getCurrentTermString(termData);
+  
+  const { data: enrolledHandlers, isLoading: loadingHandlers } = useEnrolledHandlers(classId);
+  
+  const [completionData, setCompletionData] = useState<HandlerCompletionData[]>([]);
+  const [isClosing, setIsClosing] = useState(false);
+
+  // Initialize completion data when handlers load
+  useEffect(() => {
+    if (enrolledHandlers?.length) {
+      setCompletionData(
+        enrolledHandlers.map((h) => ({
+          booking_id: h.booking_id,
+          handler_id: h.handler_id,
+          handler_name: h.handler_name,
+          dog_name: h.dog_name,
+          pass_percentage: null,
+          result_status: "passed" as const,
+          result_notes: "",
+          next_action: "none" as const,
+        }))
+      );
+    }
+  }, [enrolledHandlers]);
+
+  const handleUpdateHandler = (index: number, data: HandlerCompletionData) => {
+    setCompletionData((prev) => {
+      const updated = [...prev];
+      updated[index] = data;
+      return updated;
+    });
+  };
+
+  const handleBulkAction = (action: "mark_all_passed" | "set_continuing" | "set_wants_info") => {
+    setCompletionData((prev) =>
+      prev.map((item) => {
+        switch (action) {
+          case "mark_all_passed":
+            return { ...item, result_status: "passed" as const };
+          case "set_continuing":
+            return { ...item, next_action: "continuing" as const };
+          case "set_wants_info":
+            return { ...item, next_action: "wants_info" as const };
+          default:
+            return item;
+        }
+      })
+    );
+  };
+
+  const handleCloseClass = async () => {
+    setIsClosing(true);
+
+    try {
+      // 1. Update class status to closed
+      const { error: classError } = await supabase
+        .from("classes")
+        .update({ status: "closed" })
+        .eq("id", classId);
+
+      if (classError) throw classError;
+
+      // 2. Insert/update handler_class_status for each handler
+      let completedCount = 0;
+      let tasksCreated = 0;
+
+      for (const handler of completionData) {
+        // Upsert handler class status
+        const { error: statusError } = await supabase
+          .from("handler_class_status")
+          .upsert({
+            booking_id: handler.booking_id,
+            class_id: classId,
+            handler_id: handler.handler_id,
+            class_type: classType,
+            completed: true,
+            completed_at: new Date().toISOString(),
+            completion_method: "manual",
+            period: currentTerm,
+            pass_percentage: handler.pass_percentage,
+            result_status: handler.result_status,
+            result_notes: handler.result_notes,
+            next_action: handler.next_action,
+            action_completed: false,
+            is_currently_enrolled: false,
+          }, {
+            onConflict: 'id'
+          });
+
+        if (!statusError) completedCount++;
+
+        // 3. Create tasks based on next_action
+        if (handler.next_action === "wants_info") {
+          const nextClass = NEXT_CLASS_MAP[classType] || "next class";
+          await supabase.from("handler_tasks").insert({
+            handler_id: handler.handler_id,
+            class_type: classType,
+            task_type: "send_info_pack",
+            title: `Send ${nextClass} info pack`,
+            description: `Handler completed ${classType}. Send information about ${nextClass} class.`,
+            status: "pending",
+          });
+          tasksCreated++;
+        } else if (handler.next_action === "continuing") {
+          const nextClass = NEXT_CLASS_MAP[classType] || "next class";
+          await supabase.from("handler_tasks").insert({
+            handler_id: handler.handler_id,
+            class_type: classType,
+            task_type: "enrollment",
+            title: `Enroll in ${nextClass}`,
+            description: `Handler wants to continue to ${nextClass}. Follow up on enrollment.`,
+            status: "pending",
+          });
+          tasksCreated++;
+        }
+      }
+
+      toast({
+        title: "Class closed successfully",
+        description: `${completedCount} handler(s) marked as completed. ${tasksCreated} follow-up task(s) created.`,
+      });
+
+      onClassClosed();
+      onClose();
+    } catch (error: any) {
+      console.error("Error closing class:", error);
+      toast({
+        title: "Failed to close class",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsClosing(false);
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            Close Class: {className}
+          </DialogTitle>
+          <DialogDescription>
+            Record completion details for each handler. Tasks will be auto-created based on their next action.
+          </DialogDescription>
+        </DialogHeader>
+
+        {loadingHandlers ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        ) : !enrolledHandlers?.length ? (
+          <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+            <AlertCircle className="h-12 w-12 mb-2" />
+            <p>No enrolled handlers found for this class.</p>
+          </div>
+        ) : (
+          <>
+            {/* Bulk Actions */}
+            <div className="flex gap-2 mb-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleBulkAction("mark_all_passed")}
+              >
+                <CheckCircle2 className="h-4 w-4 mr-1" />
+                Mark All Passed
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleBulkAction("set_continuing")}
+              >
+                ➡️ All Continuing
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleBulkAction("set_wants_info")}
+              >
+                📧 All Want Info
+              </Button>
+            </div>
+
+            {/* Handler Table */}
+            <div className="border rounded-lg overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[180px]">Handler / Dog</TableHead>
+                    <TableHead className="w-[140px]">Result</TableHead>
+                    <TableHead className="w-[80px]">%</TableHead>
+                    <TableHead className="w-[150px]">Next Action</TableHead>
+                    <TableHead>Notes</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {completionData.map((handler, index) => (
+                    <HandlerCompletionRow
+                      key={handler.booking_id}
+                      data={handler}
+                      onChange={(data) => handleUpdateHandler(index, data)}
+                      index={index}
+                    />
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Summary */}
+            <div className="bg-muted/50 rounded-lg p-3 text-sm">
+              <div className="flex gap-4 flex-wrap">
+                <span>
+                  <strong>{completionData.filter(h => h.result_status === "passed").length}</strong> Passed
+                </span>
+                <span>
+                  <strong>{completionData.filter(h => h.next_action === "continuing").length}</strong> Continuing
+                </span>
+                <span>
+                  <strong>{completionData.filter(h => h.next_action === "wants_info").length}</strong> Want Info
+                </span>
+                <span>
+                  <strong>{completionData.filter(h => h.next_action === "stopping").length}</strong> Stopping
+                </span>
+              </div>
+            </div>
+          </>
+        )}
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={isClosing}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleCloseClass}
+            disabled={isClosing || !enrolledHandlers?.length}
+          >
+            {isClosing ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Closing...
+              </>
+            ) : (
+              "Close Class & Save"
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
