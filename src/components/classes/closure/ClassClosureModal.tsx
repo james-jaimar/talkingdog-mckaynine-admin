@@ -12,8 +12,7 @@ import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components
 import { Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useTerm } from "@/context/TermContext";
-import { getCurrentTermString } from "../utils/getCurrentTermString";
+import { useQuery } from "@tanstack/react-query";
 import { useEnrolledHandlers } from "./useEnrolledHandlers";
 import { HandlerCompletionRow } from "./HandlerCompletionRow";
 import { ClassClosureModalProps, HandlerCompletionData } from "./types";
@@ -26,6 +25,13 @@ const NEXT_CLASS_MAP: Record<string, string> = {
   "Beginner": "Novice",
 };
 
+// Format date as "Mon YY" (e.g., "May 25")
+function formatCompletionPeriod(date: Date): string {
+  const month = date.toLocaleDateString('en-US', { month: 'short' });
+  const year = date.getFullYear().toString().slice(-2);
+  return `${month} ${year}`;
+}
+
 export function ClassClosureModal({
   isOpen,
   onClose,
@@ -35,8 +41,32 @@ export function ClassClosureModal({
   onClassClosed,
 }: ClassClosureModalProps) {
   const { toast } = useToast();
-  const { termData } = useTerm();
-  const currentTerm = getCurrentTermString(termData);
+  
+  // Fetch class schedule to get the last date
+  const { data: lastClassDate } = useQuery({
+    queryKey: ["class-schedule-dates", classId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("class_schedules")
+        .select("selected_dates")
+        .eq("class_id", classId)
+        .limit(1)
+        .maybeSingle();
+      
+      if (error) throw error;
+      
+      // Get the last date from selected_dates array
+      const dates = data?.selected_dates || [];
+      if (dates.length === 0) return null;
+      
+      // Sort dates and get the last one
+      const sortedDates = [...dates].sort((a, b) => 
+        new Date(b).getTime() - new Date(a).getTime()
+      );
+      return new Date(sortedDates[0]);
+    },
+    enabled: isOpen && !!classId,
+  });
   
   const { data: enrolledHandlers, isLoading: loadingHandlers } = useEnrolledHandlers(classId);
   
@@ -114,7 +144,7 @@ export function ClassClosureModal({
             completed: true,
             completed_at: new Date().toISOString(),
             completion_method: "manual",
-            period: currentTerm,
+            period: lastClassDate ? formatCompletionPeriod(lastClassDate) : new Date().toLocaleDateString('en-US', { month: 'short' }) + ' ' + new Date().getFullYear().toString().slice(-2),
             pass_percentage: handler.pass_percentage,
             result_status: handler.result_status,
             result_notes: handler.result_notes,
