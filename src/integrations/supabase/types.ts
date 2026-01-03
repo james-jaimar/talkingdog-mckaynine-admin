@@ -1371,6 +1371,68 @@ export type Database = {
         }
         Relationships: []
       }
+      scan_processing_jobs: {
+        Row: {
+          created_at: string | null
+          created_dog_ids: string[] | null
+          enrollment_ids: string[] | null
+          error_message: string | null
+          extracted_data: Json | null
+          field_confidence: Json | null
+          file_url: string
+          filename: string
+          id: string
+          matched_client_id: string | null
+          notes_for_review: string[] | null
+          page_count: number | null
+          status: string
+          updated_at: string | null
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_dog_ids?: string[] | null
+          enrollment_ids?: string[] | null
+          error_message?: string | null
+          extracted_data?: Json | null
+          field_confidence?: Json | null
+          file_url: string
+          filename: string
+          id?: string
+          matched_client_id?: string | null
+          notes_for_review?: string[] | null
+          page_count?: number | null
+          status?: string
+          updated_at?: string | null
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_dog_ids?: string[] | null
+          enrollment_ids?: string[] | null
+          error_message?: string | null
+          extracted_data?: Json | null
+          field_confidence?: Json | null
+          file_url?: string
+          filename?: string
+          id?: string
+          matched_client_id?: string | null
+          notes_for_review?: string[] | null
+          page_count?: number | null
+          status?: string
+          updated_at?: string | null
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scan_processing_jobs_matched_client_id_fkey"
+            columns: ["matched_client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       terms: {
         Row: {
           academic_year_id: string

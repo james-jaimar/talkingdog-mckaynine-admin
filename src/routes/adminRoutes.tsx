@@ -10,6 +10,7 @@ import Handlers from "@/pages/Handlers";
 import HandlerDetail from "@/pages/HandlerDetail";
 import FinancialReports from "@/pages/FinancialReports";
 import FinancialDashboard from "@/pages/FinancialDashboard";
+import IntakeScans from "@/pages/admin/IntakeScans";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import RequireAdmin from "@/components/auth/RequireAdmin";
 
@@ -42,6 +43,10 @@ export const adminRoutes = [
   {
     path: "/admin/financial-dashboard",
     element: <FinancialDashboard />,
+  },
+  {
+    path: "/admin/intake-scans",
+    element: <IntakeScans />,
   },
   {
     path: "/invoices",
