@@ -35,6 +35,9 @@ interface ClassStatus {
   pass_percentage?: number | null;
   next_action?: 'continuing' | 'wants_info' | 'stopping' | 'none' | null;
   result_notes?: string;
+  next_class_type?: string | null;
+  next_term_number?: string | null;
+  next_term_year?: number | null;
 }
 
 export interface Handler {
@@ -172,6 +175,9 @@ export function useHandlersData() {
               pass_percentage: found.pass_percentage,
               next_action: found.next_action,
               result_notes: found.result_notes,
+              next_class_type: found.next_class_type,
+              next_term_number: found.next_term_number,
+              next_term_year: found.next_term_year,
             };
           });
           

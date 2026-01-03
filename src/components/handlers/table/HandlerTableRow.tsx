@@ -21,6 +21,9 @@ interface HandlerTableRowProps {
       pass_percentage?: number | null;
       next_action?: 'continuing' | 'wants_info' | 'stopping' | 'none' | null;
       result_notes?: string;
+      next_class_type?: string | null;
+      next_term_number?: string | null;
+      next_term_year?: number | null;
     }[];
     email?: string;
     phone?: string;
@@ -72,6 +75,9 @@ export function HandlerTableRow({ handler, index = 0 }: HandlerTableRowProps) {
             initialPassPercentage={classStatus?.pass_percentage}
             initialNextAction={classStatus?.next_action}
             initialNotes={classStatus?.result_notes || ''}
+            initialNextClassType={classStatus?.next_class_type}
+            initialNextTermNumber={classStatus?.next_term_number}
+            initialNextTermYear={classStatus?.next_term_year}
             className="w-[90px]"
           />
         );

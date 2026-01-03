@@ -119,6 +119,9 @@ export function ClassClosureModal({
             result_status: handler.result_status,
             result_notes: handler.result_notes,
             next_action: handler.next_action,
+            next_class_type: handler.next_class_type || null,
+            next_term_number: handler.next_term_number || null,
+            next_term_year: handler.next_term_year || null,
             action_completed: false,
             is_currently_enrolled: false,
           }, {
@@ -140,13 +143,18 @@ export function ClassClosureModal({
           });
           tasksCreated++;
         } else if (handler.next_action === "continuing") {
-          const nextClass = NEXT_CLASS_MAP[classType] || "next class";
+          // Use selected class/term or fallback to defaults
+          const nextClass = handler.next_class_type || NEXT_CLASS_MAP[classType] || "next class";
+          const termInfo = handler.next_term_number && handler.next_term_year 
+            ? `Term ${handler.next_term_number} ${handler.next_term_year}`
+            : "upcoming term";
+          
           await supabase.from("handler_tasks").insert({
             handler_id: handler.handler_id,
             class_type: classType,
             task_type: "enrollment",
-            title: `Enroll in ${nextClass}`,
-            description: `Handler wants to continue to ${nextClass}. Follow up on enrollment.`,
+            title: `Enroll in ${nextClass} - ${termInfo}`,
+            description: `Handler completed ${classType}. Follow up on enrollment for ${nextClass} in ${termInfo}.`,
             status: "pending",
           });
           tasksCreated++;
@@ -222,7 +230,7 @@ export function ClassClosureModal({
             </div>
 
             {/* Handler Table */}
-            <div className="border rounded-lg overflow-hidden">
+            <div className="border rounded-lg overflow-hidden overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -230,6 +238,13 @@ export function ClassClosureModal({
                     <TableHead className="w-[140px]">Result</TableHead>
                     <TableHead className="w-[80px]">%</TableHead>
                     <TableHead className="w-[150px]">Next Action</TableHead>
+                    {/* Dynamic columns shown when any handler has "continuing" */}
+                    {completionData.some(h => h.next_action === "continuing") && (
+                      <>
+                        <TableHead className="w-[140px]">Next Term</TableHead>
+                        <TableHead className="w-[140px]">Next Class</TableHead>
+                      </>
+                    )}
                     <TableHead>Notes</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -240,6 +255,7 @@ export function ClassClosureModal({
                       data={handler}
                       onChange={(data) => handleUpdateHandler(index, data)}
                       index={index}
+                      showContinuingColumns={completionData.some(h => h.next_action === "continuing")}
                     />
                   ))}
                 </TableBody>

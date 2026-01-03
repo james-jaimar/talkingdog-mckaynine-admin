@@ -3,17 +3,37 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { HandlerCompletionData } from "./types";
+import { CLASS_TYPES } from "../types/class-types";
+import { useTermOptions } from "@/hooks/useTermOptions";
 
 interface HandlerCompletionRowProps {
   data: HandlerCompletionData;
   onChange: (data: HandlerCompletionData) => void;
   index: number;
+  showContinuingColumns?: boolean;
 }
 
-export function HandlerCompletionRow({ data, onChange, index }: HandlerCompletionRowProps) {
+export function HandlerCompletionRow({ data, onChange, index, showContinuingColumns = false }: HandlerCompletionRowProps) {
+  const { terms } = useTermOptions();
+  
   const handleChange = (field: keyof HandlerCompletionData, value: any) => {
     onChange({ ...data, [field]: value });
   };
+
+  const handleTermChange = (value: string) => {
+    const [termNum, year] = value.split("-");
+    onChange({
+      ...data,
+      next_term_number: termNum,
+      next_term_year: parseInt(year),
+    });
+  };
+
+  const selectedTermValue = data.next_term_number && data.next_term_year 
+    ? `${data.next_term_number}-${data.next_term_year}` 
+    : "";
+
+  const isContinuing = data.next_action === "continuing";
 
   return (
     <TableRow className={index % 2 === 0 ? "bg-muted/30" : ""}>
@@ -111,6 +131,51 @@ export function HandlerCompletionRow({ data, onChange, index }: HandlerCompletio
           </SelectContent>
         </Select>
       </TableCell>
+
+      {/* Conditionally show Term and Class columns when any handler is Continuing */}
+      {showContinuingColumns && (
+        <>
+          <TableCell>
+            {isContinuing ? (
+              <Select value={selectedTermValue} onValueChange={handleTermChange}>
+                <SelectTrigger className="w-[130px]">
+                  <SelectValue placeholder="Select term" />
+                </SelectTrigger>
+                <SelectContent>
+                  {terms.map((term) => (
+                    <SelectItem key={`${term.term_number}-${term.year}`} value={`${term.term_number}-${term.year}`}>
+                      {term.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <span className="text-muted-foreground text-sm">—</span>
+            )}
+          </TableCell>
+          <TableCell>
+            {isContinuing ? (
+              <Select
+                value={data.next_class_type || ""}
+                onValueChange={(value) => handleChange('next_class_type', value)}
+              >
+                <SelectTrigger className="w-[130px]">
+                  <SelectValue placeholder="Select class" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CLASS_TYPES.map((type) => (
+                    <SelectItem key={type} value={type}>
+                      {type}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <span className="text-muted-foreground text-sm">—</span>
+            )}
+          </TableCell>
+        </>
+      )}
       
       <TableCell>
         <Textarea
