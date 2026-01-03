@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,13 +12,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Mail, ArrowRight, StopCircle, Check, X, HelpCircle } from "lucide-react";
+import { Mail, ArrowRight, StopCircle } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useTermOptions } from "@/hooks/useTermOptions";
+import { CLASS_TYPES } from "@/components/classes/types/class-types";
 
 interface ClassStatusCellProps {
   classType: string;
@@ -28,6 +30,9 @@ interface ClassStatusCellProps {
   initialPassPercentage?: number | null;
   initialNextAction?: 'continuing' | 'wants_info' | 'stopping' | 'none' | null;
   initialNotes?: string;
+  initialNextClassType?: string | null;
+  initialNextTermNumber?: string | null;
+  initialNextTermYear?: number | null;
   className?: string;
 }
 
@@ -56,15 +61,33 @@ export function ClassStatusCell({
   initialPassPercentage = null,
   initialNextAction = null,
   initialNotes = '',
+  initialNextClassType = null,
+  initialNextTermNumber = null,
+  initialNextTermYear = null,
   className
 }: ClassStatusCellProps) {
+  const { terms } = useTermOptions();
+  
   const [status, setStatus] = useState<string | null>(initialStatus);
   const [period, setPeriod] = useState<string>(initialPeriod);
   const [passPercentage, setPassPercentage] = useState<number | null>(initialPassPercentage);
   const [nextAction, setNextAction] = useState<string | null>(initialNextAction);
   const [notes, setNotes] = useState<string>(initialNotes);
+  const [nextClassType, setNextClassType] = useState<string | null>(initialNextClassType);
+  const [nextTermNumber, setNextTermNumber] = useState<string | null>(initialNextTermNumber);
+  const [nextTermYear, setNextTermYear] = useState<number | null>(initialNextTermYear);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isOpen, setIsOpen] = useState(false);
+
+  const selectedTermValue = nextTermNumber && nextTermYear 
+    ? `${nextTermNumber}-${nextTermYear}` 
+    : "";
+
+  const handleTermChange = (value: string) => {
+    const [termNum, year] = value.split("-");
+    setNextTermNumber(termNum);
+    setNextTermYear(parseInt(year));
+  };
 
   const handleUpdate = async () => {
     if (!clientId) return;
@@ -82,6 +105,9 @@ export function ClassStatusCell({
           pass_percentage: passPercentage,
           next_action: nextAction || 'none',
           result_notes: notes,
+          next_class_type: nextAction === 'continuing' ? nextClassType : null,
+          next_term_number: nextAction === 'continuing' ? nextTermNumber : null,
+          next_term_year: nextAction === 'continuing' ? nextTermYear : null,
           completed: status === 'passed' || status === 'completed',
           completed_at: (status === 'passed' || status === 'completed') ? new Date().toISOString() : null,
         }, { 
@@ -127,6 +153,132 @@ export function ClassStatusCell({
     );
   };
 
+  const showContinuingFields = nextAction === 'continuing';
+
+  // Form content shared between both states
+  const renderFormContent = () => (
+    <div className="space-y-3">
+      <div className="font-medium text-sm">{classType}</div>
+      
+      <div className="space-y-2">
+        <label className="text-xs text-muted-foreground">Result</label>
+        <Select 
+          value={status || ''}
+          onValueChange={(value) => setStatus(value)}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select result" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="passed">✓ Passed</SelectItem>
+            <SelectItem value="no_pass">✗ No Pass</SelectItem>
+            <SelectItem value="incomplete">◐ Incomplete</SelectItem>
+            <SelectItem value="did_not_grade">— Did Not Grade</SelectItem>
+            <SelectItem value="did_not_attend">○ Did Not Attend</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <div className="space-y-1">
+          <label className="text-xs text-muted-foreground">Pass %</label>
+          <Input
+            type="number"
+            min={0}
+            max={100}
+            placeholder="%"
+            value={passPercentage ?? ""}
+            onChange={(e) => setPassPercentage(e.target.value ? Number(e.target.value) : null)}
+          />
+        </div>
+        <div className="space-y-1">
+          <label className="text-xs text-muted-foreground">Period</label>
+          <Input
+            placeholder="e.g., Mar 25"
+            value={period}
+            onChange={(e) => setPeriod(e.target.value)}
+          />
+        </div>
+      </div>
+
+      <div className="space-y-1">
+        <label className="text-xs text-muted-foreground">Next Action</label>
+        <Select 
+          value={nextAction || 'none'}
+          onValueChange={(value) => setNextAction(value)}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">— None</SelectItem>
+            <SelectItem value="continuing">➡️ Continuing</SelectItem>
+            <SelectItem value="wants_info">📧 Wants Info</SelectItem>
+            <SelectItem value="stopping">⏹️ Stopping</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Continuation details - only show when continuing */}
+      {showContinuingFields && (
+        <div className="grid grid-cols-2 gap-2 p-2 bg-muted/50 rounded-md">
+          <div className="space-y-1">
+            <label className="text-xs text-muted-foreground">Next Term</label>
+            <Select value={selectedTermValue} onValueChange={handleTermChange}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select term" />
+              </SelectTrigger>
+              <SelectContent>
+                {terms.map((term) => (
+                  <SelectItem key={`${term.term_number}-${term.year}`} value={`${term.term_number}-${term.year}`}>
+                    {term.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs text-muted-foreground">Next Class</label>
+            <Select 
+              value={nextClassType || ''}
+              onValueChange={(value) => setNextClassType(value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select class" />
+              </SelectTrigger>
+              <SelectContent>
+                {CLASS_TYPES.map((type) => (
+                  <SelectItem key={type} value={type}>
+                    {type}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      )}
+
+      <div className="space-y-1">
+        <label className="text-xs text-muted-foreground">Notes</label>
+        <Textarea
+          placeholder="Add notes..."
+          className="min-h-[60px] text-sm"
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+        />
+      </div>
+
+      <Button 
+        onClick={handleUpdate} 
+        disabled={isLoading || (!status && !initialStatus)}
+        className="w-full"
+        size="sm"
+      >
+        {isLoading ? "Saving..." : "Save"}
+      </Button>
+    </div>
+  );
+
   if (!status) {
     return (
       <TableCell className={cn("text-center p-1", className)}>
@@ -141,87 +293,7 @@ export function ClassStatusCell({
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-72">
-            <div className="space-y-3">
-              <div className="font-medium text-sm">{classType}</div>
-              
-              <div className="space-y-2">
-                <label className="text-xs text-muted-foreground">Result</label>
-                <Select 
-                  value={status || ''}
-                  onValueChange={(value) => setStatus(value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select result" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="passed">✓ Passed</SelectItem>
-                    <SelectItem value="no_pass">✗ No Pass</SelectItem>
-                    <SelectItem value="incomplete">◐ Incomplete</SelectItem>
-                    <SelectItem value="did_not_grade">— Did Not Grade</SelectItem>
-                    <SelectItem value="did_not_attend">○ Did Not Attend</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground">Pass %</label>
-                  <Input
-                    type="number"
-                    min={0}
-                    max={100}
-                    placeholder="%"
-                    value={passPercentage ?? ""}
-                    onChange={(e) => setPassPercentage(e.target.value ? Number(e.target.value) : null)}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground">Period</label>
-                  <Input
-                    placeholder="e.g., Mar 25"
-                    value={period}
-                    onChange={(e) => setPeriod(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs text-muted-foreground">Next Action</label>
-                <Select 
-                  value={nextAction || 'none'}
-                  onValueChange={(value) => setNextAction(value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">— None</SelectItem>
-                    <SelectItem value="continuing">➡️ Continuing</SelectItem>
-                    <SelectItem value="wants_info">📧 Wants Info</SelectItem>
-                    <SelectItem value="stopping">⏹️ Stopping</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs text-muted-foreground">Notes</label>
-                <Textarea
-                  placeholder="Add notes..."
-                  className="min-h-[60px] text-sm"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                />
-              </div>
-
-              <Button 
-                onClick={handleUpdate} 
-                disabled={isLoading || !status}
-                className="w-full"
-                size="sm"
-              >
-                {isLoading ? "Saving..." : "Save"}
-              </Button>
-            </div>
+            {renderFormContent()}
           </PopoverContent>
         </Popover>
       </TableCell>
@@ -250,87 +322,7 @@ export function ClassStatusCell({
           </button>
         </PopoverTrigger>
         <PopoverContent className="w-72">
-          <div className="space-y-3">
-            <div className="font-medium text-sm">{classType}</div>
-            
-            <div className="space-y-2">
-              <label className="text-xs text-muted-foreground">Result</label>
-              <Select 
-                value={status}
-                onValueChange={(value) => setStatus(value)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="passed">✓ Passed</SelectItem>
-                  <SelectItem value="no_pass">✗ No Pass</SelectItem>
-                  <SelectItem value="incomplete">◐ Incomplete</SelectItem>
-                  <SelectItem value="did_not_grade">— Did Not Grade</SelectItem>
-                  <SelectItem value="did_not_attend">○ Did Not Attend</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-1">
-                <label className="text-xs text-muted-foreground">Pass %</label>
-                <Input
-                  type="number"
-                  min={0}
-                  max={100}
-                  placeholder="%"
-                  value={passPercentage ?? ""}
-                  onChange={(e) => setPassPercentage(e.target.value ? Number(e.target.value) : null)}
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs text-muted-foreground">Period</label>
-                <Input
-                  placeholder="e.g., Mar 25"
-                  value={period}
-                  onChange={(e) => setPeriod(e.target.value)}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">Next Action</label>
-              <Select 
-                value={nextAction || 'none'}
-                onValueChange={(value) => setNextAction(value)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">— None</SelectItem>
-                  <SelectItem value="continuing">➡️ Continuing</SelectItem>
-                  <SelectItem value="wants_info">📧 Wants Info</SelectItem>
-                  <SelectItem value="stopping">⏹️ Stopping</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">Notes</label>
-              <Textarea
-                placeholder="Add notes..."
-                className="min-h-[60px] text-sm"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-              />
-            </div>
-
-            <Button 
-              onClick={handleUpdate} 
-              disabled={isLoading}
-              className="w-full"
-              size="sm"
-            >
-              {isLoading ? "Saving..." : "Save"}
-            </Button>
-          </div>
+          {renderFormContent()}
         </PopoverContent>
       </Popover>
     </TableCell>

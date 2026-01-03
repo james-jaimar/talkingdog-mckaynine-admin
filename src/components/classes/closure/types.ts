@@ -7,6 +7,9 @@ export interface HandlerCompletionData {
   result_status: 'passed' | 'no_pass' | 'incomplete' | 'did_not_grade' | 'did_not_attend';
   result_notes: string;
   next_action: 'continuing' | 'wants_info' | 'stopping' | 'none';
+  next_class_type?: string;
+  next_term_number?: string;
+  next_term_year?: number;
 }
 
 export interface ClassClosureModalProps {

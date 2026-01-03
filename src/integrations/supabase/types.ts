@@ -1128,6 +1128,9 @@ export type Database = {
           id: string
           is_currently_enrolled: boolean | null
           next_action: string | null
+          next_class_type: string | null
+          next_term_number: string | null
+          next_term_year: number | null
           pass_percentage: number | null
           period: string | null
           result_notes: string | null
@@ -1149,6 +1152,9 @@ export type Database = {
           id?: string
           is_currently_enrolled?: boolean | null
           next_action?: string | null
+          next_class_type?: string | null
+          next_term_number?: string | null
+          next_term_year?: number | null
           pass_percentage?: number | null
           period?: string | null
           result_notes?: string | null
@@ -1170,6 +1176,9 @@ export type Database = {
           id?: string
           is_currently_enrolled?: boolean | null
           next_action?: string | null
+          next_class_type?: string | null
+          next_term_number?: string | null
+          next_term_year?: number | null
           pass_percentage?: number | null
           period?: string | null
           result_notes?: string | null
