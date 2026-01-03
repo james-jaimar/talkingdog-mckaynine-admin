@@ -123,23 +123,32 @@ serve(async (req) => {
         .eq('id', job_id);
     }
 
-    console.log("Fetching file from URL:", file_url);
+    console.log("File path:", file_url);
     
-    // Fetch the file and convert to base64
-    const fileResponse = await fetch(file_url);
-    if (!fileResponse.ok) {
-      throw new Error(`Failed to fetch file: ${fileResponse.statusText}`);
+    // Download file directly from private storage bucket using service role
+    const { data: fileData, error: downloadError } = await supabase.storage
+      .from('scanned-forms')
+      .download(file_url);
+    
+    if (downloadError || !fileData) {
+      console.error("Storage download error:", downloadError);
+      throw new Error(`Failed to download file from storage: ${downloadError?.message || 'Unknown error'}`);
     }
     
-    const fileBuffer = await fileResponse.arrayBuffer();
+    console.log("File downloaded, size:", fileData.size);
+    
+    // Convert blob to base64
+    const fileBuffer = await fileData.arrayBuffer();
     const base64Data = btoa(
       new Uint8Array(fileBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
     );
     
-    // Determine content type
-    const contentType = fileResponse.headers.get('content-type') || 'image/jpeg';
-    const isImage = contentType.startsWith('image/');
-    const isPDF = contentType === 'application/pdf';
+    // Determine content type from filename
+    const fileName = file_url.toLowerCase();
+    const isPDF = fileName.endsWith('.pdf');
+    const isImage = fileName.endsWith('.jpg') || fileName.endsWith('.jpeg') || fileName.endsWith('.png');
+    const contentType = isPDF ? 'application/pdf' : 
+                        fileName.endsWith('.png') ? 'image/png' : 'image/jpeg';
     
     console.log("File content type:", contentType);
 
