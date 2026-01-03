@@ -1113,6 +1113,9 @@ export type Database = {
       }
       handler_class_status: {
         Row: {
+          action_completed: boolean | null
+          action_completed_at: string | null
+          action_notes: string | null
           booking_id: string | null
           class_id: string | null
           class_type: string | null
@@ -1120,11 +1123,20 @@ export type Database = {
           completed_at: string | null
           completion_method: string | null
           created_at: string | null
+          current_time_slot: string | null
           handler_id: string | null
           id: string
+          is_currently_enrolled: boolean | null
+          next_action: string | null
+          pass_percentage: number | null
           period: string | null
+          result_notes: string | null
+          result_status: string | null
         }
         Insert: {
+          action_completed?: boolean | null
+          action_completed_at?: string | null
+          action_notes?: string | null
           booking_id?: string | null
           class_id?: string | null
           class_type?: string | null
@@ -1132,11 +1144,20 @@ export type Database = {
           completed_at?: string | null
           completion_method?: string | null
           created_at?: string | null
+          current_time_slot?: string | null
           handler_id?: string | null
           id?: string
+          is_currently_enrolled?: boolean | null
+          next_action?: string | null
+          pass_percentage?: number | null
           period?: string | null
+          result_notes?: string | null
+          result_status?: string | null
         }
         Update: {
+          action_completed?: boolean | null
+          action_completed_at?: string | null
+          action_notes?: string | null
           booking_id?: string | null
           class_id?: string | null
           class_type?: string | null
@@ -1144,9 +1165,15 @@ export type Database = {
           completed_at?: string | null
           completion_method?: string | null
           created_at?: string | null
+          current_time_slot?: string | null
           handler_id?: string | null
           id?: string
+          is_currently_enrolled?: boolean | null
+          next_action?: string | null
+          pass_percentage?: number | null
           period?: string | null
+          result_notes?: string | null
+          result_status?: string | null
         }
         Relationships: [
           {
@@ -1191,6 +1218,72 @@ export type Database = {
           {
             foreignKeyName: "handler_onboarding_client_id_fkey"
             columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      handler_tasks: {
+        Row: {
+          assigned_to: string | null
+          class_status_id: string | null
+          class_type: string | null
+          completed_at: string | null
+          completed_by: string | null
+          created_at: string | null
+          description: string | null
+          due_date: string | null
+          handler_id: string | null
+          id: string
+          status: string | null
+          task_type: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          assigned_to?: string | null
+          class_status_id?: string | null
+          class_type?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string | null
+          description?: string | null
+          due_date?: string | null
+          handler_id?: string | null
+          id?: string
+          status?: string | null
+          task_type: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          assigned_to?: string | null
+          class_status_id?: string | null
+          class_type?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string | null
+          description?: string | null
+          due_date?: string | null
+          handler_id?: string | null
+          id?: string
+          status?: string | null
+          task_type?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "handler_tasks_class_status_id_fkey"
+            columns: ["class_status_id"]
+            isOneToOne: false
+            referencedRelation: "handler_class_status"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "handler_tasks_handler_id_fkey"
+            columns: ["handler_id"]
             isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["id"]

@@ -11,29 +11,38 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/auth";
 import { useDropdownState } from "@/hooks/useDropdownState";
 import * as React from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
-import { getCurrentTermString } from "./utils/getCurrentTermString";
-import { useMarkHandlersCompleted } from "./hooks/useMarkHandlersCompleted";
-import { useTerm } from "@/context/TermContext";
 import { ClosedBadge } from "./ClosedBadge";
+import { ClassClosureModal } from "./closure/ClassClosureModal";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 
 interface ClassActionButtonsProps {
   classId: string;
   onEdit: () => void;
   onDelete: () => void;
-  isClosed?: boolean; // new
+  isClosed?: boolean;
 }
 
 export function ClassActionButtons({ classId, onEdit, onDelete, isClosed = false }: ClassActionButtonsProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { isOpen, setIsOpen, onClose } = useDropdownState();
-  const [closeDialogOpen, setCloseDialogOpen] = React.useState(false);
-  const [isClosing, setIsClosing] = React.useState(false);
-  const { toast } = useToast();
-  const { termData } = useTerm();
+  const [closeModalOpen, setCloseModalOpen] = React.useState(false);
+
+  // Fetch class info for the closure modal
+  const { data: classInfo, refetch: refetchClass } = useQuery({
+    queryKey: ["class-info-for-closure", classId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("classes")
+        .select("name, class_type")
+        .eq("id", classId)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!classId
+  });
 
   const handleSchedulesClick = () => {
     navigate(`/classes/${classId}/schedules`);
@@ -57,73 +66,20 @@ export function ClassActionButtons({ classId, onEdit, onDelete, isClosed = false
 
   const handleCloseClassClick = (e?: React.MouseEvent) => {
     e?.preventDefault();
-    setCloseDialogOpen(true);
+    setCloseModalOpen(true);
     onClose();
   };
 
-  const handleConfirmCloseClass = async () => {
-    setIsClosing(true);
-
-    // 1. Call supabase to update the status to "closed"
-    const { error } = await supabase
-      .from("classes")
-      .update({ status: "closed" })
-      .eq("id", classId);
-
-    if (error) {
-      toast({
-        title: "Failed to close class",
-        description: error.message,
-        variant: "destructive",
-      });
-      setIsClosing(false);
-      setCloseDialogOpen(false);
-      return;
-    }
-
-    // 2. Prepare currentTerm string and class type safely
-    const currentTerm = getCurrentTermString(termData);
-
-    // 3. Get classType safely
-    let classType = "";
-    if (termData && typeof termData === "object" && "term_number" in termData && "year" in termData) {
-      // Fetch the class type from supabase for this class, fallback to ""
-      const { data: classData } = await supabase
-        .from("classes")
-        .select("class_type")
-        .eq("id", classId)
-        .maybeSingle();
-      classType = classData?.class_type || "";
-    }
-
-    // 4. Mark all enrolled handlers as completed for this class
-    try {
-      const completedCount = await useMarkHandlersCompleted(classId, currentTerm, classType);
-      toast({
-        title: "Class closed",
-        description:
-          `This class is now marked as closed. ${completedCount} handler(s) marked as completed for this class. Handler completion is now visible in the handlers table, and will enable future certificate/comms features.`,
-      });
-    } catch (handlerErr) {
-      toast({
-        title: "Some handler completions failed",
-        description: String(handlerErr),
-        variant: "destructive",
-      });
-    }
-
-    setIsClosing(false);
-    setCloseDialogOpen(false);
+  const handleClassClosed = () => {
+    refetchClass();
+    // Trigger a page refresh to show updated status
+    window.location.reload();
   };
 
-  // For closed classes, disable or visually inform user
   return (
     <div className="flex items-center gap-1">
-      {isClosed && (
-        <ClosedBadge />
-      )}
+      {isClosed && <ClosedBadge />}
 
-      {/* Disable most actions if closed */}
       <Button 
         variant="ghost" 
         size="icon" 
@@ -173,11 +129,9 @@ export function ClassActionButtons({ classId, onEdit, onDelete, isClosed = false
           <DropdownMenuSeparator />
           {!isClosed && (
             <>
-              <DropdownMenuItem 
-                onClick={handleCloseClassClick}
-              >
+              <DropdownMenuItem onClick={handleCloseClassClick}>
                 <CircleX className="h-4 w-4 mr-2" />
-                  Close Class
+                Close Class
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem 
@@ -191,33 +145,16 @@ export function ClassActionButtons({ classId, onEdit, onDelete, isClosed = false
           )}
         </DropdownMenuContent>
       </DropdownMenu>
-      {/* Close Class Dialog */}
-      <Dialog open={closeDialogOpen} onOpenChange={setCloseDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Close this Class?</DialogTitle>
-            <DialogDescription>
-              Closing a class will prevent any new enrollments or changes. Existing handlers can be managed in the handlers tab. This action is reversible by an admin.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setCloseDialogOpen(false)}
-              disabled={isClosing}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleConfirmCloseClass}
-              disabled={isClosing}
-            >
-              {isClosing ? "Closing..." : "Close Class"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+
+      {/* New Class Closure Modal with per-handler details */}
+      <ClassClosureModal
+        isOpen={closeModalOpen}
+        onClose={() => setCloseModalOpen(false)}
+        classId={classId}
+        className={classInfo?.name || "Class"}
+        classType={classInfo?.class_type || ""}
+        onClassClosed={handleClassClosed}
+      />
     </div>
   );
 }

@@ -17,6 +17,7 @@ export function HandlerTableHeader() {
       
       <TableHead className="text-center w-[60px]">WA</TableHead>
       <TableHead className="text-center w-[60px]">Social</TableHead>
+      <TableHead className="text-center w-[70px]">Tasks</TableHead>
       <TableHead className="text-right w-[80px]">Actions</TableHead>
     </TableRow>
   );

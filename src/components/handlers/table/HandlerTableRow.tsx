@@ -1,10 +1,10 @@
-
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Link } from "react-router-dom";
 import { ActionMenu } from "./ActionMenu";
 import { ConsentStatusBadge } from "../status/ConsentStatusBadge";
 import { CLASS_TYPES } from "@/components/classes/types/class-types";
 import { ClassStatusCell } from "./ClassStatusCell";
+import { TaskBadge } from "../TaskBadge";
 
 interface HandlerTableRowProps {
   handler: {
@@ -16,10 +16,12 @@ interface HandlerTableRowProps {
     social_media_consent_status: 'yes' | 'no' | 'not_marked';
     class_statuses?: {
       class_type: string;
-      status: 'completed' | 'interested' | 'not-interested';
+      status: 'completed' | 'passed' | 'no_pass' | 'incomplete' | 'did_not_grade' | 'did_not_attend' | 'interested' | 'not-interested';
       period?: string;
+      pass_percentage?: number | null;
+      next_action?: 'continuing' | 'wants_info' | 'stopping' | 'none' | null;
+      result_notes?: string;
     }[];
-    // Include email field for compatibility with ActionMenu component
     email?: string;
     phone?: string;
     branch_id?: string | null;
@@ -67,6 +69,9 @@ export function HandlerTableRow({ handler, index = 0 }: HandlerTableRowProps) {
             clientId={handler.id}
             initialStatus={classStatus?.status || null}
             initialPeriod={classStatus?.period || ''}
+            initialPassPercentage={classStatus?.pass_percentage}
+            initialNextAction={classStatus?.next_action}
+            initialNotes={classStatus?.result_notes || ''}
             className="w-[90px]"
           />
         );
@@ -77,6 +82,9 @@ export function HandlerTableRow({ handler, index = 0 }: HandlerTableRowProps) {
       </TableCell>
       <TableCell className="text-center w-[60px]">
         <ConsentStatusBadge status={handler.social_media_consent_status} />
+      </TableCell>
+      <TableCell className="text-center w-[70px]">
+        <TaskBadge handlerId={handler.id} />
       </TableCell>
       <TableCell className="text-right w-[80px]">
         <ActionMenu handler={handler} />
