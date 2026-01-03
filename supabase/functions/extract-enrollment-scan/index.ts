@@ -1,0 +1,300 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+const EXTRACTION_PROMPT = `You are extracting data from a McKaynine dog training enrollment form.
+The form is handwritten and may span 1-2 pages.
+
+Extract these fields exactly:
+- Owner section: name (split into first_name and last_name), account holder name, email, phone, occupation, vet name
+- Dog section: name, birth date (format as YYYY-MM-DD if possible), gender (male/female), breed, spay/neuter status (intact/spayed/neutered), acquired from (breeder/rescue/shelter/pet_store/friend/other), acquired from other details, age at acquisition
+- Home section: other pets (array of objects with type and count), children at home (yes/no/ages description), social behavior ratings (with_dogs, with_other_animals, with_people - each as good/fair/poor/unknown)
+- Training section: overall training goal, has behavior problems (true/false), behavior problems details, has health problems (true/false), health problems details
+- Class section: class type (Puppy/EO/CGC Bronze/CGC Silver/Beginner/Novice/WT/A-Test/Yoga/Other), class type other if Other selected, branch name, how they heard about us (array of sources)
+- Permissions: WhatsApp group permission (yes/no), Photo permission (yes/no)
+- Acknowledgements: list which acknowledgement checkboxes are checked (training_equipment, treats, waste_disposal, onlead_socializing, equipment_supervision)
+- Signature: signer name and signed date (format as YYYY-MM-DD if possible)
+
+For each field, assess confidence:
+- "high": clearly legible, unambiguous
+- "medium": somewhat legible, interpretation possible  
+- "low": illegible, unclear, or appears blank
+
+IMPORTANT: Return JSON matching this exact schema:
+{
+  "owner": {
+    "first_name": "",
+    "last_name": "",
+    "account_holder_name": "",
+    "email": "",
+    "phone": "",
+    "occupation": "",
+    "vet_name": ""
+  },
+  "dogs": [
+    {
+      "name": "",
+      "date_of_birth": "",
+      "gender": "",
+      "breed": "",
+      "spay_neuter_status": "",
+      "acquired_from": "",
+      "acquired_from_other": "",
+      "age_at_acquisition": "",
+      "other_pets": [],
+      "children_at_home": "",
+      "social_behavior": {
+        "with_dogs": "",
+        "with_other_animals": "",
+        "with_people": "",
+        "details": ""
+      },
+      "training_goal": "",
+      "has_behavior_problems": false,
+      "behavior_problems_details": "",
+      "has_health_problems": false,
+      "health_problems_details": "",
+      "class_type": "",
+      "class_type_other": "",
+      "branch_name": "",
+      "heard_from": [],
+      "whatsapp_permission": "",
+      "photo_permission": "",
+      "acknowledgements": {
+        "training_equipment": false,
+        "treats": false,
+        "waste_disposal": false,
+        "onlead_socializing": false,
+        "equipment_supervision": false
+      },
+      "signature_name": "",
+      "signature_date": ""
+    }
+  ],
+  "field_confidence": {
+    "owner.first_name": "high",
+    "owner.email": "medium"
+  },
+  "notes_for_review": ["List any issues or uncertainties here"]
+}
+
+Do not invent values - leave empty and mark confidence as low if unreadable.
+Return ONLY valid JSON, no markdown code blocks or other text.`;
+
+serve(async (req) => {
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const { file_url, job_id } = await req.json();
+    
+    if (!file_url) {
+      return new Response(
+        JSON.stringify({ error: 'file_url is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) {
+      console.error("LOVABLE_API_KEY is not configured");
+      return new Response(
+        JSON.stringify({ error: "AI service is not configured" }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Initialize Supabase client for updating job status
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Update job status to processing if job_id provided
+    if (job_id) {
+      await supabase
+        .from('scan_processing_jobs')
+        .update({ status: 'processing' })
+        .eq('id', job_id);
+    }
+
+    console.log("Fetching file from URL:", file_url);
+    
+    // Fetch the file and convert to base64
+    const fileResponse = await fetch(file_url);
+    if (!fileResponse.ok) {
+      throw new Error(`Failed to fetch file: ${fileResponse.statusText}`);
+    }
+    
+    const fileBuffer = await fileResponse.arrayBuffer();
+    const base64Data = btoa(
+      new Uint8Array(fileBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
+    );
+    
+    // Determine content type
+    const contentType = fileResponse.headers.get('content-type') || 'image/jpeg';
+    const isImage = contentType.startsWith('image/');
+    const isPDF = contentType === 'application/pdf';
+    
+    console.log("File content type:", contentType);
+
+    // Prepare the message content for vision model
+    const messageContent: any[] = [
+      {
+        type: "text",
+        text: EXTRACTION_PROMPT
+      }
+    ];
+
+    if (isImage) {
+      messageContent.push({
+        type: "image_url",
+        image_url: {
+          url: `data:${contentType};base64,${base64Data}`
+        }
+      });
+    } else if (isPDF) {
+      // For PDFs, we'll send as inline_data
+      messageContent.push({
+        type: "image_url",
+        image_url: {
+          url: `data:application/pdf;base64,${base64Data}`
+        }
+      });
+    } else {
+      throw new Error(`Unsupported file type: ${contentType}`);
+    }
+
+    console.log("Calling Lovable AI for extraction...");
+    
+    // Call Lovable AI Gateway with vision
+    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [
+          {
+            role: "user",
+            content: messageContent
+          }
+        ]
+      }),
+    });
+
+    if (!aiResponse.ok) {
+      const errorText = await aiResponse.text();
+      console.error("AI gateway error:", aiResponse.status, errorText);
+      
+      if (aiResponse.status === 429) {
+        return new Response(
+          JSON.stringify({ error: "Rate limit exceeded. Please try again later." }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      if (aiResponse.status === 402) {
+        return new Response(
+          JSON.stringify({ error: "AI credits exhausted. Please add credits to continue." }),
+          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      throw new Error(`AI extraction failed: ${errorText}`);
+    }
+
+    const aiData = await aiResponse.json();
+    const extractedText = aiData.choices?.[0]?.message?.content || "";
+    
+    console.log("AI response received, parsing JSON...");
+    
+    // Parse the JSON response
+    let extractedData;
+    try {
+      // Try to extract JSON from the response (in case it's wrapped in markdown)
+      const jsonMatch = extractedText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        extractedData = JSON.parse(jsonMatch[0]);
+      } else {
+        throw new Error("No JSON found in response");
+      }
+    } catch (parseError) {
+      console.error("Failed to parse AI response:", parseError, extractedText);
+      
+      // Update job status to error if job_id provided
+      if (job_id) {
+        await supabase
+          .from('scan_processing_jobs')
+          .update({ 
+            status: 'error',
+            error_message: 'Failed to parse AI extraction response'
+          })
+          .eq('id', job_id);
+      }
+      
+      return new Response(
+        JSON.stringify({ 
+          error: "Failed to parse extraction results",
+          raw_response: extractedText.substring(0, 500)
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Determine status based on confidence
+    const fieldConfidence = extractedData.field_confidence || {};
+    const hasLowConfidence = Object.values(fieldConfidence).some(c => c === 'low');
+    const notesForReview = extractedData.notes_for_review || [];
+    
+    // Check for required fields
+    const owner = extractedData.owner || {};
+    const dogs = extractedData.dogs || [];
+    const missingRequired = !owner.first_name || !owner.email || dogs.length === 0 || !dogs[0]?.name;
+    
+    const status = (hasLowConfidence || notesForReview.length > 0 || missingRequired) 
+      ? 'needs_review' 
+      : 'ready_to_save';
+
+    console.log("Extraction complete, status:", status);
+
+    // Update job with extracted data if job_id provided
+    if (job_id) {
+      await supabase
+        .from('scan_processing_jobs')
+        .update({ 
+          status,
+          extracted_data: extractedData,
+          field_confidence: fieldConfidence,
+          notes_for_review: notesForReview
+        })
+        .eq('id', job_id);
+    }
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        status,
+        extracted_data: extractedData,
+        field_confidence: fieldConfidence,
+        notes_for_review: notesForReview
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+
+  } catch (error) {
+    console.error("Error in extract-enrollment-scan:", error);
+    
+    return new Response(
+      JSON.stringify({ 
+        error: error instanceof Error ? error.message : "Unknown error occurred"
+      }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+});

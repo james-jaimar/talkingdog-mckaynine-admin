@@ -1,4 +1,3 @@
-
 project_id = "vsgsagbpfclbuyqrepvf"
 
 [api]
@@ -30,4 +29,7 @@ enabled = true
 
 [functions]
 [functions.manage-user-role]
+verify_jwt = true
+
+[functions.extract-enrollment-scan]
 verify_jwt = true
