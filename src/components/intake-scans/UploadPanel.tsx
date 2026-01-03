@@ -40,15 +40,10 @@ export function UploadPanel({ onSelectJob, selectedJobId }: UploadPanelProps) {
           continue;
         }
 
-        // Get public URL
-        const { data: { publicUrl } } = supabase.storage
-          .from('scanned-forms')
-          .getPublicUrl(fileName);
-
-        // Create job record
+        // Create job record with file path (not public URL - bucket is private)
         await createJob({
           filename: file.name,
-          file_url: publicUrl
+          file_url: fileName
         });
 
         toast.success(`Uploaded ${file.name}`);
