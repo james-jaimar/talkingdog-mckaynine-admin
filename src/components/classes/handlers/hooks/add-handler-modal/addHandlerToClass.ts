@@ -1,7 +1,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { QueryClient } from "@tanstack/react-query";
-import { fetchScheduleId } from "./fetchScheduleId";
+import { fetchScheduleId, ScheduleInfo } from "./fetchScheduleId";
 import { fetchClassDetails } from "./fetchClassDetails";
 import { fetchDogName } from "./fetchDogName";
 import { createInvoiceForHandler, CreateInvoiceProps } from "./createInvoiceForHandler";
@@ -16,7 +16,7 @@ interface AddHandlerToClassProps {
   onSuccess: () => void;
   queryClient: QueryClient;
   toast: any;
-  createInvoiceProps: Omit<CreateInvoiceProps, 'bookingId' | 'className' | 'classPrice' | 'dogName' | 'enrollmentFee'>;
+  createInvoiceProps: Omit<CreateInvoiceProps, 'bookingId' | 'className' | 'classPrice' | 'dogName' | 'enrollmentFee' | 'classDate'>;
 }
 
 export const addHandlerToClass = async ({
@@ -36,12 +36,14 @@ export const addHandlerToClass = async ({
   setIsProcessing(true);
   
   try {
-    // First, find the correct schedule ID for this class
-    const scheduleId = await fetchScheduleId(classId);
+    // First, find the correct schedule ID for this class (now returns schedule info with date)
+    const scheduleInfo = await fetchScheduleId(classId);
     
-    if (!scheduleId) {
+    if (!scheduleInfo) {
       throw new Error("Could not find a schedule for this class");
     }
+    
+    const { id: scheduleId, firstDate: classDate } = scheduleInfo;
     
     // Get class details for the invoice
     const classDetails = await fetchClassDetails(classId);
@@ -53,6 +55,7 @@ export const addHandlerToClass = async ({
       handlerId, 
       dogId, 
       scheduleId,
+      classDate,
       classDetails
     });
     
@@ -110,7 +113,8 @@ export const addHandlerToClass = async ({
           className: classDetails.name, 
           classPrice,
           enrollmentFee,
-          dogName
+          dogName,
+          classDate, // Pass the class schedule date for proper invoice dating
         });
         
         if (!invoiceCreated) {

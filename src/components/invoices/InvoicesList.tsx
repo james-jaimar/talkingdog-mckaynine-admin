@@ -15,8 +15,10 @@ import { EmailInvoiceDialog } from "./dialogs/EmailInvoiceDialog";
 import { TransferInvoiceDialog } from "./dialogs/TransferInvoiceDialog";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useBranch } from "@/context/BranchContext";
+import { useMarkInvoiceAsSent } from "@/hooks/invoices/status";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { GitBranch, AlertTriangle } from "lucide-react";
+import { toast } from "sonner";
 
 interface InvoicesListProps {
   invoices: Invoice[];
@@ -32,6 +34,7 @@ export function InvoicesList({
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
   const { currentBranch } = useBranch();
+  const { markAllAsSent } = useMarkInvoiceAsSent();
   const [searchTerm, setSearchTerm] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
@@ -97,6 +100,17 @@ export function InvoicesList({
     setTransferDialogOpen(true);
   };
 
+  // Bulk mark as sent handler
+  const handleBulkMarkAsSent = async (invoicesToMark: Invoice[]) => {
+    try {
+      await markAllAsSent(invoicesToMark);
+      // Query invalidation happens in the hook
+    } catch (error) {
+      console.error("Error bulk marking invoices as sent:", error);
+      toast.error("Failed to mark some invoices as sent");
+    }
+  };
+
   return (
     <>
       <Card>
@@ -146,6 +160,7 @@ export function InvoicesList({
                   onDeleteInvoice={handleDeleteRequest}
                   onEmailInvoice={handleEmailRequest}
                   onTransferInvoice={handleTransferRequest}
+                  onBulkMarkAsSent={handleBulkMarkAsSent}
                 />
               </div>
             </>
