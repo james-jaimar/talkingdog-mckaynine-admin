@@ -153,22 +153,57 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
         summary.totalRevenue += invoiceAmountPerBooking;
         
         // Calculate fees based on invoice amount
-        if (classData.mckaynine_commission_type === 'percentage') {
-          summary.franchiseFee += (invoiceAmountPerBooking * (classData.mckaynine_commission_value / 100));
-        } else {
-          summary.franchiseFee += classData.mckaynine_commission_value;
+        // Normalize fee types to handle casing/spacing differences from DB
+        const normalizeFeeType = (t: unknown) =>
+          String(t ?? "percentage").toLowerCase().trim();
+
+        const commissionType = normalizeFeeType(classData.mckaynine_commission_type);
+        const adminType = normalizeFeeType(classData.admin_fee_type);
+        const trainerType = normalizeFeeType(classData.trainer_fee_type);
+
+        const commissionValue = Number(classData.mckaynine_commission_value ?? 0);
+        const adminValue = Number(classData.admin_fee_value ?? 0);
+        const trainerValue = Number(classData.trainer_fee_value ?? 0);
+
+        if (Number.isFinite(trainerValue) && trainerValue !== 40) {
+          console.warn(`Trainer fee value != 40 detected for class ${className} (${classData.id})`, {
+            trainer_fee_value: trainerValue,
+            trainer_fee_type: classData.trainer_fee_type,
+            branch_id: classData.branch_id,
+          });
         }
-        
-        if (classData.admin_fee_type === 'percentage') {
-          summary.adminFee += (invoiceAmountPerBooking * (classData.admin_fee_value / 100));
+
+        if (commissionType === 'percentage') {
+          summary.franchiseFee += invoiceAmountPerBooking * (commissionValue / 100);
+        } else if (commissionType === 'fixed') {
+          summary.franchiseFee += commissionValue;
         } else {
-          summary.adminFee += classData.admin_fee_value;
+          // Fallback to percentage if the DB value is unexpected
+          summary.franchiseFee += invoiceAmountPerBooking * (commissionValue / 100);
         }
-        
-        if (classData.trainer_fee_type === 'percentage') {
-          summary.instructorFee += (invoiceAmountPerBooking * (classData.trainer_fee_value / 100));
+
+        if (adminType === 'percentage') {
+          summary.adminFee += invoiceAmountPerBooking * (adminValue / 100);
+        } else if (adminType === 'fixed') {
+          summary.adminFee += adminValue;
         } else {
-          summary.instructorFee += classData.trainer_fee_value;
+          summary.adminFee += invoiceAmountPerBooking * (adminValue / 100);
+        }
+
+        if (trainerType === 'percentage') {
+          summary.instructorFee += invoiceAmountPerBooking * (trainerValue / 100);
+        } else if (trainerType === 'fixed') {
+          summary.instructorFee += trainerValue;
+        } else {
+          summary.instructorFee += invoiceAmountPerBooking * (trainerValue / 100);
+        }
+
+        // Helpful debug when trainer fee type is unexpected
+        if (trainerType !== 'percentage' && trainerType !== 'fixed' && trainerValue) {
+          console.warn(
+            `Unexpected trainer_fee_type "${String(classData.trainer_fee_type)}" for class ${className} (${classData.id}). Falling back to percentage.`,
+            { trainer_fee_type: classData.trainer_fee_type, trainer_fee_value: trainerValue }
+          );
         }
         
         classSummaries.set(className, summary);
