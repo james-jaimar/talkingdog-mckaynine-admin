@@ -15,7 +15,7 @@ import { EmailInvoiceDialog } from "./dialogs/EmailInvoiceDialog";
 import { TransferInvoiceDialog } from "./dialogs/TransferInvoiceDialog";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useBranch } from "@/context/BranchContext";
-import { useMarkInvoiceAsSent } from "@/hooks/invoices/status";
+import { useMarkInvoiceAsSent, useMarkInvoiceAsPaid } from "@/hooks/invoices/status";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { GitBranch, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
@@ -35,6 +35,7 @@ export function InvoicesList({
   const isMobile = useIsMobile();
   const { currentBranch } = useBranch();
   const { markAllAsSent } = useMarkInvoiceAsSent();
+  const markAsPaidMutation = useMarkInvoiceAsPaid();
   const [searchTerm, setSearchTerm] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
@@ -111,6 +112,20 @@ export function InvoicesList({
     }
   };
 
+  // Bulk mark as paid handler
+  const handleBulkMarkAsPaid = async (invoicesToMark: Invoice[]) => {
+    try {
+      // Mark each invoice as paid sequentially
+      for (const invoice of invoicesToMark) {
+        await markAsPaidMutation.mutateAsync(invoice.id);
+      }
+      toast.success(`${invoicesToMark.length} invoice(s) marked as paid`);
+    } catch (error) {
+      console.error("Error bulk marking invoices as paid:", error);
+      toast.error("Failed to mark some invoices as paid");
+    }
+  };
+
   return (
     <>
       <Card>
@@ -161,6 +176,7 @@ export function InvoicesList({
                   onEmailInvoice={handleEmailRequest}
                   onTransferInvoice={handleTransferRequest}
                   onBulkMarkAsSent={handleBulkMarkAsSent}
+                  onBulkMarkAsPaid={handleBulkMarkAsPaid}
                 />
               </div>
             </>

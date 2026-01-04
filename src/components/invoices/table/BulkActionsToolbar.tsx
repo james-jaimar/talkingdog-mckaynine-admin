@@ -1,10 +1,12 @@
 import { Button } from "@/components/ui/button";
-import { CheckSquare, Send, X } from "lucide-react";
+import { CheckSquare, Send, X, CreditCard } from "lucide-react";
 
 interface BulkActionsToolbarProps {
   selectedCount: number;
   draftCount: number;
+  unpaidCount: number;
   onMarkAsSent: () => void;
+  onMarkAsPaid: () => void;
   onClearSelection: () => void;
   isLoading?: boolean;
 }
@@ -12,7 +14,9 @@ interface BulkActionsToolbarProps {
 export function BulkActionsToolbar({
   selectedCount,
   draftCount,
+  unpaidCount,
   onMarkAsSent,
+  onMarkAsPaid,
   onClearSelection,
   isLoading = false,
 }: BulkActionsToolbarProps) {
@@ -42,6 +46,17 @@ export function BulkActionsToolbar({
         >
           <Send className="h-3 w-3" />
           Mark as Sent {draftCount > 0 && `(${draftCount})`}
+        </Button>
+        
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onMarkAsPaid}
+          disabled={unpaidCount === 0 || isLoading}
+          className="gap-1 text-green-600 border-green-600 hover:bg-green-50"
+        >
+          <CreditCard className="h-3 w-3" />
+          Mark as Paid {unpaidCount > 0 && `(${unpaidCount})`}
         </Button>
         
         <Button

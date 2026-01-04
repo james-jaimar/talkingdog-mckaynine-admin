@@ -27,6 +27,7 @@ interface InvoicesTableProps {
   onEmailInvoice?: (invoice: Invoice) => void;
   onTransferInvoice?: (invoice: Invoice) => void;
   onBulkMarkAsSent?: (invoices: Invoice[]) => Promise<void>;
+  onBulkMarkAsPaid?: (invoices: Invoice[]) => Promise<void>;
 }
 
 export function InvoicesTable({ 
@@ -37,7 +38,8 @@ export function InvoicesTable({
   onDeleteInvoice,
   onEmailInvoice,
   onTransferInvoice,
-  onBulkMarkAsSent
+  onBulkMarkAsSent,
+  onBulkMarkAsPaid
 }: InvoicesTableProps) {
   const { currentBranch } = useBranch();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -46,6 +48,11 @@ export function InvoicesTable({
   // Calculate how many selected invoices are drafts
   const selectedDraftCount = useMemo(() => {
     return invoices.filter(inv => selectedIds.has(inv.id) && inv.status === 'draft').length;
+  }, [invoices, selectedIds]);
+  
+  // Calculate how many selected invoices are unpaid (sent or overdue)
+  const selectedUnpaidCount = useMemo(() => {
+    return invoices.filter(inv => selectedIds.has(inv.id) && (inv.status === 'sent' || inv.status === 'overdue')).length;
   }, [invoices, selectedIds]);
   
   const getStatusBadge = (status: string) => {
@@ -127,6 +134,24 @@ export function InvoicesTable({
     }
   };
   
+  const handleBulkMarkAsPaid = async () => {
+    if (!onBulkMarkAsPaid) return;
+    
+    const unpaidInvoices = invoices.filter(
+      inv => selectedIds.has(inv.id) && (inv.status === 'sent' || inv.status === 'overdue')
+    );
+    
+    if (unpaidInvoices.length === 0) return;
+    
+    setIsBulkActionLoading(true);
+    try {
+      await onBulkMarkAsPaid(unpaidInvoices);
+      setSelectedIds(new Set()); // Clear selection after success
+    } finally {
+      setIsBulkActionLoading(false);
+    }
+  };
+  
   const handleClearSelection = () => {
     setSelectedIds(new Set());
   };
@@ -162,7 +187,9 @@ export function InvoicesTable({
       <BulkActionsToolbar
         selectedCount={selectedIds.size}
         draftCount={selectedDraftCount}
+        unpaidCount={selectedUnpaidCount}
         onMarkAsSent={handleBulkMarkAsSent}
+        onMarkAsPaid={handleBulkMarkAsPaid}
         onClearSelection={handleClearSelection}
         isLoading={isBulkActionLoading}
       />
