@@ -242,7 +242,15 @@ export async function processBulkClassImport(
 function parseRow(row: any): BulkImportRow {
   const parsed: any = {};
   for (const key of Object.keys(row)) {
-    parsed[key.trim().toLowerCase().replace(/\s+/g, "_")] = row[key]?.toString().trim() || "";
+    const normalizedKey = key.trim().toLowerCase().replace(/\s+/g, "_");
+    let value = row[key]?.toString().trim() || "";
+    
+    // Prefix phone numbers with 0 if they don't start with 0 or +
+    if (normalizedKey === "phone" && value && !value.startsWith("0") && !value.startsWith("+")) {
+      value = "0" + value;
+    }
+    
+    parsed[normalizedKey] = value;
   }
   return parsed as BulkImportRow;
 }
@@ -311,10 +319,11 @@ async function getOrCreateDog(
     return { dogId: existing.id, created: false };
   }
 
-  // Parse DOB if provided
+  // Parse DOB if provided (handle blank values gracefully)
   let dateOfBirth: string | null = null;
-  if (row.dog_dob) {
-    dateOfBirth = parseDateString(row.dog_dob);
+  const dobValue = row.dog_dob?.trim();
+  if (dobValue && dobValue.length > 0) {
+    dateOfBirth = parseDateString(dobValue);
   }
 
   // Create new dog
