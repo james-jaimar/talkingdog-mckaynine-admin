@@ -24,16 +24,6 @@ export function extractBookingDetails(booking: any) {
       classes: booking.class_schedules.classes
     } : null;
     
-    // Debug the extracted data
-    console.log("Extracted booking details:", {
-      id: booking.id,
-      dog,
-      classSchedule: classSchedule ? {
-        id: classSchedule.id,
-        class_name: classSchedule.classes?.name,
-      } : null
-    });
-    
     return {
       id: booking.id,
       dog,
