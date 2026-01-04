@@ -99,16 +99,12 @@ export function useInvoicesList() {
                   return enhancedItem as InvoiceItem;
                 }
 
-                console.log(`Found booking for item ${item.id}:`, booking);
-                
                 // Now create the bookings property with proper structure
                 if (booking.dogs && booking.class_schedules?.classes) {
                   const dogName = booking.dogs.name;
                   const className = booking.class_schedules.classes.name;
                   const classDescription = booking.class_schedules.classes.description;
                   const classPrice = booking.class_schedules.classes.course_fee;
-                  
-                  console.log(`Enhanced item with class: ${className} and dog: ${dogName}`);
                   
                   // Update description with class and dog info
                   enhancedItem.description = `${className} - ${dogName}`;
@@ -181,8 +177,6 @@ export function useInvoicesList() {
           }
         }));
 
-        console.log("Final processed invoices for branch:", invoicesWithItems);
-        
         // Return as Invoice array with type assertion to satisfy TypeScript
         return invoicesWithItems as unknown as Invoice[];
         
