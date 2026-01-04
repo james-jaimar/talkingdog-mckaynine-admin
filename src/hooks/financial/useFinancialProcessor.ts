@@ -53,16 +53,17 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
     const classBookingMap = new Map<string, Set<string>>();
 
     // First map invoices to bookings using invoice items as a connector
-    const invoiceToBookingMap = new Map<string, string[]>();
+    // Use Set to avoid duplicate booking IDs per invoice (e.g., when invoice has course + enrollment fee items)
+    const invoiceToBookingMap = new Map<string, Set<string>>();
     const bookingToInvoiceMap = new Map<string, Set<string>>();
     
     branchFilteredInvoiceItems.forEach(item => {
       if (item.booking_id && item.invoice_id) {
-        // Map invoice to booking
+        // Map invoice to booking (using Set to avoid duplicates)
         if (!invoiceToBookingMap.has(item.invoice_id)) {
-          invoiceToBookingMap.set(item.invoice_id, []);
+          invoiceToBookingMap.set(item.invoice_id, new Set());
         }
-        invoiceToBookingMap.get(item.invoice_id)!.push(item.booking_id);
+        invoiceToBookingMap.get(item.invoice_id)!.add(item.booking_id);
         
         // Map booking to invoice
         if (!bookingToInvoiceMap.has(item.booking_id)) {
@@ -91,12 +92,15 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
     
     // First handle invoices that can be mapped to specific classes through bookings
     branchFilteredInvoices.forEach(invoice => {
-      const bookingIds = invoiceToBookingMap.get(invoice.id);
+      const bookingIdsSet = invoiceToBookingMap.get(invoice.id);
       
       // Skip if this invoice has no associated bookings or already processed
-      if (!bookingIds || bookingIds.length === 0 || processedInvoices.has(invoice.id)) return;
+      if (!bookingIdsSet || bookingIdsSet.size === 0 || processedInvoices.has(invoice.id)) return;
       
-      // Distribute the invoice total evenly among associated bookings
+      // Convert Set to array for iteration
+      const bookingIds = Array.from(bookingIdsSet);
+      
+      // Distribute the invoice total evenly among associated unique bookings
       const invoiceAmountPerBooking = invoice.total / bookingIds.length;
       
       bookingIds.forEach(bookingId => {

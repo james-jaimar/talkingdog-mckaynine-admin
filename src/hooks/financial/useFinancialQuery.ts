@@ -95,9 +95,9 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
         .eq('clients.branch_id', branchId)
         .eq('class_schedules.classes.branch_id', branchId);
 
-      if (fromDate && toDate) {
-        query = query.gte('created_at', fromDate).lte('created_at', toDate);
-      }
+      // NOTE: Do NOT filter bookings by created_at date - booking dates can be corrupted
+      // Instead, we rely on invoice_items to link invoices (filtered by issued_date) to bookings
+      // This ensures we get all bookings that are linked to invoices in the selected date range
 
       const { data: bookings, error: bookingsError } = await query;
 
