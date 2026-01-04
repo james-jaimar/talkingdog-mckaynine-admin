@@ -32,6 +32,94 @@ export interface ImportSummary {
   results: ImportResult[];
 }
 
+export interface ValidationResult {
+  isValid: boolean;
+  existingHandlers: { email: string; handler_name: string; clientId: string }[];
+  newHandlers: { email: string; handler_name: string; row: number }[];
+  errors: string[];
+}
+
+/**
+ * Pre-validate bulk import data to check for existing handlers
+ * This allows users to see which handlers are new before importing
+ */
+export async function validateBulkImport(
+  data: any[],
+  supabase: SupabaseClient
+): Promise<ValidationResult> {
+  const result: ValidationResult = {
+    isValid: true,
+    existingHandlers: [],
+    newHandlers: [],
+    errors: [],
+  };
+
+  // Parse all rows and collect unique emails
+  const emailMap = new Map<string, { handler_name: string; row: number }>();
+  
+  for (let i = 0; i < data.length; i++) {
+    const row = parseRow(data[i]);
+    const rowNum = i + 2;
+
+    if (!row.email) {
+      result.errors.push(`Row ${rowNum}: Missing email address`);
+      continue;
+    }
+
+    const email = row.email.toLowerCase().trim();
+    if (!emailMap.has(email)) {
+      emailMap.set(email, { handler_name: row.handler_name || "Unknown", row: rowNum });
+    }
+  }
+
+  if (emailMap.size === 0) {
+    result.isValid = false;
+    result.errors.push("No valid email addresses found in the CSV");
+    return result;
+  }
+
+  // Query database for existing clients
+  const emails = Array.from(emailMap.keys());
+  const { data: existingClients, error } = await supabase
+    .from("clients")
+    .select("id, email, first_name, last_name")
+    .in("email", emails);
+
+  if (error) {
+    result.isValid = false;
+    result.errors.push(`Database error: ${error.message}`);
+    return result;
+  }
+
+  // Build set of existing emails for quick lookup
+  const existingEmailSet = new Set(
+    existingClients?.map((c) => c.email.toLowerCase()) || []
+  );
+
+  // Categorize handlers
+  for (const [email, info] of emailMap.entries()) {
+    const existing = existingClients?.find(
+      (c) => c.email.toLowerCase() === email
+    );
+
+    if (existing) {
+      result.existingHandlers.push({
+        email,
+        handler_name: `${existing.first_name} ${existing.last_name}`.trim(),
+        clientId: existing.id,
+      });
+    } else {
+      result.newHandlers.push({
+        email,
+        handler_name: info.handler_name,
+        row: info.row,
+      });
+    }
+  }
+
+  return result;
+}
+
 /**
  * Process bulk import of handlers into classes
  * Creates handlers, dogs, bookings, and invoices in one go
