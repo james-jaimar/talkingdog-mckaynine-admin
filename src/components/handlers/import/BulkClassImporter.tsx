@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useDropzone } from "react-dropzone";
 import Papa from "papaparse";
-import { processBulkClassImport, ImportSummary } from "./bulkClassImportUtils";
+import { processBulkClassImport, validateBulkImport, ImportSummary, ValidationResult } from "./bulkClassImportUtils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Upload, CheckCircle2, XCircle, Download, Loader2 } from "lucide-react";
@@ -25,8 +25,10 @@ interface BulkClassImporterProps {
 export function BulkClassImporter({ onImportSuccess }: BulkClassImporterProps) {
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isValidating, setIsValidating] = useState(false);
   const [previewData, setPreviewData] = useState<any[]>([]);
   const [importResult, setImportResult] = useState<ImportSummary | null>(null);
+  const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const { currentBranch } = useBranch();
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -39,17 +41,33 @@ export function BulkClassImporter({ onImportSuccess }: BulkClassImporterProps) {
       if (acceptedFiles.length > 0) {
         setFile(acceptedFiles[0]);
         setImportResult(null);
-        parseCSV(acceptedFiles[0]);
+        setValidationResult(null);
+        parseAndValidateCSV(acceptedFiles[0]);
       }
     },
   });
 
-  const parseCSV = (file: File) => {
+  const parseAndValidateCSV = (file: File) => {
+    setIsValidating(true);
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
-      complete: (results) => {
+      complete: async (results) => {
         setPreviewData(results.data.slice(0, 5));
+        
+        // Validate handlers against database
+        try {
+          const validation = await validateBulkImport(results.data, supabase);
+          setValidationResult(validation);
+        } catch (error: any) {
+          toast({
+            title: "Validation Error",
+            description: error.message,
+            variant: "destructive",
+          });
+        } finally {
+          setIsValidating(false);
+        }
       },
       error: (error) => {
         toast({
@@ -57,6 +75,7 @@ export function BulkClassImporter({ onImportSuccess }: BulkClassImporterProps) {
           description: error.message,
           variant: "destructive",
         });
+        setIsValidating(false);
       },
     });
   };
@@ -132,6 +151,7 @@ Jane Doe,jane@example.com,,Max,Golden Retriever,,PASTE_SCHEDULE_ID_HERE,paid,pai
     setFile(null);
     setPreviewData([]);
     setImportResult(null);
+    setValidationResult(null);
   };
 
   return (
@@ -202,7 +222,7 @@ Jane Doe,jane@example.com,,Max,Golden Retriever,,PASTE_SCHEDULE_ID_HERE,paid,pai
       {previewData.length > 0 && !importResult && (
         <div className="space-y-2">
           <h3 className="text-sm font-medium">Preview (first 5 rows):</h3>
-          <ScrollArea className="h-[200px] border rounded-md">
+          <ScrollArea className="h-[150px] border rounded-md">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -228,6 +248,126 @@ Jane Doe,jane@example.com,,Max,Golden Retriever,,PASTE_SCHEDULE_ID_HERE,paid,pai
               </TableBody>
             </Table>
           </ScrollArea>
+        </div>
+      )}
+
+      {/* Validation Results - Handler Matching */}
+      {validationResult && !importResult && (
+        <div className="space-y-3">
+          {isValidating ? (
+            <div className="flex items-center gap-2 p-3 bg-muted rounded-md">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span className="text-sm">Validating handlers...</span>
+            </div>
+          ) : (
+            <>
+              {/* Summary Stats */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="p-3 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-md text-center">
+                  <p className="text-2xl font-bold text-green-700 dark:text-green-400">
+                    {validationResult.existingHandlers.length}
+                  </p>
+                  <p className="text-xs text-green-600 dark:text-green-500">
+                    Existing Handlers (will be matched)
+                  </p>
+                </div>
+                <div className={`p-3 rounded-md text-center border ${
+                  validationResult.newHandlers.length > 0 
+                    ? "bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800" 
+                    : "bg-muted border-border"
+                }`}>
+                  <p className={`text-2xl font-bold ${
+                    validationResult.newHandlers.length > 0 
+                      ? "text-amber-700 dark:text-amber-400" 
+                      : "text-muted-foreground"
+                  }`}>
+                    {validationResult.newHandlers.length}
+                  </p>
+                  <p className={`text-xs ${
+                    validationResult.newHandlers.length > 0 
+                      ? "text-amber-600 dark:text-amber-500" 
+                      : "text-muted-foreground"
+                  }`}>
+                    New Handlers (will be created)
+                  </p>
+                </div>
+              </div>
+
+              {/* Warning for new handlers */}
+              {validationResult.newHandlers.length > 0 && (
+                <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-md">
+                  <p className="text-sm font-medium text-amber-800 dark:text-amber-300 mb-2">
+                    ⚠️ The following handlers are NOT in the database and will be created:
+                  </p>
+                  <ScrollArea className="h-[120px]">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="text-xs">Row</TableHead>
+                          <TableHead className="text-xs">Name</TableHead>
+                          <TableHead className="text-xs">Email</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {validationResult.newHandlers.map((handler, idx) => (
+                          <TableRow key={idx}>
+                            <TableCell className="text-xs py-1">{handler.row}</TableCell>
+                            <TableCell className="text-xs py-1">{handler.handler_name}</TableCell>
+                            <TableCell className="text-xs py-1 text-amber-700 dark:text-amber-400">
+                              {handler.email}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </ScrollArea>
+                </div>
+              )}
+
+              {/* Show existing handlers that will be matched */}
+              {validationResult.existingHandlers.length > 0 && (
+                <div className="p-3 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-md">
+                  <p className="text-sm font-medium text-green-800 dark:text-green-300 mb-2">
+                    ✓ The following handlers will be matched to existing records:
+                  </p>
+                  <ScrollArea className="h-[120px]">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="text-xs">Name</TableHead>
+                          <TableHead className="text-xs">Email</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {validationResult.existingHandlers.map((handler, idx) => (
+                          <TableRow key={idx}>
+                            <TableCell className="text-xs py-1">{handler.handler_name}</TableCell>
+                            <TableCell className="text-xs py-1 text-green-700 dark:text-green-400">
+                              {handler.email}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </ScrollArea>
+                </div>
+              )}
+
+              {/* Validation Errors */}
+              {validationResult.errors.length > 0 && (
+                <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md">
+                  <p className="text-sm font-medium text-destructive mb-2">
+                    Validation Errors:
+                  </p>
+                  <ul className="text-xs text-destructive space-y-1">
+                    {validationResult.errors.map((error, idx) => (
+                      <li key={idx}>• {error}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
 
