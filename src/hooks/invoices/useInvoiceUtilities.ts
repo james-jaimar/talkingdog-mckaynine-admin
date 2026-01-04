@@ -6,12 +6,13 @@ import { useBranch } from "@/context/BranchContext";
  * Generates a sequential invoice number with branch code and month prefix
  * Format: INV-McD-2504-0001 for Delta branch in April 2025
  * Format: INV-McR-2504-0001 for Randburg branch in April 2025
+ * @param referenceDate - Optional date to use for year/month prefix (defaults to current date)
  */
-export const generateInvoiceNumber = async (): Promise<string> => {
+export const generateInvoiceNumber = async (referenceDate?: Date): Promise<string> => {
   try {
-    const now = new Date();
-    const year = now.getFullYear().toString().slice(-2);
-    const month = (now.getMonth() + 1).toString().padStart(2, '0');
+    const dateToUse = referenceDate || new Date();
+    const year = dateToUse.getFullYear().toString().slice(-2);
+    const month = (dateToUse.getMonth() + 1).toString().padStart(2, '0');
     const yearMonth = `${year}${month}`;
     let branchPrefix = "Mc";
     let branchCode = "";
@@ -56,9 +57,9 @@ export const generateInvoiceNumber = async (): Promise<string> => {
     return `${invoicePrefix}${nextNumber.toString().padStart(4, '0')}`;
   } catch (error) {
     console.error("Error generating invoice number:", error);
-    const now = new Date();
-    const year = now.getFullYear().toString().slice(-2);
-    const month = (now.getMonth() + 1).toString().padStart(2, '0');
+    const dateToUse = referenceDate || new Date();
+    const year = dateToUse.getFullYear().toString().slice(-2);
+    const month = (dateToUse.getMonth() + 1).toString().padStart(2, '0');
     const yearMonth = `${year}${month}`;
     const timestamp = new Date().getTime().toString().slice(-4);
     return `INV-McD-${yearMonth}-${timestamp}`;
