@@ -16,6 +16,7 @@ export interface CreateInvoiceProps {
   enrollmentFee?: number;
   discountType?: "fixed" | "percentage";
   discountAmount?: number;
+  classDate?: Date; // Use class schedule date for invoice instead of today
 }
 
 export const createInvoiceForHandler = async ({
@@ -31,6 +32,7 @@ export const createInvoiceForHandler = async ({
   enrollmentFee = 0,
   discountType = "fixed",
   discountAmount = 0,
+  classDate,
 }: CreateInvoiceProps): Promise<boolean> => {
   try {
     console.log("CREATE-INVOICE: Starting invoice creation with params:", {
@@ -106,13 +108,17 @@ export const createInvoiceForHandler = async ({
       });
     }
 
+    // Use class date if provided (for backfilling), otherwise use today
+    const invoiceDate = classDate || new Date();
+    const dueDate = new Date(invoiceDate.getTime() + 14 * 24 * 60 * 60 * 1000);
+
     // Create the invoice data object - removed fields that don't exist in the database
     const invoiceData = {
       client_id: handlerId,
       invoice_number: invoiceNumber,
       status: "draft",
-      issued_date: new Date(),
-      due_date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+      issued_date: invoiceDate,
+      due_date: dueDate,
       notes: `Invoice for ${className} training class for ${dogName}.`,
       tax_rate: 0,
       items,

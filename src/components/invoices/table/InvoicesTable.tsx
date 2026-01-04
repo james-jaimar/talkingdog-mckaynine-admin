@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Invoice } from "@/types/invoice";
 import {
   Table,
@@ -11,10 +11,11 @@ import {
   TableFooter,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { format } from "date-fns";
 import { Loader2, Calculator, GitBranch } from "lucide-react";
-import { formatCurrency, formatPercentage } from "@/lib/formatters";
 import { InvoiceTableActions } from "./InvoiceTableActions";
+import { BulkActionsToolbar } from "./BulkActionsToolbar";
 import { useBranch } from "@/context/BranchContext";
 
 interface InvoicesTableProps {
@@ -25,6 +26,7 @@ interface InvoicesTableProps {
   onDeleteInvoice?: (id: string) => void;
   onEmailInvoice?: (invoice: Invoice) => void;
   onTransferInvoice?: (invoice: Invoice) => void;
+  onBulkMarkAsSent?: (invoices: Invoice[]) => Promise<void>;
 }
 
 export function InvoicesTable({ 
@@ -34,9 +36,17 @@ export function InvoicesTable({
   currentMonthLabel = "All Invoices",
   onDeleteInvoice,
   onEmailInvoice,
-  onTransferInvoice
+  onTransferInvoice,
+  onBulkMarkAsSent
 }: InvoicesTableProps) {
   const { currentBranch } = useBranch();
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isBulkActionLoading, setIsBulkActionLoading] = useState(false);
+  
+  // Calculate how many selected invoices are drafts
+  const selectedDraftCount = useMemo(() => {
+    return invoices.filter(inv => selectedIds.has(inv.id) && inv.status === 'draft').length;
+  }, [invoices, selectedIds]);
   
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -80,6 +90,50 @@ export function InvoicesTable({
     }
   };
   
+  // Selection handlers
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedIds(new Set(invoices.map(inv => inv.id)));
+    } else {
+      setSelectedIds(new Set());
+    }
+  };
+  
+  const handleSelectOne = (id: string, checked: boolean) => {
+    const newSelected = new Set(selectedIds);
+    if (checked) {
+      newSelected.add(id);
+    } else {
+      newSelected.delete(id);
+    }
+    setSelectedIds(newSelected);
+  };
+  
+  const handleBulkMarkAsSent = async () => {
+    if (!onBulkMarkAsSent) return;
+    
+    const draftInvoices = invoices.filter(
+      inv => selectedIds.has(inv.id) && inv.status === 'draft'
+    );
+    
+    if (draftInvoices.length === 0) return;
+    
+    setIsBulkActionLoading(true);
+    try {
+      await onBulkMarkAsSent(draftInvoices);
+      setSelectedIds(new Set()); // Clear selection after success
+    } finally {
+      setIsBulkActionLoading(false);
+    }
+  };
+  
+  const handleClearSelection = () => {
+    setSelectedIds(new Set());
+  };
+  
+  const isAllSelected = invoices.length > 0 && selectedIds.size === invoices.length;
+  const isSomeSelected = selectedIds.size > 0 && selectedIds.size < invoices.length;
+  
   // Helper function to properly display discount info
   const renderDiscountCell = (invoice: Invoice) => {
     if (!invoice.monetary_discount || invoice.monetary_discount <= 0) {
@@ -104,113 +158,140 @@ export function InvoicesTable({
   };
   
   return (
-    <div className="rounded-md border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Invoice Number</TableHead>
-            <TableHead>Client</TableHead>
-            <TableHead>Date</TableHead>
-            <TableHead>Due Date</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Total</TableHead>
-            <TableHead>Discount</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
+    <div>
+      <BulkActionsToolbar
+        selectedCount={selectedIds.size}
+        draftCount={selectedDraftCount}
+        onMarkAsSent={handleBulkMarkAsSent}
+        onClearSelection={handleClearSelection}
+        isLoading={isBulkActionLoading}
+      />
+      
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-10">
+                <Checkbox
+                  checked={isAllSelected}
+                  // @ts-ignore - indeterminate is a valid prop
+                  indeterminate={isSomeSelected}
+                  onCheckedChange={handleSelectAll}
+                  aria-label="Select all invoices"
+                />
+              </TableHead>
+              <TableHead>Invoice Number</TableHead>
+              <TableHead>Client</TableHead>
+              <TableHead>Date</TableHead>
+              <TableHead>Due Date</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Total</TableHead>
+              <TableHead>Discount</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
 
-        <TableBody>
-          {isLoading ? (
-            <TableRow>
-              <TableCell colSpan={7} className="h-24 text-center">
-                <div className="flex justify-center items-center">
-                  <Loader2 className="h-6 w-6 animate-spin text-gray-500 mr-2" />
-                  <span>Loading invoices{currentBranch ? ` for ${currentBranch.name}...` : '...'}</span>
-                </div>
-              </TableCell>
-            </TableRow>
-          ) : invoices.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                {searchTerm ? (
-                  "No invoices match your search."
-                ) : currentBranch ? (
-                  `No invoices found for ${currentBranch.name}.`
-                ) : (
-                  "No invoices found."
-                )}
-              </TableCell>
-            </TableRow>
-          ) : (
-            invoices.map((invoice) => (
-              <TableRow key={invoice.id}>
-                <TableCell className="font-medium">{invoice.invoice_number}</TableCell>
-                <TableCell>
-                  {invoice.client ? (
-                    <div>
-                      <div>{invoice.client.first_name} {invoice.client.last_name}</div>
-                      <div className="text-sm text-muted-foreground">{invoice.client.email}</div>
-                    </div>
-                  ) : (
-                    "Unknown Client"
-                  )}
-                </TableCell>
-                <TableCell>{format(new Date(invoice.issued_date), "PP")}</TableCell>
-                <TableCell>{format(new Date(invoice.due_date), "PP")}</TableCell>
-                <TableCell>{getStatusBadge(invoice.status)}</TableCell>
-                <TableCell>R {invoice.total.toFixed(2)}</TableCell>
-                <TableCell>
-                  {renderDiscountCell(invoice)}
-                </TableCell>
-                <TableCell className="text-right">
-                  <InvoiceTableActions 
-                    invoice={invoice} 
-                    onOpenTransferDialog={handleTransferInvoice}
-                  />
+          <TableBody>
+            {isLoading ? (
+              <TableRow>
+                <TableCell colSpan={9} className="h-24 text-center">
+                  <div className="flex justify-center items-center">
+                    <Loader2 className="h-6 w-6 animate-spin text-gray-500 mr-2" />
+                    <span>Loading invoices{currentBranch ? ` for ${currentBranch.name}...` : '...'}</span>
+                  </div>
                 </TableCell>
               </TableRow>
-            ))
-          )}
-        </TableBody>
-        
-        {!isLoading && invoices.length > 0 && (
-          <TableFooter className="bg-muted/50">
-            <TableRow className="border-t-2 border-primary/20">
-              <TableCell colSpan={2} className="font-medium">
-                <div className="flex items-center">
-                  <Calculator className="h-4 w-4 mr-2 text-muted-foreground" />
-                  Summary ({totals.invoiceCount} invoices)
-                  {currentBranch && (
-                    <span className="inline-flex items-center ml-2 text-xs text-muted-foreground">
-                      <GitBranch className="h-3 w-3 mr-1" />
-                      {currentBranch.name}
-                    </span>
+            ) : invoices.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
+                  {searchTerm ? (
+                    "No invoices match your search."
+                  ) : currentBranch ? (
+                    `No invoices found for ${currentBranch.name}.`
+                  ) : (
+                    "No invoices found."
                   )}
-                </div>
-              </TableCell>
-              <TableCell colSpan={2}></TableCell>
-              <TableCell>
-                <div className="space-y-1">
-                  <div className="text-xs text-muted-foreground">Paid</div>
-                  <div className="font-medium text-green-600">R {totals.paidAmount.toFixed(2)}</div>
-                </div>
-              </TableCell>
-              <TableCell>
-                <div className="space-y-1">
-                  <div className="text-xs text-muted-foreground">Total</div>
-                  <div className="font-medium">R {totals.totalAmount.toFixed(2)}</div>
-                </div>
-              </TableCell>
-              <TableCell className="text-right">
-                <div className="space-y-1">
-                  <div className="text-xs text-muted-foreground">Outstanding</div>
-                  <div className="font-medium text-amber-600">R {totals.outstandingAmount.toFixed(2)}</div>
-                </div>
-              </TableCell>
-            </TableRow>
-          </TableFooter>
-        )}
-      </Table>
+                </TableCell>
+              </TableRow>
+            ) : (
+              invoices.map((invoice) => (
+                <TableRow key={invoice.id} className={selectedIds.has(invoice.id) ? "bg-muted/50" : ""}>
+                  <TableCell>
+                    <Checkbox
+                      checked={selectedIds.has(invoice.id)}
+                      onCheckedChange={(checked) => handleSelectOne(invoice.id, !!checked)}
+                      aria-label={`Select invoice ${invoice.invoice_number}`}
+                    />
+                  </TableCell>
+                  <TableCell className="font-medium">{invoice.invoice_number}</TableCell>
+                  <TableCell>
+                    {invoice.client ? (
+                      <div>
+                        <div>{invoice.client.first_name} {invoice.client.last_name}</div>
+                        <div className="text-sm text-muted-foreground">{invoice.client.email}</div>
+                      </div>
+                    ) : (
+                      "Unknown Client"
+                    )}
+                  </TableCell>
+                  <TableCell>{format(new Date(invoice.issued_date), "PP")}</TableCell>
+                  <TableCell>{format(new Date(invoice.due_date), "PP")}</TableCell>
+                  <TableCell>{getStatusBadge(invoice.status)}</TableCell>
+                  <TableCell>R {invoice.total.toFixed(2)}</TableCell>
+                  <TableCell>
+                    {renderDiscountCell(invoice)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <InvoiceTableActions 
+                      invoice={invoice} 
+                      onOpenTransferDialog={handleTransferInvoice}
+                    />
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+          
+          {!isLoading && invoices.length > 0 && (
+            <TableFooter className="bg-muted/50">
+              <TableRow className="border-t-2 border-primary/20">
+                <TableCell></TableCell>
+                <TableCell colSpan={2} className="font-medium">
+                  <div className="flex items-center">
+                    <Calculator className="h-4 w-4 mr-2 text-muted-foreground" />
+                    Summary ({totals.invoiceCount} invoices)
+                    {currentBranch && (
+                      <span className="inline-flex items-center ml-2 text-xs text-muted-foreground">
+                        <GitBranch className="h-3 w-3 mr-1" />
+                        {currentBranch.name}
+                      </span>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell colSpan={2}></TableCell>
+                <TableCell>
+                  <div className="space-y-1">
+                    <div className="text-xs text-muted-foreground">Paid</div>
+                    <div className="font-medium text-green-600">R {totals.paidAmount.toFixed(2)}</div>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="space-y-1">
+                    <div className="text-xs text-muted-foreground">Total</div>
+                    <div className="font-medium">R {totals.totalAmount.toFixed(2)}</div>
+                  </div>
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="space-y-1">
+                    <div className="text-xs text-muted-foreground">Outstanding</div>
+                    <div className="font-medium text-amber-600">R {totals.outstandingAmount.toFixed(2)}</div>
+                  </div>
+                </TableCell>
+              </TableRow>
+            </TableFooter>
+          )}
+        </Table>
+      </div>
     </div>
   );
 }
