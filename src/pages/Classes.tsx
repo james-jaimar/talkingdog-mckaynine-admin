@@ -5,14 +5,22 @@ import { ClassesTable } from "@/components/classes/ClassesTable";
 import { ClassesTabs } from "@/components/classes/ClassesTabs";
 import { AddClassModal } from "@/components/classes/AddClassModal";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, Upload } from "lucide-react";
 import { Helmet } from "react-helmet";
 import { useTerm } from "@/context/TermContext";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { InfoIcon } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { BulkClassImporter } from "@/components/handlers/import/BulkClassImporter";
 
 export default function Classes() {
   const [isAddClassModalOpen, setIsAddClassModalOpen] = useState(false);
+  const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
   const { termData, selectedYear, selectedTermNumber } = useTerm();
 
   return (
@@ -30,10 +38,16 @@ export default function Classes() {
                 "No term selected"}
             </p>
           </div>
-          <Button onClick={() => setIsAddClassModalOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Class
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setIsBulkImportOpen(true)}>
+              <Upload className="h-4 w-4 mr-2" />
+              Bulk Import
+            </Button>
+            <Button onClick={() => setIsAddClassModalOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Class
+            </Button>
+          </div>
         </div>
 
         {!termData && (
@@ -59,6 +73,15 @@ export default function Classes() {
           open={isAddClassModalOpen} 
           onOpenChange={setIsAddClassModalOpen} 
         />
+
+        <Dialog open={isBulkImportOpen} onOpenChange={setIsBulkImportOpen}>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Bulk Import Handlers to Classes</DialogTitle>
+            </DialogHeader>
+            <BulkClassImporter onImportSuccess={() => setIsBulkImportOpen(false)} />
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );
