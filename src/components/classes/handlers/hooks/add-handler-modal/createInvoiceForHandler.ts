@@ -10,7 +10,7 @@ export interface CreateInvoiceProps {
   className: string;
   classPrice: number;
   dogName: string;
-  generateInvoiceNumber: () => Promise<string>;
+  generateInvoiceNumber: (referenceDate?: Date) => Promise<string>;
   createInvoice: UseMutationResult<any, Error, any, unknown>;
   currentBranch?: { id: string; name: string } | null;
   enrollmentFee?: number;
@@ -40,16 +40,16 @@ export const createInvoiceForHandler = async ({
       discountType, discountAmount
     });
 
-    // Generate invoice number with fallback
+    // Generate invoice number with fallback - use classDate for proper period
     let invoiceNumber: string;
     try {
-      invoiceNumber = await generateInvoiceNumber();
+      invoiceNumber = await generateInvoiceNumber(classDate);
     } catch (error) {
       console.error("Failed to generate invoice number, using fallback:", error);
-      const now = new Date();
-      const year = now.getFullYear().toString().slice(-2);
-      const month = (now.getMonth() + 1).toString().padStart(2, '0');
-      const timestamp = now.getTime().toString().slice(-4);
+      const dateToUse = classDate || new Date();
+      const year = dateToUse.getFullYear().toString().slice(-2);
+      const month = (dateToUse.getMonth() + 1).toString().padStart(2, '0');
+      const timestamp = dateToUse.getTime().toString().slice(-4);
       let branchCode = "X";
       
       if (currentBranch?.name) {
