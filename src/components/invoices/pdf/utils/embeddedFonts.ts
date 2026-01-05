@@ -6,8 +6,11 @@
 
 import { jsPDF } from "jspdf";
 
-// We'll load the fonts from Google Fonts CDN and convert to base64 at runtime
-// This is more efficient than bundling large base64 strings
+// Fonts are bundled with the app (no network dependency) and embedded into jsPDF.
+// This guarantees consistent rendering/printing for users without local fonts installed.
+
+import robotoRegularUrl from "@/assets/fonts/Roboto-Regular.ttf?url";
+import robotoBoldUrl from "@/assets/fonts/Roboto-Bold.ttf?url";
 
 let fontsLoaded = false;
 let robotoRegular: string | null = null;
@@ -34,11 +37,10 @@ async function loadFonts(): Promise<void> {
   if (fontsLoaded) return;
 
   try {
-    // Using Google Fonts API to get the actual TTF files
-    // These are the direct TTF URLs for Roboto
+    // Load bundled TTF files (served by Vite) and convert to base64
     const [regular, bold] = await Promise.all([
-      fetchFontAsBase64('https://fonts.gstatic.com/s/roboto/v32/KFOmCnqEu92Fr1Me5WZLCzYlKw.ttf'),
-      fetchFontAsBase64('https://fonts.gstatic.com/s/roboto/v32/KFOlCnqEu92Fr1MmWUlvAx05IsDqlA.ttf')
+      fetchFontAsBase64(robotoRegularUrl),
+      fetchFontAsBase64(robotoBoldUrl),
     ]);
 
     if (regular && regular.length > 1000 && bold && bold.length > 1000) {
