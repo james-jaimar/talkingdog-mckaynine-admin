@@ -63,6 +63,9 @@ export async function generateTrainerStatementPDF({
     unit: "mm",
     format: "a4",
     compress: true,
+    // Only include fonts that are actually used in the document.
+    // This is critical to avoid base-14 fonts (Helvetica/Courier/Times/etc.) showing up in PDF properties.
+    putOnlyUsedFonts: true,
   });
 
   // Embedded fonts are REQUIRED. If we can't embed, fail generation.
