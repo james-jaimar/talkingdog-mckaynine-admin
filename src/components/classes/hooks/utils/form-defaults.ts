@@ -9,21 +9,20 @@ export function createDefaultFormValues(classData: ClassData | null): ClassFormV
   if (!classData) {
     const defaultValues = {
       name: "",
-      description: "", // Always empty string, never undefined
+      description: "",
       class_type: "Puppy" as const,
       course_fee: 0,
       enrollment_fee: 0,
       mckaynine_commission_type: "percentage" as const,
-      mckaynine_commission_value: 0,
+      mckaynine_commission_value: 15, // Franchise: 15%
       admin_fee_type: "percentage" as const,
-      admin_fee_value: 0,
+      admin_fee_value: 10, // Admin: 10%
       trainer_fee_type: "percentage" as const,
-      trainer_fee_value: 0,
+      trainer_fee_value: 40, // Trainer: 40%
       duration: 60,
       capacity: 8,
       branchId: "",
     };
-    console.log("DEBUG: Default form values created:", defaultValues);
     return defaultValues;
   }
 
