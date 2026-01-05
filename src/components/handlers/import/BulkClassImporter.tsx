@@ -17,12 +17,23 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 
 interface BulkClassImporterProps {
   onImportSuccess?: () => void;
 }
 
 export function BulkClassImporter({ onImportSuccess }: BulkClassImporterProps) {
+  const currentYear = new Date().getFullYear();
+  const [selectedYear, setSelectedYear] = useState<number>(currentYear);
+  const [selectedTerm, setSelectedTerm] = useState<string>("1");
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
@@ -30,6 +41,9 @@ export function BulkClassImporter({ onImportSuccess }: BulkClassImporterProps) {
   const [importResult, setImportResult] = useState<ImportSummary | null>(null);
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const { currentBranch } = useBranch();
+  
+  const years = [currentYear - 1, currentYear, currentYear + 1];
+  const terms = ["1", "2", "3", "4"];
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     accept: {
@@ -94,7 +108,8 @@ export function BulkClassImporter({ onImportSuccess }: BulkClassImporterProps) {
           const summary = await processBulkClassImport(
             results.data,
             supabase,
-            currentBranch?.id
+            currentBranch?.id,
+            { year: selectedYear, termNumber: selectedTerm }
           );
 
           setImportResult(summary);
@@ -156,6 +171,49 @@ Jane Doe,jane@example.com,,Max,Golden Retriever,,PASTE_SCHEDULE_ID_HERE,paid,pai
 
   return (
     <div className="space-y-4">
+      {/* Year and Term Selection */}
+      <div className="grid grid-cols-2 gap-4 p-4 border rounded-lg bg-muted/50">
+        <div className="space-y-2">
+          <Label htmlFor="year-select">Year</Label>
+          <Select 
+            value={selectedYear.toString()} 
+            onValueChange={(value) => setSelectedYear(parseInt(value))}
+          >
+            <SelectTrigger id="year-select">
+              <SelectValue placeholder="Select year" />
+            </SelectTrigger>
+            <SelectContent>
+              {years.map((year) => (
+                <SelectItem key={year} value={year.toString()}>
+                  {year}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="term-select">Term</Label>
+          <Select 
+            value={selectedTerm} 
+            onValueChange={setSelectedTerm}
+          >
+            <SelectTrigger id="term-select">
+              <SelectValue placeholder="Select term" />
+            </SelectTrigger>
+            <SelectContent>
+              {terms.map((term) => (
+                <SelectItem key={term} value={term}>
+                  Term {term}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <p className="col-span-2 text-xs text-muted-foreground">
+          Import will target schedules in Term {selectedTerm} {selectedYear}
+        </p>
+      </div>
+
       {/* Template Download */}
       <div className="flex items-center justify-between p-3 bg-muted rounded-md">
         <div>
