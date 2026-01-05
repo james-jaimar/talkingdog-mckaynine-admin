@@ -21,7 +21,13 @@ export async function generateTrainerPaymentPDF({
   paymentDetails,
   paymentDate
 }: TrainerPaymentPDFProps): Promise<string> {
-  const doc = new jsPDF({ compress: true });
+  // Create PDF with compression and font embedding
+  const doc = new jsPDF({ 
+    compress: true,
+    putOnlyUsedFonts: true
+  });
+  doc.setFont("helvetica", "normal");
+  
   const pageWidth = doc.internal.pageSize.width;
   const totalAmount = classes.reduce((sum, c) => sum + c.potentialRevenue, 0);
   
