@@ -57,12 +57,13 @@ const handler = async (req: Request): Promise<Response> => {
     console.log(`SMTP Config - Host: ${smtpHost}, Port: ${smtpPort}, Username: ${smtpUsername}, From: ${fromEmail}`);
     console.log(`Sending email to: ${to}, Subject: ${subject}`);
     
-    // Create SMTP client with TLS
+    // Create SMTP client (port 587 expects STARTTLS, not implicit TLS)
     const client = new SMTPClient({
       connection: {
         hostname: smtpHost,
         port: parseInt(smtpPort),
-        tls: true,
+        // For port 587 we must start unencrypted and upgrade via STARTTLS
+        tls: false,
         auth: {
           username: smtpUsername,
           password: smtpPassword,
