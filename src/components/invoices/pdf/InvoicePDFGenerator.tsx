@@ -52,11 +52,11 @@ async function createInvoicePDF(invoice: Invoice): Promise<jsPDF> {
   const pageWidth = doc.internal.pageSize.width;
   const pageHeight = doc.internal.pageSize.height;
   
-  // Add McKaynine logo 
-  const logoAdded = addLogoToPdf(doc, pageWidth);
+  // Add McKaynine logo and get positioning info
+  const logoResult = await addLogoToPdf(doc, pageWidth);
   
-  // Set the starting Y position based on whether the logo was added
-  const startY = logoAdded ? 50 : 40; // Adjusted for smaller logo dimensions
+  // Set the starting Y position based on logo bottom position
+  const startY = logoResult.bottomY + 10;
   
   // Add invoice header (invoice number, status, dates)
   const headerEndY = addInvoiceHeader(doc, invoice, startY, pageWidth);

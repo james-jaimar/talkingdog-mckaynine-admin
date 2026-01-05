@@ -2,7 +2,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Invoice } from "./types";
-import { generateInvoicePDF } from "@/components/invoices/pdf/InvoicePDFGenerator";
+import { getInvoiceAsBase64 } from "@/components/invoices/pdf/InvoicePDFGenerator";
 import { toast } from "sonner";
 
 interface EmailInvoiceParams {
@@ -18,8 +18,8 @@ export function useEmailInvoice() {
       try {
         toast.info("Preparing invoice for email...");
         
-        // First generate the PDF
-        const pdfBase64 = await generateInvoicePDF(invoice, true);
+        // Generate the PDF as base64
+        const pdfBase64 = await getInvoiceAsBase64(invoice);
         if (!pdfBase64) {
           throw new Error("Failed to generate invoice PDF");
         }
