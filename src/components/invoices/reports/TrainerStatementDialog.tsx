@@ -34,6 +34,7 @@ interface TrainerStatementDialogProps {
   };
   dateRange: { from: Date; to: Date };
   termInfo?: string;
+  branchName?: string;
 }
 
 export function TrainerStatementDialog({
@@ -42,6 +43,7 @@ export function TrainerStatementDialog({
   trainer,
   dateRange,
   termInfo = "Term Statement",
+  branchName = "delta",
 }: TrainerStatementDialogProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [pdfDataUrl, setPdfDataUrl] = useState<string | null>(null);
@@ -59,15 +61,41 @@ export function TrainerStatementDialog({
       return [];
     }
 
-    return trainer.classDetails.map((cls: any) => ({
-      className: cls.className || cls.class_name || "Unknown Class",
-      classDate: cls.classDate || cls.start_time 
-        ? format(new Date(cls.classDate || cls.start_time), "dd/MM/yyyy")
-        : "N/A",
-      bookingsCount: cls.bookingsCount || cls.bookings?.length || 0,
-      commissionAmount: cls.commissionAmount || cls.trainerCommission || 0,
-      paymentStatus: cls.paymentStatus || (cls.isPaid ? "paid" : "unpaid"),
-    }));
+    return trainer.classDetails.map((cls: any) => {
+      // Get the booking count - could be 'bookings' (number) or 'bookingsCount' or array length
+      let bookingsCount = 0;
+      if (typeof cls.bookings === 'number') {
+        bookingsCount = cls.bookings;
+      } else if (typeof cls.bookingsCount === 'number') {
+        bookingsCount = cls.bookingsCount;
+      } else if (Array.isArray(cls.bookings)) {
+        bookingsCount = cls.bookings.length;
+      } else if (Array.isArray(cls.bookingsDetails)) {
+        bookingsCount = cls.bookingsDetails.length;
+      }
+
+      // Get commission amount - use potentialRevenue or revenue from formatTrainerData
+      const commissionAmount = cls.potentialRevenue || cls.revenue || cls.commissionAmount || cls.trainerCommission || 0;
+
+      // Get class date
+      let classDate = "N/A";
+      const dateSource = cls.classDate || cls.scheduleDate || cls.start_time;
+      if (dateSource) {
+        try {
+          classDate = format(new Date(dateSource), "dd/MM/yyyy");
+        } catch {
+          classDate = "N/A";
+        }
+      }
+
+      return {
+        className: cls.className || cls.class_name || "Unknown Class",
+        classDate,
+        bookingsCount,
+        commissionAmount,
+        paymentStatus: cls.paymentStatus || (cls.isPaid ? "paid" : "unpaid"),
+      };
+    });
   };
 
   const handleGeneratePDF = async () => {
@@ -84,6 +112,7 @@ export function TrainerStatementDialog({
         totalPaid: trainer.paid,
         outstanding: trainer.pending,
         classes,
+        branchName,
       });
 
       setPdfDataUrl(dataUrl);
@@ -127,6 +156,7 @@ export function TrainerStatementDialog({
         totalPaid: trainer.paid,
         outstanding: trainer.pending,
         classes,
+        branchName,
       });
 
       downloadTrainerStatementPDF(dataUrl, trainer.trainerName, termInfo);
