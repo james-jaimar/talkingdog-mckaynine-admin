@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { encodeBase64 } from "https://deno.land/std@0.190.0/encoding/base64.ts";
+import { encode } from "https://deno.land/std@0.190.0/encoding/base64.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -196,8 +196,8 @@ serve(async (req: Request) => {
         
         if (pdfResponse.ok) {
           const pdfArrayBuffer = await pdfResponse.arrayBuffer();
-          const pdfBase64 = encodeBase64(new Uint8Array(pdfArrayBuffer));
-          
+          const pdfBase64 = encode(new Uint8Array(pdfArrayBuffer));
+
           attachments.push({
             filename: payload.documentName || "payment_confirmation.pdf",
             content: pdfBase64,

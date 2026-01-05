@@ -1,4 +1,4 @@
-import { encodeBase64 } from "https://deno.land/std@0.190.0/encoding/base64.ts";
+import { encode } from "https://deno.land/std@0.190.0/encoding/base64.ts";
 import { Invoice } from "./types.ts";
 import { formatCurrency, formatDate } from "./utils.ts";
 
@@ -20,7 +20,7 @@ export async function sendInvoiceEmail(invoice: Invoice, email: string, pdfBuffe
     }
     
     // Convert PDF buffer to base64 for attachment (avoid stack overflow on large PDFs)
-    const pdfBase64 = encodeBase64(new Uint8Array(pdfBuffer));
+    const pdfBase64 = encode(new Uint8Array(pdfBuffer));
 
     // Create email message based on invoice status
     const emailSubject = `Invoice ${invoice.invoice_number} from McKaynine Training Centre`;
