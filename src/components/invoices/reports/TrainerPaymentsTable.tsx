@@ -16,6 +16,7 @@ interface TrainerPaymentsTableProps {
   trainers: Array<{
     id: string;
     trainerName: string;
+    email?: string;
     totalEarned: number;
     paid: number;
     pending: number;
@@ -33,13 +34,15 @@ interface TrainerPaymentsTableProps {
   onMarkForPayment: (trainerId: string) => void;
   onMarkAsUnpaid?: (trainerId: string) => void;
   onFixZeroAmounts?: (trainerId: string) => void;
+  onGenerateStatement?: (trainerId: string) => void;
 }
 
 export function TrainerPaymentsTable({ 
   trainers, 
   onMarkForPayment, 
   onMarkAsUnpaid,
-  onFixZeroAmounts
+  onFixZeroAmounts,
+  onGenerateStatement
 }: TrainerPaymentsTableProps) {
   console.log("TrainerPaymentsTable rendering with trainers:", trainers);
   
@@ -125,6 +128,7 @@ export function TrainerPaymentsTable({
                 onMarkForPayment={onMarkForPayment}
                 onMarkAsUnpaid={onMarkAsUnpaid}
                 onFixZeroAmounts={onFixZeroAmounts}
+                onGenerateStatement={onGenerateStatement}
               />
             ))}
           </TableBody>

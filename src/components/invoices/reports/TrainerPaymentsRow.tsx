@@ -7,16 +7,17 @@ import {
 import { Button } from "@/components/ui/button";
 import { ExtendedBadge } from "@/components/ui/badge-variants";
 import { formatCurrency } from "@/lib/formatters";
-import { ChevronDown, ChevronUp, Wrench } from "lucide-react";
+import { ChevronDown, ChevronUp, Wrench, FileText } from "lucide-react";
 import { TrainerClassDetail } from "@/hooks/useTrainerPaymentData";
 import { ClassDetailsList } from "./class-details/ClassDetailsList";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal } from "lucide-react";
 
 interface TrainerPaymentsRowProps {
   trainer: {
     id: string;
     trainerName: string;
+    email?: string;
     totalEarned: number;
     paid: number;
     pending: number;
@@ -32,6 +33,7 @@ interface TrainerPaymentsRowProps {
   onMarkForPayment: (trainerId: string) => void;
   onMarkAsUnpaid?: (trainerId: string) => void;
   onFixZeroAmounts?: (trainerId: string) => void;
+  onGenerateStatement?: (trainerId: string) => void;
   index: number;
 }
 
@@ -40,6 +42,7 @@ export function TrainerPaymentsRow({
   onMarkForPayment, 
   onMarkAsUnpaid, 
   onFixZeroAmounts,
+  onGenerateStatement,
   index 
 }: TrainerPaymentsRowProps) {
   const [expanded, setExpanded] = useState(false);
@@ -126,59 +129,67 @@ export function TrainerPaymentsRow({
           )}
         </TableCell>
         <TableCell className="text-right">
-          {isZeroCommissionTrainer ? (
-            <Button variant="outline" size="sm" disabled>N/A</Button>
-          ) : hasActualPayments && !hasPendingAmount ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
-                  Actions <MoreHorizontal className="ml-1 h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={(e) => {
-                  e.stopPropagation();
-                  onMarkForPayment(trainer.id);
-                }}>
-                  Mark for Payment
-                </DropdownMenuItem>
-                {onMarkAsUnpaid && (
-                  <DropdownMenuItem 
-                    className="text-red-600" 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onMarkAsUnpaid(trainer.id);
-                    }}
-                  >
-                    Mark as Unpaid
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" onClick={(e) => e.stopPropagation()}>
+                Actions <MoreHorizontal className="ml-1 h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {/* Statement Actions - always available for trainers with classes */}
+              {onGenerateStatement && classesCount > 0 && (
+                <>
+                  <DropdownMenuItem onClick={(e) => {
+                    e.stopPropagation();
+                    onGenerateStatement(trainer.id);
+                  }}>
+                    <FileText className="h-4 w-4 mr-2" />
+                    Generate Statement
                   </DropdownMenuItem>
-                )}
-                {onFixZeroAmounts && trainer.hasZeroAmountPayments && (
-                  <DropdownMenuItem 
-                    className="text-amber-600" 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onFixZeroAmounts(trainer.id);
-                    }}
-                  >
-                    <Wrench className="h-4 w-4 mr-1" />
-                    Fix Zero Amounts
+                  <DropdownMenuSeparator />
+                </>
+              )}
+              
+              {/* Payment Actions */}
+              {!isZeroCommissionTrainer && (
+                <>
+                  <DropdownMenuItem onClick={(e) => {
+                    e.stopPropagation();
+                    onMarkForPayment(trainer.id);
+                  }}>
+                    Mark for Payment
                   </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                onMarkForPayment(trainer.id);
-              }}
-            >
-              Mark for Payment
-            </Button>
-          )}
+                  {onMarkAsUnpaid && hasActualPayments && (
+                    <DropdownMenuItem 
+                      className="text-red-600" 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onMarkAsUnpaid(trainer.id);
+                      }}
+                    >
+                      Mark as Unpaid
+                    </DropdownMenuItem>
+                  )}
+                  {onFixZeroAmounts && trainer.hasZeroAmountPayments && (
+                    <DropdownMenuItem 
+                      className="text-amber-600" 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onFixZeroAmounts(trainer.id);
+                      }}
+                    >
+                      <Wrench className="h-4 w-4 mr-1" />
+                      Fix Zero Amounts
+                    </DropdownMenuItem>
+                  )}
+                </>
+              )}
+              
+              {isZeroCommissionTrainer && !onGenerateStatement && (
+                <DropdownMenuItem disabled>No actions available</DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </TableCell>
       </TableRow>
 
