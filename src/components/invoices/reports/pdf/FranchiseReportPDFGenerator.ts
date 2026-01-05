@@ -16,7 +16,14 @@ export class FranchiseReportPDFGenerator {
   private margin: number = 15;
 
   constructor() {
-    this.doc = new jsPDF('p', 'mm', 'a4');
+    this.doc = new jsPDF({ 
+      orientation: 'p', 
+      unit: 'mm', 
+      format: 'a4',
+      compress: true,
+      putOnlyUsedFonts: true
+    });
+    this.doc.setFont("helvetica", "normal");
     this.pageWidth = this.doc.internal.pageSize.getWidth();
     this.pageHeight = this.doc.internal.pageSize.getHeight();
   }

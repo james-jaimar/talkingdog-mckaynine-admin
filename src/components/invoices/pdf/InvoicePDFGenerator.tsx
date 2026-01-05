@@ -47,8 +47,15 @@ export const getInvoiceAsBase64 = async (invoice: Invoice): Promise<string> => {
 async function createInvoicePDF(invoice: Invoice): Promise<jsPDF> {
   console.log("Starting PDF generation...");
   
-  // Create a new PDF document with compression enabled for smaller file size
-  const doc = new jsPDF({ compress: true });
+  // Create a new PDF document with compression and font embedding
+  const doc = new jsPDF({ 
+    compress: true,
+    putOnlyUsedFonts: true
+  });
+  
+  // Set default font to ensure consistency
+  doc.setFont("helvetica", "normal");
+  
   const pageWidth = doc.internal.pageSize.width;
   const pageHeight = doc.internal.pageSize.height;
   
