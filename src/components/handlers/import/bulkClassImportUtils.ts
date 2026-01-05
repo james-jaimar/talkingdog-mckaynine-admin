@@ -120,6 +120,11 @@ export async function validateBulkImport(
   return result;
 }
 
+export interface TermFilter {
+  year: number;
+  termNumber: string;
+}
+
 /**
  * Process bulk import of handlers into classes
  * Creates handlers, dogs, bookings, and invoices in one go
@@ -127,7 +132,8 @@ export async function validateBulkImport(
 export async function processBulkClassImport(
   data: any[],
   supabase: SupabaseClient,
-  branchId?: string
+  branchId?: string,
+  termFilter?: TermFilter
 ): Promise<ImportSummary> {
   const summary: ImportSummary = {
     total: data.length,
@@ -139,6 +145,30 @@ export async function processBulkClassImport(
     invoicesCreated: 0,
     results: [],
   };
+
+  // Get the term_id for the selected year/term if provided
+  let termId: string | null = null;
+  if (termFilter) {
+    const { data: termData, error: termError } = await supabase
+      .from("terms")
+      .select("id")
+      .eq("term_number", termFilter.termNumber)
+      .eq("academic_year_id", (
+        await supabase
+          .from("academic_years")
+          .select("id")
+          .eq("year", termFilter.year)
+          .single()
+      ).data?.id)
+      .maybeSingle();
+    
+    if (termData) {
+      termId = termData.id;
+      console.log(`Found term_id ${termId} for Term ${termFilter.termNumber} ${termFilter.year}`);
+    } else {
+      console.warn(`No term found for Term ${termFilter.termNumber} ${termFilter.year}`);
+    }
+  }
 
   for (let i = 0; i < data.length; i++) {
     const row = parseRow(data[i]);
@@ -159,13 +189,14 @@ export async function processBulkClassImport(
       }
 
       // 1. Validate schedule exists and get class details
-      const { data: schedule, error: scheduleError } = await supabase
+      let scheduleQuery = supabase
         .from("class_schedules")
         .select(`
           id,
           start_time,
           selected_dates,
           class_id,
+          term_id,
           classes (
             id,
             name,
@@ -174,16 +205,23 @@ export async function processBulkClassImport(
             class_type
           )
         `)
-        .eq("id", row.schedule_id)
-        .single();
+        .eq("id", row.schedule_id);
+      
+      // Filter by term if provided
+      if (termId) {
+        scheduleQuery = scheduleQuery.eq("term_id", termId);
+      }
+      
+      const { data: schedule, error: scheduleError } = await scheduleQuery.single();
 
       if (scheduleError || !schedule) {
+        const termInfo = termFilter ? ` in Term ${termFilter.termNumber} ${termFilter.year}` : "";
         summary.results.push({
           success: false,
           row: rowNum,
           handler_name: row.handler_name,
           dog_name: row.dog_name,
-          message: `Invalid schedule_id: ${row.schedule_id}`,
+          message: `Invalid schedule_id: ${row.schedule_id}${termInfo}`,
         });
         summary.failed++;
         continue;
