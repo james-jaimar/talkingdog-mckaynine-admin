@@ -2,12 +2,15 @@
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { TrainerPaymentsTable } from "./TrainerPaymentsTable";
 import { TrainerPaymentDialog } from "./TrainerPaymentDialog";
+import { TrainerStatementDialog } from "./TrainerStatementDialog";
 import { useState } from "react";
+import { useTerm } from "@/context/TermContext";
 
 interface TrainerPaymentsSummaryProps {
   trainers: Array<{
     id: string;
     trainerName: string;
+    email?: string;
     totalEarned: number;
     paid: number;
     pending: number;
@@ -17,6 +20,7 @@ interface TrainerPaymentsSummaryProps {
     scheduleIds?: string[];
     invoicesCount?: number;
     hasZeroAmountPayments?: boolean;
+    classDetails?: any[];
   }>;
   isLoading: boolean;
   dateRange?: { from: Date; to: Date };
@@ -37,6 +41,12 @@ export function TrainerPaymentsSummary({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedScheduleIds, setSelectedScheduleIds] = useState<string[]>([]);
   
+  // Statement dialog state
+  const [statementDialogOpen, setStatementDialogOpen] = useState(false);
+  const [statementTrainer, setStatementTrainer] = useState<typeof trainers[0] | null>(null);
+  
+  const { termData, selectedYear, selectedTermNumber } = useTerm();
+  
   const openPaymentDialog = (trainerId: string) => {
     const trainer = trainers.find(t => t.id === trainerId);
     setSelectedTrainerId(trainerId);
@@ -44,6 +54,19 @@ export function TrainerPaymentsSummary({
     setSelectedScheduleIds(trainer?.scheduleIds || []);
     setDialogOpen(true);
   };
+
+  const openStatementDialog = (trainerId: string) => {
+    const trainer = trainers.find(t => t.id === trainerId);
+    if (trainer) {
+      setStatementTrainer(trainer);
+      setStatementDialogOpen(true);
+    }
+  };
+
+  // Build term info string
+  const termInfo = selectedTermNumber && selectedYear
+    ? `Term ${selectedTermNumber}, ${selectedYear}`
+    : "Current Term";
 
   return (
     <div className="space-y-4">
@@ -57,6 +80,7 @@ export function TrainerPaymentsSummary({
             onMarkForPayment={openPaymentDialog}
             onMarkAsUnpaid={onMarkAsUnpaid}
             onFixZeroAmounts={onFixZeroAmounts}
+            onGenerateStatement={openStatementDialog}
           />
         </CardContent>
       </Card>
@@ -69,6 +93,16 @@ export function TrainerPaymentsSummary({
           dateRange={dateRange}
           branchId={branchId}
           scheduleIds={selectedScheduleIds}
+        />
+      )}
+      
+      {statementTrainer && (
+        <TrainerStatementDialog
+          open={statementDialogOpen}
+          onOpenChange={setStatementDialogOpen}
+          trainer={statementTrainer}
+          dateRange={dateRange}
+          termInfo={termInfo}
         />
       )}
     </div>
