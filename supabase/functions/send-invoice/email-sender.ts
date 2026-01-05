@@ -1,3 +1,4 @@
+import { encodeBase64 } from "https://deno.land/std@0.190.0/encoding/base64.ts";
 import { Invoice } from "./types.ts";
 import { formatCurrency, formatDate } from "./utils.ts";
 
@@ -18,9 +19,9 @@ export async function sendInvoiceEmail(invoice: Invoice, email: string, pdfBuffe
       throw new Error("Missing Supabase configuration. Please set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY environment variables.");
     }
     
-    // Convert PDF buffer to base64 for attachment
-    const pdfBase64 = btoa(String.fromCharCode(...new Uint8Array(pdfBuffer)));
-    
+    // Convert PDF buffer to base64 for attachment (avoid stack overflow on large PDFs)
+    const pdfBase64 = encodeBase64(new Uint8Array(pdfBuffer));
+
     // Create email message based on invoice status
     const emailSubject = `Invoice ${invoice.invoice_number} from McKaynine Training Centre`;
     const emailMessage = createEmailMessage(invoice, `${invoice.client.first_name} ${invoice.client.last_name || ''}`);

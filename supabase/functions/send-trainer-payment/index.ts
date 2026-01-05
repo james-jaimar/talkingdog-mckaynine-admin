@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { encodeBase64 } from "https://deno.land/std@0.190.0/encoding/base64.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -64,11 +65,11 @@ serve(async (req: Request) => {
     }
     
     // Format payment method for display
-    let paymentMethod = payload.paymentDetails?.method || "bank_transfer";
+    const paymentMethod = payload.paymentDetails?.method || "bank_transfer";
     let paymentMethodDisplay = "Bank Transfer";
-    if (paymentMethod === 'cash') paymentMethodDisplay = "Cash";
-    if (paymentMethod === 'check') paymentMethodDisplay = "Check";
-    if (paymentMethod === 'other') paymentMethodDisplay = "Other";
+    if (paymentMethod === "cash") paymentMethodDisplay = "Cash";
+    if (paymentMethod === "check") paymentMethodDisplay = "Check";
+    if (paymentMethod === "other") paymentMethodDisplay = "Other";
 
     // Build email content
     const emailHtml = `
@@ -154,9 +155,9 @@ serve(async (req: Request) => {
               <h2>Payment Details</h2>
               <p><strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
               <p><strong>Method:</strong> ${paymentMethodDisplay}</p>
-              ${payload.paymentDetails?.transactionId ? `<p><strong>Transaction ID:</strong> ${payload.paymentDetails.transactionId}</p>` : ''}
-              ${payload.amount ? `<p><strong>Amount:</strong> <span class="amount">R ${payload.amount.toFixed(2)}</span></p>` : ''}
-              ${payload.paymentDetails?.notes ? `<p><strong>Notes:</strong> ${payload.paymentDetails.notes}</p>` : ''}
+              ${payload.paymentDetails?.transactionId ? `<p><strong>Transaction ID:</strong> ${payload.paymentDetails.transactionId}</p>` : ""}
+              ${payload.amount ? `<p><strong>Amount:</strong> <span class="amount">R ${payload.amount.toFixed(2)}</span></p>` : ""}
+              ${payload.paymentDetails?.notes ? `<p><strong>Notes:</strong> ${payload.paymentDetails.notes}</p>` : ""}
             </div>
             
             ${payload.documentUrl ? `
@@ -164,7 +165,7 @@ serve(async (req: Request) => {
             <p style="text-align: center;">
               <a href="${payload.documentUrl}" class="btn" target="_blank">View Payment Document</a>
             </p>
-            ` : ''}
+            ` : ""}
             
             <p>Thank you for your services and dedication to our training program.</p>
             
@@ -186,7 +187,7 @@ serve(async (req: Request) => {
       encoding: string;
       contentType: string;
     }> = [];
-    
+
     // Try to download the PDF from documentUrl if provided
     if (payload.documentUrl) {
       try {
@@ -195,7 +196,7 @@ serve(async (req: Request) => {
         
         if (pdfResponse.ok) {
           const pdfArrayBuffer = await pdfResponse.arrayBuffer();
-          const pdfBase64 = btoa(String.fromCharCode(...new Uint8Array(pdfArrayBuffer)));
+          const pdfBase64 = encodeBase64(new Uint8Array(pdfArrayBuffer));
           
           attachments.push({
             filename: payload.documentName || "payment_confirmation.pdf",
