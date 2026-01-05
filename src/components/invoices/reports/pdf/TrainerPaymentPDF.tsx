@@ -26,11 +26,11 @@ export async function generateTrainerPaymentPDF({
   const totalAmount = classes.reduce((sum, c) => sum + c.potentialRevenue, 0);
   
   // Add McKaynine logo using the shared helper function
-  addLogoToPdf(doc, pageWidth);
+  const logoResult = await addLogoToPdf(doc, pageWidth);
   
   // Add payment details section
   // Starting Y position below the logo
-  let currentY = 50;
+  let currentY = logoResult.bottomY + 10;
   
   doc.setFontSize(20);
   doc.setTextColor(41, 128, 185);
