@@ -9,13 +9,13 @@ export const addLogoToPdf = (doc: jsPDF, pageWidth: number) => {
     // Use the new McKaynine Delta logo
     const logoPath = "/lovable-uploads/mckaynine_delta_long_2025.png";
     
-    // Set logo dimensions for proper display (wider aspect ratio for new logo)
-    const imgWidth = 120;
-    const imgHeight = 35;
+    // Set logo dimensions for proper display - optimized for new taller logo
+    const imgWidth = 80;
+    const imgHeight = 25;
     const xPosition = (pageWidth - imgWidth) / 2; // Center horizontally
     
-    // Add the logo image
-    doc.addImage(logoPath, "PNG", xPosition, 10, imgWidth, imgHeight);
+    // Add the logo image with JPEG compression for smaller file size
+    doc.addImage(logoPath, "JPEG", xPosition, 10, imgWidth, imgHeight, undefined, "MEDIUM");
     console.log("Logo added successfully from:", logoPath);
     
     // Reset text color to black for the rest of the document

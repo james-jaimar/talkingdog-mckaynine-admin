@@ -47,8 +47,8 @@ export const getInvoiceAsBase64 = async (invoice: Invoice): Promise<string> => {
 async function createInvoicePDF(invoice: Invoice): Promise<jsPDF> {
   console.log("Starting PDF generation...");
   
-  // Create a new PDF document
-  const doc = new jsPDF();
+  // Create a new PDF document with compression enabled for smaller file size
+  const doc = new jsPDF({ compress: true });
   const pageWidth = doc.internal.pageSize.width;
   const pageHeight = doc.internal.pageSize.height;
   
@@ -56,7 +56,7 @@ async function createInvoicePDF(invoice: Invoice): Promise<jsPDF> {
   const logoAdded = addLogoToPdf(doc, pageWidth);
   
   // Set the starting Y position based on whether the logo was added
-  const startY = logoAdded ? 70 : 40; // Reduced from 90 to account for removed text
+  const startY = logoAdded ? 50 : 40; // Adjusted for smaller logo dimensions
   
   // Add invoice header (invoice number, status, dates)
   const headerEndY = addInvoiceHeader(doc, invoice, startY, pageWidth);
