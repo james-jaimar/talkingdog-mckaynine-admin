@@ -5,6 +5,7 @@ import { PaymentDetailsValues } from "../payment-dialog/PaymentDetailsForm";
 import { formatCurrency } from "@/lib/formatters";
 import autoTable from "jspdf-autotable";
 import { addLogoToPdf } from "../../../invoices/pdf/utils/pdfHelpers";
+import { addEmbeddedFonts, setFont } from "../../../invoices/pdf/utils/embeddedFonts";
 
 interface TrainerPaymentPDFProps {
   trainerName: string;
@@ -26,7 +27,9 @@ export async function generateTrainerPaymentPDF({
     compress: true,
     putOnlyUsedFonts: true
   });
-  doc.setFont("helvetica", "normal");
+  
+  // Add embedded Roboto fonts for consistent rendering across all systems
+  await addEmbeddedFonts(doc);
   
   const pageWidth = doc.internal.pageSize.width;
   const totalAmount = classes.reduce((sum, c) => sum + c.potentialRevenue, 0);
@@ -40,9 +43,9 @@ export async function generateTrainerPaymentPDF({
   
   doc.setFontSize(20);
   doc.setTextColor(41, 128, 185);
-  doc.setFont(undefined, 'bold');
+  setFont(doc, 'bold');
   doc.text("Trainer Payment Confirmation", 14, currentY);
-  doc.setFont(undefined, 'normal');
+  setFont(doc, 'normal');
   currentY += 10;
   
   doc.setFontSize(11);
@@ -71,9 +74,9 @@ export async function generateTrainerPaymentPDF({
   
   doc.setFontSize(12);
   doc.setTextColor(60, 60, 60);
-  doc.setFont(undefined, 'bold');
+  setFont(doc, 'bold');
   doc.text("Trainer Information", 18, currentY + 8);
-  doc.setFont(undefined, 'normal');
+  setFont(doc, 'normal');
   
   doc.text(`Name: ${trainerName}`, 18, currentY + 16);
   doc.text(`Email: ${trainerEmail}`, 18, currentY + 24);
@@ -86,9 +89,9 @@ export async function generateTrainerPaymentPDF({
   
   doc.setFontSize(12);
   doc.setTextColor(41, 128, 185);
-  doc.setFont(undefined, 'bold');
+  setFont(doc, 'bold');
   doc.text("Payment Details", 18, currentY + 8);
-  doc.setFont(undefined, 'normal');
+  setFont(doc, 'normal');
   doc.setTextColor(60, 60, 60);
   
   doc.text(`Method: ${formatPaymentMethod(paymentDetails.paymentMethod)}`, 18, currentY + 16);
@@ -113,9 +116,9 @@ export async function generateTrainerPaymentPDF({
   // Table of classes
   doc.setFontSize(12);
   doc.setTextColor(41, 128, 185);
-  doc.setFont(undefined, 'bold');
+  setFont(doc, 'bold');
   doc.text("Classes Included in Payment", 14, currentY);
-  doc.setFont(undefined, 'normal');
+  setFont(doc, 'normal');
   currentY += 8;
   
   // Prepare data for the table
@@ -144,7 +147,8 @@ export async function generateTrainerPaymentPDF({
       3: { cellWidth: 40, halign: 'right' }
     },
     styles: {
-      fontSize: 10
+      fontSize: 10,
+      font: 'Roboto'
     },
     alternateRowStyles: {
       fillColor: [245, 250, 255]
@@ -156,12 +160,12 @@ export async function generateTrainerPaymentPDF({
   // Summary section
   doc.setFontSize(12);
   doc.setTextColor(41, 128, 185);
-  doc.setFont(undefined, 'bold');
+  setFont(doc, 'bold');
   doc.text("Payment Summary", 14, currentY);
   currentY += 8;
   
   doc.setTextColor(60, 60, 60);
-  doc.setFont(undefined, 'normal');
+  setFont(doc, 'normal');
   doc.text(`Total Classes: ${classes.length}`, 14, currentY);
   currentY += 6;
   
@@ -170,7 +174,7 @@ export async function generateTrainerPaymentPDF({
   currentY += 6;
   
   doc.setFontSize(14);
-  doc.setFont(undefined, 'bold');
+  setFont(doc, 'bold');
   doc.text(`Total Amount: ${formatCurrency(totalAmount)}`, 14, currentY);
   currentY += 15;
   
@@ -179,7 +183,7 @@ export async function generateTrainerPaymentPDF({
   doc.rect(0, doc.internal.pageSize.height - 25, pageWidth, 25, 'F');
   
   doc.setFontSize(9);
-  doc.setFont(undefined, 'normal');
+  setFont(doc, 'normal');
   doc.setTextColor(80, 80, 80);
   doc.text("This is an automatically generated payment confirmation.", 14, doc.internal.pageSize.height - 15);
   doc.text("McKaynine Training Centre", 14, doc.internal.pageSize.height - 10);

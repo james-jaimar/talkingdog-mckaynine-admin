@@ -1,4 +1,3 @@
-
 import { jsPDF } from "jspdf";
 import { Invoice } from "@/hooks/invoices/types";
 import { addLogoToPdf, calculateDynamicPosition } from "./utils/pdfHelpers";
@@ -8,6 +7,7 @@ import { addInvoiceItemsTable } from "./sections/InvoiceItems";
 import { addInvoiceSummary } from "./sections/InvoiceSummary";
 import { addInvoiceFooter } from "./sections/InvoiceFooter";
 import { splitTextToFitPage } from "./utils/formatters";
+import { addEmbeddedFonts } from "./utils/embeddedFonts";
 
 /**
  * Generates a PDF for the given invoice and saves it for download
@@ -53,8 +53,8 @@ async function createInvoicePDF(invoice: Invoice): Promise<jsPDF> {
     putOnlyUsedFonts: true
   });
   
-  // Set default font to ensure consistency
-  doc.setFont("helvetica", "normal");
+  // Add embedded Roboto fonts for consistent rendering across all systems
+  await addEmbeddedFonts(doc);
   
   const pageWidth = doc.internal.pageSize.width;
   const pageHeight = doc.internal.pageSize.height;

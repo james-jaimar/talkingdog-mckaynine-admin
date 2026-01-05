@@ -2,6 +2,7 @@
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { FranchiseReportData } from '@/hooks/useFranchiseClassesData';
+import { addEmbeddedFonts, setFont } from '../../pdf/utils/embeddedFonts';
 
 declare module 'jspdf' {
   interface jsPDF {
@@ -14,6 +15,7 @@ export class FranchiseReportPDFGenerator {
   private pageWidth: number;
   private pageHeight: number;
   private margin: number = 15;
+  private fontsLoaded: boolean = false;
 
   constructor() {
     this.doc = new jsPDF({ 
@@ -23,9 +25,15 @@ export class FranchiseReportPDFGenerator {
       compress: true,
       putOnlyUsedFonts: true
     });
-    this.doc.setFont("helvetica", "normal");
     this.pageWidth = this.doc.internal.pageSize.getWidth();
     this.pageHeight = this.doc.internal.pageSize.getHeight();
+  }
+
+  private async ensureFontsLoaded(): Promise<void> {
+    if (!this.fontsLoaded) {
+      await addEmbeddedFonts(this.doc);
+      this.fontsLoaded = true;
+    }
   }
 
   private formatCurrency(amount: number): string {
@@ -39,7 +47,7 @@ export class FranchiseReportPDFGenerator {
     
     // Company name
     this.doc.setFontSize(18);
-    this.doc.setFont('helvetica', 'bold');
+    setFont(this.doc, 'bold');
     this.doc.setTextColor(31, 41, 55);
     this.doc.text('McKaynine Training Centre', this.margin, 14);
 
@@ -50,7 +58,7 @@ export class FranchiseReportPDFGenerator {
 
     // Term and date info
     this.doc.setFontSize(8);
-    this.doc.setFont('helvetica', 'normal');
+    setFont(this.doc, 'normal');
     this.doc.setTextColor(75, 85, 99);
     this.doc.text(`Term: ${termLabel}`, this.margin, 29);
     this.doc.text(`Generated: ${new Date().toLocaleDateString('en-ZA', { 
@@ -112,12 +120,12 @@ export class FranchiseReportPDFGenerator {
       // Title text
       this.doc.setTextColor(card.textColor[0], card.textColor[1], card.textColor[2]);
       this.doc.setFontSize(6);
-      this.doc.setFont('helvetica', 'bold');
+      setFont(this.doc, 'bold');
       this.doc.text(card.title, x + 2, currentY + 4);
       
       // Value text
       this.doc.setFontSize(9);
-      this.doc.setFont('helvetica', 'bold');
+      setFont(this.doc, 'bold');
       this.doc.text(card.value, x + 2, currentY + 10);
     });
 
@@ -146,7 +154,7 @@ export class FranchiseReportPDFGenerator {
     
     // Class name in white text
     this.doc.setFontSize(10);
-    this.doc.setFont('helvetica', 'bold');
+    setFont(this.doc, 'bold');
     this.doc.setTextColor(255, 255, 255);
     this.doc.text(classGroup.className, cardX + 4, currentY + 6);
     
@@ -161,7 +169,7 @@ export class FranchiseReportPDFGenerator {
     
     // Course details in smaller white text
     this.doc.setFontSize(7);
-    this.doc.setFont('helvetica', 'normal');
+    setFont(this.doc, 'normal');
     this.doc.text(`Course Fee: ${this.formatCurrency(classGroup.courseFee)} • ${classGroup.handlers.length} handlers enrolled`, 
                   cardX + 4, currentY + 11);
     
@@ -195,7 +203,8 @@ export class FranchiseReportPDFGenerator {
         cellPadding: 1.5,
         lineColor: [229, 231, 235],
         lineWidth: 0.1,
-        overflow: 'linebreak'
+        overflow: 'linebreak',
+        font: 'Roboto'
       },
       headStyles: { 
         fillColor: [249, 250, 251],
@@ -251,7 +260,7 @@ export class FranchiseReportPDFGenerator {
     
     // Totals content - left aligned label
     this.doc.setFontSize(6);
-    this.doc.setFont('helvetica', 'bold');
+    setFont(this.doc, 'bold');
     this.doc.setTextColor(75, 85, 99);
     this.doc.text('Class Totals:', cardX + 4, tableEndY + 7);
 
@@ -269,13 +278,13 @@ export class FranchiseReportPDFGenerator {
     totals.reverse().forEach((total, index) => {
       // Value in blue
       this.doc.setTextColor(59, 130, 246);
-      this.doc.setFont('helvetica', 'bold');
+      setFont(this.doc, 'bold');
       const valueWidth = this.doc.getTextWidth(total.value);
       this.doc.text(total.value, totalX - valueWidth, tableEndY + 7);
       
       // Label in gray
       this.doc.setTextColor(75, 85, 99);
-      this.doc.setFont('helvetica', 'normal');
+      setFont(this.doc, 'normal');
       const labelWidth = this.doc.getTextWidth(total.label);
       this.doc.text(total.label, totalX - valueWidth - labelWidth - 2, tableEndY + 7);
       
@@ -296,6 +305,9 @@ export class FranchiseReportPDFGenerator {
   }
 
   async generateReport(reportData: FranchiseReportData, termLabel: string): Promise<Blob> {
+    // Ensure fonts are loaded before generating
+    await this.ensureFontsLoaded();
+    
     this.addHeader(termLabel);
     
     let currentY = 40;

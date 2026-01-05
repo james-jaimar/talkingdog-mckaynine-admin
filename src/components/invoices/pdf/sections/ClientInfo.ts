@@ -1,6 +1,6 @@
-
 import { jsPDF } from "jspdf";
 import { Invoice } from "@/hooks/invoices/types";
+import { setFont } from "../utils/embeddedFonts";
 
 /**
  * Adds client information to the invoice PDF
@@ -8,11 +8,11 @@ import { Invoice } from "@/hooks/invoices/types";
 export const addClientInfo = (doc: jsPDF, invoice: Invoice, startY: number) => {
   // Set styles for the "Bill To" section
   doc.setFontSize(12);
-  doc.setFont("helvetica", "bold");
+  setFont(doc, "bold");
   doc.text("Bill To:", 14, startY);
   
   // Reset to normal font for client details
-  doc.setFont("helvetica", "normal");
+  setFont(doc, "normal");
   doc.setFontSize(10);
   
   if (invoice.client) {
