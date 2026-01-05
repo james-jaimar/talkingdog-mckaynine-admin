@@ -1,6 +1,5 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { SmtpClient } from "https://deno.land/x/smtp@v0.7.0/mod.ts";
+import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -36,7 +35,7 @@ const handler = async (req: Request): Promise<Response> => {
     const smtpPort = Deno.env.get("SMTP_PORT");
     const smtpUsername = Deno.env.get("SMTP_USERNAME");
     const smtpPassword = Deno.env.get("SMTP_PASSWORD");
-    const fromEmail = Deno.env.get("FROM_EMAIL") || "noreply@mckaynine.co.za";
+    const fromEmail = Deno.env.get("FROM_EMAIL") || smtpUsername;
     
     if (!smtpHost || !smtpPort || !smtpUsername || !smtpPassword) {
       console.error("Missing SMTP configuration");
@@ -56,45 +55,42 @@ const handler = async (req: Request): Promise<Response> => {
     }
     
     console.log(`SMTP Config - Host: ${smtpHost}, Port: ${smtpPort}, Username: ${smtpUsername}, From: ${fromEmail}`);
+    console.log(`Sending email to: ${to}, Subject: ${subject}`);
     
-    // Create SMTP client
-    const client = new SmtpClient();
-    
-    try {
-      // Connect to SMTP server
-      await client.connect({
+    // Create SMTP client with TLS
+    const client = new SMTPClient({
+      connection: {
         hostname: smtpHost,
         port: parseInt(smtpPort),
-        username: smtpUsername,
-        password: smtpPassword,
         tls: true,
-      });
-      
-      console.log(`Connected to SMTP server: ${smtpHost}:${smtpPort}`);
-      console.log(`Sending email from: ${fromEmail} to: ${to}`);
-      
-      // Prepare email
-      const email: any = {
+        auth: {
+          username: smtpUsername,
+          password: smtpPassword,
+        },
+      },
+    });
+    
+    try {
+      // Prepare email content
+      const emailConfig: any = {
         from: fromEmail,
         to: to,
         subject: subject,
-        content: html,
         html: html,
       };
       
       // Add attachments if provided
       if (attachments && attachments.length > 0) {
-        console.log(`Adding ${attachments.length} attachments to email`);
-        email.attachments = attachments.map(attachment => ({
+        console.log(`Adding ${attachments.length} attachment(s) to email`);
+        emailConfig.attachments = attachments.map(attachment => ({
           filename: attachment.filename,
-          content: attachment.content,
-          encoding: attachment.encoding,
+          content: Uint8Array.from(atob(attachment.content), c => c.charCodeAt(0)),
           contentType: attachment.contentType,
         }));
       }
       
       // Send email
-      await client.send(email);
+      await client.send(emailConfig);
       console.log("Email sent successfully via SMTP");
       
       // Close connection
@@ -114,13 +110,11 @@ const handler = async (req: Request): Promise<Response> => {
       console.error("SMTP error:", smtpError);
       
       try {
-        // Try to close the client if it's open
         await client.close();
       } catch (closeError) {
         // Ignore close errors
       }
       
-      // Return detailed error
       return new Response(
         JSON.stringify({ 
           success: false, 

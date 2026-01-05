@@ -1,8 +1,5 @@
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 
-import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
-import { Resend } from "npm:resend@2.0.0";
-
-// CORS headers for cross-origin requests
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -50,17 +47,12 @@ serve(async (req: Request) => {
       );
     }
     
-    // Format payment method for display
-    let paymentMethod = payload.paymentDetails?.method || "bank_transfer";
-    let paymentMethodDisplay = "Bank Transfer";
-    if (paymentMethod === 'cash') paymentMethodDisplay = "Cash";
-    if (paymentMethod === 'check') paymentMethodDisplay = "Check";
-    if (paymentMethod === 'other') paymentMethodDisplay = "Other";
-
-    // Initialize Resend email client
-    const resendApiKey = Deno.env.get("RESEND_API_KEY");
-    if (!resendApiKey) {
-      console.error("RESEND_API_KEY environment variable is not set");
+    // Get Supabase configuration from env
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error("Missing Supabase configuration");
       return new Response(
         JSON.stringify({ 
           success: false, 
@@ -71,9 +63,14 @@ serve(async (req: Request) => {
       );
     }
     
-    const resend = new Resend(resendApiKey);
+    // Format payment method for display
+    let paymentMethod = payload.paymentDetails?.method || "bank_transfer";
+    let paymentMethodDisplay = "Bank Transfer";
+    if (paymentMethod === 'cash') paymentMethodDisplay = "Cash";
+    if (paymentMethod === 'check') paymentMethodDisplay = "Check";
+    if (paymentMethod === 'other') paymentMethodDisplay = "Other";
 
-    // Build email content - enhanced version with better styling
+    // Build email content
     const emailHtml = `
       <!DOCTYPE html>
       <html lang="en">
@@ -182,13 +179,13 @@ serve(async (req: Request) => {
       </html>
     `;
 
-    // Determine attachment strategy based on available data
-    let emailOptions: any = {
-      from: "McKaynine Training <payments@admin.talkingdog.co.za>",
-      to: [payload.to],
-      subject: "Payment Confirmation for Training Services",
-      html: emailHtml
-    };
+    // Prepare attachments
+    const attachments: Array<{
+      filename: string;
+      content: string;
+      encoding: string;
+      contentType: string;
+    }> = [];
     
     // Try to download the PDF from documentUrl if provided
     if (payload.documentUrl) {
@@ -197,92 +194,76 @@ serve(async (req: Request) => {
         const pdfResponse = await fetch(payload.documentUrl);
         
         if (pdfResponse.ok) {
-          // Convert the response to base64 for attachment
           const pdfArrayBuffer = await pdfResponse.arrayBuffer();
-          const pdfBase64 = btoa(
-            new Uint8Array(pdfArrayBuffer)
-              .reduce((data, byte) => data + String.fromCharCode(byte), '')
-          );
+          const pdfBase64 = btoa(String.fromCharCode(...new Uint8Array(pdfArrayBuffer)));
           
-          emailOptions.attachments = [
-            {
-              filename: payload.documentName || "payment_confirmation.pdf",
-              content: pdfBase64
-            }
-          ];
+          attachments.push({
+            filename: payload.documentName || "payment_confirmation.pdf",
+            content: pdfBase64,
+            encoding: "base64",
+            contentType: "application/pdf"
+          });
           console.log("Successfully attached document from URL");
         } else {
           console.error("Failed to fetch PDF from URL:", pdfResponse.status, pdfResponse.statusText);
         }
       } catch (fetchError) {
         console.error("Error fetching document from URL:", fetchError);
-        // Continue without attachment if fetch fails
       }
-    } 
-    // Fallback: Use provided PDF data if available
-    else if (payload.pdfData) {
-      emailOptions.attachments = [
-        {
-          filename: payload.documentName || "payment_confirmation.pdf",
-          content: payload.pdfData
-        }
-      ];
+    } else if (payload.pdfData) {
+      attachments.push({
+        filename: payload.documentName || "payment_confirmation.pdf",
+        content: payload.pdfData,
+        encoding: "base64",
+        contentType: "application/pdf"
+      });
       console.log("Using provided PDF data for attachment");
     }
 
-    // Send the email
-    try {
-      console.log("Sending email to:", payload.to);
-      const emailResult = await resend.emails.send(emailOptions);
-      console.log("Email sending result:", emailResult);
-      
-      if (emailResult.error) {
-        let errorMessage = emailResult.error.message || "Unknown email sending error";
-        let errorCode = emailResult.error.statusCode || 500;
-        
-        // Provide more specific error messages for common issues
-        if (errorMessage.includes("domain is not verified")) {
-          errorMessage = "Email domain is not verified in Resend. Please verify the domain 'admin.talkingdog.co.za' in your Resend account settings.";
-        }
-        
-        console.error("Email sending error:", {
-          statusCode: errorCode,
-          message: errorMessage
-        });
-        
-        return new Response(
-          JSON.stringify({ 
-            success: false, 
-            message: `Failed to send email: ${errorMessage}`,
-            emailSent: false,
-            errorCode: errorCode
-          }),
-          { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
-        );
-      }
-      
-      return new Response(
-        JSON.stringify({ 
-          success: true, 
-          message: "Email sent successfully",
-          emailSent: true,
-          emailId: emailResult.data?.id || null,
-          hasAttachment: !!emailOptions.attachments
-        }),
-        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
-    } catch (emailError) {
-      console.error("Error sending email:", emailError);
+    // Send email via SMTP function
+    const smtpFunctionUrl = `${supabaseUrl}/functions/v1/send-with-smtp`;
+    
+    console.log("Sending email via SMTP to:", payload.to);
+    
+    const response = await fetch(smtpFunctionUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseServiceKey}`
+      },
+      body: JSON.stringify({
+        to: payload.to,
+        subject: "Payment Confirmation for Training Services",
+        html: emailHtml,
+        attachments: attachments.length > 0 ? attachments : undefined
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("SMTP function error:", response.status, errorText);
       return new Response(
         JSON.stringify({ 
           success: false, 
-          message: `Failed to send email: ${emailError.message}`,
-          emailSent: false,
-          error: emailError.name || "EmailSendingError"
+          message: `Failed to send email: ${errorText}`,
+          emailSent: false
         }),
         { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
+
+    const result = await response.json();
+    console.log("Email sent successfully via SMTP:", result);
+    
+    return new Response(
+      JSON.stringify({ 
+        success: true, 
+        message: "Email sent successfully",
+        emailSent: true,
+        hasAttachment: attachments.length > 0
+      }),
+      { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+    );
   } catch (error: any) {
     console.error("Unhandled error in send-trainer-payment:", error);
     return new Response(

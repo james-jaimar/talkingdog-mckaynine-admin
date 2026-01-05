@@ -1,10 +1,9 @@
-
 import { Invoice } from "./types.ts";
 import { formatCurrency, formatDate } from "./utils.ts";
 
 /**
  * Sends an invoice via email with the PDF attachment
- * using Resend for email delivery
+ * using SMTP for email delivery
  */
 export async function sendInvoiceEmail(invoice: Invoice, email: string, pdfBuffer: ArrayBuffer): Promise<boolean> {
   console.log(`Preparing to send invoice ${invoice.invoice_number} to ${email}`);
@@ -27,13 +26,13 @@ export async function sendInvoiceEmail(invoice: Invoice, email: string, pdfBuffe
     const emailMessage = createEmailMessage(invoice, `${invoice.client.first_name} ${invoice.client.last_name || ''}`);
     const htmlMessage = formatEmailHtml(emailMessage);
     
-    console.log("Using send-with-resend function to deliver email");
+    console.log("Using send-with-smtp function to deliver email");
     
-    // Prepare the request to the send-with-resend edge function
-    const resendFunctionUrl = `${supabaseUrl}/functions/v1/send-with-resend`;
+    // Prepare the request to the send-with-smtp edge function
+    const smtpFunctionUrl = `${supabaseUrl}/functions/v1/send-with-smtp`;
     
-    // Send the email using the Resend edge function
-    const response = await fetch(resendFunctionUrl, {
+    // Send the email using the SMTP edge function
+    const response = await fetch(smtpFunctionUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -56,12 +55,12 @@ export async function sendInvoiceEmail(invoice: Invoice, email: string, pdfBuffe
     
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("Error response from Resend email service:", response.status, errorText);
+      console.error("Error response from SMTP email service:", response.status, errorText);
       throw new Error(`Failed to send email: ${response.status} - ${errorText}`);
     }
     
     const result = await response.json();
-    console.log("Email sent successfully via Resend:", result);
+    console.log("Email sent successfully via SMTP:", result);
     return true;
   } catch (error) {
     console.error("Error in sendInvoiceEmail:", error.message);
@@ -100,7 +99,6 @@ function createEmailMessage(invoice: Invoice, clientName: string): string {
  * Formats the plain text email message as HTML
  */
 function formatEmailHtml(plainText: string): string {
-  // Convert line breaks to <br> tags and wrap in HTML
   return `
     <!DOCTYPE html>
     <html>

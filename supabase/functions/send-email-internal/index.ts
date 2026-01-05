@@ -1,6 +1,4 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -26,12 +24,12 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    console.log("Email function started");
+    console.log("Internal email function started - forwarding to SMTP");
     
     // Get request data
     const { to, subject, html, attachments } = await req.json() as EmailRequest;
     
-    // Initialize Supabase admin client
+    // Get Supabase configuration from env
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     
@@ -39,33 +37,34 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Missing Supabase configuration");
     }
     
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    console.log("Supabase admin client created");
+    console.log(`Forwarding email to SMTP function - To: ${to}, Subject: ${subject}`);
     
-    let emailData: any = {
-      to,
-      subject,
-      html
-    };
+    // Forward to send-with-smtp function
+    const smtpFunctionUrl = `${supabaseUrl}/functions/v1/send-with-smtp`;
     
-    // Add attachments if provided
-    if (attachments && attachments.length > 0) {
-      emailData.attachments = attachments;
-    }
-    
-    console.log(`Sending email to ${to}`);
-    
-    // Send email using Supabase's built-in service
-    const { error } = await supabase.functions.invoke('send-with-smtp', {
-      body: emailData
+    const response = await fetch(smtpFunctionUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseServiceKey}`
+      },
+      body: JSON.stringify({
+        to,
+        subject,
+        html,
+        attachments
+      })
     });
     
-    if (error) {
-      console.error("Error sending email:", error);
-      throw error;
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Error from SMTP function:", response.status, errorText);
+      throw new Error(`SMTP function failed: ${response.status} - ${errorText}`);
     }
     
-    console.log("Email sent successfully");
+    const result = await response.json();
+    console.log("Email sent successfully via SMTP:", result);
+    
     return new Response(
       JSON.stringify({ success: true }),
       {
@@ -77,7 +76,7 @@ const handler = async (req: Request): Promise<Response> => {
       }
     );
   } catch (error) {
-    console.error("Error in email function:", error);
+    console.error("Error in internal email function:", error);
     return new Response(
       JSON.stringify({ 
         success: false, 
