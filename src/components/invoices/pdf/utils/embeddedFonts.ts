@@ -41,10 +41,17 @@ async function loadFonts(): Promise<void> {
       fetchFontAsBase64('https://fonts.gstatic.com/s/roboto/v32/KFOlCnqEu92Fr1MmWUlvAx05IsDqlA.ttf')
     ]);
 
-    robotoRegular = regular;
-    robotoBold = bold;
-    fontsLoaded = true;
-    console.log("Roboto fonts loaded and cached for PDF embedding");
+    if (regular && regular.length > 1000 && bold && bold.length > 1000) {
+      robotoRegular = regular;
+      robotoBold = bold;
+      fontsLoaded = true;
+      console.log("Roboto fonts loaded and cached for PDF embedding:", {
+        regularLength: regular.length,
+        boldLength: bold.length
+      });
+    } else {
+      console.warn("Font data appears invalid, using fallback");
+    }
   } catch (error) {
     console.error("Failed to load fonts, falling back to standard fonts:", error);
     // Don't throw - we'll fall back to standard fonts

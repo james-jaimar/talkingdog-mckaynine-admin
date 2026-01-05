@@ -65,8 +65,9 @@ export async function generateTrainerStatementPDF({
     compress: true,
   });
 
-  // Add embedded fonts for consistent rendering
-  await addEmbeddedFonts(doc);
+  // Add embedded fonts for consistent rendering - MUST await before using fonts
+  const fontsLoaded = await addEmbeddedFonts(doc);
+  const fontName = fontsLoaded ? "Roboto" : "helvetica";
 
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 20;
@@ -204,12 +205,12 @@ export async function generateTrainerStatementPDF({
       textColor: [255, 255, 255],
       fontStyle: "bold",
       fontSize: 9,
-      font: "Roboto",
+      font: fontName,
     },
     bodyStyles: {
       fontSize: 9,
       textColor: [55, 65, 81],
-      font: "Roboto",
+      font: fontName,
     },
     alternateRowStyles: {
       fillColor: [249, 250, 251],
