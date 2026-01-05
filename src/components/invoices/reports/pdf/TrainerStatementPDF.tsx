@@ -1,6 +1,7 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { format } from "date-fns";
+import { addEmbeddedFonts, setFont } from "@/components/invoices/pdf/utils/embeddedFonts";
 
 interface ClassDetail {
   className: string;
@@ -20,6 +21,29 @@ interface TrainerStatementPDFProps {
   outstanding: number;
   classes: ClassDetail[];
   generatedDate?: Date;
+  branchName?: string; // "delta" or "randburg"
+}
+
+// Logo paths for different branches
+const LOGOS: Record<string, string> = {
+  delta: "/lovable-uploads/mckaynine_delta_long_2025.jpg",
+  randburg: "/lovable-uploads/mckaynine_randburg_long_2025.jpg", // Will need to be uploaded
+};
+
+async function loadImageAsBase64(url: string): Promise<string | null> {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    const blob = await response.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
 }
 
 export async function generateTrainerStatementPDF({
@@ -32,6 +56,7 @@ export async function generateTrainerStatementPDF({
   outstanding,
   classes,
   generatedDate = new Date(),
+  branchName = "delta",
 }: TrainerStatementPDFProps): Promise<string> {
   const doc = new jsPDF({
     orientation: "portrait",
@@ -40,29 +65,59 @@ export async function generateTrainerStatementPDF({
     compress: true,
   });
 
+  // Add embedded fonts for consistent rendering
+  await addEmbeddedFonts(doc);
+
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 20;
-  let yPos = 20;
+  let yPos = 15;
 
-  // Header
+  // Add branch logo
+  const logoPath = LOGOS[branchName.toLowerCase()] || LOGOS.delta;
+  const logoBase64 = await loadImageAsBase64(logoPath);
+  
+  if (logoBase64) {
+    try {
+      const logoWidth = 70;
+      const logoHeight = 20;
+      const logoX = (pageWidth - logoWidth) / 2;
+      doc.addImage(logoBase64, "JPEG", logoX, yPos, logoWidth, logoHeight);
+      yPos += logoHeight + 10;
+    } catch (error) {
+      console.error("Error adding logo:", error);
+      // Continue without logo
+      yPos += 5;
+    }
+  } else {
+    // Fallback to text header
+    setFont(doc, "bold");
+    doc.setFontSize(16);
+    doc.setTextColor(31, 41, 55);
+    const branchDisplay = branchName.charAt(0).toUpperCase() + branchName.slice(1);
+    doc.text(`McKaynine ${branchDisplay}`, pageWidth / 2, yPos + 5, { align: "center" });
+    yPos += 15;
+  }
+
+  // Header box
   doc.setFillColor(31, 41, 55); // gray-800
-  doc.rect(0, 0, pageWidth, 45, "F");
+  doc.rect(0, yPos, pageWidth, 35, "F");
 
   doc.setTextColor(255, 255, 255);
-  doc.setFontSize(24);
-  doc.setFont("helvetica", "bold");
-  doc.text("TRAINER PAYMENT STATEMENT", margin, 25);
+  doc.setFontSize(22);
+  setFont(doc, "bold");
+  doc.text("TRAINER PAYMENT STATEMENT", margin, yPos + 15);
 
   doc.setFontSize(11);
-  doc.setFont("helvetica", "normal");
-  doc.text(termInfo, margin, 35);
-  doc.text(`Generated: ${format(generatedDate, "dd MMMM yyyy")}`, pageWidth - margin, 35, { align: "right" });
+  setFont(doc, "normal");
+  doc.text(termInfo, margin, yPos + 25);
+  doc.text(`Generated: ${format(generatedDate, "dd MMMM yyyy")}`, pageWidth - margin, yPos + 25, { align: "right" });
 
-  yPos = 55;
+  yPos += 45;
 
   // Date range section
   doc.setTextColor(100, 100, 100);
   doc.setFontSize(10);
+  setFont(doc, "normal");
   doc.text(`Statement Period: ${format(dateRange.from, "dd MMM yyyy")} - ${format(dateRange.to, "dd MMM yyyy")}`, margin, yPos);
   yPos += 12;
 
@@ -72,10 +127,10 @@ export async function generateTrainerStatementPDF({
 
   doc.setTextColor(31, 41, 55);
   doc.setFontSize(12);
-  doc.setFont("helvetica", "bold");
+  setFont(doc, "bold");
   doc.text("Trainer Details", margin + 5, yPos + 8);
 
-  doc.setFont("helvetica", "normal");
+  setFont(doc, "normal");
   doc.setFontSize(10);
   doc.setTextColor(75, 85, 99);
   doc.text(`Name: ${trainerName}`, margin + 5, yPos + 16);
@@ -89,7 +144,7 @@ export async function generateTrainerStatementPDF({
 
   doc.setTextColor(31, 41, 55);
   doc.setFontSize(12);
-  doc.setFont("helvetica", "bold");
+  setFont(doc, "bold");
   doc.text("Payment Summary", margin + 5, yPos + 8);
 
   const summaryCol1 = margin + 5;
@@ -97,29 +152,29 @@ export async function generateTrainerStatementPDF({
   const summaryCol3 = margin + 115;
 
   doc.setFontSize(10);
-  doc.setFont("helvetica", "normal");
+  setFont(doc, "normal");
   doc.setTextColor(75, 85, 99);
 
   // Total Commission
   doc.text("Total Commission:", summaryCol1, yPos + 18);
-  doc.setFont("helvetica", "bold");
+  setFont(doc, "bold");
   doc.setTextColor(31, 41, 55);
   doc.text(`R ${totalCommission.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}`, summaryCol1, yPos + 25);
 
   // Already Paid
-  doc.setFont("helvetica", "normal");
+  setFont(doc, "normal");
   doc.setTextColor(75, 85, 99);
   doc.text("Already Paid:", summaryCol2, yPos + 18);
-  doc.setFont("helvetica", "bold");
+  setFont(doc, "bold");
   doc.setTextColor(22, 163, 74); // green-600
   doc.text(`R ${totalPaid.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}`, summaryCol2, yPos + 25);
 
   // Outstanding
-  doc.setFont("helvetica", "normal");
+  setFont(doc, "normal");
   doc.setTextColor(75, 85, 99);
   doc.text("Outstanding:", summaryCol3, yPos + 18);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(outstanding > 0 ? 220 : 31, outstanding > 0 ? 38 : 41, outstanding > 0 ? 38 : 55); // red or gray
+  setFont(doc, "bold");
+  doc.setTextColor(outstanding > 0 ? 220 : 31, outstanding > 0 ? 38 : 41, outstanding > 0 ? 38 : 55);
   doc.text(`R ${outstanding.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}`, summaryCol3, yPos + 25);
 
   yPos += 45;
@@ -127,7 +182,7 @@ export async function generateTrainerStatementPDF({
   // Classes Table
   doc.setTextColor(31, 41, 55);
   doc.setFontSize(12);
-  doc.setFont("helvetica", "bold");
+  setFont(doc, "bold");
   doc.text("Classes Breakdown", margin, yPos);
   yPos += 5;
 
@@ -149,10 +204,12 @@ export async function generateTrainerStatementPDF({
       textColor: [255, 255, 255],
       fontStyle: "bold",
       fontSize: 9,
+      font: "Roboto",
     },
     bodyStyles: {
       fontSize: 9,
       textColor: [55, 65, 81],
+      font: "Roboto",
     },
     alternateRowStyles: {
       fillColor: [249, 250, 251],
@@ -187,7 +244,7 @@ export async function generateTrainerStatementPDF({
   doc.rect(margin, finalY + 2, pageWidth - margin * 2, 10, "F");
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(10);
-  doc.setFont("helvetica", "bold");
+  setFont(doc, "bold");
   doc.text("TOTAL", margin + 5, finalY + 8);
   doc.text(
     `R ${totalCommission.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}`,
@@ -200,14 +257,15 @@ export async function generateTrainerStatementPDF({
   const footerY = doc.internal.pageSize.getHeight() - 20;
   doc.setTextColor(156, 163, 175);
   doc.setFontSize(8);
-  doc.setFont("helvetica", "normal");
+  setFont(doc, "normal");
   doc.text(
     "This is an automatically generated statement. Please contact the administrator for any queries.",
     pageWidth / 2,
     footerY,
     { align: "center" }
   );
-  doc.text("McKaynine Training Centre", pageWidth / 2, footerY + 5, { align: "center" });
+  const branchDisplay = branchName.charAt(0).toUpperCase() + branchName.slice(1);
+  doc.text(`McKaynine ${branchDisplay} Training Centre`, pageWidth / 2, footerY + 5, { align: "center" });
 
   return doc.output("dataurlstring");
 }

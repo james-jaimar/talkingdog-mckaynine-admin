@@ -3,8 +3,9 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { TrainerPaymentsTable } from "./TrainerPaymentsTable";
 import { TrainerPaymentDialog } from "./TrainerPaymentDialog";
 import { TrainerStatementDialog } from "./TrainerStatementDialog";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useTerm } from "@/context/TermContext";
+import { useBranch } from "@/context/BranchContext";
 
 interface TrainerPaymentsSummaryProps {
   trainers: Array<{
@@ -46,6 +47,16 @@ export function TrainerPaymentsSummary({
   const [statementTrainer, setStatementTrainer] = useState<typeof trainers[0] | null>(null);
   
   const { termData, selectedYear, selectedTermNumber } = useTerm();
+  const { branches } = useBranch();
+  
+  // Get branch name from branchId for PDF branding
+  const branchName = useMemo(() => {
+    if (!branchId || !branches) return "delta";
+    const branch = branches.find(b => b.id === branchId);
+    if (branch?.name?.toLowerCase().includes("randburg")) return "randburg";
+    if (branch?.name?.toLowerCase().includes("delta")) return "delta";
+    return branch?.name?.toLowerCase() || "delta";
+  }, [branchId, branches]);
   
   const openPaymentDialog = (trainerId: string) => {
     const trainer = trainers.find(t => t.id === trainerId);
@@ -103,6 +114,7 @@ export function TrainerPaymentsSummary({
           trainer={statementTrainer}
           dateRange={dateRange}
           termInfo={termInfo}
+          branchName={branchName}
         />
       )}
     </div>
