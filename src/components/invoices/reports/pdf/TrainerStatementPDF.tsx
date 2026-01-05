@@ -203,17 +203,19 @@ export async function generateTrainerStatementPDF({
     head: [["Class Name", "Date", "Bookings", "Commission", "Status"]],
     body: tableData,
     margin: { left: margin, right: margin },
+    styles: {
+      font: fontName,
+      fontSize: 9,
+      textColor: [55, 65, 81],
+    },
     headStyles: {
       fillColor: [31, 41, 55],
       textColor: [255, 255, 255],
       fontStyle: "bold",
       fontSize: 9,
-      font: fontName,
     },
     bodyStyles: {
       fontSize: 9,
-      textColor: [55, 65, 81],
-      font: fontName,
     },
     alternateRowStyles: {
       fillColor: [249, 250, 251],
@@ -226,6 +228,9 @@ export async function generateTrainerStatementPDF({
       4: { cellWidth: 25, halign: "center" },
     },
     didParseCell: (data) => {
+      // Ensure Roboto is used everywhere (autoTable can otherwise fall back silently)
+      data.cell.styles.font = fontName;
+
       // Color the status column
       if (data.section === "body" && data.column.index === 4) {
         const status = data.cell.raw as string;

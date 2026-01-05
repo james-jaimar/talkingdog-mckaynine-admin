@@ -78,13 +78,22 @@ export async function addEmbeddedFonts(doc: jsPDF): Promise<boolean> {
     doc.addFileToVFS("Roboto-Regular.ttf", robotoRegular);
     doc.addFileToVFS("Roboto-Bold.ttf", robotoBold);
 
-    // Register the fonts with jsPDF
-    doc.addFont("Roboto-Regular.ttf", "Roboto", "normal");
-    doc.addFont("Roboto-Bold.ttf", "Roboto", "bold");
+    // Register the fonts with jsPDF (Identity-H ensures TTF embedding + Unicode mapping)
+    doc.addFont("Roboto-Regular.ttf", "Roboto", "normal", "Identity-H");
+    doc.addFont("Roboto-Bold.ttf", "Roboto", "bold", "Identity-H");
+
+    // Validate the fonts are actually registered (jsPDF may silently fall back otherwise)
+    const fontList = (doc as any).getFontList?.() as Record<string, string[]> | undefined;
+    const hasRoboto = !!fontList?.Roboto?.includes("normal") && !!fontList?.Roboto?.includes("bold");
+    if (!hasRoboto) {
+      console.error("Roboto font registration failed. Font list:", fontList);
+      doc.setFont("helvetica", "normal");
+      return false;
+    }
 
     // Set as default font
     doc.setFont("Roboto", "normal");
-    
+
     return true;
   } catch (error) {
     console.error("Failed to add embedded fonts:", error);
