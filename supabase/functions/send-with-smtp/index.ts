@@ -57,17 +57,25 @@ const handler = async (req: Request): Promise<Response> => {
     console.log(`SMTP Config - Host: ${smtpHost}, Port: ${smtpPort}, Username: ${smtpUsername}, From: ${fromEmail}`);
     console.log(`Sending email to: ${to}, Subject: ${subject}`);
     
-    // Create SMTP client (port 587 expects STARTTLS, not implicit TLS)
+    // Create SMTP client.
+    // Port 587 is typically STARTTLS; some providers mis-advertise support.
+    // We start unencrypted and (by default) denomailer would attempt STARTTLS.
+    // For this provider, we disable STARTTLS and allow auth over unsecure channel.
     const client = new SMTPClient({
       connection: {
         hostname: smtpHost,
         port: parseInt(smtpPort),
-        // For port 587 we must start unencrypted and upgrade via STARTTLS
         tls: false,
         auth: {
           username: smtpUsername,
           password: smtpPassword,
         },
+      },
+      debug: {
+        // Avoid crashing during STARTTLS upgrade on some servers
+        noStartTLS: true,
+        // Allow AUTH without TLS (provider-specific)
+        allowUnsecure: true,
       },
     });
     
@@ -83,10 +91,14 @@ const handler = async (req: Request): Promise<Response> => {
       // Add attachments if provided
       if (attachments && attachments.length > 0) {
         console.log(`Adding ${attachments.length} attachment(s) to email`);
-        emailConfig.attachments = attachments.map(attachment => ({
-          filename: attachment.filename,
-          content: Uint8Array.from(atob(attachment.content), c => c.charCodeAt(0)),
-          contentType: attachment.contentType,
+
+        // denomailer expects attachment objects with encoding + contentType.
+        // We pass through the base64 content directly (no manual atob/Uint8Array conversion).
+        emailConfig.attachments = attachments.map((a) => ({
+          filename: a.filename,
+          content: a.content,
+          encoding: a.encoding || "base64",
+          contentType: a.contentType || "application/octet-stream",
         }));
       }
       
