@@ -1,6 +1,6 @@
-
 import { Invoice } from '@/hooks/invoices/types';
 import { formatCurrency } from '@/lib/formatters';
+import { setFont } from '../utils/embeddedFonts';
 
 export function addInvoiceSummary(doc: any, invoice: Invoice, startY: number): number {
   const { subtotal, tax_rate, tax_amount, total, monetary_discount, discount_type, original_discount_amount, discount_amount } = invoice;
@@ -20,7 +20,7 @@ export function addInvoiceSummary(doc: any, invoice: Invoice, startY: number): n
   currentY += 8;
   
   // Subtotal
-  doc.setFont(undefined, 'normal');
+  setFont(doc, 'normal');
   doc.setFontSize(10);
   doc.text('Subtotal:', labelX, currentY);
   doc.text(formatCurrency(subtotal), valueX, currentY, { align: 'right' });
@@ -49,7 +49,7 @@ export function addInvoiceSummary(doc: any, invoice: Invoice, startY: number): n
   currentY += 8;
   
   // Total
-  doc.setFont(undefined, 'bold');
+  setFont(doc, 'bold');
   doc.text('Total:', labelX, currentY);
   doc.text(formatCurrency(total), valueX, currentY, { align: 'right' });
   

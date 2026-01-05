@@ -1,4 +1,3 @@
-
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { Invoice } from "@/hooks/invoices/types";
@@ -32,7 +31,8 @@ export const addInvoiceItemsTable = (doc: jsPDF, invoice: Invoice, startY: numbe
         fontSize: 9,
         cellPadding: 4,
         lineWidth: 0.5,
-        overflow: 'linebreak'
+        overflow: 'linebreak',
+        font: 'Roboto'
       },
       headStyles: {
         fillColor: [70, 70, 70],

@@ -1,12 +1,12 @@
-
 import { jsPDF } from "jspdf";
 import { Invoice } from "@/hooks/invoices/types";
 import { format } from "date-fns";
+import { setFont } from "../utils/embeddedFonts";
 
 export const addInvoiceHeader = (doc: jsPDF, invoice: Invoice, startY: number, pageWidth: number) => {
   // Set smaller font size for invoice details
   doc.setFontSize(10);
-  doc.setFont("helvetica", "normal");
+  setFont(doc, "normal");
   
   // Left-aligned invoice number
   doc.text(`INVOICE: ${invoice.invoice_number}`, 14, startY);

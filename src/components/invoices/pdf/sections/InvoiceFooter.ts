@@ -1,6 +1,6 @@
-
 import { jsPDF } from "jspdf";
 import { Invoice } from "@/hooks/invoices/types";
+import { setFont } from "../utils/embeddedFonts";
 
 export const addInvoiceFooter = (doc: jsPDF, invoice: Invoice, startY: number, pageWidth: number, pageHeight: number) => {
   let currentY = startY;
@@ -8,9 +8,9 @@ export const addInvoiceFooter = (doc: jsPDF, invoice: Invoice, startY: number, p
   // Notes field (if needed)
   if (invoice.notes) {
     doc.setFontSize(10);
-    doc.setFont("helvetica", "bold");
+    setFont(doc, "bold");
     doc.text("Notes:", 14, currentY);
-    doc.setFont("helvetica", "normal");
+    setFont(doc, "normal");
     currentY += 6;
     
     doc.text(invoice.notes, 14, currentY);
@@ -25,11 +25,11 @@ export const addInvoiceFooter = (doc: jsPDF, invoice: Invoice, startY: number, p
   
   // Banking details section
   doc.setFontSize(10);
-  doc.setFont("helvetica", "bold");
+  setFont(doc, "bold");
   doc.text("BANKING DETAILS:", pageWidth / 2, currentY, { align: 'center' });
   currentY += 6;
   
-  doc.setFont("helvetica", "normal");
+  setFont(doc, "normal");
   doc.text(
     "Adrienne Hawkins. FNB, Sandton City (26095400). Account Number: 6212 7520 189",
     pageWidth / 2, 

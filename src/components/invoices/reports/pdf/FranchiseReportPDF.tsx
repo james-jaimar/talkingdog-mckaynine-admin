@@ -2,6 +2,7 @@
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { FranchiseReportData } from '@/hooks/useFranchiseClassesData';
+import { addEmbeddedFonts, setFont } from '../../pdf/utils/embeddedFonts';
 
 declare module 'jspdf' {
   interface jsPDF {
@@ -13,6 +14,7 @@ export class FranchiseReportPDF {
   private doc: jsPDF;
   private pageWidth: number;
   private margin: number = 20;
+  private fontsLoaded: boolean = false;
 
   constructor() {
     this.doc = new jsPDF({ 
@@ -22,8 +24,14 @@ export class FranchiseReportPDF {
       compress: true,
       putOnlyUsedFonts: true
     });
-    this.doc.setFont("helvetica", "normal");
     this.pageWidth = this.doc.internal.pageSize.getWidth();
+  }
+
+  private async ensureFontsLoaded(): Promise<void> {
+    if (!this.fontsLoaded) {
+      await addEmbeddedFonts(this.doc);
+      this.fontsLoaded = true;
+    }
   }
 
   private formatCurrency(amount: number): string {
@@ -36,14 +44,14 @@ export class FranchiseReportPDF {
   private addHeader(termLabel: string) {
     // Company header
     this.doc.setFontSize(20);
-    this.doc.setFont('helvetica', 'bold');
+    setFont(this.doc, 'bold');
     this.doc.text('McKaynine Training Centre', this.margin, 25);
 
     this.doc.setFontSize(16);
     this.doc.text('Franchise Classes Report', this.margin, 35);
 
     this.doc.setFontSize(12);
-    this.doc.setFont('helvetica', 'normal');
+    setFont(this.doc, 'normal');
     this.doc.text(`Term: ${termLabel}`, this.margin, 45);
     this.doc.text(`Generated: ${new Date().toLocaleDateString()}`, this.margin, 52);
 
@@ -56,11 +64,11 @@ export class FranchiseReportPDF {
 
     // Class header
     this.doc.setFontSize(14);
-    this.doc.setFont('helvetica', 'bold');
+    setFont(this.doc, 'bold');
     this.doc.text(`${classGroup.className} (${classGroup.classType})`, this.margin, currentY);
     
     this.doc.setFontSize(10);
-    this.doc.setFont('helvetica', 'normal');
+    setFont(this.doc, 'normal');
     this.doc.text(`Course Fee: ${this.formatCurrency(classGroup.courseFee)}`, this.margin, currentY + 6);
     
     currentY += 15;
@@ -82,7 +90,7 @@ export class FranchiseReportPDF {
       head: [['Handler', 'Dog', 'Attendance', 'Payment', 'Price', 'Franchise Fee', 'Admin Fee', 'McKaynine Commission']],
       body: tableData,
       margin: { left: this.margin, right: this.margin },
-      styles: { fontSize: 8 },
+      styles: { fontSize: 8, font: 'Roboto' },
       headStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0] },
       columnStyles: {
         4: { halign: 'right' },
@@ -96,7 +104,7 @@ export class FranchiseReportPDF {
 
     // Class totals
     this.doc.setFontSize(10);
-    this.doc.setFont('helvetica', 'bold');
+    setFont(this.doc, 'bold');
     
     const totalsY = currentY + 5;
     this.doc.text('Class Totals:', this.margin, totalsY);
@@ -112,7 +120,7 @@ export class FranchiseReportPDF {
       startY: totalsY + 5,
       body: totalsData,
       margin: { left: this.pageWidth * 0.6, right: this.margin },
-      styles: { fontSize: 9 },
+      styles: { fontSize: 9, font: 'Roboto' },
       columnStyles: {
         0: { fontStyle: 'bold' },
         1: { halign: 'right', fontStyle: 'bold' }
@@ -126,7 +134,7 @@ export class FranchiseReportPDF {
   private addReportSummary(reportTotals: any, startY: number) {
     // Add summary section
     this.doc.setFontSize(16);
-    this.doc.setFont('helvetica', 'bold');
+    setFont(this.doc, 'bold');
     this.doc.text('Report Summary', this.margin, startY);
 
     const summaryData = [
@@ -143,7 +151,8 @@ export class FranchiseReportPDF {
       margin: { left: this.margin, right: this.margin },
       styles: { 
         fontSize: 12,
-        fillColor: [245, 245, 245]
+        fillColor: [245, 245, 245],
+        font: 'Roboto'
       },
       columnStyles: {
         0: { fontStyle: 'bold' },
@@ -153,6 +162,9 @@ export class FranchiseReportPDF {
   }
 
   async generateReport(reportData: FranchiseReportData, termLabel: string): Promise<Blob> {
+    // Ensure fonts are loaded before generating
+    await this.ensureFontsLoaded();
+    
     this.addHeader(termLabel);
     
     let currentY = 70;
