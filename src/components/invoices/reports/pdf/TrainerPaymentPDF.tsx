@@ -21,7 +21,7 @@ export async function generateTrainerPaymentPDF({
   paymentDetails,
   paymentDate
 }: TrainerPaymentPDFProps): Promise<string> {
-  const doc = new jsPDF();
+  const doc = new jsPDF({ compress: true });
   const pageWidth = doc.internal.pageSize.width;
   const totalAmount = classes.reduce((sum, c) => sum + c.potentialRevenue, 0);
   
@@ -29,8 +29,8 @@ export async function generateTrainerPaymentPDF({
   addLogoToPdf(doc, pageWidth);
   
   // Add payment details section
-  // Increased the starting Y position to avoid overlapping with logo
-  let currentY = 70; // Increased from 45 to 70 to move content below the logo
+  // Starting Y position below the logo
+  let currentY = 50;
   
   doc.setFontSize(20);
   doc.setTextColor(41, 128, 185);
