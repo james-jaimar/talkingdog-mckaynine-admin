@@ -23,8 +23,6 @@ export function useTrainerPaymentData(branchId?: string, dateRange?: { from: Dat
 
       try {
         console.log(`Fetching trainer payment data for branch: ${branchId}`);
-        const fromDate = dateRange?.from.toISOString();
-        const toDate = dateRange?.to.toISOString();
         
         const trainers = await fetchTrainers(branchId);
         console.log(`Found ${trainers.length} trainers for branch ${branchId}`);
@@ -39,7 +37,6 @@ export function useTrainerPaymentData(branchId?: string, dateRange?: { from: Dat
           }
 
           // Verify all schedules are for the correct branch
-          const scheduleClassIds = schedules.map(s => s.class_id);
           const schedulesByBranch = schedules.filter(s => s.classes?.branch_id === branchId);
           
           if (schedulesByBranch.length !== schedules.length) {
@@ -49,18 +46,13 @@ export function useTrainerPaymentData(branchId?: string, dateRange?: { from: Dat
             );
           }
 
-          // Fetch bookings for all schedules, filtered by branch
-          const bookings = await fetchBookings(
-            schedules.map(s => s.id), 
-            fromDate && toDate ? { from: fromDate, to: toDate } : undefined,
-            branchId
-          );
+          const scheduleIds = schedules.map(s => s.id);
+
+          // Fetch bookings for all schedules, filtered by branch (no date filter - term is already scoped via schedules)
+          const bookings = await fetchBookings(scheduleIds, branchId);
           
-          // Fetch trainer payments for this trainer
-          const payments = await fetchTrainerPayments(
-            trainer.id,
-            fromDate && toDate ? { from: fromDate, to: toDate } : undefined
-          );
+          // Fetch trainer payments for this trainer, filtered by schedule IDs for term scoping
+          const payments = await fetchTrainerPayments(trainer.id, scheduleIds);
           
           // If no bookings, return trainer with schedules but no financial data
           if (!bookings || bookings.length === 0) {

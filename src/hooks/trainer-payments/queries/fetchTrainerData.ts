@@ -71,10 +71,11 @@ export async function fetchSchedules(trainerId: string, termId?: string): Promis
   return schedules as Schedule[];
 }
 
-export async function fetchBookings(scheduleIds: string[], dateRange?: { from: string; to: string }, branchId?: string): Promise<Booking[]> {
+export async function fetchBookings(scheduleIds: string[], branchId?: string): Promise<Booking[]> {
   if (scheduleIds.length === 0) return [];
 
   // This query joins bookings with clients to filter by branch_id
+  // Note: No date filtering needed - bookings are already scoped by scheduleIds which are term-filtered
   const query = supabase
     .from('bookings')
     .select(`
@@ -92,11 +93,6 @@ export async function fetchBookings(scheduleIds: string[], dateRange?: { from: s
       )
     `)
     .in('class_schedule_id', scheduleIds);
-
-  // Add date range filter if provided
-  if (dateRange) {
-    query.gte('created_at', dateRange.from).lte('created_at', dateRange.to);
-  }
   
   // Add branch filter if provided
   if (branchId) {
@@ -178,8 +174,8 @@ export async function fetchInvoiceItems(bookingIds: string[], branchId?: string)
   return completeInvoiceItems;
 }
 
-export async function fetchTrainerPayments(trainerId: string, dateRange?: { from: string; to: string }) {
-  const query = supabase
+export async function fetchTrainerPayments(trainerId: string, scheduleIds?: string[]) {
+  let query = supabase
     .from('trainer_payments')
     .select(`
       id,
@@ -190,8 +186,9 @@ export async function fetchTrainerPayments(trainerId: string, dateRange?: { from
     `)
     .eq('trainer_id', trainerId);
 
-  if (dateRange) {
-    query.gte('created_at', dateRange.from).lte('created_at', dateRange.to);
+  // Filter by schedule IDs to scope payments to the correct term
+  if (scheduleIds && scheduleIds.length > 0) {
+    query = query.in('class_schedule_id', scheduleIds);
   }
 
   const { data: payments, error } = await query;
