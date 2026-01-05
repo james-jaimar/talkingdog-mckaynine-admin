@@ -1,45 +1,7 @@
-
 import { jsPDF } from "jspdf";
 
-// Cache for compressed logo to avoid re-processing
-let compressedLogoCache: string | null = null;
-
-/**
- * Compresses the logo image to reduce PDF file size
- */
-const getCompressedLogo = (): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    if (compressedLogoCache) {
-      resolve(compressedLogoCache);
-      return;
-    }
-
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => {
-      // Create canvas at reduced size for smaller file
-      const canvas = document.createElement("canvas");
-      const maxWidth = 400; // Reduced from original for smaller file size
-      const scale = maxWidth / img.width;
-      canvas.width = maxWidth;
-      canvas.height = img.height * scale;
-      
-      const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        reject(new Error("Failed to get canvas context"));
-        return;
-      }
-      
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      
-      // Convert to JPEG with quality setting for compression
-      compressedLogoCache = canvas.toDataURL("image/jpeg", 0.7);
-      resolve(compressedLogoCache);
-    };
-    img.onerror = () => reject(new Error("Failed to load logo"));
-    img.src = "/lovable-uploads/mckaynine_delta_long_2025.png";
-  });
-};
+// Use the JPG logo directly (already has white background, no transparency issues)
+const LOGO_PATH = "/lovable-uploads/mckaynine_delta_long_2025.jpg";
 
 /**
  * Adds a logo to the PDF document
@@ -51,11 +13,10 @@ export const addLogoToPdf = async (doc: jsPDF, pageWidth: number): Promise<{ ok:
   const logoWidth = 70;
   
   try {
-    const compressedLogo = await getCompressedLogo();
     const xPosition = (pageWidth - logoWidth) / 2;
     
-    doc.addImage(compressedLogo, "JPEG", xPosition, logoY, logoWidth, logoHeight);
-    console.log("Logo added successfully (compressed)");
+    doc.addImage(LOGO_PATH, "JPEG", xPosition, logoY, logoWidth, logoHeight);
+    console.log("Logo added successfully");
     
     doc.setTextColor(0, 0, 0);
     return { ok: true, bottomY: logoY + logoHeight };
