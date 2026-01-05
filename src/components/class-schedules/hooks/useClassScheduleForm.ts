@@ -60,7 +60,7 @@ export function useClassScheduleForm(
       endTime: format(endTime, "HH:mm"),
       isRecurring: false,
       referenceTitle: "Class " + format(nextHour, "MMMM/yyyy"),
-      selectedDates: [nextHour],
+      selectedDates: [],
     };
   }
   
