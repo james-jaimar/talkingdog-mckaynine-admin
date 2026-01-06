@@ -23,9 +23,9 @@ export const AdminNavigation = ({ isMobile, onMobileClose, showPrimaryOnly = tru
   });
   
   return (
-    <nav className={isMobile ? "flex flex-col space-y-2" : "flex space-x-4 overflow-x-auto scrollbar-hide max-w-full"}>
+    <nav className={isMobile ? "flex flex-col space-y-2" : "flex space-x-4 flex-nowrap max-w-full"}>
       {isPlatformAdmin && (
-        <div className={`${isMobile ? 'mb-2' : 'mr-4'}`}>
+        <div className={`${isMobile ? 'mb-2' : 'mr-4'} flex-shrink-0`}>
           <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300">
             Platform Admin
           </Badge>
