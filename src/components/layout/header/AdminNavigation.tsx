@@ -36,12 +36,12 @@ export const AdminNavigation = ({ isMobile, onMobileClose, showPrimaryOnly = tru
         <Link 
           key={item.path}
           to={item.path} 
-          className={`text-white hover:text-gray-200 px-2 ${isMobile ? 'py-2' : 'py-1'} rounded ${isMobile ? 'flex items-center' : 'whitespace-nowrap'}`}
+          className={`text-white hover:text-gray-200 px-2 ${isMobile ? 'py-2 flex items-center' : 'py-1 flex items-center flex-shrink-0 whitespace-nowrap'} rounded`}
           onClick={onMobileClose}
         >
           {item.icon && (
             <item.icon 
-              className={`inline-block mr-1 h-4 w-4 ${isMobile ? 'mr-2' : ''}`} 
+              className={`inline-block h-4 w-4 ${isMobile ? 'mr-2' : 'mr-1'}`} 
             />
           )}
           <span>{item.name}</span>
