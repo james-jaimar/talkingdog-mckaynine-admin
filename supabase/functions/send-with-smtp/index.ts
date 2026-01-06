@@ -37,13 +37,18 @@ const handler = async (req: Request): Promise<Response> => {
     const smtpPort = Deno.env.get("SMTP_PORT") || "465";
     const smtpUsername = Deno.env.get("SMTP_USERNAME");
     const smtpPassword = Deno.env.get("SMTP_PASSWORD");
+    const smtpPasswordRandburg = Deno.env.get("SMTP_PASSWORD_RANDBURG");
     const defaultFromEmail = Deno.env.get("FROM_EMAIL") || smtpUsername;
     
     // Use provided from email or fall back to default
     const fromEmail = from || defaultFromEmail;
     const fromAddress = fromName ? `${fromName} <${fromEmail}>` : fromEmail;
     
-    if (!smtpHost || !smtpUsername || !smtpPassword) {
+    // Use Randburg password if sending from Randburg email
+    const isRandburgEmail = fromEmail?.toLowerCase() === "randburg@mckaynine.co.za";
+    const effectivePassword = isRandburgEmail && smtpPasswordRandburg ? smtpPasswordRandburg : smtpPassword;
+    
+    if (!smtpHost || !smtpUsername || !effectivePassword) {
       console.error("Missing SMTP configuration");
       return new Response(
         JSON.stringify({ 
@@ -60,7 +65,7 @@ const handler = async (req: Request): Promise<Response> => {
     const port = parseInt(smtpPort);
     const useSecure = port === 465; // Port 465 uses implicit SSL/TLS
     
-    console.log(`SMTP Config - Host: ${smtpHost}, Port: ${port}, Secure: ${useSecure}, Username: ${smtpUsername}, From: ${fromEmail}`);
+    console.log(`SMTP Config - Host: ${smtpHost}, Port: ${port}, Secure: ${useSecure}, Username: ${smtpUsername}, From: ${fromEmail}, IsRandburg: ${isRandburgEmail}`);
     console.log(`Sending email to: ${to}, Subject: ${subject}`);
     
     // Create nodemailer transport
@@ -69,8 +74,8 @@ const handler = async (req: Request): Promise<Response> => {
       port: port,
       secure: useSecure,
       auth: {
-        user: smtpUsername,
-        pass: smtpPassword,
+        user: isRandburgEmail ? fromEmail : smtpUsername,
+        pass: effectivePassword,
       },
     });
     
