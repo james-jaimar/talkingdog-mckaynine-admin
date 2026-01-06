@@ -1,0 +1,317 @@
+
+import { useState } from "react";
+import { Helmet } from "react-helmet";
+import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useAllTasks, TaskWithHandler } from "@/hooks/useAllTasks";
+import { format } from "date-fns";
+import { Search, CheckCircle, XCircle, Send, ClipboardList, Mail, UserPlus, RefreshCw, Link } from "lucide-react";
+import { SendInfoPackModal } from "@/components/tasks/SendInfoPackModal";
+import { Link as RouterLink } from "react-router-dom";
+
+const TASK_TYPE_OPTIONS = [
+  { value: "all", label: "All Types" },
+  { value: "send_info_pack", label: "Send Info Pack" },
+  { value: "enrollment", label: "Enrollment" },
+  { value: "follow_up", label: "Follow Up" },
+  { value: "other", label: "Other" },
+];
+
+const STATUS_OPTIONS = [
+  { value: "all", label: "All Statuses" },
+  { value: "pending", label: "Pending" },
+  { value: "completed", label: "Completed" },
+  { value: "cancelled", label: "Cancelled" },
+];
+
+const CLASS_TYPE_OPTIONS = [
+  { value: "all", label: "All Classes" },
+  { value: "Puppy", label: "Puppy" },
+  { value: "EO", label: "EO" },
+  { value: "CGC Bronze", label: "CGC Bronze" },
+  { value: "CGC Silver", label: "CGC Silver" },
+  { value: "Beginner", label: "Beginner" },
+  { value: "Novice", label: "Novice" },
+  { value: "WT", label: "WT" },
+  { value: "A-Test", label: "A-Test" },
+  { value: "Yoga", label: "Yoga" },
+];
+
+function getTaskTypeIcon(type: string) {
+  switch (type) {
+    case "send_info_pack":
+      return <Mail className="h-4 w-4" />;
+    case "enrollment":
+      return <UserPlus className="h-4 w-4" />;
+    case "follow_up":
+      return <RefreshCw className="h-4 w-4" />;
+    default:
+      return <ClipboardList className="h-4 w-4" />;
+  }
+}
+
+function getStatusBadgeVariant(status: string | null) {
+  switch (status) {
+    case "pending":
+      return "default";
+    case "completed":
+      return "secondary";
+    case "cancelled":
+      return "outline";
+    default:
+      return "default";
+  }
+}
+
+export default function Tasks() {
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("pending");
+  const [taskTypeFilter, setTaskTypeFilter] = useState("all");
+  const [classTypeFilter, setClassTypeFilter] = useState("all");
+  const [selectedTask, setSelectedTask] = useState<TaskWithHandler | null>(null);
+  const [isInfoPackModalOpen, setIsInfoPackModalOpen] = useState(false);
+
+  const { tasks, isLoading, completeTask, cancelTask, refetch } = useAllTasks({
+    status: statusFilter,
+    taskType: taskTypeFilter,
+    classType: classTypeFilter,
+    search,
+  });
+
+  const handleSendInfoPack = (task: TaskWithHandler) => {
+    setSelectedTask(task);
+    setIsInfoPackModalOpen(true);
+  };
+
+  const handleComplete = async (taskId: string) => {
+    await completeTask.mutateAsync(taskId);
+  };
+
+  const handleCancel = async (taskId: string) => {
+    await cancelTask.mutateAsync(taskId);
+  };
+
+  const pendingCount = tasks.filter(t => t.status === "pending").length;
+
+  return (
+    <DashboardLayout>
+      <Helmet>
+        <title>Tasks | McKaynine</title>
+      </Helmet>
+
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold flex items-center gap-2">
+              <ClipboardList className="h-6 w-6" />
+              Task Dashboard
+              {pendingCount > 0 && (
+                <Badge variant="destructive" className="ml-2">
+                  {pendingCount} pending
+                </Badge>
+              )}
+            </h1>
+            <p className="text-muted-foreground">
+              View and manage handler tasks, send info packs, and track follow-ups
+            </p>
+          </div>
+          <Button variant="outline" onClick={() => refetch()}>
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Refresh
+          </Button>
+        </div>
+
+        {/* Filters */}
+        <Card>
+          <CardContent className="pt-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by name or email..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  {STATUS_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={taskTypeFilter} onValueChange={setTaskTypeFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Task Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {TASK_TYPE_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={classTypeFilter} onValueChange={setClassTypeFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Class Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CLASS_TYPE_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Tasks Table */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Tasks</CardTitle>
+            <CardDescription>
+              {tasks.length} task{tasks.length !== 1 ? "s" : ""} found
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              </div>
+            ) : tasks.length === 0 ? (
+              <div className="text-center py-12">
+                <ClipboardList className="mx-auto h-12 w-12 text-muted-foreground" />
+                <h3 className="mt-4 text-lg font-semibold">No tasks found</h3>
+                <p className="text-muted-foreground">
+                  {statusFilter === "pending"
+                    ? "All caught up! No pending tasks."
+                    : "Try adjusting your filters."}
+                </p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Handler</TableHead>
+                    <TableHead>Task</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Class</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Created</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {tasks.map((task) => (
+                    <TableRow key={task.id}>
+                      <TableCell>
+                        {task.handler ? (
+                          <div>
+                            <RouterLink 
+                              to={`/handlers/${task.handler.id}`}
+                              className="font-medium hover:underline flex items-center gap-1"
+                            >
+                              {task.handler.first_name} {task.handler.last_name}
+                              <Link className="h-3 w-3" />
+                            </RouterLink>
+                            <span className="text-sm text-muted-foreground">
+                              {task.handler.email}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">Unknown</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="font-medium">{task.title}</div>
+                        {task.description && (
+                          <span className="text-sm text-muted-foreground line-clamp-1">
+                            {task.description}
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="flex items-center gap-1 w-fit">
+                          {getTaskTypeIcon(task.task_type)}
+                          {task.task_type.replace(/_/g, " ")}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {task.class_type ? (
+                          <Badge variant="secondary">{task.class_type}</Badge>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={getStatusBadgeVariant(task.status)}>
+                          {task.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {task.created_at
+                          ? format(new Date(task.created_at), "dd MMM yyyy")
+                          : "—"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {task.status === "pending" && (
+                          <div className="flex justify-end gap-2">
+                            {task.task_type === "send_info_pack" && (
+                              <Button
+                                size="sm"
+                                onClick={() => handleSendInfoPack(task)}
+                              >
+                                <Send className="mr-1 h-4 w-4" />
+                                Send
+                              </Button>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleComplete(task.id)}
+                              title="Mark as complete"
+                            >
+                              <CheckCircle className="h-4 w-4 text-green-600" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleCancel(task.id)}
+                              title="Cancel task"
+                            >
+                              <XCircle className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <SendInfoPackModal
+        open={isInfoPackModalOpen}
+        onOpenChange={setIsInfoPackModalOpen}
+        task={selectedTask}
+      />
+    </DashboardLayout>
+  );
+}

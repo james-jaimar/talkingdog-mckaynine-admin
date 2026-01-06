@@ -11,6 +11,8 @@ import HandlerDetail from "@/pages/HandlerDetail";
 import FinancialReports from "@/pages/FinancialReports";
 import FinancialDashboard from "@/pages/FinancialDashboard";
 import IntakeScans from "@/pages/admin/IntakeScans";
+import Tasks from "@/pages/admin/Tasks";
+import EmailTemplates from "@/pages/admin/EmailTemplates";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import RequireAdmin from "@/components/auth/RequireAdmin";
 
@@ -47,6 +49,14 @@ export const adminRoutes = [
   {
     path: "/admin/intake-scans",
     element: <IntakeScans />,
+  },
+  {
+    path: "/admin/tasks",
+    element: <Tasks />,
+  },
+  {
+    path: "/admin/email-templates",
+    element: <EmailTemplates />,
   },
   {
     path: "/invoices",
