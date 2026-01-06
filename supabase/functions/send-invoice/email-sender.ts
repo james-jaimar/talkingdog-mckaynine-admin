@@ -2,6 +2,20 @@ import { encode } from "https://deno.land/std@0.190.0/encoding/base64.ts";
 import { Invoice } from "./types.ts";
 import { formatCurrency, formatDate } from "./utils.ts";
 
+// Branch email configuration
+const BRANCH_EMAIL_CONFIG: Record<string, { email: string; name: string }> = {
+  "284817cf-de0d-43b9-a506-a3efa625ae1c": { email: "randburg@mckaynine.co.za", name: "Randburg Mckaynine" },
+  "6351a9e8-77db-403b-ab1f-cd47e393a006": { email: "delta@mckaynine.co.za", name: "Delta Mckaynine" },
+};
+
+/**
+ * Gets the from email config based on branch_id
+ */
+function getBranchEmailConfig(branchId?: string): { email?: string; name?: string } {
+  if (!branchId) return {};
+  return BRANCH_EMAIL_CONFIG[branchId] || {};
+}
+
 /**
  * Sends an invoice via email with the PDF attachment
  * using SMTP for email delivery
@@ -9,6 +23,7 @@ import { formatCurrency, formatDate } from "./utils.ts";
 export async function sendInvoiceEmail(invoice: Invoice, email: string, pdfBuffer: ArrayBuffer): Promise<boolean> {
   console.log(`Preparing to send invoice ${invoice.invoice_number} to ${email}`);
   console.log("Invoice status in email sender:", invoice.status);
+  console.log("Client branch_id:", invoice.client.branch_id);
   
   try {
     // Get Supabase configuration from env
@@ -22,12 +37,18 @@ export async function sendInvoiceEmail(invoice: Invoice, email: string, pdfBuffe
     // Convert PDF buffer to base64 for attachment (avoid stack overflow on large PDFs)
     const pdfBase64 = encode(new Uint8Array(pdfBuffer));
 
+    // Get branch-specific email config
+    const branchConfig = getBranchEmailConfig(invoice.client.branch_id);
+    const branchName = branchConfig.name || "McKaynine Training Centre";
+    
     // Create email message based on invoice status
-    const emailSubject = `Invoice ${invoice.invoice_number} from McKaynine Training Centre`;
-    const emailMessage = createEmailMessage(invoice, `${invoice.client.first_name} ${invoice.client.last_name || ''}`);
+    const emailSubject = `Invoice ${invoice.invoice_number} from ${branchName}`;
+    const emailMessage = createEmailMessage(invoice, `${invoice.client.first_name} ${invoice.client.last_name || ''}`, branchName);
     const htmlMessage = formatEmailHtml(emailMessage);
     
     console.log("Using send-with-smtp function to deliver email");
+    console.log("From email:", branchConfig.email || "default");
+    console.log("From name:", branchConfig.name || "default");
     
     // Prepare the request to the send-with-smtp edge function
     const smtpFunctionUrl = `${supabaseUrl}/functions/v1/send-with-smtp`;
@@ -43,6 +64,8 @@ export async function sendInvoiceEmail(invoice: Invoice, email: string, pdfBuffe
         to: email,
         subject: emailSubject,
         html: htmlMessage,
+        from: branchConfig.email,
+        fromName: branchConfig.name,
         attachments: [
           {
             filename: `Invoice-${invoice.invoice_number}.pdf`,
@@ -75,7 +98,7 @@ export async function sendInvoiceEmail(invoice: Invoice, email: string, pdfBuffe
 /**
  * Creates the email message based on invoice status
  */
-function createEmailMessage(invoice: Invoice, clientName: string): string {
+function createEmailMessage(invoice: Invoice, clientName: string, branchName: string = "McKaynine Training Centre"): string {
   let emailMessage = `Dear ${clientName},\n\nPlease find attached your invoice #${invoice.invoice_number} for the amount of ${formatCurrency(invoice.total)}.\n\n`;
   
   if (invoice.status && invoice.status.toLowerCase() === 'paid') {
@@ -91,7 +114,7 @@ function createEmailMessage(invoice: Invoice, clientName: string): string {
   
   emailMessage += "If you have any questions regarding this invoice, please don't hesitate to contact us.\n\n";
   emailMessage += "Kind regards,\n";
-  emailMessage += "McKaynine Training Centre";
+  emailMessage += branchName;
   
   return emailMessage;
 }
