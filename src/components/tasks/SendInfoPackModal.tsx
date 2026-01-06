@@ -33,15 +33,8 @@ export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModa
   const [isSending, setIsSending] = useState(false);
   const [dogName, setDogName] = useState<string>("");
 
-  // Filter templates that are configured and active, and match the class type if specified
-  const availableTemplates = templatesWithStatus.filter(t => {
-    if (!t.isConfigured || !t.isActive) return false;
-    // If task has a class type, only show matching templates
-    if (task?.class_type) {
-      return t.classType.toLowerCase() === task.class_type.toLowerCase();
-    }
-    return true;
-  });
+  // Show all configured and active templates - admin can choose any template
+  const availableTemplates = templatesWithStatus.filter(t => t.isConfigured && t.isActive);
 
   const selectedTemplateData = templatesWithStatus.find(t => t.code === selectedTemplateCode);
 
