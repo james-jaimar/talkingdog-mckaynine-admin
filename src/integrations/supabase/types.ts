@@ -161,30 +161,42 @@ export type Database = {
       branch_email_templates: {
         Row: {
           branch_id: string
+          class_type: string | null
           content: string
           created_at: string
           id: string
+          is_active: boolean | null
+          name: string | null
           subject: string
           type: string
           updated_at: string
+          variables: Json | null
         }
         Insert: {
           branch_id: string
+          class_type?: string | null
           content: string
           created_at?: string
           id?: string
+          is_active?: boolean | null
+          name?: string | null
           subject: string
           type: string
           updated_at?: string
+          variables?: Json | null
         }
         Update: {
           branch_id?: string
+          class_type?: string | null
           content?: string
           created_at?: string
           id?: string
+          is_active?: boolean | null
+          name?: string | null
           subject?: string
           type?: string
           updated_at?: string
+          variables?: Json | null
         }
         Relationships: [
           {
@@ -950,6 +962,108 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_attachments: {
+        Row: {
+          branch_id: string
+          class_type: string | null
+          created_at: string
+          file_path: string
+          file_type: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          branch_id: string
+          class_type?: string | null
+          created_at?: string
+          file_path: string
+          file_type?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          branch_id?: string
+          class_type?: string | null
+          created_at?: string
+          file_path?: string
+          file_type?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_attachments_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_log: {
+        Row: {
+          error_message: string | null
+          handler_id: string | null
+          id: string
+          recipient_email: string
+          sent_at: string
+          sent_by: string | null
+          status: string | null
+          subject: string | null
+          task_id: string | null
+          template_id: string | null
+        }
+        Insert: {
+          error_message?: string | null
+          handler_id?: string | null
+          id?: string
+          recipient_email: string
+          sent_at?: string
+          sent_by?: string | null
+          status?: string | null
+          subject?: string | null
+          task_id?: string | null
+          template_id?: string | null
+        }
+        Update: {
+          error_message?: string | null
+          handler_id?: string | null
+          id?: string
+          recipient_email?: string
+          sent_at?: string
+          sent_by?: string | null
+          status?: string | null
+          subject?: string | null
+          task_id?: string | null
+          template_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_log_handler_id_fkey"
+            columns: ["handler_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_log_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "handler_tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_log_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "branch_email_templates"
             referencedColumns: ["id"]
           },
         ]
