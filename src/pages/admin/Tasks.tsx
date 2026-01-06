@@ -268,35 +268,38 @@ export default function Tasks() {
                           : "—"}
                       </TableCell>
                       <TableCell className="text-right">
-                        {task.status === "pending" && (
-                          <div className="flex justify-end gap-2">
-                            {task.task_type === "send_info_pack" && (
+                        <div className="flex justify-end gap-2">
+                          {task.task_type === "send_info_pack" && (
+                            <Button
+                              size="sm"
+                              variant={task.status === "completed" ? "outline" : "default"}
+                              onClick={() => handleSendInfoPack(task)}
+                            >
+                              <Send className="mr-1 h-4 w-4" />
+                              {task.status === "completed" ? "Resend" : "Send"}
+                            </Button>
+                          )}
+                          {task.status === "pending" && (
+                            <>
                               <Button
-                                size="sm"
-                                onClick={() => handleSendInfoPack(task)}
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleComplete(task.id)}
+                                title="Mark as complete"
                               >
-                                <Send className="mr-1 h-4 w-4" />
-                                Send
+                                <CheckCircle className="h-4 w-4 text-green-600" />
                               </Button>
-                            )}
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleComplete(task.id)}
-                              title="Mark as complete"
-                            >
-                              <CheckCircle className="h-4 w-4 text-green-600" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleCancel(task.id)}
-                              title="Cancel task"
-                            >
-                              <XCircle className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </div>
-                        )}
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleCancel(task.id)}
+                                title="Cancel task"
+                              >
+                                <XCircle className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
