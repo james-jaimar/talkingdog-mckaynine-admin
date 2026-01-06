@@ -4,8 +4,8 @@ import { formatCurrency, formatDate } from "./utils.ts";
 
 // Branch email configuration
 const BRANCH_EMAIL_CONFIG: Record<string, { email: string; name: string }> = {
-  "284817cf-de0d-43b9-a506-a3efa625ae1c": { email: "randburg@talkingdog.co.za", name: "Randburg Mckaynine" },
-  "6351a9e8-77db-403b-ab1f-cd47e393a006": { email: "delta@talkingdog.co.za", name: "Delta Mckaynine" },
+  "284817cf-de0d-43b9-a506-a3efa625ae1c": { email: "randburg@talkingdog.co.za", name: "Randburg McKaynine" },
+  "6351a9e8-77db-403b-ab1f-cd47e393a006": { email: "delta@talkingdog.co.za", name: "Delta McKaynine" },
 };
 
 /**
