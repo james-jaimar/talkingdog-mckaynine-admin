@@ -178,11 +178,11 @@ function wrapEmailHtml(content: string, branchName: string = 'McKaynine Training
 </html>`;
 }
 
-// EO Class Info Pack Template
+// EO3 Class Info Pack Template
 export const eoInfoPackTemplate: PrebuiltTemplate = {
   code: 'eo_info_pack',
-  name: 'EO Class Info Pack',
-  description: 'Information pack for Elementary Obedience class',
+  name: 'EO3 Class Info Pack',
+  description: 'Information pack for Elementary Obedience 3 (EO3) class',
   classType: 'EO',
   subject: EO3_JAN_2026_SUBJECT,
   fields: [
