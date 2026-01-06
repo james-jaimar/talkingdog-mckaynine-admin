@@ -10,6 +10,7 @@ import Branches from "./pages/Branches";
 import UnpaidHandlers from "./pages/UnpaidHandlers";
 import NotFound from "./pages/NotFound";
 import UserAdmin from "./pages/UserAdmin";
+import TemplateDesigner from "./pages/platform-admin/TemplateDesigner";
 
 // Create a dashboard route that ONLY works for staff (admin and trainer) users
 const dashboardRoute = {
@@ -51,6 +52,16 @@ const userAdminRoute = {
   ),
 };
 
+// Create a template designer route that ONLY works for platform admins
+const templateDesignerRoute = {
+  path: "/platform-admin/templates",
+  element: (
+    <ProtectedRoute requiredRole="platform_admin">
+      <TemplateDesigner />
+    </ProtectedRoute>
+  ),
+};
+
 // Create a 404 route for missing pages
 const notFoundRoute = {
   path: "*", // Catch all unmatched routes
@@ -78,6 +89,7 @@ const router = createBrowserRouter([
   branchesRoute, // Only accessible to admins
   unpaidHandlersRoute, // Only accessible to admins
   userAdminRoute, // Only accessible to admins
+  templateDesignerRoute, // Only accessible to platform admins
   ...trainerRoutes,
   ...customerRoutes, // Customer routes with handler-specific layouts
   notFound404Route, // Explicit 404 route

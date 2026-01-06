@@ -1554,6 +1554,51 @@ export type Database = {
           },
         ]
       }
+      platform_email_templates: {
+        Row: {
+          class_type: string | null
+          code: string
+          configurable_fields: Json | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          html_content: string
+          id: string
+          is_active: boolean | null
+          name: string
+          subject: string
+          updated_at: string
+        }
+        Insert: {
+          class_type?: string | null
+          code: string
+          configurable_fields?: Json | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          html_content: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          subject: string
+          updated_at?: string
+        }
+        Update: {
+          class_type?: string | null
+          code?: string
+          configurable_fields?: Json | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          html_content?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          subject?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           app_id: string | null
