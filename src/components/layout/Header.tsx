@@ -51,33 +51,33 @@ export function Header() {
       {/* Main Row: Logo, Primary Navigation, Branch Selector, and User Info */}
       <div className="border-b border-mckaynine-700">
         <div className="container mx-auto px-4 py-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-6">
-              <Link to={isHandler ? "/customer/dashboard" : "/"} className="hover:opacity-90 transition-opacity">
-                <img 
-                  src="/lovable-uploads/mckaynine_delta_long_2025.png" 
-                  alt="McKaynine Delta" 
-                  className="h-10 w-auto"
-                />
-              </Link>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-6 flex-1 min-w-0">
+                <Link to={isHandler ? "/customer/dashboard" : "/"} className="hover:opacity-90 transition-opacity">
+                  <img 
+                    src="/lovable-uploads/mckaynine_delta_long_2025.png" 
+                    alt="McKaynine Delta" 
+                    className="h-10 w-auto"
+                  />
+                </Link>
+                
+                {user && !isMobile && (
+                  <div className="hidden md:block flex-1 min-w-0 overflow-x-auto scrollbar-hide">
+                    {isAdmin ? (
+                      <AdminNavigation isMobile={false} showPrimaryOnly={true} />
+                    ) : isTrainer && !isAdmin ? (
+                      <TrainerNavigation isMobile={false} showPrimaryOnly={true} />
+                    ) : isHandler && (
+                      <HandlerNavigation isMobile={false} />
+                    )}
+                  </div>
+                )}
+              </div>
               
-              {user && !isMobile && (
-                <div className="hidden md:block">
-                  {isAdmin ? (
-                    <AdminNavigation isMobile={false} showPrimaryOnly={true} />
-                  ) : isTrainer && !isAdmin ? (
-                    <TrainerNavigation isMobile={false} showPrimaryOnly={true} />
-                  ) : isHandler && (
-                    <HandlerNavigation isMobile={false} />
-                  )}
-                </div>
-              )}
-            </div>
-            
-            <div className="flex items-center space-x-4">
-              {showBranchSelector && currentBranch && !isMobile && (
-                <BranchSelector />
-              )}
+              <div className="flex items-center space-x-4 flex-shrink-0">
+                {showBranchSelector && currentBranch && !isMobile && (
+                  <BranchSelector />
+                )}
               
               {user && (
                 <div className="flex items-center gap-2">
