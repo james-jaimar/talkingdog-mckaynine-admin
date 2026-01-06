@@ -1,6 +1,8 @@
 // Pre-built Email Template Library
 // These templates are designed by developers and configured by admins
 
+import { EO3_JAN_2026_SUBJECT, EO3_JAN_2026_TEMPLATE } from "./eo3-jan-2026";
+
 export interface TemplateField {
   key: string;
   label: string;
@@ -182,118 +184,17 @@ export const eoInfoPackTemplate: PrebuiltTemplate = {
   name: 'EO Class Info Pack',
   description: 'Information pack for Elementary Obedience class',
   classType: 'EO',
-  subject: 'Elementary Obedience (EO) Class Information - {{class_dates}}',
+  subject: EO3_JAN_2026_SUBJECT,
   fields: [
     { key: 'class_day_time', label: 'Class Day & Time', type: 'text', placeholder: 'e.g., Saturdays 09h00 - 10h00', defaultValue: 'Saturdays 09h00 - 10h00' },
     { key: 'class_dates', label: 'Class Dates', type: 'text', placeholder: 'e.g., 18 Jan - 22 Mar 2026', defaultValue: '18 Jan - 22 Mar 2026' },
-    { key: 'new_enrolment_price', label: 'New Enrolment Price', type: 'currency', placeholder: 'e.g., R1,680.00', defaultValue: 'R1,680.00' },
+    { key: 'new_enrolment_price', label: 'New Enrolment Price', type: 'currency', placeholder: 'e.g., R1 680.00', defaultValue: 'R1 680.00' },
     { key: 'enrolment_fee', label: 'Enrolment Fee', type: 'currency', placeholder: 'e.g., R265.00', defaultValue: 'R265.00' },
-    { key: 'graduate_price', label: 'Graduate Price', type: 'currency', placeholder: 'e.g., R1,680.00', defaultValue: 'R1,680.00' },
+    { key: 'total_price', label: 'Total (New enrolment)', type: 'currency', placeholder: 'e.g., R1 945.00', defaultValue: 'R1 945.00' },
+    { key: 'graduate_price', label: 'Graduate Price', type: 'currency', placeholder: 'e.g., R1 680.00', defaultValue: 'R1 680.00' },
     { key: 'banking_details', label: 'Banking Details', type: 'textarea', placeholder: 'Bank name, account number, etc.', defaultValue: 'McKaynine (Pty) Ltd, FNB, Acc: 62792137827, Branch: 250655' },
   ],
-  getHtml: (vars) => {
-    const total = vars.new_enrolment_price && vars.enrolment_fee 
-      ? `Total: <strong>${vars.new_enrolment_price?.replace(/[^\d.,]/g, '')} + ${vars.enrolment_fee}</strong>`
-      : '';
-    
-    const content = `
-    <!-- Header -->
-    <div class="header">
-      <img src="{{base_url}}/email-assets/EO3_header_image.png" alt="Elementary Obedience (EO) - Ages 4 months+">
-    </div>
-
-    {{#if custom_message}}
-    <div class="custom-message">
-      <h3>Message from {{branch_name}}:</h3>
-      <p>{{custom_message}}</p>
-    </div>
-    {{/if}}
-
-    <div class="content-wrapper">
-      <div class="left-column">
-        <img src="{{base_url}}/email-assets/EO3_LHS_Image.jpg" alt="Happy dogs and handlers">
-      </div>
-      <div class="main-content">
-        <p class="intro-text">Dear {{handler_name}},</p>
-        
-        <p class="intro-text"><strong>Imagine being able to take your dog anywhere with you...</strong> With good instruction and some commitment, it is possible!</p>
-
-        <ul class="benefits-list">
-          <li>✓ Essential obedience and focus skills for calm, reliable everyday behaviour</li>
-          <li>✓ Reward-based training methods that build trust and confidence</li>
-          <li>✓ Guided practice and feedback through fun, practical sessions with expert support</li>
-        </ul>
-
-        <div class="section">
-          <h1>When Are the Classes Held?</h1>
-          <p><strong>Day & Time:</strong> ${vars.class_day_time || '{{class_day_time}}'}</p>
-          <p><strong>Dates:</strong> ${vars.class_dates || '{{class_dates}}'}</p>
-        </div>
-
-        <div class="section">
-          <h1>What Is The Entry Criteria?</h1>
-          <p>An assessment is required before we can confirm enrolment in any of our courses.</p>
-          <p><strong>New to McKaynine</strong> - The assessments are free of charge and are by appointment only. Kindly contact us to set this up.</p>
-          <p><strong>McKaynine Puppy graduate</strong> - Completion of a recent McKaynine Puppy Course.</p>
-        </div>
-
-        <div class="section">
-          <h1>How Much Does the Course Cost?</h1>
-          <table class="pricing-table">
-            <tr>
-              <td>New enrolments:</td>
-              <td><strong>${vars.new_enrolment_price || 'R1,680.00'}</strong> plus ${vars.enrolment_fee || 'R265.00'} enrolment fee.</td>
-            </tr>
-            <tr>
-              <td>McKaynine Puppy Course graduate:</td>
-              <td><strong>${vars.graduate_price || 'R1,680.00'}</strong></td>
-            </tr>
-            <tr>
-              <td colspan="2"><em>A simultaneous enrolment from the same household receives a 25% discount (not applicable to enrolment fee).</em></td>
-            </tr>
-          </table>
-        </div>
-
-        <div class="section">
-          <h1>How Do I Book a Space / Assessment?</h1>
-          <div class="booking-note">
-            <p><strong>Puppy Class Graduate</strong> - Your course fee and an email secures your spot!</p>
-            <p><strong>Payment can be made to:</strong><br>${vars.banking_details || '{{banking_details}}'}</p>
-          </div>
-        </div>
-
-        <div class="badge-container">
-          <img src="{{base_url}}/email-assets/spaces_are_limited.png" alt="Spaces are limited - book now!">
-        </div>
-
-        <div class="section">
-          <h1>What Do I Need to Bring?</h1>
-          <ul class="benefits-list">
-            <li>Dog wearing a normal flat buckle collar or a half-check and a webbing lead</li>
-            <li>Small easily consumed treats (Vienna sausages, polony, boiled chicken or soft dog treats)</li>
-          </ul>
-        </div>
-      </div>
-    </div>
-
-    <!-- Footer -->
-    <div class="footer">
-      <div class="footer-content">
-        <div class="footer-left">
-          <img src="{{base_url}}/email-assets/mckaynine_training_logo.jpg" alt="McKaynine Training" style="max-height: 60px;">
-        </div>
-        <div class="footer-right">
-          <p style="margin: 0;">
-            📱 {{branch_phone}}<br>
-            ✉️ {{branch_email}}<br>
-            🌐 www.mckaynine.co.za
-          </p>
-        </div>
-      </div>
-    </div>`;
-
-    return wrapEmailHtml(content);
-  }
+  getHtml: () => EO3_JAN_2026_TEMPLATE,
 };
 
 // Puppy Class Info Pack Template
