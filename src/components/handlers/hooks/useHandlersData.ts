@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { alphabetGroups } from "../HandlerAlphabetPagination";
 import { useBranch } from "@/context/BranchContext";
 import { CLASS_TYPES } from "@/components/classes/types/class-types";
@@ -64,6 +64,29 @@ export function useHandlersData() {
   const [actionFilter, setActionFilter] = useState<ActionFilter>('all');
   const itemsPerPage = 50;
   const { currentBranch } = useBranch();
+
+  // Fetch pending tasks to get handler IDs with pending tasks
+  const { data: pendingTasks = [] } = useQuery({
+    queryKey: ['handlers-pending-tasks'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('handler_tasks')
+        .select('handler_id')
+        .eq('status', 'pending');
+      
+      if (error) {
+        console.error("Error fetching pending tasks:", error);
+        return [];
+      }
+      return data || [];
+    },
+    refetchOnWindowFocus: false,
+  });
+
+  // Create a Set of handler IDs with pending tasks for efficient lookup
+  const handlersWithPendingTasks = useMemo(() => {
+    return new Set(pendingTasks.map(task => task.handler_id).filter(Boolean));
+  }, [pendingTasks]);
 
   const { data: handlers = [], isLoading, refetch } = useQuery({
     queryKey: ['handlers', currentBranch?.id],
@@ -233,8 +256,8 @@ export function useHandlersData() {
           case 'stopping':
             return hasNextAction('stopping');
           case 'has_tasks':
-            // This would require loading tasks - for now just check next_action
-            return hasNextAction('wants_info') || hasNextAction('continuing');
+            // Check actual pending tasks from handler_tasks table
+            return handlersWithPendingTasks.has(handler.id);
           default:
             return true;
         }
@@ -257,7 +280,7 @@ export function useHandlersData() {
     wants_info: handlers.filter(h => h.class_statuses?.some(s => s.next_action === 'wants_info')).length,
     continuing: handlers.filter(h => h.class_statuses?.some(s => s.next_action === 'continuing')).length,
     stopping: handlers.filter(h => h.class_statuses?.some(s => s.next_action === 'stopping')).length,
-    has_tasks: handlers.filter(h => h.class_statuses?.some(s => s.next_action === 'wants_info' || s.next_action === 'continuing')).length,
+    has_tasks: handlers.filter(h => handlersWithPendingTasks.has(h.id)).length,
   };
 
   return {
