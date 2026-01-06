@@ -109,7 +109,7 @@ export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModa
           subject: renderedSubject,
           html: renderedContent,
           from: undefined,
-          fromName: currentBranch?.name,
+          fromName: currentBranch?.name ? `${currentBranch.name} McKaynine` : "McKaynine",
         },
       });
 
