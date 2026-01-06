@@ -76,7 +76,7 @@ export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModa
       branch_name: currentBranch?.name || "McKaynine",
       branch_email: (currentBranch as any)?.email || "",
       branch_phone: (currentBranch as any)?.phone || "",
-      base_url: window.location.origin,
+      base_url: "https://mckaynine.talkingdog.co.za",
       custom_message: customMessage,
       // Merge in configured template variables
       ...configVars,
