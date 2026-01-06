@@ -1,5 +1,5 @@
 
-import { Home, Calendar, Users, FileText, BarChart2, Settings, UserPlus, Building, Dog, Map, AlertCircle, ScanLine, Mail, ClipboardList } from "lucide-react";
+import { Home, Calendar, Users, FileText, BarChart2, Settings, UserPlus, Building, Dog, Map, AlertCircle, ScanLine, Mail, ClipboardList, Palette } from "lucide-react";
 
 export const adminNavItems = [
   {
@@ -128,6 +128,12 @@ export const adminSecondaryNavItems = [
     name: "Email Templates",
     path: "/admin/email-templates",
     icon: Mail
+  },
+  {
+    name: "Template Designer",
+    path: "/platform-admin/templates",
+    icon: Palette,
+    developerOnly: true
   }
 ];
 
