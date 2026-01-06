@@ -28,7 +28,7 @@ const TEMPLATE_TYPES = [
 ];
 
 const CLASS_TYPES = [
-  { value: "", label: "All Classes" },
+  { value: "all", label: "All Classes" },
   { value: "Puppy", label: "Puppy" },
   { value: "EO", label: "EO" },
   { value: "CGC Bronze", label: "CGC Bronze" },
@@ -49,7 +49,7 @@ export function TemplateEditorModal({ open, onOpenChange, template }: TemplateEd
   const [type, setType] = useState("info_pack");
   const [subject, setSubject] = useState("");
   const [content, setContent] = useState("");
-  const [classType, setClassType] = useState("");
+  const [classType, setClassType] = useState("all");
   const [isActive, setIsActive] = useState(true);
 
   // Reset form when modal opens/closes or template changes
@@ -60,7 +60,7 @@ export function TemplateEditorModal({ open, onOpenChange, template }: TemplateEd
         setType(template.type);
         setSubject(template.subject);
         setContent(template.content);
-        setClassType(template.class_type || "");
+        setClassType(template.class_type || "all");
         setIsActive(template.is_active);
       } else {
         // New template - use sample as starting point
@@ -68,7 +68,7 @@ export function TemplateEditorModal({ open, onOpenChange, template }: TemplateEd
         setType("info_pack");
         setSubject("Information about {{next_class}} Class");
         setContent(getSampleTemplate());
-        setClassType("");
+        setClassType("all");
         setIsActive(true);
       }
       setActiveTab("edit");
@@ -98,7 +98,7 @@ export function TemplateEditorModal({ open, onOpenChange, template }: TemplateEd
       type,
       subject,
       content,
-      class_type: classType || undefined,
+      class_type: classType === "all" ? undefined : classType,
       is_active: isActive,
     };
 
