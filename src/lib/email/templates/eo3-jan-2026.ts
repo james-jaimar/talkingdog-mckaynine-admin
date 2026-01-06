@@ -214,7 +214,7 @@ export const EO3_JAN_2026_TEMPLATE = `<!DOCTYPE html>
                       <tr>
                         <td>
                           <span style="color: #2b5797; font-size: 16px;">🌐</span>
-                          <a href="https://www.mckaynine.co.za" style="color: #2b5797; text-decoration: none; margin-left: 6px;">www.mckaynine.co.za</a>
+                          <a href="https://mckaynine.talkingdog.co.za" style="color: #2b5797; text-decoration: none; margin-left: 6px;">mckaynine.talkingdog.co.za</a>
                         </td>
                       </tr>
                     </table>

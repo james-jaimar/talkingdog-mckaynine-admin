@@ -10,12 +10,12 @@ export const AVAILABLE_MERGE_FIELDS = [
   { key: "completed_class", label: "Completed Class", example: "Puppy" },
   { key: "next_class", label: "Next Class", example: "EO" },
   { key: "branch_name", label: "Branch Name", example: "McKaynine Delta" },
-  { key: "branch_email", label: "Branch Email", example: "info@mckaynine.co.za" },
+  { key: "branch_email", label: "Branch Email", example: "info@talkingdog.co.za" },
   { key: "branch_phone", label: "Branch Phone", example: "082 123 4567" },
   { key: "class_day_time", label: "Class Day & Time", example: "Saturdays 09h00 - 10h00" },
   { key: "class_dates", label: "Class Dates", example: "18 Jan - 22 Mar 2026" },
   { key: "banking_details", label: "Banking Details", example: "McKaynine (Pty) Ltd, FNB, Acc: 12345678" },
-  { key: "base_url", label: "Base URL (for images)", example: "https://yourapp.lovable.app" },
+  { key: "base_url", label: "Base URL (for images)", example: "https://mckaynine.talkingdog.co.za" },
   { key: "custom_message", label: "Custom Message", example: "Your personalized message here" },
 ] as const;
 
