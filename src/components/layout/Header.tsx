@@ -20,6 +20,15 @@ export function Header() {
   const location = useLocation();
   const isMobile = useIsMobile();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const handleHorizontalWheel: React.WheelEventHandler<HTMLElement> = (e) => {
+    // If user scrolls vertically over a horizontally-scrollable nav, translate it to horizontal scroll
+    if (e.deltaY === 0) return;
+    const el = e.currentTarget as HTMLElement;
+    if (el.scrollWidth <= el.clientWidth) return;
+    e.preventDefault();
+    el.scrollLeft += e.deltaY;
+  };
   
   let branchInfo = { currentBranch: null as Branch | null };
   try {
@@ -62,7 +71,10 @@ export function Header() {
                 </Link>
                 
                 {user && !isMobile && (
-                  <div className="hidden md:block flex-1 min-w-0 overflow-x-auto scrollbar-hide">
+                  <div
+                    className="hidden md:block flex-1 min-w-0 overflow-x-auto overflow-y-hidden scrollbar-hide"
+                    onWheel={handleHorizontalWheel}
+                  >
                     {isAdmin ? (
                       <AdminNavigation isMobile={false} showPrimaryOnly={true} />
                     ) : isTrainer && !isAdmin ? (
@@ -107,15 +119,18 @@ export function Header() {
       {/* Secondary Row: Secondary Navigation and Logout */}
       {user && !isMobile && (
         <div className="hidden md:block bg-mckaynine-700">
-          <div className="container mx-auto px-4 py-1">
-            <div className="flex justify-between items-center gap-4">
-              <div className="flex-1 min-w-0 overflow-x-auto scrollbar-hide">
-                {isAdmin ? (
-                  <AdminNavigation isMobile={false} showPrimaryOnly={false} />
-                ) : isTrainer && !isAdmin ? (
-                  <TrainerNavigation isMobile={false} showPrimaryOnly={false} />
-                ) : null}
-              </div>
+            <div className="container mx-auto px-4 py-1">
+              <div className="flex justify-between items-center gap-4">
+                <div
+                  className="flex-1 min-w-0 overflow-x-auto overflow-y-hidden scrollbar-hide"
+                  onWheel={handleHorizontalWheel}
+                >
+                  {isAdmin ? (
+                    <AdminNavigation isMobile={false} showPrimaryOnly={false} />
+                  ) : isTrainer && !isAdmin ? (
+                    <TrainerNavigation isMobile={false} showPrimaryOnly={false} />
+                  ) : null}
+                </div>
               <Button 
                 variant="destructive" 
                 size="sm" 
