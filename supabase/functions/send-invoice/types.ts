@@ -21,6 +21,7 @@ export interface Invoice {
     address?: string;
     city?: string;
     postal_code?: string;
+    branch_id?: string;
   };
   items?: Array<{
     id: string;

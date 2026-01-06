@@ -10,6 +10,8 @@ interface EmailRequest {
   to: string;
   subject: string;
   html: string;
+  from?: string;      // Optional override for from email
+  fromName?: string;  // Optional override for from display name
   attachments?: Array<{
     filename: string;
     content: string;
@@ -28,14 +30,18 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("SMTP email function started (nodemailer)");
     
     // Get request data
-    const { to, subject, html, attachments } = await req.json() as EmailRequest;
+    const { to, subject, html, from, fromName, attachments } = await req.json() as EmailRequest;
     
     // Get SMTP configuration
     const smtpHost = Deno.env.get("SMTP_HOST");
     const smtpPort = Deno.env.get("SMTP_PORT") || "465";
     const smtpUsername = Deno.env.get("SMTP_USERNAME");
     const smtpPassword = Deno.env.get("SMTP_PASSWORD");
-    const fromEmail = Deno.env.get("FROM_EMAIL") || smtpUsername;
+    const defaultFromEmail = Deno.env.get("FROM_EMAIL") || smtpUsername;
+    
+    // Use provided from email or fall back to default
+    const fromEmail = from || defaultFromEmail;
+    const fromAddress = fromName ? `${fromName} <${fromEmail}>` : fromEmail;
     
     if (!smtpHost || !smtpUsername || !smtpPassword) {
       console.error("Missing SMTP configuration");
@@ -70,7 +76,7 @@ const handler = async (req: Request): Promise<Response> => {
     
     // Prepare email options
     const mailOptions: any = {
-      from: fromEmail,
+      from: fromAddress,
       to: to,
       subject: subject,
       html: html,
