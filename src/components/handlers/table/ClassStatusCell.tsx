@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import {
@@ -67,6 +68,7 @@ export function ClassStatusCell({
   className
 }: ClassStatusCellProps) {
   const { terms } = useTermOptions();
+  const queryClient = useQueryClient();
   
   const [status, setStatus] = useState<string | null>(initialStatus);
   const [period, setPeriod] = useState<string>(initialPeriod);
@@ -120,6 +122,12 @@ export function ClassStatusCell({
         toast.error('Failed to update class status');
         return;
       }
+      
+      // Invalidate queries so UI updates without refresh
+      queryClient.invalidateQueries({ queryKey: ["all-tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["handler-tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["handler-class-status"] });
+      queryClient.invalidateQueries({ queryKey: ["handlers"] });
       
       toast.success(`${classType} class status updated`);
       setIsOpen(false);

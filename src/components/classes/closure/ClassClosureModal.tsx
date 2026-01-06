@@ -12,7 +12,7 @@ import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components
 import { Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEnrolledHandlers } from "./useEnrolledHandlers";
 import { HandlerCompletionRow } from "./HandlerCompletionRow";
 import { ClassClosureModalProps, HandlerCompletionData } from "./types";
@@ -41,6 +41,7 @@ export function ClassClosureModal({
   onClassClosed,
 }: ClassClosureModalProps) {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   
   // Fetch class schedule to get the last date
   const { data: lastClassDate } = useQuery({
@@ -190,6 +191,12 @@ export function ClassClosureModal({
           tasksCreated++;
         }
       }
+
+      // Invalidate task queries so they update without needing a refresh
+      queryClient.invalidateQueries({ queryKey: ["all-tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["handler-tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["pending-task-count"] });
+      queryClient.invalidateQueries({ queryKey: ["handler-class-status"] });
 
       toast({
         title: "Class closed successfully",
