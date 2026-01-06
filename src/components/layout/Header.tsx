@@ -108,8 +108,8 @@ export function Header() {
       {user && !isMobile && (
         <div className="hidden md:block bg-mckaynine-700">
           <div className="container mx-auto px-4 py-1">
-            <div className="flex justify-between items-center">
-              <div className="flex-1">
+            <div className="flex justify-between items-center gap-4">
+              <div className="flex-1 min-w-0 overflow-x-auto scrollbar-hide">
                 {isAdmin ? (
                   <AdminNavigation isMobile={false} showPrimaryOnly={false} />
                 ) : isTrainer && !isAdmin ? (
@@ -120,7 +120,7 @@ export function Header() {
                 variant="destructive" 
                 size="sm" 
                 onClick={handleLogout}
-                className="text-white hover:bg-red-700"
+                className="text-white hover:bg-red-700 flex-shrink-0"
               >
                 Logout
               </Button>
