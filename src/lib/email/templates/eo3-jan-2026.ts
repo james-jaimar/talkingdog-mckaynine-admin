@@ -133,8 +133,8 @@ export const EO3_JAN_2026_TEMPLATE = `<!DOCTYPE html>
                 <tr>
                   <td valign="top" style="width: 70%;">
                     <p style="margin: 0 0 8px 0; color: #2b5797; font-size: 14px; font-weight: bold; text-decoration: underline;">How Much Does the Course Cost?</p>
-                    <p style="margin: 0 0 4px 0;">New enrolments : <strong>R1 680.00</strong> plus R265.00 enrolment fee. Total: <strong>R1 945.00</strong>.</p>
-                    <p style="margin: 0 0 4px 0;">McKaynine Puppy Course graduate: <strong>R1 680.00</strong>.</p>
+                    <p style="margin: 0 0 4px 0;">New enrolments : <strong>{{new_enrolment_price}}</strong> plus {{enrolment_fee}} enrolment fee. Total: <strong>{{total_price}}</strong>.</p>
+                    <p style="margin: 0 0 4px 0;">McKaynine Puppy Course graduate: <strong>{{graduate_price}}</strong>.</p>
                     <p style="margin: 0; font-size: 12px; color: #555;">A simultaneous enrolment from the same household receives a 25% discount<br>(not applicable to enrolment fee).</p>
                   </td>
                   <td valign="top" align="right" style="width: 30%;">
