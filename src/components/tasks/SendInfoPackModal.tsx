@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -8,13 +7,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TaskWithHandler } from "@/hooks/useAllTasks";
-import { useEmailTemplates } from "@/hooks/useEmailTemplates";
+import { useTemplateConfigurations } from "@/hooks/useTemplateConfigurations";
 import { renderTemplate, TemplateVariables } from "@/lib/email/template-renderer";
 import { useBranch } from "@/context/BranchContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
-import { Send, Eye, Mail, User, Dog } from "lucide-react";
+import { Send, Eye, Mail, User, Dog, AlertCircle } from "lucide-react";
+import { getPrebuiltTemplate } from "@/lib/email/templates";
 
 interface SendInfoPackModalProps {
   open: boolean;
@@ -23,22 +23,27 @@ interface SendInfoPackModalProps {
 }
 
 export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModalProps) {
-  const { templates, isLoading: templatesLoading } = useEmailTemplates();
+  const { templatesWithStatus, isLoading: templatesLoading } = useTemplateConfigurations();
   const { currentBranch } = useBranch();
   const queryClient = useQueryClient();
   
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+  const [selectedTemplateCode, setSelectedTemplateCode] = useState<string>("");
   const [customMessage, setCustomMessage] = useState("");
   const [activeTab, setActiveTab] = useState<"compose" | "preview">("compose");
   const [isSending, setIsSending] = useState(false);
   const [dogName, setDogName] = useState<string>("");
 
-  // Filter templates for the relevant class type
-  const availableTemplates = templates.filter(
-    t => t.is_active && (!t.class_type || t.class_type === task?.class_type)
-  );
+  // Filter templates that are configured and active, and match the class type if specified
+  const availableTemplates = templatesWithStatus.filter(t => {
+    if (!t.isConfigured || !t.isActive) return false;
+    // If task has a class type, only show matching templates
+    if (task?.class_type) {
+      return t.classType.toLowerCase() === task.class_type.toLowerCase();
+    }
+    return true;
+  });
 
-  const selectedTemplate = templates.find(t => t.id === selectedTemplateId);
+  const selectedTemplateData = templatesWithStatus.find(t => t.code === selectedTemplateCode);
 
   // Fetch dog information when task changes
   useEffect(() => {
@@ -58,7 +63,7 @@ export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModa
     
     if (open && task) {
       fetchDogInfo();
-      setSelectedTemplateId("");
+      setSelectedTemplateCode("");
       setCustomMessage("");
       setActiveTab("compose");
     }
@@ -66,32 +71,43 @@ export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModa
 
   // Build template variables
   const getTemplateVariables = (): TemplateVariables => {
+    const configVars = selectedTemplateData?.configuration?.variables || {};
+    
     return {
       handler_name: task?.handler?.first_name || "",
       handler_full_name: task?.handler ? `${task.handler.first_name} ${task.handler.last_name}` : "",
       handler_email: task?.handler?.email || "",
       dog_name: dogName,
-      completed_class: task?.description?.includes("completed") 
-        ? task.description.split(" ")[0] 
-        : task?.class_type || "",
-      next_class: task?.class_type || "",
+      completed_class: task?.class_type || "",
+      next_class: selectedTemplateData?.classType || "",
       branch_name: currentBranch?.name || "McKaynine",
-      branch_email: "",
+      branch_email: (currentBranch as any)?.email || "",
+      branch_phone: (currentBranch as any)?.phone || "",
+      base_url: window.location.origin,
       custom_message: customMessage,
+      // Merge in configured template variables
+      ...configVars,
     };
   };
 
   const handleSend = async () => {
-    if (!task || !selectedTemplate || !task.handler?.email) {
+    if (!task || !selectedTemplateData || !task.handler?.email) {
       toast.error("Missing required information");
       return;
     }
 
     setIsSending(true);
     try {
+      const template = getPrebuiltTemplate(selectedTemplateCode);
+      if (!template) throw new Error("Template not found");
+      
       const variables = getTemplateVariables();
-      const renderedSubject = renderTemplate(selectedTemplate.subject, variables);
-      const renderedContent = renderTemplate(selectedTemplate.content, variables);
+      const configVars = selectedTemplateData.configuration?.variables || {};
+      
+      // Generate HTML from the pre-built template
+      const rawHtml = template.getHtml(configVars);
+      const renderedContent = renderTemplate(rawHtml, variables);
+      const renderedSubject = renderTemplate(template.subject, variables);
 
       // Send email via edge function
       const { error: emailError } = await supabase.functions.invoke("send-with-smtp", {
@@ -110,7 +126,7 @@ export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModa
       await supabase.from("email_log").insert({
         handler_id: task.handler_id,
         task_id: task.id,
-        template_id: selectedTemplate.id,
+        template_id: selectedTemplateData.configuration?.id,
         recipient_email: task.handler.email,
         subject: renderedSubject,
         status: "sent",
@@ -153,13 +169,24 @@ export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModa
 
   if (!task) return null;
 
-  const variables = getTemplateVariables();
-  const previewHtml = selectedTemplate 
-    ? renderTemplate(selectedTemplate.content, variables)
-    : "";
-  const previewSubject = selectedTemplate
-    ? renderTemplate(selectedTemplate.subject, variables)
-    : "";
+  // Generate preview
+  const getPreview = () => {
+    if (!selectedTemplateData) return { html: "", subject: "" };
+    
+    const template = getPrebuiltTemplate(selectedTemplateCode);
+    if (!template) return { html: "", subject: "" };
+    
+    const variables = getTemplateVariables();
+    const configVars = selectedTemplateData.configuration?.variables || {};
+    
+    const rawHtml = template.getHtml(configVars);
+    const renderedHtml = renderTemplate(rawHtml, variables);
+    const renderedSubject = renderTemplate(template.subject, variables);
+    
+    return { html: renderedHtml, subject: renderedSubject };
+  };
+
+  const preview = getPreview();
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -200,7 +227,7 @@ export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModa
               <Mail className="h-4 w-4" />
               Compose
             </TabsTrigger>
-            <TabsTrigger value="preview" className="flex items-center gap-2" disabled={!selectedTemplate}>
+            <TabsTrigger value="preview" className="flex items-center gap-2" disabled={!selectedTemplateData}>
               <Eye className="h-4 w-4" />
               Preview
             </TabsTrigger>
@@ -212,25 +239,30 @@ export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModa
               {templatesLoading ? (
                 <div className="text-sm text-muted-foreground">Loading templates...</div>
               ) : availableTemplates.length === 0 ? (
-                <div className="text-sm text-muted-foreground p-4 bg-muted rounded-lg">
-                  No templates available for {task.class_type || "this class type"}. 
-                  Please create a template first.
+                <div className="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
+                  <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5" />
+                  <div>
+                    <p className="font-medium text-amber-800 dark:text-amber-200">
+                      No templates available for {task.class_type || "this class"}
+                    </p>
+                    <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                      Please configure a template in Settings → Email Templates first.
+                    </p>
+                  </div>
                 </div>
               ) : (
-                <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
+                <Select value={selectedTemplateCode} onValueChange={setSelectedTemplateCode}>
                   <SelectTrigger>
                     <SelectValue placeholder="Choose a template..." />
                   </SelectTrigger>
                   <SelectContent>
                     {availableTemplates.map((template) => (
-                      <SelectItem key={template.id} value={template.id}>
+                      <SelectItem key={template.code} value={template.code}>
                         <div className="flex items-center gap-2">
                           <span>{template.name}</span>
-                          {template.class_type && (
-                            <Badge variant="outline" className="text-xs">
-                              {template.class_type}
-                            </Badge>
-                          )}
+                          <Badge variant="outline" className="text-xs">
+                            {template.classType}
+                          </Badge>
                         </div>
                       </SelectItem>
                     ))}
@@ -238,6 +270,18 @@ export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModa
                 </Select>
               )}
             </div>
+
+            {selectedTemplateData?.configuration?.variables && (
+              <div className="p-3 bg-muted/50 rounded-lg text-sm space-y-1">
+                <p className="font-medium mb-2">Template Details:</p>
+                {selectedTemplateData.configuration.variables.class_day_time && (
+                  <p><strong>When:</strong> {selectedTemplateData.configuration.variables.class_day_time}</p>
+                )}
+                {selectedTemplateData.configuration.variables.class_dates && (
+                  <p><strong>Dates:</strong> {selectedTemplateData.configuration.variables.class_dates}</p>
+                )}
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="custom-message">Personal Message (Optional)</Label>
@@ -255,18 +299,18 @@ export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModa
           </TabsContent>
 
           <TabsContent value="preview" className="flex-1 overflow-auto mt-4">
-            {selectedTemplate ? (
+            {selectedTemplateData ? (
               <div className="border rounded-lg overflow-hidden">
                 <div className="bg-muted p-3 border-b space-y-1">
                   <div>
                     <strong>To:</strong> {task.handler?.email}
                   </div>
                   <div>
-                    <strong>Subject:</strong> {previewSubject}
+                    <strong>Subject:</strong> {preview.subject}
                   </div>
                 </div>
                 <iframe
-                  srcDoc={previewHtml}
+                  srcDoc={preview.html}
                   className="w-full min-h-[400px] bg-white"
                   title="Email Preview"
                 />
@@ -285,7 +329,7 @@ export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModa
           </Button>
           <Button 
             onClick={handleSend} 
-            disabled={!selectedTemplate || isSending}
+            disabled={!selectedTemplateData || isSending}
           >
             {isSending ? (
               <>

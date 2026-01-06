@@ -1649,6 +1649,53 @@ export type Database = {
           },
         ]
       }
+      template_configurations: {
+        Row: {
+          branch_id: string
+          class_type: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          template_code: string
+          updated_at: string
+          variables: Json
+        }
+        Insert: {
+          branch_id: string
+          class_type?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          template_code: string
+          updated_at?: string
+          variables?: Json
+        }
+        Update: {
+          branch_id?: string
+          class_type?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          template_code?: string
+          updated_at?: string
+          variables?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "template_configurations_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       terms: {
         Row: {
           academic_year_id: string
