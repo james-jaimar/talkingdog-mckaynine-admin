@@ -104,6 +104,8 @@ export function useAllTasks(filters: TaskFilters = {}) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["all-tasks"] });
       queryClient.invalidateQueries({ queryKey: ["handler-tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["handler-tasks-pending-count"] });
+      queryClient.invalidateQueries({ queryKey: ["pending-task-count"] });
       toast.success("Task marked as completed");
     },
     onError: (error: any) => {
@@ -126,6 +128,8 @@ export function useAllTasks(filters: TaskFilters = {}) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["all-tasks"] });
       queryClient.invalidateQueries({ queryKey: ["handler-tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["handler-tasks-pending-count"] });
+      queryClient.invalidateQueries({ queryKey: ["pending-task-count"] });
       toast.success("Task cancelled");
     },
     onError: (error: any) => {
