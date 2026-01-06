@@ -11,6 +11,11 @@ export const AVAILABLE_MERGE_FIELDS = [
   { key: "next_class", label: "Next Class", example: "EO" },
   { key: "branch_name", label: "Branch Name", example: "McKaynine Delta" },
   { key: "branch_email", label: "Branch Email", example: "info@mckaynine.co.za" },
+  { key: "branch_phone", label: "Branch Phone", example: "082 123 4567" },
+  { key: "class_day_time", label: "Class Day & Time", example: "Saturdays 09h00 - 10h00" },
+  { key: "class_dates", label: "Class Dates", example: "18 Jan - 22 Mar 2026" },
+  { key: "banking_details", label: "Banking Details", example: "McKaynine (Pty) Ltd, FNB, Acc: 12345678" },
+  { key: "base_url", label: "Base URL (for images)", example: "https://yourapp.lovable.app" },
   { key: "custom_message", label: "Custom Message", example: "Your personalized message here" },
 ] as const;
 
@@ -25,6 +30,11 @@ export interface TemplateVariables {
   next_class?: string;
   branch_name?: string;
   branch_email?: string;
+  branch_phone?: string;
+  class_day_time?: string;
+  class_dates?: string;
+  banking_details?: string;
+  base_url?: string;
   custom_message?: string;
   [key: string]: string | undefined;
 }
@@ -178,6 +188,11 @@ export function getSampleVariables(): TemplateVariables {
     next_class: "EO",
     branch_name: "McKaynine Training",
     branch_email: "info@mckaynine.co.za",
+    branch_phone: "082 123 4567",
+    class_day_time: "Saturdays 09h00 - 10h00",
+    class_dates: "18 Jan - 22 Mar 2026",
+    banking_details: "McKaynine (Pty) Ltd, FNB, Acc: 12345678, Branch: 250655",
+    base_url: window.location.origin,
     custom_message: "We hope you and Buddy are doing well!",
   };
 }

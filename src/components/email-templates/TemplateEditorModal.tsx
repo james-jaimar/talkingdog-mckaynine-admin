@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -9,9 +8,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useEmailTemplates, EmailTemplate } from "@/hooks/useEmailTemplates";
 import { AVAILABLE_MERGE_FIELDS, getSampleTemplate, renderTemplate, getSampleVariables } from "@/lib/email/template-renderer";
-import { Code, Eye, Plus } from "lucide-react";
+import { EO3_JAN_2026_TEMPLATE, EO3_JAN_2026_SUBJECT } from "@/lib/email/templates/eo3-jan-2026";
+import { Code, Eye, Plus, FileDown } from "lucide-react";
 
 interface TemplateEditorModalProps {
   open: boolean;
@@ -92,6 +93,22 @@ export function TemplateEditorModal({ open, onOpenChange, template }: TemplateEd
     }
   };
 
+  const loadPresetTemplate = (preset: string) => {
+    if (preset === "eo3-jan-2026") {
+      setName("EO3 Jan 2026");
+      setSubject(EO3_JAN_2026_SUBJECT);
+      setContent(EO3_JAN_2026_TEMPLATE);
+      setClassType("EO");
+      setType("info_pack");
+    } else if (preset === "basic") {
+      setName("");
+      setSubject("Information about {{next_class}} Class");
+      setContent(getSampleTemplate());
+      setClassType("all");
+      setType("info_pack");
+    }
+  };
+
   const handleSubmit = async () => {
     const data = {
       name,
@@ -138,6 +155,28 @@ export function TemplateEditorModal({ open, onOpenChange, template }: TemplateEd
           </TabsList>
 
           <TabsContent value="edit" className="flex-1 overflow-auto space-y-4 mt-4">
+            {/* Load Preset Template */}
+            {!template && (
+              <div className="flex justify-end">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <FileDown className="h-4 w-4 mr-2" />
+                      Load Preset Template
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuItem onClick={() => loadPresetTemplate("eo3-jan-2026")}>
+                      EO3 Jan 2026 (Full HTML)
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => loadPresetTemplate("basic")}>
+                      Basic Template
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            )}
+
             {/* Basic Info */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
