@@ -91,13 +91,29 @@ export function ClassStatusCell({
     setNextTermYear(parseInt(year));
   };
 
+  // Next class mapping for auto-task creation
+  const NEXT_CLASS_MAP: Record<string, string> = {
+    "Puppy": "EO",
+    "EO": "CGC Bronze",
+    "CGC Bronze": "CGC Silver",
+    "Beginner": "Novice",
+  };
+
   const handleUpdate = async () => {
     if (!clientId) return;
     
     setIsLoading(true);
     
     try {
-      const { error } = await supabase
+      // First, get the handler_class_status id if it exists
+      const { data: existingStatus } = await supabase
+        .from('handler_class_status')
+        .select('id')
+        .eq('handler_id', clientId)
+        .eq('class_type', classType)
+        .maybeSingle();
+
+      const { data: upsertedStatus, error } = await supabase
         .from('handler_class_status')
         .upsert({
           handler_id: clientId,
@@ -115,12 +131,46 @@ export function ClassStatusCell({
         }, { 
           onConflict: 'handler_id,class_type',
           ignoreDuplicates: false 
-        });
+        })
+        .select('id')
+        .single();
       
       if (error) {
         console.error('Error updating class status:', error);
         toast.error('Failed to update class status');
         return;
+      }
+
+      // Create task if next_action changed and requires a task
+      // Only create if this is a new action (not updating an existing one with same action)
+      const actionChanged = nextAction !== initialNextAction;
+      
+      if (nextAction === 'wants_info' && actionChanged) {
+        const nextClass = NEXT_CLASS_MAP[classType] || "next class";
+        await supabase.from("handler_tasks").insert({
+          handler_id: clientId,
+          class_type: classType,
+          class_status_id: upsertedStatus?.id,
+          task_type: "send_info_pack",
+          title: `Send ${nextClass} info pack`,
+          description: `Handler completed ${classType}. Send information about ${nextClass} class.`,
+          status: "pending",
+        });
+      } else if (nextAction === 'continuing' && actionChanged) {
+        const nextClass = nextClassType || NEXT_CLASS_MAP[classType] || "next class";
+        const termInfo = nextTermNumber && nextTermYear 
+          ? `Term ${nextTermNumber} ${nextTermYear}`
+          : "upcoming term";
+        
+        await supabase.from("handler_tasks").insert({
+          handler_id: clientId,
+          class_type: classType,
+          class_status_id: upsertedStatus?.id,
+          task_type: "enrollment",
+          title: `Enroll in ${nextClass} - ${termInfo}`,
+          description: `Handler completed ${classType}. Follow up on enrollment for ${nextClass} in ${termInfo}.`,
+          status: "pending",
+        });
       }
       
       // Invalidate queries so UI updates without refresh
@@ -128,6 +178,7 @@ export function ClassStatusCell({
       queryClient.invalidateQueries({ queryKey: ["handler-tasks"] });
       queryClient.invalidateQueries({ queryKey: ["handler-class-status"] });
       queryClient.invalidateQueries({ queryKey: ["handlers"] });
+      queryClient.invalidateQueries({ queryKey: ["pending-task-count"] });
       
       toast.success(`${classType} class status updated`);
       setIsOpen(false);
