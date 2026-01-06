@@ -1,4 +1,3 @@
-
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Helmet } from "react-helmet";
 import { HandlerDetailHeader } from "./HandlerDetailHeader";
@@ -7,6 +6,7 @@ import { HandlerCommunications } from "./HandlerCommunications";
 import { DogsList } from "./DogsList";
 import { HandlerInvoices } from "./HandlerInvoices";
 import { EnrollmentRegistrations } from "./EnrollmentRegistrations";
+import { HandlerTasks } from "./HandlerTasks";
 import { HandlerData } from "@/types/handler";
 import { transformToClientType } from "@/utils/clientDataTransform";
 
@@ -46,6 +46,8 @@ export function HandlerDetailLayout({
           </div>
           
           <div className="md:col-span-2 space-y-6">
+            <HandlerTasks handlerId={handler.id} />
+            
             {clientData && (
               <HandlerInvoices clientData={clientData} />
             )}
