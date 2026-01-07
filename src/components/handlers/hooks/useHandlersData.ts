@@ -34,6 +34,7 @@ interface ClassStatus {
   period?: string;
   pass_percentage?: number | null;
   next_action?: 'continuing' | 'wants_info' | 'stopping' | 'none' | null;
+  action_completed?: boolean | null;
   result_notes?: string;
   next_class_type?: string | null;
   next_term_number?: string | null;
@@ -188,7 +189,7 @@ export function useHandlersData() {
         const handlersWithClassStatus = (clientsData || []).map(client => {
           const allStatuses = classStatusesMap[client.id] || [];
           // For each possible type, find exact match
-          const class_statuses = CLASS_TYPES.map((classType) => {
+        const class_statuses = CLASS_TYPES.map((classType) => {
             const found = allStatuses.find(s => s.class_type === classType);
             if (!found) return { class_type: classType, status: undefined, period: undefined };
             return {
@@ -197,6 +198,7 @@ export function useHandlersData() {
               period: found.period,
               pass_percentage: found.pass_percentage,
               next_action: found.next_action,
+              action_completed: found.action_completed,
               result_notes: found.result_notes,
               next_class_type: found.next_class_type,
               next_term_number: found.next_term_number,
@@ -245,16 +247,17 @@ export function useHandlersData() {
   const filteredByAction = actionFilter === 'all' 
     ? filteredBySearch 
     : filteredBySearch.filter(handler => {
-        const hasNextAction = (action: string) => 
-          handler.class_statuses?.some(s => s.next_action === action);
+        // Check for next_action that hasn't been completed yet
+        const hasActiveNextAction = (action: string) => 
+          handler.class_statuses?.some(s => s.next_action === action && !s.action_completed);
         
         switch (actionFilter) {
           case 'wants_info':
-            return hasNextAction('wants_info');
+            return hasActiveNextAction('wants_info');
           case 'continuing':
-            return hasNextAction('continuing');
+            return hasActiveNextAction('continuing');
           case 'stopping':
-            return hasNextAction('stopping');
+            return hasActiveNextAction('stopping');
           case 'has_tasks':
             // Check actual pending tasks from handler_tasks table
             return handlersWithPendingTasks.has(handler.id);
@@ -274,12 +277,12 @@ export function useHandlersData() {
         return group?.label === currentGroup;
       });
 
-  // Calculate filter counts
+  // Calculate filter counts - only count actions that haven't been completed
   const filterCounts = {
     all: handlers.length,
-    wants_info: handlers.filter(h => h.class_statuses?.some(s => s.next_action === 'wants_info')).length,
-    continuing: handlers.filter(h => h.class_statuses?.some(s => s.next_action === 'continuing')).length,
-    stopping: handlers.filter(h => h.class_statuses?.some(s => s.next_action === 'stopping')).length,
+    wants_info: handlers.filter(h => h.class_statuses?.some(s => s.next_action === 'wants_info' && !s.action_completed)).length,
+    continuing: handlers.filter(h => h.class_statuses?.some(s => s.next_action === 'continuing' && !s.action_completed)).length,
+    stopping: handlers.filter(h => h.class_statuses?.some(s => s.next_action === 'stopping' && !s.action_completed)).length,
     has_tasks: handlers.filter(h => handlersWithPendingTasks.has(h.id)).length,
   };
 
