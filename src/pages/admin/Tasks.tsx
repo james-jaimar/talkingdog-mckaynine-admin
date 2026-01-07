@@ -10,8 +10,9 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAllTasks, TaskWithHandler } from "@/hooks/useAllTasks";
 import { format } from "date-fns";
-import { Search, CheckCircle, XCircle, Send, ClipboardList, Mail, UserPlus, RefreshCw, Link } from "lucide-react";
+import { Search, CheckCircle, XCircle, Send, ClipboardList, Mail, UserPlus, RefreshCw, Link, Plus } from "lucide-react";
 import { SendInfoPackModal } from "@/components/tasks/SendInfoPackModal";
+import { CreateTaskModal } from "@/components/tasks/CreateTaskModal";
 import { Link as RouterLink } from "react-router-dom";
 
 const TASK_TYPE_OPTIONS = [
@@ -75,6 +76,7 @@ export default function Tasks() {
   const [classTypeFilter, setClassTypeFilter] = useState("all");
   const [selectedTask, setSelectedTask] = useState<TaskWithHandler | null>(null);
   const [isInfoPackModalOpen, setIsInfoPackModalOpen] = useState(false);
+  const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
 
   const { tasks, isLoading, completeTask, cancelTask, refetch } = useAllTasks({
     status: statusFilter,
@@ -120,10 +122,16 @@ export default function Tasks() {
               View and manage handler tasks, send info packs, and track follow-ups
             </p>
           </div>
-          <Button variant="outline" onClick={() => refetch()}>
-            <RefreshCw className="mr-2 h-4 w-4" />
-            Refresh
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={() => setIsCreateTaskModalOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Create Task
+            </Button>
+            <Button variant="outline" onClick={() => refetch()}>
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Refresh
+            </Button>
+          </div>
         </div>
 
         {/* Filters */}
@@ -314,6 +322,11 @@ export default function Tasks() {
         open={isInfoPackModalOpen}
         onOpenChange={setIsInfoPackModalOpen}
         task={selectedTask}
+      />
+
+      <CreateTaskModal
+        open={isCreateTaskModalOpen}
+        onOpenChange={setIsCreateTaskModalOpen}
       />
     </DashboardLayout>
   );
