@@ -235,9 +235,11 @@ export function useFranchiseClassesData(termId?: string) {
               return 0;
             };
 
-            const franchiseFee = calculateFee(classItem.trainer_fee_type, classItem.trainer_fee_value, invoiceAmount);
+            // Franchise Fee = McKaynine Commission (15%)
+            const franchiseFee = calculateFee(classItem.mckaynine_commission_type, classItem.mckaynine_commission_value, invoiceAmount);
             const adminFee = calculateFee(classItem.admin_fee_type, classItem.admin_fee_value, invoiceAmount);
-            const mckaynineCommission = calculateFee(classItem.mckaynine_commission_type, classItem.mckaynine_commission_value, invoiceAmount);
+            // Commission column = Trainer Fee (40%)
+            const mckaynineCommission = calculateFee(classItem.trainer_fee_type, classItem.trainer_fee_value, invoiceAmount);
 
             handlers.push({
               clientId: booking.clients.id,
