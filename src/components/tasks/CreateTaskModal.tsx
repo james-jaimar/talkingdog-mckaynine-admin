@@ -43,7 +43,7 @@ const TASK_TYPES = [
 ];
 
 const CLASS_TYPES = [
-  { value: "", label: "None" },
+  { value: "none", label: "None" },
   { value: "Puppy", label: "Puppy" },
   { value: "EO", label: "EO" },
   { value: "CGC Bronze", label: "CGC Bronze" },
@@ -65,7 +65,7 @@ export function CreateTaskModal({ open, onOpenChange }: CreateTaskModalProps) {
 
   // Form state
   const [taskType, setTaskType] = useState("other");
-  const [classType, setClassType] = useState("");
+  const [classType, setClassType] = useState("none");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [dueDate, setDueDate] = useState("");
@@ -109,7 +109,7 @@ export function CreateTaskModal({ open, onOpenChange }: CreateTaskModalProps) {
       const { error } = await supabase.from("handler_tasks").insert({
         handler_id: selectedHandler?.id || null,
         task_type: taskType,
-        class_type: classType || null,
+        class_type: classType === "none" ? null : classType,
         title: title.trim(),
         description: description.trim() || null,
         due_date: dueDate || null,
@@ -136,7 +136,7 @@ export function CreateTaskModal({ open, onOpenChange }: CreateTaskModalProps) {
 
   const resetForm = () => {
     setTaskType("other");
-    setClassType("");
+    setClassType("none");
     setTitle("");
     setDescription("");
     setDueDate("");
