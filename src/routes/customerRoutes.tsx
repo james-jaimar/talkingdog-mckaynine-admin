@@ -7,6 +7,7 @@ import CustomerMessages from "@/pages/CustomerMessages";
 import CustomerInvoices from "@/pages/CustomerInvoices";
 import CustomerInvoiceDetail from "@/pages/CustomerInvoiceDetail";
 import CustomerPuppyClassForm from "@/pages/CustomerPuppyClassForm";
+import CustomerClassEnrollment from "@/pages/customer/CustomerClassEnrollment";
 
 export const customerRoutes = [
   {
@@ -46,6 +47,15 @@ export const customerRoutes = [
     element: (
       <RequireAuth>
         <CustomerInvoiceDetail />
+      </RequireAuth>
+    ),
+  },
+  // Self-service enrollment from email invitation
+  {
+    path: "/customer/enroll/:token",
+    element: (
+      <RequireAuth>
+        <CustomerClassEnrollment />
       </RequireAuth>
     ),
   },

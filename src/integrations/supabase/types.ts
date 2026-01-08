@@ -565,6 +565,93 @@ export type Database = {
           },
         ]
       }
+      class_invitations: {
+        Row: {
+          accepted_at: string | null
+          booking_id: string | null
+          class_schedule_id: string
+          completed_class_type: string | null
+          created_at: string
+          dog_id: string
+          expires_at: string
+          handler_id: string
+          id: string
+          notes: string | null
+          status: string
+          task_id: string | null
+          token: string
+          updated_at: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          booking_id?: string | null
+          class_schedule_id: string
+          completed_class_type?: string | null
+          created_at?: string
+          dog_id: string
+          expires_at: string
+          handler_id: string
+          id?: string
+          notes?: string | null
+          status?: string
+          task_id?: string | null
+          token: string
+          updated_at?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          booking_id?: string | null
+          class_schedule_id?: string
+          completed_class_type?: string | null
+          created_at?: string
+          dog_id?: string
+          expires_at?: string
+          handler_id?: string
+          id?: string
+          notes?: string | null
+          status?: string
+          task_id?: string | null
+          token?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_invitations_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "class_invitations_class_schedule_id_fkey"
+            columns: ["class_schedule_id"]
+            isOneToOne: false
+            referencedRelation: "class_schedules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "class_invitations_dog_id_fkey"
+            columns: ["dog_id"]
+            isOneToOne: false
+            referencedRelation: "dogs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "class_invitations_handler_id_fkey"
+            columns: ["handler_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "class_invitations_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "handler_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       class_schedules: {
         Row: {
           academic_year: number | null
