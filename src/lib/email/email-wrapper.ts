@@ -162,20 +162,6 @@ export function wrapEmailContent(
               : ""
           }
           
-          <!-- Footer -->
-          <tr>
-            <td style="padding: 20px 32px; background-color: ${BRAND_BLUE_DARK}; border-radius: 0 0 8px 8px;">
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
-                <tr>
-                  <td style="color: #ffffff; font-size: 13px; text-align: center;">
-                    <p style="margin: 0 0 6px 0; font-weight: 600;">${branchName}</p>
-                    ${branchEmail ? `<p style="margin: 0 0 4px 0;"><a href="mailto:${branchEmail}" style="color: #ffffff; text-decoration: none;">${branchEmail}</a></p>` : ""}
-                    ${branchPhone ? `<p style="margin: 0;">${branchPhone}</p>` : ""}
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
         </table>
         <!--[if mso]>
         </td>
@@ -187,7 +173,7 @@ export function wrapEmailContent(
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width: 600px;">
           <tr>
             <td style="padding: 16px 32px; text-align: center; color: #999999; font-size: 11px;">
-              <p style="margin: 0;">This email was sent by ${branchName}.</p>
+              <p style="margin: 0;">This email was sent by ${branchName} McKaynine.</p>
             </td>
           </tr>
         </table>
@@ -208,7 +194,7 @@ export function getContentStyles(): string {
       .email-content h1, .email-content h2, .email-content h3 { color: #2c5530; margin: 0 0 16px 0; }
       .email-content ul, .email-content ol { margin: 0 0 16px 0; padding-left: 24px; }
       .email-content li { margin-bottom: 8px; }
-      .email-content .highlight { background-color: #f0f5f1; padding: 16px; border-radius: 8px; margin: 16px 0; }
+      .email-content .highlight { background-color: #e8f0fe; padding: 16px; border-radius: 8px; margin: 16px 0; }
       .email-content .cta-button {
         display: inline-block;
         background-color: #2c5530;
