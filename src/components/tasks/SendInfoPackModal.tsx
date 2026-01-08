@@ -116,10 +116,10 @@ export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModa
       branch_email: (currentBranch as any)?.email || "",
       branch_phone: (currentBranch as any)?.phone || "",
       base_url: "https://mckaynine.talkingdog.co.za",
-      custom_message: customMessage,
       enrollment_link: enrollmentLink,
-      // Merge in configured template variables
+      // Merge in configured template variables (but allow UI fields to override)
       ...configVars,
+      custom_message: customMessage,
     };
   };
 
@@ -182,9 +182,10 @@ export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModa
         branch_email: (currentBranch as any)?.email || "",
         branch_phone: (currentBranch as any)?.phone || "",
         base_url: "https://mckaynine.talkingdog.co.za",
-        custom_message: customMessage,
         enrollment_link: enrollmentLink,
+        // Merge in configured template variables (but allow UI fields to override)
         ...configVars,
+        custom_message: customMessage,
       };
       
       // Generate HTML from the pre-built template

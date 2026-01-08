@@ -149,8 +149,9 @@ export function SendQuickEmailModal({ open, onOpenChange, handler }: SendQuickEm
       branch_email: (currentBranch as any)?.email || "",
       branch_phone: (currentBranch as any)?.phone || "",
       base_url: "https://mckaynine.talkingdog.co.za",
-      custom_message: customMessage,
+      // Merge configured template variables (but allow UI fields to override)
       ...configVars,
+      custom_message: customMessage,
     };
   };
 
