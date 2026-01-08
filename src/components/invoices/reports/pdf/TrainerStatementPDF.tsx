@@ -2,6 +2,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { format } from "date-fns";
 import { addEmbeddedFonts, setFont } from "@/components/invoices/pdf/utils/embeddedFonts";
+import { getBranchLogo, getBranchKey } from "@/lib/branchLogo";
 
 interface ClassDetail {
   className: string;
@@ -23,12 +24,6 @@ interface TrainerStatementPDFProps {
   generatedDate?: Date;
   branchName?: string; // "delta" or "randburg"
 }
-
-// Logo paths for different branches
-const LOGOS: Record<string, string> = {
-  delta: "/lovable-uploads/mckaynine_delta_long_2025.jpg",
-  randburg: "/lovable-uploads/mckaynine_randburg_long_2025.jpg", // Will need to be uploaded
-};
 
 async function loadImageAsBase64(url: string): Promise<string | null> {
   try {
@@ -80,7 +75,7 @@ export async function generateTrainerStatementPDF({
   let yPos = 15;
 
   // Add branch logo
-  const logoPath = LOGOS[branchName.toLowerCase()] || LOGOS.delta;
+  const logoPath = getBranchLogo(branchName, 'jpg');
   const logoBase64 = await loadImageAsBase64(logoPath);
   
   if (logoBase64) {

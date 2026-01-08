@@ -1,20 +1,34 @@
 
 import React from "react";
 import { Separator } from "@/components/ui/separator";
+import { useBranch } from "@/context/BranchContext";
+import { getBranchLogo, getBranchDisplayName } from "@/lib/branchLogo";
 
 interface PuppyClassLayoutProps {
   children: React.ReactNode;
 }
 
 export function PuppyClassLayout({ children }: PuppyClassLayoutProps) {
+  // Get current branch for dynamic logo
+  let branchName: string | null = null;
+  try {
+    const { currentBranch } = useBranch();
+    branchName = currentBranch?.name || null;
+  } catch {
+    // BranchContext may not be available
+  }
+  
+  const logoSrc = getBranchLogo(branchName);
+  const logoAlt = getBranchDisplayName(branchName);
+
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-6 space-y-6">
       <div className="text-center space-y-6">
         {/* McKaynine Logo and Header */}
         <div className="flex justify-center items-center">
           <img 
-            src="/lovable-uploads/mckaynine_delta_long_2025.png" 
-            alt="McKaynine Delta" 
+            src={logoSrc}
+            alt={logoAlt}
             className="max-w-md h-auto"
           />
         </div>
