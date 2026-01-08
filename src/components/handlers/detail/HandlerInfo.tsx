@@ -1,11 +1,13 @@
-
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { GitBranch, Mail, MapPin, Phone, Briefcase, Stethoscope, Check, X, HelpCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { GitBranch, Mail, MapPin, Phone, Briefcase, Stethoscope, Check, X, HelpCircle, Send } from "lucide-react";
 import { formatPhoneNumber } from "../utils/handlerUtils";
 import { useBranch } from "@/context/BranchContext";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { EnrollmentRegistration } from "@/types/handler";
+import { SendQuickEmailModal } from "./SendQuickEmailModal";
 
 type ConsentStatus = 'yes' | 'no' | 'not_marked' | 'unsure';
 
@@ -62,6 +64,7 @@ function ConsentBadge({ status, label }: { status?: ConsentStatus | string; labe
 export function HandlerInfo({ handler }: HandlerInfoProps) {
   const { branches } = useBranch();
   const [branchName, setBranchName] = useState<string>("");
+  const [emailModalOpen, setEmailModalOpen] = useState(false);
 
   useEffect(() => {
     if (handler.branch_id && branches) {
@@ -92,9 +95,20 @@ export function HandlerInfo({ handler }: HandlerInfoProps) {
   }, [handler.enrollment_registrations, handler.uses_whatsapp_status, handler.social_media_consent_status]);
 
   return (
+    <>
     <Card className="col-span-1">
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle>Handler Information</CardTitle>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={() => setEmailModalOpen(true)}
+          disabled={!handler.email}
+          className="gap-1"
+        >
+          <Send className="h-3.5 w-3.5" />
+          Email
+        </Button>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-1">
@@ -197,5 +211,17 @@ export function HandlerInfo({ handler }: HandlerInfoProps) {
         </div>
       </CardContent>
     </Card>
+    
+    <SendQuickEmailModal
+      open={emailModalOpen}
+      onOpenChange={setEmailModalOpen}
+      handler={{
+        id: handler.id,
+        first_name: handler.first_name,
+        last_name: handler.last_name,
+        email: handler.email,
+      }}
+    />
+    </>
   );
 }
