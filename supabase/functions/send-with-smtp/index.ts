@@ -100,7 +100,7 @@ const handler = async (req: Request): Promise<Response> => {
     console.log(`SMTP Config - Host: ${smtpHost}, Port: ${port}, Secure: ${useSecure}, Username: ${smtpUsername}, From: ${fromEmail}, IsRandburg: ${isRandburgEmail}`);
     console.log(`Sending email to: ${to}, Subject: ${subject}`);
     
-    // Create nodemailer transport
+    // Create nodemailer transport with timeout
     const transport = nodemailer.createTransport({
       host: smtpHost,
       port: port,
@@ -109,6 +109,12 @@ const handler = async (req: Request): Promise<Response> => {
         user: isRandburgEmail ? fromEmail : smtpUsername,
         pass: effectivePassword,
       },
+      tls: {
+        rejectUnauthorized: false, // Allow self-signed certs
+      },
+      connectionTimeout: 30000, // 30 second connection timeout
+      greetingTimeout: 30000,   // 30 second greeting timeout
+      socketTimeout: 60000,     // 60 second socket timeout
     });
     
     // Prepare email options
