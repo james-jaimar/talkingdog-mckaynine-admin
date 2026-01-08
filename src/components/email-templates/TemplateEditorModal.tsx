@@ -266,7 +266,10 @@ export function TemplateEditorModal({ open, onOpenChange, template }: TemplateEd
 
             {/* Content */}
             <div className="space-y-2">
-              <Label htmlFor="template-content">HTML Content</Label>
+              <Label htmlFor="template-content">Email Content</Label>
+              <p className="text-xs text-muted-foreground">
+                Write your email content. You can use HTML for formatting. The content will be wrapped in a professional email template with your branch logo and banking details.
+              </p>
               <Textarea
                 id="template-content"
                 value={content}

@@ -9,11 +9,13 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useTemplateConfigurations } from "@/hooks/useTemplateConfigurations";
+import { useEmailAttachments, EmailAttachment } from "@/hooks/useEmailAttachments";
 import { renderTemplate, TemplateVariables } from "@/lib/email/template-renderer";
+import { wrapEmailContent } from "@/lib/email/email-wrapper";
 import { useBranch } from "@/context/BranchContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Send, Eye, Mail, User, Dog, FileText } from "lucide-react";
+import { Send, Eye, Mail, User, Dog, FileText, Paperclip, X } from "lucide-react";
 import { getPrebuiltTemplate } from "@/lib/email/templates";
 
 interface DogInfo {
@@ -35,6 +37,7 @@ interface SendQuickEmailModalProps {
 
 export function SendQuickEmailModal({ open, onOpenChange, handler }: SendQuickEmailModalProps) {
   const { templatesWithStatus, isLoading: templatesLoading } = useTemplateConfigurations();
+  const { attachments, getAttachmentUrl } = useEmailAttachments();
   const { currentBranch } = useBranch();
   
   const [emailMode, setEmailMode] = useState<"template" | "custom">("custom");
@@ -43,10 +46,14 @@ export function SendQuickEmailModal({ open, onOpenChange, handler }: SendQuickEm
   const [customMessage, setCustomMessage] = useState("");
   const [activeTab, setActiveTab] = useState<"compose" | "preview">("compose");
   const [isSending, setIsSending] = useState(false);
+  const [includeBankingDetails, setIncludeBankingDetails] = useState(true);
   
   // Dog selection
   const [dogs, setDogs] = useState<DogInfo[]>([]);
   const [selectedDogIds, setSelectedDogIds] = useState<string[]>([]);
+  
+  // Attachment selection
+  const [selectedAttachments, setSelectedAttachments] = useState<EmailAttachment[]>([]);
 
   // Show all configured and active templates
   const availableTemplates = templatesWithStatus.filter(t => t.isConfigured && t.isActive);
@@ -88,6 +95,8 @@ export function SendQuickEmailModal({ open, onOpenChange, handler }: SendQuickEm
       setActiveTab("compose");
       setEmailMode("custom");
       setSelectedDogIds([]);
+      setSelectedAttachments([]);
+      setIncludeBankingDetails(true);
     }
   }, [open, handler.id]);
 
@@ -97,6 +106,20 @@ export function SendQuickEmailModal({ open, onOpenChange, handler }: SendQuickEm
         ? prev.filter(id => id !== dogId)
         : [...prev, dogId]
     );
+  };
+
+  const toggleAttachment = (attachment: EmailAttachment) => {
+    setSelectedAttachments(prev => {
+      const isSelected = prev.some(a => a.id === attachment.id);
+      if (isSelected) {
+        return prev.filter(a => a.id !== attachment.id);
+      }
+      return [...prev, attachment];
+    });
+  };
+
+  const removeAttachment = (attachmentId: string) => {
+    setSelectedAttachments(prev => prev.filter(a => a.id !== attachmentId));
   };
 
   // Build template variables
@@ -138,20 +161,22 @@ export function SendQuickEmailModal({ open, onOpenChange, handler }: SendQuickEm
       let subject: string;
       let html: string;
 
+      // Get attachment URLs for email
+      const attachmentUrls = selectedAttachments.map(a => ({
+        name: a.name,
+        url: getAttachmentUrl(a),
+      }));
+
       if (emailMode === "custom") {
         subject = customSubject;
-        // Wrap custom message in a simple HTML template
-        html = `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-            <div style="white-space: pre-wrap; line-height: 1.6;">${customMessage.replace(/\n/g, '<br>')}</div>
-            <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;" />
-            <p style="color: #666; font-size: 14px;">
-              Sent from ${currentBranch?.name || "McKaynine"}<br/>
-              ${(currentBranch as any)?.email || ""}<br/>
-              ${(currentBranch as any)?.phone || ""}
-            </p>
-          </div>
-        `;
+        // Wrap custom message in professional template
+        const messageContent = `<div style="white-space: pre-wrap; line-height: 1.8;">${customMessage.replace(/\n/g, '<br>')}</div>`;
+        html = wrapEmailContent(messageContent, {
+          branchName: currentBranch?.name,
+          branchEmail: (currentBranch as any)?.email,
+          branchPhone: (currentBranch as any)?.phone,
+          includeBankingDetails,
+        });
       } else {
         const template = getPrebuiltTemplate(selectedTemplateCode);
         if (!template) throw new Error("Template not found");
@@ -172,6 +197,7 @@ export function SendQuickEmailModal({ open, onOpenChange, handler }: SendQuickEm
           html,
           from: undefined,
           fromName: currentBranch?.name ? `${currentBranch.name} McKaynine` : "McKaynine",
+          attachments: attachmentUrls.length > 0 ? attachmentUrls : undefined,
         },
       });
 
@@ -198,19 +224,15 @@ export function SendQuickEmailModal({ open, onOpenChange, handler }: SendQuickEm
   // Generate preview
   const getPreview = () => {
     if (emailMode === "custom") {
+      const messageContent = `<div style="white-space: pre-wrap; line-height: 1.8;">${customMessage.replace(/\n/g, '<br>')}</div>`;
       return {
         subject: customSubject,
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-            <div style="white-space: pre-wrap; line-height: 1.6;">${customMessage.replace(/\n/g, '<br>')}</div>
-            <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;" />
-            <p style="color: #666; font-size: 14px;">
-              Sent from ${currentBranch?.name || "McKaynine"}<br/>
-              ${(currentBranch as any)?.email || ""}<br/>
-              ${(currentBranch as any)?.phone || ""}
-            </p>
-          </div>
-        `,
+        html: wrapEmailContent(messageContent, {
+          branchName: currentBranch?.name,
+          branchEmail: (currentBranch as any)?.email,
+          branchPhone: (currentBranch as any)?.phone,
+          includeBankingDetails,
+        }),
       };
     }
 
@@ -353,8 +375,84 @@ export function SendQuickEmailModal({ open, onOpenChange, handler }: SendQuickEm
                     value={customMessage}
                     onChange={(e) => setCustomMessage(e.target.value)}
                     placeholder="Type your message here..."
-                    className="min-h-[200px]"
+                    className="min-h-[150px]"
                   />
+                </div>
+                
+                {/* Banking Details Toggle */}
+                <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                  <Checkbox
+                    id="include-banking"
+                    checked={includeBankingDetails}
+                    onCheckedChange={(checked) => setIncludeBankingDetails(!!checked)}
+                  />
+                  <label htmlFor="include-banking" className="text-sm cursor-pointer">
+                    Include banking details in email footer
+                  </label>
+                </div>
+
+                {/* Attachment Selection */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <Paperclip className="h-4 w-4" />
+                    Attachments
+                  </Label>
+                  
+                  {selectedAttachments.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {selectedAttachments.map((attachment) => (
+                        <Badge 
+                          key={attachment.id} 
+                          variant="secondary"
+                          className="flex items-center gap-1"
+                        >
+                          <FileText className="h-3 w-3" />
+                          {attachment.name}
+                          <button
+                            type="button"
+                            onClick={() => removeAttachment(attachment.id)}
+                            className="ml-1 hover:text-destructive"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {attachments.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      No attachments available. Upload files in Email Templates &gt; Attachments.
+                    </p>
+                  ) : (
+                    <Select onValueChange={(id) => {
+                      const attachment = attachments.find(a => a.id === id);
+                      if (attachment && !selectedAttachments.some(a => a.id === id)) {
+                        setSelectedAttachments(prev => [...prev, attachment]);
+                      }
+                    }}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Add an attachment..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {attachments
+                          .filter(a => !selectedAttachments.some(sel => sel.id === a.id))
+                          .map((attachment) => (
+                            <SelectItem key={attachment.id} value={attachment.id}>
+                              <div className="flex items-center gap-2">
+                                <FileText className="h-4 w-4" />
+                                <span>{attachment.name}</span>
+                                {attachment.class_type && (
+                                  <Badge variant="outline" className="text-xs ml-2">
+                                    {attachment.class_type}
+                                  </Badge>
+                                )}
+                              </div>
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
               </>
             ) : (
@@ -423,6 +521,17 @@ export function SendQuickEmailModal({ open, onOpenChange, handler }: SendQuickEm
                 <div>
                   <strong>Subject:</strong> {preview.subject}
                 </div>
+                {selectedAttachments.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <strong>Attachments:</strong>
+                    {selectedAttachments.map(a => (
+                      <Badge key={a.id} variant="outline" className="text-xs">
+                        <Paperclip className="h-3 w-3 mr-1" />
+                        {a.name}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
               </div>
               <iframe
                 srcDoc={preview.html}

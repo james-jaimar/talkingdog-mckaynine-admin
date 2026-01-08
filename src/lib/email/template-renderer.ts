@@ -68,111 +68,25 @@ export function renderTemplate(template: string, variables: TemplateVariables): 
 
 /**
  * Get sample template with all merge fields filled
+ * Professional design with logo and banking details
  */
 export function getSampleTemplate(): string {
-  return `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    body { 
-      font-family: Arial, sans-serif; 
-      line-height: 1.6; 
-      color: #333;
-      margin: 0;
-      padding: 0;
-    }
-    .container { 
-      max-width: 600px; 
-      margin: 0 auto; 
-      padding: 20px;
-    }
-    .header { 
-      background: #2c5530; 
-      color: white; 
-      padding: 30px 20px; 
-      text-align: center;
-      border-radius: 8px 8px 0 0;
-    }
-    .header h1 {
-      margin: 0;
-      font-size: 24px;
-    }
-    .content { 
-      padding: 30px 20px; 
-      background: #ffffff;
-      border: 1px solid #e0e0e0;
-      border-top: none;
-    }
-    .custom-message {
-      background: #f8f9fa;
-      border-left: 4px solid #2c5530;
-      padding: 15px;
-      margin-bottom: 20px;
-    }
-    .highlight {
-      background: #e8f5e9;
-      padding: 15px;
-      border-radius: 6px;
-      margin: 15px 0;
-    }
-    .footer { 
-      background: #f5f5f5; 
-      padding: 20px; 
-      font-size: 12px; 
-      text-align: center;
-      color: #666;
-      border-radius: 0 0 8px 8px;
-      border: 1px solid #e0e0e0;
-      border-top: none;
-    }
-    .footer a {
-      color: #2c5530;
-    }
-    .btn {
-      display: inline-block;
-      background: #2c5530;
-      color: white;
-      padding: 12px 24px;
-      text-decoration: none;
-      border-radius: 6px;
-      margin: 10px 0;
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h1>{{branch_name}}</h1>
-    </div>
-    <div class="content">
-      {{#if custom_message}}
-      <div class="custom-message">
-        {{custom_message}}
-      </div>
-      {{/if}}
-      
-      <p>Dear {{handler_name}},</p>
-      
-      <p>Congratulations on completing the <strong>{{completed_class}}</strong> class with {{dog_name}}! We're thrilled with the progress you've both made.</p>
-      
-      <div class="highlight">
-        <h3 style="margin-top: 0;">What's Next: {{next_class}} Class</h3>
-        <p>We're excited to share information about our <strong>{{next_class}}</strong> class, the next step in your training journey.</p>
-      </div>
-      
-      <p>If you have any questions, please don't hesitate to reach out to us.</p>
-      
-      <p>Best regards,<br>The {{branch_name}} Team</p>
-    </div>
-    <div class="footer">
-      <p><strong>{{branch_name}}</strong></p>
-      <p>Email: <a href="mailto:{{branch_email}}">{{branch_email}}</a></p>
-    </div>
+  return `<div class="email-content">
+  <p>Dear {{handler_name}},</p>
+  
+  <p>Congratulations on completing the <strong>{{completed_class}}</strong> class with {{dog_name}}! We're thrilled with the progress you've both made.</p>
+  
+  <div style="background-color: #f0f5f1; padding: 20px; border-radius: 8px; margin: 20px 0;">
+    <h3 style="margin: 0 0 12px 0; color: #2c5530;">What's Next: {{next_class}} Class</h3>
+    <p style="margin: 0;">We're excited to share information about our <strong>{{next_class}}</strong> class, the next step in your training journey.</p>
   </div>
-</body>
-</html>`;
+  
+  <p>Should you wish to enroll, please let us know by sending a confirmation email along with your proof of payment. Since you are McKaynine graduates, spaces are reserved for a limited time, but we do require confirmation as soon as possible as the classes fill up very quickly.</p>
+  
+  <p>If you have any questions, please don't hesitate to reach out to us.</p>
+  
+  <p>Kind regards,<br>The {{branch_name}} Team</p>
+</div>`;
 }
 
 /**

@@ -5,10 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useEmailTemplates, EmailTemplate } from "@/hooks/useEmailTemplates";
-import { Eye, Mail, Check, Clock, Plus, Edit, Trash2, FileText } from "lucide-react";
+import { Eye, Mail, Check, Clock, Plus, Edit, Trash2, FileText, Paperclip } from "lucide-react";
 import { TemplatePreviewModal } from "@/components/email-templates/TemplatePreviewModal";
 import { TemplateEditorModal } from "@/components/email-templates/TemplateEditorModal";
+import { AttachmentLibrary } from "@/components/email-templates/AttachmentLibrary";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -63,150 +65,172 @@ export default function EmailTemplates() {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-bold">Email Templates</h1>
+            <h1 className="text-2xl font-bold">Email Templates & Attachments</h1>
             <p className="text-muted-foreground">
-              Create reusable email templates for quick communication with handlers.
+              Create reusable email templates and manage attachments.
             </p>
           </div>
-          <Button onClick={handleCreate}>
-            <Plus className="h-4 w-4 mr-2" />
-            Create Template
-          </Button>
         </div>
 
-        {isLoading ? (
-          <div className="flex justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          </div>
-        ) : templates.length === 0 ? (
-          <Card className="border-dashed">
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <div className="p-3 rounded-full bg-muted mb-4">
-                <FileText className="h-8 w-8 text-muted-foreground" />
-              </div>
-              <h3 className="text-lg font-medium mb-2">No email templates yet</h3>
-              <p className="text-muted-foreground text-center max-w-sm mb-4">
-                Create reusable email templates with merge fields for personalized handler communications.
-              </p>
+        <Tabs defaultValue="templates" className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="templates" className="flex items-center gap-2">
+              <Mail className="h-4 w-4" />
+              Templates
+            </TabsTrigger>
+            <TabsTrigger value="attachments" className="flex items-center gap-2">
+              <Paperclip className="h-4 w-4" />
+              Attachments
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="templates" className="space-y-6">
+            <div className="flex justify-end">
               <Button onClick={handleCreate}>
                 <Plus className="h-4 w-4 mr-2" />
-                Create Your First Template
+                Create Template
               </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {templates.map((template) => (
-              <Card 
-                key={template.id}
-                className={`relative transition-all ${
-                  template.is_active 
-                    ? 'border-primary/50 shadow-md' 
-                    : 'opacity-80'
-                }`}
-              >
-                {/* Status Badge */}
-                <div className="absolute top-3 right-3">
-                  {template.is_active ? (
-                    <Badge className="bg-green-500/10 text-green-600 border-green-500/20">
-                      <Check className="mr-1 h-3 w-3" />
-                      Active
-                    </Badge>
-                  ) : (
-                    <Badge variant="secondary">
-                      <Clock className="mr-1 h-3 w-3" />
-                      Inactive
-                    </Badge>
-                  )}
-                </div>
-
-                <CardHeader className="pb-3">
-                  <div className="flex items-start gap-3">
-                    <div className="p-2 rounded-lg bg-primary/10">
-                      <Mail className="h-5 w-5 text-primary" />
-                    </div>
-                    <div className="flex-1 min-w-0 pr-16">
-                      <CardTitle className="text-lg">{template.name}</CardTitle>
-                      <CardDescription className="mt-1 line-clamp-2">
-                        {template.subject}
-                      </CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-
-                <CardContent className="pb-3">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <Badge variant="outline">{template.type}</Badge>
-                    {template.class_type && (
-                      <Badge variant="secondary">{template.class_type}</Badge>
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Updated: {new Date(template.updated_at).toLocaleDateString()}
-                  </p>
-                </CardContent>
-
-                <CardFooter className="flex justify-between items-center pt-3 border-t">
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      checked={template.is_active}
-                      onCheckedChange={() => handleToggleActive(template)}
-                      disabled={updateTemplate.isPending}
-                    />
-                    <span className="text-sm text-muted-foreground">
-                      {template.is_active ? 'Active' : 'Inactive'}
-                    </span>
-                  </div>
-                  
-                  <div className="flex gap-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handlePreview(template)}
-                    >
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleEdit(template)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                      onClick={() => setTemplateToDelete(template)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </CardFooter>
-              </Card>
-            ))}
-          </div>
-        )}
-
-        {/* Info Card */}
-        <Card className="bg-muted/30 border-dashed">
-          <CardContent className="py-6">
-            <div className="flex items-start gap-4">
-              <div className="p-2 rounded-full bg-primary/10">
-                <Mail className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <h3 className="font-medium">How it works</h3>
-                <ul className="mt-2 text-sm text-muted-foreground space-y-1">
-                  <li>• Create templates with merge fields like <code className="bg-muted px-1 rounded">{"{{handler_name}}"}</code> and <code className="bg-muted px-1 rounded">{"{{dog_name}}"}</code></li>
-                  <li>• Merge fields are automatically replaced when you send an email</li>
-                  <li>• Active templates appear in the "Use Template" option when emailing handlers</li>
-                  <li>• Attach info packs or documents manually when sending</li>
-                </ul>
-              </div>
             </div>
-          </CardContent>
-        </Card>
+
+            {isLoading ? (
+              <div className="flex justify-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              </div>
+            ) : templates.length === 0 ? (
+              <Card className="border-dashed">
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                  <div className="p-3 rounded-full bg-muted mb-4">
+                    <FileText className="h-8 w-8 text-muted-foreground" />
+                  </div>
+                  <h3 className="text-lg font-medium mb-2">No email templates yet</h3>
+                  <p className="text-muted-foreground text-center max-w-sm mb-4">
+                    Create reusable email templates with merge fields for personalized handler communications.
+                  </p>
+                  <Button onClick={handleCreate}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Your First Template
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {templates.map((template) => (
+                  <Card 
+                    key={template.id}
+                    className={`relative transition-all ${
+                      template.is_active 
+                        ? 'border-primary/50 shadow-md' 
+                        : 'opacity-80'
+                    }`}
+                  >
+                    {/* Status Badge */}
+                    <div className="absolute top-3 right-3">
+                      {template.is_active ? (
+                        <Badge className="bg-green-500/10 text-green-600 border-green-500/20">
+                          <Check className="mr-1 h-3 w-3" />
+                          Active
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary">
+                          <Clock className="mr-1 h-3 w-3" />
+                          Inactive
+                        </Badge>
+                      )}
+                    </div>
+
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 rounded-lg bg-primary/10">
+                          <Mail className="h-5 w-5 text-primary" />
+                        </div>
+                        <div className="flex-1 min-w-0 pr-16">
+                          <CardTitle className="text-lg">{template.name}</CardTitle>
+                          <CardDescription className="mt-1 line-clamp-2">
+                            {template.subject}
+                          </CardDescription>
+                        </div>
+                      </div>
+                    </CardHeader>
+
+                    <CardContent className="pb-3">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge variant="outline">{template.type}</Badge>
+                        {template.class_type && (
+                          <Badge variant="secondary">{template.class_type}</Badge>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Updated: {new Date(template.updated_at).toLocaleDateString()}
+                      </p>
+                    </CardContent>
+
+                    <CardFooter className="flex justify-between items-center pt-3 border-t">
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          checked={template.is_active}
+                          onCheckedChange={() => handleToggleActive(template)}
+                          disabled={updateTemplate.isPending}
+                        />
+                        <span className="text-sm text-muted-foreground">
+                          {template.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                      </div>
+                      
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handlePreview(template)}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEdit(template)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => setTemplateToDelete(template)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </CardFooter>
+                  </Card>
+                ))}
+              </div>
+            )}
+
+            {/* Info Card */}
+            <Card className="bg-muted/30 border-dashed">
+              <CardContent className="py-6">
+                <div className="flex items-start gap-4">
+                  <div className="p-2 rounded-full bg-primary/10">
+                    <Mail className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-medium">How it works</h3>
+                    <ul className="mt-2 text-sm text-muted-foreground space-y-1">
+                      <li>• Create templates with merge fields like <code className="bg-muted px-1 rounded">{"{{handler_name}}"}</code> and <code className="bg-muted px-1 rounded">{"{{dog_name}}"}</code></li>
+                      <li>• Merge fields are automatically replaced when you send an email</li>
+                      <li>• Active templates appear in the "Use Template" option when emailing handlers</li>
+                      <li>• Attach info packs or documents from the Attachments tab when sending</li>
+                    </ul>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="attachments">
+            <AttachmentLibrary />
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Editor Modal */}
