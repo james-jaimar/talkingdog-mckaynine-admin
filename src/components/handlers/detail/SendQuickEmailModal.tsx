@@ -266,22 +266,29 @@ export function SendQuickEmailModal({ open, onOpenChange, handler }: SendQuickEm
               </Label>
               <div className="flex flex-wrap gap-2">
                 {dogs.map((dog) => (
-                  <div
+                  <label
                     key={dog.id}
+                    htmlFor={`dog-${dog.id}`}
                     className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-colors ${
                       selectedDogIds.includes(dog.id)
                         ? "bg-primary/10 border-primary"
                         : "bg-background hover:bg-muted"
                     }`}
-                    onClick={() => toggleDogSelection(dog.id)}
                   >
                     <Checkbox
+                      id={`dog-${dog.id}`}
                       checked={selectedDogIds.includes(dog.id)}
-                      onCheckedChange={() => toggleDogSelection(dog.id)}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setSelectedDogIds(prev => [...prev, dog.id]);
+                        } else {
+                          setSelectedDogIds(prev => prev.filter(id => id !== dog.id));
+                        }
+                      }}
                     />
                     <span className="font-medium">{dog.name}</span>
                     <span className="text-xs text-muted-foreground">({dog.breed})</span>
-                  </div>
+                  </label>
                 ))}
               </div>
               {selectedDogNames && (
