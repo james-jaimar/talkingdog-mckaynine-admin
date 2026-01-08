@@ -426,84 +426,8 @@ export function SendQuickEmailModal({ open, onOpenChange, handler }: SendQuickEm
                     value={customMessage}
                     onChange={(e) => setCustomMessage(e.target.value)}
                     placeholder="Type your message here..."
-                    className="min-h-[150px]"
+                    className="min-h-[120px]"
                   />
-                </div>
-                
-                {/* Banking Details Toggle */}
-                <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                  <Checkbox
-                    id="include-banking"
-                    checked={includeBankingDetails}
-                    onCheckedChange={(checked) => setIncludeBankingDetails(!!checked)}
-                  />
-                  <label htmlFor="include-banking" className="text-sm cursor-pointer">
-                    Include banking details in email footer
-                  </label>
-                </div>
-
-                {/* Attachment Selection */}
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-2">
-                    <Paperclip className="h-4 w-4" />
-                    Attachments
-                  </Label>
-                  
-                  {selectedAttachments.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mb-2">
-                      {selectedAttachments.map((attachment) => (
-                        <Badge 
-                          key={attachment.id} 
-                          variant="secondary"
-                          className="flex items-center gap-1"
-                        >
-                          <FileText className="h-3 w-3" />
-                          {attachment.name}
-                          <button
-                            type="button"
-                            onClick={() => removeAttachment(attachment.id)}
-                            className="ml-1 hover:text-destructive"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
-                  
-                  {attachments.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      No attachments available. Upload files in Email Templates &gt; Attachments.
-                    </p>
-                  ) : (
-                    <Select onValueChange={(id) => {
-                      const attachment = attachments.find(a => a.id === id);
-                      if (attachment && !selectedAttachments.some(a => a.id === id)) {
-                        setSelectedAttachments(prev => [...prev, attachment]);
-                      }
-                    }}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Add an attachment..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {attachments
-                          .filter(a => !selectedAttachments.some(sel => sel.id === a.id))
-                          .map((attachment) => (
-                            <SelectItem key={attachment.id} value={attachment.id}>
-                              <div className="flex items-center gap-2">
-                                <FileText className="h-4 w-4" />
-                                <span>{attachment.name}</span>
-                                {attachment.class_type && (
-                                  <Badge variant="outline" className="text-xs ml-2">
-                                    {attachment.class_type}
-                                  </Badge>
-                                )}
-                              </div>
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-                  )}
                 </div>
               </>
             ) : (
@@ -600,11 +524,87 @@ export function SendQuickEmailModal({ open, onOpenChange, handler }: SendQuickEm
                     value={customMessage}
                     onChange={(e) => setCustomMessage(e.target.value)}
                     placeholder="Add a personal note that will appear at the top of the email..."
-                    className="min-h-[100px]"
+                    className="min-h-[80px]"
                   />
                 </div>
               </>
             )}
+
+            {/* Banking Details Toggle - shown for both modes */}
+            <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+              <Checkbox
+                id="include-banking"
+                checked={includeBankingDetails}
+                onCheckedChange={(checked) => setIncludeBankingDetails(!!checked)}
+              />
+              <label htmlFor="include-banking" className="text-sm cursor-pointer">
+                Include banking details in email footer
+              </label>
+            </div>
+
+            {/* Attachment Selection - shown for both modes */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Paperclip className="h-4 w-4" />
+                Attachments
+              </Label>
+              
+              {selectedAttachments.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {selectedAttachments.map((attachment) => (
+                    <Badge 
+                      key={attachment.id} 
+                      variant="secondary"
+                      className="flex items-center gap-1"
+                    >
+                      <FileText className="h-3 w-3" />
+                      {attachment.name}
+                      <button
+                        type="button"
+                        onClick={() => removeAttachment(attachment.id)}
+                        className="ml-1 hover:text-destructive"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
+              
+              {attachments.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No attachments available. Upload files in Email Templates &gt; Attachments.
+                </p>
+              ) : (
+                <Select onValueChange={(id) => {
+                  const attachment = attachments.find(a => a.id === id);
+                  if (attachment && !selectedAttachments.some(a => a.id === id)) {
+                    setSelectedAttachments(prev => [...prev, attachment]);
+                  }
+                }}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Add an attachment..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {attachments
+                      .filter(a => !selectedAttachments.some(sel => sel.id === a.id))
+                      .map((attachment) => (
+                        <SelectItem key={attachment.id} value={attachment.id}>
+                          <div className="flex items-center gap-2">
+                            <FileText className="h-4 w-4" />
+                            <span>{attachment.name}</span>
+                            {attachment.class_type && (
+                              <Badge variant="outline" className="text-xs ml-2">
+                                {attachment.class_type}
+                              </Badge>
+                            )}
+                          </div>
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
           </TabsContent>
 
           <TabsContent value="preview" className="flex-1 overflow-auto mt-4">
