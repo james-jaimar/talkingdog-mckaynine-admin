@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useTemplateConfigurations } from "@/hooks/useTemplateConfigurations";
 import { renderTemplate, TemplateVariables } from "@/lib/email/template-renderer";
 import { useBranch } from "@/context/BranchContext";
@@ -14,6 +15,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Send, Eye, Mail, User, Dog, FileText } from "lucide-react";
 import { getPrebuiltTemplate } from "@/lib/email/templates";
+
+interface DogInfo {
+  id: string;
+  name: string;
+  breed: string;
+}
 
 interface SendQuickEmailModalProps {
   open: boolean;
@@ -36,37 +43,61 @@ export function SendQuickEmailModal({ open, onOpenChange, handler }: SendQuickEm
   const [customMessage, setCustomMessage] = useState("");
   const [activeTab, setActiveTab] = useState<"compose" | "preview">("compose");
   const [isSending, setIsSending] = useState(false);
-  const [dogName, setDogName] = useState<string>("");
+  
+  // Dog selection
+  const [dogs, setDogs] = useState<DogInfo[]>([]);
+  const [selectedDogIds, setSelectedDogIds] = useState<string[]>([]);
 
   // Show all configured and active templates
   const availableTemplates = templatesWithStatus.filter(t => t.isConfigured && t.isActive);
   const selectedTemplateData = templatesWithStatus.find(t => t.code === selectedTemplateCode);
 
-  // Fetch dog information when modal opens
+  // Get selected dog names for display and template
+  const selectedDogNames = dogs
+    .filter(d => selectedDogIds.includes(d.id))
+    .map(d => d.name)
+    .join(" & ");
+
+  // Fetch all dogs for this handler
   useEffect(() => {
-    async function fetchDogInfo() {
+    async function fetchDogs() {
       if (!handler.id) return;
       
-      const { data: dogs } = await supabase
+      const { data } = await supabase
         .from("dogs")
-        .select("id, name")
+        .select("id, name, breed")
         .eq("client_id", handler.id)
-        .limit(1);
+        .order("name");
       
-      if (dogs && dogs.length > 0) {
-        setDogName(dogs[0].name);
+      if (data && data.length > 0) {
+        setDogs(data);
+        // Auto-select all dogs if only one, otherwise none
+        if (data.length === 1) {
+          setSelectedDogIds([data[0].id]);
+        }
+      } else {
+        setDogs([]);
       }
     }
     
     if (open) {
-      fetchDogInfo();
+      fetchDogs();
       setSelectedTemplateCode("");
       setCustomSubject("");
       setCustomMessage("");
       setActiveTab("compose");
       setEmailMode("custom");
+      setSelectedDogIds([]);
     }
   }, [open, handler.id]);
+
+  const toggleDogSelection = (dogId: string) => {
+    setSelectedDogIds(prev => 
+      prev.includes(dogId) 
+        ? prev.filter(id => id !== dogId)
+        : [...prev, dogId]
+    );
+  };
 
   // Build template variables
   const getTemplateVariables = (): TemplateVariables => {
@@ -76,7 +107,7 @@ export function SendQuickEmailModal({ open, onOpenChange, handler }: SendQuickEm
       handler_name: handler.first_name || "",
       handler_full_name: `${handler.first_name} ${handler.last_name}`,
       handler_email: handler.email || "",
-      dog_name: dogName,
+      dog_name: selectedDogNames || "your dog",
       branch_name: currentBranch?.name || "McKaynine",
       branch_email: (currentBranch as any)?.email || "",
       branch_phone: (currentBranch as any)?.phone || "",
@@ -214,19 +245,50 @@ export function SendQuickEmailModal({ open, onOpenChange, handler }: SendQuickEm
           </DialogDescription>
         </DialogHeader>
 
-        {/* Handler Info */}
-        <div className="flex flex-wrap gap-4 py-2 px-4 bg-muted rounded-lg">
-          <div className="flex items-center gap-2">
-            <User className="h-4 w-4 text-muted-foreground" />
-            <span className="font-medium">
-              {handler.first_name} {handler.last_name}
-            </span>
-            <span className="text-muted-foreground">({handler.email})</span>
-          </div>
-          {dogName && (
+        {/* Handler & Dog Selection */}
+        <div className="space-y-3">
+          <div className="flex flex-wrap gap-4 py-2 px-4 bg-muted rounded-lg">
             <div className="flex items-center gap-2">
-              <Dog className="h-4 w-4 text-muted-foreground" />
-              <span>{dogName}</span>
+              <User className="h-4 w-4 text-muted-foreground" />
+              <span className="font-medium">
+                {handler.first_name} {handler.last_name}
+              </span>
+              <span className="text-muted-foreground">({handler.email})</span>
+            </div>
+          </div>
+
+          {/* Dog Selection */}
+          {dogs.length > 0 && (
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Dog className="h-4 w-4" />
+                {dogs.length === 1 ? "Dog" : "Select Dog(s)"}
+              </Label>
+              <div className="flex flex-wrap gap-2">
+                {dogs.map((dog) => (
+                  <div
+                    key={dog.id}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-colors ${
+                      selectedDogIds.includes(dog.id)
+                        ? "bg-primary/10 border-primary"
+                        : "bg-background hover:bg-muted"
+                    }`}
+                    onClick={() => toggleDogSelection(dog.id)}
+                  >
+                    <Checkbox
+                      checked={selectedDogIds.includes(dog.id)}
+                      onCheckedChange={() => toggleDogSelection(dog.id)}
+                    />
+                    <span className="font-medium">{dog.name}</span>
+                    <span className="text-xs text-muted-foreground">({dog.breed})</span>
+                  </div>
+                ))}
+              </div>
+              {selectedDogNames && (
+                <p className="text-sm text-muted-foreground">
+                  Email will reference: <strong>{selectedDogNames}</strong>
+                </p>
+              )}
             </div>
           )}
         </div>
