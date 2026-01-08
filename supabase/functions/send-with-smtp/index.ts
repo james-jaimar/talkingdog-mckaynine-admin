@@ -6,18 +6,50 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+interface EmailAttachment {
+  // URL-based attachment (from Supabase storage)
+  name?: string;
+  url?: string;
+  // Content-based attachment (base64)
+  filename?: string;
+  content?: string;
+  encoding?: string;
+  contentType?: string;
+}
+
 interface EmailRequest {
   to: string;
   subject: string;
   html: string;
   from?: string;      // Optional override for from email
   fromName?: string;  // Optional override for from display name
-  attachments?: Array<{
-    filename: string;
-    content: string;
-    encoding: string;
-    contentType: string;
-  }>;
+  attachments?: EmailAttachment[];
+}
+
+/**
+ * Fetch a file from URL and convert to base64
+ */
+async function fetchFileAsBase64(url: string): Promise<{ content: string; contentType: string }> {
+  console.log(`Fetching attachment from URL: ${url}`);
+  const response = await fetch(url);
+  
+  if (!response.ok) {
+    throw new Error(`Failed to fetch attachment: ${response.status} ${response.statusText}`);
+  }
+  
+  const contentType = response.headers.get("content-type") || "application/octet-stream";
+  const arrayBuffer = await response.arrayBuffer();
+  const uint8Array = new Uint8Array(arrayBuffer);
+  
+  // Convert to base64
+  let binary = "";
+  for (let i = 0; i < uint8Array.length; i++) {
+    binary += String.fromCharCode(uint8Array[i]);
+  }
+  const content = btoa(binary);
+  
+  console.log(`Fetched attachment: ${contentType}, ${uint8Array.length} bytes`);
+  return { content, contentType };
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -89,13 +121,40 @@ const handler = async (req: Request): Promise<Response> => {
     
     // Add attachments if provided
     if (attachments && attachments.length > 0) {
-      console.log(`Adding ${attachments.length} attachment(s) to email`);
-      mailOptions.attachments = attachments.map((a) => ({
-        filename: a.filename,
-        content: a.content,
-        encoding: a.encoding || "base64",
-        contentType: a.contentType || "application/octet-stream",
-      }));
+      console.log(`Processing ${attachments.length} attachment(s)`);
+      const processedAttachments = [];
+      
+      for (const attachment of attachments) {
+        try {
+          // If attachment has URL, fetch and convert to base64
+          if (attachment.url) {
+            const { content, contentType } = await fetchFileAsBase64(attachment.url);
+            processedAttachments.push({
+              filename: attachment.name || "attachment",
+              content: content,
+              encoding: "base64",
+              contentType: contentType,
+            });
+          } 
+          // If attachment already has content (base64)
+          else if (attachment.content) {
+            processedAttachments.push({
+              filename: attachment.filename || "attachment",
+              content: attachment.content,
+              encoding: attachment.encoding || "base64",
+              contentType: attachment.contentType || "application/octet-stream",
+            });
+          }
+        } catch (attachError) {
+          console.error(`Failed to process attachment: ${attachment.name || attachment.filename}`, attachError);
+          // Continue with other attachments
+        }
+      }
+      
+      if (processedAttachments.length > 0) {
+        console.log(`Adding ${processedAttachments.length} processed attachment(s) to email`);
+        mailOptions.attachments = processedAttachments;
+      }
     }
     
     // Send email
