@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useTemplateConfigurations } from "@/hooks/useTemplateConfigurations";
+import { useEmailTemplates, EmailTemplate } from "@/hooks/useEmailTemplates";
 import { useEmailAttachments, EmailAttachment } from "@/hooks/useEmailAttachments";
 import { renderTemplate, TemplateVariables } from "@/lib/email/template-renderer";
 import { wrapEmailContent } from "@/lib/email/email-wrapper";
@@ -36,12 +37,14 @@ interface SendQuickEmailModalProps {
 }
 
 export function SendQuickEmailModal({ open, onOpenChange, handler }: SendQuickEmailModalProps) {
-  const { templatesWithStatus, isLoading: templatesLoading } = useTemplateConfigurations();
+  const { templatesWithStatus, isLoading: prebuiltLoading } = useTemplateConfigurations();
+  const { templates: customTemplates, isLoading: customLoading } = useEmailTemplates();
   const { attachments, getAttachmentUrl } = useEmailAttachments();
   const { currentBranch } = useBranch();
   
   const [emailMode, setEmailMode] = useState<"template" | "custom">("custom");
-  const [selectedTemplateCode, setSelectedTemplateCode] = useState<string>("");
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+  const [templateType, setTemplateType] = useState<"prebuilt" | "custom">("custom");
   const [customSubject, setCustomSubject] = useState("");
   const [customMessage, setCustomMessage] = useState("");
   const [activeTab, setActiveTab] = useState<"compose" | "preview">("compose");
@@ -55,9 +58,19 @@ export function SendQuickEmailModal({ open, onOpenChange, handler }: SendQuickEm
   // Attachment selection
   const [selectedAttachments, setSelectedAttachments] = useState<EmailAttachment[]>([]);
 
-  // Show all configured and active templates
-  const availableTemplates = templatesWithStatus.filter(t => t.isConfigured && t.isActive);
-  const selectedTemplateData = templatesWithStatus.find(t => t.code === selectedTemplateCode);
+  const templatesLoading = prebuiltLoading || customLoading;
+  
+  // Combine prebuilt templates and custom templates
+  const availablePrebuiltTemplates = templatesWithStatus.filter(t => t.isConfigured && t.isActive);
+  const availableCustomTemplates = customTemplates.filter(t => t.is_active);
+  
+  // Find selected template based on type
+  const selectedPrebuiltTemplate = templateType === "prebuilt" 
+    ? templatesWithStatus.find(t => t.code === selectedTemplateId)
+    : null;
+  const selectedCustomTemplate = templateType === "custom"
+    ? customTemplates.find(t => t.id === selectedTemplateId)
+    : null;
 
   // Get selected dog names for display and template
   const selectedDogNames = dogs
@@ -89,7 +102,8 @@ export function SendQuickEmailModal({ open, onOpenChange, handler }: SendQuickEm
     
     if (open) {
       fetchDogs();
-      setSelectedTemplateCode("");
+      setSelectedTemplateId("");
+      setTemplateType("custom");
       setCustomSubject("");
       setCustomMessage("");
       setActiveTab("compose");
@@ -124,7 +138,7 @@ export function SendQuickEmailModal({ open, onOpenChange, handler }: SendQuickEm
 
   // Build template variables
   const getTemplateVariables = (): TemplateVariables => {
-    const configVars = selectedTemplateData?.configuration?.variables || {};
+    const configVars = selectedPrebuiltTemplate?.configuration?.variables || {};
     
     return {
       handler_name: handler.first_name || "",
@@ -151,7 +165,7 @@ export function SendQuickEmailModal({ open, onOpenChange, handler }: SendQuickEm
       return;
     }
 
-    if (emailMode === "template" && !selectedTemplateData) {
+    if (emailMode === "template" && !selectedTemplateId) {
       toast.error("Please select a template");
       return;
     }
@@ -160,6 +174,7 @@ export function SendQuickEmailModal({ open, onOpenChange, handler }: SendQuickEm
     try {
       let subject: string;
       let html: string;
+      let templateId: string | null = null;
 
       // Get attachment URLs for email
       const attachmentUrls = selectedAttachments.map(a => ({
@@ -177,16 +192,31 @@ export function SendQuickEmailModal({ open, onOpenChange, handler }: SendQuickEm
           branchPhone: (currentBranch as any)?.phone,
           includeBankingDetails,
         });
-      } else {
-        const template = getPrebuiltTemplate(selectedTemplateCode);
+      } else if (templateType === "prebuilt" && selectedPrebuiltTemplate) {
+        const template = getPrebuiltTemplate(selectedTemplateId);
         if (!template) throw new Error("Template not found");
         
         const variables = getTemplateVariables();
-        const configVars = selectedTemplateData?.configuration?.variables || {};
+        const configVars = selectedPrebuiltTemplate.configuration?.variables || {};
         
         const rawHtml = template.getHtml(configVars);
         html = renderTemplate(rawHtml, variables);
         subject = renderTemplate(template.subject, variables);
+      } else if (templateType === "custom" && selectedCustomTemplate) {
+        // Use custom template from branch_email_templates
+        templateId = selectedCustomTemplate.id;
+        const variables = getTemplateVariables();
+        
+        subject = renderTemplate(selectedCustomTemplate.subject, variables);
+        const renderedContent = renderTemplate(selectedCustomTemplate.content, variables);
+        html = wrapEmailContent(renderedContent, {
+          branchName: currentBranch?.name,
+          branchEmail: (currentBranch as any)?.email,
+          branchPhone: (currentBranch as any)?.phone,
+          includeBankingDetails: true,
+        });
+      } else {
+        throw new Error("No valid template selected");
       }
 
       // Send email via edge function
@@ -203,11 +233,12 @@ export function SendQuickEmailModal({ open, onOpenChange, handler }: SendQuickEm
 
       if (emailError) throw emailError;
 
-      // Log the email
+      // Log the email with template_id if applicable
       await supabase.from("email_log").insert({
         handler_id: handler.id,
         recipient_email: handler.email,
         subject,
+        template_id: templateId,
         status: "sent",
       });
 
@@ -236,23 +267,43 @@ export function SendQuickEmailModal({ open, onOpenChange, handler }: SendQuickEm
       };
     }
 
-    if (!selectedTemplateData) return { html: "", subject: "" };
-    
-    const template = getPrebuiltTemplate(selectedTemplateCode);
-    if (!template) return { html: "", subject: "" };
-    
-    const variables = getTemplateVariables();
-    const configVars = selectedTemplateData.configuration?.variables || {};
-    
-    const rawHtml = template.getHtml(configVars);
-    const renderedHtml = renderTemplate(rawHtml, variables);
-    const renderedSubject = renderTemplate(template.subject, variables);
-    
-    return { html: renderedHtml, subject: renderedSubject };
+    // Handle prebuilt templates
+    if (templateType === "prebuilt" && selectedPrebuiltTemplate) {
+      const template = getPrebuiltTemplate(selectedTemplateId);
+      if (!template) return { html: "", subject: "" };
+      
+      const variables = getTemplateVariables();
+      const configVars = selectedPrebuiltTemplate.configuration?.variables || {};
+      
+      const rawHtml = template.getHtml(configVars);
+      const renderedHtml = renderTemplate(rawHtml, variables);
+      const renderedSubject = renderTemplate(template.subject, variables);
+      
+      return { html: renderedHtml, subject: renderedSubject };
+    }
+
+    // Handle custom templates
+    if (templateType === "custom" && selectedCustomTemplate) {
+      const variables = getTemplateVariables();
+      const renderedSubject = renderTemplate(selectedCustomTemplate.subject, variables);
+      const renderedContent = renderTemplate(selectedCustomTemplate.content, variables);
+      const html = wrapEmailContent(renderedContent, {
+        branchName: currentBranch?.name,
+        branchEmail: (currentBranch as any)?.email,
+        branchPhone: (currentBranch as any)?.phone,
+        includeBankingDetails: true,
+      });
+      
+      return { html, subject: renderedSubject };
+    }
+
+    return { html: "", subject: "" };
   };
 
   const preview = getPreview();
-  const canPreview = emailMode === "custom" ? (customSubject && customMessage) : !!selectedTemplateData;
+  const hasTemplates = availableCustomTemplates.length > 0 || availablePrebuiltTemplates.length > 0;
+  const hasSelectedTemplate = templateType === "prebuilt" ? !!selectedPrebuiltTemplate : !!selectedCustomTemplate;
+  const canPreview = emailMode === "custom" ? (customSubject && customMessage) : hasSelectedTemplate;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -461,40 +512,84 @@ export function SendQuickEmailModal({ open, onOpenChange, handler }: SendQuickEm
                   <Label>Select Template</Label>
                   {templatesLoading ? (
                     <div className="text-sm text-muted-foreground">Loading templates...</div>
-                  ) : availableTemplates.length === 0 ? (
+                  ) : !hasTemplates ? (
                     <div className="text-sm text-muted-foreground">
-                      No templates configured. Use custom email instead.
+                      No templates available. Create templates in Email Templates settings.
                     </div>
                   ) : (
-                    <Select value={selectedTemplateCode} onValueChange={setSelectedTemplateCode}>
+                    <Select 
+                      value={selectedTemplateId} 
+                      onValueChange={(value) => {
+                        // Determine if this is a custom template or prebuilt
+                        const isCustom = availableCustomTemplates.some(t => t.id === value);
+                        setTemplateType(isCustom ? "custom" : "prebuilt");
+                        setSelectedTemplateId(value);
+                      }}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Choose a template..." />
                       </SelectTrigger>
                       <SelectContent>
-                        {availableTemplates.map((template) => (
-                          <SelectItem key={template.code} value={template.code}>
-                            <div className="flex items-center gap-2">
-                              <span>{template.name}</span>
-                              <Badge variant="outline" className="text-xs">
-                                {template.classType}
-                              </Badge>
+                        {/* Custom Templates */}
+                        {availableCustomTemplates.length > 0 && (
+                          <>
+                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                              Your Templates
                             </div>
-                          </SelectItem>
-                        ))}
+                            {availableCustomTemplates.map((template) => (
+                              <SelectItem key={template.id} value={template.id}>
+                                <div className="flex items-center gap-2">
+                                  <span>{template.name}</span>
+                                  {template.class_type && (
+                                    <Badge variant="outline" className="text-xs">
+                                      {template.class_type}
+                                    </Badge>
+                                  )}
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </>
+                        )}
+                        
+                        {/* Prebuilt Templates */}
+                        {availablePrebuiltTemplates.length > 0 && (
+                          <>
+                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                              System Templates
+                            </div>
+                            {availablePrebuiltTemplates.map((template) => (
+                              <SelectItem key={template.code} value={template.code}>
+                                <div className="flex items-center gap-2">
+                                  <span>{template.name}</span>
+                                  <Badge variant="outline" className="text-xs">
+                                    {template.classType}
+                                  </Badge>
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </>
+                        )}
                       </SelectContent>
                     </Select>
                   )}
                 </div>
 
-                {selectedTemplateData?.configuration?.variables && (
+                {/* Show template preview info */}
+                {selectedPrebuiltTemplate?.configuration?.variables && (
                   <div className="p-3 bg-muted/50 rounded-lg text-sm space-y-1">
                     <p className="font-medium mb-2">Template Details:</p>
-                    {selectedTemplateData.configuration.variables.class_day_time && (
-                      <p><strong>When:</strong> {selectedTemplateData.configuration.variables.class_day_time}</p>
+                    {selectedPrebuiltTemplate.configuration.variables.class_day_time && (
+                      <p><strong>When:</strong> {selectedPrebuiltTemplate.configuration.variables.class_day_time}</p>
                     )}
-                    {selectedTemplateData.configuration.variables.class_dates && (
-                      <p><strong>Dates:</strong> {selectedTemplateData.configuration.variables.class_dates}</p>
+                    {selectedPrebuiltTemplate.configuration.variables.class_dates && (
+                      <p><strong>Dates:</strong> {selectedPrebuiltTemplate.configuration.variables.class_dates}</p>
                     )}
+                  </div>
+                )}
+
+                {selectedCustomTemplate && (
+                  <div className="p-3 bg-muted/50 rounded-lg text-sm space-y-1">
+                    <p className="font-medium">Subject: {selectedCustomTemplate.subject}</p>
                   </div>
                 )}
 
@@ -548,7 +643,7 @@ export function SendQuickEmailModal({ open, onOpenChange, handler }: SendQuickEm
           </Button>
           <Button 
             onClick={handleSend} 
-            disabled={isSending || (emailMode === "custom" && (!customSubject || !customMessage)) || (emailMode === "template" && !selectedTemplateData)}
+            disabled={isSending || (emailMode === "custom" && (!customSubject || !customMessage)) || (emailMode === "template" && !hasSelectedTemplate)}
           >
             {isSending ? (
               "Sending..."
