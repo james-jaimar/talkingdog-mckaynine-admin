@@ -1,9 +1,14 @@
 /**
  * Professional email wrapper with consistent styling
  * Includes branch logo and banking details footer
+ * Standard email width: 600px (industry best practice)
  */
 
 import { getBranchLogo } from "@/lib/branchLogo";
+
+// McKaynine brand blue color
+const BRAND_BLUE = "#3b82f6";
+const BRAND_BLUE_DARK = "#2563eb";
 
 interface EmailWrapperOptions {
   branchName?: string;
@@ -33,6 +38,8 @@ export function getEmailLogoUrl(branchName?: string): string {
 
 /**
  * Wrap email content in a professional template
+ * Uses 600px max width (email industry standard)
+ * Logo constrained to 180px width
  */
 export function wrapEmailContent(
   content: string,
@@ -50,26 +57,30 @@ export function wrapEmailContent(
 
   const bankingSection = includeBankingDetails
     ? `
-    <div style="background-color: #f0f5f1; border-radius: 8px; padding: 20px; margin-top: 20px;">
-      <h3 style="margin: 0 0 12px 0; color: #2c5530; font-size: 16px; font-weight: 600;">Banking Details</h3>
-      <table style="width: 100%; font-size: 14px; color: #333;">
-        <tr>
-          <td style="padding: 4px 0; color: #666;">Account Holder:</td>
-          <td style="padding: 4px 0; font-weight: 500;">${BANKING_DETAILS.accountHolder}</td>
-        </tr>
-        <tr>
-          <td style="padding: 4px 0; color: #666;">Bank:</td>
-          <td style="padding: 4px 0; font-weight: 500;">${BANKING_DETAILS.bank}</td>
-        </tr>
-        <tr>
-          <td style="padding: 4px 0; color: #666;">Account Number:</td>
-          <td style="padding: 4px 0; font-weight: 500;">${BANKING_DETAILS.accountNumber}</td>
-        </tr>
-      </table>
-      <p style="margin: 12px 0 0 0; font-size: 13px; color: #2c5530; font-style: italic;">
-        ${BANKING_DETAILS.reference}
-      </p>
-    </div>
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: ${BRAND_BLUE}; border-radius: 8px;">
+      <tr>
+        <td style="padding: 20px 24px;">
+          <h3 style="margin: 0 0 16px 0; color: #ffffff; font-size: 16px; font-weight: 600; letter-spacing: 0.5px;">Banking Details</h3>
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="font-size: 14px; color: #ffffff;">
+            <tr>
+              <td style="padding: 6px 0; color: rgba(255,255,255,0.85); width: 140px;">Account Holder:</td>
+              <td style="padding: 6px 0; font-weight: 600; color: #ffffff;">${BANKING_DETAILS.accountHolder}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: rgba(255,255,255,0.85);">Bank:</td>
+              <td style="padding: 6px 0; font-weight: 600; color: #ffffff;">${BANKING_DETAILS.bank}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: rgba(255,255,255,0.85);">Account Number:</td>
+              <td style="padding: 6px 0; font-weight: 600; color: #ffffff;">${BANKING_DETAILS.accountNumber}</td>
+            </tr>
+          </table>
+          <p style="margin: 14px 0 0 0; font-size: 13px; color: rgba(255,255,255,0.9); font-style: italic; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 14px;">
+            ${BANKING_DETAILS.reference}
+          </p>
+        </td>
+      </tr>
+    </table>
     `
     : "";
 
@@ -93,38 +104,47 @@ export function wrapEmailContent(
     body {
       margin: 0;
       padding: 0;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
       font-size: 15px;
       line-height: 1.6;
       color: #333333;
-      background-color: #f4f4f4;
+      background-color: #f5f5f5;
+      -webkit-font-smoothing: antialiased;
     }
     a {
-      color: #2c5530;
+      color: ${BRAND_BLUE};
     }
-    @media only screen and (max-width: 600px) {
+    @media only screen and (max-width: 620px) {
       .container {
         width: 100% !important;
-        padding: 16px !important;
+        padding: 12px !important;
+      }
+      .content-cell {
+        padding: 24px 20px !important;
       }
     }
   </style>
 </head>
-<body style="margin: 0; padding: 0; background-color: #f4f4f4;">
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f4f4f4;">
+<body style="margin: 0; padding: 0; background-color: #f5f5f5;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #f5f5f5;">
     <tr>
-      <td align="center" style="padding: 40px 20px;">
-        <table role="presentation" width="600" cellspacing="0" cellpadding="0" class="container" style="max-width: 600px; background-color: #ffffff; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+      <td align="center" style="padding: 32px 16px;">
+        <!--[if mso]>
+        <table role="presentation" align="center" width="600" cellspacing="0" cellpadding="0" border="0">
+        <tr>
+        <td>
+        <![endif]-->
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" class="container" style="max-width: 600px; background-color: #ffffff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
           <!-- Header with Logo -->
           <tr>
-            <td style="padding: 30px 40px 20px 40px; text-align: center; border-bottom: 1px solid #eee;">
-              <img src="${emailLogoUrl}" alt="${branchName}" style="max-width: 200px; height: auto;" />
+            <td style="padding: 28px 32px 20px 32px; text-align: center; border-bottom: 1px solid #eaeaea;">
+              <img src="${emailLogoUrl}" alt="${branchName}" width="180" style="display: block; margin: 0 auto; max-width: 180px; width: 180px; height: auto; border: 0;" />
             </td>
           </tr>
           
           <!-- Main Content -->
           <tr>
-            <td style="padding: 30px 40px;">
+            <td class="content-cell" style="padding: 28px 32px;">
               ${content}
             </td>
           </tr>
@@ -134,7 +154,7 @@ export function wrapEmailContent(
             includeBankingDetails
               ? `
           <tr>
-            <td style="padding: 0 40px 30px 40px;">
+            <td style="padding: 0 32px 28px 32px;">
               ${bankingSection}
             </td>
           </tr>
@@ -144,11 +164,11 @@ export function wrapEmailContent(
           
           <!-- Footer -->
           <tr>
-            <td style="padding: 24px 40px; background-color: #2c5530; border-radius: 0 0 12px 12px;">
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+            <td style="padding: 20px 32px; background-color: ${BRAND_BLUE_DARK}; border-radius: 0 0 8px 8px;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                 <tr>
-                  <td style="color: #ffffff; font-size: 14px; text-align: center;">
-                    <p style="margin: 0 0 8px 0; font-weight: 600;">${branchName}</p>
+                  <td style="color: #ffffff; font-size: 13px; text-align: center;">
+                    <p style="margin: 0 0 6px 0; font-weight: 600;">${branchName}</p>
                     ${branchEmail ? `<p style="margin: 0 0 4px 0;"><a href="mailto:${branchEmail}" style="color: #ffffff; text-decoration: none;">${branchEmail}</a></p>` : ""}
                     ${branchPhone ? `<p style="margin: 0;">${branchPhone}</p>` : ""}
                   </td>
@@ -157,11 +177,16 @@ export function wrapEmailContent(
             </td>
           </tr>
         </table>
+        <!--[if mso]>
+        </td>
+        </tr>
+        </table>
+        <![endif]-->
         
         <!-- Post-footer text -->
-        <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width: 600px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width: 600px;">
           <tr>
-            <td style="padding: 20px 40px; text-align: center; color: #999; font-size: 12px;">
+            <td style="padding: 16px 32px; text-align: center; color: #999999; font-size: 11px;">
               <p style="margin: 0;">This email was sent by ${branchName}.</p>
             </td>
           </tr>
