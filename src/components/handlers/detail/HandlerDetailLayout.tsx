@@ -3,6 +3,7 @@ import { Helmet } from "react-helmet";
 import { HandlerDetailHeader } from "./HandlerDetailHeader";
 import { HandlerInfo } from "./HandlerInfo";
 import { HandlerCommunications } from "./HandlerCommunications";
+import { HandlerEmailHistory } from "./HandlerEmailHistory";
 import { DogsList } from "./DogsList";
 import { HandlerInvoices } from "./HandlerInvoices";
 import { EnrollmentRegistrations } from "./EnrollmentRegistrations";
@@ -39,6 +40,7 @@ export function HandlerDetailLayout({
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="space-y-6">
             <HandlerInfo handler={handler} />
+            <HandlerEmailHistory handlerId={handler.id} />
             <HandlerCommunications 
               clientId={handler.id}
               clientName={`${handler.first_name} ${handler.last_name || ''}`}
