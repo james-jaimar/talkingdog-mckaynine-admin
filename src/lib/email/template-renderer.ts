@@ -45,13 +45,8 @@ export interface TemplateVariables {
 export function renderTemplate(template: string, variables: TemplateVariables): string {
   let rendered = template;
   
-  // Replace all {{variable}} patterns
-  Object.entries(variables).forEach(([key, value]) => {
-    const regex = new RegExp(`\\{\\{\\s*${key}\\s*\\}\\}`, "gi");
-    rendered = rendered.replace(regex, value || "");
-  });
-  
-  // Handle conditional blocks: {{#if variable}}...{{/if}}
+  // FIRST: Handle conditional blocks: {{#if variable}}...{{/if}}
+  // This must happen before variable replacement so we can check if the variable has a value
   rendered = rendered.replace(
     /\{\{#if\s+(\w+)\}\}([\s\S]*?)\{\{\/if\}\}/gi,
     (match, variable, content) => {
@@ -59,6 +54,12 @@ export function renderTemplate(template: string, variables: TemplateVariables): 
       return value ? content : "";
     }
   );
+  
+  // THEN: Replace all {{variable}} patterns
+  Object.entries(variables).forEach(([key, value]) => {
+    const regex = new RegExp(`\\{\\{\\s*${key}\\s*\\}\\}`, "gi");
+    rendered = rendered.replace(regex, value || "");
+  });
   
   // Clean up any remaining unmatched merge fields
   rendered = rendered.replace(/\{\{[^}]+\}\}/g, "");
