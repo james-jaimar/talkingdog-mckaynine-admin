@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/auth";
+import { useBranch } from "@/context/BranchContext";
+import { getBranchLogo, getBranchDisplayName } from "@/lib/branchLogo";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -28,6 +30,18 @@ export function CustomerHeader() {
   const location = useLocation();
   const isMobile = useIsMobile();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  
+  // Get current branch for dynamic logo
+  let branchName: string | null = null;
+  try {
+    const { currentBranch } = useBranch();
+    branchName = currentBranch?.name || null;
+  } catch {
+    // BranchContext may not be available
+  }
+  
+  const logoSrc = getBranchLogo(branchName);
+  const logoAlt = getBranchDisplayName(branchName);
 
   const handleLogout = async () => {
     try {
@@ -61,8 +75,8 @@ export function CustomerHeader() {
             className="flex items-center hover:opacity-90 transition-opacity"
           >
             <img 
-              src="/lovable-uploads/mckaynine_delta_long_2025.png" 
-              alt="McKaynine Delta" 
+              src={logoSrc}
+              alt={logoAlt}
               className="h-10 w-auto"
             />
           </Link>

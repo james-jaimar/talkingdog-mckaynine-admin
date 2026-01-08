@@ -14,6 +14,7 @@ import { HandlerNavigation } from "./header/HandlerNavigation";
 import { UserSection } from "./header/UserSection";
 import { Branch } from "@/context/BranchContext";
 import { TermSelectorRow } from "./header/TermSelectorRow";
+import { getBranchLogo, getBranchDisplayName } from "@/lib/branchLogo";
 
 export function Header() {
   const { user, logout, isAdmin, isTrainer, isHandler, role } = useAuth();
@@ -39,6 +40,10 @@ export function Header() {
   
   const { currentBranch } = branchInfo;
   const showBranchSelector = user && (isAdmin || isTrainer);
+  
+  // Dynamic logo based on current branch
+  const logoSrc = getBranchLogo(currentBranch?.name);
+  const logoAlt = getBranchDisplayName(currentBranch?.name);
 
   const handleLogout = async () => {
     try {
@@ -64,8 +69,8 @@ export function Header() {
               <div className="flex items-center gap-6 flex-1 min-w-0">
                 <Link to={isHandler ? "/customer/dashboard" : "/"} className="hover:opacity-90 transition-opacity">
                   <img 
-                    src="/lovable-uploads/mckaynine_delta_long_2025.png" 
-                    alt="McKaynine Delta" 
+                    src={logoSrc}
+                    alt={logoAlt}
                     className="h-10 w-auto"
                   />
                 </Link>

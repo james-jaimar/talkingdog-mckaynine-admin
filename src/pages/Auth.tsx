@@ -1,13 +1,13 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/auth";
 import { SignInForm } from "@/components/auth/SignInForm";
 import { SignUpForm } from "@/components/auth/SignUpForm";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Helmet } from "react-helmet";
-import { useEffect } from "react";
-
+import { useBranch } from "@/context/BranchContext";
+import { getBranchLogo, getBranchDisplayName } from "@/lib/branchLogo";
 
 export default function Auth() {
   const [activeTab, setActiveTab] = useState<string>("signin");
@@ -16,6 +16,18 @@ export default function Auth() {
   const navigate = useNavigate();
   const location = useLocation();
   const from = location.state?.from?.pathname || "/";
+  
+  // Get current branch for dynamic logo
+  let branchName: string | null = null;
+  try {
+    const { currentBranch } = useBranch();
+    branchName = currentBranch?.name || null;
+  } catch {
+    // BranchContext may not be available on login page
+  }
+  
+  const logoSrc = getBranchLogo(branchName);
+  const logoAlt = getBranchDisplayName(branchName);
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -84,13 +96,13 @@ export default function Auth() {
           <div className="text-center">
             <div className="flex justify-center mb-4">
               <img 
-                src="/lovable-uploads/mckaynine_delta_long_2025.png" 
-                alt="McKaynine Delta" 
+                src={logoSrc}
+                alt={logoAlt}
                 className="h-20 w-auto"
               />
             </div>
             <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
-              McKaynine Delta Training Centre
+              {logoAlt} Training Centre
             </h2>
             <p className="mt-2 text-sm text-gray-600">
               {activeTab === "signin" ? "Sign in to your account" : "Create a new account"}

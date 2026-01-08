@@ -3,6 +3,8 @@ import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Helmet } from "react-helmet";
 import { useAuth } from "@/context/auth";
+import { useBranch } from "@/context/BranchContext";
+import { getBranchLogo, getBranchDisplayName } from "@/lib/branchLogo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
@@ -19,6 +21,18 @@ export default function CustomerLogin() {
   const { login, signup, user, isHandler, role } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<"login" | "signup">("login");
+
+  // Get current branch for dynamic logo
+  let branchName: string | null = null;
+  try {
+    const { currentBranch } = useBranch();
+    branchName = currentBranch?.name || null;
+  } catch {
+    // BranchContext may not be available on login page
+  }
+  
+  const logoSrc = getBranchLogo(branchName);
+  const logoAlt = getBranchDisplayName(branchName);
 
   // Check both isHandler flag and explicit role
   const userIsHandler = isHandler || role === 'handler';
@@ -91,11 +105,11 @@ export default function CustomerLogin() {
       <div className="w-full max-w-md px-4">
         <div className="text-center mb-6">
           <img 
-            src="/lovable-uploads/mckaynine_delta_long_2025.png" 
-            alt="McKaynine Delta" 
+            src={logoSrc}
+            alt={logoAlt}
             className="h-16 mx-auto mb-4"
           />
-          <h1 className="text-2xl font-bold text-mckaynine-700">McKaynine Delta Training Centre</h1>
+          <h1 className="text-2xl font-bold text-mckaynine-700">{logoAlt} Training Centre</h1>
           <p className="text-gray-600 mt-1">Login to access your account</p>
         </div>
         
