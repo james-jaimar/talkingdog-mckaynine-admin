@@ -76,7 +76,11 @@ export function getSampleTemplate(): string {
   
   <p>Congratulations on completing the <strong>{{completed_class}}</strong> class with {{dog_name}}! We're thrilled with the progress you've both made.</p>
   
-  <div style="background-color: #f0f5f1; padding: 20px; border-radius: 8px; margin: 20px 0;">
+  {{#if custom_message}}
+  <p>{{custom_message}}</p>
+  {{/if}}
+  
+  <div style="background-color: #e8f0fe; padding: 20px; border-radius: 8px; margin: 20px 0;">
     <h3 style="margin: 0 0 12px 0; color: #2c5530;">What's Next: {{next_class}} Class</h3>
     <p style="margin: 0;">We're excited to share information about our <strong>{{next_class}}</strong> class, the next step in your training journey.</p>
   </div>
