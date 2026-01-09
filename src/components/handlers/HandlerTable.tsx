@@ -35,7 +35,7 @@ export function HandlerTable({
       {/* Important: keep overflow-y visible so sticky table headers work */}
       <div className="overflow-x-auto overflow-y-visible">
         <Table className="border-collapse table-fixed min-w-full">
-          <TableHeader className="top-[132px] z-40">
+          <TableHeader>
             <HandlerTableHeader />
           </TableHeader>
           <TableBody>
