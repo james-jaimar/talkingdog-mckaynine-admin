@@ -63,12 +63,16 @@ export function useEmailTemplates() {
     mutationFn: async (input: CreateTemplateInput) => {
       if (!currentBranch?.id) throw new Error("No branch selected");
       
+      // Generate a unique type by combining the base type with a timestamp
+      // This avoids the unique constraint on branch_id + type
+      const uniqueType = `${input.type}_${Date.now()}`;
+      
       const { data, error } = await supabase
         .from("branch_email_templates")
         .insert({
           branch_id: currentBranch.id,
           name: input.name,
-          type: input.type,
+          type: uniqueType,
           subject: input.subject,
           content: input.content,
           class_type: input.class_type,
