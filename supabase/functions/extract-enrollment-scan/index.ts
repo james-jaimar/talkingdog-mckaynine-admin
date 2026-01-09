@@ -140,7 +140,8 @@ serve(async (req) => {
     let modelFileUrl = "";
 
     if (isPDF) {
-      // Download original PDF (binary) so we can extract page 2
+      // Download original PDF (binary) so we can extract page 2 and send ONLY that page.
+      // NOTE: Gemini vision does NOT support PDF via remote URL; it requires a data:application/pdf;base64,... URL.
       const { data: fileData, error: downloadError } = await supabase.storage
         .from('scanned-forms')
         .download(file_url);
@@ -155,52 +156,29 @@ serve(async (req) => {
       const pageCount = originalPdf.getPageCount();
       console.log("PDF page count:", pageCount);
 
-      if (pageCount < 2) {
-        // Fallback: no page 2, just use the original file
-        const { data: signed, error: signedError } = await supabase.storage
-          .from('scanned-forms')
-          .createSignedUrl(file_url, 60);
-
-        if (signedError || !signed?.signedUrl) {
-          console.error("Signed URL error:", signedError);
-          throw new Error(`Failed to create signed URL: ${signedError?.message || 'Unknown error'}`);
-        }
-
-        modelFileUrl = signed.signedUrl;
-      } else {
-        // Extract page 2 (0-indexed page 1)
+      // If there is a page 2, extract it. Otherwise fall back to page 1.
+      let pdfBytesToSend: Uint8Array;
+      if (pageCount >= 2) {
         const page2Pdf = await PDFDocument.create();
         const [page2] = await page2Pdf.copyPages(originalPdf, [1]);
         page2Pdf.addPage(page2);
-        const page2Bytes = await page2Pdf.save();
-
-        const page2Path = `tmp/page2-${crypto.randomUUID()}.pdf`;
-        const { error: uploadError } = await supabase.storage
-          .from('scanned-forms')
-          .upload(page2Path, page2Bytes, {
-            contentType: 'application/pdf',
-            upsert: true,
-          });
-
-        if (uploadError) {
-          console.error("Page 2 upload error:", uploadError);
-          throw new Error(`Failed to upload page 2 PDF: ${uploadError.message}`);
-        }
-
-        const { data: signed2, error: signed2Error } = await supabase.storage
-          .from('scanned-forms')
-          .createSignedUrl(page2Path, 120);
-
-        if (signed2Error || !signed2?.signedUrl) {
-          console.error("Signed URL (page2) error:", signed2Error);
-          throw new Error(`Failed to create signed URL for page 2: ${signed2Error?.message || 'Unknown error'}`);
-        }
-
-        modelFileUrl = signed2.signedUrl;
-        console.log("Using extracted page 2 PDF for model");
+        pdfBytesToSend = new Uint8Array(await page2Pdf.save());
+        console.log("Extracted page 2 PDF size:", pdfBytesToSend.byteLength);
+      } else {
+        pdfBytesToSend = originalBytes;
+        console.log("No page 2 found; using original PDF");
       }
+
+      // Convert ONLY the selected page PDF to base64 data URL
+      const pdfBase64 = btoa(
+        Array.from(pdfBytesToSend)
+          .map((b) => String.fromCharCode(b))
+          .join("")
+      );
+
+      modelFileUrl = `data:application/pdf;base64,${pdfBase64}`;
     } else if (isImage) {
-      // For images, just create a signed URL
+      // For images, signed URL is fine (Gemini supports PNG/JPEG/WebP/GIF via URL).
       const { data: signed, error: signedError } = await supabase.storage
         .from('scanned-forms')
         .createSignedUrl(file_url, 60);
