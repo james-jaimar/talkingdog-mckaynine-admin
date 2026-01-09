@@ -102,8 +102,8 @@ export default function Handlers() {
                 <span>Add New</span>
               </Button>
             </CardHeader>
-            {/* Important: keep overflow-y visible so sticky table headers work */}
-            <CardContent className="p-0 overflow-x-auto overflow-y-visible">
+            {/* Important: make the table area the scroll container so sticky headers work reliably */}
+            <CardContent className="p-0 max-h-[calc(100vh-260px)] overflow-auto">
               <HandlerTable 
                 handlers={handlers} 
                 searchQuery={searchQuery}

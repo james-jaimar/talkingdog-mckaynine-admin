@@ -32,35 +32,32 @@ export function HandlerTable({
 
   return (
     <div className="w-full">
-      {/* Important: keep overflow-y visible so sticky table headers work */}
-      <div className="overflow-x-auto overflow-y-visible">
-        <Table className="border-collapse table-fixed min-w-full">
-          <TableHeader>
-            <HandlerTableHeader />
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              <tr>
-                <td colSpan={9} className="p-4 text-center">Loading handlers...</td>
-              </tr>
-            ) : currentHandlers.length === 0 ? (
-              <tr>
-                <td colSpan={9} className="p-4 text-center">
-                  {searchQuery ? `No handlers found matching "${searchQuery}"` : "No handlers found"}
-                </td>
-              </tr>
-            ) : (
-              currentHandlers.map((handler, index) => (
-                <HandlerTableRow 
-                  key={handler.id} 
-                  handler={handler} 
-                  index={index}
-                />
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+      <Table className="border-collapse table-fixed min-w-full">
+        <TableHeader>
+          <HandlerTableHeader />
+        </TableHeader>
+        <TableBody>
+          {loading ? (
+            <tr>
+              <td colSpan={9} className="p-4 text-center">Loading handlers...</td>
+            </tr>
+          ) : currentHandlers.length === 0 ? (
+            <tr>
+              <td colSpan={9} className="p-4 text-center">
+                {searchQuery ? `No handlers found matching "${searchQuery}"` : "No handlers found"}
+              </td>
+            </tr>
+          ) : (
+            currentHandlers.map((handler, index) => (
+              <HandlerTableRow 
+                key={handler.id} 
+                handler={handler} 
+                index={index}
+              />
+            ))
+          )}
+        </TableBody>
+      </Table>
       
       {handlers.length > itemsPerPage && (
         <div className="mt-4">
