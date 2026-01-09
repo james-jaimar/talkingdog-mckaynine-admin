@@ -359,7 +359,7 @@ export function ClassStatusCell({
     );
   }
 
-  // Display compact status with indicators - always show period/date, percentage visible in popover
+  // Display compact status with indicators - show period/date and percentage if available
   const displayText = period || status?.replace('_', ' ') || '';
 
   return (
@@ -368,14 +368,19 @@ export function ClassStatusCell({
         <PopoverTrigger asChild>
           <button
             className={cn(
-              "text-xs px-2 py-1 rounded border inline-flex items-center gap-1",
+              "text-xs px-2 py-1 rounded border inline-flex flex-col items-center gap-0.5",
               resultStatusColors[status] || 'bg-gray-100 text-gray-800 border-gray-200',
               isLoading && "opacity-50 cursor-not-allowed"
             )}
             disabled={isLoading}
           >
-            <span className="truncate max-w-[60px]">{displayText}</span>
-            {renderActionIndicator()}
+            <div className="flex items-center gap-1">
+              <span className="truncate max-w-[60px]">{displayText}</span>
+              {renderActionIndicator()}
+            </div>
+            {passPercentage !== null && passPercentage !== undefined && (
+              <span className="text-[10px] opacity-75">{passPercentage}%</span>
+            )}
           </button>
         </PopoverTrigger>
         <PopoverContent className="w-72">
