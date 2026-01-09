@@ -68,7 +68,7 @@ export function TaskBadge({ handlerId }: TaskBadgeProps) {
           </Badge>
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-80" align="end">
+      <PopoverContent className="w-96" align="end">
         <div className="space-y-2">
           <h4 className="font-medium text-sm">Pending Tasks</h4>
           <div className="space-y-2 max-h-[300px] overflow-y-auto">
@@ -79,7 +79,7 @@ export function TaskBadge({ handlerId }: TaskBadgeProps) {
               >
                 <span className="text-base">{getTaskTypeIcon(task.task_type)}</span>
                 <div className="flex-1 min-w-0">
-                  <div className="font-medium truncate">{task.title}</div>
+                  <div className="font-medium">{task.title}</div>
                   {task.description && (
                     <div className="text-xs text-muted-foreground line-clamp-2">
                       {task.description}
