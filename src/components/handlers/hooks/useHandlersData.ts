@@ -29,6 +29,7 @@ interface ClassEnrollment {
 }
 
 interface ClassStatus {
+  id?: string;
   class_type: string;
   status: 'completed' | 'passed' | 'no_pass' | 'incomplete' | 'did_not_grade' | 'did_not_attend' | 'interested' | 'not-interested';
   period?: string;
@@ -219,6 +220,7 @@ export function useHandlersData() {
             const foundAll = allStatuses.filter(s => s.class_type === classType);
             if (foundAll.length === 0) return [{ class_type: classType, status: undefined, period: undefined }];
             return foundAll.map(found => ({
+              id: found.id,
               class_type: classType,
               status: found.result_status || (found.completed ? "completed" : found.status),
               period: found.period,
