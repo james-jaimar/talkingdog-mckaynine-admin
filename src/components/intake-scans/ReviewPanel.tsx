@@ -586,10 +586,16 @@ function FormField({
   // Use local state for immediate responsiveness
   const [localValue, setLocalValue] = useState(value || '');
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastSentValueRef = useRef(value || '');
+  const isFocusedRef = useRef(false);
   
-  // Sync local state when external value changes (e.g., new job selected)
+  // Only sync when external value changes AND we're not focused (user not typing)
   useEffect(() => {
-    setLocalValue(value || '');
+    // Don't override local state while user is actively typing
+    if (!isFocusedRef.current && value !== lastSentValueRef.current) {
+      setLocalValue(value || '');
+      lastSentValueRef.current = value || '';
+    }
   }, [value]);
   
   const handleChange = (newValue: string) => {
@@ -601,8 +607,23 @@ function FormField({
       clearTimeout(timeoutRef.current);
     }
     timeoutRef.current = setTimeout(() => {
+      lastSentValueRef.current = newValue;
       onChange(newValue);
     }, 300);
+  };
+  
+  const handleFocus = () => {
+    isFocusedRef.current = true;
+  };
+  
+  const handleBlur = () => {
+    isFocusedRef.current = false;
+    // Sync with parent on blur if there's a pending value
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      lastSentValueRef.current = localValue;
+      onChange(localValue);
+    }
   };
   
   // Cleanup timeout on unmount
@@ -625,6 +646,8 @@ function FormField({
         <Textarea
           value={localValue}
           onChange={(e) => handleChange(e.target.value)}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
           className="mt-1"
           rows={3}
         />
@@ -633,6 +656,8 @@ function FormField({
           type={type}
           value={localValue}
           onChange={(e) => handleChange(e.target.value)}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
           className="mt-1"
         />
       )}
