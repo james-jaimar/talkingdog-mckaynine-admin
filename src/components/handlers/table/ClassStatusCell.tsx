@@ -138,7 +138,11 @@ function StatusBox({
   const [selectedDogId, setSelectedDogId] = useState<string | null>(initialDogId);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isOpen, setIsOpen] = useState(false);
-  
+  const [wantsInfoClasses, setWantsInfoClasses] = useState<string[]>(() => {
+    // Default to next logical class if available
+    const defaultNext = NEXT_CLASS_MAP[classType];
+    return defaultNext ? [defaultNext] : [];
+  });
 
   const selectedTermValue = nextTermNumber && nextTermYear 
     ? `${nextTermNumber}-${nextTermYear}` 
@@ -221,14 +225,15 @@ function StatusBox({
       const actionChanged = nextAction !== initialNextAction;
       
       if (nextAction === 'wants_info' && actionChanged) {
-        const nextClass = NEXT_CLASS_MAP[classType] || "next class";
+        const classesForInfo = wantsInfoClasses.length > 0 ? wantsInfoClasses : [NEXT_CLASS_MAP[classType] || "next class"];
+        const classesLabel = classesForInfo.join(", ");
         await supabase.from("handler_tasks").insert({
           handler_id: clientId,
           class_type: classType,
           class_status_id: upsertedStatus?.id,
           task_type: "send_info_pack",
-          title: `Send ${nextClass} info pack`,
-          description: `Handler completed ${classType}. Send information about ${nextClass} class.`,
+          title: `Send ${classesLabel} info pack`,
+          description: `Handler completed ${classType}. Send information about ${classesLabel} class${classesForInfo.length > 1 ? 'es' : ''}.`,
           status: "pending",
         });
       } else if (nextAction === 'continuing' && actionChanged) {
@@ -426,6 +431,37 @@ function StatusBox({
           </SelectContent>
         </Select>
       </div>
+
+      {nextAction === 'wants_info' && (
+        <div className="space-y-1 p-2 bg-blue-50 rounded-md">
+          <label className="text-xs text-muted-foreground">Info for which class(es)?</label>
+          <div className="flex flex-wrap gap-1">
+            {CLASS_TYPES.map((type) => (
+              <Button
+                key={type}
+                type="button"
+                variant={wantsInfoClasses.includes(type) ? "default" : "outline"}
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => {
+                  setWantsInfoClasses(prev =>
+                    prev.includes(type)
+                      ? prev.filter(c => c !== type)
+                      : [...prev, type]
+                  );
+                }}
+              >
+                {type}
+              </Button>
+            ))}
+          </div>
+          {wantsInfoClasses.length > 0 && (
+            <p className="text-xs text-muted-foreground mt-1">
+              Selected: {wantsInfoClasses.join(", ")}
+            </p>
+          )}
+        </div>
+      )}
 
       {showContinuingFields && (
         <div className="grid grid-cols-2 gap-2 p-2 bg-muted/50 rounded-md">
