@@ -8,12 +8,12 @@ const APP_URL = "https://mckaynine.talkingdog.co.za";
 
 const BRANCH_EMAIL_CONFIG: Record<string, { email: string; name: string; logoUrl: string }> = {
   "284817cf-de0d-43b9-a506-a3efa625ae1c": { 
-    email: "randburg@talkingdog.co.za", 
+    email: "randburg@mckaynine.co.za", 
     name: "Randburg McKaynine",
     logoUrl: `${APP_URL}/lovable-uploads/mckaynine_randburg_long_2025.jpg`
   },
   "6351a9e8-77db-403b-ab1f-cd47e393a006": { 
-    email: "delta@talkingdog.co.za", 
+    email: "delta@mckaynine.co.za", 
     name: "Delta McKaynine",
     logoUrl: `${APP_URL}/lovable-uploads/mckaynine_delta_long_2025.jpg`
   },
