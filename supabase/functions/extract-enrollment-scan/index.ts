@@ -7,7 +7,11 @@ const corsHeaders = {
 };
 
 const EXTRACTION_PROMPT = `You are extracting data from a McKaynine dog training enrollment form.
-The form is handwritten and may span 1-2 pages.
+The document typically has 2 pages:
+- Page 1 is a class information flyer - IGNORE THIS PAGE
+- Page 2 is the actual enrollment form with handler/owner and dog details - EXTRACT DATA FROM THIS PAGE ONLY
+
+Focus ONLY on page 2 which contains the handwritten enrollment form data.
 
 Extract these fields exactly:
 - Owner section: name (split into first_name and last_name), account holder name, email, phone, occupation, vet name
