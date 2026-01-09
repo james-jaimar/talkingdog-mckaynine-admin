@@ -2,7 +2,7 @@ import { useState } from "react";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Link } from "react-router-dom";
 import { ActionMenu } from "./ActionMenu";
-import { ConsentStatusBadge } from "../status/ConsentStatusBadge";
+import { ClickableConsentBadge } from "../status/ClickableConsentBadge";
 import { CLASS_TYPES } from "@/components/classes/types/class-types";
 import { ClassStatusCell } from "./ClassStatusCell";
 import { TaskBadge } from "../TaskBadge";
@@ -102,10 +102,18 @@ export function HandlerTableRow({ handler, index = 0 }: HandlerTableRowProps) {
       })}
       
       <TableCell className="text-center w-[60px]">
-        <ConsentStatusBadge status={handler.uses_whatsapp_status} />
+        <ClickableConsentBadge 
+          status={handler.uses_whatsapp_status} 
+          handlerId={handler.id}
+          field="uses_whatsapp_status"
+        />
       </TableCell>
       <TableCell className="text-center w-[60px]">
-        <ConsentStatusBadge status={handler.social_media_consent_status} />
+        <ClickableConsentBadge 
+          status={handler.social_media_consent_status} 
+          handlerId={handler.id}
+          field="social_media_consent_status"
+        />
       </TableCell>
       <TableCell className="text-center w-[70px]">
         <TaskBadge handlerId={handler.id} />
