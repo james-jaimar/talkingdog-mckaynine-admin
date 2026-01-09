@@ -74,6 +74,7 @@ export function HandlerTableRow({ handler, index = 0 }: HandlerTableRowProps) {
             classType={classType}
             clientId={handler.id}
             statuses={classStatuses}
+            dogs={handler.dogs || []}
             className="w-[90px]"
           />
         );

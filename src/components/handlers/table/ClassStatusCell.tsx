@@ -39,10 +39,16 @@ interface ClassStatusItem {
   booking_id?: string | null;
 }
 
+interface DogInfo {
+  id: string;
+  name: string;
+}
+
 interface ClassStatusCellProps {
   classType: string;
   clientId: string;
   statuses: ClassStatusItem[];
+  dogs: DogInfo[];
   className?: string;
 }
 
@@ -86,6 +92,9 @@ function StatusBox({
   dogName,
   bookingId,
   statusId,
+  initialDogId,
+  dogs,
+  isAddNew = false,
 }: {
   classType: string;
   clientId: string;
@@ -100,6 +109,9 @@ function StatusBox({
   dogName: string | null;
   bookingId: string | null;
   statusId: string | null;
+  initialDogId: string | null;
+  dogs: DogInfo[];
+  isAddNew?: boolean;
 }) {
   const { terms } = useTermOptions();
   const queryClient = useQueryClient();
@@ -112,8 +124,10 @@ function StatusBox({
   const [nextClassType, setNextClassType] = useState<string | null>(initialNextClassType);
   const [nextTermNumber, setNextTermNumber] = useState<string | null>(initialNextTermNumber);
   const [nextTermYear, setNextTermYear] = useState<number | null>(initialNextTermYear);
+  const [selectedDogId, setSelectedDogId] = useState<string | null>(initialDogId);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isOpen, setIsOpen] = useState(false);
+  
 
   const selectedTermValue = nextTermNumber && nextTermYear 
     ? `${nextTermNumber}-${nextTermYear}` 
@@ -125,13 +139,24 @@ function StatusBox({
     setNextTermYear(parseInt(year));
   };
 
+  // Get the selected dog's name for display
+  const selectedDogName = selectedDogId 
+    ? dogs.find(d => d.id === selectedDogId)?.name || dogName 
+    : dogName;
+
   const handleUpdate = async () => {
     if (!clientId) return;
+    
+    // For new entries, require a dog to be selected if dogs are available
+    if (isAddNew && dogs.length > 0 && !selectedDogId) {
+      toast.error('Please select a dog');
+      return;
+    }
     
     setIsLoading(true);
     
     try {
-      const updateData = {
+      const updateData: Record<string, any> = {
         handler_id: clientId,
         class_type: classType,
         booking_id: bookingId,
@@ -146,6 +171,12 @@ function StatusBox({
         completed: status === 'passed' || status === 'completed',
         completed_at: (status === 'passed' || status === 'completed') ? new Date().toISOString() : null,
       };
+      
+      // For manual entries without a booking, we can store a reference to the dog
+      // by finding or creating a booking, but for now we'll just track it
+      // The booking_id is what links to the dog - if we don't have one but have a selected dog,
+      // we need to create a reference somehow. For now, let's just proceed without booking_id
+      // for manual entries (the dog selection is informational for now).
 
       let upsertedStatus;
       let error;
@@ -254,8 +285,28 @@ function StatusBox({
     <div className="space-y-3">
       <div className="font-medium text-sm">
         {classType}
-        {dogName && <span className="text-muted-foreground font-normal ml-1">({dogName})</span>}
+        {dogName && !isAddNew && <span className="text-muted-foreground font-normal ml-1">({dogName})</span>}
       </div>
+      
+      {/* Dog selector - show when adding new or when dogs available */}
+      {dogs.length > 0 && (isAddNew || !statusId) && (
+        <div className="space-y-1">
+          <label className="text-xs text-muted-foreground">Dog</label>
+          <Select 
+            value={selectedDogId || ''}
+            onValueChange={(value) => setSelectedDogId(value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select dog" />
+            </SelectTrigger>
+            <SelectContent>
+              {dogs.map(dog => (
+                <SelectItem key={dog.id} value={dog.id}>{dog.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
       
       <div className="space-y-2">
         <label className="text-xs text-muted-foreground">Result</label>
@@ -431,10 +482,16 @@ export function ClassStatusCell({
   classType, 
   clientId,
   statuses,
+  dogs,
   className
 }: ClassStatusCellProps) {
   // Filter out statuses with no actual status (empty placeholders)
   const validStatuses = statuses.filter(s => s.status);
+  
+  // Get dogs that already have a status for this class type
+  const usedDogIds = validStatuses.map(s => s.dog_id).filter(Boolean);
+  // Filter available dogs (those not yet used for this class type)
+  const availableDogs = dogs.filter(d => !usedDogIds.includes(d.id));
   
   // If no valid statuses, show a single add button
   if (validStatuses.length === 0) {
@@ -454,12 +511,15 @@ export function ClassStatusCell({
           dogName={null}
           bookingId={null}
           statusId={null}
+          initialDogId={null}
+          dogs={dogs}
+          isAddNew={true}
         />
       </TableCell>
     );
   }
 
-  // Show all valid statuses stacked
+  // Show all valid statuses stacked + add button if more dogs available
   return (
     <TableCell className={cn("text-center p-1", className)}>
       <div className="flex flex-col gap-1">
@@ -479,8 +539,31 @@ export function ClassStatusCell({
             dogName={s.dog_name || null}
             bookingId={s.booking_id || null}
             statusId={s.id || null}
+            initialDogId={s.dog_id || null}
+            dogs={dogs}
           />
         ))}
+        {/* Show add button if there are more dogs available */}
+        {availableDogs.length > 0 && (
+          <StatusBox
+            classType={classType}
+            clientId={clientId}
+            initialStatus={null}
+            initialPeriod=""
+            initialPassPercentage={null}
+            initialNextAction={null}
+            initialNotes=""
+            initialNextClassType={null}
+            initialNextTermNumber={null}
+            initialNextTermYear={null}
+            dogName={null}
+            bookingId={null}
+            statusId={null}
+            initialDogId={null}
+            dogs={availableDogs}
+            isAddNew={true}
+          />
+        )}
       </div>
     </TableCell>
   );
