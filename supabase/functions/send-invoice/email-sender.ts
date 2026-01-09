@@ -3,16 +3,19 @@ import { Invoice } from "./types.ts";
 import { formatCurrency, formatDate } from "./utils.ts";
 
 // Branch email configuration
+// Using Supabase storage for reliable email image hosting
+const SUPABASE_STORAGE_URL = "https://vsgsagbpfclbuyqrepvf.supabase.co/storage/v1/object/public/email-attachments";
+
 const BRANCH_EMAIL_CONFIG: Record<string, { email: string; name: string; logoUrl: string }> = {
   "284817cf-de0d-43b9-a506-a3efa625ae1c": { 
     email: "randburg@talkingdog.co.za", 
     name: "Randburg McKaynine",
-    logoUrl: "https://mckaynine.talkingdog.co.za/images/mckaynine-logo-randburg.jpg"
+    logoUrl: `${SUPABASE_STORAGE_URL}/logos/mckaynine_randburg_long_2025.jpg`
   },
   "6351a9e8-77db-403b-ab1f-cd47e393a006": { 
     email: "delta@talkingdog.co.za", 
     name: "Delta McKaynine",
-    logoUrl: "https://mckaynine.talkingdog.co.za/images/mckaynine-logo-delta.jpg"
+    logoUrl: `${SUPABASE_STORAGE_URL}/logos/mckaynine_delta_long_2025.jpg`
   },
 };
 
@@ -31,8 +34,9 @@ const BANKING_DETAILS = {
  * Gets the from email config based on branch_id
  */
 function getBranchEmailConfig(branchId?: string): { email?: string; name?: string; logoUrl?: string } {
-  if (!branchId) return { logoUrl: "https://mckaynine.talkingdog.co.za/images/mckaynine-logo-delta.jpg" };
-  return BRANCH_EMAIL_CONFIG[branchId] || { logoUrl: "https://mckaynine.talkingdog.co.za/images/mckaynine-logo-delta.jpg" };
+  const defaultLogoUrl = `${SUPABASE_STORAGE_URL}/logos/mckaynine_delta_long_2025.jpg`;
+  if (!branchId) return { logoUrl: defaultLogoUrl };
+  return BRANCH_EMAIL_CONFIG[branchId] || { logoUrl: defaultLogoUrl };
 }
 
 /**
@@ -59,7 +63,7 @@ export async function sendInvoiceEmail(invoice: Invoice, email: string, pdfBuffe
     // Get branch-specific email config
     const branchConfig = getBranchEmailConfig(invoice.client.branch_id);
     const branchName = branchConfig.name || "McKaynine Training Centre";
-    const logoUrl = branchConfig.logoUrl || "https://mckaynine.talkingdog.co.za/images/mckaynine-logo-delta.jpg";
+    const logoUrl = branchConfig.logoUrl || `${SUPABASE_STORAGE_URL}/logos/mckaynine_delta_long_2025.jpg`;
     
     // Create email message based on invoice status
     const emailSubject = `Invoice ${invoice.invoice_number} from ${branchName}`;
