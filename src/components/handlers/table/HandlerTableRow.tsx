@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Link } from "react-router-dom";
 import { ActionMenu } from "./ActionMenu";
@@ -5,6 +6,9 @@ import { ConsentStatusBadge } from "../status/ConsentStatusBadge";
 import { CLASS_TYPES } from "@/components/classes/types/class-types";
 import { ClassStatusCell } from "./ClassStatusCell";
 import { TaskBadge } from "../TaskBadge";
+import { StickyNote } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { HandlerNotesSheet } from "./HandlerNotesSheet";
 
 interface HandlerTableRowProps {
   handler: {
@@ -37,6 +41,7 @@ interface HandlerTableRowProps {
 }
 
 export function HandlerTableRow({ handler, index = 0 }: HandlerTableRowProps) {
+  const [showNotesSheet, setShowNotesSheet] = useState(false);
   const fullName = `${handler.first_name} ${handler.last_name || ''}`.trim();
   const isEven = index % 2 === 0;
 
@@ -46,18 +51,30 @@ export function HandlerTableRow({ handler, index = 0 }: HandlerTableRowProps) {
   };
 
   return (
-    <TableRow 
-      isEven={isEven}
-      key={handler.id}
-    >
-      <TableCell className="w-[180px] font-medium">
-        <Link 
-          to={`/handlers/${handler.id}`}
-          className="hover:text-blue-600"
-        >
-          {fullName}
-        </Link>
-      </TableCell>
+    <>
+      <TableRow 
+        isEven={isEven}
+        key={handler.id}
+      >
+        <TableCell className="w-[180px] font-medium">
+          <div className="flex items-center gap-1">
+            <Link 
+              to={`/handlers/${handler.id}`}
+              className="hover:text-blue-600"
+            >
+              {fullName}
+            </Link>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 shrink-0"
+              onClick={() => setShowNotesSheet(true)}
+              title="Notes & Tasks"
+            >
+              <StickyNote className="h-3.5 w-3.5 text-muted-foreground hover:text-primary" />
+            </Button>
+          </div>
+        </TableCell>
       
       <TableCell className="text-center w-[60px]">
         <span className="inline-flex items-center justify-center h-6 min-w-6 bg-gray-100 text-gray-700 text-xs font-medium rounded-full px-1.5">
@@ -92,6 +109,13 @@ export function HandlerTableRow({ handler, index = 0 }: HandlerTableRowProps) {
       <TableCell className="text-right w-[80px]">
         <ActionMenu handler={handler} />
       </TableCell>
-    </TableRow>
+      </TableRow>
+
+      <HandlerNotesSheet
+        open={showNotesSheet}
+        onOpenChange={setShowNotesSheet}
+        handler={handler}
+      />
+    </>
   );
 }
