@@ -39,6 +39,9 @@ interface ClassStatus {
   next_class_type?: string | null;
   next_term_number?: string | null;
   next_term_year?: number | null;
+  dog_name?: string | null;
+  dog_id?: string | null;
+  booking_id?: string | null;
 }
 
 export interface Handler {
@@ -151,9 +154,18 @@ export function useHandlersData() {
         const clientIds = (clientsData || []).map(client => client.id);
         let classStatusesMap: Record<string, any[]> = {};
         if (clientIds.length > 0) {
+          // Fetch class statuses with booking and dog info
           const { data: classStatusData, error: classStatusError } = await supabase
             .from('handler_class_status')
-            .select('*')
+            .select(`
+              *,
+              bookings:booking_id (
+                dog_id,
+                dogs:dog_id (
+                  name
+                )
+              )
+            `)
             .in('handler_id', clientIds);
 
           if (classStatusError) {
@@ -161,9 +173,16 @@ export function useHandlersData() {
           } else {
             for (let status of classStatusData || []) {
               if (!status.class_type) continue;
-              // Use exact class_type without normalization
+              // Extract dog info from the joined data
+              const dogName = status.bookings?.dogs?.name || null;
+              const dogId = status.bookings?.dog_id || null;
+              const statusWithDog = {
+                ...status,
+                dog_name: dogName,
+                dog_id: dogId,
+              };
               const arr = classStatusesMap[status.handler_id] || [];
-              arr.push(status);
+              arr.push(statusWithDog);
               classStatusesMap[status.handler_id] = arr;
             }
           }
@@ -188,11 +207,11 @@ export function useHandlersData() {
         // Map class statuses using exact CLASS_TYPES matching
         const handlersWithClassStatus = (clientsData || []).map(client => {
           const allStatuses = classStatusesMap[client.id] || [];
-          // For each possible type, find exact match
-        const class_statuses = CLASS_TYPES.map((classType) => {
-            const found = allStatuses.find(s => s.class_type === classType);
-            if (!found) return { class_type: classType, status: undefined, period: undefined };
-            return {
+          // For each possible type, find ALL matching statuses (multiple dogs)
+        const class_statuses = CLASS_TYPES.flatMap((classType) => {
+            const foundAll = allStatuses.filter(s => s.class_type === classType);
+            if (foundAll.length === 0) return [{ class_type: classType, status: undefined, period: undefined }];
+            return foundAll.map(found => ({
               class_type: classType,
               status: found.result_status || (found.completed ? "completed" : found.status),
               period: found.period,
@@ -203,7 +222,10 @@ export function useHandlersData() {
               next_class_type: found.next_class_type,
               next_term_number: found.next_term_number,
               next_term_year: found.next_term_year,
-            };
+              dog_name: found.dog_name,
+              dog_id: found.dog_id,
+              booking_id: found.booking_id,
+            }));
           });
           
           // Get consent statuses from enrollment_registrations (priority) or fallback to client fields

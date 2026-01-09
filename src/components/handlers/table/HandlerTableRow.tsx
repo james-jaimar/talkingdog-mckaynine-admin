@@ -24,6 +24,9 @@ interface HandlerTableRowProps {
       next_class_type?: string | null;
       next_term_number?: string | null;
       next_term_year?: number | null;
+      dog_name?: string | null;
+      dog_id?: string | null;
+      booking_id?: string | null;
     }[];
     email?: string;
     phone?: string;
@@ -37,9 +40,9 @@ export function HandlerTableRow({ handler, index = 0 }: HandlerTableRowProps) {
   const fullName = `${handler.first_name} ${handler.last_name || ''}`.trim();
   const isEven = index % 2 === 0;
 
-  // Helper function to find the class status for a specific class type
-  const getClassStatus = (classType: string) => {
-    return handler.class_statuses?.find(status => status.class_type === classType);
+  // Helper function to find ALL class statuses for a specific class type (multiple dogs)
+  const getClassStatuses = (classType: string) => {
+    return handler.class_statuses?.filter(status => status.class_type === classType) || [];
   };
 
   return (
@@ -64,20 +67,13 @@ export function HandlerTableRow({ handler, index = 0 }: HandlerTableRowProps) {
       
       {/* Class Type Columns */}
       {CLASS_TYPES.map((classType) => {
-        const classStatus = getClassStatus(classType);
+        const classStatuses = getClassStatuses(classType);
         return (
           <ClassStatusCell
             key={`${handler.id}-${classType}`}
             classType={classType}
             clientId={handler.id}
-            initialStatus={classStatus?.status || null}
-            initialPeriod={classStatus?.period || ''}
-            initialPassPercentage={classStatus?.pass_percentage}
-            initialNextAction={classStatus?.next_action}
-            initialNotes={classStatus?.result_notes || ''}
-            initialNextClassType={classStatus?.next_class_type}
-            initialNextTermNumber={classStatus?.next_term_number}
-            initialNextTermYear={classStatus?.next_term_year}
+            statuses={classStatuses}
             className="w-[90px]"
           />
         );

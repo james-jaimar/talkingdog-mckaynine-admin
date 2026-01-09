@@ -23,17 +23,25 @@ import {
 import { useTermOptions } from "@/hooks/useTermOptions";
 import { CLASS_TYPES } from "@/components/classes/types/class-types";
 
+interface ClassStatusItem {
+  class_type: string;
+  status?: 'completed' | 'passed' | 'no_pass' | 'incomplete' | 'did_not_grade' | 'did_not_attend' | 'interested' | 'not-interested';
+  period?: string;
+  pass_percentage?: number | null;
+  next_action?: 'continuing' | 'wants_info' | 'stopping' | 'none' | null;
+  result_notes?: string;
+  next_class_type?: string | null;
+  next_term_number?: string | null;
+  next_term_year?: number | null;
+  dog_name?: string | null;
+  dog_id?: string | null;
+  booking_id?: string | null;
+}
+
 interface ClassStatusCellProps {
   classType: string;
   clientId: string;
-  initialStatus?: 'completed' | 'passed' | 'no_pass' | 'incomplete' | 'did_not_grade' | 'did_not_attend' | 'interested' | 'not-interested' | null;
-  initialPeriod?: string;
-  initialPassPercentage?: number | null;
-  initialNextAction?: 'continuing' | 'wants_info' | 'stopping' | 'none' | null;
-  initialNotes?: string;
-  initialNextClassType?: string | null;
-  initialNextTermNumber?: string | null;
-  initialNextTermYear?: number | null;
+  statuses: ClassStatusItem[];
   className?: string;
 }
 
@@ -54,19 +62,40 @@ const nextActionIcons: Record<string, { icon: React.ReactNode; label: string; co
   'stopping': { icon: <StopCircle className="h-3 w-3" />, label: 'Stopping', color: 'text-red-600' },
 };
 
-export function ClassStatusCell({ 
-  classType, 
+// Next class mapping for auto-task creation
+const NEXT_CLASS_MAP: Record<string, string> = {
+  "Puppy": "EO",
+  "EO": "CGC Bronze",
+  "CGC Bronze": "CGC Silver",
+  "Beginner": "Novice",
+};
+
+// Single status box component
+function StatusBox({
+  classType,
   clientId,
-  initialStatus = null,
-  initialPeriod = '',
-  initialPassPercentage = null,
-  initialNextAction = null,
-  initialNotes = '',
-  initialNextClassType = null,
-  initialNextTermNumber = null,
-  initialNextTermYear = null,
-  className
-}: ClassStatusCellProps) {
+  initialStatus,
+  initialPeriod,
+  initialPassPercentage,
+  initialNextAction,
+  initialNotes,
+  initialNextClassType,
+  initialNextTermNumber,
+  initialNextTermYear,
+  dogName,
+}: {
+  classType: string;
+  clientId: string;
+  initialStatus: string | null;
+  initialPeriod: string;
+  initialPassPercentage: number | null;
+  initialNextAction: string | null;
+  initialNotes: string;
+  initialNextClassType: string | null;
+  initialNextTermNumber: string | null;
+  initialNextTermYear: number | null;
+  dogName: string | null;
+}) {
   const { terms } = useTermOptions();
   const queryClient = useQueryClient();
   
@@ -91,28 +120,12 @@ export function ClassStatusCell({
     setNextTermYear(parseInt(year));
   };
 
-  // Next class mapping for auto-task creation
-  const NEXT_CLASS_MAP: Record<string, string> = {
-    "Puppy": "EO",
-    "EO": "CGC Bronze",
-    "CGC Bronze": "CGC Silver",
-    "Beginner": "Novice",
-  };
-
   const handleUpdate = async () => {
     if (!clientId) return;
     
     setIsLoading(true);
     
     try {
-      // First, get the handler_class_status id if it exists
-      const { data: existingStatus } = await supabase
-        .from('handler_class_status')
-        .select('id')
-        .eq('handler_id', clientId)
-        .eq('class_type', classType)
-        .maybeSingle();
-
       const { data: upsertedStatus, error } = await supabase
         .from('handler_class_status')
         .upsert({
@@ -141,8 +154,7 @@ export function ClassStatusCell({
         return;
       }
 
-      // Create task if next_action changed and requires a task
-      // Only create if this is a new action (not updating an existing one with same action)
+      // Create task if next_action changed
       const actionChanged = nextAction !== initialNextAction;
       
       if (nextAction === 'wants_info' && actionChanged) {
@@ -214,10 +226,13 @@ export function ClassStatusCell({
 
   const showContinuingFields = nextAction === 'continuing';
 
-  // Form content shared between both states
+  // Form content
   const renderFormContent = () => (
     <div className="space-y-3">
-      <div className="font-medium text-sm">{classType}</div>
+      <div className="font-medium text-sm">
+        {classType}
+        {dogName && <span className="text-muted-foreground font-normal ml-1">({dogName})</span>}
+      </div>
       
       <div className="space-y-2">
         <label className="text-xs text-muted-foreground">Result</label>
@@ -278,7 +293,6 @@ export function ClassStatusCell({
         </Select>
       </div>
 
-      {/* Continuation details - only show when continuing */}
       {showContinuingFields && (
         <div className="grid grid-cols-2 gap-2 p-2 bg-muted/50 rounded-md">
           <div className="space-y-1">
@@ -338,55 +352,109 @@ export function ClassStatusCell({
     </div>
   );
 
-  if (!status) {
-    return (
-      <TableCell className={cn("text-center p-1", className)}>
-        <Popover open={isOpen} onOpenChange={setIsOpen}>
-          <PopoverTrigger asChild>
-            <Button 
-              variant="ghost" 
-              className="h-6 w-6 p-0 hover:bg-muted"
-              disabled={isLoading}
-            >
-              {isLoading ? "..." : "+"}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-72">
-            {renderFormContent()}
-          </PopoverContent>
-        </Popover>
-      </TableCell>
-    );
-  }
-
-  // Display compact status with indicators - show period/date and percentage if available
+  // Display text and visuals
   const displayText = period || status?.replace('_', ' ') || '';
 
-  return (
-    <TableCell className={cn("text-center p-1", className)}>
+  if (!status) {
+    return (
       <Popover open={isOpen} onOpenChange={setIsOpen}>
         <PopoverTrigger asChild>
-          <button
-            className={cn(
-              "text-xs px-2 py-1 rounded border inline-flex flex-col items-center gap-0.5",
-              resultStatusColors[status] || 'bg-gray-100 text-gray-800 border-gray-200',
-              isLoading && "opacity-50 cursor-not-allowed"
-            )}
+          <Button 
+            variant="ghost" 
+            className="h-6 w-6 p-0 hover:bg-muted"
             disabled={isLoading}
           >
-            <div className="flex items-center gap-1">
-              <span className="truncate max-w-[60px]">{displayText}</span>
-              {renderActionIndicator()}
-            </div>
-            {passPercentage !== null && passPercentage !== undefined && (
-              <span className="text-[10px] opacity-75">{passPercentage}%</span>
-            )}
-          </button>
+            {isLoading ? "..." : "+"}
+          </Button>
         </PopoverTrigger>
         <PopoverContent className="w-72">
           {renderFormContent()}
         </PopoverContent>
       </Popover>
+    );
+  }
+
+  return (
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
+      <PopoverTrigger asChild>
+        <button
+          className={cn(
+            "text-xs px-2 py-1 rounded border inline-flex flex-col items-center gap-0.5 w-full",
+            resultStatusColors[status] || 'bg-gray-100 text-gray-800 border-gray-200',
+            isLoading && "opacity-50 cursor-not-allowed"
+          )}
+          disabled={isLoading}
+        >
+          <div className="flex items-center gap-1">
+            <span className="truncate max-w-[60px]">{displayText}</span>
+            {renderActionIndicator()}
+          </div>
+          {passPercentage !== null && passPercentage !== undefined && (
+            <span className="text-[10px] opacity-75">{passPercentage}%</span>
+          )}
+          {dogName && (
+            <span className="text-[9px] opacity-60 truncate max-w-[70px]">{dogName}</span>
+          )}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-72">
+        {renderFormContent()}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+export function ClassStatusCell({ 
+  classType, 
+  clientId,
+  statuses,
+  className
+}: ClassStatusCellProps) {
+  // Filter out statuses with no actual status (empty placeholders)
+  const validStatuses = statuses.filter(s => s.status);
+  
+  // If no valid statuses, show a single add button
+  if (validStatuses.length === 0) {
+    return (
+      <TableCell className={cn("text-center p-1", className)}>
+        <StatusBox
+          classType={classType}
+          clientId={clientId}
+          initialStatus={null}
+          initialPeriod=""
+          initialPassPercentage={null}
+          initialNextAction={null}
+          initialNotes=""
+          initialNextClassType={null}
+          initialNextTermNumber={null}
+          initialNextTermYear={null}
+          dogName={null}
+        />
+      </TableCell>
+    );
+  }
+
+  // Show all valid statuses stacked
+  return (
+    <TableCell className={cn("text-center p-1", className)}>
+      <div className="flex flex-col gap-1">
+        {validStatuses.map((s, idx) => (
+          <StatusBox
+            key={`${s.booking_id || s.dog_id || idx}`}
+            classType={classType}
+            clientId={clientId}
+            initialStatus={s.status || null}
+            initialPeriod={s.period || ''}
+            initialPassPercentage={s.pass_percentage ?? null}
+            initialNextAction={s.next_action || null}
+            initialNotes={s.result_notes || ''}
+            initialNextClassType={s.next_class_type || null}
+            initialNextTermNumber={s.next_term_number || null}
+            initialNextTermYear={s.next_term_year ?? null}
+            dogName={s.dog_name || null}
+          />
+        ))}
+      </div>
     </TableCell>
   );
 }
