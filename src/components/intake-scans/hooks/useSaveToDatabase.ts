@@ -161,7 +161,7 @@ export function useSaveToDatabase() {
       }
 
       // Update the job with saved IDs
-      await supabase
+      const { error: jobUpdateError } = await supabase
         .from('scan_processing_jobs')
         .update({
           status: 'saved',
@@ -170,6 +170,11 @@ export function useSaveToDatabase() {
           enrollment_ids: enrollmentIds
         })
         .eq('id', job.id);
+      
+      // Log but don't throw if job update fails - the core data was saved
+      if (jobUpdateError) {
+        console.warn('Job status update failed (data still saved):', jobUpdateError);
+      }
 
       return { clientId, dogIds, enrollmentIds };
     },
