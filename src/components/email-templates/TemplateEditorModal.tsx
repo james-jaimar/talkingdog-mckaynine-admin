@@ -8,10 +8,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useEmailTemplates, EmailTemplate } from "@/hooks/useEmailTemplates";
 import { AVAILABLE_MERGE_FIELDS, getSampleTemplate, renderTemplate, getSampleVariables } from "@/lib/email/template-renderer";
 import { EO3_JAN_2026_TEMPLATE, EO3_JAN_2026_SUBJECT } from "@/lib/email/templates/eo3-jan-2026";
+import { CONGRATS_TEMPLATES } from "@/lib/email/templates/congrats-templates";
 import { Code, Eye, Plus, FileDown } from "lucide-react";
 
 interface TemplateEditorModalProps {
@@ -106,6 +107,16 @@ export function TemplateEditorModal({ open, onOpenChange, template }: TemplateEd
       setContent(getSampleTemplate());
       setClassType("all");
       setType("info_pack");
+    } else {
+      // Check if it's a congrats template
+      const congratsTemplate = CONGRATS_TEMPLATES.find(t => t.name === preset);
+      if (congratsTemplate) {
+        setName(congratsTemplate.name);
+        setSubject(congratsTemplate.subject);
+        setContent(congratsTemplate.content);
+        setClassType(congratsTemplate.classType || "all");
+        setType("custom");
+      }
     }
   };
 
@@ -158,20 +169,28 @@ export function TemplateEditorModal({ open, onOpenChange, template }: TemplateEd
             {/* Load Preset Template */}
             {!template && (
               <div className="flex justify-end">
-                <DropdownMenu>
+              <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" size="sm">
                       <FileDown className="h-4 w-4 mr-2" />
                       Load Preset Template
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent>
+                  <DropdownMenuContent className="max-h-80 overflow-y-auto">
+                    <DropdownMenuLabel>Info Packs</DropdownMenuLabel>
                     <DropdownMenuItem onClick={() => loadPresetTemplate("eo3-jan-2026")}>
                       EO3 Jan 2026 (Full HTML)
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => loadPresetTemplate("basic")}>
                       Basic Template
                     </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel>Congratulations Templates</DropdownMenuLabel>
+                    {CONGRATS_TEMPLATES.map((t) => (
+                      <DropdownMenuItem key={t.name} onClick={() => loadPresetTemplate(t.name)}>
+                        {t.name}
+                      </DropdownMenuItem>
+                    ))}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
