@@ -71,7 +71,11 @@ export function HandlerTableRow({ handler, index = 0 }: HandlerTableRowProps) {
               onClick={() => setShowNotesSheet(true)}
               title="Notes & Tasks"
             >
-              <StickyNote className="h-3.5 w-3.5 text-muted-foreground hover:text-primary" />
+              <StickyNote 
+                className={`h-3.5 w-3.5 hover:text-primary ${
+                  handler.notes ? 'text-amber-500' : 'text-muted-foreground'
+                }`} 
+              />
             </Button>
           </div>
         </TableCell>
