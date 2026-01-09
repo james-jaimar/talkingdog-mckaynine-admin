@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -561,7 +561,7 @@ export function ReviewPanel({ job, onUpdateData }: ReviewPanelProps) {
   );
 }
 
-// Helper component for form fields
+// Helper component for form fields with local state to prevent keystroke lag
 interface FormFieldProps {
   label: string;
   value: string;
@@ -583,6 +583,37 @@ function FormField({
   multiline = false,
   className 
 }: FormFieldProps) {
+  // Use local state for immediate responsiveness
+  const [localValue, setLocalValue] = useState(value || '');
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Sync local state when external value changes (e.g., new job selected)
+  useEffect(() => {
+    setLocalValue(value || '');
+  }, [value]);
+  
+  const handleChange = (newValue: string) => {
+    // Update local state immediately for responsive typing
+    setLocalValue(newValue);
+    
+    // Debounce the parent update
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    timeoutRef.current = setTimeout(() => {
+      onChange(newValue);
+    }, 300);
+  };
+  
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
+
   return (
     <div className={className}>
       <Label className="flex items-center gap-2">
@@ -592,16 +623,16 @@ function FormField({
       </Label>
       {multiline ? (
         <Textarea
-          value={value || ''}
-          onChange={(e) => onChange(e.target.value)}
+          value={localValue}
+          onChange={(e) => handleChange(e.target.value)}
           className="mt-1"
           rows={3}
         />
       ) : (
         <Input
           type={type}
-          value={value || ''}
-          onChange={(e) => onChange(e.target.value)}
+          value={localValue}
+          onChange={(e) => handleChange(e.target.value)}
           className="mt-1"
         />
       )}
