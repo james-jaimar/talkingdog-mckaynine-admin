@@ -13,7 +13,18 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Mail, ArrowRight, StopCircle } from "lucide-react";
+import { Mail, ArrowRight, StopCircle, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import {
   Tooltip,
   TooltipContent,
@@ -278,16 +289,67 @@ function StatusBox({
 
   const showContinuingFields = nextAction === 'continuing';
 
+  const handleDelete = async () => {
+    if (!statusId) return;
+    
+    setIsLoading(true);
+    try {
+      const { error } = await supabase
+        .from('handler_class_status')
+        .delete()
+        .eq('id', statusId);
+      
+      if (error) {
+        console.error('Error deleting class status:', error);
+        toast.error('Failed to delete entry');
+        return;
+      }
+      
+      queryClient.invalidateQueries({ queryKey: ["handlers"] });
+      toast.success('Entry deleted');
+      setIsOpen(false);
+    } catch (error) {
+      console.error('Error deleting:', error);
+      toast.error('An unexpected error occurred');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Form content
   const renderFormContent = () => (
     <div className="space-y-3">
-      <div className="font-medium text-sm">
-        {classType}
-        {dogName && !isAddNew && <span className="text-muted-foreground font-normal ml-1">({dogName})</span>}
+      <div className="flex items-center justify-between">
+        <div className="font-medium text-sm">
+          {classType}
+        </div>
+        {statusId && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-destructive hover:text-destructive">
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Entry</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to delete this class status entry? This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
       </div>
       
-      {/* Dog selector - show when adding new or when dogs available */}
-      {dogs.length > 0 && (isAddNew || !statusId) && (
+      {/* Dog selector - always show when dogs available */}
+      {dogs.length > 0 && (
         <div className="space-y-1">
           <label className="text-xs text-muted-foreground">Dog</label>
           <Select 
