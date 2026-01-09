@@ -40,12 +40,14 @@ export const BEGINNER_ONLY_TEMPLATE: CongratsTemplate = {
         <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Course</th>
         <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Price</th>
         <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Entry Criteria</th>
+        <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Dates</th>
         <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Day & Time</th>
       </tr>
       <tr style="background-color: #f9f9f9;">
         <td style="padding: 10px; border: 1px solid #ddd;"><strong>Beginner Obedience</strong></td>
         <td style="padding: 10px; border: 1px solid #ddd;">R1,770.00</td>
         <td style="padding: 10px; border: 1px solid #ddd;">CGC Bronze</td>
+        <td style="padding: 10px; border: 1px solid #ddd;">January 17th, 24th, 31st<br>February 7th, 14th, 21st, 28th<br>March 7th, 14th (Graduation Day!)</td>
         <td style="padding: 10px; border: 1px solid #ddd;">Saturdays 14H00 – 15H00</td>
       </tr>
     </table>
@@ -93,18 +95,21 @@ export const BEGINNER_TO_SILVER_OR_NOVICE_TEMPLATE: CongratsTemplate = {
         <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Course</th>
         <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Price</th>
         <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Entry Criteria</th>
+        <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Dates</th>
         <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Day & Time</th>
       </tr>
       <tr style="background-color: #f9f9f9;">
         <td style="padding: 10px; border: 1px solid #ddd;"><strong>CGC Silver**</strong></td>
         <td style="padding: 10px; border: 1px solid #ddd;">R1,680.00</td>
         <td style="padding: 10px; border: 1px solid #ddd;">CGC Bronze</td>
+        <td style="padding: 10px; border: 1px solid #ddd;">January 17th, 24th, 31st<br>February 7th, 14th, 21st, 28th<br>March 7th, 14th (Graduation Day!)</td>
         <td style="padding: 10px; border: 1px solid #ddd;">Saturdays 14H00 – 15H00</td>
       </tr>
       <tr>
         <td style="padding: 10px; border: 1px solid #ddd;"><strong>Novice Obedience</strong></td>
         <td style="padding: 10px; border: 1px solid #ddd;">R1,770.00</td>
         <td style="padding: 10px; border: 1px solid #ddd;">Beginner Obedience</td>
+        <td style="padding: 10px; border: 1px solid #ddd;">January 17th, 24th, 31st<br>February 7th, 14th, 21st, 28th<br>March 7th, 14th (Graduation Day!)</td>
         <td style="padding: 10px; border: 1px solid #ddd;">Saturdays 14H00 – 15H00</td>
       </tr>
     </table>
@@ -172,18 +177,21 @@ export const BRONZE_TO_SILVER_OR_BEGINNER_TEMPLATE: CongratsTemplate = {
         <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Course</th>
         <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Price</th>
         <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Entry Criteria</th>
+        <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Dates</th>
         <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Day & Time</th>
       </tr>
       <tr style="background-color: #f9f9f9;">
         <td style="padding: 10px; border: 1px solid #ddd;"><strong>CGC Silver**</strong></td>
         <td style="padding: 10px; border: 1px solid #ddd;">R1,680.00</td>
         <td style="padding: 10px; border: 1px solid #ddd;">CGC Bronze</td>
+        <td style="padding: 10px; border: 1px solid #ddd;">January 17th, 24th, 31st<br>February 7th, 14th, 21st, 28th<br>March 7th, 14th (Graduation Day!)</td>
         <td style="padding: 10px; border: 1px solid #ddd;">Saturdays 14H00 – 15H00</td>
       </tr>
       <tr>
         <td style="padding: 10px; border: 1px solid #ddd;"><strong>Beginner Obedience</strong></td>
         <td style="padding: 10px; border: 1px solid #ddd;">R1,770.00</td>
         <td style="padding: 10px; border: 1px solid #ddd;">CGC Bronze</td>
+        <td style="padding: 10px; border: 1px solid #ddd;">January 17th, 24th, 31st<br>February 7th, 14th, 21st, 28th<br>March 7th, 14th (Graduation Day!)</td>
         <td style="padding: 10px; border: 1px solid #ddd;">Saturdays 14H00 – 15H00</td>
       </tr>
     </table>
@@ -247,12 +255,14 @@ export const EO_TO_CGC_ONLY_TEMPLATE: CongratsTemplate = {
         <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Course</th>
         <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Price</th>
         <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Entry Criteria</th>
+        <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Dates</th>
         <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Day & Time</th>
       </tr>
       <tr style="background-color: #f9f9f9;">
         <td style="padding: 10px; border: 1px solid #ddd;"><strong>CGC Bronze**</strong></td>
         <td style="padding: 10px; border: 1px solid #ddd;">R1,680.00</td>
         <td style="padding: 10px; border: 1px solid #ddd;">Elementary Obedience</td>
+        <td style="padding: 10px; border: 1px solid #ddd;">January 17th, 24th, 31st<br>February 7th, 14th, 21st, 28th<br>March 7th, 14th (Graduation Day!)</td>
         <td style="padding: 10px; border: 1px solid #ddd;">Saturdays 15H00 – 16H00</td>
       </tr>
     </table>
@@ -307,18 +317,21 @@ export const EO_TO_CGC_OR_BEGINNER_TEMPLATE: CongratsTemplate = {
         <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Course</th>
         <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Price</th>
         <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Entry Criteria</th>
+        <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Dates</th>
         <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Day & Time</th>
       </tr>
       <tr style="background-color: #f9f9f9;">
         <td style="padding: 10px; border: 1px solid #ddd;"><strong>CGC Bronze**</strong></td>
         <td style="padding: 10px; border: 1px solid #ddd;">R1,680.00</td>
         <td style="padding: 10px; border: 1px solid #ddd;">Elementary Obedience</td>
+        <td style="padding: 10px; border: 1px solid #ddd;">January 17th, 24th, 31st<br>February 7th, 14th, 21st, 28th<br>March 7th, 14th (Graduation Day!)</td>
         <td style="padding: 10px; border: 1px solid #ddd;">Saturdays 15H00 – 16H00</td>
       </tr>
       <tr>
         <td style="padding: 10px; border: 1px solid #ddd;"><strong>Beginner Obedience</strong></td>
         <td style="padding: 10px; border: 1px solid #ddd;">R1,770.00</td>
         <td style="padding: 10px; border: 1px solid #ddd;">Elementary Obedience</td>
+        <td style="padding: 10px; border: 1px solid #ddd;">January 17th, 24th, 31st<br>February 7th, 14th, 21st, 28th<br>March 7th, 14th (Graduation Day!)</td>
         <td style="padding: 10px; border: 1px solid #ddd;">Saturdays 14H00 – 15H00</td>
       </tr>
     </table>
@@ -382,12 +395,14 @@ export const NOVICE_ONLY_TEMPLATE: CongratsTemplate = {
         <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Course</th>
         <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Price</th>
         <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Entry Criteria</th>
+        <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Dates</th>
         <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Day & Time</th>
       </tr>
       <tr style="background-color: #f9f9f9;">
         <td style="padding: 10px; border: 1px solid #ddd;"><strong>Novice Obedience</strong></td>
         <td style="padding: 10px; border: 1px solid #ddd;">R1,770.00</td>
         <td style="padding: 10px; border: 1px solid #ddd;">Beginner Obedience</td>
+        <td style="padding: 10px; border: 1px solid #ddd;">January 17th, 24th, 31st<br>February 7th, 14th, 21st, 28th<br>March 7th, 14th (Graduation Day!)</td>
         <td style="padding: 10px; border: 1px solid #ddd;">Saturdays 14H00 – 15H00</td>
       </tr>
     </table>
@@ -438,12 +453,14 @@ export const SILVER_CGC_ONLY_TEMPLATE: CongratsTemplate = {
         <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Course</th>
         <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Price</th>
         <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Entry Criteria</th>
+        <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Dates</th>
         <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Day & Time</th>
       </tr>
       <tr style="background-color: #f9f9f9;">
         <td style="padding: 10px; border: 1px solid #ddd;"><strong>CGC Silver**</strong></td>
         <td style="padding: 10px; border: 1px solid #ddd;">R1,680.00</td>
         <td style="padding: 10px; border: 1px solid #ddd;">CGC Bronze</td>
+        <td style="padding: 10px; border: 1px solid #ddd;">January 17th, 24th, 31st<br>February 7th, 14th, 21st, 28th<br>March 7th, 14th (Graduation Day!)</td>
         <td style="padding: 10px; border: 1px solid #ddd;">Saturdays 14H00 – 15H00</td>
       </tr>
     </table>
