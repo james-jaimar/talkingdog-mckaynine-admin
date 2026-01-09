@@ -579,7 +579,7 @@ export function ClassStatusCell({
     );
   }
 
-  // Show all valid statuses stacked + add button if more dogs available
+  // Show all valid statuses stacked + always show add button for retakes
   return (
     <TableCell className={cn("text-center p-1", className)}>
       <div className="flex flex-col gap-1">
@@ -603,8 +603,8 @@ export function ClassStatusCell({
             dogs={dogs}
           />
         ))}
-        {/* Show add button if there are more dogs available */}
-        {availableDogs.length > 0 && (
+        {/* Always show add button to allow retakes/multiple entries */}
+        {dogs.length > 0 && (
           <StatusBox
             classType={classType}
             clientId={clientId}
@@ -620,7 +620,7 @@ export function ClassStatusCell({
             bookingId={null}
             statusId={null}
             initialDogId={null}
-            dogs={availableDogs}
+            dogs={dogs}
             isAddNew={true}
           />
         )}
