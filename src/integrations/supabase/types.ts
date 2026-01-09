@@ -1325,6 +1325,7 @@ export type Database = {
           completion_method: string | null
           created_at: string | null
           current_time_slot: string | null
+          dog_id: string | null
           handler_id: string | null
           id: string
           is_currently_enrolled: boolean | null
@@ -1349,6 +1350,7 @@ export type Database = {
           completion_method?: string | null
           created_at?: string | null
           current_time_slot?: string | null
+          dog_id?: string | null
           handler_id?: string | null
           id?: string
           is_currently_enrolled?: boolean | null
@@ -1373,6 +1375,7 @@ export type Database = {
           completion_method?: string | null
           created_at?: string | null
           current_time_slot?: string | null
+          dog_id?: string | null
           handler_id?: string | null
           id?: string
           is_currently_enrolled?: boolean | null
@@ -1398,6 +1401,13 @@ export type Database = {
             columns: ["class_id"]
             isOneToOne: false
             referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "handler_class_status_dog_id_fkey"
+            columns: ["dog_id"]
+            isOneToOne: false
+            referencedRelation: "dogs"
             referencedColumns: ["id"]
           },
         ]

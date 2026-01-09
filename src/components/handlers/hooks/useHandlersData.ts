@@ -154,11 +154,15 @@ export function useHandlersData() {
         const clientIds = (clientsData || []).map(client => client.id);
         let classStatusesMap: Record<string, any[]> = {};
         if (clientIds.length > 0) {
-          // Fetch class statuses with booking and dog info
+          // Fetch class statuses with direct dog info OR booking dog info
           const { data: classStatusData, error: classStatusError } = await supabase
             .from('handler_class_status')
             .select(`
               *,
+              dogs:dog_id (
+                id,
+                name
+              ),
               bookings:booking_id (
                 dog_id,
                 dogs:dog_id (
@@ -173,13 +177,16 @@ export function useHandlersData() {
           } else {
             for (let status of classStatusData || []) {
               if (!status.class_type) continue;
-              // Extract dog info from the joined data
-              const dogName = status.bookings?.dogs?.name || null;
-              const dogId = status.bookings?.dog_id || null;
+              // Extract dog info - prefer direct dog_id, fall back to booking's dog
+              const directDogName = status.dogs?.name || null;
+              const bookingDogName = status.bookings?.dogs?.name || null;
+              const directDogId = status.dog_id || null;
+              const bookingDogId = status.bookings?.dog_id || null;
+              
               const statusWithDog = {
                 ...status,
-                dog_name: dogName,
-                dog_id: dogId,
+                dog_name: directDogName || bookingDogName,
+                dog_id: directDogId || bookingDogId,
               };
               const arr = classStatusesMap[status.handler_id] || [];
               arr.push(statusWithDog);
