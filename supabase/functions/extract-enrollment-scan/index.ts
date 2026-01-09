@@ -128,32 +128,31 @@ serve(async (req) => {
     }
 
     console.log("File path:", file_url);
-    
-    // Download file directly from private storage bucket using service role
-    const { data: fileData, error: downloadError } = await supabase.storage
+
+    // Instead of downloading + base64 encoding (can exceed Edge Function memory for PDFs),
+    // generate a short-lived signed URL and let the vision model fetch the file directly.
+    const { data: signed, error: signedError } = await supabase.storage
       .from('scanned-forms')
-      .download(file_url);
-    
-    if (downloadError || !fileData) {
-      console.error("Storage download error:", downloadError);
-      throw new Error(`Failed to download file from storage: ${downloadError?.message || 'Unknown error'}`);
+      .createSignedUrl(file_url, 60); // 60s is enough for the model to fetch
+
+    if (signedError || !signed?.signedUrl) {
+      console.error("Signed URL error:", signedError);
+      throw new Error(`Failed to create signed URL: ${signedError?.message || 'Unknown error'}`);
     }
-    
-    console.log("File downloaded, size:", fileData.size);
-    
-    // Convert blob to base64
-    const fileBuffer = await fileData.arrayBuffer();
-    const base64Data = btoa(
-      new Uint8Array(fileBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
-    );
-    
+
+    const signedUrl = signed.signedUrl;
+    console.log("Signed URL created");
+
     // Determine content type from filename
     const fileName = file_url.toLowerCase();
     const isPDF = fileName.endsWith('.pdf');
     const isImage = fileName.endsWith('.jpg') || fileName.endsWith('.jpeg') || fileName.endsWith('.png');
-    const contentType = isPDF ? 'application/pdf' : 
-                        fileName.endsWith('.png') ? 'image/png' : 'image/jpeg';
-    
+    const contentType = isPDF
+      ? 'application/pdf'
+      : fileName.endsWith('.png')
+        ? 'image/png'
+        : 'image/jpeg';
+
     console.log("File content type:", contentType);
 
     // Prepare the message content for vision model
@@ -164,19 +163,11 @@ serve(async (req) => {
       }
     ];
 
-    if (isImage) {
+    if (isImage || isPDF) {
       messageContent.push({
         type: "image_url",
         image_url: {
-          url: `data:${contentType};base64,${base64Data}`
-        }
-      });
-    } else if (isPDF) {
-      // For PDFs, we'll send as inline_data
-      messageContent.push({
-        type: "image_url",
-        image_url: {
-          url: `data:application/pdf;base64,${base64Data}`
+          url: signedUrl
         }
       });
     } else {
