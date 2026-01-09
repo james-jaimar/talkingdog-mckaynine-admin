@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { PDFDocument } from "https://esm.sh/pdf-lib@1.17.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -129,31 +130,92 @@ serve(async (req) => {
 
     console.log("File path:", file_url);
 
-    // Instead of downloading + base64 encoding (can exceed Edge Function memory for PDFs),
-    // generate a short-lived signed URL and let the vision model fetch the file directly.
-    const { data: signed, error: signedError } = await supabase.storage
-      .from('scanned-forms')
-      .createSignedUrl(file_url, 60); // 60s is enough for the model to fetch
-
-    if (signedError || !signed?.signedUrl) {
-      console.error("Signed URL error:", signedError);
-      throw new Error(`Failed to create signed URL: ${signedError?.message || 'Unknown error'}`);
-    }
-
-    const signedUrl = signed.signedUrl;
-    console.log("Signed URL created");
-
-    // Determine content type from filename
+    // For multi-page PDFs, we want ONLY page 2.
+    // To avoid Edge Function memory blow-ups from base64 encoding full PDFs,
+    // we extract page 2 into a new single-page PDF, upload it, then give the model a signed URL.
     const fileName = file_url.toLowerCase();
     const isPDF = fileName.endsWith('.pdf');
     const isImage = fileName.endsWith('.jpg') || fileName.endsWith('.jpeg') || fileName.endsWith('.png');
-    const contentType = isPDF
-      ? 'application/pdf'
-      : fileName.endsWith('.png')
-        ? 'image/png'
-        : 'image/jpeg';
 
-    console.log("File content type:", contentType);
+    let modelFileUrl = "";
+
+    if (isPDF) {
+      // Download original PDF (binary) so we can extract page 2
+      const { data: fileData, error: downloadError } = await supabase.storage
+        .from('scanned-forms')
+        .download(file_url);
+
+      if (downloadError || !fileData) {
+        console.error("Storage download error:", downloadError);
+        throw new Error(`Failed to download file from storage: ${downloadError?.message || 'Unknown error'}`);
+      }
+
+      const originalBytes = new Uint8Array(await fileData.arrayBuffer());
+      const originalPdf = await PDFDocument.load(originalBytes);
+      const pageCount = originalPdf.getPageCount();
+      console.log("PDF page count:", pageCount);
+
+      if (pageCount < 2) {
+        // Fallback: no page 2, just use the original file
+        const { data: signed, error: signedError } = await supabase.storage
+          .from('scanned-forms')
+          .createSignedUrl(file_url, 60);
+
+        if (signedError || !signed?.signedUrl) {
+          console.error("Signed URL error:", signedError);
+          throw new Error(`Failed to create signed URL: ${signedError?.message || 'Unknown error'}`);
+        }
+
+        modelFileUrl = signed.signedUrl;
+      } else {
+        // Extract page 2 (0-indexed page 1)
+        const page2Pdf = await PDFDocument.create();
+        const [page2] = await page2Pdf.copyPages(originalPdf, [1]);
+        page2Pdf.addPage(page2);
+        const page2Bytes = await page2Pdf.save();
+
+        const page2Path = `tmp/page2-${crypto.randomUUID()}.pdf`;
+        const { error: uploadError } = await supabase.storage
+          .from('scanned-forms')
+          .upload(page2Path, page2Bytes, {
+            contentType: 'application/pdf',
+            upsert: true,
+          });
+
+        if (uploadError) {
+          console.error("Page 2 upload error:", uploadError);
+          throw new Error(`Failed to upload page 2 PDF: ${uploadError.message}`);
+        }
+
+        const { data: signed2, error: signed2Error } = await supabase.storage
+          .from('scanned-forms')
+          .createSignedUrl(page2Path, 120);
+
+        if (signed2Error || !signed2?.signedUrl) {
+          console.error("Signed URL (page2) error:", signed2Error);
+          throw new Error(`Failed to create signed URL for page 2: ${signed2Error?.message || 'Unknown error'}`);
+        }
+
+        modelFileUrl = signed2.signedUrl;
+        console.log("Using extracted page 2 PDF for model");
+      }
+    } else if (isImage) {
+      // For images, just create a signed URL
+      const { data: signed, error: signedError } = await supabase.storage
+        .from('scanned-forms')
+        .createSignedUrl(file_url, 60);
+
+      if (signedError || !signed?.signedUrl) {
+        console.error("Signed URL error:", signedError);
+        throw new Error(`Failed to create signed URL: ${signedError?.message || 'Unknown error'}`);
+      }
+
+      modelFileUrl = signed.signedUrl;
+    } else {
+      throw new Error(`Unsupported file type for extraction: ${file_url}`);
+    }
+
+    console.log("Model file URL prepared");
 
     // Prepare the message content for vision model
     const messageContent: any[] = [
@@ -163,16 +225,12 @@ serve(async (req) => {
       }
     ];
 
-    if (isImage || isPDF) {
-      messageContent.push({
-        type: "image_url",
-        image_url: {
-          url: signedUrl
-        }
-      });
-    } else {
-      throw new Error(`Unsupported file type: ${contentType}`);
-    }
+    messageContent.push({
+      type: "image_url",
+      image_url: {
+        url: modelFileUrl
+      }
+    });
 
     console.log("Calling Lovable AI for extraction...");
     
