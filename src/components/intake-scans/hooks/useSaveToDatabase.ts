@@ -32,6 +32,17 @@ export function useSaveToDatabase() {
         .eq('email', owner.email.toLowerCase().trim())
         .maybeSingle();
       
+      // Determine branch_id from dog data (use first dog's branch)
+      let defaultBranchId = branches?.[0]?.id;
+      const firstDog = dogs[0];
+      if (firstDog?.branch_name && branches) {
+        const matchingBranch = branches.find(b => 
+          b.name.toLowerCase().includes(firstDog.branch_name.toLowerCase()) ||
+          firstDog.branch_name.toLowerCase().includes(b.name.toLowerCase())
+        );
+        if (matchingBranch) defaultBranchId = matchingBranch.id;
+      }
+
       if (existingClient) {
         // Update existing client
         clientId = existingClient.id;
@@ -44,6 +55,7 @@ export function useSaveToDatabase() {
             phone: owner.phone || undefined,
             occupation: owner.occupation || undefined,
             vet_name: owner.vet_name || undefined,
+            branch_id: defaultBranchId, // Ensure branch_id is set
             onboarding_status: 'completed'
           })
           .eq('id', clientId);
@@ -59,6 +71,7 @@ export function useSaveToDatabase() {
             phone: owner.phone,
             occupation: owner.occupation,
             vet_name: owner.vet_name,
+            branch_id: defaultBranchId, // Required for handler to show in list
             onboarding_status: 'completed'
           })
           .select('id')

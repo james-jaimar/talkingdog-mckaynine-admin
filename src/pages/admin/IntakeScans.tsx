@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Helmet } from "react-helmet";
 import { UploadPanel } from "@/components/intake-scans/UploadPanel";
@@ -6,6 +6,7 @@ import { ReviewPanel } from "@/components/intake-scans/ReviewPanel";
 import { StatusPanel } from "@/components/intake-scans/StatusPanel";
 import { ScanProcessingJob, ExtractedData } from "@/components/intake-scans/types";
 import { useProcessingJobs } from "@/components/intake-scans/hooks/useProcessingJobs";
+import { useDebouncedCallback } from "@/hooks/useDebouncedCallback";
 
 export default function IntakeScans() {
   const [selectedJob, setSelectedJob] = useState<ScanProcessingJob | null>(null);
@@ -35,17 +36,26 @@ export default function IntakeScans() {
     setSelectedJob(job);
   };
 
-  const handleUpdateData = async (data: ExtractedData) => {
-    setEditedData(data);
-    
-    // Also update the job in the database
-    if (selectedJob) {
+  // Debounced database update to prevent lag during typing
+  const debouncedUpdateJob = useDebouncedCallback(
+    async (jobId: string, data: ExtractedData) => {
       await updateJob({
-        id: selectedJob.id,
+        id: jobId,
         updates: {
           extracted_data: data
         }
       });
+    },
+    500 // Wait 500ms after user stops typing
+  );
+
+  const handleUpdateData = (data: ExtractedData) => {
+    // Update local state immediately for responsive UI
+    setEditedData(data);
+    
+    // Debounce the database update
+    if (selectedJob) {
+      debouncedUpdateJob(selectedJob.id, data);
     }
   };
 
