@@ -24,6 +24,7 @@ import { useTermOptions } from "@/hooks/useTermOptions";
 import { CLASS_TYPES } from "@/components/classes/types/class-types";
 
 interface ClassStatusItem {
+  id?: string;
   class_type: string;
   status?: 'completed' | 'passed' | 'no_pass' | 'incomplete' | 'did_not_grade' | 'did_not_attend' | 'interested' | 'not-interested';
   period?: string;
@@ -83,6 +84,8 @@ function StatusBox({
   initialNextTermNumber,
   initialNextTermYear,
   dogName,
+  bookingId,
+  statusId,
 }: {
   classType: string;
   clientId: string;
@@ -95,6 +98,8 @@ function StatusBox({
   initialNextTermNumber: string | null;
   initialNextTermYear: number | null;
   dogName: string | null;
+  bookingId: string | null;
+  statusId: string | null;
 }) {
   const { terms } = useTermOptions();
   const queryClient = useQueryClient();
@@ -126,27 +131,45 @@ function StatusBox({
     setIsLoading(true);
     
     try {
-      const { data: upsertedStatus, error } = await supabase
-        .from('handler_class_status')
-        .upsert({
-          handler_id: clientId,
-          class_type: classType,
-          result_status: status,
-          period: period,
-          pass_percentage: passPercentage,
-          next_action: nextAction || 'none',
-          result_notes: notes,
-          next_class_type: nextAction === 'continuing' ? nextClassType : null,
-          next_term_number: nextAction === 'continuing' ? nextTermNumber : null,
-          next_term_year: nextAction === 'continuing' ? nextTermYear : null,
-          completed: status === 'passed' || status === 'completed',
-          completed_at: (status === 'passed' || status === 'completed') ? new Date().toISOString() : null,
-        }, { 
-          onConflict: 'handler_id,class_type',
-          ignoreDuplicates: false 
-        })
-        .select('id')
-        .single();
+      const updateData = {
+        handler_id: clientId,
+        class_type: classType,
+        booking_id: bookingId,
+        result_status: status,
+        period: period,
+        pass_percentage: passPercentage,
+        next_action: nextAction || 'none',
+        result_notes: notes,
+        next_class_type: nextAction === 'continuing' ? nextClassType : null,
+        next_term_number: nextAction === 'continuing' ? nextTermNumber : null,
+        next_term_year: nextAction === 'continuing' ? nextTermYear : null,
+        completed: status === 'passed' || status === 'completed',
+        completed_at: (status === 'passed' || status === 'completed') ? new Date().toISOString() : null,
+      };
+
+      let upsertedStatus;
+      let error;
+
+      // If we have a statusId, update the specific record
+      if (statusId) {
+        const result = await supabase
+          .from('handler_class_status')
+          .update(updateData)
+          .eq('id', statusId)
+          .select('id')
+          .single();
+        upsertedStatus = result.data;
+        error = result.error;
+      } else {
+        // Insert new record
+        const result = await supabase
+          .from('handler_class_status')
+          .insert(updateData)
+          .select('id')
+          .single();
+        upsertedStatus = result.data;
+        error = result.error;
+      }
       
       if (error) {
         console.error('Error updating class status:', error);
@@ -429,6 +452,8 @@ export function ClassStatusCell({
           initialNextTermNumber={null}
           initialNextTermYear={null}
           dogName={null}
+          bookingId={null}
+          statusId={null}
         />
       </TableCell>
     );
@@ -452,6 +477,8 @@ export function ClassStatusCell({
             initialNextTermNumber={s.next_term_number || null}
             initialNextTermYear={s.next_term_year ?? null}
             dogName={s.dog_name || null}
+            bookingId={s.booking_id || null}
+            statusId={s.id || null}
           />
         ))}
       </div>
