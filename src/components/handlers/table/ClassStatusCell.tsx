@@ -156,10 +156,14 @@ function StatusBox({
     setIsLoading(true);
     
     try {
+      // Use selectedDogId for new entries, or fall back to initialDogId
+      const dogIdToUse = selectedDogId || initialDogId;
+      
       const updateData: Record<string, any> = {
         handler_id: clientId,
         class_type: classType,
         booking_id: bookingId,
+        dog_id: dogIdToUse, // Now we can store dog_id directly
         result_status: status,
         period: period,
         pass_percentage: passPercentage,
@@ -171,12 +175,6 @@ function StatusBox({
         completed: status === 'passed' || status === 'completed',
         completed_at: (status === 'passed' || status === 'completed') ? new Date().toISOString() : null,
       };
-      
-      // For manual entries without a booking, we can store a reference to the dog
-      // by finding or creating a booking, but for now we'll just track it
-      // The booking_id is what links to the dog - if we don't have one but have a selected dog,
-      // we need to create a reference somehow. For now, let's just proceed without booking_id
-      // for manual entries (the dog selection is informational for now).
 
       let upsertedStatus;
       let error;
