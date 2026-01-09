@@ -23,14 +23,20 @@ export function ScanViewer({ fileUrl, filename, isOpen, onClose }: ScanViewerPro
       
       setIsLoading(true);
       try {
-        // Extract the path from the file URL
-        const urlParts = fileUrl.split('/scanned-forms/');
-        if (urlParts.length < 2) {
-          setSignedUrl(fileUrl);
-          return;
+        // The fileUrl stored in the job is just the filename/path within the bucket,
+        // NOT a full URL. So we can use it directly with createSignedUrl.
+        let filePath = fileUrl;
+        
+        // If for some reason it IS a full URL, extract just the path part
+        if (fileUrl.includes('/scanned-forms/')) {
+          const urlParts = fileUrl.split('/scanned-forms/');
+          if (urlParts.length >= 2) {
+            // Get the path and remove any query params
+            filePath = urlParts[1].split('?')[0];
+          }
         }
         
-        const filePath = urlParts[1];
+        console.log('Creating signed URL for path:', filePath);
         
         const { data, error } = await supabase.storage
           .from('scanned-forms')
@@ -38,13 +44,15 @@ export function ScanViewer({ fileUrl, filename, isOpen, onClose }: ScanViewerPro
         
         if (error) {
           console.error('Error creating signed URL:', error);
-          setSignedUrl(fileUrl);
+          // Don't fall back to raw fileUrl - that won't work
+          setSignedUrl(null);
         } else {
+          console.log('Signed URL created successfully');
           setSignedUrl(data.signedUrl);
         }
       } catch (err) {
         console.error('Error getting signed URL:', err);
-        setSignedUrl(fileUrl);
+        setSignedUrl(null);
       } finally {
         setIsLoading(false);
       }
