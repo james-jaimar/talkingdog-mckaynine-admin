@@ -13,6 +13,7 @@ import FinancialDashboard from "@/pages/FinancialDashboard";
 import IntakeScans from "@/pages/admin/IntakeScans";
 import Tasks from "@/pages/admin/Tasks";
 import EmailTemplates from "@/pages/admin/EmailTemplates";
+import Email from "@/pages/admin/Email";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import RequireAdmin from "@/components/auth/RequireAdmin";
 
@@ -57,6 +58,10 @@ export const adminRoutes = [
   {
     path: "/admin/email-templates",
     element: <EmailTemplates />,
+  },
+  {
+    path: "/admin/email",
+    element: <Email />,
   },
   {
     path: "/invoices",
