@@ -3,17 +3,16 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useEmailTemplates, EmailTemplate } from "@/hooks/useEmailTemplates";
 import { AVAILABLE_MERGE_FIELDS, getSampleTemplate, renderTemplate, getSampleVariables } from "@/lib/email/template-renderer";
 import { EO3_JAN_2026_TEMPLATE, EO3_JAN_2026_SUBJECT } from "@/lib/email/templates/eo3-jan-2026";
 import { CONGRATS_TEMPLATES } from "@/lib/email/templates/congrats-templates";
-import { Code, Eye, Plus, FileDown } from "lucide-react";
+import { Eye, FileDown, Edit3 } from "lucide-react";
+import { RichTextEditor } from "@/components/platform-templates/RichTextEditor";
 
 interface TemplateEditorModalProps {
   open: boolean;
@@ -77,22 +76,7 @@ export function TemplateEditorModal({ open, onOpenChange, template }: TemplateEd
     }
   }, [open, template]);
 
-  const insertMergeField = (field: string) => {
-    const textarea = document.getElementById("template-content") as HTMLTextAreaElement;
-    if (textarea) {
-      const start = textarea.selectionStart;
-      const end = textarea.selectionEnd;
-      const newContent = content.substring(0, start) + `{{${field}}}` + content.substring(end);
-      setContent(newContent);
-      // Restore focus and cursor position
-      setTimeout(() => {
-        textarea.focus();
-        textarea.setSelectionRange(start + field.length + 4, start + field.length + 4);
-      }, 0);
-    } else {
-      setContent(content + `{{${field}}}`);
-    }
-  };
+  // Merge field insertion is now handled by the RichTextEditor component
 
   const loadPresetTemplate = (preset: string) => {
     if (preset === "eo3-jan-2026") {
@@ -156,8 +140,8 @@ export function TemplateEditorModal({ open, onOpenChange, template }: TemplateEd
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "edit" | "preview")} className="flex-1 overflow-hidden flex flex-col">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="edit" className="flex items-center gap-2">
-              <Code className="h-4 w-4" />
-              Edit
+              <Edit3 className="h-4 w-4" />
+              Write Email
             </TabsTrigger>
             <TabsTrigger value="preview" className="flex items-center gap-2">
               <Eye className="h-4 w-4" />
@@ -265,36 +249,15 @@ export function TemplateEditorModal({ open, onOpenChange, template }: TemplateEd
               />
             </div>
 
-            {/* Merge Fields */}
+            {/* Content - WYSIWYG Editor */}
             <div className="space-y-2">
-              <Label>Insert Merge Field</Label>
-              <div className="flex flex-wrap gap-2">
-                {AVAILABLE_MERGE_FIELDS.map((field) => (
-                  <Badge
-                    key={field.key}
-                    variant="outline"
-                    className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
-                    onClick={() => insertMergeField(field.key)}
-                  >
-                    <Plus className="h-3 w-3 mr-1" />
-                    {field.label}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-
-            {/* Content */}
-            <div className="space-y-2">
-              <Label htmlFor="template-content">Email Content</Label>
+              <Label>Email Content</Label>
               <p className="text-xs text-muted-foreground">
-                Write your email content. You can use HTML for formatting. The content will be wrapped in a professional email template with your branch logo and banking details.
+                Write your email just like you would in any email app. Use the toolbar to format text and insert merge fields (like handler name, dog name, etc.).
               </p>
-              <Textarea
-                id="template-content"
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                placeholder="Enter HTML content with merge fields like {{handler_name}}"
-                className="font-mono text-sm min-h-[300px]"
+              <RichTextEditor
+                content={content}
+                onChange={setContent}
               />
             </div>
           </TabsContent>
