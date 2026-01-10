@@ -1,10 +1,9 @@
 
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
-import { Check, Send, Ban } from "lucide-react";
+import { Check, Ban } from "lucide-react";
 import { Invoice, InvoiceStatus } from "@/hooks/invoices/types";
 import { 
   useMarkInvoiceAsPaid, 
-  useMarkInvoiceAsSent, 
   useCancelInvoice 
 } from "@/hooks/invoices/status";
 
@@ -16,20 +15,12 @@ interface InvoiceStatusActionsProps {
 
 export function InvoiceStatusActions({ invoice, isPending, onCloseDropdown }: InvoiceStatusActionsProps) {
   const markAsPaidMutation = useMarkInvoiceAsPaid();
-  const markAsSentMutation = useMarkInvoiceAsSent();
   const cancelInvoiceMutation = useCancelInvoice();
 
   const handleMarkAsPaid = async () => {
     onCloseDropdown();
     if (invoice.status !== 'paid') {
       await markAsPaidMutation.mutateAsync(invoice.id);
-    }
-  };
-
-  const handleMarkAsSent = async () => {
-    onCloseDropdown();
-    if (invoice.status !== 'sent' && invoice.status !== 'paid') {
-      await markAsSentMutation.markAsSent(invoice);
     }
   };
 
@@ -49,14 +40,7 @@ export function InvoiceStatusActions({ invoice, isPending, onCloseDropdown }: In
         <Check className="mr-2 h-4 w-4 text-green-600" /> Mark as Paid
       </DropdownMenuItem>
       
-      <DropdownMenuItem 
-        onClick={handleMarkAsSent}
-        disabled={isPending || invoice.status === 'sent' || invoice.status === 'paid' || invoice.status === 'cancelled'}
-      >
-        <Send className="mr-2 h-4 w-4 text-blue-600" /> Mark as Sent
-      </DropdownMenuItem>
-      
-      <DropdownMenuItem 
+      <DropdownMenuItem
         onClick={handleCancel}
         disabled={isPending || invoice.status === 'cancelled' || invoice.status === 'paid'}
       >

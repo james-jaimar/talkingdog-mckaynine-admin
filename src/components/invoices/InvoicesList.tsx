@@ -15,7 +15,7 @@ import { EmailInvoicePreviewDialog } from "./dialogs/EmailInvoicePreviewDialog";
 import { TransferInvoiceDialog } from "./dialogs/TransferInvoiceDialog";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useBranch } from "@/context/BranchContext";
-import { useMarkInvoiceAsSent, useMarkInvoiceAsPaid } from "@/hooks/invoices/status";
+import { useMarkInvoiceAsPaid } from "@/hooks/invoices/status";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { GitBranch, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
@@ -34,7 +34,6 @@ export function InvoicesList({
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
   const { currentBranch } = useBranch();
-  const { markAllAsSent } = useMarkInvoiceAsSent();
   const markAsPaidMutation = useMarkInvoiceAsPaid();
   const [searchTerm, setSearchTerm] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -101,17 +100,6 @@ export function InvoicesList({
     setTransferDialogOpen(true);
   };
 
-  // Bulk mark as sent handler
-  const handleBulkMarkAsSent = async (invoicesToMark: Invoice[]) => {
-    try {
-      await markAllAsSent(invoicesToMark);
-      // Query invalidation happens in the hook
-    } catch (error) {
-      console.error("Error bulk marking invoices as sent:", error);
-      toast.error("Failed to mark some invoices as sent");
-    }
-  };
-
   // Bulk mark as paid handler
   const handleBulkMarkAsPaid = async (invoicesToMark: Invoice[]) => {
     try {
@@ -175,7 +163,6 @@ export function InvoicesList({
                   onDeleteInvoice={handleDeleteRequest}
                   onEmailInvoice={handleEmailRequest}
                   onTransferInvoice={handleTransferRequest}
-                  onBulkMarkAsSent={handleBulkMarkAsSent}
                   onBulkMarkAsPaid={handleBulkMarkAsPaid}
                 />
               </div>
