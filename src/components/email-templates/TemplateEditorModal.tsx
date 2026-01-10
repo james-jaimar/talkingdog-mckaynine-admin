@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useEmailTemplates, EmailTemplate } from "@/hooks/useEmailTemplates";
 import { AVAILABLE_MERGE_FIELDS, getSampleTemplate, renderTemplate, getSampleVariables } from "@/lib/email/template-renderer";
+import { wrapWithPreviewStyles } from "@/lib/email/preview-styles";
 import { EO3_JAN_2026_TEMPLATE, EO3_JAN_2026_SUBJECT } from "@/lib/email/templates/eo3-jan-2026";
 import { CONGRATS_TEMPLATES } from "@/lib/email/templates/congrats-templates";
 import { Eye, FileDown, Edit3 } from "lucide-react";
@@ -123,7 +124,7 @@ export function TemplateEditorModal({ open, onOpenChange, template }: TemplateEd
   };
 
   const isValid = name.trim() && subject.trim() && content.trim();
-  const previewHtml = renderTemplate(content, getSampleVariables());
+  const previewHtml = wrapWithPreviewStyles(renderTemplate(content, getSampleVariables()));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
