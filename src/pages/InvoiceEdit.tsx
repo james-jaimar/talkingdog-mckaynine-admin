@@ -80,14 +80,21 @@ export default function InvoiceEdit() {
       console.log("Initializing form with invoice data:", invoice);
       
       // Handle discount value correctly based on type
-      let discountAmount = invoice.discount_amount || 0;
+      // NOTE: In DB, percentage discounts should use original_discount_amount (preferred)
+      // but we support legacy rows where discount_amount may be monetary.
+      let discountAmount = Number(invoice.discount_amount || 0);
       if (invoice.discount_type === 'percentage') {
-        // Calculate percentage based on subtotal if available
-        if (invoice.subtotal > 0) {
-          discountAmount = (invoice.discount_amount / invoice.subtotal) * 100;
+        const original = invoice.original_discount_amount;
+        if (original !== null && original !== undefined) {
+          discountAmount = Number(original || 0);
+        } else {
+          // Legacy fallback: if discount_amount looks like a percent, use it; otherwise derive from subtotal.
+          if (discountAmount > 100 && invoice.subtotal > 0) {
+            discountAmount = (discountAmount / invoice.subtotal) * 100;
+          }
+          discountAmount = Math.min(Math.max(discountAmount, 0), 100);
         }
       }
-      
       form.reset({
         client_id: invoice.client_id,
         invoice_number: invoice.invoice_number,
