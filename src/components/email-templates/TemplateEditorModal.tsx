@@ -12,8 +12,9 @@ import { AVAILABLE_MERGE_FIELDS, getSampleTemplate, renderTemplate, getSampleVar
 import { wrapWithPreviewStyles } from "@/lib/email/preview-styles";
 import { EO3_JAN_2026_TEMPLATE, EO3_JAN_2026_SUBJECT } from "@/lib/email/templates/eo3-jan-2026";
 import { CONGRATS_TEMPLATES } from "@/lib/email/templates/congrats-templates";
-import { Eye, FileDown, Edit3 } from "lucide-react";
+import { Eye, FileDown, Edit3, FileUp } from "lucide-react";
 import { RichTextEditor } from "@/components/platform-templates/RichTextEditor";
+import { WordUploadModal } from "@/components/platform-templates/WordUploadModal";
 
 interface TemplateEditorModalProps {
   open: boolean;
@@ -45,6 +46,7 @@ const CLASS_TYPES = [
 export function TemplateEditorModal({ open, onOpenChange, template }: TemplateEditorModalProps) {
   const { createTemplate, updateTemplate } = useEmailTemplates();
   const [activeTab, setActiveTab] = useState<"edit" | "preview">("edit");
+  const [showWordUpload, setShowWordUpload] = useState(false);
   
   // Form state
   const [name, setName] = useState("");
@@ -126,6 +128,16 @@ export function TemplateEditorModal({ open, onOpenChange, template }: TemplateEd
   const isValid = name.trim() && subject.trim() && content.trim();
   const previewHtml = wrapWithPreviewStyles(renderTemplate(content, getSampleVariables()));
 
+  const handleWordConversion = (convertedHtml: string, suggestedName: string) => {
+    setContent(convertedHtml);
+    if (!name) {
+      setName(suggestedName);
+    }
+    if (!subject) {
+      setSubject(`${suggestedName} - {{branch_name}}`);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
@@ -151,10 +163,14 @@ export function TemplateEditorModal({ open, onOpenChange, template }: TemplateEd
           </TabsList>
 
           <TabsContent value="edit" className="flex-1 overflow-auto space-y-4 mt-4">
-            {/* Load Preset Template */}
+            {/* Load Preset Template or Import from Word */}
             {!template && (
-              <div className="flex justify-end">
-              <DropdownMenu>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" size="sm" onClick={() => setShowWordUpload(true)}>
+                  <FileUp className="h-4 w-4 mr-2" />
+                  Import from Word
+                </Button>
+                <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" size="sm">
                       <FileDown className="h-4 w-4 mr-2" />
@@ -291,6 +307,12 @@ export function TemplateEditorModal({ open, onOpenChange, template }: TemplateEd
             {template ? "Update Template" : "Create Template"}
           </Button>
         </DialogFooter>
+
+        <WordUploadModal
+          open={showWordUpload}
+          onOpenChange={setShowWordUpload}
+          onConversionComplete={handleWordConversion}
+        />
       </DialogContent>
     </Dialog>
   );
