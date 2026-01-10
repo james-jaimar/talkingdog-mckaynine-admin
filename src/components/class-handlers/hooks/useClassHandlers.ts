@@ -77,7 +77,9 @@ export function useClassHandlers(classId: string) {
               email, 
               phone,
               uses_whatsapp_status,
-              social_media_consent_status
+              social_media_consent_status,
+              enrollment_verified,
+              vaccination_verified
             ),
             invoice_items(
               invoice_id,
