@@ -101,8 +101,8 @@ export class FranchiseReportPDFGenerator {
         textColor: [34, 197, 94]
       },
       { 
-        title: 'Total', 
-        subtitle: '',
+        title: 'Total Due', 
+        subtitle: 'Enrollment + Franchise',
         value: this.formatCurrency(reportTotals.totalAmount), 
         bgColor: [250, 245, 255],
         textColor: [168, 85, 247]
