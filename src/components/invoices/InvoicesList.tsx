@@ -11,7 +11,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { InvoicesTable } from "./table/InvoicesTable";
 import { SearchInvoices } from "./SearchInvoices";
 import { DeleteInvoiceDialog } from "./dialogs/DeleteInvoiceDialog";
-import { EmailInvoiceDialog } from "./dialogs/EmailInvoiceDialog";
+import { EmailInvoicePreviewDialog } from "./dialogs/EmailInvoicePreviewDialog";
 import { TransferInvoiceDialog } from "./dialogs/TransferInvoiceDialog";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useBranch } from "@/context/BranchContext";
@@ -190,7 +190,7 @@ export function InvoicesList({
         selectedInvoiceId={selectedInvoiceId} 
       />
 
-      <EmailInvoiceDialog 
+      <EmailInvoicePreviewDialog 
         open={emailDialogOpen} 
         onOpenChange={setEmailDialogOpen}
         selectedInvoice={selectedInvoice}

@@ -5,16 +5,18 @@ import { Invoice } from "./types";
 import { getInvoiceAsBase64 } from "@/components/invoices/pdf/InvoicePDFGenerator";
 import { toast } from "sonner";
 
-interface EmailInvoiceParams {
+export interface EmailInvoiceParams {
   invoice: Invoice;
   email: string;
+  customSubject?: string;
+  customEmailHtml?: string;
 }
 
 export function useEmailInvoice() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ invoice, email }: EmailInvoiceParams) => {
+    mutationFn: async ({ invoice, email, customSubject, customEmailHtml }: EmailInvoiceParams) => {
       try {
         toast.info("Preparing invoice for email...");
         
@@ -25,17 +27,16 @@ export function useEmailInvoice() {
         }
         
         console.log("PDF generated successfully, preparing to send email");
-
-        // Use the hardcoded URL from the client file instead of accessing the protected property
-        // This URL is already available in the src/integrations/supabase/client.ts file
-        const supabaseUrl = "https://vsgsagbpfclbuyqrepvf.supabase.co";
+        console.log("Custom email content provided:", !!customEmailHtml);
         
         // Call the send-invoice edge function
         const { data, error } = await supabase.functions.invoke('send-invoice', {
           body: {
             invoice,
             email,
-            pdfBase64
+            pdfBase64,
+            customSubject,
+            customEmailHtml,
           },
         });
 

@@ -7,11 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Invoice } from "@/hooks/invoices/types";
 import { formatCurrency } from "@/lib/formatters";
 import { formatDate } from "date-fns";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { toast } from "sonner";
-import { useInvoices } from "@/hooks/useInvoices";
+import { EmailInvoicePreviewDialog } from "@/components/invoices/dialogs/EmailInvoicePreviewDialog";
 
 interface ClientInfoCardProps {
   invoice: Invoice;
@@ -20,36 +16,9 @@ interface ClientInfoCardProps {
 
 export function ClientInfoCard({ invoice, onGeneratePDF }: ClientInfoCardProps) {
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
-  const [emailRecipient, setEmailRecipient] = useState(invoice.client?.email || "");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const { emailInvoice } = useInvoices();
 
   const handleEmailInvoice = () => {
-    setEmailRecipient(invoice.client?.email || "");
     setEmailDialogOpen(true);
-  };
-
-  const confirmSendEmail = async () => {
-    if (!emailRecipient.trim()) {
-      toast.error("Email address is required");
-      return;
-    }
-
-    setIsSubmitting(true);
-    
-    try {
-      await emailInvoice.mutateAsync({
-        invoice,
-        email: emailRecipient
-      });
-      
-      setEmailDialogOpen(false);
-    } catch (error) {
-      console.error("Email sending failed:", error);
-      // Error is already handled in the mutation
-    } finally {
-      setIsSubmitting(false);
-    }
   };
 
   return (
@@ -121,37 +90,11 @@ export function ClientInfoCard({ invoice, onGeneratePDF }: ClientInfoCardProps) 
         </CardFooter>
       </Card>
 
-      <Dialog open={emailDialogOpen} onOpenChange={(open) => !isSubmitting && setEmailDialogOpen(open)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Send Invoice by Email</DialogTitle>
-            <DialogDescription>
-              Send invoice #{invoice.invoice_number} to the recipient's email address.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label htmlFor="email" className="text-right">
-                Email Address
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                value={emailRecipient}
-                onChange={(e) => setEmailRecipient(e.target.value)}
-                placeholder="recipient@example.com"
-                disabled={isSubmitting}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEmailDialogOpen(false)} disabled={isSubmitting}>Cancel</Button>
-            <Button type="submit" onClick={confirmSendEmail} disabled={isSubmitting}>
-              {isSubmitting ? 'Sending...' : 'Send Invoice'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <EmailInvoicePreviewDialog 
+        open={emailDialogOpen} 
+        onOpenChange={setEmailDialogOpen}
+        selectedInvoice={invoice}
+      />
     </>
   );
 }
