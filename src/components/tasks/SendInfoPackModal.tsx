@@ -8,14 +8,13 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { TaskWithHandler } from "@/hooks/useAllTasks";
-import { useTemplateConfigurations } from "@/hooks/useTemplateConfigurations";
+import { useEmailTemplates, EmailTemplate } from "@/hooks/useEmailTemplates";
 import { renderTemplate, TemplateVariables } from "@/lib/email/template-renderer";
 import { useBranch } from "@/context/BranchContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { Send, Eye, Mail, User, Dog, AlertCircle, Link } from "lucide-react";
-import { getPrebuiltTemplate } from "@/lib/email/templates";
 import { ClassInvitationSelector } from "./ClassInvitationSelector";
 import { addDays } from "date-fns";
 
@@ -37,11 +36,11 @@ interface ClassScheduleOption {
 }
 
 export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModalProps) {
-  const { templatesWithStatus, isLoading: templatesLoading } = useTemplateConfigurations();
+  const { templates, isLoading: templatesLoading } = useEmailTemplates();
   const { currentBranch } = useBranch();
   const queryClient = useQueryClient();
   
-  const [selectedTemplateCode, setSelectedTemplateCode] = useState<string>("");
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
   const [customMessage, setCustomMessage] = useState("");
   const [activeTab, setActiveTab] = useState<"compose" | "preview">("compose");
   const [isSending, setIsSending] = useState(false);
@@ -52,10 +51,10 @@ export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModa
   const [includeEnrollmentLink, setIncludeEnrollmentLink] = useState(true);
   const [selectedSchedule, setSelectedSchedule] = useState<ClassScheduleOption | null>(null);
 
-  // Show all configured and active templates - admin can choose any template
-  const availableTemplates = templatesWithStatus.filter(t => t.isConfigured && t.isActive);
+  // Show all active templates - admin can choose any template
+  const availableTemplates = templates.filter(t => t.is_active);
 
-  const selectedTemplateData = templatesWithStatus.find(t => t.code === selectedTemplateCode);
+  const selectedTemplate = templates.find(t => t.id === selectedTemplateId);
 
   // Fetch dog information when task changes
   useEffect(() => {
@@ -76,7 +75,7 @@ export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModa
     
     if (open && task) {
       fetchDogInfo();
-      setSelectedTemplateCode("");
+      setSelectedTemplateId("");
       setCustomMessage("");
       setActiveTab("compose");
       setSelectedSchedule(null);
@@ -94,10 +93,8 @@ export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModa
     return crypto.randomUUID();
   };
 
-  // Build template variables
+  // Build template variables for preview
   const getTemplateVariables = (): TemplateVariables => {
-    const configVars = selectedTemplateData?.configuration?.variables || {};
-    
     // Base URL for enrollment link
     const baseUrl = window.location.origin;
     const enrollmentToken = "PREVIEW_TOKEN"; // Placeholder for preview
@@ -111,20 +108,18 @@ export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModa
       handler_email: task?.handler?.email || "",
       dog_name: dogName,
       completed_class: task?.class_type || "",
-      next_class: selectedTemplateData?.classType || "",
+      next_class: selectedTemplate?.class_type || "",
       branch_name: currentBranch?.name || "McKaynine",
       branch_email: (currentBranch as any)?.email || "",
       branch_phone: (currentBranch as any)?.phone || "",
       base_url: "https://mckaynine.talkingdog.co.za",
       enrollment_link: enrollmentLink,
-      // Merge in configured template variables (but allow UI fields to override)
-      ...configVars,
       custom_message: customMessage,
     };
   };
 
   const handleSend = async () => {
-    if (!task || !selectedTemplateData || !task.handler?.email) {
+    if (!task || !selectedTemplate || !task.handler?.email) {
       toast.error("Missing required information");
       return;
     }
@@ -137,9 +132,6 @@ export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModa
 
     setIsSending(true);
     try {
-      const template = getPrebuiltTemplate(selectedTemplateCode);
-      if (!template) throw new Error("Template not found");
-      
       // Create invitation record if enrollment link is enabled
       let invitationToken: string | null = null;
       if (includeEnrollmentLink && selectedSchedule && dogId) {
@@ -170,28 +162,24 @@ export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModa
         ? `${baseUrl}/customer/enroll/${invitationToken}`
         : "";
 
-      const configVars = selectedTemplateData.configuration?.variables || {};
       const variables: TemplateVariables = {
         handler_name: task.handler?.first_name || "",
         handler_full_name: task.handler ? `${task.handler.first_name} ${task.handler.last_name}` : "",
         handler_email: task.handler?.email || "",
         dog_name: dogName,
         completed_class: task.class_type || "",
-        next_class: selectedTemplateData.classType || "",
+        next_class: selectedTemplate.class_type || "",
         branch_name: currentBranch?.name || "McKaynine",
         branch_email: (currentBranch as any)?.email || "",
         branch_phone: (currentBranch as any)?.phone || "",
         base_url: "https://mckaynine.talkingdog.co.za",
         enrollment_link: enrollmentLink,
-        // Merge in configured template variables (but allow UI fields to override)
-        ...configVars,
         custom_message: customMessage,
       };
       
-      // Generate HTML from the pre-built template
-      const rawHtml = template.getHtml(configVars);
-      const renderedContent = renderTemplate(rawHtml, variables);
-      const renderedSubject = renderTemplate(template.subject, variables);
+      // Render the user-created template content
+      const renderedContent = renderTemplate(selectedTemplate.content, variables);
+      const renderedSubject = renderTemplate(selectedTemplate.subject, variables);
 
       // Send email via edge function
       const { error: emailError } = await supabase.functions.invoke("send-with-smtp", {
@@ -210,7 +198,7 @@ export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModa
       await supabase.from("email_log").insert({
         handler_id: task.handler_id,
         task_id: task.id,
-        template_id: selectedTemplateData.configuration?.id,
+        template_id: selectedTemplate.id,
         recipient_email: task.handler.email,
         subject: renderedSubject,
         status: "sent",
@@ -257,19 +245,13 @@ export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModa
 
   if (!task) return null;
 
-  // Generate preview
+  // Generate preview using the user-created template
   const getPreview = () => {
-    if (!selectedTemplateData) return { html: "", subject: "" };
-    
-    const template = getPrebuiltTemplate(selectedTemplateCode);
-    if (!template) return { html: "", subject: "" };
+    if (!selectedTemplate) return { html: "", subject: "" };
     
     const variables = getTemplateVariables();
-    const configVars = selectedTemplateData.configuration?.variables || {};
-    
-    const rawHtml = template.getHtml(configVars);
-    const renderedHtml = renderTemplate(rawHtml, variables);
-    const renderedSubject = renderTemplate(template.subject, variables);
+    const renderedHtml = renderTemplate(selectedTemplate.content, variables);
+    const renderedSubject = renderTemplate(selectedTemplate.subject, variables);
     
     return { html: renderedHtml, subject: renderedSubject };
   };
@@ -315,7 +297,7 @@ export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModa
               <Mail className="h-4 w-4" />
               Compose
             </TabsTrigger>
-            <TabsTrigger value="preview" className="flex items-center gap-2" disabled={!selectedTemplateData}>
+            <TabsTrigger value="preview" className="flex items-center gap-2" disabled={!selectedTemplate}>
               <Eye className="h-4 w-4" />
               Preview
             </TabsTrigger>
@@ -331,26 +313,28 @@ export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModa
                   <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5" />
                   <div>
                     <p className="font-medium text-amber-800 dark:text-amber-200">
-                      No templates available for {task.class_type || "this class"}
+                      No templates available
                     </p>
                     <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
-                      Please configure a template in Settings → Email Templates first.
+                      Please create a template in Settings → Email Templates first.
                     </p>
                   </div>
                 </div>
               ) : (
-                <Select value={selectedTemplateCode} onValueChange={setSelectedTemplateCode}>
+                <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
                   <SelectTrigger>
                     <SelectValue placeholder="Choose a template..." />
                   </SelectTrigger>
                   <SelectContent>
                     {availableTemplates.map((template) => (
-                      <SelectItem key={template.code} value={template.code}>
+                      <SelectItem key={template.id} value={template.id}>
                         <div className="flex items-center gap-2">
                           <span>{template.name}</span>
-                          <Badge variant="outline" className="text-xs">
-                            {template.classType}
-                          </Badge>
+                          {template.class_type && (
+                            <Badge variant="outline" className="text-xs">
+                              {template.class_type}
+                            </Badge>
+                          )}
                         </div>
                       </SelectItem>
                     ))}
@@ -359,20 +343,8 @@ export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModa
               )}
             </div>
 
-            {selectedTemplateData?.configuration?.variables && (
-              <div className="p-3 bg-muted/50 rounded-lg text-sm space-y-1">
-                <p className="font-medium mb-2">Template Details:</p>
-                {selectedTemplateData.configuration.variables.class_day_time && (
-                  <p><strong>When:</strong> {selectedTemplateData.configuration.variables.class_day_time}</p>
-                )}
-                {selectedTemplateData.configuration.variables.class_dates && (
-                  <p><strong>Dates:</strong> {selectedTemplateData.configuration.variables.class_dates}</p>
-                )}
-              </div>
-            )}
-
             {/* Enrollment Link Section */}
-            {selectedTemplateData && (
+            {selectedTemplate && (
               <div className="space-y-3 p-4 border rounded-lg bg-primary/5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -394,7 +366,7 @@ export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModa
                       The handler will receive a personalized link to view class details and enroll themselves.
                     </p>
                     <ClassInvitationSelector
-                      nextClassType={selectedTemplateData.classType}
+                      nextClassType={selectedTemplate.class_type || undefined}
                       onSelectSchedule={handleScheduleSelect}
                       selectedScheduleId={selectedSchedule?.id}
                     />
@@ -419,7 +391,7 @@ export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModa
           </TabsContent>
 
           <TabsContent value="preview" className="flex-1 overflow-auto mt-4">
-            {selectedTemplateData ? (
+            {selectedTemplate ? (
               <div className="border rounded-lg overflow-hidden">
                 <div className="bg-muted p-3 border-b space-y-1">
                   <div>
@@ -455,7 +427,7 @@ export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModa
           </Button>
           <Button 
             onClick={handleSend} 
-            disabled={!selectedTemplateData || isSending || (includeEnrollmentLink && !selectedSchedule)}
+            disabled={!selectedTemplate || isSending || (includeEnrollmentLink && !selectedSchedule)}
           >
             {isSending ? (
               <>
