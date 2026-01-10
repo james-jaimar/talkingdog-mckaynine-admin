@@ -43,7 +43,6 @@ export function TemplateEditorModal({ open, onOpenChange, templateId }: Template
   const { data: existingTemplate, isLoading } = usePlatformTemplate(templateId);
   
   const [activeTab, setActiveTab] = useState("editor");
-  const [showHtmlSource, setShowHtmlSource] = useState(false);
   
   // Form state
   const [code, setCode] = useState("");
@@ -227,31 +226,15 @@ export function TemplateEditorModal({ open, onOpenChange, templateId }: Template
 
               {/* Right: Content Editor */}
               <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <Label>Email Content</Label>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowHtmlSource(!showHtmlSource)}
-                  >
-                    {showHtmlSource ? <Eye className="h-4 w-4 mr-1" /> : <Code className="h-4 w-4 mr-1" />}
-                    {showHtmlSource ? "Visual" : "HTML"}
-                  </Button>
-                </div>
-                
-                {showHtmlSource ? (
-                  <Textarea
-                    value={htmlContent}
-                    onChange={(e) => setHtmlContent(e.target.value)}
-                    className="font-mono text-sm h-[400px]"
-                  />
-                ) : (
-                  <RichTextEditor
-                    content={htmlContent}
-                    onChange={setHtmlContent}
-                    configurableFields={configurableFields}
-                  />
-                )}
+                <Label>Email Content</Label>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Write your email using the toolbar to format text and insert merge fields.
+                </p>
+                <RichTextEditor
+                  content={htmlContent}
+                  onChange={setHtmlContent}
+                  configurableFields={configurableFields}
+                />
               </div>
             </div>
           </TabsContent>
