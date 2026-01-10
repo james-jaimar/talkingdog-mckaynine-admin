@@ -48,7 +48,7 @@ export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModa
   const [dogId, setDogId] = useState<string>("");
   
   // New state for class invitation
-  const [includeEnrollmentLink, setIncludeEnrollmentLink] = useState(true);
+  const [includeEnrollmentLink, setIncludeEnrollmentLink] = useState(false);
   const [selectedSchedule, setSelectedSchedule] = useState<ClassScheduleOption | null>(null);
 
   // Show all active templates - admin can choose any template
