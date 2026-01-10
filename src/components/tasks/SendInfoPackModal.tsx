@@ -11,8 +11,8 @@ import { TaskWithHandler } from "@/hooks/useAllTasks";
 import { useEmailTemplates } from "@/hooks/useEmailTemplates";
 import { useEmailAttachments, EmailAttachment } from "@/hooks/useEmailAttachments";
 import { useEmailQueue } from "@/hooks/useEmailQueue";
-import { renderTemplate, TemplateVariables } from "@/lib/email/template-renderer";
-import { wrapEmailContent } from "@/lib/email/email-wrapper";
+import { renderTemplate, TemplateVariables, getVariablesWithSignature } from "@/lib/email/template-renderer";
+import { wrapEmailContent, getEmailSignature } from "@/lib/email/email-wrapper";
 import { useBranch } from "@/context/BranchContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -78,20 +78,22 @@ export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModa
 
   // Build template variables for preview
   const getTemplateVariables = (): TemplateVariables => {
-    return {
+    const branchName = currentBranch?.name || "McKaynine";
+    
+    return getVariablesWithSignature({
       handler_name: task?.handler?.first_name || "",
       handler_full_name: task?.handler ? `${task.handler.first_name} ${task.handler.last_name}` : "",
       handler_email: task?.handler?.email || "",
       dog_name: dogName,
       completed_class: task?.class_type || "",
       next_class: selectedTemplate?.class_type || "",
-      branch_name: currentBranch?.name || "McKaynine",
+      branch_name: branchName,
       branch_email: (currentBranch as any)?.email || "",
       branch_phone: (currentBranch as any)?.phone || "",
       base_url: "https://mckaynine.talkingdog.co.za",
       enrollment_link: "",
       custom_message: customMessage.replace(/\n/g, '<br>'),
-    };
+    });
   };
 
   const handleSend = async () => {
@@ -102,20 +104,21 @@ export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModa
 
     setIsSending(true);
     try {
-      const variables: TemplateVariables = {
+      const branchName = currentBranch?.name || "McKaynine";
+      const variables: TemplateVariables = getVariablesWithSignature({
         handler_name: task.handler?.first_name || "",
         handler_full_name: task.handler ? `${task.handler.first_name} ${task.handler.last_name}` : "",
         handler_email: task.handler?.email || "",
         dog_name: dogName,
         completed_class: task.class_type || "",
         next_class: selectedTemplate.class_type || "",
-        branch_name: currentBranch?.name || "McKaynine",
+        branch_name: branchName,
         branch_email: (currentBranch as any)?.email || "",
         branch_phone: (currentBranch as any)?.phone || "",
         base_url: "https://mckaynine.talkingdog.co.za",
         enrollment_link: "",
         custom_message: customMessage.replace(/\n/g, '<br>'),
-      };
+      });
       
       // Render the user-created template content
       const renderedContent = renderTemplate(selectedTemplate.content, variables);
