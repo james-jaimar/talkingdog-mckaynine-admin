@@ -5,39 +5,36 @@ import { createInvoice } from "@/lib/invoices/createInvoiceUtils";
 
 export interface CreateInvoiceProps {
   handlerId: string;
-  dogId: string;
-  bookingId: string;
+  dogIds: string[];
+  bookingIds: string[];
   className: string;
   classPrice: number;
-  dogName: string;
+  dogNames: string[];
   generateInvoiceNumber: (referenceDate?: Date) => Promise<string>;
   createInvoice: UseMutationResult<any, Error, any, unknown>;
   currentBranch?: { id: string; name: string } | null;
   enrollmentFee?: number;
-  discountType?: "fixed" | "percentage";
-  discountAmount?: number;
-  classDate?: Date; // Use class schedule date for invoice instead of today
+  classDate?: Date;
 }
+
+const MULTI_DOG_DISCOUNT_PERCENT = 25; // 25% discount for 2nd dog
 
 export const createInvoiceForHandler = async ({
   handlerId,
-  dogId,
-  bookingId,
+  dogIds,
+  bookingIds,
   className,
   classPrice,
-  dogName,
+  dogNames,
   generateInvoiceNumber,
   createInvoice: createInvoiceMutation,
   currentBranch,
   enrollmentFee = 0,
-  discountType = "fixed",
-  discountAmount = 0,
   classDate,
 }: CreateInvoiceProps): Promise<boolean> => {
   try {
     console.log("CREATE-INVOICE: Starting invoice creation with params:", {
-      handlerId, dogId, bookingId, className, classPrice, enrollmentFee,
-      discountType, discountAmount
+      handlerId, dogIds, bookingIds, className, classPrice, enrollmentFee, dogNames
     });
 
     // Generate invoice number with fallback - use classDate for proper period
@@ -72,70 +69,84 @@ export const createInvoiceForHandler = async ({
       enrollmentFee = 0;
     }
 
-    // Create invoice items with item_type for proper fee calculations
+    // Create invoice items for each dog
     const items: Array<{
       description: string;
       quantity: number;
       unit_price: number;
       booking_id: string;
       item_type: string;
-    }> = [
-      {
-        description: `${className} training class for ${dogName}`,
+    }> = [];
+
+    let subtotal = 0;
+    let totalDiscount = 0;
+
+    dogIds.forEach((dogId, index) => {
+      const dogName = dogNames[index] || `Dog ${index + 1}`;
+      const bookingId = bookingIds[index];
+      const isSecondDog = index === 1;
+      
+      // Calculate price for this dog
+      let dogClassPrice = classPrice;
+      let discountNote = "";
+      
+      if (isSecondDog) {
+        // Apply 25% discount to 2nd dog's course fee
+        const discountAmount = Math.round(classPrice * MULTI_DOG_DISCOUNT_PERCENT / 100);
+        dogClassPrice = classPrice - discountAmount;
+        totalDiscount += discountAmount;
+        discountNote = ` (25% multi-dog discount applied)`;
+      }
+      
+      // Add course fee item for this dog
+      items.push({
+        description: `${className} training class for ${dogName}${discountNote}`,
         quantity: 1,
-        unit_price: classPrice,
+        unit_price: dogClassPrice,
         booking_id: bookingId,
         item_type: 'course_fee',
-      }
-    ];
-    
-    if (enrollmentFee && enrollmentFee > 0) {
-      items.push({
-        description: `Enrollment fee for ${className}`,
-        quantity: 1,
-        unit_price: enrollmentFee,
-        booking_id: bookingId,
-        item_type: 'enrollment_fee',
       });
-    }
-
-    // Calculate invoice components using the canonical utility
-    const breakdown = calculateInvoiceComponents({
-      courseFee: classPrice,
-      enrollmentFee,
-      discount: discountAmount,
-      discountType,
+      
+      subtotal += dogClassPrice;
+      
+      // Add enrollment fee for first dog only
+      if (index === 0 && enrollmentFee && enrollmentFee > 0) {
+        items.push({
+          description: `Enrollment fee for ${className}`,
+          quantity: 1,
+          unit_price: enrollmentFee,
+          booking_id: bookingId,
+          item_type: 'enrollment_fee',
+        });
+        subtotal += enrollmentFee;
+      }
     });
 
-    console.log("CREATE-INVOICE: Calculated breakdown:", breakdown);
-
-    // Verify the subtotal
-    if (breakdown.subtotal === 0) {
-      console.error("CREATE-INVOICE: Subtotal is zero - check input arguments!", {
-        classPrice, enrollmentFee, discountType, discountAmount
-      });
-    }
+    console.log("CREATE-INVOICE: Items created:", items);
+    console.log("CREATE-INVOICE: Subtotal:", subtotal, "Total discount:", totalDiscount);
 
     // Use class date if provided (for backfilling), otherwise use today
     const invoiceDate = classDate || new Date();
     const dueDate = invoiceDate; // Due date defaults to same as issued date
 
-    // Create the invoice data object - removed fields that don't exist in the database
+    // Create the invoice data object
     const invoiceData = {
       client_id: handlerId,
       invoice_number: invoiceNumber,
       status: "draft",
       issued_date: invoiceDate,
       due_date: dueDate,
-      notes: `Invoice for ${className} training class for ${dogName}.`,
+      notes: dogIds.length === 2 
+        ? `Invoice for ${className} training class for ${dogNames.join(" and ")}. Multi-dog discount applied.`
+        : `Invoice for ${className} training class for ${dogNames[0]}.`,
       tax_rate: 0,
       items,
-      discount_type: discountType,
-      discount_amount: discountAmount,
-      discount_reason: "",
-      subtotal: breakdown.subtotal,
-      total: breakdown.total,
-      monetary_discount: breakdown.monetaryDiscount,
+      discount_type: "fixed" as const,
+      discount_amount: 0, // Discount is already applied in item prices
+      discount_reason: totalDiscount > 0 ? "Multi-dog discount (25% off 2nd dog)" : "",
+      subtotal,
+      total: subtotal,
+      monetary_discount: 0,
     };
 
     console.log("CREATE-INVOICE: About to create invoice with data:", invoiceData);

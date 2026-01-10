@@ -27,7 +27,7 @@ export function useAddHandlerModal({
   const { createInvoice, generateInvoiceNumber } = useInvoices();
   const { currentBranch } = useBranch();
 
-  const handleAddHandlerToClass = async (handlerId: string, dogId: string) => {
+  const handleAddHandlerToClass = async (handlerId: string, dogIds: string[]) => {
     if (!classData) {
       console.error("Missing class data, cannot add handler");
       toast({
@@ -38,11 +38,20 @@ export function useAddHandlerModal({
       return;
     }
 
-    console.log("Adding handler to class with class data:", classData);
+    if (dogIds.length === 0) {
+      toast({
+        title: "Error",
+        description: "Please select at least one dog.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    console.log("Adding handler to class with class data:", classData, "Dogs:", dogIds);
 
     await addHandlerToClass({
       handlerId,
-      dogId,
+      dogIds,
       classId,
       setIsProcessing,
       isProcessing,
@@ -52,12 +61,9 @@ export function useAddHandlerModal({
       toast,
       createInvoiceProps: {
         handlerId,
-        dogId,
         generateInvoiceNumber,
         createInvoice,
         currentBranch,
-        discountType: "fixed",
-        discountAmount: 0
       }
     });
   };

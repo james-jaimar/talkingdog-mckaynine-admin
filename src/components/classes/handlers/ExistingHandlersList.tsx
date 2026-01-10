@@ -13,7 +13,7 @@ import { useHandlersList } from "./hooks/useHandlersList";
 
 interface ExistingHandlersListProps {
   searchQuery: string;
-  onSelect: (handlerId: string, dogId: string) => void;
+  onSelect: (handlerId: string, dogIds: string[]) => void;
   classId: string;
   isProcessing: boolean;
   selectedHandlerId: string | null;
@@ -35,22 +35,12 @@ export function ExistingHandlersList({
     isLoading,
     error,
     refetch,
-    processingDogId,
-    setProcessingDogId
   } = useHandlersList(classId, searchQuery);
 
-  // Handle handler selection with processing state
-  const handleSelect = (handlerId: string, dogId: string) => {
-    setProcessingDogId(dogId);
-    onSelect(handlerId, dogId);
+  // Handle handler selection with multiple dogs
+  const handleSelect = (handlerId: string, dogIds: string[]) => {
+    onSelect(handlerId, dogIds);
   };
-
-  // Reset processing dog ID when global processing state changes
-  useEffect(() => {
-    if (!isProcessing) {
-      setProcessingDogId(null);
-    }
-  }, [isProcessing]);
 
   // Get the selected handler data
   const selectedHandler = selectedHandlerId 
@@ -93,7 +83,6 @@ export function ExistingHandlersList({
         onClose={() => setSelectedHandlerId(null)}
         onSelect={handleSelect}
         isProcessing={isProcessing}
-        processingDogId={processingDogId}
       />
     </>
   );
