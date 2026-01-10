@@ -11,16 +11,15 @@ export const addInvoiceHeader = (doc: jsPDF, invoice: Invoice, startY: number, p
   // Left-aligned invoice number
   doc.text(`INVOICE: ${invoice.invoice_number}`, 14, startY);
   
-  // Right-aligned status and dates
-  doc.text(`Status: ${invoice.status?.toUpperCase() || 'DRAFT'}`, pageWidth - 14, startY, { align: 'right' });
+  // Format dates
   
   // Format dates
   const issuedDate = format(new Date(invoice.issued_date), "dd MMMM yyyy");
   const dueDate = format(new Date(invoice.due_date), "dd MMMM yyyy");
   
-  // Add dates below status
-  doc.text(`Issued Date: ${issuedDate}`, pageWidth - 14, startY + 5, { align: 'right' });
-  doc.text(`Due Date: ${dueDate}`, pageWidth - 14, startY + 10, { align: 'right' });
+  // Add dates on right side
+  doc.text(`Issued Date: ${issuedDate}`, pageWidth - 14, startY, { align: 'right' });
+  doc.text(`Due Date: ${dueDate}`, pageWidth - 14, startY + 5, { align: 'right' });
   
-  return startY + 20;
+  return startY + 15;
 };
