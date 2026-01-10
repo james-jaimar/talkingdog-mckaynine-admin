@@ -6,14 +6,17 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
 import { TaskWithHandler } from "@/hooks/useAllTasks";
-import { useEmailTemplates, EmailTemplate } from "@/hooks/useEmailTemplates";
+import { useEmailTemplates } from "@/hooks/useEmailTemplates";
+import { useEmailAttachments, EmailAttachment } from "@/hooks/useEmailAttachments";
 import { renderTemplate, TemplateVariables } from "@/lib/email/template-renderer";
+import { wrapEmailContent } from "@/lib/email/email-wrapper";
 import { useBranch } from "@/context/BranchContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
-import { Send, Eye, Mail, User, Dog, AlertCircle } from "lucide-react";
+import { Send, Eye, Mail, User, Dog, AlertCircle, Paperclip, FileText, X } from "lucide-react";
 
 interface SendInfoPackModalProps {
   open: boolean;
@@ -23,6 +26,7 @@ interface SendInfoPackModalProps {
 
 export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModalProps) {
   const { templates, isLoading: templatesLoading } = useEmailTemplates();
+  const { attachments, getAttachmentUrl } = useEmailAttachments();
   const { currentBranch } = useBranch();
   const queryClient = useQueryClient();
   
@@ -31,6 +35,8 @@ export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModa
   const [activeTab, setActiveTab] = useState<"compose" | "preview">("compose");
   const [isSending, setIsSending] = useState(false);
   const [dogName, setDogName] = useState<string>("");
+  const [includeBankingDetails, setIncludeBankingDetails] = useState(true);
+  const [selectedAttachments, setSelectedAttachments] = useState<EmailAttachment[]>([]);
 
   // Show all active templates - admin can choose any template
   const availableTemplates = templates.filter(t => t.is_active);
@@ -58,8 +64,15 @@ export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModa
       setSelectedTemplateId("");
       setCustomMessage("");
       setActiveTab("compose");
+      setIncludeBankingDetails(true);
+      setSelectedAttachments([]);
     }
   }, [open, task]);
+
+  // Remove attachment from selection
+  const removeAttachment = (id: string) => {
+    setSelectedAttachments(prev => prev.filter(a => a.id !== id));
+  };
 
   // Build template variables for preview
   const getTemplateVariables = (): TemplateVariables => {
@@ -106,14 +119,29 @@ export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModa
       const renderedContent = renderTemplate(selectedTemplate.content, variables);
       const renderedSubject = renderTemplate(selectedTemplate.subject, variables);
 
+      // Wrap content with professional template including banking details
+      const wrappedHtml = wrapEmailContent(renderedContent, {
+        branchName: currentBranch?.name,
+        branchEmail: (currentBranch as any)?.email,
+        branchPhone: (currentBranch as any)?.phone,
+        includeBankingDetails,
+      });
+
+      // Get attachment URLs for email
+      const attachmentUrls = selectedAttachments.map(a => ({
+        name: a.name,
+        url: getAttachmentUrl(a),
+      }));
+
       // Send email via edge function
       const { error: emailError } = await supabase.functions.invoke("send-with-smtp", {
         body: {
           to: task.handler.email,
           subject: renderedSubject,
-          html: renderedContent,
+          html: wrappedHtml,
           from: undefined,
           fromName: currentBranch?.name ? `${currentBranch.name} McKaynine` : "McKaynine",
+          attachments: attachmentUrls.length > 0 ? attachmentUrls : undefined,
         },
       });
 
@@ -174,7 +202,15 @@ export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModa
     const renderedHtml = renderTemplate(selectedTemplate.content, variables);
     const renderedSubject = renderTemplate(selectedTemplate.subject, variables);
     
-    return { html: renderedHtml, subject: renderedSubject };
+    // Wrap for preview
+    const wrappedHtml = wrapEmailContent(renderedHtml, {
+      branchName: currentBranch?.name,
+      branchEmail: (currentBranch as any)?.email,
+      branchPhone: (currentBranch as any)?.phone,
+      includeBankingDetails,
+    });
+    
+    return { html: wrappedHtml, subject: renderedSubject };
   };
 
   const preview = getPreview();
@@ -264,7 +300,6 @@ export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModa
               )}
             </div>
 
-
             <div className="space-y-2">
               <Label htmlFor="custom-message">Personal Message (Optional)</Label>
               <Textarea
@@ -272,11 +307,84 @@ export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModa
                 value={customMessage}
                 onChange={(e) => setCustomMessage(e.target.value)}
                 placeholder="Add a personal note that will appear at the top of the email..."
-                className="min-h-[100px]"
+                className="min-h-[80px]"
               />
-              <p className="text-xs text-muted-foreground">
-                This message will be inserted above the main template content.
-              </p>
+            </div>
+
+            {/* Banking Details Toggle */}
+            <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+              <Checkbox
+                id="include-banking"
+                checked={includeBankingDetails}
+                onCheckedChange={(checked) => setIncludeBankingDetails(!!checked)}
+              />
+              <label htmlFor="include-banking" className="text-sm cursor-pointer">
+                Include banking details in email footer
+              </label>
+            </div>
+
+            {/* Attachment Selection */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Paperclip className="h-4 w-4" />
+                Attachments
+              </Label>
+              
+              {selectedAttachments.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {selectedAttachments.map((attachment) => (
+                    <Badge 
+                      key={attachment.id} 
+                      variant="secondary"
+                      className="flex items-center gap-1"
+                    >
+                      <FileText className="h-3 w-3" />
+                      {attachment.name}
+                      <button
+                        type="button"
+                        onClick={() => removeAttachment(attachment.id)}
+                        className="ml-1 hover:text-destructive"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
+              
+              {attachments.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No attachments available. Upload files in Email Templates → Attachments.
+                </p>
+              ) : (
+                <Select onValueChange={(id) => {
+                  const attachment = attachments.find(a => a.id === id);
+                  if (attachment && !selectedAttachments.some(a => a.id === id)) {
+                    setSelectedAttachments(prev => [...prev, attachment]);
+                  }
+                }}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Add attachment..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {attachments
+                      .filter(a => !selectedAttachments.some(sa => sa.id === a.id))
+                      .map((attachment) => (
+                        <SelectItem key={attachment.id} value={attachment.id}>
+                          <div className="flex items-center gap-2">
+                            <FileText className="h-4 w-4" />
+                            <span>{attachment.name}</span>
+                            {attachment.class_type && (
+                              <Badge variant="outline" className="text-xs">
+                                {attachment.class_type}
+                              </Badge>
+                            )}
+                          </div>
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
           </TabsContent>
 
@@ -290,6 +398,12 @@ export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModa
                   <div>
                     <strong>Subject:</strong> {preview.subject}
                   </div>
+                  {selectedAttachments.length > 0 && (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Paperclip className="h-3 w-3" />
+                      <span>{selectedAttachments.length} attachment(s)</span>
+                    </div>
+                  )}
                 </div>
                 <iframe
                   srcDoc={preview.html}
