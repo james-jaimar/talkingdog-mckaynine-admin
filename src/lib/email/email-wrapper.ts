@@ -189,6 +189,51 @@ export function wrapEmailContent(
     a {
       color: ${BRAND_BLUE};
     }
+    /* Table styles for rich content */
+    table.content-table, .content-cell table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 1em 0;
+    }
+    table.content-table th, table.content-table td,
+    .content-cell table th, .content-cell table td {
+      border: 1px solid #d1d5db;
+      padding: 8px 12px;
+      text-align: left;
+    }
+    table.content-table th, .content-cell table th {
+      background-color: #f3f4f6;
+      font-weight: 600;
+    }
+    /* Text formatting */
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1em;
+      margin-bottom: 0.5em;
+      font-weight: 600;
+      line-height: 1.3;
+      color: #1a1a1a;
+    }
+    h1 { font-size: 1.75em; }
+    h2 { font-size: 1.5em; }
+    h3 { font-size: 1.25em; }
+    p { margin: 0.5em 0; }
+    ul, ol { margin: 0.5em 0; padding-left: 1.5em; }
+    li { margin: 0.25em 0; }
+    strong, b { font-weight: 600; }
+    em, i { font-style: italic; }
+    u { text-decoration: underline; }
+    mark { padding: 0.125em 0.25em; border-radius: 0.125em; }
+    blockquote {
+      border-left: 3px solid #d1d5db;
+      margin: 1em 0;
+      padding-left: 1em;
+      color: #4b5563;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #d1d5db;
+      margin: 1.5em 0;
+    }
     @media only screen and (max-width: 620px) {
       .container {
         width: 100% !important;
