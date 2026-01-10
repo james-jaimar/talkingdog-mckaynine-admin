@@ -1,8 +1,8 @@
-
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { usePlatformTemplate } from "@/hooks/usePlatformTemplates";
 import { Loader2 } from "lucide-react";
 import { renderTemplate } from "@/lib/email/template-renderer";
+import { wrapWithPreviewStyles } from "@/lib/email/preview-styles";
 
 interface TemplatePreviewModalProps {
   open: boolean;
@@ -49,7 +49,7 @@ export function TemplatePreviewModal({ open, onOpenChange, templateId }: Templat
     return null;
   }
 
-  const previewHtml = renderTemplate(template.html_content, getSampleVariables());
+  const previewHtml = wrapWithPreviewStyles(renderTemplate(template.html_content, getSampleVariables()));
   const previewSubject = renderTemplate(template.subject, getSampleVariables());
 
   return (
@@ -65,9 +65,10 @@ export function TemplatePreviewModal({ open, onOpenChange, templateId }: Templat
               <strong>Subject:</strong> {previewSubject}
             </p>
           </div>
-          <div 
-            className="p-6 bg-white"
-            dangerouslySetInnerHTML={{ __html: previewHtml }}
+          <iframe
+            srcDoc={previewHtml}
+            className="w-full min-h-[400px] bg-white"
+            title="Email Preview"
           />
         </div>
       </DialogContent>
