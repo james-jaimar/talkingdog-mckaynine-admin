@@ -16,7 +16,7 @@ interface BookingRowProps {
   bookingData: any;
   handleInputChange: (bookingId: string, field: string, value: any) => void;
   startEditing: (booking: Booking) => void;
-  saveChanges: (bookingId: string) => void;
+  saveChanges: (bookingId: string, clientId?: string) => void;
   removeHandler: (bookingId: string) => void;
   scheduleDates?: string[];
   renderAttendanceStatus?: (booking: any, date: string) => React.ReactNode;
@@ -67,15 +67,15 @@ export function BookingRow({
       <TableCell className="text-center">
         <CheckableCell
           isEditing={isEditing}
-          checked={bookingData.is_enrolled}
-          onChange={(checked) => handleInputChange(booking.id, 'is_enrolled', checked)}
+          checked={booking.clients?.enrollment_verified ?? false}
+          onChange={(checked) => handleInputChange(booking.id, 'enrollment_verified', checked)}
         />
       </TableCell>
       
       <TableCell className="text-center">
         <CheckableCell
           isEditing={isEditing}
-          checked={bookingData.vaccination_verified}
+          checked={booking.clients?.vaccination_verified ?? false}
           onChange={(checked) => handleInputChange(booking.id, 'vaccination_verified', checked)}
         />
       </TableCell>
@@ -137,7 +137,7 @@ export function BookingRow({
       <TableCell>
         <BookingActionButtons 
           isEditing={isEditing}
-          onSave={() => saveChanges(booking.id)}
+          onSave={() => saveChanges(booking.id, booking.client_id)}
           onEdit={() => startEditing(booking)}
           onRemove={() => removeHandler(booking.id)}
         />

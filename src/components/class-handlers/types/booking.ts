@@ -26,6 +26,8 @@ export interface Booking {
     phone: string | null;
     uses_whatsapp_status: 'yes' | 'no' | 'not_marked';
     social_media_consent_status: 'yes' | 'no' | 'not_marked';
+    enrollment_verified?: boolean | null;
+    vaccination_verified?: boolean | null;
   };
   computed_payment_status?: string;
   info_eo_status?: boolean | null;

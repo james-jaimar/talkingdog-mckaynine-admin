@@ -27,8 +27,10 @@ export function useHandlerForm() {
     setFormData(prev => ({
       ...prev,
       [booking.id]: {
-        is_enrolled: booking.is_enrolled,
-        vaccination_verified: booking.vaccination_verified,
+        // Client-level fields (stored separately)
+        enrollment_verified: booking.clients?.enrollment_verified ?? false,
+        vaccination_verified: booking.clients?.vaccination_verified ?? false,
+        // Booking-level fields
         proof_of_payment: booking.proof_of_payment || '',
         additional_notes: booking.additional_notes || '',
         info_eo: booking.info_eo || false,
@@ -42,7 +44,7 @@ export function useHandlerForm() {
     setCurrentClassId(classId);
   };
 
-  const saveChanges = async (bookingId: string) => {
+  const saveChanges = async (bookingId: string, clientId?: string) => {
     if (!currentClassId) {
       toast({
         title: "Error",
@@ -53,12 +55,28 @@ export function useHandlerForm() {
     }
     
     try {
-      const { error } = await supabase
+      const data = formData[bookingId];
+      
+      // Separate client-level fields from booking-level fields
+      const { enrollment_verified, vaccination_verified, ...bookingFields } = data;
+      
+      // Update booking-level fields
+      const { error: bookingError } = await supabase
         .from('bookings')
-        .update(formData[bookingId])
+        .update(bookingFields)
         .eq('id', bookingId);
       
-      if (error) throw error;
+      if (bookingError) throw bookingError;
+      
+      // Update client-level verification fields if clientId is provided
+      if (clientId) {
+        const { error: clientError } = await supabase
+          .from('clients')
+          .update({ enrollment_verified, vaccination_verified })
+          .eq('id', clientId);
+        
+        if (clientError) throw clientError;
+      }
       
       toast({
         title: "Success",
@@ -67,8 +85,9 @@ export function useHandlerForm() {
       
       setEditingBookingId(null);
       
-      // Invalidate the query to refresh data
+      // Invalidate queries to refresh data
       queryClient.invalidateQueries({ queryKey: ['class-handlers', currentClassId] });
+      queryClient.invalidateQueries({ queryKey: ['handler-detail', clientId] });
       
       return Promise.resolve();
     } catch (error) {

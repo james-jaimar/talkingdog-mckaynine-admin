@@ -10,7 +10,7 @@ interface HandlersTableContainerProps {
   formData: Record<string, any>;
   handleInputChange: (bookingId: string, field: string, value: any) => void;
   startEditing: (booking: Booking) => void;
-  saveChanges: (bookingId: string) => void;
+  saveChanges: (bookingId: string, clientId?: string) => void;
   handleRemove: (bookingId: string) => void;
   scheduleDates: string[];
   renderAttendanceStatus?: (booking: any, date: string) => React.ReactNode;
