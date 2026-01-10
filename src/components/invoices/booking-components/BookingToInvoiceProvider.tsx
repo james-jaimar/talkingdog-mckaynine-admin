@@ -144,7 +144,7 @@ export function BookingToInvoiceProvider({
         invoice_number: invoiceNumber,
         status: status,
         issued_date: new Date(),
-        due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+        due_date: new Date(), // Due date defaults to today (same as issued date)
         notes: `Invoice for training classes. Includes ${items.length} booking(s).`,
         tax_rate: 0,
         items,

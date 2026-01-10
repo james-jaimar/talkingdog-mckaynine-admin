@@ -118,7 +118,7 @@ export const createInvoiceForHandler = async ({
 
     // Use class date if provided (for backfilling), otherwise use today
     const invoiceDate = classDate || new Date();
-    const dueDate = new Date(invoiceDate.getTime() + 14 * 24 * 60 * 60 * 1000);
+    const dueDate = invoiceDate; // Due date defaults to same as issued date
 
     // Create the invoice data object - removed fields that don't exist in the database
     const invoiceData = {
