@@ -88,7 +88,7 @@ export function CreateCustomInvoice({
         invoice_number: invoiceNumber,
         status: "draft",
         issued_date: new Date(),
-        due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+        due_date: new Date(), // Due date defaults to today (same as issued date)
         notes: values.notes || `Custom invoice for ${clientName}`,
         tax_rate: 0,
         discount_type: "fixed" as const,

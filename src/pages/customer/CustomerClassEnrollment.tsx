@@ -198,7 +198,7 @@ export default function CustomerClassEnrollment() {
           invoice_number: invoiceNumber,
           status: "sent",
           issued_date: new Date(),
-          due_date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 days
+          due_date: new Date(), // Due date defaults to today (same as issued date)
           notes: `Self-enrollment for ${classData.name} training class for ${invitation.dog.name}.`,
           tax_rate: 0,
           items: [

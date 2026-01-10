@@ -65,7 +65,7 @@ export function InvoiceCreateDialog({ open, onOpenChange }: InvoiceCreateDialogP
       invoice_number: "",
       status: "draft",
       issued_date: new Date(),
-      due_date: addDays(new Date(), 30),
+      due_date: new Date(), // Due date defaults to today (same as issued date)
       notes: "",
       tax_rate: 0, // Default is set to 0%
       items: [

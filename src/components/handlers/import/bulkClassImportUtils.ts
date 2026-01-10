@@ -557,8 +557,7 @@ async function createInvoiceForImport(
     }
 
     const subtotal = items.reduce((sum, item) => sum + item.amount, 0);
-    const dueDate = new Date(classDate);
-    dueDate.setDate(dueDate.getDate() + 14);
+    const dueDate = new Date(classDate); // Due date defaults to same as issued date
 
     // Create invoice
     const { data: invoice, error: invoiceError } = await supabase
