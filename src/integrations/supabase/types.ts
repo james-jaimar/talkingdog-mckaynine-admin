@@ -890,6 +890,7 @@ export type Database = {
           city: string | null
           created_at: string
           email: string
+          enrollment_verified: boolean | null
           first_name: string
           id: string
           last_name: string
@@ -901,6 +902,7 @@ export type Database = {
           social_media_consent_status: string
           updated_at: string
           uses_whatsapp_status: string
+          vaccination_verified: boolean | null
           vet_name: string | null
         }
         Insert: {
@@ -911,6 +913,7 @@ export type Database = {
           city?: string | null
           created_at?: string
           email: string
+          enrollment_verified?: boolean | null
           first_name: string
           id?: string
           last_name: string
@@ -922,6 +925,7 @@ export type Database = {
           social_media_consent_status?: string
           updated_at?: string
           uses_whatsapp_status?: string
+          vaccination_verified?: boolean | null
           vet_name?: string | null
         }
         Update: {
@@ -932,6 +936,7 @@ export type Database = {
           city?: string | null
           created_at?: string
           email?: string
+          enrollment_verified?: boolean | null
           first_name?: string
           id?: string
           last_name?: string
@@ -943,6 +948,7 @@ export type Database = {
           social_media_consent_status?: string
           updated_at?: string
           uses_whatsapp_status?: string
+          vaccination_verified?: boolean | null
           vet_name?: string | null
         }
         Relationships: [

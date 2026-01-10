@@ -39,6 +39,9 @@ export interface HandlerData {
   account_holder_name?: string;
   uses_whatsapp_status: ConsentStatus;
   social_media_consent_status: ConsentStatus;
+  // Handler-level admin verification fields
+  enrollment_verified?: boolean;
+  vaccination_verified?: boolean;
   created_at: string;
   updated_at: string;
   dogs?: Array<{
@@ -70,15 +73,4 @@ export interface HandlerData {
     updated_at?: string;
   }>;
   enrollment_registrations?: EnrollmentRegistration[];
-  bookings?: Array<{
-    id: string;
-    is_enrolled: boolean | null;
-    vaccination_verified: boolean | null;
-    dog_id: string;
-    class_schedule_id: string;
-    dogs?: {
-      id: string;
-      name: string;
-    };
-  }>;
 }
