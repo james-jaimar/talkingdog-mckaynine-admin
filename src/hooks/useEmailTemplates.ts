@@ -119,6 +119,28 @@ export function useEmailTemplates() {
 
   const deleteTemplate = useMutation({
     mutationFn: async (id: string) => {
+      // First, clear any references in email_queue to avoid foreign key constraint
+      const { error: queueError } = await supabase
+        .from("email_queue")
+        .update({ template_id: null })
+        .eq("template_id", id);
+      
+      if (queueError) {
+        console.warn("Could not clear email_queue references:", queueError);
+        // Continue anyway - the queue might not have any references
+      }
+
+      // Also clear references in email_log
+      const { error: logError } = await supabase
+        .from("email_log")
+        .update({ template_id: null })
+        .eq("template_id", id);
+      
+      if (logError) {
+        console.warn("Could not clear email_log references:", logError);
+      }
+
+      // Now delete the template
       const { error } = await supabase
         .from("branch_email_templates")
         .delete()
