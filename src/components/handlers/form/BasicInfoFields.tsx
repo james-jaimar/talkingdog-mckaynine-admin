@@ -10,7 +10,7 @@ interface BasicInfoFieldsProps {
 
 export function BasicInfoFields({ control }: BasicInfoFieldsProps) {
   return (
-    <div className="w-full">
+    <div className="grid grid-cols-2 gap-4">
       <FormField
         control={control}
         name="first_name"
@@ -19,6 +19,19 @@ export function BasicInfoFields({ control }: BasicInfoFieldsProps) {
             <FormLabel>First Name</FormLabel>
             <FormControl>
               <Input {...field} />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+      <FormField
+        control={control}
+        name="last_name"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Last Name</FormLabel>
+            <FormControl>
+              <Input {...field} value={field.value || ''} />
             </FormControl>
             <FormMessage />
           </FormItem>
