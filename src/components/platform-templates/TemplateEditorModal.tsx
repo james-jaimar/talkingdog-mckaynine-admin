@@ -9,10 +9,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { usePlatformTemplates, usePlatformTemplate, ConfigurableField } from "@/hooks/usePlatformTemplates";
-import { Loader2, Save, Plus, Trash2, Eye, Code } from "lucide-react";
+import { Loader2, Save, Plus, Trash2, Eye, Code, FileUp } from "lucide-react";
 import { RichTextEditor } from "./RichTextEditor";
 import { ConfigurableFieldsManager } from "./ConfigurableFieldsManager";
 import { renderTemplate } from "@/lib/email/template-renderer";
+import { WordUploadModal } from "./WordUploadModal";
 
 interface TemplateEditorModalProps {
   open: boolean;
@@ -43,6 +44,7 @@ export function TemplateEditorModal({ open, onOpenChange, templateId }: Template
   const { data: existingTemplate, isLoading } = usePlatformTemplate(templateId);
   
   const [activeTab, setActiveTab] = useState("editor");
+  const [showWordUpload, setShowWordUpload] = useState(false);
   
   // Form state
   const [code, setCode] = useState("");
@@ -120,6 +122,16 @@ export function TemplateEditorModal({ open, onOpenChange, templateId }: Template
   };
 
   const previewHtml = renderTemplate(htmlContent, getSampleVariables());
+
+  const handleWordConversion = (convertedHtml: string, suggestedName: string) => {
+    setHtmlContent(convertedHtml);
+    if (!name) {
+      setName(suggestedName);
+    }
+    if (!subject) {
+      setSubject(`${suggestedName} - {{branch_name}}`);
+    }
+  };
 
   if (isLoading && templateId) {
     return (
@@ -226,10 +238,23 @@ export function TemplateEditorModal({ open, onOpenChange, templateId }: Template
 
               {/* Right: Content Editor */}
               <div className="space-y-2">
-                <Label>Email Content</Label>
-                <p className="text-xs text-muted-foreground mb-2">
-                  Write your email using the toolbar to format text and insert merge fields.
-                </p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>Email Content</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Write your email or import from a Word document.
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowWordUpload(true)}
+                  >
+                    <FileUp className="h-4 w-4 mr-2" />
+                    Import from Word
+                  </Button>
+                </div>
                 <RichTextEditor
                   content={htmlContent}
                   onChange={setHtmlContent}
@@ -276,6 +301,12 @@ export function TemplateEditorModal({ open, onOpenChange, templateId }: Template
             Save Template
           </Button>
         </div>
+
+        <WordUploadModal
+          open={showWordUpload}
+          onOpenChange={setShowWordUpload}
+          onConversionComplete={handleWordConversion}
+        />
       </DialogContent>
     </Dialog>
   );
