@@ -30,6 +30,54 @@ const BANKING_DETAILS = {
   reference: "Please use your name as reference.",
 };
 
+// Branch-specific signature configurations
+interface BranchSignature {
+  name: string;
+  title: string;
+  phone: string;
+  company: string;
+  email: string;
+  website: string;
+}
+
+const BRANCH_SIGNATURES: Record<string, BranchSignature> = {
+  "Delta": {
+    name: "Ady Hawkins",
+    title: "Branch Manager",
+    phone: "083 400 2987",
+    company: "McKaynine Training Centre",
+    email: "delta@mckaynine.co.za",
+    website: "www.mckaynine.co.za",
+  },
+  "Randburg": {
+    name: "Ady Hawkins",
+    title: "Branch Manager",
+    phone: "083 400 2987",
+    company: "McKaynine Training Centre",
+    email: "randburg@mckaynine.co.za",
+    website: "www.mckaynine.co.za",
+  },
+};
+
+function getSignatureHtml(branchName?: string): string {
+  let signature: BranchSignature;
+  
+  if (branchName?.toLowerCase().includes("randburg")) {
+    signature = BRANCH_SIGNATURES["Randburg"];
+  } else {
+    signature = BRANCH_SIGNATURES["Delta"];
+  }
+  
+  return `<p style="margin: 20px 0 0 0; font-size: 14px; color: #333333; line-height: 1.6;">
+    <strong style="color: #2c5530;">${signature.name}</strong><br>
+    ${signature.title}<br>
+    📞 ${signature.phone}<br>
+    ${signature.company}<br>
+    ✉️ <a href="mailto:${signature.email}" style="color: #3b82f6; text-decoration: none;">${signature.email}</a><br>
+    🌐 <a href="https://${signature.website}" style="color: #3b82f6; text-decoration: none;">${signature.website}</a>
+  </p>`;
+}
+
 /**
  * Gets the from email config based on branch_id
  */
@@ -170,8 +218,7 @@ function createInvoiceEmailHtml(
       If you have any questions regarding this invoice, please don't hesitate to contact us.
     </p>
     
-    <p style="margin: 0 0 4px 0; font-size: 15px; color: #333333;">Kind regards,</p>
-    <p style="margin: 0; font-size: 15px; color: #333333; font-weight: 600;">${branchName}</p>
+    ${getSignatureHtml(branchName)}
   `;
 
   // Build the banking section (only for unpaid invoices)

@@ -169,7 +169,14 @@ serve(async (req: Request) => {
             
             <p>Thank you for your services and dedication to our training program.</p>
             
-            <p>Best regards,<br>McKaynine Training Centre</p>
+            <p style="margin: 20px 0 0 0; font-size: 14px; color: #333333; line-height: 1.6;">
+              <strong style="color: #2c5530;">Ady Hawkins</strong><br>
+              Branch Manager<br>
+              📞 083 400 2987<br>
+              McKaynine Training Centre<br>
+              ✉️ <a href="mailto:delta@mckaynine.co.za" style="color: #3b82f6; text-decoration: none;">delta@mckaynine.co.za</a><br>
+              🌐 <a href="https://www.mckaynine.co.za" style="color: #3b82f6; text-decoration: none;">www.mckaynine.co.za</a>
+            </p>
           </div>
           <div class="footer">
             <p>This is an automated email. Please do not reply to this message.</p>

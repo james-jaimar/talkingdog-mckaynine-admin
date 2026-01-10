@@ -1,3 +1,4 @@
+import { getEmailSignature } from "./email-wrapper";
 
 /**
  * Available merge fields for email templates
@@ -17,6 +18,7 @@ export const AVAILABLE_MERGE_FIELDS = [
   { key: "banking_details", label: "Banking Details", example: "McKaynine (Pty) Ltd, FNB, Acc: 12345678" },
   { key: "base_url", label: "Base URL (for images)", example: "https://mckaynine.talkingdog.co.za" },
   { key: "custom_message", label: "Custom Message", example: "Your personalized message here" },
+  { key: "signature", label: "Email Signature", example: "Ady Hawkins, Branch Manager..." },
 ] as const;
 
 export type MergeFieldKey = typeof AVAILABLE_MERGE_FIELDS[number]["key"];
@@ -36,7 +38,18 @@ export interface TemplateVariables {
   banking_details?: string;
   base_url?: string;
   custom_message?: string;
+  signature?: string;
   [key: string]: string | undefined;
+}
+
+/**
+ * Get variables with auto-generated signature based on branch
+ */
+export function getVariablesWithSignature(variables: TemplateVariables): TemplateVariables {
+  return {
+    ...variables,
+    signature: variables.signature || getEmailSignature(variables.branch_name),
+  };
 }
 
 /**
@@ -90,7 +103,7 @@ export function getSampleTemplate(): string {
   
   <p>If you have any questions, please don't hesitate to reach out to us.</p>
   
-  <p>Kind regards,<br>The {{branch_name}} Team</p>
+  {{signature}}
 </div>`;
 }
 
@@ -98,6 +111,7 @@ export function getSampleTemplate(): string {
  * Generate sample variables for preview
  */
 export function getSampleVariables(): TemplateVariables {
+  const branchName = "McKaynine Delta";
   return {
     handler_name: "John",
     handler_full_name: "John Smith",
@@ -105,7 +119,7 @@ export function getSampleVariables(): TemplateVariables {
     dog_name: "Buddy",
     completed_class: "Puppy",
     next_class: "EO",
-    branch_name: "McKaynine Training",
+    branch_name: branchName,
     branch_email: "info@mckaynine.co.za",
     branch_phone: "082 123 4567",
     class_day_time: "Saturdays 09h00 - 10h00",
@@ -113,5 +127,6 @@ export function getSampleVariables(): TemplateVariables {
     banking_details: "McKaynine (Pty) Ltd, FNB, Acc: 12345678, Branch: 250655",
     base_url: window.location.origin,
     custom_message: "We hope you and Buddy are doing well!",
+    signature: getEmailSignature(branchName),
   };
 }
