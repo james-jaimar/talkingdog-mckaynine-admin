@@ -239,8 +239,8 @@ export function useFranchiseClassesData(termId?: string) {
               ? (invoiceAmount * (classItem.mckaynine_commission_value || 0)) / 100
               : classItem.mckaynine_commission_value || 0;
             
-            // Total = course fee + enrollment fee
-            const totalAmount = invoiceAmount + enrollmentFeeAmount;
+            // Total due to franchise = enrollment fee + franchise fee (15% of course fee)
+            const totalAmount = enrollmentFeeAmount + franchiseFee;
 
             handlers.push({
               clientId: booking.clients.id,

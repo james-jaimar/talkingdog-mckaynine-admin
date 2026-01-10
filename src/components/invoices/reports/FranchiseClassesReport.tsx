@@ -144,7 +144,8 @@ export function FranchiseClassesReport({ termId, termLabel }: FranchiseClassesRe
               </p>
             </div>
             <div className="bg-purple-50 p-4 rounded-lg">
-              <h3 className="font-semibold text-purple-900">Total</h3>
+              <h3 className="font-semibold text-purple-900">Total Due</h3>
+              <p className="text-xs text-purple-700 mb-1">Enrollment + Franchise</p>
               <p className="text-2xl font-bold text-purple-600">
                 {formatCurrency(franchiseData.reportTotals.totalAmount)}
               </p>
@@ -218,7 +219,7 @@ export function FranchiseClassesReport({ termId, termLabel }: FranchiseClassesRe
                       <span>Course Fees: {formatCurrency(classGroup.classTotals.totalCourseFees)}</span>
                       <span>Enrollment Fees: {formatCurrency(classGroup.classTotals.totalEnrollmentFees)}</span>
                       <span className="text-green-600">Franchise Fee: {formatCurrency(classGroup.classTotals.totalFranchiseFees)}</span>
-                      <span>Total: {formatCurrency(classGroup.classTotals.totalAmount)}</span>
+                      <span className="text-purple-600">Total Due: {formatCurrency(classGroup.classTotals.totalAmount)}</span>
                     </div>
                   </div>
                 </CardContent>
