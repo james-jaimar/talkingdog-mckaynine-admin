@@ -15,18 +15,6 @@ import { useQueryClient } from "@tanstack/react-query";
 
 type ConsentStatus = 'yes' | 'no' | 'not_marked' | 'unsure';
 
-interface HandlerBooking {
-  id: string;
-  is_enrolled: boolean | null;
-  vaccination_verified: boolean | null;
-  dog_id: string;
-  class_schedule_id: string;
-  dogs?: {
-    id: string;
-    name: string;
-  };
-}
-
 interface HandlerInfoProps {
   handler: {
     id: string;
@@ -46,7 +34,9 @@ interface HandlerInfoProps {
     uses_whatsapp_status?: ConsentStatus;
     social_media_consent_status?: ConsentStatus;
     enrollment_registrations?: EnrollmentRegistration[];
-    bookings?: HandlerBooking[];
+    // Handler-level admin verification fields
+    enrollment_verified?: boolean;
+    vaccination_verified?: boolean;
   };
 }
 
@@ -113,45 +103,19 @@ export function HandlerInfo({ handler }: HandlerInfoProps) {
     };
   }, [handler.enrollment_registrations, handler.uses_whatsapp_status, handler.social_media_consent_status]);
 
-  // Calculate aggregate admin verification status from all bookings
-  const adminVerification = useMemo(() => {
-    const bookings = handler.bookings || [];
-    if (bookings.length === 0) {
-      return { hasEnrolled: false, hasVaccVerified: false, bookingCount: 0 };
-    }
-    
-    // Check if ANY booking has these verified
-    const hasEnrolled = bookings.some(b => b.is_enrolled === true);
-    const hasVaccVerified = bookings.some(b => b.vaccination_verified === true);
-    
-    return { hasEnrolled, hasVaccVerified, bookingCount: bookings.length };
-  }, [handler.bookings]);
-
-  // Update all bookings for this handler
-  const handleAdminVerificationChange = async (field: 'is_enrolled' | 'vaccination_verified', checked: boolean) => {
-    const bookings = handler.bookings || [];
-    if (bookings.length === 0) {
-      toast({
-        title: "No bookings found",
-        description: "This handler has no class bookings to update.",
-        variant: "destructive",
-      });
-      return;
-    }
-
+  // Update handler-level verification status
+  const handleAdminVerificationChange = async (field: 'enrollment_verified' | 'vaccination_verified', checked: boolean) => {
     try {
-      // Update all bookings for this client
-      const bookingIds = bookings.map(b => b.id);
       const { error } = await supabase
-        .from('bookings')
+        .from('clients')
         .update({ [field]: checked })
-        .in('id', bookingIds);
+        .eq('id', handler.id);
 
       if (error) throw error;
 
       toast({
         title: "Updated",
-        description: `${field === 'is_enrolled' ? 'Enrollment form' : 'Vaccination'} status updated for all bookings.`,
+        description: `${field === 'enrollment_verified' ? 'Enrollment form' : 'Vaccination certificate'} status updated.`,
       });
 
       // Refresh the handler data
@@ -277,9 +241,8 @@ export function HandlerInfo({ handler }: HandlerInfoProps) {
                 <span className="text-sm">Enrollment Form Received</span>
               </div>
               <Checkbox
-                checked={adminVerification.hasEnrolled}
-                onCheckedChange={(checked) => handleAdminVerificationChange('is_enrolled', !!checked)}
-                disabled={adminVerification.bookingCount === 0}
+                checked={handler.enrollment_verified ?? false}
+                onCheckedChange={(checked) => handleAdminVerificationChange('enrollment_verified', !!checked)}
               />
             </div>
             <div className="flex items-center justify-between">
@@ -288,14 +251,10 @@ export function HandlerInfo({ handler }: HandlerInfoProps) {
                 <span className="text-sm">Vaccination Certificate</span>
               </div>
               <Checkbox
-                checked={adminVerification.hasVaccVerified}
+                checked={handler.vaccination_verified ?? false}
                 onCheckedChange={(checked) => handleAdminVerificationChange('vaccination_verified', !!checked)}
-                disabled={adminVerification.bookingCount === 0}
               />
             </div>
-            {adminVerification.bookingCount === 0 && (
-              <p className="text-xs text-muted-foreground">No bookings found for this handler</p>
-            )}
           </div>
         </div>
         
