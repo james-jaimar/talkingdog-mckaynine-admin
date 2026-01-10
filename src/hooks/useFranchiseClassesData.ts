@@ -8,16 +8,17 @@ import { getCourseFeeAmount, getEnrollmentFeeAmount } from '@/lib/invoiceItemUti
 export interface FranchiseHandler {
   clientId: string;
   clientName: string;
+  clientEmail: string;
   dogId: string;
   dogName: string;
   dogBreed: string;
   paymentStatus: string;
   attendanceCount: number;
   totalClasses: number;
-  invoiceAmount: number;
+  courseFeeAmount: number;
+  enrollmentFeeAmount: number;
   franchiseFee: number;
-  adminFee: number;
-  mckaynineCommission: number;
+  totalAmount: number;
 }
 
 export interface FranchiseClassGroup {
@@ -32,21 +33,20 @@ export interface FranchiseClassGroup {
   mckaynineCommissionValue: number;
   handlers: FranchiseHandler[];
   classTotals: {
-    totalRevenue: number;
+    totalCourseFees: number;
+    totalEnrollmentFees: number;
     totalFranchiseFees: number;
-    totalAdminFees: number;
-    totalMckaynineCommission: number;
+    totalAmount: number;
   };
 }
 
 export interface FranchiseReportData {
   classes: FranchiseClassGroup[];
   reportTotals: {
-    totalRevenue: number;
+    totalCourseFees: number;
     totalEnrollmentFees: number;
     totalFranchiseFees: number;
-    totalAdminFees: number;
-    totalMckaynineCommission: number;
+    totalAmount: number;
     totalHandlers: number;
   };
 }
@@ -68,11 +68,10 @@ export function useFranchiseClassesData(termId?: string) {
         return { 
           classes: [], 
           reportTotals: { 
-            totalRevenue: 0, 
+            totalCourseFees: 0, 
             totalEnrollmentFees: 0,
             totalFranchiseFees: 0, 
-            totalAdminFees: 0, 
-            totalMckaynineCommission: 0, 
+            totalAmount: 0, 
             totalHandlers: 0 
           } 
         };
@@ -136,7 +135,7 @@ export function useFranchiseClassesData(termId?: string) {
           bookings(
             id,
             payment_status,
-            clients(id, first_name, last_name),
+            clients(id, first_name, last_name, email),
             dogs(id, name, breed),
             attendances:class_attendance(attendance_status),
             invoice_items(
@@ -172,11 +171,10 @@ export function useFranchiseClassesData(termId?: string) {
       // Process the data
       const franchiseClasses: FranchiseClassGroup[] = [];
       let reportTotals = {
-        totalRevenue: 0,
+        totalCourseFees: 0,
         totalEnrollmentFees: 0,
         totalFranchiseFees: 0,
-        totalAdminFees: 0,
-        totalMckaynineCommission: 0,
+        totalAmount: 0,
         totalHandlers: 0
       };
 
@@ -192,10 +190,10 @@ export function useFranchiseClassesData(termId?: string) {
 
         const handlers: FranchiseHandler[] = [];
         let classTotals = {
-          totalRevenue: 0,
+          totalCourseFees: 0,
+          totalEnrollmentFees: 0,
           totalFranchiseFees: 0,
-          totalAdminFees: 0,
-          totalMckaynineCommission: 0
+          totalAmount: 0
         };
 
         classSchedules.forEach(schedule => {
@@ -234,48 +232,37 @@ export function useFranchiseClassesData(termId?: string) {
                 paymentStatus = 'paid';
               }
             }
-            
-            // Track enrollment fees at report level
-            reportTotals.totalEnrollmentFees += enrollmentFeeAmount;
 
             // Calculate fees based on class configuration
-            // IMPORTANT: All percentage-based fees are calculated on COURSE FEE only
-            const calculateFee = (type: string, value: number, baseAmount: number) => {
-              if (type === 'percentage') {
-                return (baseAmount * value) / 100;
-              } else if (type === 'fixed') {
-                return value;
-              }
-              return 0;
-            };
-
             // Franchise Fee = McKaynine Commission (15%) - calculated on course fee only
-            const franchiseFee = calculateFee(classItem.mckaynine_commission_type, classItem.mckaynine_commission_value, invoiceAmount);
-            // Admin Fee - calculated on course fee only
-            const adminFee = calculateFee(classItem.admin_fee_type, classItem.admin_fee_value, invoiceAmount);
-            // Commission column = Trainer Fee (40%) - calculated on course fee only
-            const mckaynineCommission = calculateFee(classItem.trainer_fee_type, classItem.trainer_fee_value, invoiceAmount);
+            const franchiseFee = classItem.mckaynine_commission_type === 'percentage'
+              ? (invoiceAmount * (classItem.mckaynine_commission_value || 0)) / 100
+              : classItem.mckaynine_commission_value || 0;
+            
+            // Total = course fee + enrollment fee
+            const totalAmount = invoiceAmount + enrollmentFeeAmount;
 
             handlers.push({
               clientId: booking.clients.id,
               clientName: `${booking.clients.first_name} ${booking.clients.last_name}`,
+              clientEmail: booking.clients.email || '',
               dogId: booking.dogs.id,
               dogName: booking.dogs.name,
               dogBreed: booking.dogs.breed,
               paymentStatus,
               attendanceCount,
               totalClasses,
-              invoiceAmount,
+              courseFeeAmount: invoiceAmount,
+              enrollmentFeeAmount,
               franchiseFee,
-              adminFee,
-              mckaynineCommission
+              totalAmount
             });
 
             // Add to class totals
-            classTotals.totalRevenue += invoiceAmount;
+            classTotals.totalCourseFees += invoiceAmount;
+            classTotals.totalEnrollmentFees += enrollmentFeeAmount;
             classTotals.totalFranchiseFees += franchiseFee;
-            classTotals.totalAdminFees += adminFee;
-            classTotals.totalMckaynineCommission += mckaynineCommission;
+            classTotals.totalAmount += totalAmount;
           });
         });
 
@@ -297,10 +284,10 @@ export function useFranchiseClassesData(termId?: string) {
           });
 
           // Add to report totals
-          reportTotals.totalRevenue += classTotals.totalRevenue;
+          reportTotals.totalCourseFees += classTotals.totalCourseFees;
+          reportTotals.totalEnrollmentFees += classTotals.totalEnrollmentFees;
           reportTotals.totalFranchiseFees += classTotals.totalFranchiseFees;
-          reportTotals.totalAdminFees += classTotals.totalAdminFees;
-          reportTotals.totalMckaynineCommission += classTotals.totalMckaynineCommission;
+          reportTotals.totalAmount += classTotals.totalAmount;
           reportTotals.totalHandlers += handlers.length;
         }
       });
