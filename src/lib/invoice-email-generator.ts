@@ -158,8 +158,8 @@ export function buildInvoiceEmailHtml(
         <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width: 600px; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.07);">
           <!-- Logo Header -->
           <tr>
-            <td align="center" style="padding: 32px 40px 24px 40px; border-bottom: 1px solid #e5e7eb;">
-              <img src="${logoUrl}" alt="${branchName}" style="max-width: 180px; height: auto; display: block;" />
+            <td align="center" style="padding: 28px 32px 20px 32px; border-bottom: 1px solid #e5e7eb;">
+              <img src="${logoUrl}" alt="${branchName}" width="180" style="display: block; margin: 0 auto; max-width: 180px; width: 180px; height: auto; border: 0;" />
             </td>
           </tr>
           <!-- Content -->
