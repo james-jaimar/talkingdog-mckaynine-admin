@@ -153,7 +153,7 @@ export function SendQuickEmailModal({ open, onOpenChange, handler }: SendQuickEm
       base_url: "https://mckaynine.talkingdog.co.za",
       // Merge configured template variables (but allow UI fields to override)
       ...configVars,
-      custom_message: customMessage,
+      custom_message: customMessage.replace(/\n/g, '<br>'),
     };
   };
 
