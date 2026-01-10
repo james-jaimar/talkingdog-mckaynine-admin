@@ -45,11 +45,9 @@ export function ClassFinancialReport({ dateRange, onRefreshSuccess }: ClassFinan
   const profitPercentage = courseFeeRevenue > 0 ? (totalProfit / courseFeeRevenue) * 100 : 0;
   
   // Check for discrepancy between course fee revenue and calculated class revenues
-  // Note: The difference between totalRevenue and classesTotalRevenue should be approximately 
-  // the enrollment fee amount since class revenues only include course fees
-  const unexplainedDiscrepancy = Math.abs(courseFeeRevenue - classesTotalRevenue) > 1
-    ? courseFeeRevenue - classesTotalRevenue
-    : 0;
+  // A small discrepancy (< R10) is acceptable due to rounding
+  const discrepancyAmount = courseFeeRevenue - classesTotalRevenue;
+  const unexplainedDiscrepancy = Math.abs(discrepancyAmount) > 10 ? discrepancyAmount : 0;
 
   // Log the relationship between bookings and invoices for debugging
   console.log("ClassFinancialReport - total bookings:", totalBookings);

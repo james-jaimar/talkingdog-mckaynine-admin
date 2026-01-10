@@ -1,263 +1,238 @@
-
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { FinancialData } from "./types";
 import { getCourseFeeAmount, getEnrollmentFeeAmount } from "@/lib/invoiceItemUtils";
 
+/**
+ * Simplified financial query hook
+ * 
+ * Strategy:
+ * 1. Fetch invoices filtered by branch, status, and date range
+ * 2. Use invoice IDs to fetch invoice_items (no nested join filtering)
+ * 3. Use booking IDs from invoice_items to fetch only relevant bookings
+ * 
+ * This eliminates nested join filtering issues and ensures data consistency.
+ */
 export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?: string) {
-  const queryClient = useQueryClient();
-  const invoicesKey = ['invoices', branchId];
-  const invoicesData = queryClient.getQueryData(invoicesKey);
-
   return useQuery({
-    queryKey: ['financial-bookings', branchId, fromDate, toDate, invoicesData],
-    queryFn: async () => {
-      if (!branchId) return {
-        bookingsWithInvoices: [],
-        allInvoicesCount: 0,
-        invalidInvoicesCount: 0,
-        totalRevenue: 0,
-        courseFeeRevenue: 0,
-        enrollmentFeeRevenue: 0,
-        invoiceItems: [],
-        invoices: [],
-        branchId: null
-      } as FinancialData;
+    // Simple, deterministic query key - no cached objects
+    queryKey: ['financial-data', branchId, fromDate, toDate],
+    queryFn: async (): Promise<FinancialData> => {
+      if (!branchId) {
+        return {
+          bookingsWithInvoices: [],
+          allInvoicesCount: 0,
+          invalidInvoicesCount: 0,
+          totalRevenue: 0,
+          courseFeeRevenue: 0,
+          enrollmentFeeRevenue: 0,
+          invoiceItems: [],
+          invoices: [],
+          branchId: undefined
+        };
+      }
 
-      console.log(`Fetching financial data for branch ${branchId} from ${fromDate} to ${toDate}`);
+      console.log(`[FinancialQuery] Fetching for branch ${branchId}, dates: ${fromDate} to ${toDate}`);
 
-      // Get all valid invoices for this branch - directly using the invoices table
+      // STEP 1: Fetch invoices for this branch with date/status filters
       let invoicesQuery = supabase
         .from('invoices')
         .select(`
           id,
-          total, 
+          total,
+          subtotal,
           status,
           client_id,
           issued_date,
-          client:client_id (branch_id)
+          invoice_number,
+          client:client_id (
+            id,
+            branch_id
+          )
         `)
-        .eq('client.branch_id', branchId)
         .in('status', ['sent', 'paid', 'overdue']);
 
-      if (fromDate && toDate) {
-        invoicesQuery = invoicesQuery.gte('issued_date', fromDate).lte('issued_date', toDate);
+      // Apply date filters if provided
+      if (fromDate) {
+        invoicesQuery = invoicesQuery.gte('issued_date', fromDate);
+      }
+      if (toDate) {
+        invoicesQuery = invoicesQuery.lte('issued_date', toDate);
       }
 
-      const { data: invoices, error: invoicesError } = await invoicesQuery;
+      const { data: allInvoices, error: invoicesError } = await invoicesQuery;
 
       if (invoicesError) {
-        console.error("Error fetching invoices:", invoicesError);
+        console.error("[FinancialQuery] Error fetching invoices:", invoicesError);
         throw invoicesError;
       }
 
-      console.log(`Found ${invoices?.length || 0} invoices for branch ${branchId}`);
-
-      // Verify all invoices actually belong to the correct branch
-      const validInvoices = invoices.filter(inv => 
-        !inv.client?.branch_id || inv.client.branch_id === branchId
+      // Filter invoices to only include those for this branch
+      const invoices = (allInvoices || []).filter(inv => 
+        inv.client?.branch_id === branchId
       );
 
-      if (validInvoices.length !== invoices.length) {
-        console.warn(
-          `Filtered out ${invoices.length - validInvoices.length} invoices that don't match branch ${branchId}`
-        );
-      }
-
-      // Calculate total revenue directly from invoices total column
-      const totalRevenueFromInvoices = validInvoices.reduce((sum, inv) => sum + (inv.total || 0), 0) || 0;
-
-      // Set up query for confirmed bookings with their class information
-      let query = supabase
-        .from('bookings')
-        .select(`
-          id,
-          payment_status,
-          client_id,
-          clients:client_id (branch_id),
-          class_schedules:class_schedule_id (
-            classes:class_id (
-              id,
-              name,
-              course_fee,
-              mckaynine_commission_type,
-              mckaynine_commission_value,
-              admin_fee_type,
-              admin_fee_value,
-              trainer_fee_value,
-              trainer_fee_type,
-              branch_id
-            )
-          )
-        `)
-        .eq('status', 'confirmed');
+      const invoiceIds = invoices.map(inv => inv.id);
       
-      // Additional filter to ensure we only get bookings for the correct branch
-      // Either filter by the class's branch_id or by the client's branch_id
-      query = query
-        .eq('clients.branch_id', branchId)
-        .eq('class_schedules.classes.branch_id', branchId);
+      console.log(`[FinancialQuery] Found ${invoices.length} invoices for branch (filtered from ${allInvoices?.length || 0} total)`);
 
-      // NOTE: Do NOT filter bookings by created_at date - booking dates can be corrupted
-      // Instead, we rely on invoice_items to link invoices (filtered by issued_date) to bookings
-      // This ensures we get all bookings that are linked to invoices in the selected date range
+      // Calculate total revenue from filtered invoices
+      const totalRevenue = invoices.reduce((sum, inv) => sum + (inv.total || 0), 0);
 
-      const { data: bookings, error: bookingsError } = await query;
-
-      if (bookingsError) {
-        console.error("Error fetching booking data for financial report:", bookingsError);
-        throw bookingsError;
-      }
-
-      // Verify all bookings actually have the correct branch
-      const validBookings = bookings.filter(booking => 
-        (!booking.clients?.branch_id || booking.clients.branch_id === branchId) &&
-        (!booking.class_schedules?.classes?.branch_id || booking.class_schedules.classes.branch_id === branchId)
-      );
+      // STEP 2: Fetch invoice items by invoice IDs (simple IN query, no nested filters)
+      let invoiceItems: any[] = [];
       
-      if (validBookings.length !== bookings.length) {
-        console.warn(
-          `Filtered out ${bookings.length - validBookings.length} bookings that don't match branch ${branchId}`
-        );
-      }
-
-      console.log(`Found ${validBookings?.length || 0} valid bookings for branch ${branchId}`);
-
-      // Get invoice items with full invoice details - we'll still need this to link invoices to bookings
-      // IMPORTANT: Include item_type to distinguish course fees from enrollment fees
-      let invoiceItemsQuery = supabase
-        .from('invoice_items')
-        .select(`
-          id,
-          invoice_id,
-          booking_id,
-          amount,
-          unit_price,
-          quantity,
-          description,
-          item_type,
-          invoices:invoice_id (
-            id,
-            status,
-            payment_received,
-            total,
-            subtotal,
-            tax_amount,
-            client_id,
-            issued_date,
-            invoice_number,
-            client:client_id (
-              branch_id
-            )
-          )
-        `)
-        .in('invoices.status', ['sent', 'paid', 'overdue']);
+      if (invoiceIds.length > 0) {
+        // Supabase has a limit on IN queries, batch if needed
+        const batchSize = 100;
+        const batches = [];
         
-      // Add branch filter to invoice items
-      invoiceItemsQuery = invoiceItemsQuery
-        .eq('invoices.client.branch_id', branchId);
+        for (let i = 0; i < invoiceIds.length; i += batchSize) {
+          batches.push(invoiceIds.slice(i, i + batchSize));
+        }
 
-      if (fromDate && toDate) {
-        invoiceItemsQuery = invoiceItemsQuery
-          .gte('invoices.issued_date', fromDate)
-          .lte('invoices.issued_date', toDate);
+        for (const batch of batches) {
+          const { data: batchItems, error: itemsError } = await supabase
+            .from('invoice_items')
+            .select(`
+              id,
+              invoice_id,
+              booking_id,
+              amount,
+              unit_price,
+              quantity,
+              description,
+              item_type
+            `)
+            .in('invoice_id', batch);
+
+          if (itemsError) {
+            console.error("[FinancialQuery] Error fetching invoice items:", itemsError);
+            throw itemsError;
+          }
+
+          invoiceItems = invoiceItems.concat(batchItems || []);
+        }
       }
 
-      const { data: invoiceItems, error: invoiceItemsError } = await invoiceItemsQuery;
+      console.log(`[FinancialQuery] Found ${invoiceItems.length} invoice items`);
 
-      if (invoiceItemsError) {
-        console.error("Error fetching invoice items:", invoiceItemsError);
-        throw invoiceItemsError;
+      // Count items with and without booking_id for debugging
+      const itemsWithBooking = invoiceItems.filter(item => item.booking_id).length;
+      const itemsWithoutBooking = invoiceItems.filter(item => !item.booking_id).length;
+      console.log(`[FinancialQuery] Items with booking_id: ${itemsWithBooking}, without: ${itemsWithoutBooking}`);
+
+      // Calculate course fee and enrollment fee from invoice items
+      const courseFeeRevenue = getCourseFeeAmount(invoiceItems);
+      const enrollmentFeeRevenue = getEnrollmentFeeAmount(invoiceItems);
+
+      // STEP 3: Get unique booking IDs from invoice items and fetch only those bookings
+      const bookingIds = [...new Set(invoiceItems
+        .map(item => item.booking_id)
+        .filter(Boolean)
+      )];
+
+      console.log(`[FinancialQuery] Fetching ${bookingIds.length} bookings referenced by invoice items`);
+
+      let bookings: any[] = [];
+      
+      if (bookingIds.length > 0) {
+        // Batch booking queries if needed
+        const batchSize = 100;
+        const batches = [];
+        
+        for (let i = 0; i < bookingIds.length; i += batchSize) {
+          batches.push(bookingIds.slice(i, i + batchSize));
+        }
+
+        for (const batch of batches) {
+          const { data: batchBookings, error: bookingsError } = await supabase
+            .from('bookings')
+            .select(`
+              id,
+              payment_status,
+              client_id,
+              clients:client_id (
+                id,
+                branch_id
+              ),
+              class_schedules:class_schedule_id (
+                id,
+                classes:class_id (
+                  id,
+                  name,
+                  course_fee,
+                  mckaynine_commission_type,
+                  mckaynine_commission_value,
+                  admin_fee_type,
+                  admin_fee_value,
+                  trainer_fee_value,
+                  trainer_fee_type,
+                  branch_id
+                )
+              )
+            `)
+            .in('id', batch);
+
+          if (bookingsError) {
+            console.error("[FinancialQuery] Error fetching bookings:", bookingsError);
+            throw bookingsError;
+          }
+
+          bookings = bookings.concat(batchBookings || []);
+        }
       }
 
-      console.log(`Found ${invoiceItems?.length || 0} invoice items for branch ${branchId}`);
+      console.log(`[FinancialQuery] Found ${bookings.length} bookings`);
 
-      // Double-check that invoice items are for the correct branch
-      const validInvoiceItems = invoiceItems?.filter(item => 
-        !item.invoices?.client?.branch_id || item.invoices?.client?.branch_id === branchId
-      );
-
-      if (validInvoiceItems?.length !== invoiceItems?.length) {
-        console.warn(
-          `Filtered out ${(invoiceItems?.length || 0) - (validInvoiceItems?.length || 0)} invoice items that don't match branch ${branchId}`
-        );
-      }
-
-      // Get invalid invoices count
-      let invalidQuery = supabase
+      // STEP 4: Get invalid invoices count
+      const { count: invalidCount, error: invalidError } = await supabase
         .from('invoices')
-        .select('id, client:client_id (branch_id)', { count: 'exact' })
-        .eq('status', 'invalid')
-        .eq('client.branch_id', branchId);
-
-      if (fromDate && toDate) {
-        invalidQuery = invalidQuery.gte('issued_date', fromDate).lte('issued_date', toDate);
-      }
-
-      const { count: invalidCount, error: invalidError } = await invalidQuery;
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'invalid');
 
       if (invalidError) {
-        console.error("Error counting invalid invoices:", invalidError);
+        console.error("[FinancialQuery] Error counting invalid invoices:", invalidError);
       }
 
-      // Get all invoices count
-      let countQuery = supabase
-        .from('invoices')
-        .select('id, client:client_id (branch_id)', { count: 'exact' })
-        .eq('client.branch_id', branchId)
-        .in('status', ['sent', 'paid', 'overdue']);
+      // Enhance invoice items with invoice reference for processor compatibility
+      const enhancedInvoiceItems = invoiceItems.map(item => {
+        const invoice = invoices.find(inv => inv.id === item.invoice_id);
+        return {
+          ...item,
+          invoices: invoice ? {
+            id: invoice.id,
+            status: invoice.status,
+            total: invoice.total,
+            client: invoice.client
+          } : null
+        };
+      });
 
-      if (fromDate && toDate) {
-        countQuery = countQuery.gte('issued_date', fromDate).lte('issued_date', toDate);
-      }
+      // Summary log
+      console.log(`[FinancialQuery] Summary for branch ${branchId}:
+        - Invoices: ${invoices.length}
+        - Invoice items: ${invoiceItems.length}
+        - Bookings: ${bookings.length}
+        - Total revenue: R${totalRevenue.toFixed(2)}
+        - Course fees: R${courseFeeRevenue.toFixed(2)}
+        - Enrollment fees: R${enrollmentFeeRevenue.toFixed(2)}`);
 
-      const { count: allInvoicesCount, error: countError } = await countQuery;
-
-      if (countError) {
-        console.error("Error counting invoices:", countError);
-      }
-      
-      // IMPORTANT: Filter out invoice items where the invoice didn't match our filters
-      // When using inner joins with Supabase, if the nested filter doesn't match, 
-      // the nested object becomes null but the row is still returned
-      const itemsWithValidInvoices = (validInvoiceItems || []).filter(
-        item => item.invoices !== null && item.invoices.id !== null
-      );
-      
-      console.log(`Filtered ${(validInvoiceItems?.length || 0) - itemsWithValidInvoices.length} invoice items with null invoice (didn't match date/status filters)`);
-      
-      // Calculate course fee and enrollment fee totals from filtered invoice items
-      const courseFeeRevenue = getCourseFeeAmount(itemsWithValidInvoices);
-      const enrollmentFeeRevenue = getEnrollmentFeeAmount(itemsWithValidInvoices);
-      
-      // Final validation log
-      console.log(`Financial data for branch ${branchId}: ` +
-                 `${validInvoices.length} invoices, ` +
-                 `${validBookings.length} bookings, ` +
-                 `${itemsWithValidInvoices.length} invoice items (after date filter), ` +
-                 `total revenue: ${totalRevenueFromInvoices}, ` +
-                 `course fees: ${courseFeeRevenue}, ` +
-                 `enrollment fees: ${enrollmentFeeRevenue}`);
-
-      // Cast the result to FinancialData to ensure TypeScript compatibility
-      const result: FinancialData = {
-        bookingsWithInvoices: validBookings || [],
-        allInvoicesCount: allInvoicesCount || 0,
+      return {
+        bookingsWithInvoices: bookings,
+        allInvoicesCount: invoices.length,
         invalidInvoicesCount: invalidCount || 0,
-        totalRevenue: totalRevenueFromInvoices,
+        totalRevenue,
         courseFeeRevenue,
         enrollmentFeeRevenue,
-        // Use the filtered invoice items that have valid invoices (matching date/status filters)
-        invoiceItems: itemsWithValidInvoices,
-        invoices: validInvoices || [],
-        branchId // Include branchId in the result for reference
+        invoiceItems: enhancedInvoiceItems,
+        invoices,
+        branchId
       };
-      
-      return result;
     },
     enabled: !!branchId,
     staleTime: 30000,
     refetchOnWindowFocus: true,
-    gcTime: 10 * 60 * 1000,
+    gcTime: 5 * 60 * 1000, // 5 minutes
   });
 }
