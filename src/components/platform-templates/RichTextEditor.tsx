@@ -63,6 +63,7 @@ const MERGE_FIELDS = [
   { key: "branch_name", label: "Branch Name" },
   { key: "branch_email", label: "Branch Email" },
   { key: "branch_phone", label: "Branch Phone" },
+  { key: "custom_message", label: "Personal Note" },
 ];
 
 const TEXT_COLORS = [
