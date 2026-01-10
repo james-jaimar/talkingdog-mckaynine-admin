@@ -2,6 +2,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { FinancialData } from "./types";
+import { getCourseFeeAmount, getEnrollmentFeeAmount } from "@/lib/invoiceItemUtils";
 
 export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?: string) {
   const queryClient = useQueryClient();
@@ -16,6 +17,8 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
         allInvoicesCount: 0,
         invalidInvoicesCount: 0,
         totalRevenue: 0,
+        courseFeeRevenue: 0,
+        enrollmentFeeRevenue: 0,
         invoiceItems: [],
         invoices: [],
         branchId: null
@@ -214,12 +217,18 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
         console.error("Error counting invoices:", countError);
       }
       
+      // Calculate course fee and enrollment fee totals from invoice items
+      const courseFeeRevenue = getCourseFeeAmount(validInvoiceItems || []);
+      const enrollmentFeeRevenue = getEnrollmentFeeAmount(validInvoiceItems || []);
+      
       // Final validation log
       console.log(`Financial data for branch ${branchId}: ` +
                  `${validInvoices.length} invoices, ` +
                  `${validBookings.length} bookings, ` +
                  `${validInvoiceItems?.length} invoice items, ` +
-                 `total revenue: ${totalRevenueFromInvoices}`);
+                 `total revenue: ${totalRevenueFromInvoices}, ` +
+                 `course fees: ${courseFeeRevenue}, ` +
+                 `enrollment fees: ${enrollmentFeeRevenue}`);
 
       // Cast the result to FinancialData to ensure TypeScript compatibility
       const result: FinancialData = {
@@ -227,6 +236,8 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
         allInvoicesCount: allInvoicesCount || 0,
         invalidInvoicesCount: invalidCount || 0,
         totalRevenue: totalRevenueFromInvoices,
+        courseFeeRevenue,
+        enrollmentFeeRevenue,
         invoiceItems: validInvoiceItems || [],
         invoices: validInvoices || [],
         branchId // Include branchId in the result for reference

@@ -18,6 +18,7 @@ interface ClassFinancialTableProps {
   classFinances: ClassFinance[];
   showInvoiceCount?: boolean;
   totalRevenue?: number;
+  enrollmentFeeRevenue?: number;
   showMismatchWarning?: boolean;
 }
 
@@ -25,6 +26,7 @@ export function ClassFinancialTable({
   classFinances, 
   showInvoiceCount = true,
   totalRevenue,
+  enrollmentFeeRevenue = 0,
   showMismatchWarning = false
 }: ClassFinancialTableProps) {
   // Calculate totals for the summary row
@@ -125,18 +127,24 @@ export function ClassFinancialTable({
           <TableCell>Total</TableCell>
           <TableCell className="text-right">
             {formatCurrency(totals.revenue)}
-            {showMismatchWarning && calculatedDiscrepancy !== 0 && (
+            {(showMismatchWarning || totalRevenue) && (
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger>
-                    <span className="ml-1 text-red-600 cursor-help inline-flex">
+                    <span className="ml-1 text-amber-600 cursor-help inline-flex">
                       <AlertCircle className="h-4 w-4" />
                     </span>
                   </TooltipTrigger>
                   <TooltipContent>
                     <p>
-                      There's a discrepancy of {formatCurrency(Math.abs(calculatedDiscrepancy))} 
-                      compared to the total invoice revenue ({formatCurrency(totalRevenue || 0)}).
+                      {showMismatchWarning && calculatedDiscrepancy !== 0 ? (
+                        <>
+                          Unexplained discrepancy of {formatCurrency(Math.abs(calculatedDiscrepancy))} 
+                          from course fee total ({formatCurrency(totalRevenue || 0)}).
+                        </>
+                      ) : (
+                        <>Course fee revenue only (excludes enrollment fees)</>
+                      )}
                     </p>
                   </TooltipContent>
                 </Tooltip>

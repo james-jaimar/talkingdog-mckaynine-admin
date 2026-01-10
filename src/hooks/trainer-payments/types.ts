@@ -57,6 +57,7 @@ export interface InvoiceItem {
   quantity: number;
   unit_price: number;
   amount: number;
+  item_type?: string; // 'course_fee' | 'enrollment_fee' - used to distinguish fee types
   branch_id?: string; // Add branch_id field
   invoices?: {
     id: string;
