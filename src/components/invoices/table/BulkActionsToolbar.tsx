@@ -1,11 +1,9 @@
 import { Button } from "@/components/ui/button";
-import { CheckSquare, Send, X, CreditCard } from "lucide-react";
+import { CheckSquare, X, CreditCard } from "lucide-react";
 
 interface BulkActionsToolbarProps {
   selectedCount: number;
-  draftCount: number;
   unpaidCount: number;
-  onMarkAsSent: () => void;
   onMarkAsPaid: () => void;
   onClearSelection: () => void;
   isLoading?: boolean;
@@ -13,9 +11,7 @@ interface BulkActionsToolbarProps {
 
 export function BulkActionsToolbar({
   selectedCount,
-  draftCount,
   unpaidCount,
-  onMarkAsSent,
   onMarkAsPaid,
   onClearSelection,
   isLoading = false,
@@ -28,26 +24,10 @@ export function BulkActionsToolbar({
         <CheckSquare className="h-4 w-4 text-primary" />
         <span className="text-sm font-medium">
           {selectedCount} invoice{selectedCount !== 1 ? 's' : ''} selected
-          {draftCount > 0 && draftCount < selectedCount && (
-            <span className="text-muted-foreground ml-1">
-              ({draftCount} draft)
-            </span>
-          )}
         </span>
       </div>
       
       <div className="flex items-center gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onMarkAsSent}
-          disabled={draftCount === 0 || isLoading}
-          className="gap-1"
-        >
-          <Send className="h-3 w-3" />
-          Mark as Sent {draftCount > 0 && `(${draftCount})`}
-        </Button>
-        
         <Button
           variant="outline"
           size="sm"
