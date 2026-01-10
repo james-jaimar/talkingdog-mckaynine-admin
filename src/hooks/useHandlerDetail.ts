@@ -31,6 +31,14 @@ export function useHandlerDetail(id: string | undefined) {
             submitted_at,
             created_at,
             dogs(id, name)
+          ),
+          bookings(
+            id,
+            is_enrolled,
+            vaccination_verified,
+            dog_id,
+            class_schedule_id,
+            dogs(id, name)
           )
         `)
         .eq('id', id)

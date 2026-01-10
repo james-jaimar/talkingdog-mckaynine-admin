@@ -70,4 +70,15 @@ export interface HandlerData {
     updated_at?: string;
   }>;
   enrollment_registrations?: EnrollmentRegistration[];
+  bookings?: Array<{
+    id: string;
+    is_enrolled: boolean | null;
+    vaccination_verified: boolean | null;
+    dog_id: string;
+    class_schedule_id: string;
+    dogs?: {
+      id: string;
+      name: string;
+    };
+  }>;
 }
