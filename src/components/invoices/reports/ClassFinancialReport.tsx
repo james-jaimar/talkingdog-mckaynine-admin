@@ -29,7 +29,9 @@ export function ClassFinancialReport({ dateRange, onRefreshSuccess }: ClassFinan
     refreshData, 
     totalInvoiceCount,
     invalidInvoicesCount,
-    totalRevenue: directTotalRevenue
+    totalRevenue: directTotalRevenue,
+    courseFeeRevenue,
+    enrollmentFeeRevenue
   } = useClassFinancialData(
     currentBranch?.id,
     fromDate,
@@ -40,11 +42,14 @@ export function ClassFinancialReport({ dateRange, onRefreshSuccess }: ClassFinan
   const classesTotalRevenue = classFinances.reduce((sum, item) => sum + item.totalRevenue, 0);
   const totalBookings = classFinances.reduce((sum, item) => sum + item.bookingsCount, 0);
   const totalProfit = classFinances.reduce((sum, item) => sum + item.profit, 0);
-  const profitPercentage = directTotalRevenue > 0 ? (totalProfit / directTotalRevenue) * 100 : 0;
+  const profitPercentage = courseFeeRevenue > 0 ? (totalProfit / courseFeeRevenue) * 100 : 0;
   
-  // Check for discrepancy between total invoice revenue and calculated class revenues
-  const revenueDiscrepancy = Math.abs(directTotalRevenue - classesTotalRevenue) > 1;
-  const discrepancyAmount = directTotalRevenue - classesTotalRevenue;
+  // Check for discrepancy between course fee revenue and calculated class revenues
+  // Note: The difference between totalRevenue and classesTotalRevenue should be approximately 
+  // the enrollment fee amount since class revenues only include course fees
+  const unexplainedDiscrepancy = Math.abs(courseFeeRevenue - classesTotalRevenue) > 1
+    ? courseFeeRevenue - classesTotalRevenue
+    : 0;
 
   // Log the relationship between bookings and invoices for debugging
   console.log("ClassFinancialReport - total bookings:", totalBookings);
@@ -165,13 +170,23 @@ export function ClassFinancialReport({ dateRange, onRefreshSuccess }: ClassFinan
           </Alert>
         )}
         
-        {revenueDiscrepancy && (
+        {enrollmentFeeRevenue > 0 && (
           <Alert>
+            <AlertDescription className="flex items-center gap-2">
+              <span className="font-medium">Enrollment Fees:</span>
+              <span>R{enrollmentFeeRevenue.toFixed(2)} collected (pass-through to franchise owner, not included in class revenue calculations)</span>
+            </AlertDescription>
+          </Alert>
+        )}
+        
+        {unexplainedDiscrepancy !== 0 && (
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
-              Note: There's a discrepancy of {discrepancyAmount > 0 ? '+' : '-'}{Math.abs(discrepancyAmount).toFixed(2)} 
-              between the total revenue from invoices (R{directTotalRevenue.toFixed(2)}) 
-              and the sum of class revenues (R{classesTotalRevenue.toFixed(2)}).
-              This may be due to rounding or unallocated items.
+              Unexplained discrepancy of R{Math.abs(unexplainedDiscrepancy).toFixed(2)} 
+              between course fee total (R{courseFeeRevenue.toFixed(2)}) 
+              and sum of class revenues (R{classesTotalRevenue.toFixed(2)}).
+              This may be due to unallocated items or data issues.
             </AlertDescription>
           </Alert>
         )}
@@ -179,8 +194,9 @@ export function ClassFinancialReport({ dateRange, onRefreshSuccess }: ClassFinan
         <div className="overflow-x-auto">
           <ClassFinancialTable 
             classFinances={classFinances} 
-            totalRevenue={directTotalRevenue}
-            showMismatchWarning={revenueDiscrepancy}
+            totalRevenue={courseFeeRevenue}
+            enrollmentFeeRevenue={enrollmentFeeRevenue}
+            showMismatchWarning={unexplainedDiscrepancy !== 0}
           />
         </div>
       </CardContent>

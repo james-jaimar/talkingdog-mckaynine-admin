@@ -43,6 +43,8 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
     totalInvoiceCount,
     invalidInvoicesCount,
     totalRevenue: financialData?.totalRevenue || 0,
+    courseFeeRevenue: financialData?.courseFeeRevenue || 0,
+    enrollmentFeeRevenue: financialData?.enrollmentFeeRevenue || 0,
     error
   };
 }

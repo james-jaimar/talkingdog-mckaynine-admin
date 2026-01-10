@@ -28,6 +28,8 @@ export interface FinancialData {
   allInvoicesCount: number;
   invalidInvoicesCount: number;
   totalRevenue: number;
+  courseFeeRevenue: number;
+  enrollmentFeeRevenue: number;
   invoiceItems: any[];
   invoices: any[];
   branchId?: string; // Add branchId to track which branch this data is for

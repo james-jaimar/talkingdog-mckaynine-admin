@@ -122,6 +122,7 @@ export async function fetchInvoiceItems(bookingIds: string[], branchId?: string)
   if (bookingIds.length === 0) return [];
 
   // Enhanced query to fetch invoice items with branch filtering
+  // IMPORTANT: Include item_type to properly distinguish course fees from enrollment fees
   const query = supabase
     .from('invoice_items')
     .select(`
@@ -132,6 +133,7 @@ export async function fetchInvoiceItems(bookingIds: string[], branchId?: string)
       description,
       quantity,
       unit_price,
+      item_type,
       invoices:invoice_id (
         id,
         status,
@@ -167,6 +169,7 @@ export async function fetchInvoiceItems(bookingIds: string[], branchId?: string)
     quantity: item.quantity || 1,
     unit_price: item.unit_price || item.amount || 0,
     amount: item.amount || 0,
+    item_type: item.item_type, // Include item_type for enrollment fee filtering
     invoices: item.invoices,
     branch_id: item.invoices?.client?.branch_id // Add branch_id for easier filtering
   })) as InvoiceItem[];
