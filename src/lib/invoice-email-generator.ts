@@ -68,6 +68,13 @@ function getSignatureHtml(signature: BranchSignature): string {
 }
 
 /**
+ * Convert newlines to HTML line breaks for proper email rendering
+ */
+function convertNewlinesToBr(text: string): string {
+  return text.replace(/\n/g, '<br>');
+}
+
+/**
  * Build the full email HTML from editable content
  */
 export function buildInvoiceEmailHtml(
@@ -77,6 +84,11 @@ export function buildInvoiceEmailHtml(
   logoUrl: string
 ): string {
   const { greeting, mainMessage, signOff, signature, isPaid, showBankingDetails } = content;
+  
+  // Convert newlines to <br> for proper HTML rendering
+  const formattedGreeting = convertNewlinesToBr(greeting);
+  const formattedMainMessage = convertNewlinesToBr(mainMessage);
+  const formattedSignOff = convertNewlinesToBr(signOff);
   
   // Build status message
   let statusSection = '';
@@ -165,13 +177,13 @@ export function buildInvoiceEmailHtml(
           <!-- Content -->
           <tr>
             <td style="padding: 32px 40px;">
-              <p style="margin: 0 0 16px 0; font-size: 15px; color: #333333;">${greeting}</p>
+              <p style="margin: 0 0 16px 0; font-size: 15px; color: #333333;">${formattedGreeting}</p>
               
-              <p style="margin: 0 0 16px 0; font-size: 15px; color: #333333;">${mainMessage}</p>
+              <p style="margin: 0 0 16px 0; font-size: 15px; color: #333333;">${formattedMainMessage}</p>
               
               ${statusSection}
               
-              <p style="margin: 20px 0 16px 0; font-size: 15px; color: #333333;">${signOff}</p>
+              <p style="margin: 20px 0 16px 0; font-size: 15px; color: #333333;">${formattedSignOff}</p>
               
               ${getSignatureHtml(signature)}
               
