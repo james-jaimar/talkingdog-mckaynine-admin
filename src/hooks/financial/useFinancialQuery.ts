@@ -217,15 +217,24 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
         console.error("Error counting invoices:", countError);
       }
       
-      // Calculate course fee and enrollment fee totals from invoice items
-      const courseFeeRevenue = getCourseFeeAmount(validInvoiceItems || []);
-      const enrollmentFeeRevenue = getEnrollmentFeeAmount(validInvoiceItems || []);
+      // IMPORTANT: Filter out invoice items where the invoice didn't match our filters
+      // When using inner joins with Supabase, if the nested filter doesn't match, 
+      // the nested object becomes null but the row is still returned
+      const itemsWithValidInvoices = (validInvoiceItems || []).filter(
+        item => item.invoices !== null && item.invoices.id !== null
+      );
+      
+      console.log(`Filtered ${(validInvoiceItems?.length || 0) - itemsWithValidInvoices.length} invoice items with null invoice (didn't match date/status filters)`);
+      
+      // Calculate course fee and enrollment fee totals from filtered invoice items
+      const courseFeeRevenue = getCourseFeeAmount(itemsWithValidInvoices);
+      const enrollmentFeeRevenue = getEnrollmentFeeAmount(itemsWithValidInvoices);
       
       // Final validation log
       console.log(`Financial data for branch ${branchId}: ` +
                  `${validInvoices.length} invoices, ` +
                  `${validBookings.length} bookings, ` +
-                 `${validInvoiceItems?.length} invoice items, ` +
+                 `${itemsWithValidInvoices.length} invoice items (after date filter), ` +
                  `total revenue: ${totalRevenueFromInvoices}, ` +
                  `course fees: ${courseFeeRevenue}, ` +
                  `enrollment fees: ${enrollmentFeeRevenue}`);
@@ -238,7 +247,8 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
         totalRevenue: totalRevenueFromInvoices,
         courseFeeRevenue,
         enrollmentFeeRevenue,
-        invoiceItems: validInvoiceItems || [],
+        // Use the filtered invoice items that have valid invoices (matching date/status filters)
+        invoiceItems: itemsWithValidInvoices,
         invoices: validInvoices || [],
         branchId // Include branchId in the result for reference
       };
