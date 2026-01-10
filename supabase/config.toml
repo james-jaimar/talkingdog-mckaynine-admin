@@ -33,3 +33,9 @@ verify_jwt = true
 
 [functions.extract-enrollment-scan]
 verify_jwt = true
+
+[functions.process-email-queue]
+verify_jwt = false
+
+[functions.process-email-queue.schedule]
+cron = "* * * * *"
