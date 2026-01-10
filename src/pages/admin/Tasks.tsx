@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Helmet } from "react-helmet";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,10 +10,12 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAllTasks, TaskWithHandler } from "@/hooks/useAllTasks";
 import { format } from "date-fns";
-import { Search, CheckCircle, XCircle, Send, ClipboardList, Mail, UserPlus, RefreshCw, Link, Plus } from "lucide-react";
+import { Search, CheckCircle, XCircle, Send, ClipboardList, Mail, UserPlus, RefreshCw, Link, Plus, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { SendInfoPackModal } from "@/components/tasks/SendInfoPackModal";
 import { CreateTaskModal } from "@/components/tasks/CreateTaskModal";
 import { Link as RouterLink } from "react-router-dom";
+
+type SortDirection = "asc" | "desc" | null;
 
 const TASK_TYPE_OPTIONS = [
   { value: "all", label: "All Types" },
@@ -77,6 +79,7 @@ export default function Tasks() {
   const [selectedTask, setSelectedTask] = useState<TaskWithHandler | null>(null);
   const [isInfoPackModalOpen, setIsInfoPackModalOpen] = useState(false);
   const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
+  const [handlerSort, setHandlerSort] = useState<SortDirection>(null);
 
   const { tasks, isLoading, completeTask, cancelTask, refetch } = useAllTasks({
     status: statusFilter,
@@ -84,6 +87,34 @@ export default function Tasks() {
     classType: classTypeFilter,
     search,
   });
+
+  // Sort tasks by handler name
+  const sortedTasks = useMemo(() => {
+    if (!handlerSort) return tasks;
+    
+    return [...tasks].sort((a, b) => {
+      const nameA = a.handler 
+        ? `${a.handler.first_name} ${a.handler.last_name}`.toLowerCase() 
+        : "zzz"; // Push unknown handlers to end
+      const nameB = b.handler 
+        ? `${b.handler.first_name} ${b.handler.last_name}`.toLowerCase() 
+        : "zzz";
+      
+      if (handlerSort === "asc") {
+        return nameA.localeCompare(nameB);
+      } else {
+        return nameB.localeCompare(nameA);
+      }
+    });
+  }, [tasks, handlerSort]);
+
+  const toggleHandlerSort = () => {
+    setHandlerSort(current => {
+      if (current === null) return "asc";
+      if (current === "asc") return "desc";
+      return null;
+    });
+  };
 
   const handleSendInfoPack = (task: TaskWithHandler) => {
     setSelectedTask(task);
@@ -98,7 +129,7 @@ export default function Tasks() {
     await cancelTask.mutateAsync(taskId);
   };
 
-  const pendingCount = tasks.filter(t => t.status === "pending").length;
+  const pendingCount = sortedTasks.filter(t => t.status === "pending").length;
 
   return (
     <DashboardLayout>
@@ -192,7 +223,7 @@ export default function Tasks() {
           <CardHeader>
             <CardTitle>Tasks</CardTitle>
             <CardDescription>
-              {tasks.length} task{tasks.length !== 1 ? "s" : ""} found
+              {sortedTasks.length} task{sortedTasks.length !== 1 ? "s" : ""} found
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -200,7 +231,7 @@ export default function Tasks() {
               <div className="flex justify-center py-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
               </div>
-            ) : tasks.length === 0 ? (
+            ) : sortedTasks.length === 0 ? (
               <div className="text-center py-12">
                 <ClipboardList className="mx-auto h-12 w-12 text-muted-foreground" />
                 <h3 className="mt-4 text-lg font-semibold">No tasks found</h3>
@@ -214,7 +245,17 @@ export default function Tasks() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Handler</TableHead>
+                    <TableHead 
+                      className="cursor-pointer hover:bg-muted/50 select-none"
+                      onClick={toggleHandlerSort}
+                    >
+                      <div className="flex items-center gap-1">
+                        Handler
+                        {handlerSort === null && <ArrowUpDown className="h-4 w-4 text-muted-foreground" />}
+                        {handlerSort === "asc" && <ArrowUp className="h-4 w-4" />}
+                        {handlerSort === "desc" && <ArrowDown className="h-4 w-4" />}
+                      </div>
+                    </TableHead>
                     <TableHead>Task</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead>Class</TableHead>
@@ -224,7 +265,7 @@ export default function Tasks() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {tasks.map((task) => (
+                  {sortedTasks.map((task) => (
                     <TableRow key={task.id}>
                       <TableCell>
                         {task.handler ? (
