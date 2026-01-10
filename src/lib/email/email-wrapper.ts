@@ -26,6 +26,70 @@ export const BANKING_DETAILS = {
   reference: "Please use your name as reference.",
 };
 
+// Branch-specific signature configurations
+export interface BranchSignature {
+  name: string;
+  title: string;
+  phone: string;
+  company: string;
+  email: string;
+  website: string;
+}
+
+export const BRANCH_SIGNATURES: Record<string, BranchSignature> = {
+  "Delta": {
+    name: "Ady Hawkins",
+    title: "Branch Manager",
+    phone: "083 400 2987",
+    company: "McKaynine Training Centre",
+    email: "delta@mckaynine.co.za",
+    website: "www.mckaynine.co.za",
+  },
+  "Randburg": {
+    name: "Ady Hawkins",
+    title: "Branch Manager",
+    phone: "083 400 2987",
+    company: "McKaynine Training Centre",
+    email: "randburg@mckaynine.co.za",
+    website: "www.mckaynine.co.za",
+  },
+};
+
+/**
+ * Get signature HTML for a branch
+ * Uses branch name to determine which signature to use
+ */
+export function getEmailSignature(branchName?: string): string {
+  // Determine which branch signature to use
+  let signature: BranchSignature;
+  
+  if (branchName?.toLowerCase().includes("randburg")) {
+    signature = BRANCH_SIGNATURES["Randburg"];
+  } else {
+    // Default to Delta for all other branches
+    signature = BRANCH_SIGNATURES["Delta"];
+  }
+  
+  return `<p style="margin: 20px 0 0 0; font-size: 14px; color: #333333; line-height: 1.6;">
+    <strong style="color: #2c5530;">${signature.name}</strong><br>
+    ${signature.title}<br>
+    📞 ${signature.phone}<br>
+    ${signature.company}<br>
+    ✉️ <a href="mailto:${signature.email}" style="color: #3b82f6; text-decoration: none;">${signature.email}</a><br>
+    🌐 <a href="https://${signature.website}" style="color: #3b82f6; text-decoration: none;">${signature.website}</a>
+  </p>`;
+}
+
+/**
+ * Get signature as plain text (for edge functions that build their own HTML)
+ */
+export function getEmailSignatureText(branchName?: string): BranchSignature {
+  if (branchName?.toLowerCase().includes("randburg")) {
+    return BRANCH_SIGNATURES["Randburg"];
+  }
+  return BRANCH_SIGNATURES["Delta"];
+}
+
 /**
  * Generate the logo URL for emails
  * Uses absolute URL for email compatibility

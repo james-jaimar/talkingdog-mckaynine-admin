@@ -35,7 +35,7 @@ const DEFAULT_HTML = `<div style="font-family: Arial, sans-serif; max-width: 600
   
   <p>We look forward to seeing you!</p>
   
-  <p>Best regards,<br>The Training Team</p>
+  {{signature}}
 </div>`;
 
 export function TemplateEditorModal({ open, onOpenChange, templateId }: TemplateEditorModalProps) {

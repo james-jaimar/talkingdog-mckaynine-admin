@@ -68,7 +68,7 @@ export const BEGINNER_ONLY_TEMPLATE: CongratsTemplate = {
   
   <p>Looking forward to your response.</p>
   
-  <p>Kind regards,<br>Ady</p>
+  {{signature}}
 </div>`
 };
 
@@ -150,7 +150,7 @@ export const BEGINNER_TO_SILVER_OR_NOVICE_TEMPLATE: CongratsTemplate = {
   
   <p>Looking forward to your response.</p>
   
-  <p>Kind regards,<br>Ady</p>
+  {{signature}}
 </div>`
 };
 
@@ -228,7 +228,7 @@ export const BRONZE_TO_SILVER_OR_BEGINNER_TEMPLATE: CongratsTemplate = {
   
   <p>Looking forward to your response.</p>
   
-  <p>Kind regards,<br>Ady</p>
+  {{signature}}
 </div>`
 };
 
@@ -290,7 +290,7 @@ export const EO_TO_CGC_ONLY_TEMPLATE: CongratsTemplate = {
   
   <p>Looking forward to your response.</p>
   
-  <p>Kind regards,<br>Ady</p>
+  {{signature}}
 </div>`
 };
 
@@ -368,7 +368,7 @@ export const EO_TO_CGC_OR_BEGINNER_TEMPLATE: CongratsTemplate = {
   
   <p>Looking forward to your response.</p>
   
-  <p>Kind regards,<br>Ady</p>
+  {{signature}}
 </div>`
 };
 
@@ -427,7 +427,7 @@ export const NOVICE_ONLY_TEMPLATE: CongratsTemplate = {
   
   <p>Looking forward to your response.</p>
   
-  <p>Kind regards,<br>Ady</p>
+  {{signature}}
 </div>`
 };
 
@@ -488,7 +488,7 @@ export const SILVER_CGC_ONLY_TEMPLATE: CongratsTemplate = {
   
   <p>Looking forward to your response.</p>
   
-  <p>Kind regards,<br>Ady</p>
+  {{signature}}
 </div>`
 };
 
@@ -531,7 +531,7 @@ export const WT_A_TEST_TEMPLATE: CongratsTemplate = {
   
   <p>Looking forward to receiving your proof of payment and to seeing you soon.</p>
   
-  <p>Kind regards,<br>Ady</p>
+  {{signature}}
 </div>`
 };
 
