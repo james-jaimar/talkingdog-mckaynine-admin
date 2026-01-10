@@ -73,6 +73,11 @@ export const adminPrimaryNavItems = [
     name: "Invoices",
     path: "/invoices",
     icon: FileText
+  },
+  {
+    name: "Email",
+    path: "/admin/email",
+    icon: Mail
   }
 ];
 
