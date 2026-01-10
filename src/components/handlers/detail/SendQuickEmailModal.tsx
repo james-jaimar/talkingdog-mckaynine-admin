@@ -12,8 +12,8 @@ import { useTemplateConfigurations } from "@/hooks/useTemplateConfigurations";
 import { useEmailTemplates, EmailTemplate } from "@/hooks/useEmailTemplates";
 import { useEmailAttachments, EmailAttachment } from "@/hooks/useEmailAttachments";
 import { useEmailQueue } from "@/hooks/useEmailQueue";
-import { renderTemplate, TemplateVariables } from "@/lib/email/template-renderer";
-import { wrapEmailContent } from "@/lib/email/email-wrapper";
+import { renderTemplate, TemplateVariables, getVariablesWithSignature } from "@/lib/email/template-renderer";
+import { wrapEmailContent, getEmailSignature } from "@/lib/email/email-wrapper";
 import { useBranch } from "@/context/BranchContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -141,20 +141,21 @@ export function SendQuickEmailModal({ open, onOpenChange, handler }: SendQuickEm
   // Build template variables
   const getTemplateVariables = (): TemplateVariables => {
     const configVars = selectedPrebuiltTemplate?.configuration?.variables || {};
+    const branchName = currentBranch?.name || "McKaynine";
     
-    return {
+    return getVariablesWithSignature({
       handler_name: handler.first_name || "",
       handler_full_name: `${handler.first_name} ${handler.last_name}`,
       handler_email: handler.email || "",
       dog_name: selectedDogNames || "your dog",
-      branch_name: currentBranch?.name || "McKaynine",
+      branch_name: branchName,
       branch_email: (currentBranch as any)?.email || "",
       branch_phone: (currentBranch as any)?.phone || "",
       base_url: "https://mckaynine.talkingdog.co.za",
       // Merge configured template variables (but allow UI fields to override)
       ...configVars,
       custom_message: customMessage.replace(/\n/g, '<br>'),
-    };
+    });
   };
 
   const handleSend = async () => {
@@ -203,7 +204,14 @@ export function SendQuickEmailModal({ open, onOpenChange, handler }: SendQuickEm
         const configVars = selectedPrebuiltTemplate.configuration?.variables || {};
         
         const rawHtml = template.getHtml(configVars);
-        html = renderTemplate(rawHtml, variables);
+        const renderedContent = renderTemplate(rawHtml, variables);
+        // Wrap prebuilt templates with professional wrapper (adds signature + banking)
+        html = wrapEmailContent(renderedContent, {
+          branchName: currentBranch?.name,
+          branchEmail: (currentBranch as any)?.email,
+          branchPhone: (currentBranch as any)?.phone,
+          includeBankingDetails: true,
+        });
         subject = renderTemplate(template.subject, variables);
       } else if (templateType === "custom" && selectedCustomTemplate) {
         // Use custom template from branch_email_templates

@@ -118,6 +118,9 @@ export function wrapEmailContent(
   } = options;
 
   const emailLogoUrl = logoUrl || getEmailLogoUrl(branchName);
+  
+  // Auto-generate signature for the branch
+  const signatureHtml = getEmailSignature(branchName);
 
   const bankingSection = includeBankingDetails
     ? `
@@ -147,6 +150,14 @@ export function wrapEmailContent(
     </table>
     `
     : "";
+
+  // Check if content already has {{signature}} placeholder - if so, don't add another
+  const contentHasSignature = content.includes('{{signature}}') || content.includes(signatureHtml);
+  
+  // Add signature before content ends if not already included
+  const contentWithSignature = contentHasSignature 
+    ? content 
+    : content + signatureHtml;
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -209,7 +220,7 @@ export function wrapEmailContent(
           <!-- Main Content -->
           <tr>
             <td class="content-cell" style="padding: 28px 32px;">
-              ${content}
+              ${contentWithSignature}
             </td>
           </tr>
           
