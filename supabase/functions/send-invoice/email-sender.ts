@@ -43,17 +43,17 @@ interface BranchSignature {
 const BRANCH_SIGNATURES: Record<string, BranchSignature> = {
   "Delta": {
     name: "Ady Hawkins",
-    title: "Branch Manager",
+    title: "McKaynine - Delta",
     phone: "083 400 2987",
-    company: "McKaynine Training Centre",
+    company: "",
     email: "delta@mckaynine.co.za",
     website: "www.mckaynine.co.za",
   },
   "Randburg": {
     name: "Ady Hawkins",
-    title: "Branch Manager",
+    title: "McKaynine - Randburg",
     phone: "083 400 2987",
-    company: "McKaynine Training Centre",
+    company: "",
     email: "randburg@mckaynine.co.za",
     website: "www.mckaynine.co.za",
   },
@@ -68,12 +68,14 @@ function getSignatureHtml(branchName?: string): string {
     signature = BRANCH_SIGNATURES["Delta"];
   }
   
+  // Build signature HTML, omitting company line if empty
+  const companyLine = signature.company ? `${signature.company}<br>` : '';
+  
   return `<p style="margin: 20px 0 0 0; font-size: 14px; color: #333333; line-height: 1.6;">
     <strong style="color: #2c5530;">${signature.name}</strong><br>
     ${signature.title}<br>
     📞 ${signature.phone}<br>
-    ${signature.company}<br>
-    ✉️ <a href="mailto:${signature.email}" style="color: #3b82f6; text-decoration: none;">${signature.email}</a><br>
+    ${companyLine}✉️ <a href="mailto:${signature.email}" style="color: #3b82f6; text-decoration: none;">${signature.email}</a><br>
     🌐 <a href="https://${signature.website}" style="color: #3b82f6; text-decoration: none;">${signature.website}</a>
   </p>`;
 }
