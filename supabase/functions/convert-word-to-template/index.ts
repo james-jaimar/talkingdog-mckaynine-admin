@@ -5,36 +5,71 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const CONVERSION_PROMPT = `You are an expert email template designer. Convert the following Word document content into a beautifully styled HTML email template.
+const CONVERSION_PROMPT = `You are an expert email template designer for McKaynine dog training school. Convert the following Word document content into a beautifully styled HTML email template.
 
-IMPORTANT DESIGN RULES:
-1. Use clean, professional styling that works in email clients
-2. Create visually distinct colored boxes for important information:
-   - DATES: Use a light blue box (#e3f2fd) with blue border (#2196f3)
-   - PAYMENT/BANKING INFO: Use a light green box (#e8f5e9) with green border (#4caf50)
-   - IMPORTANT NOTICES: Use a light yellow box (#fff9c4) with amber border (#ffc107)
-   - CLASS TIMES/SCHEDULES: Use a light purple box (#f3e5f5) with purple border (#9c27b0)
-3. Use proper heading hierarchy (h2, h3, h4)
-4. Format lists nicely with proper spacing
-5. Make the content scannable and easy to read
-6. Use inline styles for everything (no external CSS)
-7. Keep the professional tone but make it visually appealing
+CRITICAL: You MUST use the EXACT HTML structure and styles shown below. Do not deviate.
+
+STRUCTURE:
+1. Start with a greeting: <p>Dear {{handler_name}},</p>
+2. Main congratulatory/informational paragraph
+3. Optional personal note section: {{#if custom_message}}<p>{{custom_message}}</p>{{/if}}
+4. "What's Next" section in a blue box
+5. Course description with bullet points
+6. Closing and signature
+
+EXACT STYLING TO USE:
+
+For the main info box (What's Next section):
+<div style="background-color: #e8f0fe; padding: 20px; border-radius: 8px; margin: 20px 0;">
+  <h3 style="margin: 0 0 12px 0; color: #2c5530;">What's Next: [Course Name]</h3>
+  <p style="margin: 0 0 15px 0;">This qualifies you to join <strong>[Course Name]</strong> – please find the relevant information below:</p>
+  [TABLE HERE]
+</div>
+
+For course details tables (MUST USE THIS EXACT FORMAT):
+<table style="width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 14px;">
+  <tr style="background-color: #3b7dc4; color: white;">
+    <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Course</th>
+    <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Price</th>
+    <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Entry Criteria</th>
+    <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Dates</th>
+    <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Day & Time</th>
+  </tr>
+  <tr style="background-color: #f9f9f9;">
+    <td style="padding: 10px; border: 1px solid #ddd;"><strong>Course Name</strong></td>
+    <td style="padding: 10px; border: 1px solid #ddd;">R1,770.00</td>
+    <td style="padding: 10px; border: 1px solid #ddd;">Previous Course</td>
+    <td style="padding: 10px; border: 1px solid #ddd;">Dates here</td>
+    <td style="padding: 10px; border: 1px solid #ddd;">Day & Time</td>
+  </tr>
+</table>
+
+For course description sections:
+<div style="margin: 20px 0;">
+  <h4 style="color: #2c5530; margin-bottom: 10px;">Course Description - [Course Name]:</h4>
+  <ul style="margin: 0; padding-left: 20px; color: #444;">
+    <li>Item 1</li>
+    <li>Item 2</li>
+  </ul>
+</div>
+
+For disclaimer notes:
+<p style="font-size: 12px; color: #666; margin-top: 10px; font-style: italic;">** Disclaimer text here</p>
 
 MERGE FIELD RULES:
-- Replace any placeholder text for handler/owner names with {{handler_name}}
-- Replace dog names with {{dog_name}}
+- Replace handler/owner name placeholders with {{handler_name}}
+- Replace dog name placeholders with {{dog_name}}
 - Replace class day/time with {{class_day_time}}
-- Replace class dates/schedule with {{class_dates}}
+- Replace class dates with {{class_dates}}
 - Replace banking details with {{banking_details}}
 - Replace branch name with {{branch_name}}
-- Replace any personal message areas with {{custom_message}} wrapped in a yellow message box
-- Add {{signature}} at the end for the email signature
+- Add {{signature}} at the very end for the email signature
+- Keep personal message area as: {{#if custom_message}}<p>{{custom_message}}</p>{{/if}}
 
-OUTPUT FORMAT:
-Return ONLY valid HTML. Do not include any markdown code blocks, explanations, or other text.
-The HTML should start directly with content (div, p, h2, etc.) - no html/head/body tags.
-Use font-family: Arial, sans-serif as the base font.
-Max width should be 600px for email compatibility.`;
+OUTPUT:
+Return ONLY valid HTML. No markdown, no code blocks, no explanations.
+Start directly with <div class="email-content"> and end with </div>.
+Use font-family: Arial, sans-serif throughout.`;
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
