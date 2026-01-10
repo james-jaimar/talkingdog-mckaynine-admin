@@ -114,7 +114,7 @@ export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModa
       branch_phone: (currentBranch as any)?.phone || "",
       base_url: "https://mckaynine.talkingdog.co.za",
       enrollment_link: enrollmentLink,
-      custom_message: customMessage,
+      custom_message: customMessage.replace(/\n/g, '<br>'),
     };
   };
 
@@ -174,7 +174,7 @@ export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModa
         branch_phone: (currentBranch as any)?.phone || "",
         base_url: "https://mckaynine.talkingdog.co.za",
         enrollment_link: enrollmentLink,
-        custom_message: customMessage,
+        custom_message: customMessage.replace(/\n/g, '<br>'),
       };
       
       // Render the user-created template content
