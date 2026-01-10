@@ -278,7 +278,15 @@ export function SendQuickEmailModal({ open, onOpenChange, handler }: SendQuickEm
       const renderedHtml = renderTemplate(rawHtml, variables);
       const renderedSubject = renderTemplate(template.subject, variables);
       
-      return { html: renderedHtml, subject: renderedSubject };
+      // Wrap with email template for proper styling
+      const html = wrapEmailContent(renderedHtml, {
+        branchName: currentBranch?.name,
+        branchEmail: (currentBranch as any)?.email,
+        branchPhone: (currentBranch as any)?.phone,
+        includeBankingDetails: true,
+      });
+      
+      return { html, subject: renderedSubject };
     }
 
     // Handle custom templates

@@ -1,8 +1,8 @@
-
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { EmailTemplate } from "@/hooks/useEmailTemplates";
 import { renderTemplate, getSampleVariables } from "@/lib/email/template-renderer";
+import { wrapWithPreviewStyles } from "@/lib/email/preview-styles";
 
 interface TemplatePreviewModalProps {
   open: boolean;
@@ -14,7 +14,7 @@ export function TemplatePreviewModal({ open, onOpenChange, template }: TemplateP
   if (!template) return null;
 
   const sampleVariables = getSampleVariables();
-  const previewHtml = renderTemplate(template.content, sampleVariables);
+  const previewHtml = wrapWithPreviewStyles(renderTemplate(template.content, sampleVariables));
   const previewSubject = renderTemplate(template.subject, sampleVariables);
 
   return (
