@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { Helmet } from "react-helmet";
+import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -61,8 +63,12 @@ export default function EmailPage() {
   const sendingCount = outbox.filter(e => e.status === "sending").length;
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <DashboardLayout>
+      <Helmet>
+        <title>Email Manager | McKaynine</title>
+      </Helmet>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
             <Mail className="h-8 w-8" />
@@ -400,6 +406,7 @@ export default function EmailPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+      </div>
+    </DashboardLayout>
   );
 }
