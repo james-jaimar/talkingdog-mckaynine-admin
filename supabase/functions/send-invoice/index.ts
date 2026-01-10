@@ -13,7 +13,11 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("Invoice function started");
     
     // Get request data
-    const { invoice, email, pdfBase64 } = await req.json() as InvoiceRequest & { pdfBase64: string };
+    const { invoice, email, pdfBase64, customSubject, customEmailHtml } = await req.json() as InvoiceRequest & { 
+      pdfBase64: string;
+      customSubject?: string;
+      customEmailHtml?: string;
+    };
     
     if (!pdfBase64) {
       return new Response(
@@ -33,6 +37,7 @@ const handler = async (req: Request): Promise<Response> => {
     
     try {
       console.log(`Sending email to ${email}...`);
+      console.log("Custom email content provided:", !!customEmailHtml);
       
       try {
         // Convert base64 string to ArrayBuffer
@@ -43,8 +48,8 @@ const handler = async (req: Request): Promise<Response> => {
         }
         const pdfBuffer = bytes.buffer;
         
-        // Send email with the PDF attachment
-        await sendInvoiceEmail(invoice, email, pdfBuffer);
+        // Send email with the PDF attachment (pass custom content if provided)
+        await sendInvoiceEmail(invoice, email, pdfBuffer, customSubject, customEmailHtml);
         console.log("Email sent successfully!");
         
         return new Response(

@@ -92,11 +92,24 @@ function getBranchEmailConfig(branchId?: string): { email?: string; name?: strin
 /**
  * Sends an invoice via email with the PDF attachment
  * using SMTP for email delivery
+ * 
+ * @param invoice - The invoice to send
+ * @param email - The recipient email address
+ * @param pdfBuffer - The PDF as an ArrayBuffer
+ * @param customSubject - Optional custom email subject (if user edited it)
+ * @param customEmailHtml - Optional custom email HTML (if user edited the message)
  */
-export async function sendInvoiceEmail(invoice: Invoice, email: string, pdfBuffer: ArrayBuffer): Promise<boolean> {
+export async function sendInvoiceEmail(
+  invoice: Invoice, 
+  email: string, 
+  pdfBuffer: ArrayBuffer,
+  customSubject?: string,
+  customEmailHtml?: string
+): Promise<boolean> {
   console.log(`Preparing to send invoice ${invoice.invoice_number} to ${email}`);
   console.log("Invoice status in email sender:", invoice.status);
   console.log("Client branch_id:", invoice.client.branch_id);
+  console.log("Custom email provided:", !!customEmailHtml);
   
   try {
     // Get Supabase configuration from env
@@ -115,13 +128,13 @@ export async function sendInvoiceEmail(invoice: Invoice, email: string, pdfBuffe
     const branchName = branchConfig.name || "McKaynine Training Centre";
     const logoUrl = branchConfig.logoUrl || `${APP_URL}/lovable-uploads/mckaynine_delta_long_2025.jpg`;
     
-    // Create email message based on invoice status
-    const emailSubject = `Invoice ${invoice.invoice_number} from ${branchName}`;
+    // Use custom subject if provided, otherwise generate default
+    const emailSubject = customSubject || `Invoice ${invoice.invoice_number} from ${branchName}`;
     const clientName = `${invoice.client.first_name} ${invoice.client.last_name || ''}`.trim();
     const isPaid = invoice.status && invoice.status.toLowerCase() === 'paid';
     
-    // Create the formatted HTML email
-    const htmlMessage = createInvoiceEmailHtml(invoice, clientName, branchName, logoUrl, isPaid);
+    // Use custom email HTML if provided, otherwise generate default
+    const htmlMessage = customEmailHtml || createInvoiceEmailHtml(invoice, clientName, branchName, logoUrl, isPaid);
     
     console.log("Using send-with-smtp function to deliver email");
     console.log("From email:", branchConfig.email || "default");
