@@ -3,10 +3,6 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
 import Placeholder from "@tiptap/extension-placeholder";
-import { Table } from "@tiptap/extension-table";
-import TableRow from "@tiptap/extension-table-row";
-import TableCell from "@tiptap/extension-table-cell";
-import TableHeader from "@tiptap/extension-table-header";
 import TextAlign from "@tiptap/extension-text-align";
 import Underline from "@tiptap/extension-underline";
 import { TextStyle } from "@tiptap/extension-text-style";
@@ -14,6 +10,7 @@ import Color from "@tiptap/extension-color";
 import Highlight from "@tiptap/extension-highlight";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { StyledTable, StyledTableRow, StyledTableCell, StyledTableHeader } from "@/lib/tiptap/styled-table-extensions";
 import {
   Bold,
   Italic,
@@ -100,12 +97,12 @@ export function RichTextEditor({ content, onChange, configurableFields = [] }: R
       Placeholder.configure({
         placeholder: "Start writing your email content... You can paste from Word!",
       }),
-      Table.configure({
+      StyledTable.configure({
         resizable: true,
       }),
-      TableRow,
-      TableCell,
-      TableHeader,
+      StyledTableRow,
+      StyledTableCell,
+      StyledTableHeader,
       TextAlign.configure({
         types: ['heading', 'paragraph'],
       }),
@@ -462,10 +459,10 @@ export function RichTextEditor({ content, onChange, configurableFields = [] }: R
         </DropdownMenu>
       </div>
       
-      {/* Editor */}
+      {/* Editor - no default bg-muted on th to preserve inline styles */}
       <EditorContent 
         editor={editor} 
-        className="prose prose-sm max-w-none p-4 min-h-[350px] focus:outline-none [&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-[300px] [&_.ProseMirror_table]:border-collapse [&_.ProseMirror_table]:w-full [&_.ProseMirror_td]:border [&_.ProseMirror_td]:border-border [&_.ProseMirror_td]:p-2 [&_.ProseMirror_th]:border [&_.ProseMirror_th]:border-border [&_.ProseMirror_th]:p-2 [&_.ProseMirror_th]:bg-muted [&_.ProseMirror_th]:font-semibold"
+        className="prose prose-sm max-w-none p-4 min-h-[350px] focus:outline-none [&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-[300px] [&_.ProseMirror_table]:border-collapse [&_.ProseMirror_table]:w-full [&_.ProseMirror_td]:border [&_.ProseMirror_td]:border-border [&_.ProseMirror_td]:p-2 [&_.ProseMirror_th]:border [&_.ProseMirror_th]:border-border [&_.ProseMirror_th]:p-2 [&_.ProseMirror_th]:font-semibold"
       />
     </div>
   );
