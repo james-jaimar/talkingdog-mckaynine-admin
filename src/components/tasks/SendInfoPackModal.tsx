@@ -10,6 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { TaskWithHandler } from "@/hooks/useAllTasks";
 import { useEmailTemplates } from "@/hooks/useEmailTemplates";
 import { useEmailAttachments, EmailAttachment } from "@/hooks/useEmailAttachments";
+import { useEmailQueue } from "@/hooks/useEmailQueue";
 import { renderTemplate, TemplateVariables } from "@/lib/email/template-renderer";
 import { wrapEmailContent } from "@/lib/email/email-wrapper";
 import { useBranch } from "@/context/BranchContext";
@@ -27,6 +28,7 @@ interface SendInfoPackModalProps {
 export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModalProps) {
   const { templates, isLoading: templatesLoading } = useEmailTemplates();
   const { attachments, getAttachmentUrl } = useEmailAttachments();
+  const { addToQueue } = useEmailQueue();
   const { currentBranch } = useBranch();
   const queryClient = useQueryClient();
   
@@ -133,28 +135,15 @@ export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModa
         url: getAttachmentUrl(a),
       }));
 
-      // Send email via edge function
-      const { error: emailError } = await supabase.functions.invoke("send-with-smtp", {
-        body: {
-          to: task.handler.email,
-          subject: renderedSubject,
-          html: wrappedHtml,
-          from: undefined,
-          fromName: currentBranch?.name ? `${currentBranch.name} McKaynine` : "McKaynine",
-          attachments: attachmentUrls.length > 0 ? attachmentUrls : undefined,
-        },
-      });
-
-      if (emailError) throw emailError;
-
-      // Log the email
-      await supabase.from("email_log").insert({
-        handler_id: task.handler_id,
-        task_id: task.id,
-        template_id: selectedTemplate.id,
-        recipient_email: task.handler.email,
+      // Add to email queue instead of sending directly
+      await addToQueue.mutateAsync({
+        to_email: task.handler.email,
         subject: renderedSubject,
-        status: "sent",
+        html_content: wrappedHtml,
+        from_name: currentBranch?.name ? `${currentBranch.name} McKaynine` : "McKaynine",
+        attachments: attachmentUrls.length > 0 ? attachmentUrls : undefined,
+        handler_id: task.handler_id,
+        template_id: selectedTemplate.id,
       });
 
       // Mark task as completed
@@ -182,11 +171,11 @@ export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModa
       queryClient.invalidateQueries({ queryKey: ["handler-tasks"] });
       queryClient.invalidateQueries({ queryKey: ["pending-task-count"] });
 
-      toast.success(`Info pack sent to ${task.handler.email}`);
+      toast.success(`Email queued for ${task.handler.email}`);
       onOpenChange(false);
     } catch (error: any) {
-      console.error("Error sending info pack:", error);
-      toast.error(`Failed to send: ${error.message}`);
+      console.error("Error queuing email:", error);
+      toast.error(`Failed to queue: ${error.message}`);
     } finally {
       setIsSending(false);
     }
@@ -430,12 +419,12 @@ export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModa
             {isSending ? (
               <>
                 <span className="mr-2 animate-spin">⟳</span>
-                Sending...
+                Queuing...
               </>
             ) : (
               <>
                 <Send className="mr-2 h-4 w-4" />
-                Send Email
+                Queue Email
               </>
             )}
           </Button>

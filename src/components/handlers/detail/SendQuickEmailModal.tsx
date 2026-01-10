@@ -11,6 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useTemplateConfigurations } from "@/hooks/useTemplateConfigurations";
 import { useEmailTemplates, EmailTemplate } from "@/hooks/useEmailTemplates";
 import { useEmailAttachments, EmailAttachment } from "@/hooks/useEmailAttachments";
+import { useEmailQueue } from "@/hooks/useEmailQueue";
 import { renderTemplate, TemplateVariables } from "@/lib/email/template-renderer";
 import { wrapEmailContent } from "@/lib/email/email-wrapper";
 import { useBranch } from "@/context/BranchContext";
@@ -40,6 +41,7 @@ export function SendQuickEmailModal({ open, onOpenChange, handler }: SendQuickEm
   const { templatesWithStatus, isLoading: prebuiltLoading } = useTemplateConfigurations();
   const { templates: customTemplates, isLoading: customLoading } = useEmailTemplates();
   const { attachments, getAttachmentUrl } = useEmailAttachments();
+  const { addToQueue } = useEmailQueue();
   const { currentBranch } = useBranch();
   
   const [emailMode, setEmailMode] = useState<"template" | "custom">("custom");
@@ -220,34 +222,22 @@ export function SendQuickEmailModal({ open, onOpenChange, handler }: SendQuickEm
         throw new Error("No valid template selected");
       }
 
-      // Send email via edge function
-      const { error: emailError } = await supabase.functions.invoke("send-with-smtp", {
-        body: {
-          to: handler.email,
-          subject,
-          html,
-          from: undefined,
-          fromName: currentBranch?.name ? `${currentBranch.name} McKaynine` : "McKaynine",
-          attachments: attachmentUrls.length > 0 ? attachmentUrls : undefined,
-        },
-      });
-
-      if (emailError) throw emailError;
-
-      // Log the email with template_id if applicable
-      await supabase.from("email_log").insert({
-        handler_id: handler.id,
-        recipient_email: handler.email,
+      // Add to email queue instead of sending directly
+      await addToQueue.mutateAsync({
+        to_email: handler.email,
         subject,
+        html_content: html,
+        from_name: currentBranch?.name ? `${currentBranch.name} McKaynine` : "McKaynine",
+        attachments: attachmentUrls.length > 0 ? attachmentUrls : undefined,
+        handler_id: handler.id,
         template_id: templateId,
-        status: "sent",
       });
 
-      toast.success(`Email sent to ${handler.email}`);
+      toast.success(`Email queued for ${handler.email}`);
       onOpenChange(false);
     } catch (error: any) {
-      console.error("Error sending email:", error);
-      toast.error(`Failed to send: ${error.message}`);
+      console.error("Error queuing email:", error);
+      toast.error(`Failed to queue: ${error.message}`);
     } finally {
       setIsSending(false);
     }
@@ -646,12 +636,12 @@ export function SendQuickEmailModal({ open, onOpenChange, handler }: SendQuickEm
             onClick={handleSend} 
             disabled={isSending || (emailMode === "custom" && (!customSubject || !customMessage)) || (emailMode === "template" && !hasSelectedTemplate)}
           >
-            {isSending ? (
-              "Sending..."
+          {isSending ? (
+              "Queuing..."
             ) : (
               <>
                 <Send className="h-4 w-4 mr-2" />
-                Send Email
+                Queue Email
               </>
             )}
           </Button>
