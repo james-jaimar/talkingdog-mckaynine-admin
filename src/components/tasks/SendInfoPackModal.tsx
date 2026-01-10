@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -6,7 +6,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Switch } from "@/components/ui/switch";
 import { TaskWithHandler } from "@/hooks/useAllTasks";
 import { useEmailTemplates, EmailTemplate } from "@/hooks/useEmailTemplates";
 import { renderTemplate, TemplateVariables } from "@/lib/email/template-renderer";
@@ -14,25 +13,12 @@ import { useBranch } from "@/context/BranchContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
-import { Send, Eye, Mail, User, Dog, AlertCircle, Link } from "lucide-react";
-import { ClassInvitationSelector } from "./ClassInvitationSelector";
-import { addDays } from "date-fns";
+import { Send, Eye, Mail, User, Dog, AlertCircle } from "lucide-react";
 
 interface SendInfoPackModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   task: TaskWithHandler | null;
-}
-
-interface ClassScheduleOption {
-  id: string;
-  className: string;
-  classType: string;
-  startTime: string;
-  selectedDates: string[];
-  trainerName: string;
-  capacity: number;
-  currentEnrollment: number;
 }
 
 export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModalProps) {
@@ -45,11 +31,6 @@ export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModa
   const [activeTab, setActiveTab] = useState<"compose" | "preview">("compose");
   const [isSending, setIsSending] = useState(false);
   const [dogName, setDogName] = useState<string>("");
-  const [dogId, setDogId] = useState<string>("");
-  
-  // New state for class invitation
-  const [includeEnrollmentLink, setIncludeEnrollmentLink] = useState(false);
-  const [selectedSchedule, setSelectedSchedule] = useState<ClassScheduleOption | null>(null);
 
   // Show all active templates - admin can choose any template
   const availableTemplates = templates.filter(t => t.is_active);
@@ -69,7 +50,6 @@ export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModa
       
       if (dogs && dogs.length > 0) {
         setDogName(dogs[0].name);
-        setDogId(dogs[0].id);
       }
     }
     
@@ -78,30 +58,11 @@ export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModa
       setSelectedTemplateId("");
       setCustomMessage("");
       setActiveTab("compose");
-      setSelectedSchedule(null);
-      setIncludeEnrollmentLink(true);
     }
   }, [open, task]);
 
-  // Handler for schedule selection
-  const handleScheduleSelect = useCallback((schedule: ClassScheduleOption | null) => {
-    setSelectedSchedule(schedule);
-  }, []);
-
-  // Generate a secure token for the enrollment link
-  const generateToken = () => {
-    return crypto.randomUUID();
-  };
-
   // Build template variables for preview
   const getTemplateVariables = (): TemplateVariables => {
-    // Base URL for enrollment link
-    const baseUrl = window.location.origin;
-    const enrollmentToken = "PREVIEW_TOKEN"; // Placeholder for preview
-    const enrollmentLink = includeEnrollmentLink && selectedSchedule 
-      ? `${baseUrl}/customer/enroll/${enrollmentToken}`
-      : "";
-    
     return {
       handler_name: task?.handler?.first_name || "",
       handler_full_name: task?.handler ? `${task.handler.first_name} ${task.handler.last_name}` : "",
@@ -113,7 +74,7 @@ export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModa
       branch_email: (currentBranch as any)?.email || "",
       branch_phone: (currentBranch as any)?.phone || "",
       base_url: "https://mckaynine.talkingdog.co.za",
-      enrollment_link: enrollmentLink,
+      enrollment_link: "",
       custom_message: customMessage.replace(/\n/g, '<br>'),
     };
   };
@@ -124,44 +85,8 @@ export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModa
       return;
     }
 
-    // Require class selection if enrollment link is enabled
-    if (includeEnrollmentLink && !selectedSchedule) {
-      toast.error("Please select a class schedule for the enrollment link");
-      return;
-    }
-
     setIsSending(true);
     try {
-      // Create invitation record if enrollment link is enabled
-      let invitationToken: string | null = null;
-      if (includeEnrollmentLink && selectedSchedule && dogId) {
-        invitationToken = generateToken();
-        
-        const { error: inviteError } = await supabase
-          .from("class_invitations")
-          .insert({
-            handler_id: task.handler_id,
-            dog_id: dogId,
-            class_schedule_id: selectedSchedule.id,
-            token: invitationToken,
-            status: "pending",
-            completed_class_type: task.class_type,
-            expires_at: addDays(new Date(), 14).toISOString(), // 2 weeks to respond
-            task_id: task.id,
-          });
-
-        if (inviteError) {
-          console.error("Error creating invitation:", inviteError);
-          throw new Error("Failed to create enrollment invitation");
-        }
-      }
-
-      // Build variables with real enrollment link
-      const baseUrl = window.location.origin;
-      const enrollmentLink = invitationToken 
-        ? `${baseUrl}/customer/enroll/${invitationToken}`
-        : "";
-
       const variables: TemplateVariables = {
         handler_name: task.handler?.first_name || "",
         handler_full_name: task.handler ? `${task.handler.first_name} ${task.handler.last_name}` : "",
@@ -173,7 +98,7 @@ export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModa
         branch_email: (currentBranch as any)?.email || "",
         branch_phone: (currentBranch as any)?.phone || "",
         base_url: "https://mckaynine.talkingdog.co.za",
-        enrollment_link: enrollmentLink,
+        enrollment_link: "",
         custom_message: customMessage.replace(/\n/g, '<br>'),
       };
       
@@ -228,12 +153,8 @@ export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModa
       queryClient.invalidateQueries({ queryKey: ["all-tasks"] });
       queryClient.invalidateQueries({ queryKey: ["handler-tasks"] });
       queryClient.invalidateQueries({ queryKey: ["pending-task-count"] });
-      queryClient.invalidateQueries({ queryKey: ["class-invitations"] });
 
-      const successMessage = invitationToken
-        ? `Info pack sent with enrollment link to ${task.handler.email}`
-        : `Info pack sent to ${task.handler.email}`;
-      toast.success(successMessage);
+      toast.success(`Info pack sent to ${task.handler.email}`);
       onOpenChange(false);
     } catch (error: any) {
       console.error("Error sending info pack:", error);
@@ -343,37 +264,6 @@ export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModa
               )}
             </div>
 
-            {/* Enrollment Link Section */}
-            {selectedTemplate && (
-              <div className="space-y-3 p-4 border rounded-lg bg-primary/5">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Link className="h-4 w-4 text-primary" />
-                    <Label htmlFor="enrollment-link" className="font-medium">
-                      Include Self-Service Enrollment Link
-                    </Label>
-                  </div>
-                  <Switch 
-                    id="enrollment-link"
-                    checked={includeEnrollmentLink}
-                    onCheckedChange={setIncludeEnrollmentLink}
-                  />
-                </div>
-                
-                {includeEnrollmentLink && (
-                  <>
-                    <p className="text-xs text-muted-foreground">
-                      The handler will receive a personalized link to view class details and enroll themselves.
-                    </p>
-                    <ClassInvitationSelector
-                      nextClassType={selectedTemplate.class_type || undefined}
-                      onSelectSchedule={handleScheduleSelect}
-                      selectedScheduleId={selectedSchedule?.id}
-                    />
-                  </>
-                )}
-              </div>
-            )}
 
             <div className="space-y-2">
               <Label htmlFor="custom-message">Personal Message (Optional)</Label>
@@ -400,12 +290,6 @@ export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModa
                   <div>
                     <strong>Subject:</strong> {preview.subject}
                   </div>
-                  {includeEnrollmentLink && selectedSchedule && (
-                    <div className="flex items-center gap-2 text-xs text-primary">
-                      <Link className="h-3 w-3" />
-                      <span>Enrollment link will be included for: {selectedSchedule.className}</span>
-                    </div>
-                  )}
                 </div>
                 <iframe
                   srcDoc={preview.html}
@@ -427,7 +311,7 @@ export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModa
           </Button>
           <Button 
             onClick={handleSend} 
-            disabled={!selectedTemplate || isSending || (includeEnrollmentLink && !selectedSchedule)}
+            disabled={!selectedTemplate || isSending}
           >
             {isSending ? (
               <>
