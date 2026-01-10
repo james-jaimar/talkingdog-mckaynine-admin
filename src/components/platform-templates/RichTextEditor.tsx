@@ -11,6 +11,7 @@ import Highlight from "@tiptap/extension-highlight";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { StyledTable, StyledTableRow, StyledTableCell, StyledTableHeader } from "@/lib/tiptap/styled-table-extensions";
+import { StyledParagraph } from "@/lib/tiptap/styled-block-extensions";
 import {
   Bold,
   Italic,
@@ -87,10 +88,12 @@ export function RichTextEditor({ content, onChange, configurableFields = [] }: R
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
+        paragraph: false,
         heading: {
           levels: [1, 2, 3],
         },
       }),
+      StyledParagraph,
       Link.configure({
         openOnClick: false,
       }),
@@ -104,7 +107,7 @@ export function RichTextEditor({ content, onChange, configurableFields = [] }: R
       StyledTableCell,
       StyledTableHeader,
       TextAlign.configure({
-        types: ['heading', 'paragraph'],
+        types: ["heading", "paragraph"],
       }),
       Underline,
       TextStyle,
@@ -459,10 +462,10 @@ export function RichTextEditor({ content, onChange, configurableFields = [] }: R
         </DropdownMenu>
       </div>
       
-      {/* Editor - no default bg-muted on th to preserve inline styles */}
-      <EditorContent 
-        editor={editor} 
-        className="prose prose-sm max-w-none p-4 min-h-[350px] focus:outline-none [&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-[300px] [&_.ProseMirror_table]:border-collapse [&_.ProseMirror_table]:w-full [&_.ProseMirror_td]:border [&_.ProseMirror_td]:border-border [&_.ProseMirror_td]:p-2 [&_.ProseMirror_th]:border [&_.ProseMirror_th]:border-border [&_.ProseMirror_th]:p-2 [&_.ProseMirror_th]:font-semibold"
+      {/* Editor - keep styles from Word by avoiding opinionated prose/table overrides */}
+      <EditorContent
+        editor={editor}
+        className="max-w-none p-4 min-h-[350px] focus:outline-none [&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-[300px]"
       />
     </div>
   );
