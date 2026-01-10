@@ -72,13 +72,20 @@ export const createInvoiceForHandler = async ({
       enrollmentFee = 0;
     }
 
-    // Create invoice items
-    const items = [
+    // Create invoice items with item_type for proper fee calculations
+    const items: Array<{
+      description: string;
+      quantity: number;
+      unit_price: number;
+      booking_id: string;
+      item_type: string;
+    }> = [
       {
         description: `${className} training class for ${dogName}`,
         quantity: 1,
         unit_price: classPrice,
         booking_id: bookingId,
+        item_type: 'course_fee',
       }
     ];
     
@@ -88,6 +95,7 @@ export const createInvoiceForHandler = async ({
         quantity: 1,
         unit_price: enrollmentFee,
         booking_id: bookingId,
+        item_type: 'enrollment_fee',
       });
     }
 

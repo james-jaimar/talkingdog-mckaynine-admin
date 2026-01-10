@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { FinancialData, ClassFinance, BookingRevenue } from "./types";
+import { getCourseFeeAmount } from "@/lib/invoiceItemUtils";
 
 export function useFinancialProcessor(financialData: FinancialData | undefined) {
   const [classFinances, setClassFinances] = useState<ClassFinance[]>([]);
@@ -100,8 +101,16 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
       // Convert Set to array for iteration
       const bookingIds = Array.from(bookingIdsSet);
       
-      // Distribute the invoice total evenly among associated unique bookings
-      const invoiceAmountPerBooking = invoice.total / bookingIds.length;
+      // Get invoice items for this invoice to calculate course fee only (excluding enrollment fees)
+      const invoiceItemsForThisInvoice = branchFilteredInvoiceItems.filter(
+        item => item.invoice_id === invoice.id
+      );
+      
+      // Calculate the course fee amount only (excluding enrollment fees)
+      const courseFeeTotal = getCourseFeeAmount(invoiceItemsForThisInvoice);
+      
+      // Distribute the course fee evenly among associated unique bookings
+      const courseFeePerBooking = courseFeeTotal / bookingIds.length;
       
       bookingIds.forEach(bookingId => {
         const booking = branchFilteredBookings.find(b => b.id === bookingId);
@@ -148,11 +157,11 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
           invoiceIds: []
         };
         
-        // Update summary with invoice amount
-        // Do NOT increment bookingsCount here as we'll set it based on unique bookings later
-        summary.totalRevenue += invoiceAmountPerBooking;
+        // Update summary with course fee amount only (excluding enrollment fees for fee calculations)
+        // Note: totalRevenue here represents the base for fee calculations, not total invoice value
+        summary.totalRevenue += courseFeePerBooking;
         
-        // Calculate fees based on invoice amount
+        // Calculate fees based on course fee only (excluding enrollment fees)
         // Helper to check if a fee type is a fixed amount (not percentage)
         const isFixedAmount = (t: unknown): boolean => {
           const type = String(t ?? "percentage").toLowerCase().trim();
@@ -163,25 +172,25 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
         const adminValue = Number(classData.admin_fee_value ?? 0);
         const trainerValue = Number(classData.trainer_fee_value ?? 0);
 
-        // Franchise/Commission fee
+        // Franchise/Commission fee - calculated on course fee only
         if (isFixedAmount(classData.mckaynine_commission_type)) {
           summary.franchiseFee += commissionValue;
         } else {
-          summary.franchiseFee += invoiceAmountPerBooking * (commissionValue / 100);
+          summary.franchiseFee += courseFeePerBooking * (commissionValue / 100);
         }
 
-        // Admin fee
+        // Admin fee - calculated on course fee only
         if (isFixedAmount(classData.admin_fee_type)) {
           summary.adminFee += adminValue;
         } else {
-          summary.adminFee += invoiceAmountPerBooking * (adminValue / 100);
+          summary.adminFee += courseFeePerBooking * (adminValue / 100);
         }
 
-        // Trainer/Instructor fee
+        // Trainer/Instructor fee - calculated on course fee only
         if (isFixedAmount(classData.trainer_fee_type)) {
           summary.instructorFee += trainerValue;
         } else {
-          summary.instructorFee += invoiceAmountPerBooking * (trainerValue / 100);
+          summary.instructorFee += courseFeePerBooking * (trainerValue / 100);
         }
         
         classSummaries.set(className, summary);

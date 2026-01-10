@@ -546,14 +546,14 @@ async function createInvoiceForImport(
     // Generate invoice number using class date
     const invoiceNumber = await generateInvoiceNumber(classDate);
 
-    // Calculate totals
-    const items: { description: string; amount: number }[] = [];
+    // Calculate totals - include item_type for proper fee calculations
+    const items: { description: string; amount: number; item_type: string }[] = [];
     
     if (courseFee > 0) {
-      items.push({ description: `${className} - Course Fee`, amount: courseFee });
+      items.push({ description: `${className} - Course Fee`, amount: courseFee, item_type: 'course_fee' });
     }
     if (enrollmentFee > 0) {
-      items.push({ description: `${className} - Enrollment Fee`, amount: enrollmentFee });
+      items.push({ description: `${className} - Enrollment Fee`, amount: enrollmentFee, item_type: 'enrollment_fee' });
     }
 
     const subtotal = items.reduce((sum, item) => sum + item.amount, 0);
@@ -584,7 +584,7 @@ async function createInvoiceForImport(
       return false;
     }
 
-    // Create invoice items
+    // Create invoice items with item_type for proper fee calculations
     for (const item of items) {
       await supabase.from("invoice_items").insert({
         invoice_id: invoice.id,
@@ -593,6 +593,7 @@ async function createInvoiceForImport(
         quantity: 1,
         unit_price: item.amount,
         amount: item.amount,
+        item_type: item.item_type,
       });
     }
 

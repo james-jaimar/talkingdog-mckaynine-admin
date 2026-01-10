@@ -8,13 +8,15 @@ interface MetricsProps {
   collectedRevenue: number;
   pendingRevenue: number;
   overdueRevenue: number;
+  enrollmentFees?: number; // Optional: enrollment fees collected (pass-through)
 }
 
 export function FinancialMetricsCards({ 
   totalRevenue, 
   collectedRevenue, 
   pendingRevenue, 
-  overdueRevenue
+  overdueRevenue,
+  enrollmentFees = 0
 }: MetricsProps) {
   const collectionRate = totalRevenue ? (collectedRevenue / totalRevenue) * 100 : 0;
   
@@ -22,13 +24,14 @@ export function FinancialMetricsCards({
   const formatRandCurrency = (amount: number) => `R ${amount.toFixed(2)}`;
   
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-6">
       <Card className="relative">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{formatRandCurrency(totalRevenue)}</div>
+          <p className="text-xs text-muted-foreground">Excl. enrollment fees</p>
         </CardContent>
       </Card>
 
@@ -61,6 +64,18 @@ export function FinancialMetricsCards({
           <p className="text-xs text-muted-foreground">Past due date</p>
         </CardContent>
       </Card>
+
+      {enrollmentFees > 0 && (
+        <Card className="bg-amber-50 dark:bg-amber-950/20">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Enrollment Fees</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-amber-700 dark:text-amber-400">{formatRandCurrency(enrollmentFees)}</div>
+            <p className="text-xs text-muted-foreground">Pass-through to franchise</p>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

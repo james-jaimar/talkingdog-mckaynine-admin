@@ -33,10 +33,14 @@ export function useAllocationChartData(invoices: Invoice[], showOnlyPaid: boolea
     }
 
     // Calculate total revenue from filtered invoices
+    // Note: This is the full invoice total including enrollment fees
     const total = filteredInvoices.reduce((sum, invoice) => sum + invoice.total, 0);
     setTotalRevenue(total);
 
     // Sum the actual fee amounts from invoice data
+    // Note: These fees should already be calculated on course fee only (excl enrollment fee)
+    // If invoice doesn't have specific fee fields, fall back to percentage of total
+    // (This fallback may slightly overstate fees for invoices with enrollment fees)
     const handlerFeeTotal = filteredInvoices.reduce((sum, invoice) => 
       sum + (invoice.trainer_fee || invoice.total * 0.40), 0);
     
