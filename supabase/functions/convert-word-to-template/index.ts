@@ -35,14 +35,14 @@ For the main info box (What's Next section):
 
 For course details tables (MUST USE THIS EXACT FORMAT):
 <table style="width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 14px;">
-  <tr style="background-color: #3b7dc4; color: white;">
-    <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Course</th>
-    <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Price</th>
-    <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Entry Criteria</th>
-    <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Dates</th>
-    <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Day & Time</th>
+  <tr>
+    <th style="padding: 10px; text-align: left; border: 1px solid #ddd; background-color: #3b7dc4; color: #ffffff;">Course</th>
+    <th style="padding: 10px; text-align: left; border: 1px solid #ddd; background-color: #3b7dc4; color: #ffffff;">Price</th>
+    <th style="padding: 10px; text-align: left; border: 1px solid #ddd; background-color: #3b7dc4; color: #ffffff;">Entry Criteria</th>
+    <th style="padding: 10px; text-align: left; border: 1px solid #ddd; background-color: #3b7dc4; color: #ffffff;">Dates</th>
+    <th style="padding: 10px; text-align: left; border: 1px solid #ddd; background-color: #3b7dc4; color: #ffffff;">Day & Time</th>
   </tr>
-  <tr style="background-color: #f9f9f9;">
+  <tr style="background-color: #f9f9f9; color: #333;">
     <td style="padding: 10px; border: 1px solid #ddd;"><strong>Course Name</strong></td>
     <td style="padding: 10px; border: 1px solid #ddd;">R1,770.00</td>
     <td style="padding: 10px; border: 1px solid #ddd;">Previous Course</td>
