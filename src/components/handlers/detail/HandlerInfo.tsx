@@ -1,15 +1,31 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { GitBranch, Mail, MapPin, Phone, Briefcase, Stethoscope, Check, X, HelpCircle, Send } from "lucide-react";
+import { GitBranch, Mail, MapPin, Phone, Briefcase, Stethoscope, Check, X, HelpCircle, Send, FileCheck, Syringe } from "lucide-react";
 import { formatPhoneNumber } from "../utils/handlerUtils";
 import { useBranch } from "@/context/BranchContext";
 import { useEffect, useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { EnrollmentRegistration } from "@/types/handler";
 import { SendQuickEmailModal } from "./SendQuickEmailModal";
+import { Checkbox } from "@/components/ui/checkbox";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/components/ui/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
 
 type ConsentStatus = 'yes' | 'no' | 'not_marked' | 'unsure';
+
+interface HandlerBooking {
+  id: string;
+  is_enrolled: boolean | null;
+  vaccination_verified: boolean | null;
+  dog_id: string;
+  class_schedule_id: string;
+  dogs?: {
+    id: string;
+    name: string;
+  };
+}
 
 interface HandlerInfoProps {
   handler: {
@@ -30,6 +46,7 @@ interface HandlerInfoProps {
     uses_whatsapp_status?: ConsentStatus;
     social_media_consent_status?: ConsentStatus;
     enrollment_registrations?: EnrollmentRegistration[];
+    bookings?: HandlerBooking[];
   };
 }
 
@@ -65,6 +82,8 @@ export function HandlerInfo({ handler }: HandlerInfoProps) {
   const { branches } = useBranch();
   const [branchName, setBranchName] = useState<string>("");
   const [emailModalOpen, setEmailModalOpen] = useState(false);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (handler.branch_id && branches) {
@@ -93,6 +112,58 @@ export function HandlerInfo({ handler }: HandlerInfoProps) {
       photo: latestRegistration.photo_permission || handler.social_media_consent_status
     };
   }, [handler.enrollment_registrations, handler.uses_whatsapp_status, handler.social_media_consent_status]);
+
+  // Calculate aggregate admin verification status from all bookings
+  const adminVerification = useMemo(() => {
+    const bookings = handler.bookings || [];
+    if (bookings.length === 0) {
+      return { hasEnrolled: false, hasVaccVerified: false, bookingCount: 0 };
+    }
+    
+    // Check if ANY booking has these verified
+    const hasEnrolled = bookings.some(b => b.is_enrolled === true);
+    const hasVaccVerified = bookings.some(b => b.vaccination_verified === true);
+    
+    return { hasEnrolled, hasVaccVerified, bookingCount: bookings.length };
+  }, [handler.bookings]);
+
+  // Update all bookings for this handler
+  const handleAdminVerificationChange = async (field: 'is_enrolled' | 'vaccination_verified', checked: boolean) => {
+    const bookings = handler.bookings || [];
+    if (bookings.length === 0) {
+      toast({
+        title: "No bookings found",
+        description: "This handler has no class bookings to update.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Update all bookings for this client
+      const bookingIds = bookings.map(b => b.id);
+      const { error } = await supabase
+        .from('bookings')
+        .update({ [field]: checked })
+        .in('id', bookingIds);
+
+      if (error) throw error;
+
+      toast({
+        title: "Updated",
+        description: `${field === 'is_enrolled' ? 'Enrollment form' : 'Vaccination'} status updated for all bookings.`,
+      });
+
+      // Refresh the handler data
+      queryClient.invalidateQueries({ queryKey: ['client', handler.id] });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update status",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <>
@@ -193,6 +264,38 @@ export function HandlerInfo({ handler }: HandlerInfoProps) {
           <div className="space-y-2">
             <ConsentBadge status={consentStatuses.whatsapp} label="WhatsApp" />
             <ConsentBadge status={consentStatuses.photo} label="Photo/Social Media" />
+          </div>
+        </div>
+
+        {/* Admin Verification - Enrol & Vacc checkboxes */}
+        <div className="space-y-2">
+          <h3 className="font-semibold text-muted-foreground text-sm">Admin Verification</h3>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <FileCheck className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm">Enrollment Form Received</span>
+              </div>
+              <Checkbox
+                checked={adminVerification.hasEnrolled}
+                onCheckedChange={(checked) => handleAdminVerificationChange('is_enrolled', !!checked)}
+                disabled={adminVerification.bookingCount === 0}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Syringe className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm">Vaccination Certificate</span>
+              </div>
+              <Checkbox
+                checked={adminVerification.hasVaccVerified}
+                onCheckedChange={(checked) => handleAdminVerificationChange('vaccination_verified', !!checked)}
+                disabled={adminVerification.bookingCount === 0}
+              />
+            </div>
+            {adminVerification.bookingCount === 0 && (
+              <p className="text-xs text-muted-foreground">No bookings found for this handler</p>
+            )}
           </div>
         </div>
         
