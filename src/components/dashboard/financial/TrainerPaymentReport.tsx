@@ -1,5 +1,4 @@
 
-import { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { 
   Table, 
@@ -14,6 +13,7 @@ import { formatCurrency } from "@/lib/formatters";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
+import { isEnrollmentFeeItem } from "@/lib/invoiceItemUtils";
 
 interface TrainerPaymentReportProps {
   branchId?: string;
@@ -111,6 +111,8 @@ export function TrainerPaymentReport({ branchId, dateRange, isLoading }: Trainer
             .select(`
               id,
               amount,
+              description,
+              item_type,
               booking_id,
               invoice_id,
               invoices:invoice_id (
@@ -140,20 +142,24 @@ export function TrainerPaymentReport({ branchId, dateRange, isLoading }: Trainer
             };
           }
           
-          // Filter to only active invoice items (not cancelled)
+          // Filter to only active invoice items (not cancelled) and exclude enrollment fees
           const activeItems = invoiceItems.filter(item => 
             item.invoices && item.invoices.status !== 'cancelled'
           );
           
-          // Calculate financial data based on invoice items
-          const totalRevenue = activeItems.reduce(
+          // Filter out enrollment fees for revenue calculations
+          // Trainer fees are only calculated on course fees, not enrollment fees
+          const courseFeeItems = activeItems.filter(item => !isEnrollmentFeeItem(item));
+          
+          // Calculate financial data based on course fee items only
+          const totalRevenue = courseFeeItems.reduce(
             (sum, item) => sum + (item.amount || 0), 0
           );
           
-          // Calculate trainer's allocated amount (typically percentage of total revenue)
+          // Calculate trainer's allocated amount (percentage of course fee revenue only)
           // Use trainer fee values from class configuration when available
           let allocatedAmount = 0;
-          for (const item of activeItems) {
+          for (const item of courseFeeItems) {
             if (!item.booking_id) continue;
             
             // Find the related schedule and class for this booking
@@ -163,7 +169,7 @@ export function TrainerPaymentReport({ branchId, dateRange, isLoading }: Trainer
             const schedule = schedules.find(s => s.id === booking.class_schedule_id);
             if (!schedule || !schedule.classes) continue;
             
-            // Calculate trainer's allocation based on class configuration
+            // Calculate trainer's allocation based on class configuration (course fees only)
             const feeType = schedule.classes.trainer_fee_type;
             const feeValue = schedule.classes.trainer_fee_value;
             
@@ -179,13 +185,13 @@ export function TrainerPaymentReport({ branchId, dateRange, isLoading }: Trainer
             allocatedAmount = totalRevenue * 0.7;
           }
           
-          // Calculate paid amount from paid invoices
-          const paidItems = activeItems.filter(
+          // Calculate paid amount from paid invoices (course fees only)
+          const paidCourseFeeItems = courseFeeItems.filter(
             item => item.invoices?.status === 'paid'
           );
           
           let paidAmount = 0;
-          for (const item of paidItems) {
+          for (const item of paidCourseFeeItems) {
             if (!item.booking_id) continue;
             
             const booking = bookings.find(b => b.id === item.booking_id);
@@ -205,14 +211,14 @@ export function TrainerPaymentReport({ branchId, dateRange, isLoading }: Trainer
           }
           
           // If no specific paid calculation was found, use a default 70%
-          if (paidAmount === 0 && paidItems.length > 0) {
-            paidAmount = paidItems.reduce((sum, item) => sum + (item.amount || 0), 0) * 0.7;
+          if (paidAmount === 0 && paidCourseFeeItems.length > 0) {
+            paidAmount = paidCourseFeeItems.reduce((sum, item) => sum + (item.amount || 0), 0) * 0.7;
           }
           
           // Get last payment date
           let lastPaymentDate = null;
-          if (paidItems.length > 0) {
-            const paymentDates = paidItems
+          if (paidCourseFeeItems.length > 0) {
+            const paymentDates = paidCourseFeeItems
               .map(item => item.invoices?.payment_date ? new Date(item.invoices.payment_date).getTime() : 0)
               .filter(timestamp => timestamp > 0);
               
@@ -284,7 +290,7 @@ export function TrainerPaymentReport({ branchId, dateRange, isLoading }: Trainer
           <TableHeader>
             <TableRow>
               <TableHead>Trainer</TableHead>
-              <TableHead className="text-right">Total Revenue</TableHead>
+              <TableHead className="text-right">Course Fee Revenue</TableHead>
               <TableHead className="text-right">Allocated</TableHead>
               <TableHead className="text-right">Paid</TableHead>
               <TableHead className="text-right">Pending</TableHead>

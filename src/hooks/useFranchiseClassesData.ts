@@ -43,6 +43,7 @@ export interface FranchiseReportData {
   classes: FranchiseClassGroup[];
   reportTotals: {
     totalRevenue: number;
+    totalEnrollmentFees: number;
     totalFranchiseFees: number;
     totalAdminFees: number;
     totalMckaynineCommission: number;
@@ -68,6 +69,7 @@ export function useFranchiseClassesData(termId?: string) {
           classes: [], 
           reportTotals: { 
             totalRevenue: 0, 
+            totalEnrollmentFees: 0,
             totalFranchiseFees: 0, 
             totalAdminFees: 0, 
             totalMckaynineCommission: 0, 
@@ -171,6 +173,7 @@ export function useFranchiseClassesData(termId?: string) {
       const franchiseClasses: FranchiseClassGroup[] = [];
       let reportTotals = {
         totalRevenue: 0,
+        totalEnrollmentFees: 0,
         totalFranchiseFees: 0,
         totalAdminFees: 0,
         totalMckaynineCommission: 0,
@@ -214,13 +217,13 @@ export function useFranchiseClassesData(termId?: string) {
             // IMPORTANT: Use only course fees for fee calculations, exclude enrollment fees
             let paymentStatus = booking.payment_status;
             let invoiceAmount = 0; // This will be the COURSE FEE only (excl enrollment fee)
-            let totalInvoiceAmount = 0; // This is the total for reporting purposes
+            let enrollmentFeeAmount = 0; // Track enrollment fees separately
             
             if (booking.invoice_items && booking.invoice_items.length > 0) {
               // Get course fee amount only (excluding enrollment fees)
               invoiceAmount = getCourseFeeAmount(booking.invoice_items);
-              // Get total invoice amount for reference
-              totalInvoiceAmount = booking.invoice_items.reduce((sum, item) => sum + (item.amount || 0), 0);
+              // Get enrollment fee amount separately
+              enrollmentFeeAmount = getEnrollmentFeeAmount(booking.invoice_items);
               
               // Check if any invoice is paid
               const hasPaidInvoice = booking.invoice_items.some(item => 
@@ -231,6 +234,9 @@ export function useFranchiseClassesData(termId?: string) {
                 paymentStatus = 'paid';
               }
             }
+            
+            // Track enrollment fees at report level
+            reportTotals.totalEnrollmentFees += enrollmentFeeAmount;
 
             // Calculate fees based on class configuration
             // IMPORTANT: All percentage-based fees are calculated on COURSE FEE only

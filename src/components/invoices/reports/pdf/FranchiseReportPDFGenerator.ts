@@ -74,31 +74,42 @@ export class FranchiseReportPDFGenerator {
   }
 
   private addSummaryCards(reportTotals: any, startY: number): number {
-    const cardWidth = (this.pageWidth - 40) / 4;
-    const cardHeight = 16;
+    const cardWidth = (this.pageWidth - 40) / 5;
+    const cardHeight = 18;
     let currentY = startY + 6;
 
     const cards = [
       { 
-        title: 'Total Revenue', 
+        title: 'Course Fee Revenue', 
+        subtitle: 'Excl. enrollment fees',
         value: this.formatCurrency(reportTotals.totalRevenue), 
         bgColor: [239, 246, 255],
         textColor: [59, 130, 246]
       },
       { 
+        title: 'Enrollment Fees', 
+        subtitle: 'Pass-through',
+        value: this.formatCurrency(reportTotals.totalEnrollmentFees || 0), 
+        bgColor: [236, 254, 255],
+        textColor: [6, 182, 212]
+      },
+      { 
         title: 'Franchise Fees', 
+        subtitle: '',
         value: this.formatCurrency(reportTotals.totalFranchiseFees), 
         bgColor: [240, 253, 244],
         textColor: [34, 197, 94]
       },
       { 
         title: 'Admin Fees', 
+        subtitle: '',
         value: this.formatCurrency(reportTotals.totalAdminFees), 
         bgColor: [255, 247, 237],
         textColor: [249, 115, 22]
       },
       { 
         title: 'McKaynine Commission', 
+        subtitle: '',
         value: this.formatCurrency(reportTotals.totalMckaynineCommission), 
         bgColor: [250, 245, 255],
         textColor: [168, 85, 247]
@@ -106,7 +117,7 @@ export class FranchiseReportPDFGenerator {
     ];
 
     cards.forEach((card, index) => {
-      const x = this.margin + (index * (cardWidth + 1));
+      const x = this.margin + (index * (cardWidth + 0.5));
       
       // Card background
       this.doc.setFillColor(card.bgColor[0], card.bgColor[1], card.bgColor[2]);
@@ -119,14 +130,21 @@ export class FranchiseReportPDFGenerator {
       
       // Title text
       this.doc.setTextColor(card.textColor[0], card.textColor[1], card.textColor[2]);
-      this.doc.setFontSize(6);
+      this.doc.setFontSize(5);
       setFont(this.doc, 'bold');
       this.doc.text(card.title, x + 2, currentY + 4);
       
+      // Subtitle text (if any)
+      if (card.subtitle) {
+        this.doc.setFontSize(4);
+        setFont(this.doc, 'normal');
+        this.doc.text(card.subtitle, x + 2, currentY + 7);
+      }
+      
       // Value text
-      this.doc.setFontSize(9);
+      this.doc.setFontSize(8);
       setFont(this.doc, 'bold');
-      this.doc.text(card.value, x + 2, currentY + 10);
+      this.doc.text(card.value, x + 2, currentY + (card.subtitle ? 13 : 11));
     });
 
     this.doc.setTextColor(0, 0, 0);

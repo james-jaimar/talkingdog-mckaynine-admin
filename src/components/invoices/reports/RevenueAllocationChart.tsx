@@ -11,18 +11,25 @@ interface RevenueAllocationChartProps {
     profit: number;
   };
   totalRevenue: number;
+  courseFeeRevenue?: number;
+  enrollmentFeeRevenue?: number;
   showOnlyPaid?: boolean;
 }
 
 export function RevenueAllocationChart({ 
   fees, 
   totalRevenue,
+  courseFeeRevenue,
+  enrollmentFeeRevenue = 0,
   showOnlyPaid = false 
 }: RevenueAllocationChartProps) {
   const COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#8b5cf6'];
   
-  // Safely calculate percentages to avoid division by zero - using net revenue
-  const safeTotal = totalRevenue || 1;
+  // Use course fee revenue for percentage calculations if provided, otherwise fall back to total
+  const baseForCalculations = courseFeeRevenue ?? totalRevenue;
+  
+  // Safely calculate percentages to avoid division by zero - using course fee revenue as base
+  const safeTotal = baseForCalculations || 1;
   const adminPercent = (fees.adminFee / safeTotal) * 100;
   const trainerPercent = (fees.trainerFee / safeTotal) * 100;
   const franchisePercent = (fees.franchiseFee / safeTotal) * 100;
@@ -36,20 +43,6 @@ export function RevenueAllocationChart({
     { name: 'Profit', value: fees.profit, percent: profitPercent },
   ];
   
-  // Debug values
-  console.log("Revenue allocation chart values:", {
-    totalRevenue, // This is net revenue after discounts
-    adminFee: fees.adminFee,
-    trainerFee: fees.trainerFee, 
-    franchiseFee: fees.franchiseFee,
-    profit: fees.profit,
-    adminPercent,
-    trainerPercent,
-    franchisePercent,
-    profitPercent,
-    totalPercent: adminPercent + trainerPercent + franchisePercent + profitPercent
-  });
-  
   // Custom tooltip
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
@@ -58,7 +51,7 @@ export function RevenueAllocationChart({
         <div className="bg-white p-2 border rounded shadow">
           <p className="font-semibold">{item.name}</p>
           <p>{formatCurrency(item.value)}</p>
-          <p>{formatPercentage(item.percent / 100)} of revenue</p>
+          <p>{formatPercentage(item.percent / 100)} of course fees</p>
         </div>
       );
     }
@@ -87,11 +80,17 @@ export function RevenueAllocationChart({
         <CardTitle>Revenue Allocation</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="mb-4 text-center">
+        <div className="mb-4 text-center space-y-1">
           <p className="text-sm text-muted-foreground">
-            Total Revenue: <span className="font-medium">{formatCurrency(totalRevenue)}</span>
+            Course Fee Revenue: <span className="font-medium">{formatCurrency(baseForCalculations)}</span>
             {showOnlyPaid && " (paid invoices only)"}
           </p>
+          {enrollmentFeeRevenue > 0 && (
+            <p className="text-xs text-muted-foreground">
+              + Enrollment Fees: <span className="font-medium">{formatCurrency(enrollmentFeeRevenue)}</span>
+              <span className="italic ml-1">(pass-through, not included in allocation)</span>
+            </p>
+          )}
         </div>
         
         <ResponsiveContainer width="100%" height={250}>

@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { Invoice } from '@/types/invoice';
+import { getCourseFeeAmount, getEnrollmentFeeAmount } from '@/lib/invoiceItemUtils';
 
 export type AllocationCategory = {
   name: string;
@@ -8,9 +9,19 @@ export type AllocationCategory = {
   color: string;
 };
 
-export function useAllocationChartData(invoices: Invoice[], showOnlyPaid: boolean = true) {
+interface InvoiceWithItems extends Invoice {
+  invoice_items?: Array<{
+    amount: number;
+    description?: string;
+    item_type?: string;
+  }>;
+}
+
+export function useAllocationChartData(invoices: InvoiceWithItems[], showOnlyPaid: boolean = true) {
   const [allocationData, setAllocationData] = useState<AllocationCategory[]>([]);
   const [totalRevenue, setTotalRevenue] = useState<number>(0);
+  const [courseFeeRevenue, setCourseFeeRevenue] = useState<number>(0);
+  const [enrollmentFeeRevenue, setEnrollmentFeeRevenue] = useState<number>(0);
 
   const COLORS = ["#10B981", "#6366F1", "#F59E0B", "#8B5CF6"];
 
@@ -18,6 +29,8 @@ export function useAllocationChartData(invoices: Invoice[], showOnlyPaid: boolea
     if (!invoices?.length) {
       setAllocationData([]);
       setTotalRevenue(0);
+      setCourseFeeRevenue(0);
+      setEnrollmentFeeRevenue(0);
       return;
     }
 
@@ -29,30 +42,52 @@ export function useAllocationChartData(invoices: Invoice[], showOnlyPaid: boolea
     if (filteredInvoices.length === 0) {
       setAllocationData([]);
       setTotalRevenue(0);
+      setCourseFeeRevenue(0);
+      setEnrollmentFeeRevenue(0);
       return;
     }
 
-    // Calculate total revenue from filtered invoices
-    // Note: This is the full invoice total including enrollment fees
+    // Calculate total revenue from filtered invoices (includes enrollment fees)
     const total = filteredInvoices.reduce((sum, invoice) => sum + invoice.total, 0);
     setTotalRevenue(total);
 
+    // Calculate course fee revenue (excludes enrollment fees) - this is the base for fee calculations
+    let courseFeeTotal = 0;
+    let enrollmentFeeTotal = 0;
+
+    filteredInvoices.forEach(invoice => {
+      if (invoice.invoice_items && invoice.invoice_items.length > 0) {
+        courseFeeTotal += getCourseFeeAmount(invoice.invoice_items);
+        enrollmentFeeTotal += getEnrollmentFeeAmount(invoice.invoice_items);
+      } else {
+        // Fallback: if no items, treat full total as course fee
+        courseFeeTotal += invoice.total;
+      }
+    });
+
+    setCourseFeeRevenue(courseFeeTotal);
+    setEnrollmentFeeRevenue(enrollmentFeeTotal);
+
     // Sum the actual fee amounts from invoice data
-    // Note: These fees should already be calculated on course fee only (excl enrollment fee)
-    // If invoice doesn't have specific fee fields, fall back to percentage of total
-    // (This fallback may slightly overstate fees for invoices with enrollment fees)
+    // IMPORTANT: Fees are calculated on course fee only (excludes enrollment fees)
     const handlerFeeTotal = filteredInvoices.reduce((sum, invoice) => 
-      sum + (invoice.trainer_fee || invoice.total * 0.40), 0);
+      sum + (invoice.trainer_fee || (invoice.invoice_items?.length 
+        ? getCourseFeeAmount(invoice.invoice_items) * 0.40 
+        : invoice.total * 0.40)), 0);
     
     const franchiseFeeTotal = filteredInvoices.reduce((sum, invoice) => 
-      sum + (invoice.franchise_fee || invoice.total * 0.15), 0);
+      sum + (invoice.franchise_fee || (invoice.invoice_items?.length 
+        ? getCourseFeeAmount(invoice.invoice_items) * 0.15 
+        : invoice.total * 0.15)), 0);
     
     const adminFeeTotal = filteredInvoices.reduce((sum, invoice) => 
-      sum + (invoice.admin_fee || invoice.total * 0.10), 0);
+      sum + (invoice.admin_fee || (invoice.invoice_items?.length 
+        ? getCourseFeeAmount(invoice.invoice_items) * 0.10 
+        : invoice.total * 0.10)), 0);
     
-    // Calculate profit (remaining revenue after all fees)
+    // Calculate profit (course fee revenue minus all fees)
     const totalFees = handlerFeeTotal + franchiseFeeTotal + adminFeeTotal;
-    const profitTotal = total - totalFees;
+    const profitTotal = courseFeeTotal - totalFees;
 
     // Create allocation data with actual monetary values
     const data: AllocationCategory[] = [
@@ -84,5 +119,5 @@ export function useAllocationChartData(invoices: Invoice[], showOnlyPaid: boolea
     setAllocationData(data);
   }, [invoices, showOnlyPaid]);
 
-  return { allocationData, totalRevenue };
+  return { allocationData, totalRevenue, courseFeeRevenue, enrollmentFeeRevenue };
 }
