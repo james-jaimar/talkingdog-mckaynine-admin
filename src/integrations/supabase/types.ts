@@ -1518,6 +1518,7 @@ export type Database = {
           description: string
           id: string
           invoice_id: string
+          item_type: string | null
           quantity: number
           unit_price: number
           updated_at: string
@@ -1529,6 +1530,7 @@ export type Database = {
           description: string
           id?: string
           invoice_id: string
+          item_type?: string | null
           quantity?: number
           unit_price: number
           updated_at?: string
@@ -1540,6 +1542,7 @@ export type Database = {
           description?: string
           id?: string
           invoice_id?: string
+          item_type?: string | null
           quantity?: number
           unit_price?: number
           updated_at?: string

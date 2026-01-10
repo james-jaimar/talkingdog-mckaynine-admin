@@ -1,5 +1,6 @@
 
 import { Schedule, Booking, InvoiceItem } from "../types";
+import { getCourseFeeAmount } from "@/lib/invoiceItemUtils";
 
 interface RevenueDetails {
   revenue: number;
@@ -71,8 +72,10 @@ export function calculateClassRevenue(
   );
 
   // If there are paid items, calculate actual revenue
+  // IMPORTANT: Use only course fees (exclude enrollment fees) for trainer fee calculations
   if (paidInvoiceItems.length > 0) {
-    const paidAmount = paidInvoiceItems.reduce((sum, item) => sum + (item.amount || 0), 0);
+    // Get course fee amount only (excluding enrollment fees)
+    const paidAmount = getCourseFeeAmount(paidInvoiceItems);
     
     // Apply trainer fee calculation
     if (trainerFeeType === 'percentage') {
@@ -87,8 +90,10 @@ export function calculateClassRevenue(
   }
 
   // Calculate potential revenue from all valid invoice items
+  // IMPORTANT: Use only course fees (exclude enrollment fees)
   if (allValidInvoiceItems.length > 0) {
-    const totalAmount = allValidInvoiceItems.reduce((sum, item) => sum + (item.amount || 0), 0);
+    // Get course fee amount only (excluding enrollment fees)
+    const totalAmount = getCourseFeeAmount(allValidInvoiceItems);
     
     // Apply trainer fee calculation
     if (trainerFeeType === 'percentage') {

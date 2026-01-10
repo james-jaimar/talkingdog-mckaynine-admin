@@ -121,6 +121,7 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
       console.log(`Found ${validBookings?.length || 0} valid bookings for branch ${branchId}`);
 
       // Get invoice items with full invoice details - we'll still need this to link invoices to bookings
+      // IMPORTANT: Include item_type to distinguish course fees from enrollment fees
       let invoiceItemsQuery = supabase
         .from('invoice_items')
         .select(`
@@ -131,6 +132,7 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
           unit_price,
           quantity,
           description,
+          item_type,
           invoices:invoice_id (
             id,
             status,

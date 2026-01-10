@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useBranch } from '@/context/BranchContext';
 import { useTerm } from '@/context/TermContext';
+import { getCourseFeeAmount, getEnrollmentFeeAmount } from '@/lib/invoiceItemUtils';
 
 export interface FranchiseHandler {
   clientId: string;
@@ -138,6 +139,8 @@ export function useFranchiseClassesData(termId?: string) {
             attendances:class_attendance(attendance_status),
             invoice_items(
               amount,
+              description,
+              item_type,
               invoices:invoice_id (
                 status,
                 payment_received
@@ -208,12 +211,16 @@ export function useFranchiseClassesData(termId?: string) {
             ).length || 0;
             
             // Check payment status from invoices and get invoice amount
+            // IMPORTANT: Use only course fees for fee calculations, exclude enrollment fees
             let paymentStatus = booking.payment_status;
-            let invoiceAmount = 0;
+            let invoiceAmount = 0; // This will be the COURSE FEE only (excl enrollment fee)
+            let totalInvoiceAmount = 0; // This is the total for reporting purposes
             
             if (booking.invoice_items && booking.invoice_items.length > 0) {
-              // Sum all invoice amounts for this booking
-              invoiceAmount = booking.invoice_items.reduce((sum, item) => sum + (item.amount || 0), 0);
+              // Get course fee amount only (excluding enrollment fees)
+              invoiceAmount = getCourseFeeAmount(booking.invoice_items);
+              // Get total invoice amount for reference
+              totalInvoiceAmount = booking.invoice_items.reduce((sum, item) => sum + (item.amount || 0), 0);
               
               // Check if any invoice is paid
               const hasPaidInvoice = booking.invoice_items.some(item => 
@@ -226,6 +233,7 @@ export function useFranchiseClassesData(termId?: string) {
             }
 
             // Calculate fees based on class configuration
+            // IMPORTANT: All percentage-based fees are calculated on COURSE FEE only
             const calculateFee = (type: string, value: number, baseAmount: number) => {
               if (type === 'percentage') {
                 return (baseAmount * value) / 100;
@@ -235,10 +243,11 @@ export function useFranchiseClassesData(termId?: string) {
               return 0;
             };
 
-            // Franchise Fee = McKaynine Commission (15%)
+            // Franchise Fee = McKaynine Commission (15%) - calculated on course fee only
             const franchiseFee = calculateFee(classItem.mckaynine_commission_type, classItem.mckaynine_commission_value, invoiceAmount);
+            // Admin Fee - calculated on course fee only
             const adminFee = calculateFee(classItem.admin_fee_type, classItem.admin_fee_value, invoiceAmount);
-            // Commission column = Trainer Fee (40%)
+            // Commission column = Trainer Fee (40%) - calculated on course fee only
             const mckaynineCommission = calculateFee(classItem.trainer_fee_type, classItem.trainer_fee_value, invoiceAmount);
 
             handlers.push({

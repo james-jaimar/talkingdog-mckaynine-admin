@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Helmet } from "react-helmet";
 import { InvoiceRevenueChart } from "@/components/invoices/reports/InvoiceRevenueChart";
@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { Loader2, AlertCircle } from "lucide-react";
 import { Invoice } from "@/hooks/invoices/types";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { isEnrollmentFeeItem } from "@/lib/invoiceItemUtils";
 
 export default function FinancialDashboard() {
   const [timeframe, setTimeframe] = useState<'monthly' | 'quarterly' | 'yearly'>('monthly');
@@ -66,17 +67,50 @@ export default function FinancialDashboard() {
     }
   }, [currentBranch?.id, invoices.length, activeInvoices.length, termFilteredInvoices.length]);
   
-  // Calculate revenue metrics directly from invoices using total (already includes discounts)
-  const totalRevenue = termFilteredInvoices.reduce((sum, inv) => sum + inv.total, 0);
-  const collectedRevenue = termFilteredInvoices
-    .filter(inv => inv.status === 'paid')
-    .reduce((sum, inv) => sum + inv.total, 0);
-  const pendingRevenue = termFilteredInvoices
-    .filter(inv => inv.status === 'sent')
-    .reduce((sum, inv) => sum + inv.total, 0);
-  const overdueRevenue = termFilteredInvoices
-    .filter(inv => inv.status === 'overdue')
-    .reduce((sum, inv) => sum + inv.total, 0);
+  // Calculate revenue metrics from invoices
+  // IMPORTANT: Separate course fees from enrollment fees
+  // Enrollment fees are pass-through to franchise owner and excluded from fee calculations
+  const revenueMetrics = useMemo(() => {
+    let courseRevenue = 0;
+    let enrollmentFees = 0;
+    let collectedCourse = 0;
+    let pendingCourse = 0;
+    let overdueCourse = 0;
+    
+    termFilteredInvoices.forEach(inv => {
+      // If invoice has items with item_type, use that to separate
+      if (inv.items && inv.items.length > 0) {
+        inv.items.forEach(item => {
+          const amount = item.amount || 0;
+          if (isEnrollmentFeeItem(item)) {
+            enrollmentFees += amount;
+          } else {
+            courseRevenue += amount;
+            if (inv.status === 'paid') collectedCourse += amount;
+            else if (inv.status === 'sent') pendingCourse += amount;
+            else if (inv.status === 'overdue') overdueCourse += amount;
+          }
+        });
+      } else {
+        // Fallback for invoices without items loaded - use total
+        // This may include enrollment fees, but is the best we can do
+        courseRevenue += inv.total;
+        if (inv.status === 'paid') collectedCourse += inv.total;
+        else if (inv.status === 'sent') pendingCourse += inv.total;
+        else if (inv.status === 'overdue') overdueCourse += inv.total;
+      }
+    });
+    
+    return {
+      totalRevenue: courseRevenue,
+      enrollmentFees,
+      collectedRevenue: collectedCourse,
+      pendingRevenue: pendingCourse,
+      overdueRevenue: overdueCourse
+    };
+  }, [termFilteredInvoices]);
+  
+  const { totalRevenue, enrollmentFees, collectedRevenue, pendingRevenue, overdueRevenue } = revenueMetrics;
   
   // Format date range for query params if available
   const fromDate = termDateRange?.startDate ? new Date(termDateRange.startDate).toISOString() : undefined;
@@ -263,6 +297,7 @@ export default function FinancialDashboard() {
             collectedRevenue={collectedRevenue}
             pendingRevenue={pendingRevenue}
             overdueRevenue={overdueRevenue}
+            enrollmentFees={enrollmentFees}
           />
 
           {/* Expense breakdown cards with profit included */}
