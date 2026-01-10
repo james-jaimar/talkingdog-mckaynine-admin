@@ -1,14 +1,14 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { QueryClient } from "@tanstack/react-query";
-import { fetchScheduleId, ScheduleInfo } from "./fetchScheduleId";
+import { fetchScheduleId } from "./fetchScheduleId";
 import { fetchClassDetails } from "./fetchClassDetails";
 import { fetchDogName } from "./fetchDogName";
 import { createInvoiceForHandler, CreateInvoiceProps } from "./createInvoiceForHandler";
 
 interface AddHandlerToClassProps {
   handlerId: string;
-  dogId: string;
+  dogIds: string[];
   classId: string;
   setIsProcessing: (processing: boolean) => void;
   isProcessing: boolean;
@@ -16,12 +16,12 @@ interface AddHandlerToClassProps {
   onSuccess: () => void;
   queryClient: QueryClient;
   toast: any;
-  createInvoiceProps: Omit<CreateInvoiceProps, 'bookingId' | 'className' | 'classPrice' | 'dogName' | 'enrollmentFee' | 'classDate'>;
+  createInvoiceProps: Omit<CreateInvoiceProps, 'bookingIds' | 'className' | 'classPrice' | 'dogNames' | 'enrollmentFee' | 'classDate' | 'dogIds'>;
 }
 
 export const addHandlerToClass = async ({
   handlerId,
-  dogId,
+  dogIds,
   classId,
   setIsProcessing,
   isProcessing,
@@ -53,49 +53,60 @@ export const addHandlerToClass = async ({
     
     console.log("Adding handler to class schedule with details:", { 
       handlerId, 
-      dogId, 
+      dogIds, 
       scheduleId,
       classDate,
       classDetails
     });
     
-    // First check if this handler-dog combination is already booked for this class schedule
-    const { data: existingBookings, error: checkError } = await supabase
-      .from('bookings')
-      .select('id')
-      .eq('client_id', handlerId)
-      .eq('dog_id', dogId)
-      .eq('class_schedule_id', scheduleId);
-    
-    if (checkError) {
-      console.error("Error checking existing bookings:", checkError);
-      throw checkError;
+    // Check for existing bookings for each dog
+    for (const dogId of dogIds) {
+      const { data: existingBookings, error: checkError } = await supabase
+        .from('bookings')
+        .select('id')
+        .eq('client_id', handlerId)
+        .eq('dog_id', dogId)
+        .eq('class_schedule_id', scheduleId);
+      
+      if (checkError) {
+        console.error("Error checking existing bookings:", checkError);
+        throw checkError;
+      }
+      
+      if (existingBookings && existingBookings.length > 0) {
+        const dogName = await fetchDogName(dogId);
+        throw new Error(`${dogName} is already enrolled in this class`);
+      }
     }
     
-    if (existingBookings && existingBookings.length > 0) {
-      throw new Error("This handler and dog are already enrolled in this class");
-    }
+    // Create booking records for each dog
+    const bookingIds: string[] = [];
+    const dogNames: string[] = [];
     
-    // Create a booking record that connects the handler to the class
-    const { data: booking, error } = await supabase
-      .from('bookings')
-      .insert({
-        client_id: handlerId,
-        dog_id: dogId,
-        class_schedule_id: scheduleId,
-        is_enrolled: true,
-        payment_status: 'pending'
-      })
-      .select('id')
-      .single();
-    
-    if (error) {
-      console.error("Error creating booking:", error);
-      throw error;
+    for (const dogId of dogIds) {
+      const { data: booking, error } = await supabase
+        .from('bookings')
+        .insert({
+          client_id: handlerId,
+          dog_id: dogId,
+          class_schedule_id: scheduleId,
+          is_enrolled: true,
+          payment_status: 'pending'
+        })
+        .select('id')
+        .single();
+      
+      if (error) {
+        console.error("Error creating booking:", error);
+        throw error;
+      }
+      
+      bookingIds.push(booking.id);
+      
+      // Get dog name for the invoice
+      const dogName = await fetchDogName(dogId);
+      dogNames.push(dogName);
     }
-
-    // Get dog name for the invoice
-    const dogName = await fetchDogName(dogId);
     
     // Only create an invoice if class price is greater than zero
     const classPrice = classDetails.courseFee || 0;
@@ -105,20 +116,21 @@ export const addHandlerToClass = async ({
     let invoiceCreated = false;
     
     if (totalInvoiceAmount > 0) {
-      // Attempt to create an invoice for the booking
+      // Attempt to create a combined invoice for all dogs
       try {
         invoiceCreated = await createInvoiceForHandler({
           ...createInvoiceProps,
-          bookingId: booking.id, 
+          dogIds,
+          bookingIds,
           className: classDetails.name, 
           classPrice,
           enrollmentFee,
-          dogName,
-          classDate, // Pass the class schedule date for proper invoice dating
+          dogNames,
+          classDate,
         });
         
         if (!invoiceCreated) {
-          console.warn("Invoice creation failed for booking", booking.id);
+          console.warn("Invoice creation failed for bookings", bookingIds);
           toast({
             title: "Warning",
             description: "Handler was added but invoice creation failed. Please create the invoice manually.",
@@ -147,13 +159,16 @@ export const addHandlerToClass = async ({
       queryClient.invalidateQueries({ queryKey: ["my-invoices"] })
     ]);
     
+    const dogCountText = dogIds.length > 1 ? `${dogIds.length} dogs` : "dog";
+    const discountNote = dogIds.length === 2 ? " (25% discount applied to 2nd dog)" : "";
+    
     toast({
       title: "Success",
       description: invoiceCreated 
-        ? "Handler added to class and invoice created." 
+        ? `${dogCountText} added to class and invoice created${discountNote}.` 
         : totalInvoiceAmount > 0 
-          ? "Handler added to class, but invoice creation failed. Please create it manually."
-          : "Handler added to class. No invoice needed (class has no fee).",
+          ? `${dogCountText} added to class, but invoice creation failed. Please create it manually.`
+          : `${dogCountText} added to class. No invoice needed (class has no fee).`,
     });
     
     // Close modal

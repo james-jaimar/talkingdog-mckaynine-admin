@@ -7,7 +7,7 @@ import { useState } from "react";
 interface HandlerSelectionTabProps {
   searchQuery: string;
   setSearchQuery: (query: string) => void;
-  onSelect: (handlerId: string, dogId: string) => void;
+  onSelect: (handlerId: string, dogIds: string[]) => void;
   classId: string;
   isProcessing: boolean;
 }
