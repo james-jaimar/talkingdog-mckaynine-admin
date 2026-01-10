@@ -122,11 +122,19 @@ export function FranchiseClassesReport({ termId, termLabel }: FranchiseClassesRe
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
             <div className="bg-blue-50 p-4 rounded-lg">
-              <h3 className="font-semibold text-blue-900">Total Revenue</h3>
+              <h3 className="font-semibold text-blue-900">Course Fee Revenue</h3>
+              <p className="text-xs text-blue-700 mb-1">Excl. enrollment fees</p>
               <p className="text-2xl font-bold text-blue-600">
                 {formatCurrency(franchiseData.reportTotals.totalRevenue)}
+              </p>
+            </div>
+            <div className="bg-cyan-50 p-4 rounded-lg">
+              <h3 className="font-semibold text-cyan-900">Enrollment Fees</h3>
+              <p className="text-xs text-cyan-700 mb-1">Pass-through</p>
+              <p className="text-2xl font-bold text-cyan-600">
+                {formatCurrency(franchiseData.reportTotals.totalEnrollmentFees || 0)}
               </p>
             </div>
             <div className="bg-green-50 p-4 rounded-lg">

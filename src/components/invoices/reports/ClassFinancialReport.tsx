@@ -133,6 +133,9 @@ export function ClassFinancialReport({ dateRange, onRefreshSuccess }: ClassFinan
             {totalInvoiceCount} invoices | {totalBookings} bookings | 
             Profit margin: {profitPercentage.toFixed(1)}%
           </p>
+          <p className="text-xs text-muted-foreground">
+            Revenue and fees calculated on course fees only (excludes enrollment fees)
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <Button 

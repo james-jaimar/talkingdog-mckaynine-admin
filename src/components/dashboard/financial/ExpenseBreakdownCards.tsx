@@ -63,7 +63,7 @@ export function ExpenseBreakdownCards({
               {formatCurrency(totalAdmin)}
             </span>
             <span className="ml-2 text-xs text-muted-foreground">
-              ({formatPercentage(adminPercent / 100)} of revenue)
+              ({formatPercentage(adminPercent / 100)} of course fees)
             </span>
           </div>
         </CardContent>
@@ -80,7 +80,7 @@ export function ExpenseBreakdownCards({
               {formatCurrency(totalTrainer)}
             </span>
             <span className="ml-2 text-xs text-muted-foreground">
-              ({formatPercentage(trainerPercent / 100)} of revenue)
+              ({formatPercentage(trainerPercent / 100)} of course fees)
             </span>
           </div>
         </CardContent>
@@ -97,7 +97,7 @@ export function ExpenseBreakdownCards({
               {formatCurrency(totalFranchise)}
             </span>
             <span className="ml-2 text-xs text-muted-foreground">
-              ({formatPercentage(franchisePercent / 100)} of revenue)
+              ({formatPercentage(franchisePercent / 100)} of course fees)
             </span>
           </div>
         </CardContent>
@@ -114,7 +114,7 @@ export function ExpenseBreakdownCards({
               {formatCurrency(profit)}
             </span>
             <span className="ml-2 text-xs text-muted-foreground">
-              ({formatPercentage(profitPercent / 100)} of revenue)
+              ({formatPercentage(profitPercent / 100)} of course fees)
             </span>
           </div>
         </CardContent>

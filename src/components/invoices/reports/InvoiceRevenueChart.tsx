@@ -152,6 +152,7 @@ export function InvoiceRevenueChart({
     <Card>
       <CardHeader>
         <CardTitle>Revenue Over Time</CardTitle>
+        <p className="text-xs text-muted-foreground">Includes all invoice totals (course fees + enrollment fees)</p>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={300}>
