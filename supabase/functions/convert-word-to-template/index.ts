@@ -9,6 +9,13 @@ const CONVERSION_PROMPT = `You are an expert email template designer for McKayni
 
 CRITICAL: You MUST use the EXACT HTML structure and styles shown below. Do not deviate.
 
+CRITICAL COLOR RULES - NEVER VIOLATE:
+- Table headers MUST have background-color: #3b7dc4 (blue) with color: white
+- NEVER use gray/grey backgrounds with white text - this is unreadable
+- Table data rows use background-color: #f9f9f9 (light gray) with color: #333 (dark text)
+- All text on light backgrounds must be dark (#333 or #444)
+- All text on dark/blue backgrounds must be white
+
 STRUCTURE:
 1. Start with a greeting: <p>Dear {{handler_name}},</p>
 2. Main congratulatory/informational paragraph
