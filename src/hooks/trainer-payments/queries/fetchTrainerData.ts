@@ -78,6 +78,7 @@ export async function fetchAllBookings(scheduleIds: string[], branchId?: string)
     .select(`
       id,
       client_id,
+      dog_id,
       class_schedule_id,
       payment_status,
       status,
@@ -86,7 +87,13 @@ export async function fetchAllBookings(scheduleIds: string[], branchId?: string)
         id,
         first_name, 
         last_name,
+        email,
         branch_id
+      ),
+      dogs:dog_id (
+        id,
+        name,
+        breed
       )
     `)
     .in('class_schedule_id', scheduleIds);
@@ -102,6 +109,7 @@ export async function fetchAllBookings(scheduleIds: string[], branchId?: string)
     .map(booking => ({
       ...booking,
       client: booking.clients,
+      dog: booking.dogs,
     })) as unknown as Booking[];
 
   return bookingsWithClientData;
