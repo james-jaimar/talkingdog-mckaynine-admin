@@ -103,7 +103,7 @@ export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
     <AttendanceStatusCell
       booking={booking}
       date={date}
-      onOpenAttendanceModal={handleOpenAttendanceModal}
+      classId={classId}
     />
   );
 

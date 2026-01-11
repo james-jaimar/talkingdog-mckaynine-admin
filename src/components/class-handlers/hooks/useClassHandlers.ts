@@ -91,7 +91,8 @@ export function useClassHandlers(classId: string) {
             attendances:class_attendance(
               id,
               class_date,
-              attendance_status
+              attendance_status,
+              performance_grade
             )
           `)
           .in('class_schedule_id', scheduleIdList);
