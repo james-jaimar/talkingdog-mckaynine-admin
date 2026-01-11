@@ -134,8 +134,8 @@ export function TrainerStatementDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-        <DialogHeader>
+      <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
             Trainer Payment Statement
@@ -146,19 +146,21 @@ export function TrainerStatementDialog({
         </DialogHeader>
 
         {/* HTML Preview - scrollable */}
-        <ScrollArea className="flex-1 border rounded-lg max-h-[60vh]">
-          <TrainerStatementHTMLPreview
-            trainerName={trainer.trainerName}
-            trainerEmail={trainer.email || "No email on file"}
-            termInfo={termInfo}
-            dateRange={dateRange}
-            totalCommission={trainer.totalEarned}
-            totalPaid={trainer.paid}
+        <div className="flex-1 min-h-0 overflow-hidden border rounded-lg">
+          <ScrollArea className="h-full max-h-[55vh]">
+            <TrainerStatementHTMLPreview
+              trainerName={trainer.trainerName}
+              trainerEmail={trainer.email || "No email on file"}
+              termInfo={termInfo}
+              dateRange={dateRange}
+              totalCommission={trainer.totalEarned}
+              totalPaid={trainer.paid}
             outstanding={trainer.pending}
             classes={classes}
             branchName={branchName}
           />
-        </ScrollArea>
+          </ScrollArea>
+        </div>
 
         {/* Actions */}
         <div className="flex justify-end gap-2 pt-4 border-t">
