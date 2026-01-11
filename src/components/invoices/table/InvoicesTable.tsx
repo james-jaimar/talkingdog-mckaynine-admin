@@ -230,6 +230,7 @@ export function InvoicesTable({
               <TableHead>Client</TableHead>
               <TableHead>Date</TableHead>
               <TableHead>Due Date</TableHead>
+              <TableHead>Franchise Month</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Total</TableHead>
               <TableHead>Discount</TableHead>
@@ -240,7 +241,7 @@ export function InvoicesTable({
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={9} className="h-24 text-center">
+                <TableCell colSpan={10} className="h-24 text-center">
                   <div className="flex justify-center items-center">
                     <Loader2 className="h-6 w-6 animate-spin text-gray-500 mr-2" />
                     <span>Loading invoices{currentBranch ? ` for ${currentBranch.name}...` : '...'}</span>
@@ -249,7 +250,7 @@ export function InvoicesTable({
               </TableRow>
             ) : invoices.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={10} className="h-24 text-center text-muted-foreground">
                   {searchTerm ? (
                     "No invoices match your search."
                   ) : currentBranch ? (
@@ -282,6 +283,17 @@ export function InvoicesTable({
                   </TableCell>
                   <TableCell>{format(new Date(invoice.issued_date), "PP")}</TableCell>
                   <TableCell>{format(new Date(invoice.due_date), "PP")}</TableCell>
+                  <TableCell>
+                    {invoice.franchise_report_month ? (
+                      <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                        {format(new Date(invoice.franchise_report_month + '-01'), "MMM yyyy")}
+                      </Badge>
+                    ) : (
+                      <span className="text-muted-foreground text-xs">
+                        {format(new Date(invoice.issued_date), "MMM yyyy")}
+                      </span>
+                    )}
+                  </TableCell>
                   <TableCell>{getStatusBadge(invoice.status)}</TableCell>
                   <TableCell>R {invoice.total.toFixed(2)}</TableCell>
                   <TableCell>

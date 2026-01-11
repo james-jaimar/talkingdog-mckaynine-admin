@@ -46,6 +46,9 @@ export interface Invoice {
   franchise_fee?: number;
   email_sent?: boolean;
   
+  // Franchise reporting allocation
+  franchise_report_month?: string | null; // Format: 'YYYY-MM'
+  
   // Generated fields
   classInfo?: string;
   dogInfo?: string;
