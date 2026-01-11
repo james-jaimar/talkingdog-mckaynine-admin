@@ -97,8 +97,12 @@ export const addHandlerToClass = async ({
         .single();
       
       if (error) {
-        console.error("Error creating booking:", error);
-        throw error;
+        console.error("Error creating booking for dog:", dogId, error);
+        throw new Error(`Failed to create booking: ${error.message}`);
+      }
+      
+      if (!booking || !booking.id) {
+        throw new Error(`Booking creation failed for dog ${dogId} - no ID returned`);
       }
       
       bookingIds.push(booking.id);
@@ -106,6 +110,17 @@ export const addHandlerToClass = async ({
       // Get dog name for the invoice
       const dogName = await fetchDogName(dogId);
       dogNames.push(dogName);
+    }
+    
+    // Validate that we have booking IDs for all dogs before creating invoice
+    if (bookingIds.length !== dogIds.length) {
+      throw new Error(`Booking creation mismatch: expected ${dogIds.length} bookings but got ${bookingIds.length}`);
+    }
+    
+    // Ensure no undefined booking IDs
+    const validBookingIds = bookingIds.filter(id => id !== undefined && id !== null);
+    if (validBookingIds.length !== dogIds.length) {
+      throw new Error(`Some bookings have invalid IDs: ${bookingIds.join(', ')}`);
     }
     
     // Only create an invoice if class price is greater than zero

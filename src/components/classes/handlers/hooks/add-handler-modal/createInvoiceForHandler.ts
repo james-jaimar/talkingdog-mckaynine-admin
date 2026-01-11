@@ -81,10 +81,26 @@ export const createInvoiceForHandler = async ({
     let subtotal = 0;
     let totalDiscount = 0;
 
+    // Validate that we have matching arrays before processing
+    if (dogIds.length !== bookingIds.length || dogIds.length !== dogNames.length) {
+      console.error("CREATE-INVOICE: Array length mismatch", { 
+        dogIds: dogIds.length, 
+        bookingIds: bookingIds.length, 
+        dogNames: dogNames.length 
+      });
+      throw new Error("Mismatch in dog, booking, or name arrays");
+    }
+
     dogIds.forEach((dogId, index) => {
       const dogName = dogNames[index] || `Dog ${index + 1}`;
       const bookingId = bookingIds[index];
       const isSecondDog = index === 1;
+      
+      // Validate booking ID exists for this dog
+      if (!bookingId) {
+        console.error(`CREATE-INVOICE: Missing booking ID for dog ${dogName} at index ${index}`);
+        throw new Error(`Missing booking ID for ${dogName}`);
+      }
       
       // Calculate price for this dog
       let dogClassPrice = classPrice;
