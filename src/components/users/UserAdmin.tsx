@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useUsers } from "@/hooks/useUsers";
 import { Button } from "@/components/ui/button";
@@ -24,10 +23,11 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { format } from "date-fns";
-import { Search, RefreshCw, UserPlus, MoreHorizontal, User, Key, Trash2 } from "lucide-react";
+import { Search, RefreshCw, UserPlus, MoreHorizontal, User, Key, Trash2, Pencil } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -40,6 +40,8 @@ import { Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { Label } from "@/components/ui/label";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/components/ui/use-toast";
 
 export function UserAdminPanel() {
   // State
@@ -48,6 +50,7 @@ export function UserAdminPanel() {
   const [manageUserOpen, setManageUserOpen] = useState(false);
   const [resetPasswordOpen, setResetPasswordOpen] = useState(false);
   const [deleteUserOpen, setDeleteUserOpen] = useState(false);
+  const [editUserOpen, setEditUserOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   
@@ -58,7 +61,10 @@ export function UserAdminPanel() {
   const [newUserRole, setNewUserRole] = useState("user");
   const [selectedRole, setSelectedRole] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [editFullName, setEditFullName] = useState("");
+  const [editRole, setEditRole] = useState("");
   const [formError, setFormError] = useState(null);
+  const { toast } = useToast();
 
   // Hook
   const { 
@@ -94,6 +100,53 @@ export function UserAdminPanel() {
   const handleDeleteUser = (user) => {
     setSelectedUser(user);
     setDeleteUserOpen(true);
+  };
+
+  const handleEditUser = (user) => {
+    setSelectedUser(user);
+    setEditFullName(user.full_name || "");
+    setEditRole(user.role || "user");
+    setFormError(null);
+    setEditUserOpen(true);
+  };
+
+  const handleSaveEditUser = async () => {
+    if (!selectedUser) return;
+    try {
+      setFormError(null);
+
+      // Update profile in database
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ 
+          full_name: editFullName,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', selectedUser.id);
+
+      if (profileError) throw profileError;
+
+      // Update role if changed
+      if (editRole !== selectedUser.role) {
+        await updateRole.mutateAsync({
+          userId: selectedUser.id,
+          role: editRole
+        });
+      } else {
+        // Just refetch if only name changed
+        await refetch();
+      }
+
+      toast({
+        title: "User updated",
+        description: "User details have been updated successfully",
+      });
+
+      setEditUserOpen(false);
+      setSelectedUser(null);
+    } catch (error) {
+      setFormError(error.message);
+    }
   };
 
   const handleConfirmDelete = async () => {
@@ -296,22 +349,29 @@ export function UserAdminPanel() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleEditUser(user)}>
+                          <Pencil className="h-4 w-4 mr-2" />
+                          Edit User
+                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleManageUser(user)}>
                           <User className="h-4 w-4 mr-2" />
-                          Edit Role
+                          Change Role
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleResetPassword(user)}>
                           <Key className="h-4 w-4 mr-2" />
                           Reset Password
                         </DropdownMenuItem>
                         {!user.isCurrentUser && (
-                          <DropdownMenuItem 
-                            onClick={() => handleDeleteUser(user)}
-                            className="text-destructive focus:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete User
-                          </DropdownMenuItem>
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              onClick={() => handleDeleteUser(user)}
+                              className="text-destructive focus:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete User
+                            </DropdownMenuItem>
+                          </>
                         )}
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -543,6 +603,77 @@ export function UserAdminPanel() {
                 ) : (
                   "Delete User"
                 )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        )}
+      </Dialog>
+      
+      {/* Edit User Dialog */}
+      <Dialog open={editUserOpen} onOpenChange={setEditUserOpen}>
+        {selectedUser && (
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit User</DialogTitle>
+              <DialogDescription>
+                Update details for {selectedUser.email}
+              </DialogDescription>
+            </DialogHeader>
+            
+            {formError && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{formError}</AlertDescription>
+              </Alert>
+            )}
+            
+            <div className="space-y-4 py-2">
+              <div className="space-y-2">
+                <Label htmlFor="editFullName">Full Name</Label>
+                <Input
+                  id="editFullName"
+                  value={editFullName}
+                  onChange={(e) => setEditFullName(e.target.value)}
+                  placeholder="Enter full name"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="editEmail">Email</Label>
+                <Input
+                  id="editEmail"
+                  value={selectedUser.email}
+                  disabled
+                  className="bg-muted"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Email cannot be changed
+                </p>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="editRole">Role</Label>
+                <Select value={editRole} onValueChange={setEditRole}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="platform_admin">Platform Admin</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="trainer">Trainer</SelectItem>
+                    <SelectItem value="handler">Handler</SelectItem>
+                    <SelectItem value="user">User</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditUserOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSaveEditUser}>
+                Save Changes
               </Button>
             </DialogFooter>
           </DialogContent>
