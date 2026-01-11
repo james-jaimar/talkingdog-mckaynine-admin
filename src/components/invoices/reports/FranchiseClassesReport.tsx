@@ -33,7 +33,11 @@ export function FranchiseClassesReport() {
     setIsGeneratingPDF(true);
     try {
       const pdfGenerator = new FranchiseReportPDFGenerator();
-      const pdfBlob = await pdfGenerator.generateReport(franchiseData, franchiseData.monthLabel);
+      const pdfBlob = await pdfGenerator.generateReport(
+        franchiseData, 
+        franchiseData.monthLabel,
+        currentBranch?.name
+      );
       
       // Create download link
       const url = URL.createObjectURL(pdfBlob);

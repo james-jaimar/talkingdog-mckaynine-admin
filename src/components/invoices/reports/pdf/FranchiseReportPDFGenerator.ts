@@ -3,6 +3,7 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { FranchiseReportData } from '@/hooks/useFranchiseClassesData';
 import { addEmbeddedFonts, setFont } from '../../pdf/utils/embeddedFonts';
+import { getBranchLogo, getBranchDisplayName } from '@/lib/branchLogo';
 
 declare module 'jspdf' {
   interface jsPDF {
@@ -16,6 +17,7 @@ export class FranchiseReportPDFGenerator {
   private pageHeight: number;
   private margin: number = 15;
   private fontsLoaded: boolean = false;
+  private branchName: string = '';
 
   constructor() {
     this.doc = new jsPDF({ 
@@ -40,37 +42,53 @@ export class FranchiseReportPDFGenerator {
     return `R ${amount.toFixed(2)}`;
   }
 
-  private addHeader(termLabel: string) {
+  private async addHeader(monthLabel: string, branchName?: string) {
     // Clean header with proper spacing
     this.doc.setFillColor(249, 250, 251);
-    this.doc.rect(0, 0, this.pageWidth, 35, 'F');
+    this.doc.rect(0, 0, this.pageWidth, 40, 'F');
     
-    // Company name
-    this.doc.setFontSize(18);
-    setFont(this.doc, 'bold');
-    this.doc.setTextColor(31, 41, 55);
-    this.doc.text('McKaynine Training Centre', this.margin, 14);
+    // Try to add branch logo
+    const logoPath = getBranchLogo(branchName, 'jpg');
+    const displayName = getBranchDisplayName(branchName);
+    this.branchName = displayName;
+    
+    let headerStartY = 14;
+    
+    try {
+      const logoHeight = 15;
+      const logoWidth = 50;
+      this.doc.addImage(logoPath, "JPEG", this.margin, 8, logoWidth, logoHeight);
+      headerStartY = 26;
+    } catch (logoError) {
+      console.error("Error adding logo to PDF:", logoError);
+      // Fall back to text title if logo fails
+      this.doc.setFontSize(18);
+      setFont(this.doc, 'bold');
+      this.doc.setTextColor(31, 41, 55);
+      this.doc.text(displayName, this.margin, 14);
+      headerStartY = 22;
+    }
 
     // Report title
     this.doc.setFontSize(12);
     this.doc.setTextColor(59, 130, 246);
-    this.doc.text('Franchise Classes Report', this.margin, 22);
+    this.doc.text('Franchise Classes Report', this.margin, headerStartY);
 
-    // Term and date info
+    // Month and date info
     this.doc.setFontSize(8);
     setFont(this.doc, 'normal');
     this.doc.setTextColor(75, 85, 99);
-    this.doc.text(`Term: ${termLabel}`, this.margin, 29);
+    this.doc.text(`Month: ${monthLabel}`, this.margin, headerStartY + 7);
     this.doc.text(`Generated: ${new Date().toLocaleDateString('en-ZA', { 
       year: 'numeric', 
       month: 'long', 
       day: 'numeric' 
-    })}`, this.pageWidth - this.margin - 50, 29);
+    })}`, this.pageWidth - this.margin - 50, headerStartY + 7);
 
     // Clean separator line
     this.doc.setDrawColor(229, 231, 235);
     this.doc.setLineWidth(0.2);
-    this.doc.line(this.margin, 35, this.pageWidth - this.margin, 35);
+    this.doc.line(this.margin, 40, this.pageWidth - this.margin, 40);
   }
 
   private addSummaryCards(reportTotals: any, startY: number): number {
@@ -296,12 +314,12 @@ export class FranchiseReportPDFGenerator {
     return cardEndY + 8;
   }
 
-  async generateReport(reportData: FranchiseReportData, termLabel: string): Promise<Blob> {
+  async generateReport(reportData: FranchiseReportData, monthLabel: string, branchName?: string): Promise<Blob> {
     await this.ensureFontsLoaded();
     
-    this.addHeader(termLabel);
+    await this.addHeader(monthLabel, branchName);
     
-    let currentY = 40;
+    let currentY = 45;
 
     // Add summary cards
     currentY = this.addSummaryCards(reportData.reportTotals, currentY);
@@ -315,14 +333,15 @@ export class FranchiseReportPDFGenerator {
       currentY = this.addClassSection(classGroup, currentY);
     });
 
-    // Add footer to all pages
+    // Add footer to all pages with branch name
     const pageCount = this.doc.getNumberOfPages();
+    const footerBranchName = this.branchName || getBranchDisplayName(branchName);
     for (let i = 1; i <= pageCount; i++) {
       this.doc.setPage(i);
       this.doc.setFontSize(6);
       this.doc.setTextColor(156, 163, 175);
       this.doc.text(`Page ${i} of ${pageCount}`, this.pageWidth - this.margin - 10, this.pageHeight - 6);
-      this.doc.text('McKaynine Training Centre - Franchise Report', this.margin, this.pageHeight - 6);
+      this.doc.text(`${footerBranchName} - Franchise Report`, this.margin, this.pageHeight - 6);
     }
 
     return this.doc.output('blob');
