@@ -16,8 +16,8 @@ interface AttendanceStatusCellProps {
 }
 
 export function AttendanceStatusCell({ booking, date, onOpenAttendanceModal }: AttendanceStatusCellProps) {
-  // Function to get the attendance status for a booking and date
-  const getAttendanceStatus = () => {
+  // Function to get the attendance record for a booking and date
+  const getAttendanceRecord = () => {
     if (!booking.attendances) return null;
     
     // Convert both dates to date string for comparison (ignoring time)
@@ -26,17 +26,19 @@ export function AttendanceStatusCell({ booking, date, onOpenAttendanceModal }: A
       (a: any) => new Date(a.class_date).toDateString() === dateToCheck
     );
     
-    return attendance ? attendance.attendance_status : 'not_marked';
+    return attendance || null;
   };
 
-  const status = getAttendanceStatus();
+  const attendanceRecord = getAttendanceRecord();
+  const status = attendanceRecord?.attendance_status || 'not_marked';
+  const performanceGrade = attendanceRecord?.performance_grade || null;
   
   const getStatusDetails = () => {
     switch(status) {
       case 'present':
         return { 
           icon: <Check className="h-4 w-4 text-white" />,
-          label: "Present", 
+          label: performanceGrade ? `Present - Grade ${performanceGrade}` : "Present", 
           bgColor: "bg-green-600 hover:bg-green-700"
         };
       case 'absent':
@@ -66,14 +68,19 @@ export function AttendanceStatusCell({ booking, date, onOpenAttendanceModal }: A
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className={`h-8 w-8 p-0 rounded-full ${bgColor}`}
+          <div 
+            className="flex flex-col items-center gap-0.5 cursor-pointer"
             onClick={() => onOpenAttendanceModal(booking, date)}
           >
-            {icon}
-          </Button>
+            <div className={`h-8 w-8 p-0 rounded-full flex items-center justify-center ${bgColor}`}>
+              {icon}
+            </div>
+            {status === 'present' && performanceGrade && (
+              <span className="text-xs font-semibold text-muted-foreground">
+                {performanceGrade}
+              </span>
+            )}
+          </div>
         </TooltipTrigger>
         <TooltipContent side="top">
           <p>{label}</p>
