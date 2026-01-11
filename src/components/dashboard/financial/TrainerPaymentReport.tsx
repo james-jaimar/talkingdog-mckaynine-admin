@@ -22,8 +22,11 @@ interface TrainerPaymentReportProps {
 }
 
 export function TrainerPaymentReport({ branchId, dateRange, isLoading }: TrainerPaymentReportProps) {
+  const fromKey = dateRange?.from ? dateRange.from.toISOString().slice(0, 10) : undefined;
+  const toKey = dateRange?.to ? dateRange.to.toISOString().slice(0, 10) : undefined;
+
   const { data: trainers = [], isLoading: isLoadingTrainers } = useQuery({
-    queryKey: ['trainer-payment-report', branchId, dateRange],
+    queryKey: ['trainer-payment-report', branchId, fromKey, toKey],
     queryFn: async () => {
       if (!branchId) return [];
       

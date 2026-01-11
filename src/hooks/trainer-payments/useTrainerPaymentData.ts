@@ -15,8 +15,11 @@ export function useTrainerPaymentData(branchId?: string, dateRange?: { from: Dat
   const { termData } = useTerm();
   const currentTermId = termData?.id;
 
+  const fromKey = dateRange?.from ? dateRange.from.toISOString().slice(0, 10) : undefined;
+  const toKey = dateRange?.to ? dateRange.to.toISOString().slice(0, 10) : undefined;
+
   return useQuery({
-    queryKey: ['trainer-payments', branchId, dateRange, currentTermId],
+    queryKey: ['trainer-payments', branchId, fromKey, toKey, currentTermId],
     queryFn: async (): Promise<TrainerPaymentData[]> => {
       if (!branchId) return [];
 
