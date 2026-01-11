@@ -1,4 +1,5 @@
 import { useAuth } from "@/context/auth";
+import { useBranch } from "@/context/BranchContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -21,10 +22,11 @@ import {
 
 export default function TrainerClasses() {
   const { trainerProfile, isTrainer } = useAuth();
+  const { currentBranch } = useBranch();
   const navigate = useNavigate();
 
   const { data: classes = [], isLoading } = useQuery({
-    queryKey: ['trainer-all-classes', trainerProfile?.id],
+    queryKey: ['trainer-all-classes', trainerProfile?.id, currentBranch?.id],
     queryFn: async () => {
       if (!trainerProfile?.id) return [];
 
@@ -41,7 +43,8 @@ export default function TrainerClasses() {
             name,
             class_type,
             capacity,
-            description
+            description,
+            branch_id
           ),
           bookings (
             id,
@@ -56,7 +59,12 @@ export default function TrainerClasses() {
         return [];
       }
 
-      return data || [];
+      // Filter by branch on client side
+      const filteredData = currentBranch?.id 
+        ? (data || []).filter((item: any) => item.classes?.branch_id === currentBranch.id)
+        : data || [];
+
+      return filteredData;
     },
     enabled: !!trainerProfile?.id,
   });

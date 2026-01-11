@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "@/context/auth";
+import { useBranch } from "@/context/BranchContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -42,6 +43,7 @@ const GRADE_INFO: Record<string, { label: string; color: string; bgColor: string
 
 export default function TrainerClassDetail() {
   const { trainerProfile, isTrainer } = useAuth();
+  const { currentBranch } = useBranch();
   const { id: scheduleId } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -50,7 +52,7 @@ export default function TrainerClassDetail() {
   const [isUpdatingGrade, setIsUpdatingGrade] = useState<string | null>(null);
 
   const { data: schedule, isLoading, refetch } = useQuery({
-    queryKey: ['trainer-class-detail-full', scheduleId, trainerProfile?.id],
+    queryKey: ['trainer-class-detail-full', scheduleId, trainerProfile?.id, currentBranch?.id],
     queryFn: async () => {
       if (!trainerProfile?.id || !scheduleId) return null;
 
@@ -69,7 +71,8 @@ export default function TrainerClassDetail() {
             name,
             class_type,
             capacity,
-            description
+            description,
+            branch_id
           ),
           bookings (
             id,
@@ -94,6 +97,12 @@ export default function TrainerClassDetail() {
 
       if (error) {
         console.error("Error fetching class detail:", error);
+        return null;
+      }
+
+      // Verify this class belongs to the current branch
+      if (currentBranch?.id && data?.classes?.branch_id !== currentBranch.id) {
+        console.warn("Class does not belong to selected branch");
         return null;
       }
 
