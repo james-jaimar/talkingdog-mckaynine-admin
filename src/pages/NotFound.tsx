@@ -24,6 +24,8 @@ export default function NotFound() {
           // Redirect based on user role
           if (role === 'handler' || role === 'user') {
             navigate("/customer/dashboard");
+          } else if (role === 'trainer') {
+            navigate("/trainer/dashboard");
           } else {
             navigate("/dashboard");
           }

@@ -170,7 +170,7 @@ export const handlerNavItems = [
   }
 ];
 
-// Navigation items for trainers
+// Navigation items for trainers - minimal and focused
 export const trainerNavItems = [
   {
     name: "Dashboard",
@@ -178,33 +178,13 @@ export const trainerNavItems = [
     icon: Home
   },
   {
-    name: "Classes",
+    name: "My Classes",
     path: "/trainer/classes",
     icon: Calendar
   },
   {
-    name: "Handlers",
-    path: "/trainer/handlers",
-    icon: Users
-  },
-  {
-    name: "Dogs",
-    path: "/trainer/dogs",
-    icon: Dog
-  },
-  {
-    name: "Schedule",
-    path: "/trainer/schedule",
-    icon: Calendar
-  },
-  {
-    name: "Payments",
-    path: "/trainer/payments", 
+    name: "My Earnings",
+    path: "/trainer/earnings",
     icon: FileText
-  },
-  {
-    name: "Reports",
-    path: "/trainer/reports",
-    icon: BarChart2
   }
 ];
