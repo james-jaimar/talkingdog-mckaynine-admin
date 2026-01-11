@@ -51,15 +51,14 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     if (!hasRequiredRole) {
       console.log(`ProtectedRoute - User doesn't have required role: ${requiredRole}`);
       
-      // Role-specific redirection
+      // Role-specific redirection when user doesn't have required role
       if (role === 'handler' || role === 'user') {
         return <Navigate to="/customer/dashboard" replace />;
-      } else if (isTrainer && !isAdmin && !isPlatformAdmin) {
-        // Pure trainers go to trainer dashboard
+      } else if (role === 'trainer') {
+        // Pure trainers (role is exactly 'trainer') go to trainer dashboard
         return <Navigate to="/trainer/dashboard" replace />;
-      } else if (role === 'admin' || isPlatformAdmin) {
-        return <Navigate to="/dashboard" replace />;
       } else {
+        // Admins and platform admins go to main dashboard
         return <Navigate to="/dashboard" replace />;
       }
     }

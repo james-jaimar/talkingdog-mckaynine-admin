@@ -41,9 +41,10 @@ export const HandlerRedirect = () => {
   if (role === 'handler' || role === 'user') {
     console.log("HandlerRedirect - User is a handler, redirecting to /customer/dashboard");
     return <Navigate to="/customer/dashboard" replace />;
-  } else if (role === 'trainer' && !isPlatformAdmin) {
-    // Pure trainers (not admins) go to trainer dashboard
-    console.log("HandlerRedirect - User is a trainer, redirecting to /trainer/dashboard");
+  } else if (role === 'trainer') {
+    // Pure trainers (role is exactly 'trainer', not combined with admin) go to trainer dashboard
+    // Note: Users with 'admin' or 'platform_admin' role will fall through to dashboard even if also trainers
+    console.log("HandlerRedirect - User is a pure trainer, redirecting to /trainer/dashboard");
     return <Navigate to="/trainer/dashboard" replace />;
   } else {
     // For admin and platform_admin roles, go to staff dashboard
