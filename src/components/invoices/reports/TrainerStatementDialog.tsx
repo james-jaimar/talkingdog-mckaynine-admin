@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -51,28 +51,14 @@ export function TrainerStatementDialog({
   const [isGenerating, setIsGenerating] = useState(false);
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
   const [pdfDownloadUrl, setPdfDownloadUrl] = useState<string | null>(null);
-  const currentBlobUrlRef = useRef<string | null>(null);
   const { toast } = useToast();
-
-  const revokeCurrentBlobUrl = () => {
-    if (currentBlobUrlRef.current) {
-      URL.revokeObjectURL(currentBlobUrlRef.current);
-      currentBlobUrlRef.current = null;
-    }
-  };
 
   // Reset PDF when dialog closes
   useEffect(() => {
     if (!open) {
-      revokeCurrentBlobUrl();
       setPdfPreviewUrl(null);
       setPdfDownloadUrl(null);
     }
-    return () => {
-      // Make sure we don't leak blob URLs if the component unmounts
-      revokeCurrentBlobUrl();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   const prepareClassData = (): ClassDetail[] => {
@@ -134,21 +120,9 @@ export function TrainerStatementDialog({
         branchName,
       });
 
-      // Prefer blob URLs for preview (more reliable than very long data URLs in iframes)
-      try {
-        const res = await fetch(dataUrl);
-        const ab = await res.arrayBuffer();
-        const blob = new Blob([ab], { type: "application/pdf" });
-        const blobUrl = URL.createObjectURL(blob);
-        revokeCurrentBlobUrl();
-        currentBlobUrlRef.current = blobUrl;
-        setPdfPreviewUrl(blobUrl);
-        setPdfDownloadUrl(blobUrl);
-      } catch {
-        // Fallback to data URL if blob conversion fails
-        setPdfPreviewUrl(dataUrl);
-        setPdfDownloadUrl(dataUrl);
-      }
+      // Use data URL for preview to avoid browser/extension blocking of blob: URLs
+      setPdfPreviewUrl(dataUrl);
+      setPdfDownloadUrl(dataUrl);
 
       toast({
         title: "Statement Generated",
