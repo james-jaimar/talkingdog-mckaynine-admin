@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -14,6 +14,8 @@ import {
 } from "./pdf/TrainerStatementPDF";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { TrainerStatementHTMLPreview } from "./TrainerStatementHTMLPreview";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface ClassDetail {
   className: string;
@@ -48,18 +50,8 @@ export function TrainerStatementDialog({
   termInfo = "Term Statement",
   branchName = "delta",
 }: TrainerStatementDialogProps) {
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
-  const [pdfDownloadUrl, setPdfDownloadUrl] = useState<string | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
   const { toast } = useToast();
-
-  // Reset PDF when dialog closes
-  useEffect(() => {
-    if (!open) {
-      setPdfPreviewUrl(null);
-      setPdfDownloadUrl(null);
-    }
-  }, [open]);
 
   const prepareClassData = (): ClassDetail[] => {
     if (!trainer.classDetails || trainer.classDetails.length === 0) {
@@ -103,8 +95,8 @@ export function TrainerStatementDialog({
     });
   };
 
-  const handleGeneratePDF = async () => {
-    setIsGenerating(true);
+  const handleDownload = async () => {
+    setIsDownloading(true);
     try {
       const classes = prepareClassData();
 
@@ -120,13 +112,11 @@ export function TrainerStatementDialog({
         branchName,
       });
 
-      // Use data URL for preview to avoid browser/extension blocking of blob: URLs
-      setPdfPreviewUrl(dataUrl);
-      setPdfDownloadUrl(dataUrl);
+      downloadTrainerStatementPDF(dataUrl, trainer.trainerName, termInfo);
 
       toast({
-        title: "Statement Generated",
-        description: "Preview is ready. You can now download the PDF.",
+        title: "Downloaded",
+        description: "Statement PDF has been downloaded.",
       });
     } catch (error) {
       console.error("Error generating PDF:", error);
@@ -136,69 +126,11 @@ export function TrainerStatementDialog({
         variant: "destructive",
       });
     } finally {
-      setIsGenerating(false);
+      setIsDownloading(false);
     }
   };
 
-  const handleDownload = () => {
-    if (pdfDownloadUrl) {
-      // If we already have a blob URL, a simple anchor download works.
-      // If it's a data URL, use existing helper (keeps filename behavior).
-      if (pdfDownloadUrl.startsWith("blob:")) {
-        const link = document.createElement("a");
-        link.href = pdfDownloadUrl;
-        link.download = `Statement_${trainer.trainerName.replace(/\s+/g, "_")}_${termInfo.replace(/\s+/g, "_")}.pdf`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      } else {
-        downloadTrainerStatementPDF(pdfDownloadUrl, trainer.trainerName, termInfo);
-      }
-      toast({
-        title: "Downloaded",
-        description: "Statement PDF has been downloaded.",
-      });
-    }
-  };
-
-  const handleQuickDownload = async () => {
-    setIsGenerating(true);
-    try {
-      const classes = prepareClassData();
-
-      const dataUrl = await generateTrainerStatementPDF({
-        trainerName: trainer.trainerName,
-        trainerEmail: trainer.email || "No email on file",
-        termInfo,
-        dateRange,
-        totalCommission: trainer.totalEarned,
-        totalPaid: trainer.paid,
-        outstanding: trainer.pending,
-        classes,
-        branchName,
-      });
-
-      // Download immediately (use same logic as handleDownload)
-      if (dataUrl.startsWith("data:")) {
-        downloadTrainerStatementPDF(dataUrl, trainer.trainerName, termInfo);
-      }
-
-      toast({
-        title: "Downloaded",
-        description: "Statement PDF has been downloaded.",
-      });
-      onOpenChange(false);
-    } catch (error) {
-      console.error("Error generating PDF:", error);
-      toast({
-        title: "Error",
-        description: "Failed to generate statement. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsGenerating(false);
-    }
-  };
+  const classes = prepareClassData();
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -209,102 +141,43 @@ export function TrainerStatementDialog({
             Trainer Payment Statement
           </DialogTitle>
           <DialogDescription>
-            Generate a payment statement for {trainer.trainerName} - {termInfo}
+            Statement for {trainer.trainerName} - {termInfo}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-auto space-y-4">
-          {/* Summary Card */}
-          <div className="bg-muted/50 rounded-lg p-4 grid grid-cols-3 gap-4">
-            <div>
-              <p className="text-sm text-muted-foreground">Total Commission</p>
-              <p className="text-lg font-semibold">
-                R {trainer.totalEarned.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Already Paid</p>
-              <p className="text-lg font-semibold text-green-600">
-                R {trainer.paid.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Outstanding</p>
-              <p className={`text-lg font-semibold ${trainer.pending > 0 ? "text-red-600" : ""}`}>
-                R {trainer.pending.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
-              </p>
-            </div>
-          </div>
-
-          {/* PDF Preview */}
-          {pdfPreviewUrl ? (
-            <div className="border rounded-lg overflow-hidden bg-gray-100" style={{ height: "400px" }}>
-              <object data={pdfPreviewUrl} type="application/pdf" className="w-full h-full" aria-label="Statement Preview">
-                <div className="w-full h-full flex items-center justify-center text-sm text-muted-foreground">
-                  Preview blocked by your browser. Use “Open Preview” or download the PDF.
-                </div>
-              </object>
-            </div>
-          ) : (
-            <div className="border rounded-lg flex items-center justify-center bg-muted/30" style={{ height: "400px" }}>
-              <div className="text-center space-y-2">
-                <FileText className="h-12 w-12 mx-auto text-muted-foreground/50" />
-                <p className="text-muted-foreground">Click "Generate Preview" to see the statement</p>
-              </div>
-            </div>
-          )}
-        </div>
+        {/* HTML Preview - scrollable */}
+        <ScrollArea className="flex-1 border rounded-lg max-h-[60vh]">
+          <TrainerStatementHTMLPreview
+            trainerName={trainer.trainerName}
+            trainerEmail={trainer.email || "No email on file"}
+            termInfo={termInfo}
+            dateRange={dateRange}
+            totalCommission={trainer.totalEarned}
+            totalPaid={trainer.paid}
+            outstanding={trainer.pending}
+            classes={classes}
+            branchName={branchName}
+          />
+        </ScrollArea>
 
         {/* Actions */}
         <div className="flex justify-end gap-2 pt-4 border-t">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Close
           </Button>
-          {!pdfPreviewUrl ? (
-            <>
-              <Button onClick={handleGeneratePDF} disabled={isGenerating}>
-                {isGenerating ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Generating...
-                  </>
-                ) : (
-                  <>
-                    <FileText className="h-4 w-4 mr-2" />
-                    Generate Preview
-                  </>
-                )}
-              </Button>
-              <Button onClick={handleQuickDownload} disabled={isGenerating} variant="secondary">
-                {isGenerating ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Generating...
-                  </>
-                ) : (
-                  <>
-                    <Download className="h-4 w-4 mr-2" />
-                    Quick Download
-                  </>
-                )}
-              </Button>
-            </>
-          ) : (
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  if (pdfPreviewUrl) window.open(pdfPreviewUrl, "_blank", "noopener,noreferrer");
-                }}
-              >
-                Open Preview
-              </Button>
-              <Button onClick={handleDownload}>
+          <Button onClick={handleDownload} disabled={isDownloading}>
+            {isDownloading ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Generating...
+              </>
+            ) : (
+              <>
                 <Download className="h-4 w-4 mr-2" />
                 Download PDF
-              </Button>
-            </div>
-          )}
+              </>
+            )}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
