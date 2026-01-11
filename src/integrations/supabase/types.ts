@@ -2287,6 +2287,15 @@ export type Database = {
           updated_at: string
         }[]
       }
+      get_invoices_with_items: {
+        Args: { p_branch_id: string }
+        Returns: {
+          client: Json
+          invoice: Json
+          invoice_id: string
+          items: Json
+        }[]
+      }
       get_unread_message_count: {
         Args: { p_client_id: string }
         Returns: number
