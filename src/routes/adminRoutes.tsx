@@ -23,6 +23,23 @@ export const adminRoutes = [
     path: "/admin/dashboard",
     element: <Dashboard />,
   },
+  // Root-level admin routes (used by navigation)
+  {
+    path: "/handlers",
+    element: <Handlers />,
+  },
+  {
+    path: "/handlers/:id",
+    element: <HandlerDetail />,
+  },
+  {
+    path: "/classes",
+    element: <Classes />,
+  },
+  {
+    path: "/classes/:id",
+    element: <ClassDetail />,
+  },
   {
     path: "/admin/classes",
     element: <Classes />,
