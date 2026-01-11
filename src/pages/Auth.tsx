@@ -3,16 +3,13 @@ import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/auth";
 import { SignInForm } from "@/components/auth/SignInForm";
-import { SignUpForm } from "@/components/auth/SignUpForm";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Helmet } from "react-helmet";
 import { useBranch } from "@/context/BranchContext";
 import { getBranchLogo, getBranchDisplayName } from "@/lib/branchLogo";
 
 export default function Auth() {
-  const [activeTab, setActiveTab] = useState<string>("signin");
   const [authLoading, setAuthLoading] = useState(false);
-  const { user, isLoading, login, signup } = useAuth();
+  const { user, isLoading, login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const from = location.state?.from?.pathname || "/";
@@ -49,34 +46,6 @@ export default function Auth() {
     }
   };
 
-  // Handle sign up submission - redirect new handlers to enrollment form
-  const handleSignUp = async (email: string, password: string, metadata?: any) => {
-    setAuthLoading(true);
-    try {
-      // Include handler role and signup_intent in metadata for new signups
-      const signupMetadata = {
-        ...metadata,
-        role: "handler",
-        signup_intent: "handler"
-      };
-      const result = await signup(email, password, signupMetadata);
-      setAuthLoading(false);
-      
-      // On successful signup, redirect to the puppy class registration form
-      if (result.success) {
-        // Small delay to allow auth state to settle
-        setTimeout(() => {
-          navigate("/customer/forms/puppy-class", { replace: true });
-        }, 100);
-      }
-      
-      return result;
-    } catch (error) {
-      setAuthLoading(false);
-      return { success: false, error: "An unexpected error occurred" };
-    }
-  };
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -105,28 +74,17 @@ export default function Auth() {
               {logoAlt} Training Centre
             </h2>
             <p className="mt-2 text-sm text-gray-600">
-              {activeTab === "signin" ? "Sign in to your account" : "Create a new account"}
+              Sign in to your account
             </p>
           </div>
           
-          <div className="bg-white shadow rounded-lg">
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="signin">Sign In</TabsTrigger>
-                <TabsTrigger value="signup">Sign Up</TabsTrigger>
-              </TabsList>
-              <TabsContent value="signin" className="p-6">
-                <SignInForm isLoading={authLoading} onSubmit={handleSignIn} />
-              </TabsContent>
-              <TabsContent value="signup" className="p-6">
-                <SignUpForm isLoading={authLoading} onSubmit={handleSignUp} />
-              </TabsContent>
-            </Tabs>
+          <div className="bg-white shadow rounded-lg p-6">
+            <SignInForm isLoading={authLoading} onSubmit={handleSignIn} />
           </div>
           
           <div className="text-center text-sm text-gray-500">
             <p>
-              By signing in or creating an account, you agree to our Terms of Service and Privacy Policy.
+              By signing in, you agree to our Terms of Service and Privacy Policy.
             </p>
           </div>
         </div>
