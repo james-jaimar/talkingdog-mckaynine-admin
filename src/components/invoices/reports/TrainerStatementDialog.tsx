@@ -15,7 +15,6 @@ import {
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { TrainerStatementHTMLPreview } from "./TrainerStatementHTMLPreview";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface ClassDetail {
   className: string;
@@ -134,7 +133,7 @@ export function TrainerStatementDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col">
+      <DialogContent className="max-w-4xl w-[95vw] sm:w-full h-[85vh] flex flex-col">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
@@ -146,20 +145,18 @@ export function TrainerStatementDialog({
         </DialogHeader>
 
         {/* HTML Preview - scrollable */}
-        <div className="flex-1 min-h-0 overflow-hidden border rounded-lg">
-          <ScrollArea className="h-full max-h-[55vh]">
-            <TrainerStatementHTMLPreview
-              trainerName={trainer.trainerName}
-              trainerEmail={trainer.email || "No email on file"}
-              termInfo={termInfo}
-              dateRange={dateRange}
-              totalCommission={trainer.totalEarned}
-              totalPaid={trainer.paid}
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y border rounded-lg">
+          <TrainerStatementHTMLPreview
+            trainerName={trainer.trainerName}
+            trainerEmail={trainer.email || "No email on file"}
+            termInfo={termInfo}
+            dateRange={dateRange}
+            totalCommission={trainer.totalEarned}
+            totalPaid={trainer.paid}
             outstanding={trainer.pending}
             classes={classes}
             branchName={branchName}
           />
-          </ScrollArea>
         </div>
 
         {/* Actions */}
