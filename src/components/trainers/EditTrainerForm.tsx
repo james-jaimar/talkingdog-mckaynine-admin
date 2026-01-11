@@ -1,4 +1,3 @@
-
 import { Form } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { Trainer } from "./types/trainer";
@@ -6,6 +5,8 @@ import { useTrainerForm } from "./hooks/useTrainerForm";
 import { TrainerPersonalInfoFields } from "./form-sections/TrainerPersonalInfoFields";
 import { TrainerSpecialtyFields } from "./form-sections/TrainerSpecialtyFields";
 import { TrainerBioField } from "./form-sections/TrainerBioField";
+import { TrainerUserLinkField } from "./form-sections/TrainerUserLinkField";
+import { Separator } from "@/components/ui/separator";
 
 interface EditTrainerFormProps {
   trainer: Trainer;
@@ -25,6 +26,14 @@ export function EditTrainerForm({ trainer, onSuccess }: EditTrainerFormProps) {
           isLoadingBranches={isLoadingBranches} 
         />
         <TrainerBioField form={form} />
+        
+        <Separator />
+        
+        <TrainerUserLinkField 
+          trainerId={trainer.id}
+          currentUserId={trainer.user_id}
+          trainerEmail={trainer.email}
+        />
         
         <Button 
           type="submit" 
