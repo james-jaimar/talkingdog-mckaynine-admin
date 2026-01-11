@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useTrainerPaymentData, TrainerClassDetail } from "@/hooks/useTrainerPaymentData";
 import { useBranch } from "@/context/BranchContext";
+import { useTerm } from "@/context/TermContext";
 import {
   Table,
   TableBody,
@@ -29,10 +30,26 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function TrainerEarnings() {
   const { trainerProfile, isTrainer } = useAuth();
   const { currentBranch } = useBranch();
+  const { 
+    selectedYear, 
+    setSelectedYear, 
+    selectedTermNumber, 
+    setSelectedTermNumber,
+    termData,
+    years,
+    terms
+  } = useTerm();
   const [expandedClasses, setExpandedClasses] = useState<Set<string>>(new Set());
 
   const { data: trainersData = [], isLoading } = useTrainerPaymentData(currentBranch?.id);
@@ -101,9 +118,63 @@ export default function TrainerEarnings() {
       </Helmet>
 
       <div className="space-y-4 sm:space-y-6 py-4 sm:py-6 px-2 sm:px-0">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold">My Earnings</h1>
-          <p className="text-sm text-muted-foreground">Track your payments and earnings breakdown</p>
+        {/* Header with Term Selector for Mobile */}
+        <div className="space-y-3">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold">My Earnings</h1>
+            <p className="text-sm text-muted-foreground">Track your payments and earnings breakdown</p>
+          </div>
+          
+          {/* Mobile Term Selector */}
+          <Card className="sm:hidden">
+            <CardContent className="p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium">
+                  {termData ? `Term ${termData.term_number}, ${selectedYear}` : 'Select Term'}
+                </span>
+                {termData?.current && (
+                  <Badge variant="secondary" className="text-xs bg-green-100 text-green-800">Current</Badge>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <Select
+                  value={selectedYear.toString()}
+                  onValueChange={(value) => setSelectedYear(parseInt(value))}
+                >
+                  <SelectTrigger className="flex-1 h-9">
+                    <SelectValue placeholder="Year" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {years.map((year) => (
+                      <SelectItem key={year} value={year.toString()}>
+                        {year}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select
+                  value={selectedTermNumber}
+                  onValueChange={(value) => {
+                    if (value === '1' || value === '2' || value === '3' || value === '4') {
+                      setSelectedTermNumber(value);
+                    }
+                  }}
+                >
+                  <SelectTrigger className="flex-1 h-9">
+                    <SelectValue placeholder="Term" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {terms.map((term) => (
+                      <SelectItem key={term} value={term}>
+                        Term {term}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {isLoading ? (
