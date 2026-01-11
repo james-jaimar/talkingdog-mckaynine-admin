@@ -39,13 +39,25 @@ export interface Booking {
     id: string;
     first_name: string;
     last_name: string;
-    branch_id: string; // Add branch_id field
+    email?: string;
+    branch_id: string;
   };
   clients?: {
     id: string;
     first_name: string;
     last_name: string;
-    branch_id: string; // Add branch_id field
+    email?: string;
+    branch_id: string;
+  };
+  dog?: {
+    id: string;
+    name: string;
+    breed: string;
+  };
+  dogs?: {
+    id: string;
+    name: string;
+    breed: string;
   };
 }
 
@@ -93,7 +105,12 @@ export interface BookingDetail {
   bookingId: string;
   clientId: string;
   handlerName: string;
+  handlerEmail?: string;
+  dogName?: string;
+  dogBreed?: string;
   commissionAmount: number;
+  courseFee?: number;
+  paymentStatus?: string;
 }
 
 export interface TrainerClassDetail {

@@ -145,25 +145,30 @@ export function formatTrainerPaymentData(
     // We'll only flag it as having a "zero amount payment" if it's not supposed to have zero commission
     const hasZeroAmountPayment = !hasZeroCommission && zeroAmountScheduleIds.has(schedule.id);
 
-    // Build booking details for this class with actual client names
+    // Build booking details for this class with actual client names and dog info
     const bookingsDetails = scheduleBookings.map(booking => {
       // Use the client's first and last name when available
       let clientName = 'Unnamed Client';
+      let clientEmail = '';
       
-      if (booking.client) {
-        const firstName = booking.client.first_name || '';
-        const lastName = booking.client.last_name || '';
+      const clientData = booking.client || booking.clients;
+      if (clientData) {
+        const firstName = clientData.first_name || '';
+        const lastName = clientData.last_name || '';
         if (firstName || lastName) {
           clientName = `${firstName} ${lastName}`.trim();
         }
-      } else if (booking.clients) {
-        // Fallback to clients property if client is not available
-        const firstName = booking.clients.first_name || '';
-        const lastName = booking.clients.last_name || '';
-        if (firstName || lastName) {
-          clientName = `${firstName} ${lastName}`.trim();
-        }
+        clientEmail = clientData.email || '';
       }
+      
+      // Get dog info
+      const dogData = booking.dog || booking.dogs;
+      const dogName = dogData?.name || 'Unknown Dog';
+      const dogBreed = dogData?.breed || '';
+      
+      // Get invoice amount for this specific booking
+      const bookingInvoiceItems = invoiceItems.filter(item => item.booking_id === booking.id);
+      const courseFee = bookingInvoiceItems.reduce((sum, item) => sum + (item.amount || 0), 0);
         
       // Calculate individual commission - either actual or potential
       const perBookingCommission = scheduleBookings.length > 0 
@@ -174,7 +179,12 @@ export function formatTrainerPaymentData(
         bookingId: booking.id,
         clientId: booking.client_id || '',
         handlerName: clientName,
-        commissionAmount: perBookingCommission
+        handlerEmail: clientEmail,
+        dogName,
+        dogBreed,
+        commissionAmount: perBookingCommission,
+        courseFee,
+        paymentStatus: booking.payment_status
       };
     });
 

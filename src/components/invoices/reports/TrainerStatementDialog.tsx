@@ -16,12 +16,23 @@ import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { TrainerStatementHTMLPreview } from "./TrainerStatementHTMLPreview";
 
+interface HandlerDetail {
+  handlerName: string;
+  handlerEmail?: string;
+  dogName?: string;
+  dogBreed?: string;
+  courseFee?: number;
+  commissionAmount: number;
+  paymentStatus?: string;
+}
+
 interface ClassDetail {
   className: string;
   classDate: string;
   bookingsCount: number;
   commissionAmount: number;
   paymentStatus: "paid" | "unpaid" | "partial";
+  handlers?: HandlerDetail[];
 }
 
 interface TrainerStatementDialogProps {
@@ -84,12 +95,24 @@ export function TrainerStatementDialog({
         }
       }
 
+      // Extract handler details from bookingsDetails
+      const handlers: HandlerDetail[] = (cls.bookingsDetails || []).map((booking: any) => ({
+        handlerName: booking.handlerName || "Unknown Handler",
+        handlerEmail: booking.handlerEmail || booking.clientEmail || "",
+        dogName: booking.dogName || "",
+        dogBreed: booking.dogBreed || "",
+        courseFee: booking.courseFee || booking.amount || 0,
+        commissionAmount: booking.commissionAmount || 0,
+        paymentStatus: booking.paymentStatus || cls.paymentStatus || "unpaid"
+      }));
+
       return {
         className: cls.className || cls.class_name || "Unknown Class",
         classDate,
         bookingsCount,
         commissionAmount,
         paymentStatus: cls.paymentStatus || (cls.isPaid ? "paid" : "unpaid"),
+        handlers,
       };
     });
   };
