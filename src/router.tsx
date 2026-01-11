@@ -13,11 +13,11 @@ import UserAdmin from "./pages/UserAdmin";
 import TemplateDesigner from "./pages/platform-admin/TemplateDesigner";
 import Trainers from "./pages/Trainers";
 
-// Create a dashboard route that ONLY works for staff (admin and trainer) users
+// Create a dashboard route that ONLY works for admin users (trainers have their own dashboard)
 const dashboardRoute = {
   path: "/dashboard",
   element: (
-    <ProtectedRoute requiredRole="trainer">
+    <ProtectedRoute requiredRole="admin">
       <Dashboard />
     </ProtectedRoute>
   ),
