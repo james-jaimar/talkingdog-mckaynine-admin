@@ -85,11 +85,6 @@ export default function FinancialReports() {
     setActiveTab(value);
   };
 
-  // Generate term label for franchise report
-  const termLabel = termData 
-    ? `${termData.academic_years?.year} - Term ${termData.term_number}`
-    : 'Current Term';
-
   return (
     <RequireAdmin>
       <DashboardLayout>
@@ -131,16 +126,7 @@ export default function FinancialReports() {
             </TabsContent>
 
             <TabsContent value="franchise">
-              {termData?.id ? (
-                <FranchiseClassesReport 
-                  termId={termData.id}
-                  termLabel={termLabel}
-                />
-              ) : (
-                <div className="text-center py-12">
-                  <p className="text-muted-foreground">Please select a term to view the franchise report.</p>
-                </div>
-              )}
+              <FranchiseClassesReport />
             </TabsContent>
             
             <TabsContent value="trainers">
