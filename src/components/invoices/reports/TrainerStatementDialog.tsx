@@ -136,7 +136,9 @@ export function TrainerStatementDialog({
 
       // Prefer blob URLs for preview (more reliable than very long data URLs in iframes)
       try {
-        const blob = await (await fetch(dataUrl)).blob();
+        const res = await fetch(dataUrl);
+        const ab = await res.arrayBuffer();
+        const blob = new Blob([ab], { type: "application/pdf" });
         const blobUrl = URL.createObjectURL(blob);
         revokeCurrentBlobUrl();
         currentBlobUrlRef.current = blobUrl;
@@ -263,7 +265,11 @@ export function TrainerStatementDialog({
           {/* PDF Preview */}
           {pdfPreviewUrl ? (
             <div className="border rounded-lg overflow-hidden bg-gray-100" style={{ height: "400px" }}>
-              <iframe src={pdfPreviewUrl} className="w-full h-full" title="Statement Preview" />
+              <object data={pdfPreviewUrl} type="application/pdf" className="w-full h-full" aria-label="Statement Preview">
+                <div className="w-full h-full flex items-center justify-center text-sm text-muted-foreground">
+                  Preview blocked by your browser. Use “Open Preview” or download the PDF.
+                </div>
+              </object>
             </div>
           ) : (
             <div className="border rounded-lg flex items-center justify-center bg-muted/30" style={{ height: "400px" }}>
@@ -310,10 +316,20 @@ export function TrainerStatementDialog({
               </Button>
             </>
           ) : (
-            <Button onClick={handleDownload}>
-              <Download className="h-4 w-4 mr-2" />
-              Download PDF
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  if (pdfPreviewUrl) window.open(pdfPreviewUrl, "_blank", "noopener,noreferrer");
+                }}
+              >
+                Open Preview
+              </Button>
+              <Button onClick={handleDownload}>
+                <Download className="h-4 w-4 mr-2" />
+                Download PDF
+              </Button>
+            </div>
           )}
         </div>
       </DialogContent>
