@@ -1425,6 +1425,71 @@ export type Database = {
           },
         ]
       }
+      franchise_payments: {
+        Row: {
+          amount_paid: number
+          branch_id: string
+          created_at: string
+          id: string
+          month: number
+          notes: string | null
+          payment_date: string | null
+          payment_method: string | null
+          payment_reference: string | null
+          status: string
+          total_course_fees: number
+          total_due: number
+          total_enrollment_fees: number
+          total_franchise_fees: number
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          amount_paid?: number
+          branch_id: string
+          created_at?: string
+          id?: string
+          month: number
+          notes?: string | null
+          payment_date?: string | null
+          payment_method?: string | null
+          payment_reference?: string | null
+          status?: string
+          total_course_fees?: number
+          total_due?: number
+          total_enrollment_fees?: number
+          total_franchise_fees?: number
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          amount_paid?: number
+          branch_id?: string
+          created_at?: string
+          id?: string
+          month?: number
+          notes?: string | null
+          payment_date?: string | null
+          payment_method?: string | null
+          payment_reference?: string | null
+          status?: string
+          total_course_fees?: number
+          total_due?: number
+          total_enrollment_fees?: number
+          total_franchise_fees?: number
+          updated_at?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "franchise_payments_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       handler_class_status: {
         Row: {
           action_completed: boolean | null
