@@ -2,7 +2,17 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { format } from "date-fns";
 import { addEmbeddedFonts, setFont } from "@/components/invoices/pdf/utils/embeddedFonts";
-import { getBranchLogo, getBranchKey } from "@/lib/branchLogo";
+import { getBranchLogo } from "@/lib/branchLogo";
+
+interface HandlerDetail {
+  handlerName: string;
+  handlerEmail?: string;
+  dogName?: string;
+  dogBreed?: string;
+  courseFee?: number;
+  commissionAmount: number;
+  paymentStatus?: string;
+}
 
 interface ClassDetail {
   className: string;
@@ -10,6 +20,7 @@ interface ClassDetail {
   bookingsCount: number;
   commissionAmount: number;
   paymentStatus: "paid" | "unpaid" | "partial";
+  handlers?: HandlerDetail[];
 }
 
 interface TrainerStatementPDFProps {
@@ -22,7 +33,7 @@ interface TrainerStatementPDFProps {
   outstanding: number;
   classes: ClassDetail[];
   generatedDate?: Date;
-  branchName?: string; // "delta" or "randburg"
+  branchName?: string;
 }
 
 async function loadImageAsBase64(url: string): Promise<string | null> {
@@ -58,18 +69,26 @@ export async function generateTrainerStatementPDF({
     unit: "mm",
     format: "a4",
     compress: true,
-    // Only include fonts that are actually used in the document.
-    // This is critical to avoid base-14 fonts (Helvetica/Courier/Times/etc.) showing up in PDF properties.
     putOnlyUsedFonts: true,
   });
 
-  // Try to embed custom fonts, but fall back to helvetica if needed
   const fontsEmbedded = await addEmbeddedFonts(doc);
   const fontName = fontsEmbedded ? "Roboto" : "helvetica";
 
   const pageWidth = doc.internal.pageSize.getWidth();
-  const margin = 20;
-  let yPos = 15;
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 15;
+  let yPos = 12;
+
+  // Helper to check if we need a new page
+  const checkPageBreak = (requiredSpace: number) => {
+    if (yPos + requiredSpace > pageHeight - 25) {
+      doc.addPage();
+      yPos = 15;
+      return true;
+    }
+    return false;
+  };
 
   // Add branch logo
   const logoPath = getBranchLogo(branchName, 'jpg');
@@ -77,193 +96,248 @@ export async function generateTrainerStatementPDF({
   
   if (logoBase64) {
     try {
-      const logoWidth = 70;
-      const logoHeight = 20;
+      const logoWidth = 60;
+      const logoHeight = 17;
       const logoX = (pageWidth - logoWidth) / 2;
       doc.addImage(logoBase64, "JPEG", logoX, yPos, logoWidth, logoHeight);
-      yPos += logoHeight + 10;
+      yPos += logoHeight + 8;
     } catch (error) {
       console.error("Error adding logo:", error);
-      // Continue without logo
       yPos += 5;
     }
   } else {
-    // Fallback to text header
     setFont(doc, "bold");
-    doc.setFontSize(16);
+    doc.setFontSize(14);
     doc.setTextColor(31, 41, 55);
     const branchDisplay = branchName.charAt(0).toUpperCase() + branchName.slice(1);
     doc.text(`McKaynine ${branchDisplay}`, pageWidth / 2, yPos + 5, { align: "center" });
-    yPos += 15;
+    yPos += 12;
   }
 
   // Header box
-  doc.setFillColor(31, 41, 55); // gray-800
-  doc.rect(0, yPos, pageWidth, 35, "F");
+  doc.setFillColor(31, 41, 55);
+  doc.rect(0, yPos, pageWidth, 28, "F");
 
   doc.setTextColor(255, 255, 255);
-  doc.setFontSize(22);
+  doc.setFontSize(18);
   setFont(doc, "bold");
-  doc.text("TRAINER PAYMENT STATEMENT", margin, yPos + 15);
+  doc.text("TRAINER PAYMENT STATEMENT", margin, yPos + 12);
 
-  doc.setFontSize(11);
-  setFont(doc, "normal");
-  doc.text(termInfo, margin, yPos + 25);
-  doc.text(`Generated: ${format(generatedDate, "dd MMMM yyyy")}`, pageWidth - margin, yPos + 25, { align: "right" });
-
-  yPos += 45;
-
-  // Date range section
-  doc.setTextColor(100, 100, 100);
   doc.setFontSize(10);
   setFont(doc, "normal");
-  doc.text(`Statement Period: ${format(dateRange.from, "dd MMM yyyy")} - ${format(dateRange.to, "dd MMM yyyy")}`, margin, yPos);
-  yPos += 12;
-
-  // Trainer Info Section
-  doc.setFillColor(249, 250, 251); // gray-50
-  doc.roundedRect(margin, yPos, pageWidth - margin * 2, 25, 3, 3, "F");
-
-  doc.setTextColor(31, 41, 55);
-  doc.setFontSize(12);
-  setFont(doc, "bold");
-  doc.text("Trainer Details", margin + 5, yPos + 8);
-
-  setFont(doc, "normal");
-  doc.setFontSize(10);
-  doc.setTextColor(75, 85, 99);
-  doc.text(`Name: ${trainerName}`, margin + 5, yPos + 16);
-  doc.text(`Email: ${trainerEmail}`, margin + 5, yPos + 22);
+  doc.text(termInfo, margin, yPos + 20);
+  doc.text(`Generated: ${format(generatedDate, "dd MMMM yyyy")}`, pageWidth - margin, yPos + 20, { align: "right" });
 
   yPos += 35;
 
-  // Summary Section
-  doc.setFillColor(239, 246, 255); // blue-50
-  doc.roundedRect(margin, yPos, pageWidth - margin * 2, 35, 3, 3, "F");
+  // Date range
+  doc.setTextColor(100, 100, 100);
+  doc.setFontSize(9);
+  setFont(doc, "normal");
+  doc.text(`Statement Period: ${format(dateRange.from, "dd MMM yyyy")} - ${format(dateRange.to, "dd MMM yyyy")}`, margin, yPos);
+  yPos += 10;
+
+  // Trainer Info Section
+  doc.setFillColor(249, 250, 251);
+  doc.roundedRect(margin, yPos, pageWidth - margin * 2, 18, 2, 2, "F");
 
   doc.setTextColor(31, 41, 55);
-  doc.setFontSize(12);
-  setFont(doc, "bold");
-  doc.text("Payment Summary", margin + 5, yPos + 8);
-
-  const summaryCol1 = margin + 5;
-  const summaryCol2 = margin + 60;
-  const summaryCol3 = margin + 115;
-
   doc.setFontSize(10);
+  setFont(doc, "bold");
+  doc.text("Trainer Details", margin + 4, yPos + 6);
+
+  setFont(doc, "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(75, 85, 99);
+  doc.text(`Name: ${trainerName}`, margin + 4, yPos + 12);
+  doc.text(`Email: ${trainerEmail}`, margin + 70, yPos + 12);
+
+  yPos += 25;
+
+  // Summary Section
+  doc.setFillColor(239, 246, 255);
+  doc.roundedRect(margin, yPos, pageWidth - margin * 2, 22, 2, 2, "F");
+
+  doc.setTextColor(31, 41, 55);
+  doc.setFontSize(10);
+  setFont(doc, "bold");
+  doc.text("Payment Summary", margin + 4, yPos + 6);
+
+  const summaryCol1 = margin + 4;
+  const summaryCol2 = margin + 55;
+  const summaryCol3 = margin + 110;
+
+  doc.setFontSize(9);
   setFont(doc, "normal");
   doc.setTextColor(75, 85, 99);
 
-  // Total Commission
-  doc.text("Total Commission:", summaryCol1, yPos + 18);
+  doc.text("Total Commission:", summaryCol1, yPos + 13);
   setFont(doc, "bold");
   doc.setTextColor(31, 41, 55);
-  doc.text(`R ${totalCommission.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}`, summaryCol1, yPos + 25);
+  doc.text(`R ${totalCommission.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}`, summaryCol1, yPos + 18);
 
-  // Already Paid
   setFont(doc, "normal");
   doc.setTextColor(75, 85, 99);
-  doc.text("Already Paid:", summaryCol2, yPos + 18);
+  doc.text("Already Paid:", summaryCol2, yPos + 13);
   setFont(doc, "bold");
-  doc.setTextColor(22, 163, 74); // green-600
-  doc.text(`R ${totalPaid.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}`, summaryCol2, yPos + 25);
+  doc.setTextColor(22, 163, 74);
+  doc.text(`R ${totalPaid.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}`, summaryCol2, yPos + 18);
 
-  // Outstanding
   setFont(doc, "normal");
   doc.setTextColor(75, 85, 99);
-  doc.text("Outstanding:", summaryCol3, yPos + 18);
+  doc.text("Outstanding:", summaryCol3, yPos + 13);
   setFont(doc, "bold");
   doc.setTextColor(outstanding > 0 ? 220 : 31, outstanding > 0 ? 38 : 41, outstanding > 0 ? 38 : 55);
-  doc.text(`R ${outstanding.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}`, summaryCol3, yPos + 25);
+  doc.text(`R ${outstanding.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}`, summaryCol3, yPos + 18);
 
-  yPos += 45;
+  yPos += 30;
 
-  // Classes Table
+  // Class Details Header
   doc.setTextColor(31, 41, 55);
-  doc.setFontSize(12);
+  doc.setFontSize(11);
   setFont(doc, "bold");
-  doc.text("Classes Breakdown", margin, yPos);
-  yPos += 5;
+  doc.text("Class Details", margin, yPos);
+  yPos += 6;
 
-  const tableData = classes.map((cls) => [
-    cls.className,
-    cls.classDate,
-    cls.bookingsCount.toString(),
-    `R ${cls.commissionAmount.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}`,
-    cls.paymentStatus === "paid" ? "Paid" : cls.paymentStatus === "partial" ? "Partial" : "Unpaid",
-  ]);
+  // Process each class
+  for (const classSchedule of classes) {
+    const handlers = classSchedule.handlers || [];
+    const handlerCount = handlers.length || classSchedule.bookingsCount;
+    const classTotal = handlers.reduce((sum, h) => sum + (h.commissionAmount || 0), 0) || classSchedule.commissionAmount;
+    const hasUnpaid = classSchedule.paymentStatus !== "paid";
+    
+    // Calculate required space for this class
+    const classHeaderHeight = 12;
+    const tableRowHeight = 6;
+    const tableHeaderHeight = 7;
+    const totalRowHeight = 7;
+    const requiredHeight = classHeaderHeight + tableHeaderHeight + (handlers.length * tableRowHeight) + totalRowHeight + 8;
+    
+    checkPageBreak(requiredHeight);
 
-  autoTable(doc, {
-    startY: yPos,
-    head: [["Class Name", "Date", "Bookings", "Commission", "Status"]],
-    body: tableData,
-    margin: { left: margin, right: margin },
-    styles: {
-      font: fontName,
-      fontSize: 9,
-      textColor: [55, 65, 81],
-      overflow: "linebreak",
-      cellWidth: "wrap",
-    },
-    headStyles: {
-      fillColor: [31, 41, 55],
-      textColor: [255, 255, 255],
-      fontStyle: "bold",
-      fontSize: 9,
-    },
-    bodyStyles: {
-      fontSize: 9,
-    },
-    alternateRowStyles: {
-      fillColor: [249, 250, 251],
-    },
-    columnStyles: {
-      // Allow long class names to wrap rather than blowing up table width calculations
-      0: { cellWidth: 70 },
-      1: { cellWidth: 25 },
-      2: { cellWidth: 18, halign: "center" },
-      3: { cellWidth: 30, halign: "right" },
-      4: { cellWidth: 22, halign: "center" },
-    },
-    didParseCell: (data) => {
-      // Ensure Roboto is used everywhere (autoTable can otherwise fall back silently)
-      data.cell.styles.font = fontName;
+    // Class header bar
+    doc.setFillColor(31, 78, 80); // primary color
+    doc.roundedRect(margin, yPos, pageWidth - margin * 2, 10, 1, 1, "F");
 
-      // Color the status column
-      if (data.section === "body" && data.column.index === 4) {
-        const status = data.cell.raw as string;
-        if (status === "Paid") {
-          data.cell.styles.textColor = [22, 163, 74]; // green
-        } else if (status === "Unpaid") {
-          data.cell.styles.textColor = [220, 38, 38]; // red
-        } else {
-          data.cell.styles.textColor = [234, 179, 8]; // yellow
-        }
-      }
-    },
-  });
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(9);
+    setFont(doc, "bold");
+    doc.text(`${classSchedule.className}`, margin + 3, yPos + 6.5);
+    
+    setFont(doc, "normal");
+    doc.setFontSize(8);
+    const classNameWidth = doc.getTextWidth(classSchedule.className);
+    doc.text(`${classSchedule.classDate} • ${handlerCount} handler${handlerCount !== 1 ? 's' : ''}`, margin + 3 + classNameWidth + 5, yPos + 6.5);
 
-  // Get final Y position after table
-  const finalY = (doc as any).lastAutoTable.finalY || yPos + 50;
+    // Class total on right
+    doc.setFontSize(9);
+    setFont(doc, "bold");
+    doc.text(`R ${classTotal.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}`, pageWidth - margin - 25, yPos + 6.5, { align: "right" });
 
-  // Total row
-  doc.setFillColor(31, 41, 55);
-  doc.rect(margin, finalY + 2, pageWidth - margin * 2, 10, "F");
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(10);
+    // Status badge
+    const statusText = hasUnpaid ? "Unpaid" : "Paid";
+    const badgeX = pageWidth - margin - 3;
+    doc.setFillColor(hasUnpaid ? 254 : 220, hasUnpaid ? 226 : 252, hasUnpaid ? 226 : 231);
+    doc.roundedRect(badgeX - 12, yPos + 2, 12, 6, 1, 1, "F");
+    doc.setTextColor(hasUnpaid ? 185 : 22, hasUnpaid ? 28 : 101, hasUnpaid ? 28 : 52);
+    doc.setFontSize(6);
+    doc.text(statusText, badgeX - 6, yPos + 6, { align: "center" });
+
+    yPos += 12;
+
+    if (handlers.length > 0) {
+      // Handler table for this class
+      const handlerData = handlers.map((handler) => [
+        handler.handlerName,
+        `${handler.dogName || 'Unknown'}${handler.dogBreed ? ` (${handler.dogBreed})` : ''}`,
+        handler.handlerEmail || '-',
+        `R ${(handler.courseFee || 0).toLocaleString("en-ZA", { minimumFractionDigits: 2 })}`,
+        `R ${(handler.commissionAmount || 0).toLocaleString("en-ZA", { minimumFractionDigits: 2 })}`,
+      ]);
+
+      autoTable(doc, {
+        startY: yPos,
+        head: [["Handler", "Dog", "Email", "Course Fee", "Commission"]],
+        body: handlerData,
+        margin: { left: margin, right: margin },
+        styles: {
+          font: fontName,
+          fontSize: 8,
+          textColor: [55, 65, 81],
+          cellPadding: 2,
+        },
+        headStyles: {
+          fillColor: [243, 244, 246],
+          textColor: [107, 114, 128],
+          fontStyle: "bold",
+          fontSize: 7,
+        },
+        bodyStyles: {
+          fontSize: 8,
+        },
+        alternateRowStyles: {
+          fillColor: [255, 255, 255],
+        },
+        columnStyles: {
+          0: { cellWidth: 35 },
+          1: { cellWidth: 40 },
+          2: { cellWidth: 55 },
+          3: { cellWidth: 25, halign: "right" },
+          4: { cellWidth: 25, halign: "right" },
+        },
+        didParseCell: (data) => {
+          data.cell.styles.font = fontName;
+          // Color commission column green
+          if (data.section === "body" && data.column.index === 4) {
+            data.cell.styles.textColor = [22, 163, 74];
+            data.cell.styles.fontStyle = "bold";
+          }
+        },
+      });
+
+      yPos = (doc as any).lastAutoTable.finalY;
+
+      // Class totals row
+      doc.setFillColor(249, 250, 251);
+      doc.rect(margin, yPos, pageWidth - margin * 2, 7, "F");
+      
+      doc.setFontSize(8);
+      setFont(doc, "bold");
+      doc.setTextColor(75, 85, 99);
+      doc.text("Class Totals", margin + 3, yPos + 5);
+      
+      const courseFeeTotal = handlers.reduce((sum, h) => sum + (h.courseFee || 0), 0);
+      doc.text(`R ${courseFeeTotal.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}`, pageWidth - margin - 28, yPos + 5, { align: "right" });
+      
+      doc.setTextColor(22, 163, 74);
+      doc.text(`R ${classTotal.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}`, pageWidth - margin - 3, yPos + 5, { align: "right" });
+
+      yPos += 12;
+    } else {
+      yPos += 5;
+    }
+  }
+
+  // Grand Total
+  checkPageBreak(20);
+  yPos += 3;
+  
+  doc.setFillColor(249, 250, 251);
+  doc.roundedRect(margin, yPos, pageWidth - margin * 2, 12, 2, 2, "F");
+  
+  doc.setTextColor(31, 41, 55);
+  doc.setFontSize(11);
   setFont(doc, "bold");
-  doc.text("TOTAL", margin + 5, finalY + 8);
-  doc.text(
-    `R ${totalCommission.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}`,
-    pageWidth - margin - 30,
-    finalY + 8,
-    { align: "right" }
-  );
+  doc.text("Grand Total Commission", margin + 5, yPos + 8);
+  
+  doc.setTextColor(22, 163, 74);
+  doc.setFontSize(14);
+  doc.text(`R ${totalCommission.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}`, pageWidth - margin - 5, yPos + 8, { align: "right" });
 
-  // Footer
-  const footerY = doc.internal.pageSize.getHeight() - 20;
+  // Footer on last page
+  const footerY = pageHeight - 15;
   doc.setTextColor(156, 163, 175);
-  doc.setFontSize(8);
+  doc.setFontSize(7);
   setFont(doc, "normal");
   doc.text(
     "This is an automatically generated statement. Please contact the administrator for any queries.",
@@ -272,7 +346,7 @@ export async function generateTrainerStatementPDF({
     { align: "center" }
   );
   const branchDisplay = branchName.charAt(0).toUpperCase() + branchName.slice(1);
-  doc.text(`McKaynine ${branchDisplay} Training Centre`, pageWidth / 2, footerY + 5, { align: "center" });
+  doc.text(`McKaynine ${branchDisplay} Training Centre`, pageWidth / 2, footerY + 4, { align: "center" });
 
   return doc.output("dataurlstring");
 }
