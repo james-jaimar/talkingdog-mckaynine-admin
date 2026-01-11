@@ -1,5 +1,5 @@
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
-import TrainerDashboard from "@/pages/TrainerDashboard";
+import TrainerDashboard from "@/pages/trainer/TrainerDashboard";
 import TrainerClasses from "@/pages/trainer/TrainerClasses";
 import TrainerEarnings from "@/pages/trainer/TrainerEarnings";
 import TrainerClassDetail from "@/pages/trainer/TrainerClassDetail";

@@ -6,16 +6,25 @@ import { Helmet } from "react-helmet";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
-import { Calendar, Users, Clock, ChevronRight, Loader2 } from "lucide-react";
+import { Users, ChevronRight, Loader2, CalendarCheck } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export default function TrainerClasses() {
   const { trainerProfile, isTrainer } = useAuth();
   const navigate = useNavigate();
 
   const { data: classes = [], isLoading } = useQuery({
-    queryKey: ['trainer-my-classes', trainerProfile?.id],
+    queryKey: ['trainer-all-classes', trainerProfile?.id],
     queryFn: async () => {
       if (!trainerProfile?.id) return [];
 
@@ -34,7 +43,7 @@ export default function TrainerClasses() {
             capacity,
             description
           ),
-          bookings:bookings (
+          bookings (
             id,
             status
           )
@@ -52,9 +61,9 @@ export default function TrainerClasses() {
     enabled: !!trainerProfile?.id,
   });
 
-  // Group by class type
-  const upcomingClasses = classes.filter(c => new Date(c.start_time) >= new Date());
-  const pastClasses = classes.filter(c => new Date(c.start_time) < new Date());
+  const now = new Date();
+  const upcomingClasses = classes.filter(c => new Date(c.start_time) >= now);
+  const pastClasses = classes.filter(c => new Date(c.start_time) < now).reverse();
 
   if (!isTrainer) {
     return (
@@ -66,16 +75,133 @@ export default function TrainerClasses() {
     );
   }
 
+  const ClassTable = ({ schedules, isPast = false }: { schedules: typeof classes; isPast?: boolean }) => (
+    <>
+      {/* Desktop Table */}
+      <div className="hidden sm:block">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Date</TableHead>
+              <TableHead>Time</TableHead>
+              <TableHead>Class</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead>Students</TableHead>
+              <TableHead className="w-[120px]">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {schedules.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                  {isPast ? "No past classes." : "No upcoming classes scheduled."}
+                </TableCell>
+              </TableRow>
+            ) : (
+              schedules.map((schedule) => (
+                <TableRow key={schedule.id} className={isPast ? "opacity-60" : ""}>
+                  <TableCell className="font-medium">
+                    {format(new Date(schedule.start_time), "EEE, MMM d, yyyy")}
+                  </TableCell>
+                  <TableCell>
+                    {format(new Date(schedule.start_time), "HH:mm")} - {format(new Date(schedule.end_time), "HH:mm")}
+                  </TableCell>
+                  <TableCell>{schedule.classes?.name}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{schedule.classes?.class_type}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1">
+                      <Users className="h-3 w-3 text-muted-foreground" />
+                      <span>{schedule.bookings?.length || 0} / {schedule.classes?.capacity || '∞'}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => navigate(`/trainer/class/${schedule.id}`)}
+                    >
+                      {isPast ? "View" : "Attendance"}
+                      <ChevronRight className="h-4 w-4 ml-1" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* Mobile List */}
+      <div className="sm:hidden">
+        {schedules.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            {isPast ? "No past classes." : "No upcoming classes scheduled."}
+          </div>
+        ) : (
+          <div className="divide-y">
+            {schedules.map((schedule) => (
+              <div 
+                key={schedule.id} 
+                className={`p-4 cursor-pointer hover:bg-muted/50 active:bg-muted ${isPast ? "opacity-60" : ""}`}
+                onClick={() => navigate(`/trainer/class/${schedule.id}`)}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3">
+                    <div className="bg-muted rounded-lg p-2 text-center min-w-[50px]">
+                      <div className="text-[10px] uppercase text-muted-foreground">
+                        {format(new Date(schedule.start_time), "EEE")}
+                      </div>
+                      <div className="text-lg font-bold">
+                        {format(new Date(schedule.start_time), "d")}
+                      </div>
+                      <div className="text-[10px] text-muted-foreground">
+                        {format(new Date(schedule.start_time), "MMM")}
+                      </div>
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-medium text-sm">{schedule.classes?.name}</h3>
+                      <div className="flex flex-wrap items-center gap-2 mt-1">
+                        <Badge variant="secondary" className="text-xs">{schedule.classes?.class_type}</Badge>
+                        <span className="text-xs text-muted-foreground">
+                          {format(new Date(schedule.start_time), "HH:mm")}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
+                        <Users className="h-3 w-3" />
+                        <span>{schedule.bookings?.length || 0} students enrolled</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end gap-2">
+                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                    {!isPast && (
+                      <Button variant="ghost" size="sm" className="h-7 px-2 text-xs">
+                        <CalendarCheck className="h-3 w-3 mr-1" />
+                        Mark
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </>
+  );
+
   return (
     <DashboardLayout>
       <Helmet>
-        <title>My Classes</title>
+        <title>My Classes - Trainer Portal</title>
       </Helmet>
 
-      <div className="container mx-auto py-6 space-y-6">
+      <div className="space-y-4 sm:space-y-6 py-4 sm:py-6 px-2 sm:px-0">
         <div>
-          <h1 className="text-2xl font-bold">My Classes</h1>
-          <p className="text-muted-foreground">Classes you are assigned to teach</p>
+          <h1 className="text-xl sm:text-2xl font-bold">My Classes</h1>
+          <p className="text-sm text-muted-foreground">View and manage attendance for your classes</p>
         </div>
 
         {isLoading ? (
@@ -83,85 +209,30 @@ export default function TrainerClasses() {
             <Loader2 className="h-8 w-8 animate-spin" />
           </div>
         ) : (
-          <>
-            {/* Upcoming Classes */}
-            <div>
-              <h2 className="text-lg font-semibold mb-4">Upcoming Classes ({upcomingClasses.length})</h2>
-              {upcomingClasses.length === 0 ? (
-                <Card>
-                  <CardContent className="py-8 text-center text-muted-foreground">
-                    No upcoming classes scheduled.
-                  </CardContent>
-                </Card>
-              ) : (
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {upcomingClasses.map((schedule) => (
-                    <Card key={schedule.id} className="hover:shadow-md transition-shadow">
-                      <CardHeader className="pb-2">
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <CardTitle className="text-lg">{schedule.classes?.name}</CardTitle>
-                            <Badge variant="secondary" className="mt-1">
-                              {schedule.classes?.class_type}
-                            </Badge>
-                          </div>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        <div className="flex items-center text-sm text-muted-foreground">
-                          <Calendar className="h-4 w-4 mr-2" />
-                          {format(new Date(schedule.start_time), "PPP")}
-                        </div>
-                        <div className="flex items-center text-sm text-muted-foreground">
-                          <Clock className="h-4 w-4 mr-2" />
-                          {format(new Date(schedule.start_time), "p")} - {format(new Date(schedule.end_time), "p")}
-                        </div>
-                        <div className="flex items-center text-sm text-muted-foreground">
-                          <Users className="h-4 w-4 mr-2" />
-                          {schedule.bookings?.length || 0} / {schedule.classes?.capacity || '∞'} enrolled
-                        </div>
-                        <Button 
-                          variant="outline" 
-                          className="w-full mt-2"
-                          onClick={() => navigate(`/trainer/class/${schedule.id}`)}
-                        >
-                          View Details
-                          <ChevronRight className="h-4 w-4 ml-1" />
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  ))}
+          <Card>
+            <CardContent className="p-0 sm:p-6">
+              <Tabs defaultValue="upcoming" className="w-full">
+                <div className="px-4 sm:px-0 pt-4 sm:pt-0">
+                  <TabsList className="grid w-full grid-cols-2 max-w-[300px]">
+                    <TabsTrigger value="upcoming" className="text-xs sm:text-sm">
+                      Upcoming ({upcomingClasses.length})
+                    </TabsTrigger>
+                    <TabsTrigger value="past" className="text-xs sm:text-sm">
+                      Past ({pastClasses.length})
+                    </TabsTrigger>
+                  </TabsList>
                 </div>
-              )}
-            </div>
-
-            {/* Past Classes */}
-            {pastClasses.length > 0 && (
-              <div>
-                <h2 className="text-lg font-semibold mb-4">Past Classes ({pastClasses.length})</h2>
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {pastClasses.slice(0, 6).map((schedule) => (
-                    <Card key={schedule.id} className="opacity-75">
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-lg">{schedule.classes?.name}</CardTitle>
-                        <Badge variant="outline">{schedule.classes?.class_type}</Badge>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="flex items-center text-sm text-muted-foreground">
-                          <Calendar className="h-4 w-4 mr-2" />
-                          {format(new Date(schedule.start_time), "PPP")}
-                        </div>
-                        <div className="flex items-center text-sm text-muted-foreground mt-1">
-                          <Users className="h-4 w-4 mr-2" />
-                          {schedule.bookings?.length || 0} attended
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-            )}
-          </>
+                
+                <TabsContent value="upcoming" className="mt-4">
+                  <ClassTable schedules={upcomingClasses} />
+                </TabsContent>
+                
+                <TabsContent value="past" className="mt-4">
+                  <ClassTable schedules={pastClasses.slice(0, 20)} isPast />
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
         )}
       </div>
     </DashboardLayout>
