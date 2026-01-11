@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "@/context/auth";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Helmet } from "react-helmet";
@@ -29,15 +29,25 @@ import { useToast } from "@/components/ui/use-toast";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 type AttendanceStatus = 'present' | 'absent' | 'excused' | 'not_marked';
+type PerformanceGrade = 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | null;
+
+const GRADE_INFO: Record<string, { label: string; color: string; bgColor: string }> = {
+  'A': { label: '100% comprehension, excellent results', color: 'text-emerald-700', bgColor: 'bg-emerald-100 hover:bg-emerald-200 border-emerald-300' },
+  'B': { label: 'Coping well, showing enthusiasm', color: 'text-blue-700', bgColor: 'bg-blue-100 hover:bg-blue-200 border-blue-300' },
+  'C': { label: 'Coping adequately', color: 'text-cyan-700', bgColor: 'bg-cyan-100 hover:bg-cyan-200 border-cyan-300' },
+  'D': { label: 'Not coping but committed, trying hard', color: 'text-amber-700', bgColor: 'bg-amber-100 hover:bg-amber-200 border-amber-300' },
+  'E': { label: 'Disinterested, poor results', color: 'text-orange-700', bgColor: 'bg-orange-100 hover:bg-orange-200 border-orange-300' },
+  'F': { label: 'No comprehension or commitment', color: 'text-red-700', bgColor: 'bg-red-100 hover:bg-red-200 border-red-300' },
+};
 
 export default function TrainerClassDetail() {
   const { trainerProfile, isTrainer } = useAuth();
   const { id: scheduleId } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
+  const [isUpdatingGrade, setIsUpdatingGrade] = useState<string | null>(null);
 
   const { data: schedule, isLoading, refetch } = useQuery({
     queryKey: ['trainer-class-detail-full', scheduleId, trainerProfile?.id],
@@ -139,10 +149,18 @@ export default function TrainerClassDetail() {
       );
 
       if (existingAttendance) {
-        // Update existing
+        // Update existing - clear grade if not present
+        const updateData: any = { 
+          attendance_status: status, 
+          updated_at: new Date().toISOString() 
+        };
+        if (status !== 'present') {
+          updateData.performance_grade = null;
+        }
+        
         const { error } = await supabase
           .from('class_attendance')
-          .update({ attendance_status: status, updated_at: new Date().toISOString() })
+          .update(updateData)
           .eq('id', existingAttendance.id);
         
         if (error) throw error;
@@ -178,12 +196,60 @@ export default function TrainerClassDetail() {
     }
   };
 
+  const updateGrade = async (bookingId: string, grade: PerformanceGrade) => {
+    if (!selectedDate || !schedule) return;
+
+    setIsUpdatingGrade(bookingId);
+    try {
+      const booking = schedule.bookings?.find((b: any) => b.id === bookingId) as any;
+      const existingAttendance = booking?.attendances?.find(
+        (a: any) => new Date(a.class_date).toDateString() === new Date(selectedDate).toDateString()
+      );
+
+      if (existingAttendance) {
+        const { error } = await supabase
+          .from('class_attendance')
+          .update({ 
+            performance_grade: grade, 
+            updated_at: new Date().toISOString() 
+          })
+          .eq('id', existingAttendance.id);
+        
+        if (error) throw error;
+        
+        toast({
+          title: "Grade updated",
+          description: grade ? `Set to ${grade}` : "Grade cleared",
+        });
+        
+        refetch();
+      }
+    } catch (error) {
+      console.error("Error updating grade:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update grade",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdatingGrade(null);
+    }
+  };
+
   const getAttendanceStatus = (booking: any): AttendanceStatus => {
     if (!selectedDate || !booking.attendances) return 'not_marked';
     const attendance = booking.attendances.find(
       (a: any) => new Date(a.class_date).toDateString() === new Date(selectedDate).toDateString()
     );
     return attendance?.attendance_status || 'not_marked';
+  };
+
+  const getPerformanceGrade = (booking: any): PerformanceGrade => {
+    if (!selectedDate || !booking.attendances) return null;
+    const attendance = booking.attendances.find(
+      (a: any) => new Date(a.class_date).toDateString() === new Date(selectedDate).toDateString()
+    );
+    return attendance?.performance_grade || null;
   };
 
   const AttendanceButton = ({ booking, targetStatus, icon: Icon, label, activeClass }: {
@@ -204,7 +270,7 @@ export default function TrainerClassDetail() {
             <Button
               variant="ghost"
               size="sm"
-              className={`h-8 w-8 sm:h-9 sm:w-9 p-0 rounded-full ${isActive ? activeClass : 'bg-muted hover:bg-muted/80'}`}
+              className={`h-9 w-9 p-0 rounded-full ${isActive ? activeClass : 'bg-muted hover:bg-muted/80'}`}
               onClick={() => updateAttendance(booking.id, targetStatus)}
               disabled={isLoading}
             >
@@ -217,6 +283,43 @@ export default function TrainerClassDetail() {
           </TooltipTrigger>
           <TooltipContent side="top">
             <p>{label}</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  };
+
+  const GradeButton = ({ booking, grade }: { booking: any; grade: string }) => {
+    const currentGrade = getPerformanceGrade(booking);
+    const isActive = currentGrade === grade;
+    const isLoading = isUpdatingGrade === booking.id;
+    const gradeInfo = GRADE_INFO[grade];
+
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className={`h-10 w-10 sm:h-9 sm:w-9 p-0 text-base sm:text-sm font-bold border-2 transition-all ${
+                isActive 
+                  ? `${gradeInfo.bgColor} ${gradeInfo.color} ring-2 ring-offset-1 ring-${grade === 'A' ? 'emerald' : grade === 'B' ? 'blue' : grade === 'C' ? 'cyan' : grade === 'D' ? 'amber' : grade === 'E' ? 'orange' : 'red'}-400` 
+                  : 'bg-background hover:bg-muted border-muted-foreground/20'
+              }`}
+              onClick={() => updateGrade(booking.id, isActive ? null : grade as PerformanceGrade)}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                grade
+              )}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="max-w-[200px]">
+            <p className="font-semibold">{grade}</p>
+            <p className="text-xs">{gradeInfo.label}</p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
@@ -287,6 +390,22 @@ export default function TrainerClassDetail() {
           </div>
         </div>
 
+        {/* Grade Key - Collapsible on mobile */}
+        <Card className="bg-muted/30">
+          <CardContent className="p-3 sm:p-4">
+            <p className="text-xs font-medium text-muted-foreground mb-2">Performance Grade Key:</p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 text-xs">
+              {Object.entries(GRADE_INFO).map(([grade, info]) => (
+                <div key={grade} className={`px-2 py-1.5 rounded border ${info.bgColor}`}>
+                  <span className={`font-bold ${info.color}`}>{grade}</span>
+                  <span className="text-muted-foreground ml-1 hidden sm:inline">- {info.label}</span>
+                  <span className="text-muted-foreground ml-1 sm:hidden">- {info.label.split(',')[0]}</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Class Info */}
         <Card>
           <CardContent className="p-4 sm:p-6">
@@ -326,7 +445,7 @@ export default function TrainerClassDetail() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <CardTitle className="text-base sm:text-lg flex items-center gap-2">
                 <CalendarRange className="h-5 w-5" />
-                Mark Attendance
+                Mark Attendance & Grade
               </CardTitle>
               
               {sortedDates.length > 1 && (
@@ -347,7 +466,7 @@ export default function TrainerClassDetail() {
             
             {selectedDate && (
               <p className="text-sm text-muted-foreground mt-2">
-                Marking attendance for: <strong>{format(new Date(selectedDate), "EEEE, MMMM d, yyyy")}</strong>
+                Marking for: <strong>{format(new Date(selectedDate), "EEEE, MMMM d, yyyy")}</strong>
               </p>
             )}
           </CardHeader>
@@ -360,7 +479,7 @@ export default function TrainerClassDetail() {
             ) : (
               <>
                 {/* Desktop Table */}
-                <div className="hidden sm:block">
+                <div className="hidden lg:block">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -368,77 +487,103 @@ export default function TrainerClassDetail() {
                         <TableHead>Dog</TableHead>
                         <TableHead>Phone</TableHead>
                         <TableHead className="text-center">Attendance</TableHead>
+                        <TableHead className="text-center">Performance Grade</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {schedule.bookings.map((booking: any) => (
-                        <TableRow key={booking.id}>
-                          <TableCell className="font-medium">
-                            {booking.clients?.first_name} {booking.clients?.last_name}
-                          </TableCell>
-                          <TableCell>
-                            <div>
-                              <span className="font-medium">{booking.dogs?.name}</span>
-                              <span className="text-sm text-muted-foreground ml-1">
-                                ({booking.dogs?.breed})
-                              </span>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-muted-foreground">
-                            {booking.clients?.phone || '-'}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center justify-center gap-2">
-                              <AttendanceButton
-                                booking={booking}
-                                targetStatus="present"
-                                icon={Check}
-                                label="Present"
-                                activeClass="bg-green-600 hover:bg-green-700"
-                              />
-                              <AttendanceButton
-                                booking={booking}
-                                targetStatus="absent"
-                                icon={X}
-                                label="Absent"
-                                activeClass="bg-red-600 hover:bg-red-700"
-                              />
-                              <AttendanceButton
-                                booking={booking}
-                                targetStatus="excused"
-                                icon={AlertTriangle}
-                                label="Excused"
-                                activeClass="bg-amber-500 hover:bg-amber-600"
-                              />
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                      {schedule.bookings.map((booking: any) => {
+                        const status = getAttendanceStatus(booking);
+                        const grade = getPerformanceGrade(booking);
+                        return (
+                          <TableRow key={booking.id}>
+                            <TableCell className="font-medium">
+                              {booking.clients?.first_name} {booking.clients?.last_name}
+                            </TableCell>
+                            <TableCell>
+                              <div>
+                                <span className="font-medium">{booking.dogs?.name}</span>
+                                <span className="text-sm text-muted-foreground ml-1">
+                                  ({booking.dogs?.breed})
+                                </span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">
+                              {booking.clients?.phone || '-'}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center justify-center gap-2">
+                                <AttendanceButton
+                                  booking={booking}
+                                  targetStatus="present"
+                                  icon={Check}
+                                  label="Present"
+                                  activeClass="bg-green-600 hover:bg-green-700"
+                                />
+                                <AttendanceButton
+                                  booking={booking}
+                                  targetStatus="absent"
+                                  icon={X}
+                                  label="Absent"
+                                  activeClass="bg-red-600 hover:bg-red-700"
+                                />
+                                <AttendanceButton
+                                  booking={booking}
+                                  targetStatus="excused"
+                                  icon={AlertTriangle}
+                                  label="Excused"
+                                  activeClass="bg-amber-500 hover:bg-amber-600"
+                                />
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {status === 'present' ? (
+                                <div className="flex items-center justify-center gap-1">
+                                  {['A', 'B', 'C', 'D', 'E', 'F'].map((g) => (
+                                    <GradeButton key={g} booking={booking} grade={g} />
+                                  ))}
+                                </div>
+                              ) : (
+                                <p className="text-center text-xs text-muted-foreground">
+                                  Mark present to grade
+                                </p>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 </div>
 
-                {/* Mobile List - Optimized for quick attendance marking */}
-                <div className="sm:hidden divide-y">
+                {/* Mobile/Tablet List - Optimized for touch */}
+                <div className="lg:hidden divide-y">
                   {schedule.bookings.map((booking: any) => {
                     const status = getAttendanceStatus(booking);
+                    const grade = getPerformanceGrade(booking);
                     return (
-                      <div key={booking.id} className="p-4">
+                      <div key={booking.id} className="p-4 space-y-3">
+                        {/* Handler Info Row */}
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium text-sm truncate">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-medium text-sm">
                                 {booking.clients?.first_name} {booking.clients?.last_name}
                               </span>
                               {status !== 'not_marked' && (
                                 <Badge 
+                                  variant="outline"
                                   className={
-                                    status === 'present' ? 'bg-green-100 text-green-800' :
-                                    status === 'absent' ? 'bg-red-100 text-red-800' :
-                                    'bg-amber-100 text-amber-800'
+                                    status === 'present' ? 'bg-green-100 text-green-800 border-green-300' :
+                                    status === 'absent' ? 'bg-red-100 text-red-800 border-red-300' :
+                                    'bg-amber-100 text-amber-800 border-amber-300'
                                   }
                                 >
                                   {status}
+                                </Badge>
+                              )}
+                              {grade && (
+                                <Badge className={`${GRADE_INFO[grade].bgColor} ${GRADE_INFO[grade].color} border`}>
+                                  Grade: {grade}
                                 </Badge>
                               )}
                             </div>
@@ -454,8 +599,12 @@ export default function TrainerClassDetail() {
                               </a>
                             )}
                           </div>
-                          
-                          <div className="flex items-center gap-1.5">
+                        </div>
+                        
+                        {/* Attendance Buttons */}
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground w-16 shrink-0">Attendance:</span>
+                          <div className="flex items-center gap-2">
                             <AttendanceButton
                               booking={booking}
                               targetStatus="present"
@@ -479,6 +628,18 @@ export default function TrainerClassDetail() {
                             />
                           </div>
                         </div>
+
+                        {/* Grade Buttons - Only show when present */}
+                        {status === 'present' && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-muted-foreground w-16 shrink-0">Grade:</span>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {['A', 'B', 'C', 'D', 'E', 'F'].map((g) => (
+                                <GradeButton key={g} booking={booking} grade={g} />
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     );
                   })}

@@ -410,6 +410,7 @@ export type Database = {
           class_schedule_id: string
           created_at: string
           id: string
+          performance_grade: string | null
           updated_at: string
         }
         Insert: {
@@ -419,6 +420,7 @@ export type Database = {
           class_schedule_id: string
           created_at?: string
           id?: string
+          performance_grade?: string | null
           updated_at?: string
         }
         Update: {
@@ -428,6 +430,7 @@ export type Database = {
           class_schedule_id?: string
           created_at?: string
           id?: string
+          performance_grade?: string | null
           updated_at?: string
         }
         Relationships: [
