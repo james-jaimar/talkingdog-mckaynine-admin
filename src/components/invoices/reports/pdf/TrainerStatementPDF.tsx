@@ -63,12 +63,9 @@ export async function generateTrainerStatementPDF({
     putOnlyUsedFonts: true,
   });
 
-  // Embedded fonts are REQUIRED. If we can't embed, fail generation.
+  // Try to embed custom fonts, but fall back to helvetica if needed
   const fontsEmbedded = await addEmbeddedFonts(doc);
-  if (!fontsEmbedded) {
-    throw new Error("Failed to embed required PDF fonts (Roboto)");
-  }
-  const fontName = "Roboto";
+  const fontName = fontsEmbedded ? "Roboto" : "helvetica";
 
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 20;
