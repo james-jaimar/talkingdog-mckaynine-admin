@@ -21,8 +21,10 @@ export async function fetchTrainers(branchId: string) {
   return trainers;
 }
 
-export async function fetchSchedules(trainerId: string, termId?: string): Promise<Schedule[]> {
-  // Build the query with trainer filtering
+// Batched version: Fetch all schedules for multiple trainers at once
+export async function fetchAllSchedulesForTrainers(trainerIds: string[], termId?: string): Promise<Schedule[]> {
+  if (trainerIds.length === 0) return [];
+  
   let query = supabase
     .from('class_schedules')
     .select(`
@@ -51,32 +53,27 @@ export async function fetchSchedules(trainerId: string, termId?: string): Promis
         branch_id
       )
     `)
-    .eq('trainer_id', trainerId);
+    .in('trainer_id', trainerIds);
 
-  // Add term filtering if a term ID is provided
   if (termId) {
     query = query.eq('term_id', termId);
-    console.log(`Filtering schedules for term: ${termId}`);
-  } else {
-    console.log("No term ID provided for schedule filtering");
   }
 
   const { data: schedules, error } = await query;
 
   if (error) {
-    console.error(`Error fetching schedules for trainer ${trainerId}:`, error);
+    console.error('Error fetching schedules for trainers:', error);
     throw error;
   }
 
   return schedules as Schedule[];
 }
 
-export async function fetchBookings(scheduleIds: string[], branchId?: string): Promise<Booking[]> {
+// Batched version: Fetch all bookings for all schedules at once
+export async function fetchAllBookings(scheduleIds: string[], branchId?: string): Promise<Booking[]> {
   if (scheduleIds.length === 0) return [];
 
-  // This query joins bookings with clients to filter by branch_id
-  // Note: No date filtering needed - bookings are already scoped by scheduleIds which are term-filtered
-  const query = supabase
+  const { data: bookings, error } = await supabase
     .from('bookings')
     .select(`
       id,
@@ -93,37 +90,28 @@ export async function fetchBookings(scheduleIds: string[], branchId?: string): P
       )
     `)
     .in('class_schedule_id', scheduleIds);
-  
-  // Add branch filter if provided
-  if (branchId) {
-    query.eq('clients.branch_id', branchId);
-  }
-
-  const { data: bookings, error } = await query;
 
   if (error) {
     console.error('Error fetching bookings:', error);
     throw error;
   }
 
-  // Add client property for compatibility and filter out any bookings not belonging to the specified branch
+  // Filter by branch and add client property for compatibility
   const bookingsWithClientData = bookings
     .filter(booking => !branchId || booking.clients?.branch_id === branchId)
     .map(booking => ({
       ...booking,
-      client: booking.clients, // Make sure both client and clients are available
+      client: booking.clients,
     })) as unknown as Booking[];
 
-  console.log(`Fetched ${bookingsWithClientData.length} bookings${branchId ? ` for branch ${branchId}` : ''}`);
   return bookingsWithClientData;
 }
 
-export async function fetchInvoiceItems(bookingIds: string[], branchId?: string): Promise<InvoiceItem[]> {
+// Batched version: Fetch all invoice items for all bookings at once
+export async function fetchAllInvoiceItems(bookingIds: string[], branchId?: string): Promise<InvoiceItem[]> {
   if (bookingIds.length === 0) return [];
 
-  // Enhanced query to fetch invoice items with branch filtering
-  // IMPORTANT: Include item_type to properly distinguish course fees from enrollment fees
-  const query = supabase
+  const { data: invoiceItems, error } = await supabase
     .from('invoice_items')
     .select(`
       id,
@@ -146,8 +134,6 @@ export async function fetchInvoiceItems(bookingIds: string[], branchId?: string)
     `)
     .in('booking_id', bookingIds);
 
-  const { data: invoiceItems, error } = await query;
-
   if (error) {
     console.error('Error fetching invoice items:', error);
     throw error;
@@ -158,9 +144,6 @@ export async function fetchInvoiceItems(bookingIds: string[], branchId?: string)
     ? invoiceItems.filter(item => item.invoices?.client?.branch_id === branchId)
     : invoiceItems;
 
-  console.log(`Fetched ${filteredItems.length} invoice items${branchId ? ` for branch ${branchId}` : ''}`);
-
-  // Ensure all required fields are present for the InvoiceItem interface
   const completeInvoiceItems = filteredItems.map(item => ({
     id: item.id,
     invoice_id: item.invoice_id,
@@ -169,15 +152,18 @@ export async function fetchInvoiceItems(bookingIds: string[], branchId?: string)
     quantity: item.quantity || 1,
     unit_price: item.unit_price || item.amount || 0,
     amount: item.amount || 0,
-    item_type: item.item_type, // Include item_type for enrollment fee filtering
+    item_type: item.item_type,
     invoices: item.invoices,
-    branch_id: item.invoices?.client?.branch_id // Add branch_id for easier filtering
+    branch_id: item.invoices?.client?.branch_id
   })) as InvoiceItem[];
 
   return completeInvoiceItems;
 }
 
-export async function fetchTrainerPayments(trainerId: string, scheduleIds?: string[]) {
+// Batched version: Fetch all trainer payments for multiple trainers at once
+export async function fetchAllTrainerPayments(trainerIds: string[], scheduleIds?: string[]) {
+  if (trainerIds.length === 0) return [];
+  
   let query = supabase
     .from('trainer_payments')
     .select(`
@@ -185,11 +171,11 @@ export async function fetchTrainerPayments(trainerId: string, scheduleIds?: stri
       amount,
       status,
       payment_date,
-      class_schedule_id
+      class_schedule_id,
+      trainer_id
     `)
-    .eq('trainer_id', trainerId);
+    .in('trainer_id', trainerIds);
 
-  // Filter by schedule IDs to scope payments to the correct term
   if (scheduleIds && scheduleIds.length > 0) {
     query = query.in('class_schedule_id', scheduleIds);
   }
@@ -204,18 +190,33 @@ export async function fetchTrainerPayments(trainerId: string, scheduleIds?: stri
   return payments;
 }
 
+// Legacy functions kept for backward compatibility with single trainer queries
+export async function fetchSchedules(trainerId: string, termId?: string): Promise<Schedule[]> {
+  return fetchAllSchedulesForTrainers([trainerId], termId);
+}
+
+export async function fetchBookings(scheduleIds: string[], branchId?: string): Promise<Booking[]> {
+  return fetchAllBookings(scheduleIds, branchId);
+}
+
+export async function fetchInvoiceItems(bookingIds: string[], branchId?: string): Promise<InvoiceItem[]> {
+  return fetchAllInvoiceItems(bookingIds, branchId);
+}
+
+export async function fetchTrainerPayments(trainerId: string, scheduleIds?: string[]) {
+  return fetchAllTrainerPayments([trainerId], scheduleIds);
+}
+
 // New function to check if payment-documents bucket exists and create it if not
 export async function ensurePaymentDocumentsBucketExists() {
   try {
-    // Check if bucket exists
     const { data: bucketData, error: bucketError } = await supabase.storage.getBucket('payment-documents');
     
     if (bucketError && bucketError.message.includes('does not exist')) {
       console.log('Creating payment-documents bucket...');
-      // Create the bucket
       const { data, error } = await supabase.storage.createBucket('payment-documents', {
         public: false,
-        fileSizeLimit: 10485760, // 10MB limit for PDF files
+        fileSizeLimit: 10485760,
       });
       
       if (error) {

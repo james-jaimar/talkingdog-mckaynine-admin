@@ -22,18 +22,16 @@ interface TrainerPaymentReportProps {
 }
 
 export function TrainerPaymentReport({ branchId, dateRange, isLoading }: TrainerPaymentReportProps) {
-  // Use React Query to fetch real trainer payment data
   const { data: trainers = [], isLoading: isLoadingTrainers } = useQuery({
-    queryKey: ['trainer-payments', branchId, dateRange],
+    queryKey: ['trainer-payment-report', branchId, dateRange],
     queryFn: async () => {
       if (!branchId) return [];
       
       try {
-        // Format date range for query
         const fromDate = dateRange.from.toISOString();
         const toDate = (dateRange.to || dateRange.from).toISOString();
         
-        // Get trainers for this branch
+        // Step 1: Fetch all trainers for this branch (single query)
         const { data: trainers, error: trainersError } = await supabase
           .from('trainers')
           .select('id, first_name, last_name')
@@ -43,69 +41,71 @@ export function TrainerPaymentReport({ branchId, dateRange, isLoading }: Trainer
           throw new Error(`Error fetching trainers: ${trainersError.message}`);
         }
         
-        // For each trainer, get their payment data
-        const trainersWithPayments = await Promise.all(trainers.map(async (trainer) => {
-          // Get schedules for this trainer
-          const { data: schedules, error: schedulesError } = await supabase
-            .from('class_schedules')
-            .select('id, classes(id, name, trainer_fee_value, trainer_fee_type)')
-            .eq('trainer_id', trainer.id);
-            
-          if (schedulesError) {
-            console.error(`Error fetching schedules for trainer ${trainer.id}:`, schedulesError);
-            return null;
-          }
+        if (!trainers?.length) return [];
+        
+        const trainerIds = trainers.map(t => t.id);
+        
+        // Step 2: Fetch all schedules for all trainers at once (single query)
+        const { data: allSchedules, error: schedulesError } = await supabase
+          .from('class_schedules')
+          .select('id, trainer_id, classes(id, name, trainer_fee_value, trainer_fee_type)')
+          .in('trainer_id', trainerIds);
           
-          if (!schedules?.length) {
-            // Return trainer with zero values if they have no schedules
-            return {
-              id: trainer.id,
-              trainerName: `${trainer.first_name} ${trainer.last_name}`,
-              totalEarned: 0,
-              allocatedAmount: 0,
-              paidAmount: 0,
-              pendingAmount: 0,
-              classesCount: 0,
-              clients: 0
-            };
-          }
+        if (schedulesError) {
+          console.error('Error fetching schedules:', schedulesError);
+          throw schedulesError;
+        }
+        
+        // Create schedule lookup by trainer
+        const schedulesByTrainer = new Map<string, typeof allSchedules>();
+        allSchedules?.forEach(schedule => {
+          const existing = schedulesByTrainer.get(schedule.trainer_id) || [];
+          existing.push(schedule);
+          schedulesByTrainer.set(schedule.trainer_id, existing);
+        });
+        
+        const allScheduleIds = allSchedules?.map(s => s.id) || [];
+        
+        if (allScheduleIds.length === 0) {
+          // No schedules, return trainers with zero values
+          return trainers.map(trainer => ({
+            id: trainer.id,
+            trainerName: `${trainer.first_name} ${trainer.last_name}`,
+            totalEarned: 0,
+            allocatedAmount: 0,
+            paidAmount: 0,
+            pendingAmount: 0,
+            classesCount: 0,
+            clients: 0
+          }));
+        }
+        
+        // Step 3: Fetch all bookings for all schedules at once (single query)
+        const { data: allBookings, error: bookingsError } = await supabase
+          .from('bookings')
+          .select('id, client_id, class_schedule_id, payment_status')
+          .in('class_schedule_id', allScheduleIds)
+          .gte('created_at', fromDate)
+          .lte('created_at', toDate);
           
-          const scheduleIds = schedules.map(s => s.id);
-          
-          // Get bookings for these schedules within date range
-          const { data: bookings, error: bookingsError } = await supabase
-            .from('bookings')
-            .select('id, client_id, class_schedule_id, payment_status')
-            .in('class_schedule_id', scheduleIds)
-            .gte('created_at', fromDate)
-            .lte('created_at', toDate);
-            
-          if (bookingsError) {
-            console.error(`Error fetching bookings for trainer ${trainer.id}:`, bookingsError);
-            return null;
-          }
-          
-          if (!bookings?.length) {
-            // Return trainer with zero values if they have no bookings in date range
-            return {
-              id: trainer.id,
-              trainerName: `${trainer.first_name} ${trainer.last_name}`,
-              totalEarned: 0,
-              allocatedAmount: 0,
-              paidAmount: 0,
-              pendingAmount: 0,
-              classesCount: schedules.length,
-              clients: 0
-            };
-          }
-          
-          // Get unique client count
-          const uniqueClients = new Set(bookings.map(b => b.client_id)).size;
-          
-          // Get booking IDs for fetching invoice items
-          const bookingIds = bookings.map(b => b.id);
-          
-          // Get invoice items for these bookings
+        if (bookingsError) {
+          console.error('Error fetching bookings:', bookingsError);
+          throw bookingsError;
+        }
+        
+        // Create booking lookup by schedule
+        const bookingsBySchedule = new Map<string, typeof allBookings>();
+        allBookings?.forEach(booking => {
+          const existing = bookingsBySchedule.get(booking.class_schedule_id) || [];
+          existing.push(booking);
+          bookingsBySchedule.set(booking.class_schedule_id, existing);
+        });
+        
+        const allBookingIds = allBookings?.map(b => b.id) || [];
+        
+        // Step 4: Fetch all invoice items for all bookings at once (single query)
+        let allInvoiceItems: any[] = [];
+        if (allBookingIds.length > 0) {
           const { data: invoiceItems, error: itemsError } = await supabase
             .from('invoice_items')
             .select(`
@@ -121,15 +121,75 @@ export function TrainerPaymentReport({ branchId, dateRange, isLoading }: Trainer
                 payment_date
               )
             `)
-            .in('booking_id', bookingIds);
+            .in('booking_id', allBookingIds);
             
           if (itemsError) {
-            console.error(`Error fetching invoice items for trainer ${trainer.id}:`, itemsError);
-            return null;
+            console.error('Error fetching invoice items:', itemsError);
+            throw itemsError;
           }
           
-          if (!invoiceItems?.length) {
-            // Return trainer with zero financial values if they have no invoice items
+          allInvoiceItems = invoiceItems || [];
+        }
+        
+        // Create invoice items lookup by booking
+        const invoiceItemsByBooking = new Map<string, typeof allInvoiceItems>();
+        allInvoiceItems.forEach(item => {
+          if (item.booking_id) {
+            const existing = invoiceItemsByBooking.get(item.booking_id) || [];
+            existing.push(item);
+            invoiceItemsByBooking.set(item.booking_id, existing);
+          }
+        });
+        
+        // Step 5: Process each trainer using pre-fetched data (no additional queries!)
+        const trainersWithPayments = trainers.map(trainer => {
+          const schedules = schedulesByTrainer.get(trainer.id) || [];
+          
+          if (schedules.length === 0) {
+            return {
+              id: trainer.id,
+              trainerName: `${trainer.first_name} ${trainer.last_name}`,
+              totalEarned: 0,
+              allocatedAmount: 0,
+              paidAmount: 0,
+              pendingAmount: 0,
+              classesCount: 0,
+              clients: 0
+            };
+          }
+          
+          const scheduleIds = schedules.map(s => s.id);
+          
+          // Collect bookings for this trainer's schedules
+          const bookings: typeof allBookings = [];
+          scheduleIds.forEach(scheduleId => {
+            const scheduleBookings = bookingsBySchedule.get(scheduleId) || [];
+            bookings.push(...scheduleBookings);
+          });
+          
+          if (bookings.length === 0) {
+            return {
+              id: trainer.id,
+              trainerName: `${trainer.first_name} ${trainer.last_name}`,
+              totalEarned: 0,
+              allocatedAmount: 0,
+              paidAmount: 0,
+              pendingAmount: 0,
+              classesCount: schedules.length,
+              clients: 0
+            };
+          }
+          
+          const uniqueClients = new Set(bookings.map(b => b.client_id)).size;
+          
+          // Collect invoice items for this trainer's bookings
+          const invoiceItems: typeof allInvoiceItems = [];
+          bookings.forEach(booking => {
+            const bookingItems = invoiceItemsByBooking.get(booking.id) || [];
+            invoiceItems.push(...bookingItems);
+          });
+          
+          if (invoiceItems.length === 0) {
             return {
               id: trainer.id,
               trainerName: `${trainer.first_name} ${trainer.last_name}`,
@@ -147,29 +207,23 @@ export function TrainerPaymentReport({ branchId, dateRange, isLoading }: Trainer
             item.invoices && item.invoices.status !== 'cancelled'
           );
           
-          // Filter out enrollment fees for revenue calculations
-          // Trainer fees are only calculated on course fees, not enrollment fees
           const courseFeeItems = activeItems.filter(item => !isEnrollmentFeeItem(item));
           
-          // Calculate financial data based on course fee items only
           const totalRevenue = courseFeeItems.reduce(
             (sum, item) => sum + (item.amount || 0), 0
           );
           
-          // Calculate trainer's allocated amount (percentage of course fee revenue only)
-          // Use trainer fee values from class configuration when available
+          // Calculate trainer's allocated amount
           let allocatedAmount = 0;
           for (const item of courseFeeItems) {
             if (!item.booking_id) continue;
             
-            // Find the related schedule and class for this booking
             const booking = bookings.find(b => b.id === item.booking_id);
             if (!booking) continue;
             
             const schedule = schedules.find(s => s.id === booking.class_schedule_id);
             if (!schedule || !schedule.classes) continue;
             
-            // Calculate trainer's allocation based on class configuration (course fees only)
             const feeType = schedule.classes.trainer_fee_type;
             const feeValue = schedule.classes.trainer_fee_value;
             
@@ -180,12 +234,11 @@ export function TrainerPaymentReport({ branchId, dateRange, isLoading }: Trainer
             }
           }
           
-          // If no specific allocation was found, use a default 70% allocation
           if (allocatedAmount === 0 && totalRevenue > 0) {
             allocatedAmount = totalRevenue * 0.7;
           }
           
-          // Calculate paid amount from paid invoices (course fees only)
+          // Calculate paid amount from paid invoices
           const paidCourseFeeItems = courseFeeItems.filter(
             item => item.invoices?.status === 'paid'
           );
@@ -210,21 +263,8 @@ export function TrainerPaymentReport({ branchId, dateRange, isLoading }: Trainer
             }
           }
           
-          // If no specific paid calculation was found, use a default 70%
           if (paidAmount === 0 && paidCourseFeeItems.length > 0) {
             paidAmount = paidCourseFeeItems.reduce((sum, item) => sum + (item.amount || 0), 0) * 0.7;
-          }
-          
-          // Get last payment date
-          let lastPaymentDate = null;
-          if (paidCourseFeeItems.length > 0) {
-            const paymentDates = paidCourseFeeItems
-              .map(item => item.invoices?.payment_date ? new Date(item.invoices.payment_date).getTime() : 0)
-              .filter(timestamp => timestamp > 0);
-              
-            if (paymentDates.length > 0) {
-              lastPaymentDate = new Date(Math.max(...paymentDates)).toISOString();
-            }
           }
           
           return {
@@ -235,12 +275,10 @@ export function TrainerPaymentReport({ branchId, dateRange, isLoading }: Trainer
             paidAmount: paidAmount,
             pendingAmount: allocatedAmount - paidAmount,
             classesCount: schedules.length,
-            clients: uniqueClients,
-            lastPaymentDate
+            clients: uniqueClients
           };
-        }));
+        });
         
-        // Filter out nulls and sort by earnings
         return trainersWithPayments
           .filter(Boolean)
           .sort((a, b) => b!.totalEarned - a!.totalEarned);
@@ -251,7 +289,7 @@ export function TrainerPaymentReport({ branchId, dateRange, isLoading }: Trainer
       }
     },
     enabled: !!branchId,
-    staleTime: 5 * 60 * 1000 // 5 minutes
+    staleTime: 5 * 60 * 1000
   });
 
   if (isLoading || isLoadingTrainers) {
