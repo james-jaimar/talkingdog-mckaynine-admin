@@ -1,5 +1,6 @@
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { useAuth } from "@/context/auth";
+import { useBranch } from "@/context/BranchContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,18 +21,19 @@ import {
 
 export default function TrainerDashboard() {
   const { isTrainer, trainerProfile } = useAuth();
+  const { currentBranch } = useBranch();
   const navigate = useNavigate();
 
-  // Fetch upcoming classes for this trainer
+  // Fetch upcoming classes for this trainer, filtered by branch
   const { data: upcomingClasses = [], isLoading: isLoadingClasses } = useQuery({
-    queryKey: ['trainer-dashboard-classes', trainerProfile?.id],
+    queryKey: ['trainer-dashboard-classes', trainerProfile?.id, currentBranch?.id],
     queryFn: async () => {
       if (!trainerProfile?.id) return [];
       
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       
-      const { data, error } = await supabase
+      let query = supabase
         .from('class_schedules')
         .select(`
           id,
@@ -43,7 +45,8 @@ export default function TrainerDashboard() {
             id,
             name,
             class_type,
-            capacity
+            capacity,
+            branch_id
           ),
           bookings (
             id,
@@ -55,26 +58,57 @@ export default function TrainerDashboard() {
         .order('start_time', { ascending: true })
         .limit(10);
       
+      const { data, error } = await query;
+      
       if (error) {
         console.error("Error fetching trainer classes:", error);
         return [];
       }
       
-      return data || [];
+      // Filter by branch on client side (classes.branch_id is nested)
+      const filteredData = currentBranch?.id 
+        ? (data || []).filter((item: any) => item.classes?.branch_id === currentBranch.id)
+        : data || [];
+      
+      return filteredData;
     },
     enabled: !!trainerProfile?.id,
   });
 
-  // Fetch earnings summary
+  // Fetch earnings summary - filtered by branch via class_schedule -> class -> branch
   const { data: earningsSummary, isLoading: isLoadingEarnings } = useQuery({
-    queryKey: ['trainer-dashboard-earnings', trainerProfile?.id],
+    queryKey: ['trainer-dashboard-earnings', trainerProfile?.id, currentBranch?.id],
     queryFn: async () => {
       if (!trainerProfile?.id) return { total: 0, thisMonth: 0, pending: 0 };
+
+      // First get all class schedules for this trainer in this branch
+      const { data: schedules, error: schedError } = await supabase
+        .from('class_schedules')
+        .select(`
+          id,
+          classes:class_id (branch_id)
+        `)
+        .eq('trainer_id', trainerProfile.id);
+
+      if (schedError) {
+        console.error("Error fetching schedules:", schedError);
+        return { total: 0, thisMonth: 0, pending: 0 };
+      }
+
+      // Filter to schedules in this branch
+      const branchScheduleIds = currentBranch?.id
+        ? (schedules || []).filter((s: any) => s.classes?.branch_id === currentBranch.id).map(s => s.id)
+        : (schedules || []).map(s => s.id);
+
+      if (branchScheduleIds.length === 0) {
+        return { total: 0, thisMonth: 0, pending: 0 };
+      }
 
       const { data, error } = await supabase
         .from('trainer_payments')
         .select('amount, status, payment_date, created_at')
-        .eq('trainer_id', trainerProfile.id);
+        .eq('trainer_id', trainerProfile.id)
+        .in('class_schedule_id', branchScheduleIds);
 
       if (error) {
         console.error("Error fetching earnings:", error);
