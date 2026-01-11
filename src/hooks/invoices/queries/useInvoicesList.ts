@@ -60,7 +60,7 @@ export function useInvoicesList() {
 
             // Process each item to include booking data
             const enhancedItems = await Promise.all((items || []).map(async (item) => {
-              // Create a properly typed invoice item with invoice_id
+              // Create a properly typed invoice item with invoice_id and item_type
               let enhancedItem: Partial<InvoiceItem> = {
                 id: item.id,
                 invoice_id: item.invoice_id, // Make sure this is included
@@ -68,7 +68,8 @@ export function useInvoicesList() {
                 quantity: item.quantity,
                 unit_price: item.unit_price,
                 amount: item.amount,
-                booking_id: item.booking_id
+                booking_id: item.booking_id,
+                item_type: item.item_type // Include item_type for fee calculations
               };
               
               if (!item.booking_id) {

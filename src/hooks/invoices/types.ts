@@ -62,6 +62,7 @@ export interface InvoiceItem {
   unit_price: number;
   amount: number;
   booking_id?: string;
+  item_type?: string; // 'course_fee' or 'enrollment_fee'
   
   // Optional bookings field to support nested data
   bookings?: BookingWithDetails;
