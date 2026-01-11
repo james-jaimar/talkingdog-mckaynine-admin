@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -8,7 +8,10 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Download, FileText, Loader2 } from "lucide-react";
-import { generateTrainerStatementPDF, downloadTrainerStatementPDF } from "./pdf/TrainerStatementPDF";
+import {
+  generateTrainerStatementPDF,
+  downloadTrainerStatementPDF,
+} from "./pdf/TrainerStatementPDF";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 
@@ -46,14 +49,30 @@ export function TrainerStatementDialog({
   branchName = "delta",
 }: TrainerStatementDialogProps) {
   const [isGenerating, setIsGenerating] = useState(false);
-  const [pdfDataUrl, setPdfDataUrl] = useState<string | null>(null);
+  const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
+  const [pdfDownloadUrl, setPdfDownloadUrl] = useState<string | null>(null);
+  const currentBlobUrlRef = useRef<string | null>(null);
   const { toast } = useToast();
 
-  // Reset PDF when dialog closes or trainer changes
+  const revokeCurrentBlobUrl = () => {
+    if (currentBlobUrlRef.current) {
+      URL.revokeObjectURL(currentBlobUrlRef.current);
+      currentBlobUrlRef.current = null;
+    }
+  };
+
+  // Reset PDF when dialog closes
   useEffect(() => {
     if (!open) {
-      setPdfDataUrl(null);
+      revokeCurrentBlobUrl();
+      setPdfPreviewUrl(null);
+      setPdfDownloadUrl(null);
     }
+    return () => {
+      // Make sure we don't leak blob URLs if the component unmounts
+      revokeCurrentBlobUrl();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   const prepareClassData = (): ClassDetail[] => {
@@ -102,7 +121,7 @@ export function TrainerStatementDialog({
     setIsGenerating(true);
     try {
       const classes = prepareClassData();
-      
+
       const dataUrl = await generateTrainerStatementPDF({
         trainerName: trainer.trainerName,
         trainerEmail: trainer.email || "No email on file",
@@ -115,7 +134,20 @@ export function TrainerStatementDialog({
         branchName,
       });
 
-      setPdfDataUrl(dataUrl);
+      // Prefer blob URLs for preview (more reliable than very long data URLs in iframes)
+      try {
+        const blob = await (await fetch(dataUrl)).blob();
+        const blobUrl = URL.createObjectURL(blob);
+        revokeCurrentBlobUrl();
+        currentBlobUrlRef.current = blobUrl;
+        setPdfPreviewUrl(blobUrl);
+        setPdfDownloadUrl(blobUrl);
+      } catch {
+        // Fallback to data URL if blob conversion fails
+        setPdfPreviewUrl(dataUrl);
+        setPdfDownloadUrl(dataUrl);
+      }
+
       toast({
         title: "Statement Generated",
         description: "Preview is ready. You can now download the PDF.",
@@ -133,8 +165,19 @@ export function TrainerStatementDialog({
   };
 
   const handleDownload = () => {
-    if (pdfDataUrl) {
-      downloadTrainerStatementPDF(pdfDataUrl, trainer.trainerName, termInfo);
+    if (pdfDownloadUrl) {
+      // If we already have a blob URL, a simple anchor download works.
+      // If it's a data URL, use existing helper (keeps filename behavior).
+      if (pdfDownloadUrl.startsWith("blob:")) {
+        const link = document.createElement("a");
+        link.href = pdfDownloadUrl;
+        link.download = `Statement_${trainer.trainerName.replace(/\s+/g, "_")}_${termInfo.replace(/\s+/g, "_")}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } else {
+        downloadTrainerStatementPDF(pdfDownloadUrl, trainer.trainerName, termInfo);
+      }
       toast({
         title: "Downloaded",
         description: "Statement PDF has been downloaded.",
@@ -146,7 +189,7 @@ export function TrainerStatementDialog({
     setIsGenerating(true);
     try {
       const classes = prepareClassData();
-      
+
       const dataUrl = await generateTrainerStatementPDF({
         trainerName: trainer.trainerName,
         trainerEmail: trainer.email || "No email on file",
@@ -159,7 +202,11 @@ export function TrainerStatementDialog({
         branchName,
       });
 
-      downloadTrainerStatementPDF(dataUrl, trainer.trainerName, termInfo);
+      // Download immediately (use same logic as handleDownload)
+      if (dataUrl.startsWith("data:")) {
+        downloadTrainerStatementPDF(dataUrl, trainer.trainerName, termInfo);
+      }
+
       toast({
         title: "Downloaded",
         description: "Statement PDF has been downloaded.",
@@ -214,21 +261,15 @@ export function TrainerStatementDialog({
           </div>
 
           {/* PDF Preview */}
-          {pdfDataUrl ? (
+          {pdfPreviewUrl ? (
             <div className="border rounded-lg overflow-hidden bg-gray-100" style={{ height: "400px" }}>
-              <iframe
-                src={pdfDataUrl}
-                className="w-full h-full"
-                title="Statement Preview"
-              />
+              <iframe src={pdfPreviewUrl} className="w-full h-full" title="Statement Preview" />
             </div>
           ) : (
             <div className="border rounded-lg flex items-center justify-center bg-muted/30" style={{ height: "400px" }}>
               <div className="text-center space-y-2">
                 <FileText className="h-12 w-12 mx-auto text-muted-foreground/50" />
-                <p className="text-muted-foreground">
-                  Click "Generate Preview" to see the statement
-                </p>
+                <p className="text-muted-foreground">Click "Generate Preview" to see the statement</p>
               </div>
             </div>
           )}
@@ -239,7 +280,7 @@ export function TrainerStatementDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Close
           </Button>
-          {!pdfDataUrl ? (
+          {!pdfPreviewUrl ? (
             <>
               <Button onClick={handleGeneratePDF} disabled={isGenerating}>
                 {isGenerating ? (

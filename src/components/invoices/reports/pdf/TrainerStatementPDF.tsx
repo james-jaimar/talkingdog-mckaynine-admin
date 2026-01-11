@@ -202,6 +202,8 @@ export async function generateTrainerStatementPDF({
       font: fontName,
       fontSize: 9,
       textColor: [55, 65, 81],
+      overflow: "linebreak",
+      cellWidth: "wrap",
     },
     headStyles: {
       fillColor: [31, 41, 55],
@@ -216,11 +218,12 @@ export async function generateTrainerStatementPDF({
       fillColor: [249, 250, 251],
     },
     columnStyles: {
-      0: { cellWidth: 50 },
-      1: { cellWidth: 30 },
-      2: { cellWidth: 25, halign: "center" },
-      3: { cellWidth: 35, halign: "right" },
-      4: { cellWidth: 25, halign: "center" },
+      // Allow long class names to wrap rather than blowing up table width calculations
+      0: { cellWidth: 70 },
+      1: { cellWidth: 25 },
+      2: { cellWidth: 18, halign: "center" },
+      3: { cellWidth: 30, halign: "right" },
+      4: { cellWidth: 22, halign: "center" },
     },
     didParseCell: (data) => {
       // Ensure Roboto is used everywhere (autoTable can otherwise fall back silently)
