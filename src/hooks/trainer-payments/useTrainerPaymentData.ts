@@ -2,17 +2,16 @@
 import { useQuery } from "@tanstack/react-query";
 import { 
   fetchTrainers, 
-  fetchSchedules, 
-  fetchBookings, 
-  fetchInvoiceItems,
-  fetchTrainerPayments 
+  fetchAllSchedulesForTrainers,
+  fetchAllBookings,
+  fetchAllInvoiceItems,
+  fetchAllTrainerPayments
 } from "./queries/fetchTrainerData";
 import { formatTrainerPaymentData } from "./utils/formatTrainerData";
 import { TrainerPaymentData } from "./types";
 import { useTerm } from "@/context/TermContext";
 
 export function useTrainerPaymentData(branchId?: string, dateRange?: { from: Date; to: Date }) {
-  // Get the current term ID
   const { termData } = useTerm();
   const currentTermId = termData?.id;
 
@@ -24,47 +23,107 @@ export function useTrainerPaymentData(branchId?: string, dateRange?: { from: Dat
       try {
         console.log(`Fetching trainer payment data for branch: ${branchId}`);
         
+        // Step 1: Fetch all trainers for this branch (single query)
         const trainers = await fetchTrainers(branchId);
         console.log(`Found ${trainers.length} trainers for branch ${branchId}`);
         
-        const trainerPayments = await Promise.all(trainers.map(async (trainer) => {
-          // First fetch schedules for this trainer, filtered by term
-          const schedules = await fetchSchedules(trainer.id, currentTermId);
+        if (trainers.length === 0) return [];
+        
+        const trainerIds = trainers.map(t => t.id);
+        
+        // Step 2: Fetch all schedules for all trainers at once (single query)
+        const allSchedules = await fetchAllSchedulesForTrainers(trainerIds, currentTermId);
+        console.log(`Found ${allSchedules.length} schedules for all trainers`);
+        
+        // Filter schedules by branch and create a lookup map by trainer
+        const schedulesByTrainer = new Map<string, typeof allSchedules>();
+        allSchedules.forEach(schedule => {
+          if (schedule.classes?.branch_id === branchId) {
+            const existing = schedulesByTrainer.get(schedule.trainer_id) || [];
+            existing.push(schedule);
+            schedulesByTrainer.set(schedule.trainer_id, existing);
+          }
+        });
+        
+        // Get all schedule IDs for fetching bookings and payments
+        const allScheduleIds = allSchedules
+          .filter(s => s.classes?.branch_id === branchId)
+          .map(s => s.id);
+        
+        // Step 3: Fetch all bookings for all schedules at once (single query)
+        const allBookings = allScheduleIds.length > 0 
+          ? await fetchAllBookings(allScheduleIds, branchId)
+          : [];
+        console.log(`Found ${allBookings.length} bookings for all schedules`);
+        
+        // Create a lookup map by schedule ID
+        const bookingsBySchedule = new Map<string, typeof allBookings>();
+        allBookings.forEach(booking => {
+          const scheduleId = booking.class_schedule_id;
+          const existing = bookingsBySchedule.get(scheduleId) || [];
+          existing.push(booking);
+          bookingsBySchedule.set(scheduleId, existing);
+        });
+        
+        // Step 4: Fetch all trainer payments for all trainers at once (single query)
+        const allPayments = await fetchAllTrainerPayments(trainerIds, allScheduleIds.length > 0 ? allScheduleIds : undefined);
+        console.log(`Found ${allPayments.length} payments for all trainers`);
+        
+        // Create a lookup map by trainer ID
+        const paymentsByTrainer = new Map<string, typeof allPayments>();
+        allPayments.forEach(payment => {
+          const trainerId = payment.trainer_id;
+          const existing = paymentsByTrainer.get(trainerId) || [];
+          existing.push(payment);
+          paymentsByTrainer.set(trainerId, existing);
+        });
+        
+        // Step 5: Fetch all invoice items for all bookings at once (single query)
+        const allBookingIds = allBookings.map(b => b.id);
+        const allInvoiceItems = allBookingIds.length > 0 
+          ? await fetchAllInvoiceItems(allBookingIds, branchId)
+          : [];
+        console.log(`Found ${allInvoiceItems.length} invoice items for all bookings`);
+        
+        // Create a lookup map by booking ID
+        const invoiceItemsByBooking = new Map<string, typeof allInvoiceItems>();
+        allInvoiceItems.forEach(item => {
+          if (item.booking_id) {
+            const existing = invoiceItemsByBooking.get(item.booking_id) || [];
+            existing.push(item);
+            invoiceItemsByBooking.set(item.booking_id, existing);
+          }
+        });
+        
+        // Step 6: Process each trainer using the pre-fetched data (no additional queries!)
+        const trainerPayments = trainers.map(trainer => {
+          const trainerSchedules = schedulesByTrainer.get(trainer.id) || [];
+          const trainerPaymentsData = paymentsByTrainer.get(trainer.id) || [];
           
-          if (!schedules || schedules.length === 0) {
-            // No schedules, return trainer with zeroed data
+          if (trainerSchedules.length === 0) {
             return formatTrainerPaymentData(trainer, [], [], [], []);
           }
-
-          // Verify all schedules are for the correct branch
-          const schedulesByBranch = schedules.filter(s => s.classes?.branch_id === branchId);
           
-          if (schedulesByBranch.length !== schedules.length) {
-            console.warn(
-              `Found ${schedules.length - schedulesByBranch.length} schedules that don't match branch ${branchId}`,
-              `Trainer: ${trainer.first_name} ${trainer.last_name}`
-            );
+          // Collect bookings for this trainer's schedules
+          const trainerBookings: typeof allBookings = [];
+          trainerSchedules.forEach(schedule => {
+            const scheduleBookings = bookingsBySchedule.get(schedule.id) || [];
+            trainerBookings.push(...scheduleBookings);
+          });
+          
+          if (trainerBookings.length === 0) {
+            return formatTrainerPaymentData(trainer, trainerSchedules, [], [], trainerPaymentsData);
           }
-
-          const scheduleIds = schedules.map(s => s.id);
-
-          // Fetch bookings for all schedules, filtered by branch (no date filter - term is already scoped via schedules)
-          const bookings = await fetchBookings(scheduleIds, branchId);
           
-          // Fetch trainer payments for this trainer, filtered by schedule IDs for term scoping
-          const payments = await fetchTrainerPayments(trainer.id, scheduleIds);
+          // Collect invoice items for this trainer's bookings
+          const trainerInvoiceItems: typeof allInvoiceItems = [];
+          trainerBookings.forEach(booking => {
+            const bookingItems = invoiceItemsByBooking.get(booking.id) || [];
+            trainerInvoiceItems.push(...bookingItems);
+          });
           
-          // If no bookings, return trainer with schedules but no financial data
-          if (!bookings || bookings.length === 0) {
-            return formatTrainerPaymentData(trainer, schedules, [], [], payments);
-          }
-
-          // Fetch invoice items for all bookings to calculate potential earnings, with branch filtering
-          const invoiceItems = await fetchInvoiceItems(bookings.map(b => b.id), branchId);
-          
-          // Format data to calculate both actual and potential earnings
-          return formatTrainerPaymentData(trainer, schedules, bookings, invoiceItems, payments);
-        }));
+          return formatTrainerPaymentData(trainer, trainerSchedules, trainerBookings, trainerInvoiceItems, trainerPaymentsData);
+        });
 
         // Filter out any null entries and sort alphabetically by name
         return trainerPayments
