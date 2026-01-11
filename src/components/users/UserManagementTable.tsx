@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Table, TableBody, TableHeader } from "@/components/ui/table";
 import { UserTableHeader } from "./components/UserTableHeader";
@@ -6,6 +5,8 @@ import { UserTableRow } from "./components/UserTableRow";
 import { UserTableEmpty } from "./components/UserTableEmpty";
 import { UserManageDialog } from "./UserManageDialog";
 import { UserPasswordResetDialog } from "./UserPasswordResetDialog";
+import { UserEditDialog } from "./UserEditDialog";
+import { UserDeleteDialog } from "./UserDeleteDialog";
 import { AddUserDialog } from "./AddUserDialog";
 import { useUserManagement } from "@/hooks/useUserManagement";
 import { UserProfile } from "./types/userTypes";
@@ -17,6 +18,8 @@ export function UserManagementTable() {
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
   const [manageDialogOpen, setManageDialogOpen] = useState(false);
   const [resetPasswordDialogOpen, setResetPasswordDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [filter, setFilter] = useState("");
 
   // Filter users by name, email, role or app_id
@@ -42,6 +45,16 @@ export function UserManagementTable() {
   const handleResetPassword = (user: UserProfile) => {
     setSelectedUser(user);
     setResetPasswordDialogOpen(true);
+  };
+
+  const handleEditUser = (user: UserProfile) => {
+    setSelectedUser(user);
+    setEditDialogOpen(true);
+  };
+
+  const handleDeleteUser = (user: UserProfile) => {
+    setSelectedUser(user);
+    setDeleteDialogOpen(true);
   };
 
   return (
@@ -80,6 +93,8 @@ export function UserManagementTable() {
                 user={user}
                 onManageUser={handleManageUser}
                 onResetPassword={handleResetPassword}
+                onEditUser={handleEditUser}
+                onDeleteUser={handleDeleteUser}
               />
             ))}
           </TableBody>
@@ -98,6 +113,18 @@ export function UserManagementTable() {
             user={selectedUser}
             open={resetPasswordDialogOpen}
             onOpenChange={setResetPasswordDialogOpen}
+          />
+          <UserEditDialog
+            user={selectedUser}
+            open={editDialogOpen}
+            onOpenChange={setEditDialogOpen}
+            onUserUpdated={refetch}
+          />
+          <UserDeleteDialog
+            user={selectedUser}
+            open={deleteDialogOpen}
+            onOpenChange={setDeleteDialogOpen}
+            onUserDeleted={refetch}
           />
         </>
       )}

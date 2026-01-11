@@ -1,4 +1,3 @@
-
 import { TableRow, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -6,21 +5,32 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Key, UserCog } from "lucide-react";
+import { MoreHorizontal, Key, UserCog, Pencil, Trash2 } from "lucide-react";
 import { UserProfile } from "../types/userTypes";
 
 interface UserTableRowProps {
   user: UserProfile;
   onManageUser: (user: UserProfile) => void;
   onResetPassword: (user: UserProfile) => void;
+  onEditUser?: (user: UserProfile) => void;
+  onDeleteUser?: (user: UserProfile) => void;
 }
 
-export function UserTableRow({ user, onManageUser, onResetPassword }: UserTableRowProps) {
+export function UserTableRow({ 
+  user, 
+  onManageUser, 
+  onResetPassword,
+  onEditUser,
+  onDeleteUser 
+}: UserTableRowProps) {
   // Helper to determine the badge color based on user role
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
+      case 'platform_admin':
+        return 'bg-purple-100 text-purple-800 hover:bg-purple-200';
       case 'admin':
         return 'bg-red-100 text-red-800 hover:bg-red-200';
       case 'trainer':
@@ -66,18 +76,32 @@ export function UserTableRow({ user, onManageUser, onResetPassword }: UserTableR
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem 
-              onClick={() => onManageUser(user)}
-            >
+            {onEditUser && (
+              <DropdownMenuItem onClick={() => onEditUser(user)}>
+                <Pencil className="h-4 w-4 mr-2" />
+                Edit User
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuItem onClick={() => onManageUser(user)}>
               <UserCog className="h-4 w-4 mr-2" />
-              Edit Role
+              Change Role
             </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => onResetPassword(user)}
-            >
+            <DropdownMenuItem onClick={() => onResetPassword(user)}>
               <Key className="h-4 w-4 mr-2" />
               Reset Password
             </DropdownMenuItem>
+            {onDeleteUser && !user.isCurrentUser && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem 
+                  onClick={() => onDeleteUser(user)}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete User
+                </DropdownMenuItem>
+              </>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </TableCell>
