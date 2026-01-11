@@ -16,7 +16,11 @@ import { format } from "date-fns";
 import { Loader2, Calculator, GitBranch } from "lucide-react";
 import { InvoiceTableActions } from "./InvoiceTableActions";
 import { BulkActionsToolbar } from "./BulkActionsToolbar";
+import { AllocateToMonthDialog } from "./AllocateToMonthDialog";
 import { useBranch } from "@/context/BranchContext";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface InvoicesTableProps {
   invoices: Invoice[];
@@ -40,8 +44,10 @@ export function InvoicesTable({
   onBulkMarkAsPaid
 }: InvoicesTableProps) {
   const { currentBranch } = useBranch();
+  const queryClient = useQueryClient();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isBulkActionLoading, setIsBulkActionLoading] = useState(false);
+  const [allocateDialogOpen, setAllocateDialogOpen] = useState(false);
   
   // Calculate how many selected invoices are unpaid (draft, sent or overdue)
   const selectedUnpaidCount = useMemo(() => {
@@ -130,6 +136,37 @@ export function InvoicesTable({
   const handleClearSelection = () => {
     setSelectedIds(new Set());
   };
+
+  const handleAllocateToMonth = async (franchiseMonth: string | null) => {
+    if (selectedIds.size === 0) return;
+
+    setIsBulkActionLoading(true);
+    try {
+      const { error } = await supabase
+        .from('invoices')
+        .update({ franchise_report_month: franchiseMonth })
+        .in('id', Array.from(selectedIds));
+
+      if (error) throw error;
+
+      // Invalidate queries to refresh data
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['franchise-monthly-data'] });
+
+      const message = franchiseMonth
+        ? `${selectedIds.size} invoice(s) allocated to ${franchiseMonth}`
+        : `Cleared franchise allocation for ${selectedIds.size} invoice(s)`;
+      toast.success(message);
+
+      setSelectedIds(new Set());
+      setAllocateDialogOpen(false);
+    } catch (error: any) {
+      console.error('Error allocating invoices:', error);
+      toast.error('Failed to allocate invoices: ' + error.message);
+    } finally {
+      setIsBulkActionLoading(false);
+    }
+  };
   
   const isAllSelected = invoices.length > 0 && selectedIds.size === invoices.length;
   const isSomeSelected = selectedIds.size > 0 && selectedIds.size < invoices.length;
@@ -159,10 +196,19 @@ export function InvoicesTable({
   
   return (
     <div>
+      <AllocateToMonthDialog
+        open={allocateDialogOpen}
+        onOpenChange={setAllocateDialogOpen}
+        selectedCount={selectedIds.size}
+        onConfirm={handleAllocateToMonth}
+        isLoading={isBulkActionLoading}
+      />
+
       <BulkActionsToolbar
         selectedCount={selectedIds.size}
         unpaidCount={selectedUnpaidCount}
         onMarkAsPaid={handleBulkMarkAsPaid}
+        onAllocateToMonth={() => setAllocateDialogOpen(true)}
         onClearSelection={handleClearSelection}
         isLoading={isBulkActionLoading}
       />
