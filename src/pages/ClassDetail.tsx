@@ -4,7 +4,7 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Helmet } from "react-helmet";
 
 export default function ClassDetail() {
-  const { classId } = useParams<{ classId: string }>();
+  const { id: classId } = useParams<{ id: string }>();
 
   return (
     <DashboardLayout>

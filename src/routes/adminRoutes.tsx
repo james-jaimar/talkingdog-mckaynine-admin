@@ -1,11 +1,12 @@
 
-import { Routes, Route } from "react-router-dom";
 import AdminInvoices from "@/pages/Invoices";
 import InvoiceDetail from "@/pages/InvoiceDetail";
 import InvoiceEdit from "@/pages/InvoiceEdit";
 import Dashboard from "@/pages/Dashboard";
 import Classes from "@/pages/Classes";
 import ClassDetail from "@/pages/ClassDetail";
+import ClassHandlers from "@/pages/ClassHandlers";
+import ClassSchedules from "@/pages/ClassSchedules";
 import Handlers from "@/pages/Handlers";
 import HandlerDetail from "@/pages/HandlerDetail";
 import FinancialReports from "@/pages/FinancialReports";
@@ -14,8 +15,6 @@ import IntakeScans from "@/pages/admin/IntakeScans";
 import Tasks from "@/pages/admin/Tasks";
 import EmailTemplates from "@/pages/admin/EmailTemplates";
 import Email from "@/pages/admin/Email";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import RequireAdmin from "@/components/auth/RequireAdmin";
 
 // Each route is protected with RequireAdmin component
 export const adminRoutes = [
@@ -41,12 +40,28 @@ export const adminRoutes = [
     element: <ClassDetail />,
   },
   {
+    path: "/classes/:id/schedules",
+    element: <ClassSchedules />,
+  },
+  {
+    path: "/class/:id/handlers",
+    element: <ClassHandlers />,
+  },
+  {
     path: "/admin/classes",
     element: <Classes />,
   },
   {
     path: "/admin/classes/:id",
     element: <ClassDetail />,
+  },
+  {
+    path: "/admin/classes/:id/schedules",
+    element: <ClassSchedules />,
+  },
+  {
+    path: "/admin/class/:id/handlers",
+    element: <ClassHandlers />,
   },
   {
     path: "/admin/handlers",
