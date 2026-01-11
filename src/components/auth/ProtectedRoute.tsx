@@ -54,9 +54,10 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       // Role-specific redirection
       if (role === 'handler' || role === 'user') {
         return <Navigate to="/customer/dashboard" replace />;
+      } else if (isTrainer && !isAdmin && !isPlatformAdmin) {
+        // Pure trainers go to trainer dashboard
+        return <Navigate to="/trainer/dashboard" replace />;
       } else if (role === 'admin' || isPlatformAdmin) {
-        return <Navigate to="/dashboard" replace />;
-      } else if (role === 'trainer') {
         return <Navigate to="/dashboard" replace />;
       } else {
         return <Navigate to="/dashboard" replace />;

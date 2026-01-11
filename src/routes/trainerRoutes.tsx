@@ -1,101 +1,13 @@
-
-import { Navigate } from "react-router-dom";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
-import Dashboard from "@/pages/Dashboard";
-import Classes from "@/pages/Classes";
-import Handlers from "@/pages/Handlers";
-import HandlerDetail from "@/pages/HandlerDetail";
-import Trainers from "@/pages/Trainers";
-import ClassSchedules from "@/pages/ClassSchedules";
-import ClassDetail from "@/pages/ClassDetail";
-import ClassHandlers from "@/pages/ClassHandlers";
 import TrainerDashboard from "@/pages/TrainerDashboard";
-import PuppyClassForm from "@/pages/PuppyClassForm";
-import BranchManagement from "@/pages/BranchManagement";
+import TrainerClasses from "@/pages/trainer/TrainerClasses";
+import TrainerEarnings from "@/pages/trainer/TrainerEarnings";
+import TrainerClassDetail from "@/pages/trainer/TrainerClassDetail";
 
+// Trainer-specific routes - minimal and focused on their classes only
 export const trainerRoutes = [
   {
-    path: "/classes",
-    element: (
-      <ProtectedRoute requiredRole="trainer">
-        <Classes />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/handlers",
-    element: (
-      <ProtectedRoute requiredRole="trainer">
-        <Handlers />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/handlers/:id",
-    element: (
-      <ProtectedRoute requiredRole="trainer">
-        <HandlerDetail />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/trainers",
-    element: (
-      <ProtectedRoute requiredRole="trainer">
-        <Trainers />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/schedules",
-    element: (
-      <ProtectedRoute requiredRole="trainer">
-        <ClassSchedules />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/class/:id",
-    element: (
-      <ProtectedRoute requiredRole="trainer">
-        <ClassDetail />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/class/:id/handlers",
-    element: (
-      <ProtectedRoute requiredRole="trainer">
-        <ClassHandlers />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/classes/:id",
-    element: (
-      <ProtectedRoute requiredRole="trainer">
-        <ClassDetail />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/classes/:id/schedules",
-    element: (
-      <ProtectedRoute requiredRole="trainer">
-        <ClassSchedules />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/branch-management",
-    element: (
-      <ProtectedRoute requiredRole="trainer">
-        <BranchManagement />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/trainer-dashboard",
+    path: "/trainer/dashboard",
     element: (
       <ProtectedRoute requiredRole="trainer">
         <TrainerDashboard />
@@ -103,18 +15,35 @@ export const trainerRoutes = [
     ),
   },
   {
-    path: "/forms/puppy-class-registration",
+    path: "/trainer/classes",
     element: (
       <ProtectedRoute requiredRole="trainer">
-        <PuppyClassForm />
+        <TrainerClasses />
       </ProtectedRoute>
     ),
   },
   {
-    path: "/forms/puppy-class-registration/:id",
+    path: "/trainer/class/:id",
     element: (
       <ProtectedRoute requiredRole="trainer">
-        <PuppyClassForm />
+        <TrainerClassDetail />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/trainer/earnings",
+    element: (
+      <ProtectedRoute requiredRole="trainer">
+        <TrainerEarnings />
+      </ProtectedRoute>
+    ),
+  },
+  // Legacy route redirects
+  {
+    path: "/trainer-dashboard",
+    element: (
+      <ProtectedRoute requiredRole="trainer">
+        <TrainerDashboard />
       </ProtectedRoute>
     ),
   },
