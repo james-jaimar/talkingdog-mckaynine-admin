@@ -98,6 +98,7 @@ export function useFranchiseMonthlyData({ month, year }: UseFranchiseMonthlyData
       const monthEnd = endOfMonth(new Date(year, month - 1));
       const startDateStr = format(monthStart, 'yyyy-MM-dd');
       const endDateStr = format(monthEnd, 'yyyy-MM-dd');
+      const franchiseMonthStr = `${year}-${String(month).padStart(2, '0')}`;
 
       console.log(`Starting franchise data fetch for branch: ${currentBranch.name}, month: ${month}/${year} (${startDateStr} to ${endDateStr})`);
 
@@ -123,8 +124,10 @@ export function useFranchiseMonthlyData({ month, year }: UseFranchiseMonthlyData
         throw classesError;
       }
 
-      // Get invoices for the month with their invoice items
-      // This determines which handlers/bookings fall within the month
+      // Get invoices - we need to fetch more broadly and then filter
+      // An invoice is included if:
+      // 1. franchise_report_month matches the target month, OR
+      // 2. franchise_report_month is NULL and issued_date falls within the month
       const { data: invoicesData, error: invoicesError } = await supabase
         .from('invoices')
         .select(`
@@ -133,6 +136,7 @@ export function useFranchiseMonthlyData({ month, year }: UseFranchiseMonthlyData
           issued_date,
           status,
           payment_received,
+          franchise_report_month,
           client:client_id (
             id,
             first_name,
@@ -156,19 +160,29 @@ export function useFranchiseMonthlyData({ month, year }: UseFranchiseMonthlyData
               )
             )
           )
-        `)
-        .gte('issued_date', startDateStr)
-        .lte('issued_date', endDateStr);
+        `);
 
       if (invoicesError) {
         console.error("Error fetching invoices:", invoicesError);
         throw invoicesError;
       }
 
-      // Filter invoices by branch (client's branch)
-      const branchInvoices = invoicesData?.filter(inv => 
-        inv.client?.branch_id === currentBranch.id
-      ) || [];
+      // Filter invoices:
+      // 1. By branch (client's branch)
+      // 2. By franchise month allocation OR issued date
+      const branchInvoices = invoicesData?.filter(inv => {
+        // Must belong to current branch
+        if (inv.client?.branch_id !== currentBranch.id) return false;
+
+        // If franchise_report_month is set, use that
+        if (inv.franchise_report_month) {
+          return inv.franchise_report_month === franchiseMonthStr;
+        }
+
+        // Otherwise, use issued_date
+        const issuedDate = inv.issued_date;
+        return issuedDate >= startDateStr && issuedDate <= endDateStr;
+      }) || [];
 
       console.log(`Found ${branchInvoices.length} invoices for month ${month}/${year}`);
 

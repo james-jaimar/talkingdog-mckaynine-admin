@@ -1758,6 +1758,7 @@ export type Database = {
           discount_type: string
           due_date: string
           email_sent: boolean | null
+          franchise_report_month: string | null
           id: string
           invoice_number: string
           issued_date: string
@@ -1782,6 +1783,7 @@ export type Database = {
           discount_type?: string
           due_date: string
           email_sent?: boolean | null
+          franchise_report_month?: string | null
           id?: string
           invoice_number: string
           issued_date?: string
@@ -1806,6 +1808,7 @@ export type Database = {
           discount_type?: string
           due_date?: string
           email_sent?: boolean | null
+          franchise_report_month?: string | null
           id?: string
           invoice_number?: string
           issued_date?: string

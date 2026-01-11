@@ -1,10 +1,11 @@
 import { Button } from "@/components/ui/button";
-import { CheckSquare, X, CreditCard } from "lucide-react";
+import { CheckSquare, X, CreditCard, CalendarDays } from "lucide-react";
 
 interface BulkActionsToolbarProps {
   selectedCount: number;
   unpaidCount: number;
   onMarkAsPaid: () => void;
+  onAllocateToMonth: () => void;
   onClearSelection: () => void;
   isLoading?: boolean;
 }
@@ -13,6 +14,7 @@ export function BulkActionsToolbar({
   selectedCount,
   unpaidCount,
   onMarkAsPaid,
+  onAllocateToMonth,
   onClearSelection,
   isLoading = false,
 }: BulkActionsToolbarProps) {
@@ -28,6 +30,17 @@ export function BulkActionsToolbar({
       </div>
       
       <div className="flex items-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onAllocateToMonth}
+          disabled={isLoading}
+          className="gap-1 text-purple-600 border-purple-600 hover:bg-purple-50"
+        >
+          <CalendarDays className="h-3 w-3" />
+          Allocate to Month
+        </Button>
+        
         <Button
           variant="outline"
           size="sm"
