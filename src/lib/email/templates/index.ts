@@ -2,6 +2,7 @@
 // These templates are designed by developers and configured by admins
 
 import { EO3_JAN_2026_SUBJECT, EO3_JAN_2026_TEMPLATE } from "./eo3-jan-2026";
+import { CLASS_CONFIRMATION_TEMPLATE, CLASS_CONFIRMATION_SUBJECT } from "./class-confirmation-template";
 
 export interface TemplateField {
   key: string;
@@ -488,8 +489,23 @@ export const cgcSilverInfoPackTemplate: PrebuiltTemplate = {
   }
 };
 
+// Class Confirmation Template (sent when invoice is paid)
+export const classConfirmationTemplate: PrebuiltTemplate = {
+  code: 'class_confirmation',
+  name: 'Class Confirmation Email',
+  description: 'Sent automatically when an invoice is marked as paid to confirm enrollment',
+  classType: 'All Classes',
+  subject: CLASS_CONFIRMATION_SUBJECT,
+  fields: [
+    { key: 'handler_name', label: 'Handler Name', type: 'text', placeholder: 'e.g., John Smith', defaultValue: '{{handler_name}}' },
+    { key: 'class_details', label: 'Class Details', type: 'textarea', placeholder: 'Class name, dates, times...', defaultValue: '{{class_details}}' },
+  ],
+  getHtml: () => CLASS_CONFIRMATION_TEMPLATE,
+};
+
 // All available pre-built templates
 export const PREBUILT_TEMPLATES: PrebuiltTemplate[] = [
+  classConfirmationTemplate,
   eoInfoPackTemplate,
   puppyInfoPackTemplate,
   cgcBronzeInfoPackTemplate,
