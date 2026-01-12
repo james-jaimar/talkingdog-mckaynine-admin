@@ -134,6 +134,27 @@ export function ClassClosureModal({
       let tasksCreated = 0;
 
       for (const handler of completionData) {
+        // YOGA SPECIAL CASE: Delete previous yoga entries for this handler/dog
+        // Yoga classes are monthly - we only want to show the latest entry
+        if (classType === 'Yoga') {
+          // Get the dog_id from the booking
+          const { data: bookingData } = await supabase
+            .from("bookings")
+            .select("dog_id")
+            .eq("id", handler.booking_id)
+            .single();
+          
+          if (bookingData?.dog_id) {
+            // Delete all previous yoga entries for this handler + dog combination
+            await supabase
+              .from("handler_class_status")
+              .delete()
+              .eq("handler_id", handler.handler_id)
+              .eq("dog_id", bookingData.dog_id)
+              .eq("class_type", "Yoga");
+          }
+        }
+
         // Upsert handler class status
         const { error: statusError } = await supabase
           .from("handler_class_status")

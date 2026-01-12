@@ -41,28 +41,52 @@ export async function useMarkHandlersCompleted(classId: string, currentTerm: str
   // 2. Upsert handler completions
   let completedCount = 0;
   for (const b of bookings as Booking[]) {
-    // Only insert if not already completed (avoid double insert)
-    const { data: already, error: alreadyErr } = await supabase
-      .from("handler_class_status")
-      .select("id")
-      .eq("handler_id", b.client_id)
-      .eq("class_id", classId)
-      .eq("completed", true)
-      .limit(1)
-      .maybeSingle();
-    if (!already && !alreadyErr) {
-      await supabase.from("handler_class_status").insert({
-        booking_id: b.id,
-        class_id: classId,
-        handler_id: b.client_id,
-        class_type: classTypeToUse, // Use exact class type
-        completed: true,
-        completed_at: new Date().toISOString(),
-        completion_method: "auto",
-        period: currentTerm,
-      });
-      completedCount++;
+    // Get dog_id from booking for Yoga special handling
+    const { data: bookingData } = await supabase
+      .from("bookings")
+      .select("dog_id")
+      .eq("id", b.id)
+      .single();
+
+    // YOGA SPECIAL CASE: Delete previous yoga entries for this handler/dog
+    // Yoga classes are monthly - we only want to show the latest entry
+    if (classTypeToUse === 'Yoga' && bookingData?.dog_id) {
+      await supabase
+        .from("handler_class_status")
+        .delete()
+        .eq("handler_id", b.client_id)
+        .eq("dog_id", bookingData.dog_id)
+        .eq("class_type", "Yoga");
     }
+
+    // For non-Yoga classes, only insert if not already completed (avoid double insert)
+    if (classTypeToUse !== 'Yoga') {
+      const { data: already, error: alreadyErr } = await supabase
+        .from("handler_class_status")
+        .select("id")
+        .eq("handler_id", b.client_id)
+        .eq("class_id", classId)
+        .eq("completed", true)
+        .limit(1)
+        .maybeSingle();
+      
+      if (already && !alreadyErr) {
+        continue; // Skip if already completed for non-Yoga
+      }
+    }
+
+    await supabase.from("handler_class_status").insert({
+      booking_id: b.id,
+      class_id: classId,
+      handler_id: b.client_id,
+      dog_id: bookingData?.dog_id || null,
+      class_type: classTypeToUse,
+      completed: true,
+      completed_at: new Date().toISOString(),
+      completion_method: "auto",
+      period: currentTerm,
+    });
+    completedCount++;
   }
   return completedCount;
 }
