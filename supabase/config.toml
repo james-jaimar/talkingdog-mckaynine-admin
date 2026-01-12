@@ -36,6 +36,6 @@ verify_jwt = true
 
 [functions.process-email-queue]
 verify_jwt = false
-
-[functions.process-email-queue.schedule]
-cron = "* * * * *"
+# Automatic scheduling disabled - admin must manually process the queue
+# [functions.process-email-queue.schedule]
+# cron = "* * * * *"
