@@ -1,16 +1,19 @@
-
 import React from "react";
 import { TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 interface ClassHandlersTableHeaderProps {
   scheduleDates: string[];
+  classType?: string;
 }
 
-export function ClassHandlersTableHeader({ scheduleDates }: ClassHandlersTableHeaderProps) {
+export function ClassHandlersTableHeader({ scheduleDates, classType }: ClassHandlersTableHeaderProps) {
+  const isPuppyClass = classType === "Puppy";
+
   return (
     <TableHeader>
       <TableRow>
         <TableHead className="w-[200px]">Handler / Dog</TableHead>
+        {isPuppyClass && <TableHead className="text-center w-20">Age</TableHead>}
         <TableHead className="text-center">Enrol</TableHead>
         <TableHead className="text-center">Vacc</TableHead>
         <TableHead>Payment</TableHead>
@@ -24,7 +27,6 @@ export function ClassHandlersTableHeader({ scheduleDates }: ClassHandlersTableHe
           </TableHead>
         ))}
         
-        <TableHead>Notes</TableHead>
         <TableHead className="text-center">WA</TableHead>
         <TableHead className="text-center">Social</TableHead>
         <TableHead className="text-center">Info EO</TableHead>

@@ -17,6 +17,7 @@ export interface Booking {
     id: string;
     name: string;
     breed: string;
+    date_of_birth?: string | null;
   };
   clients?: {
     id: string;

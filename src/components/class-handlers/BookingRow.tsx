@@ -2,13 +2,13 @@ import { TableRow, TableCell } from "@/components/ui/table";
 import { Booking } from "./types/booking";
 import { BookingHandlerInfo } from "./booking-row/BookingHandlerInfo";
 import { CheckableCell } from "./booking-row/CheckableCell";
-import { EditableCell } from "./booking-row/EditableCell";
 import { PaymentStatusBadge } from "./booking-row/PaymentStatusBadge";
 import { BookingActionButtons } from "./booking-row/BookingActionButtons";
 import { useInvoiceStatus } from "./booking-row/useInvoiceStatus";
 import { ConsentStatusBadge } from "@/components/handlers/status/ConsentStatusBadge";
 import { Check, Minus } from "lucide-react";
 import { useHandlerCompletion } from "./hooks/useHandlerCompletion";
+import { differenceInWeeks } from "date-fns";
 
 interface BookingRowProps {
   booking: Booking;
@@ -20,6 +20,7 @@ interface BookingRowProps {
   removeHandler: (bookingId: string) => void;
   scheduleDates?: string[];
   renderAttendanceStatus?: (booking: any, date: string) => React.ReactNode;
+  classType?: string;
 }
 
 export function BookingRow({
@@ -31,7 +32,8 @@ export function BookingRow({
   saveChanges,
   removeHandler,
   scheduleDates = [],
-  renderAttendanceStatus
+  renderAttendanceStatus,
+  classType
 }: BookingRowProps) {
   // Use the extracted hook for invoice status
   const { data: invoiceData, isLoading: isLoadingInvoice } = useInvoiceStatus(booking.id);
@@ -39,8 +41,19 @@ export function BookingRow({
   // Fix: Use class_id if present on the booking
   const { data: completion } = useHandlerCompletion({
     handlerId: booking.client_id || "",
-    classId: booking.class_id || "", // Use optional chaining/fallback
+    classId: booking.class_id || "",
   });
+
+  const isPuppyClass = classType === "Puppy";
+
+  // Calculate puppy age in weeks
+  const getPuppyAgeInWeeks = (): string => {
+    if (!booking.dogs?.date_of_birth) return "—";
+    const dob = new Date(booking.dogs.date_of_birth);
+    const today = new Date();
+    const weeks = differenceInWeeks(today, dob);
+    return `${weeks} wks`;
+  };
 
   const renderInfoStatus = (hasInfo: boolean | null) => {
     if (hasInfo === true) {
@@ -63,6 +76,12 @@ export function BookingRow({
           </span>
         ) : null}
       </TableCell>
+      
+      {isPuppyClass && (
+        <TableCell className="text-center text-sm text-muted-foreground">
+          {getPuppyAgeInWeeks()}
+        </TableCell>
+      )}
       
       <TableCell className="text-center">
         <CheckableCell
@@ -93,14 +112,6 @@ export function BookingRow({
           {renderAttendanceStatus && renderAttendanceStatus(booking, date)}
         </TableCell>
       ))}
-      
-      <TableCell>
-        <EditableCell
-          isEditing={isEditing}
-          value={bookingData.additional_notes || ''}
-          onChange={(value) => handleInputChange(booking.id, 'additional_notes', value)}
-        />
-      </TableCell>
       
       <TableCell className="text-center">
         <ConsentStatusBadge status={booking.clients?.uses_whatsapp_status || 'not_marked'} />

@@ -1,4 +1,3 @@
-
 import { Table, TableBody } from "@/components/ui/table";
 import { ClassHandlersTableHeader } from "./ClassHandlersTableHeader";
 import { BookingRow } from "../BookingRow";
@@ -14,6 +13,7 @@ interface HandlersTableContainerProps {
   handleRemove: (bookingId: string) => void;
   scheduleDates: string[];
   renderAttendanceStatus?: (booking: any, date: string) => React.ReactNode;
+  classType?: string;
 }
 
 export function HandlersTableContainer({ 
@@ -25,12 +25,13 @@ export function HandlersTableContainer({
   saveChanges,
   handleRemove,
   scheduleDates,
-  renderAttendanceStatus
+  renderAttendanceStatus,
+  classType
 }: HandlersTableContainerProps) {
   return (
     <div className="overflow-x-auto hidden sm:block">
       <Table>
-        <ClassHandlersTableHeader scheduleDates={scheduleDates} />
+        <ClassHandlersTableHeader scheduleDates={scheduleDates} classType={classType} />
         <TableBody>
           {handlers.map(booking => {
             const isEditing = editingBookingId === booking.id;
@@ -48,6 +49,7 @@ export function HandlersTableContainer({
                 removeHandler={handleRemove}
                 scheduleDates={scheduleDates}
                 renderAttendanceStatus={renderAttendanceStatus}
+                classType={classType}
               />
             );
           })}

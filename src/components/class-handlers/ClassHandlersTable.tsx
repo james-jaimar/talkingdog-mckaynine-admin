@@ -17,9 +17,10 @@ import { Loader2 } from "lucide-react";
 
 interface ClassHandlersTableProps {
   classId: string;
+  classType?: string;
 }
 
-export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
+export function ClassHandlersTable({ classId, classType }: ClassHandlersTableProps) {
   const [initialLoadAttempted, setInitialLoadAttempted] = useState<boolean>(false);
   const [batchAttendanceOpen, setBatchAttendanceOpen] = useState(false);
   const isMobile = useIsMobile();
@@ -168,6 +169,7 @@ export function ClassHandlersTable({ classId }: ClassHandlersTableProps) {
           handleRemove={handleRemove}
           scheduleDates={sortedDates}
           renderAttendanceStatus={renderAttendanceStatus}
+          classType={classType}
         />
       )}
 
