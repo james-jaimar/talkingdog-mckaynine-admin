@@ -1,5 +1,5 @@
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
-import { DollarSign, BadgePercent, AlertCircle } from "lucide-react";
+import { BadgePercent, AlertCircle, Banknote, Clock } from "lucide-react";
 import { Invoice } from "@/types/invoice";
 import { formatCurrency, formatPercentage } from "@/lib/formatters";
 
@@ -50,7 +50,7 @@ export function InvoiceFinancialSummary({ invoices, currentMonthLabel }: Financi
         </CardHeader>
         <CardContent>
           <div className="flex items-center">
-            <DollarSign className="h-4 w-4 text-muted-foreground mr-2" />
+            <Banknote className="h-4 w-4 text-muted-foreground mr-2" />
             <span className="text-2xl font-bold">{formatCurrency(financialSummary.totalAmount)}</span>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
@@ -84,7 +84,7 @@ export function InvoiceFinancialSummary({ invoices, currentMonthLabel }: Financi
         </CardHeader>
         <CardContent>
           <div className="flex items-center">
-            <DollarSign className="h-4 w-4 text-amber-500 mr-2" />
+            <Clock className="h-4 w-4 text-amber-500 mr-2" />
             <span className="text-2xl font-bold text-amber-500">
               {formatCurrency(financialSummary.outstandingAmount)}
             </span>
