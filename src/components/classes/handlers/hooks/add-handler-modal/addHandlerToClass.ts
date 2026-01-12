@@ -5,6 +5,8 @@ import { fetchScheduleId } from "./fetchScheduleId";
 import { fetchClassDetails } from "./fetchClassDetails";
 import { fetchDogName } from "./fetchDogName";
 import { createInvoiceForHandler, CreateInvoiceProps } from "./createInvoiceForHandler";
+import { checkExistingTermEnrollment } from "./checkExistingTermEnrollment";
+import { addToExistingInvoice, createMultiDogDiscountTasks } from "./addToExistingInvoice";
 
 interface AddHandlerToClassProps {
   handlerId: string;
@@ -36,14 +38,14 @@ export const addHandlerToClass = async ({
   setIsProcessing(true);
   
   try {
-    // First, find the correct schedule ID for this class (now returns schedule info with date)
+    // First, find the correct schedule ID for this class (now returns schedule info with date and term)
     const scheduleInfo = await fetchScheduleId(classId);
     
     if (!scheduleInfo) {
       throw new Error("Could not find a schedule for this class");
     }
     
-    const { id: scheduleId, firstDate: classDate } = scheduleInfo;
+    const { id: scheduleId, firstDate: classDate, termId } = scheduleInfo;
     
     // Get class details for the invoice
     const classDetails = await fetchClassDetails(classId);
@@ -56,6 +58,7 @@ export const addHandlerToClass = async ({
       dogIds, 
       scheduleId,
       classDate,
+      termId,
       classDetails
     });
     
@@ -78,6 +81,9 @@ export const addHandlerToClass = async ({
         throw new Error(`${dogName} is already enrolled in this class`);
       }
     }
+    
+    // Check for existing enrollments in this term (for multi-dog discount across classes)
+    const existingEnrollment = await checkExistingTermEnrollment(handlerId, termId, dogIds);
     
     // Create booking records for each dog
     const bookingIds: string[] = [];
@@ -129,36 +135,83 @@ export const addHandlerToClass = async ({
     const totalInvoiceAmount = classPrice + enrollmentFee;
 
     let invoiceCreated = false;
+    let multiDogDiscountApplied = false;
+    let updatedInvoiceNumber: string | undefined;
     
     if (totalInvoiceAmount > 0) {
-      // Attempt to create a combined invoice for all dogs
-      try {
-        invoiceCreated = await createInvoiceForHandler({
-          ...createInvoiceProps,
+      // Check if we should update an existing invoice (multi-dog across classes)
+      if (existingEnrollment.hasExistingEnrollment && 
+          existingEnrollment.existingInvoiceId && 
+          existingEnrollment.existingInvoiceStatus !== 'paid' &&
+          existingEnrollment.existingInvoiceStatus !== 'cancelled') {
+        
+        console.log("MULTI-DOG-DISCOUNT: Handler has existing enrollment, updating invoice", existingEnrollment);
+        
+        // Add to existing invoice with discount
+        const updateResult = await addToExistingInvoice({
+          existingInvoiceId: existingEnrollment.existingInvoiceId,
+          handlerId,
           dogIds,
+          dogNames,
           bookingIds,
-          className: classDetails.name, 
+          className: classDetails.name,
           classPrice,
           enrollmentFee,
-          dogNames,
-          classDate,
+          existingDogName: existingEnrollment.existingDogName,
+          existingClassName: existingEnrollment.existingClassName,
         });
         
-        if (!invoiceCreated) {
-          console.warn("Invoice creation failed for bookings", bookingIds);
+        if (updateResult.success) {
+          invoiceCreated = true;
+          multiDogDiscountApplied = true;
+          updatedInvoiceNumber = updateResult.invoiceNumber;
+          
+          // Create admin notification tasks
+          await createMultiDogDiscountTasks(
+            handlerId,
+            dogNames[0],
+            classDetails.name,
+            existingEnrollment.existingDogName || 'Another dog',
+            existingEnrollment.existingClassName || 'another class',
+            updateResult.invoiceNumber || 'unknown',
+            updateResult.discountApplied || 0
+          );
+        } else {
+          console.warn("Failed to update existing invoice, will create new one:", updateResult.error);
+          // Fall through to create new invoice
+        }
+      }
+      
+      // If we didn't update an existing invoice, create a new one
+      if (!invoiceCreated) {
+        try {
+          invoiceCreated = await createInvoiceForHandler({
+            ...createInvoiceProps,
+            dogIds,
+            bookingIds,
+            className: classDetails.name, 
+            classPrice,
+            enrollmentFee,
+            dogNames,
+            classDate,
+          });
+          
+          if (!invoiceCreated) {
+            console.warn("Invoice creation failed for bookings", bookingIds);
+            toast({
+              title: "Warning",
+              description: "Handler was added but invoice creation failed. Please create the invoice manually.",
+              variant: "warning"
+            });
+          }
+        } catch (invoiceError) {
+          console.error("Error creating invoice:", invoiceError);
           toast({
             title: "Warning",
             description: "Handler was added but invoice creation failed. Please create the invoice manually.",
             variant: "warning"
           });
         }
-      } catch (invoiceError) {
-        console.error("Error creating invoice:", invoiceError);
-        toast({
-          title: "Warning",
-          description: "Handler was added but invoice creation failed. Please create the invoice manually.",
-          variant: "warning"
-        });
       }
     } else {
       console.log("Skipping invoice creation as class price and enrollment fee are zero");
@@ -171,19 +224,30 @@ export const addHandlerToClass = async ({
       queryClient.invalidateQueries({ queryKey: ["class-handlers", classId] }),
       queryClient.invalidateQueries({ queryKey: ["available-handlers", classId] }),
       queryClient.invalidateQueries({ queryKey: ["client-invoices", handlerId] }),
-      queryClient.invalidateQueries({ queryKey: ["my-invoices"] })
+      queryClient.invalidateQueries({ queryKey: ["my-invoices"] }),
+      queryClient.invalidateQueries({ queryKey: ["invoices"] }),
+      queryClient.invalidateQueries({ queryKey: ["handler-tasks"] }),
     ]);
     
     const dogCountText = dogIds.length > 1 ? `${dogIds.length} dogs` : "dog";
-    const discountNote = dogIds.length === 2 ? " (25% discount applied to 2nd dog)" : "";
+    
+    // Build success message based on what happened
+    let successMessage: string;
+    if (multiDogDiscountApplied) {
+      successMessage = `${dogCountText} added to class. Multi-dog discount (25%) applied - invoice ${updatedInvoiceNumber} updated. Admin tasks created for review.`;
+    } else if (dogIds.length === 2) {
+      successMessage = `${dogCountText} added to class and invoice created (25% discount applied to 2nd dog).`;
+    } else if (invoiceCreated && totalInvoiceAmount > 0) {
+      successMessage = `${dogCountText} added to class and invoice created.`;
+    } else if (totalInvoiceAmount > 0) {
+      successMessage = `${dogCountText} added to class, but invoice creation failed. Please create it manually.`;
+    } else {
+      successMessage = `${dogCountText} added to class. No invoice needed (class has no fee).`;
+    }
     
     toast({
       title: "Success",
-      description: invoiceCreated 
-        ? `${dogCountText} added to class and invoice created${discountNote}.` 
-        : totalInvoiceAmount > 0 
-          ? `${dogCountText} added to class, but invoice creation failed. Please create it manually.`
-          : `${dogCountText} added to class. No invoice needed (class has no fee).`,
+      description: successMessage,
     });
     
     // Close modal
