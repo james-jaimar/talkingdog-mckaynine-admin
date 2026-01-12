@@ -1,6 +1,6 @@
-
 import { TrainerPaymentData, TrainerClassDetail, Schedule, Booking, InvoiceItem } from "../types";
 import { calculateClassRevenue } from "./calculateTrainerFees";
+import { getCourseFeeAmount } from "@/lib/invoiceItemUtils";
 
 export function formatTrainerPaymentData(
   trainer: { id: string; first_name: string; last_name: string; email?: string },
@@ -145,6 +145,10 @@ export function formatTrainerPaymentData(
     // We'll only flag it as having a "zero amount payment" if it's not supposed to have zero commission
     const hasZeroAmountPayment = !hasZeroCommission && zeroAmountScheduleIds.has(schedule.id);
 
+    // Get the fee configuration from the class
+    const trainerFeeType = schedule.classes?.trainer_fee_type || 'percentage';
+    const feeValue = schedule.classes?.trainer_fee_value ?? 70;
+
     // Build booking details for this class with actual client names and dog info
     const bookingsDetails = scheduleBookings.map(booking => {
       // Use the client's first and last name when available
@@ -166,14 +170,17 @@ export function formatTrainerPaymentData(
       const dogName = dogData?.name || 'Unknown Dog';
       const dogBreed = dogData?.breed || '';
       
-      // Get invoice amount for this specific booking
+      // Get invoice items for this specific booking and calculate course fee (excluding enrollment fees)
       const bookingInvoiceItems = invoiceItems.filter(item => item.booking_id === booking.id);
-      const courseFee = bookingInvoiceItems.reduce((sum, item) => sum + (item.amount || 0), 0);
+      const courseFee = getCourseFeeAmount(bookingInvoiceItems);
         
-      // Calculate individual commission - either actual or potential
-      const perBookingCommission = scheduleBookings.length > 0 
-        ? revenueDetails.potentialRevenue / scheduleBookings.length 
-        : 0;
+      // Calculate individual commission based on THIS booking's course fee
+      let perBookingCommission = 0;
+      if (trainerFeeType === 'percentage') {
+        perBookingCommission = courseFee * (feeValue / 100);
+      } else if (trainerFeeType === 'fixed') {
+        perBookingCommission = feeValue;
+      }
         
       return {
         bookingId: booking.id,
