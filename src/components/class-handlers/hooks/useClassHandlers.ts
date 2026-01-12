@@ -69,7 +69,7 @@ export function useClassHandlers(classId: string) {
             payment_status,
             dog_id,
             client_id,
-            dogs:dog_id(id, name, breed),
+            dogs:dog_id(id, name, breed, date_of_birth),
             clients:client_id(
               id, 
               first_name, 

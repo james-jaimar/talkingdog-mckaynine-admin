@@ -142,7 +142,7 @@ export default function ClassHandlers() {
           </Button>
         </div>
         
-        <ClassHandlersTable classId={classId} />
+        <ClassHandlersTable classId={classId} classType={classData.class_type} />
         
         <AddHandlerToClassModal
           open={isAddHandlerModalOpen}
