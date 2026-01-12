@@ -15,14 +15,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { useInvoices } from "@/hooks/useInvoices";
 import { useMarkInvoiceAsSent } from "@/hooks/invoices/status";
+import { useEmailQueue } from "@/hooks/useEmailQueue";
 import { useBranch } from "@/context/BranchContext";
 import { 
   generateInvoiceEmailContent, 
   generatePreviewHtml,
   buildInvoiceEmailHtml
 } from "@/lib/invoice-email-generator";
+import { getInvoiceAsBase64 } from "@/components/invoices/pdf/InvoicePDFGenerator";
 import { Mail, Eye, Edit, Send, Loader2 } from "lucide-react";
 import { getBranchLogo } from "@/lib/branchLogo";
 
@@ -38,7 +39,7 @@ export function EmailInvoicePreviewDialog({
   selectedInvoice
 }: EmailInvoicePreviewDialogProps) {
   const { currentBranch } = useBranch();
-  const { emailInvoice } = useInvoices();
+  const { addToQueue, processQueue } = useEmailQueue();
   const markAsSent = useMarkInvoiceAsSent();
   
   const [emailRecipient, setEmailRecipient] = useState("");
@@ -111,6 +112,14 @@ export function EmailInvoicePreviewDialog({
     setIsSubmitting(true);
     
     try {
+      toast.info("Preparing invoice for email...");
+      
+      // Generate the PDF as base64
+      const pdfBase64 = await getInvoiceAsBase64(selectedInvoice);
+      if (!pdfBase64) {
+        throw new Error("Failed to generate invoice PDF");
+      }
+      
       // Build the custom email HTML
       const content = {
         subject,
@@ -126,17 +135,33 @@ export function EmailInvoicePreviewDialog({
       
       const customEmailHtml = buildInvoiceEmailHtml(content, selectedInvoice, branchName, logoUrl);
       
-      console.log(`Sending invoice ${selectedInvoice.invoice_number} to ${emailRecipient}`);
+      console.log(`Queueing invoice ${selectedInvoice.invoice_number} email to ${emailRecipient}`);
       
-      // Pass custom email content to the mutation
-      await emailInvoice.mutateAsync({
-        invoice: selectedInvoice,
-        email: emailRecipient,
-        customSubject: subject,
-        customEmailHtml,
+      // Determine from email based on branch
+      const fromEmail = branchName?.toLowerCase().includes("randburg") 
+        ? "randburg@mckaynine.co.za" 
+        : "delta@mckaynine.co.za";
+      
+      // Add to email queue with PDF attachment
+      await addToQueue.mutateAsync({
+        to_email: emailRecipient,
+        subject: subject,
+        html_content: customEmailHtml,
+        from_name: `${branchName} McKaynine`,
+        from_email: fromEmail,
+        handler_id: selectedInvoice.client_id,
+        attachments: [{
+          filename: `invoice-${selectedInvoice.invoice_number}.pdf`,
+          content: pdfBase64,
+          encoding: "base64",
+          contentType: "application/pdf",
+        }],
       });
       
-      // Mark the invoice as sent after successful email
+      // Trigger queue processing immediately
+      processQueue.mutate();
+      
+      // Mark the invoice as sent after successful queue addition
       if (selectedInvoice.status === 'draft') {
         try {
           await markAsSent.markAsSent(selectedInvoice);
@@ -148,7 +173,8 @@ export function EmailInvoicePreviewDialog({
       
       onOpenChange(false);
     } catch (error) {
-      console.error("Email sending failed:", error);
+      console.error("Email queueing failed:", error);
+      toast.error("Failed to queue invoice email");
     } finally {
       setIsSubmitting(false);
     }
