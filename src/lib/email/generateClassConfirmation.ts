@@ -89,8 +89,17 @@ export async function generateClassConfirmationEmail(
       return null;
     }
 
-    // Filter to only items with bookings
-    const bookingItems = (itemsData || []).filter(item => item.booking_id && item.bookings);
+    // Filter to only items with bookings and deduplicate by booking_id
+    // (An invoice may have multiple items for the same booking, e.g., enrollment fee + course fee)
+    const allBookingItems = (itemsData || []).filter(item => item.booking_id && item.bookings);
+    const seenBookingIds = new Set<string>();
+    const bookingItems = allBookingItems.filter(item => {
+      if (seenBookingIds.has(item.booking_id!)) {
+        return false;
+      }
+      seenBookingIds.add(item.booking_id!);
+      return true;
+    });
 
     if (bookingItems.length === 0) {
       console.log("No bookings on invoice - skipping confirmation email");
