@@ -1,8 +1,8 @@
-
 import { Link } from "react-router-dom";
 import { adminPrimaryNavItems, adminSecondaryNavItems } from "./navigation-items";
 import { useAuth } from "@/context/auth";
 import { Badge } from "@/components/ui/badge";
+import { usePendingTaskCount } from "@/hooks/useAllTasks";
 
 interface AdminNavigationProps {
   isMobile: boolean;
@@ -12,6 +12,7 @@ interface AdminNavigationProps {
 
 export const AdminNavigation = ({ isMobile, onMobileClose, showPrimaryOnly = true }: AdminNavigationProps) => {
   const { isPlatformAdmin } = useAuth();
+  const { count: pendingTaskCount } = usePendingTaskCount();
   const items = showPrimaryOnly ? adminPrimaryNavItems : adminSecondaryNavItems;
   
   // Filter out developer-only items for non-platform admins
@@ -36,7 +37,7 @@ export const AdminNavigation = ({ isMobile, onMobileClose, showPrimaryOnly = tru
         <Link 
           key={item.path}
           to={item.path} 
-          className={`text-white hover:text-gray-200 px-2 ${isMobile ? 'py-2 flex items-center' : 'py-1 flex items-center flex-shrink-0 whitespace-nowrap'} rounded`}
+          className={`text-white hover:text-gray-200 px-2 ${isMobile ? 'py-2 flex items-center' : 'py-1 flex items-center flex-shrink-0 whitespace-nowrap'} rounded relative`}
           onClick={onMobileClose}
         >
           {item.icon && (
@@ -45,6 +46,11 @@ export const AdminNavigation = ({ isMobile, onMobileClose, showPrimaryOnly = tru
             />
           )}
           <span>{item.name}</span>
+          {item.name === "Tasks" && pendingTaskCount > 0 && (
+            <span className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+              {pendingTaskCount > 99 ? "99+" : pendingTaskCount}
+            </span>
+          )}
         </Link>
       ))}
     </nav>

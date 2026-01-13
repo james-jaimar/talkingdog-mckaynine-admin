@@ -49,6 +49,8 @@ export function TaskBadge({ handlerId }: TaskBadgeProps) {
         return '📞';
       case 'payment_reminder':
         return '💰';
+      case 'trainer_note':
+        return '💬';
       default:
         return '📋';
     }

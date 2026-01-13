@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAllTasks, TaskWithHandler } from "@/hooks/useAllTasks";
 import { format } from "date-fns";
-import { Search, CheckCircle, XCircle, Send, ClipboardList, Mail, UserPlus, RefreshCw, Link, Plus, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Search, CheckCircle, XCircle, Send, ClipboardList, Mail, UserPlus, RefreshCw, Link, Plus, ArrowUpDown, ArrowUp, ArrowDown, MessageSquare } from "lucide-react";
 import { SendInfoPackModal } from "@/components/tasks/SendInfoPackModal";
 import { CreateTaskModal } from "@/components/tasks/CreateTaskModal";
 import { Link as RouterLink } from "react-router-dom";
@@ -22,6 +22,7 @@ const TASK_TYPE_OPTIONS = [
   { value: "send_info_pack", label: "Send Info Pack" },
   { value: "enrollment", label: "Enrollment" },
   { value: "follow_up", label: "Follow Up" },
+  { value: "trainer_note", label: "Trainer Note" },
   { value: "other", label: "Other" },
 ];
 
@@ -53,6 +54,8 @@ function getTaskTypeIcon(type: string) {
       return <UserPlus className="h-4 w-4" />;
     case "follow_up":
       return <RefreshCw className="h-4 w-4" />;
+    case "trainer_note":
+      return <MessageSquare className="h-4 w-4" />;
     default:
       return <ClipboardList className="h-4 w-4" />;
   }
