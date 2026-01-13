@@ -198,27 +198,33 @@ export async function generateClassConfirmationEmail(
  * Handles single or multiple dog/class enrollments
  */
 function buildClassDetailsHtml(enrollments: ClassEnrollmentDetails[]): string {
+  // Build the class details content with its own green box styling
+  // This ensures proper display even if the template's wrapper div is stripped by the editor
+  
   if (enrollments.length === 1) {
     const e = enrollments[0];
     return `
-      <table style="width: 100%; border-collapse: collapse;">
-        <tr>
-          <td style="padding: 8px 0; color: #333; font-size: 14px;"><strong>Dog:</strong></td>
-          <td style="padding: 8px 0; color: #333; font-size: 14px;">${e.dogName}</td>
-        </tr>
-        <tr>
-          <td style="padding: 8px 0; color: #333; font-size: 14px;"><strong>Class:</strong></td>
-          <td style="padding: 8px 0; color: #333; font-size: 14px;">${e.className}</td>
-        </tr>
-        <tr>
-          <td style="padding: 8px 0; color: #333; font-size: 14px;"><strong>Dates:</strong></td>
-          <td style="padding: 8px 0; color: #333; font-size: 14px;">${e.dates}</td>
-        </tr>
-        <tr>
-          <td style="padding: 8px 0; color: #333; font-size: 14px;"><strong>Day & Time:</strong></td>
-          <td style="padding: 8px 0; color: #333; font-size: 14px;">${e.dayTime}</td>
-        </tr>
-      </table>
+      <div style="background-color: #e8f4e9; padding: 24px; border-radius: 8px; margin: 24px 0; border-left: 4px solid #2c5530;">
+        <h2 style="margin: 0 0 16px; color: #2c5530; font-size: 18px; font-weight: 600;">📋 Class Details</h2>
+        <table style="width: 100%; border-collapse: collapse;">
+          <tr>
+            <td style="padding: 8px 0; color: #333; font-size: 14px;"><strong>Dog:</strong></td>
+            <td style="padding: 8px 0; color: #333; font-size: 14px;">${e.dogName}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; color: #333; font-size: 14px;"><strong>Class:</strong></td>
+            <td style="padding: 8px 0; color: #333; font-size: 14px;">${e.className}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; color: #333; font-size: 14px;"><strong>Dates:</strong></td>
+            <td style="padding: 8px 0; color: #333; font-size: 14px;">${e.dates}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; color: #333; font-size: 14px;"><strong>Day & Time:</strong></td>
+            <td style="padding: 8px 0; color: #333; font-size: 14px;">${e.dayTime}</td>
+          </tr>
+        </table>
+      </div>
     `;
   }
 
@@ -244,7 +250,10 @@ function buildClassDetailsHtml(enrollments: ClassEnrollmentDetails[]): string {
   `).join("");
 
   return `
-    <p style="margin: 0 0 12px; color: #333; font-size: 14px;">Your dogs are enrolled in the following classes:</p>
-    ${enrollmentRows}
+    <div style="background-color: #e8f4e9; padding: 24px; border-radius: 8px; margin: 24px 0; border-left: 4px solid #2c5530;">
+      <h2 style="margin: 0 0 16px; color: #2c5530; font-size: 18px; font-weight: 600;">📋 Class Details</h2>
+      <p style="margin: 0 0 12px; color: #333; font-size: 14px;">Your dogs are enrolled in the following classes:</p>
+      ${enrollmentRows}
+    </div>
   `;
 }
