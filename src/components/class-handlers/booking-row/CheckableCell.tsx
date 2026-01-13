@@ -13,6 +13,7 @@ export function CheckableCell({ isEditing, checked, onChange }: CheckableCellPro
     <Checkbox 
       checked={checked} 
       onCheckedChange={onChange}
+      className="data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600"
     />
   ) : (
     checked ? <Check className="mx-auto h-4 w-4 text-green-600" /> : null

@@ -125,19 +125,7 @@ export function BookingRow({
         {isEditing ? (
           <CheckableCell
             isEditing={true}
-            checked={bookingData.info_eo || false}
-            onChange={(checked) => handleInputChange(booking.id, 'info_eo', checked)}
-          />
-        ) : (
-          renderInfoStatus(booking.info_eo_status)
-        )}
-      </TableCell>
-      
-      <TableCell className="text-center">
-        {isEditing ? (
-          <CheckableCell
-            isEditing={true}
-            checked={bookingData.info_pg || false}
+            checked={bookingData.info_pg ?? false}
             onChange={(checked) => handleInputChange(booking.id, 'info_pg', checked)}
           />
         ) : (
