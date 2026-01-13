@@ -29,7 +29,6 @@ export function ClassHandlersTableHeader({ scheduleDates, classType }: ClassHand
         
         <TableHead className="text-center">WA</TableHead>
         <TableHead className="text-center">Social</TableHead>
-        <TableHead className="text-center">Info EO</TableHead>
         <TableHead className="text-center">Info PG</TableHead>
         <TableHead className="w-[150px]">Actions</TableHead>
       </TableRow>

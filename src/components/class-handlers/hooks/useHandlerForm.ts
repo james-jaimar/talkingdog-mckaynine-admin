@@ -33,8 +33,9 @@ export function useHandlerForm() {
         // Booking-level fields
         proof_of_payment: booking.proof_of_payment || '',
         additional_notes: booking.additional_notes || '',
-        info_eo: booking.info_eo || false,
-        info_pg: booking.info_pg || false
+        // Use the boolean status fields, not the string fields
+        info_eo: booking.info_eo_status ?? false,
+        info_pg: booking.info_pg_status ?? false
       }
     }));
   };
