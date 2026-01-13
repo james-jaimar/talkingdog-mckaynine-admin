@@ -43,6 +43,8 @@ export function HandlerTasks({ handlerId }: HandlerTasksProps) {
         return '📞';
       case 'payment_reminder':
         return '💰';
+      case 'trainer_note':
+        return '💬';
       default:
         return '📋';
     }
@@ -58,6 +60,8 @@ export function HandlerTasks({ handlerId }: HandlerTasksProps) {
         return <Badge variant="secondary" className="bg-purple-100 text-purple-700">Follow Up</Badge>;
       case 'payment_reminder':
         return <Badge variant="secondary" className="bg-amber-100 text-amber-700">Payment</Badge>;
+      case 'trainer_note':
+        return <Badge variant="secondary" className="bg-cyan-100 text-cyan-700">Trainer Note</Badge>;
       default:
         return <Badge variant="secondary">Task</Badge>;
     }

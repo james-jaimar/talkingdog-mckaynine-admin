@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
-import { Calendar, Users, Clock, ArrowLeft, Loader2, Check, X, AlertTriangle, CalendarRange } from "lucide-react";
+import { Calendar, Users, Clock, ArrowLeft, Loader2, Check, X, AlertTriangle, CalendarRange, MessageSquarePlus } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   Table,
@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { TrainerNoteModal } from "@/components/trainer/TrainerNoteModal";
 
 type AttendanceStatus = 'present' | 'absent' | 'excused' | 'not_marked';
 type PerformanceGrade = 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | null;
@@ -50,6 +51,8 @@ export default function TrainerClassDetail() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
   const [isUpdatingGrade, setIsUpdatingGrade] = useState<string | null>(null);
+  const [noteModalOpen, setNoteModalOpen] = useState(false);
+  const [selectedBookingForNote, setSelectedBookingForNote] = useState<any>(null);
 
   const { data: schedule, isLoading, refetch } = useQuery({
     queryKey: ['trainer-class-detail-full', scheduleId, trainerProfile?.id, currentBranch?.id],
@@ -497,6 +500,7 @@ export default function TrainerClassDetail() {
                         <TableHead>Phone</TableHead>
                         <TableHead className="text-center">Attendance</TableHead>
                         <TableHead className="text-center">Performance Grade</TableHead>
+                        <TableHead className="text-center w-[80px]">Note</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -557,6 +561,28 @@ export default function TrainerClassDetail() {
                                 </p>
                               )}
                             </TableCell>
+                            <TableCell className="text-center">
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-8 w-8 p-0 text-primary hover:text-primary/80 hover:bg-primary/10"
+                                      onClick={() => {
+                                        setSelectedBookingForNote(booking);
+                                        setNoteModalOpen(true);
+                                      }}
+                                    >
+                                      <MessageSquarePlus className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Leave note for admin</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </TableCell>
                           </TableRow>
                         );
                       })}
@@ -608,6 +634,19 @@ export default function TrainerClassDetail() {
                               </a>
                             )}
                           </div>
+                          {/* Note button for mobile */}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="shrink-0 gap-1.5"
+                            onClick={() => {
+                              setSelectedBookingForNote(booking);
+                              setNoteModalOpen(true);
+                            }}
+                          >
+                            <MessageSquarePlus className="h-3.5 w-3.5" />
+                            <span className="hidden sm:inline">Note</span>
+                          </Button>
                         </div>
                         
                         {/* Attendance Buttons */}
@@ -686,6 +725,24 @@ export default function TrainerClassDetail() {
               </CardContent>
             </Card>
           </div>
+        )}
+
+        {/* Trainer Note Modal */}
+        {selectedBookingForNote && trainerProfile && (
+          <TrainerNoteModal
+            open={noteModalOpen}
+            onOpenChange={(open) => {
+              setNoteModalOpen(open);
+              if (!open) setSelectedBookingForNote(null);
+            }}
+            handlerId={selectedBookingForNote.clients?.id || ""}
+            handlerName={`${selectedBookingForNote.clients?.first_name || ""} ${selectedBookingForNote.clients?.last_name || ""}`}
+            dogName={selectedBookingForNote.dogs?.name}
+            trainerId={trainerProfile.id}
+            trainerName={trainerProfile.first_name && trainerProfile.last_name 
+              ? `${trainerProfile.first_name} ${trainerProfile.last_name}` 
+              : trainerProfile.email || "Trainer"}
+          />
         )}
       </div>
     </DashboardLayout>
