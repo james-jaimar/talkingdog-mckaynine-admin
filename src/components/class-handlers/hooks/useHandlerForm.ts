@@ -59,7 +59,14 @@ export function useHandlerForm() {
       const data = formData[bookingId];
       
       // Separate client-level fields from booking-level fields
-      const { enrollment_verified, vaccination_verified, ...bookingFields } = data;
+      const { enrollment_verified, vaccination_verified, info_pg, info_eo, ...otherBookingFields } = data;
+      
+      // Convert boolean info fields back to string format for database
+      const bookingFields = {
+        ...otherBookingFields,
+        info_pg: info_pg ? 'yes' : null,
+        info_eo: info_eo ? 'yes' : null
+      };
       
       // Update booking-level fields
       const { error: bookingError } = await supabase

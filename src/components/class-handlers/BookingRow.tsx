@@ -121,17 +121,19 @@ export function BookingRow({
         <ConsentStatusBadge status={booking.clients?.social_media_consent_status || 'not_marked'} />
       </TableCell>
       
-      <TableCell className="text-center">
-        {isEditing ? (
-          <CheckableCell
-            isEditing={true}
-            checked={bookingData.info_pg ?? false}
-            onChange={(checked) => handleInputChange(booking.id, 'info_pg', checked)}
-          />
-        ) : (
-          renderInfoStatus(booking.info_pg_status)
-        )}
-      </TableCell>
+      {isPuppyClass && (
+        <TableCell className="text-center">
+          {isEditing ? (
+            <CheckableCell
+              isEditing={true}
+              checked={bookingData.info_pg ?? false}
+              onChange={(checked) => handleInputChange(booking.id, 'info_pg', checked)}
+            />
+          ) : (
+            renderInfoStatus(booking.info_pg_status)
+          )}
+        </TableCell>
+      )}
       
       <TableCell>
         <BookingActionButtons 
