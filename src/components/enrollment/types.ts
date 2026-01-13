@@ -23,7 +23,7 @@ export const dogSchema = z.object({
   birthDate: z.string().min(1, "Birth date is required"),
   gender: z.enum(["Male", "Female"], { required_error: "Please select gender" }),
   breed: z.string().min(1, "Breed is required"),
-  spayNeuterStatus: z.enum(["When old enough", "Already done", "Not planning"], {
+  spayNeuterStatus: z.enum(["When old enough", "Already done", "Not planning to"], {
     required_error: "Please select spay/neuter status"
   }),
   acquiredFrom: z.enum([

@@ -2,9 +2,11 @@
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Control } from "react-hook-form";
 import { z } from "zod";
 import { useIsMobile } from "@/hooks/useIsMobile";
+import { SPAY_NEUTER_OPTIONS } from "./dogFormSchema";
 
 // Using the same schema types from the parent form
 type FormSchema = z.infer<typeof import("./dogFormSchema").formSchema>;
@@ -81,10 +83,35 @@ export function BasicInfoTab({ control }: BasicInfoTabProps) {
         name="weight"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Weight (lbs)</FormLabel>
+            <FormLabel>Weight (kg)</FormLabel>
             <FormControl>
               <Input {...field} type="number" className="w-full" />
             </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={control}
+        name="spay_neuter_status"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Spay/Neuter Status</FormLabel>
+            <Select onValueChange={field.onChange} value={field.value || ""}>
+              <FormControl>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {SPAY_NEUTER_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <FormMessage />
           </FormItem>
         )}

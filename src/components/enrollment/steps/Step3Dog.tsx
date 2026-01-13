@@ -125,7 +125,7 @@ export function Step3Dog({ form }: Step3DogProps) {
             {[
               { value: "When old enough", label: "When old enough" },
               { value: "Already done", label: "Already done" },
-              { value: "Not planning", label: "Not planning to" }
+              { value: "Not planning to", label: "Not planning to" }
             ].map((option) => (
               <button
                 key={option.value}
