@@ -1,17 +1,17 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { GitBranch, Mail, MapPin, Phone, Briefcase, Stethoscope, Check, X, HelpCircle, Send, FileCheck, Syringe } from "lucide-react";
+import { GitBranch, Mail, MapPin, Phone, Briefcase, Stethoscope, Send, FileCheck, Syringe } from "lucide-react";
 import { formatPhoneNumber } from "../utils/handlerUtils";
 import { useBranch } from "@/context/BranchContext";
 import { useEffect, useMemo } from "react";
-import { Badge } from "@/components/ui/badge";
 import { EnrollmentRegistration } from "@/types/handler";
 import { SendQuickEmailModal } from "./SendQuickEmailModal";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
+import { ClickableConsentBadge } from "../status/ClickableConsentBadge";
 
 type ConsentStatus = 'yes' | 'no' | 'not_marked' | 'unsure';
 
@@ -40,33 +40,6 @@ interface HandlerInfoProps {
   };
 }
 
-function ConsentBadge({ status, label }: { status?: ConsentStatus | string; label: string }) {
-  const normalizedStatus = status?.toLowerCase();
-  const getStatusDetails = () => {
-    switch (normalizedStatus) {
-      case 'yes':
-        return { icon: Check, className: 'bg-green-100 text-green-800 hover:bg-green-100', text: 'Yes' };
-      case 'no':
-        return { icon: X, className: 'bg-red-100 text-red-800 hover:bg-red-100', text: 'No' };
-      case 'unsure':
-        return { icon: HelpCircle, className: 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100', text: 'Unsure' };
-      default:
-        return { icon: HelpCircle, className: 'bg-gray-100 text-gray-600 hover:bg-gray-100', text: 'Not marked' };
-    }
-  };
-
-  const { icon: Icon, className, text } = getStatusDetails();
-
-  return (
-    <div className="flex items-center justify-between">
-      <span className="text-sm text-muted-foreground">{label}</span>
-      <Badge variant="outline" className={className}>
-        <Icon className="h-3 w-3 mr-1" />
-        {text}
-      </Badge>
-    </div>
-  );
-}
 
 export function HandlerInfo({ handler }: HandlerInfoProps) {
   const { branches } = useBranch();
@@ -222,12 +195,28 @@ export function HandlerInfo({ handler }: HandlerInfoProps) {
           </div>
         )}
 
-        {/* Consent Statuses */}
+        {/* Consent Statuses - Clickable */}
         <div className="space-y-2">
           <h3 className="font-semibold text-muted-foreground text-sm">Permissions</h3>
           <div className="space-y-2">
-            <ConsentBadge status={consentStatuses.whatsapp} label="WhatsApp" />
-            <ConsentBadge status={consentStatuses.photo} label="Photo/Social Media" />
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">WhatsApp</span>
+              <ClickableConsentBadge
+                status={(consentStatuses.whatsapp as 'yes' | 'no' | 'not_marked') || 'not_marked'}
+                handlerId={handler.id}
+                field="uses_whatsapp_status"
+                onUpdate={() => queryClient.invalidateQueries({ queryKey: ['client', handler.id] })}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Photo/Social Media</span>
+              <ClickableConsentBadge
+                status={(consentStatuses.photo as 'yes' | 'no' | 'not_marked') || 'not_marked'}
+                handlerId={handler.id}
+                field="social_media_consent_status"
+                onUpdate={() => queryClient.invalidateQueries({ queryKey: ['client', handler.id] })}
+              />
+            </div>
           </div>
         </div>
 
