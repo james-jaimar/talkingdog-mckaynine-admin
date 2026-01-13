@@ -3,6 +3,36 @@ import { CLASS_CONFIRMATION_TEMPLATE, CLASS_CONFIRMATION_SUBJECT } from "./templ
 import { formatClassDates, formatClassDayTime } from "./utils/formatClassDates";
 import { renderTemplate, getVariablesWithSignature, TemplateVariables } from "./template-renderer";
 
+/**
+ * Fetches the class confirmation email template from the database
+ * Falls back to hardcoded template if not found
+ */
+async function getClassConfirmationTemplate(branchId: string): Promise<{ template: string; subject: string }> {
+  // First try branch_email_templates (branch-specific)
+  const { data: branchTemplate } = await supabase
+    .from("branch_email_templates")
+    .select("content, subject")
+    .eq("branch_id", branchId)
+    .eq("type", "class_confirmation")
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (branchTemplate?.content) {
+    console.log("Using branch email template for class confirmation");
+    return {
+      template: branchTemplate.content,
+      subject: branchTemplate.subject || CLASS_CONFIRMATION_SUBJECT,
+    };
+  }
+
+  // Fallback to hardcoded template
+  console.log("Using hardcoded class confirmation template (no branch template found)");
+  return {
+    template: CLASS_CONFIRMATION_TEMPLATE,
+    subject: CLASS_CONFIRMATION_SUBJECT,
+  };
+}
+
 interface ClassEnrollmentDetails {
   dogName: string;
   className: string;
@@ -142,10 +172,13 @@ export async function generateClassConfirmationEmail(
       branch_name: branchData?.name || "McKaynine",
     };
 
+    // Fetch the template from database (or fallback to hardcoded)
+    const { template, subject: templateSubject } = await getClassConfirmationTemplate(client.branch_id);
+
     // Render template with signature
     const variablesWithSignature = getVariablesWithSignature(variables);
-    const htmlContent = renderTemplate(CLASS_CONFIRMATION_TEMPLATE, variablesWithSignature);
-    const subject = renderTemplate(CLASS_CONFIRMATION_SUBJECT, { class_name: primaryClassName });
+    const htmlContent = renderTemplate(template, variablesWithSignature);
+    const subject = renderTemplate(templateSubject, { class_name: primaryClassName });
 
     return {
       to_email: client.email,
