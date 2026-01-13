@@ -3,6 +3,35 @@ import { supabase } from "@/integrations/supabase/client";
 import { Schedule, Booking, InvoiceItem } from "../types";
 
 export async function fetchTrainers(branchId: string) {
+  // First, get all trainers who have class schedules in classes belonging to this branch
+  // This ensures we show trainers who teach at a branch, not just those "registered" to it
+  const { data: scheduleData, error: scheduleError } = await supabase
+    .from('class_schedules')
+    .select(`
+      trainer_id,
+      classes:class_id (
+        branch_id
+      )
+    `);
+
+  if (scheduleError) {
+    console.error('Error fetching schedules for trainer lookup:', scheduleError);
+    throw scheduleError;
+  }
+
+  // Get unique trainer IDs who have schedules in this branch
+  const trainerIdsInBranch = [...new Set(
+    scheduleData
+      ?.filter(s => s.classes?.branch_id === branchId)
+      ?.map(s => s.trainer_id)
+      .filter(Boolean) || []
+  )];
+
+  if (trainerIdsInBranch.length === 0) {
+    return [];
+  }
+
+  // Now fetch the trainer details for those trainers
   const { data: trainers, error } = await supabase
     .from('trainers')
     .select(`
@@ -11,7 +40,7 @@ export async function fetchTrainers(branchId: string) {
       last_name,
       email
     `)
-    .eq('branch_id', branchId);
+    .in('id', trainerIdsInBranch);
 
   if (error) {
     console.error('Error fetching trainers:', error);
