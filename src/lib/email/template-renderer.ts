@@ -19,6 +19,10 @@ export const AVAILABLE_MERGE_FIELDS = [
   { key: "base_url", label: "Base URL (for images)", example: "https://mckaynine.talkingdog.co.za" },
   { key: "custom_message", label: "Custom Message", example: "Your personalized message here" },
   { key: "signature", label: "Email Signature", example: "Ady Hawkins, Branch Manager..." },
+  // Payment receipt fields
+  { key: "invoice_number", label: "Invoice Number", example: "INV-2026-001" },
+  { key: "payment_summary", label: "Payment Summary Box", example: "[Payment summary with dates and amounts]" },
+  { key: "items_breakdown", label: "Items Breakdown", example: "[Itemized list with totals]" },
 ] as const;
 
 export type MergeFieldKey = typeof AVAILABLE_MERGE_FIELDS[number]["key"];
@@ -108,6 +112,84 @@ export function getSampleTemplate(): string {
 }
 
 /**
+ * Generate sample payment summary HTML for preview
+ */
+function getSamplePaymentSummaryHtml(): string {
+  return `
+    <div style="background-color: #f8f9fa; padding: 24px; border-radius: 8px; margin: 24px 0; border-left: 4px solid #2c5530;">
+      <h2 style="margin: 0 0 16px; color: #2c5530; font-size: 18px; font-weight: 600;">💳 Payment Summary</h2>
+      <table style="width: 100%; border-collapse: collapse;">
+        <tr>
+          <td style="padding: 8px 0; color: #555; font-size: 14px;"><strong>Receipt Number:</strong></td>
+          <td style="padding: 8px 0; color: #333; font-size: 14px; text-align: right;">INV-2026-001</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 0; color: #555; font-size: 14px;"><strong>Invoice Date:</strong></td>
+          <td style="padding: 8px 0; color: #333; font-size: 14px; text-align: right;">15 January 2026</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 0; color: #555; font-size: 14px;"><strong>Payment Date:</strong></td>
+          <td style="padding: 8px 0; color: #333; font-size: 14px; text-align: right;">18 January 2026</td>
+        </tr>
+        <tr style="border-top: 2px solid #2c5530;">
+          <td style="padding: 12px 0 0; color: #2c5530; font-size: 18px; font-weight: 700;"><strong>Amount Paid:</strong></td>
+          <td style="padding: 12px 0 0; color: #2c5530; font-size: 18px; font-weight: 700; text-align: right;">R 2,500.00</td>
+        </tr>
+      </table>
+    </div>
+  `;
+}
+
+/**
+ * Generate sample items breakdown HTML for preview
+ */
+function getSampleItemsBreakdownHtml(): string {
+  return `
+    <div style="margin: 24px 0;">
+      <h3 style="margin: 0 0 16px; color: #2c5530; font-size: 16px; font-weight: 600;">📋 Items</h3>
+      <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+          <tr style="background-color: #f8f9fa;">
+            <th style="padding: 12px 0; color: #555; font-size: 12px; text-align: left; text-transform: uppercase; letter-spacing: 0.5px;">Description</th>
+            <th style="padding: 12px 0; color: #555; font-size: 12px; text-align: center; text-transform: uppercase; letter-spacing: 0.5px;">Qty</th>
+            <th style="padding: 12px 0; color: #555; font-size: 12px; text-align: right; text-transform: uppercase; letter-spacing: 0.5px;">Price</th>
+            <th style="padding: 12px 0; color: #555; font-size: 12px; text-align: right; text-transform: uppercase; letter-spacing: 0.5px;">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="padding: 10px 0; color: #333; font-size: 14px; border-bottom: 1px solid #eee;">Puppy Class - Enrollment Fee</td>
+            <td style="padding: 10px 0; color: #333; font-size: 14px; text-align: center; border-bottom: 1px solid #eee;">1</td>
+            <td style="padding: 10px 0; color: #333; font-size: 14px; text-align: right; border-bottom: 1px solid #eee;">R 500.00</td>
+            <td style="padding: 10px 0; color: #333; font-size: 14px; text-align: right; border-bottom: 1px solid #eee;">R 500.00</td>
+          </tr>
+          <tr>
+            <td style="padding: 10px 0; color: #333; font-size: 14px; border-bottom: 1px solid #eee;">Puppy Class - Course Fee (Term 1)</td>
+            <td style="padding: 10px 0; color: #333; font-size: 14px; text-align: center; border-bottom: 1px solid #eee;">1</td>
+            <td style="padding: 10px 0; color: #333; font-size: 14px; text-align: right; border-bottom: 1px solid #eee;">R 2,000.00</td>
+            <td style="padding: 10px 0; color: #333; font-size: 14px; text-align: right; border-bottom: 1px solid #eee;">R 2,000.00</td>
+          </tr>
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="3" style="padding: 10px 0; color: #555; font-size: 14px; text-align: right;"><strong>Subtotal:</strong></td>
+            <td style="padding: 10px 0; color: #333; font-size: 14px; text-align: right;">R 2,500.00</td>
+          </tr>
+          <tr style="background-color: #e8f4e9;">
+            <td colspan="3" style="padding: 14px 10px; color: #2c5530; font-size: 16px; font-weight: 700; text-align: right;"><strong>Total Paid:</strong></td>
+            <td style="padding: 14px 10px; color: #2c5530; font-size: 16px; font-weight: 700; text-align: right;">R 2,500.00</td>
+          </tr>
+          <tr>
+            <td colspan="3" style="padding: 10px 0; color: #555; font-size: 14px; text-align: right;"><strong>Balance Due:</strong></td>
+            <td style="padding: 10px 0; color: #28a745; font-size: 14px; font-weight: 600; text-align: right;">R 0.00</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  `;
+}
+
+/**
  * Generate sample variables for preview
  */
 export function getSampleVariables(): TemplateVariables {
@@ -128,5 +210,9 @@ export function getSampleVariables(): TemplateVariables {
     base_url: window.location.origin,
     custom_message: "We hope you and Buddy are doing well!",
     signature: getEmailSignature(branchName),
+    // Payment receipt fields
+    invoice_number: "INV-2026-001",
+    payment_summary: getSamplePaymentSummaryHtml(),
+    items_breakdown: getSampleItemsBreakdownHtml(),
   };
 }

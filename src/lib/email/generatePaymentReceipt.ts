@@ -251,6 +251,10 @@ function buildItemsBreakdownHtml(items: InvoiceItem[], invoice: any): string {
             <td colspan="3" style="padding: 14px 10px; color: #2c5530; font-size: 16px; font-weight: 700; text-align: right;"><strong>Total Paid:</strong></td>
             <td style="padding: 14px 10px; color: #2c5530; font-size: 16px; font-weight: 700; text-align: right;">${formatCurrency(invoice.total)}</td>
           </tr>
+          <tr>
+            <td colspan="3" style="padding: 10px 0; color: #555; font-size: 14px; text-align: right;"><strong>Balance Due:</strong></td>
+            <td style="padding: 10px 0; color: #28a745; font-size: 14px; font-weight: 600; text-align: right;">R 0.00</td>
+          </tr>
         </tfoot>
       </table>
     </div>
