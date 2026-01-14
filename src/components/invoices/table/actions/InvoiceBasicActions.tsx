@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
-import { Eye, Edit, Send } from "lucide-react";
+import { Eye, Edit, Send, Receipt } from "lucide-react";
 import { Invoice } from "@/types/invoice";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { generateClassConfirmationEmail } from "@/lib/email/generateClassConfirmation";
+import { generatePaymentReceiptEmail } from "@/lib/email/generatePaymentReceipt";
 import { toast } from "sonner";
 
 interface InvoiceBasicActionsProps {
@@ -16,6 +17,7 @@ interface InvoiceBasicActionsProps {
 export function InvoiceBasicActions({ invoice, isPending, onCloseDropdown }: InvoiceBasicActionsProps) {
   const navigate = useNavigate();
   const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [isSendingReceipt, setIsSendingReceipt] = useState(false);
 
   const handleView = () => {
     onCloseDropdown();
@@ -69,6 +71,46 @@ export function InvoiceBasicActions({ invoice, isPending, onCloseDropdown }: Inv
     }
   };
 
+  const handleSendPaymentReceipt = async () => {
+    onCloseDropdown();
+    setIsSendingReceipt(true);
+    
+    try {
+      toast.info("Generating payment receipt...");
+      
+      const receiptData = await generatePaymentReceiptEmail(invoice.id);
+      
+      if (!receiptData) {
+        toast.warning("Could not generate payment receipt for this invoice");
+        return;
+      }
+      
+      const { error: queueError } = await supabase
+        .from("email_queue")
+        .insert({
+          branch_id: receiptData.branch_id,
+          to_email: receiptData.to_email,
+          subject: receiptData.subject,
+          html_content: receiptData.html_content,
+          handler_id: receiptData.handler_id,
+          status: "pending",
+        });
+
+      if (queueError) {
+        console.error("Error queueing receipt email:", queueError);
+        toast.error("Failed to queue payment receipt");
+      } else {
+        console.log("Payment receipt email queued for:", receiptData.to_email);
+        toast.success(`Payment receipt queued for ${receiptData.to_email}`);
+      }
+    } catch (error) {
+      console.error("Error sending payment receipt:", error);
+      toast.error("Failed to send payment receipt");
+    } finally {
+      setIsSendingReceipt(false);
+    }
+  };
+
   return (
     <>
       <DropdownMenuItem onClick={handleView} disabled={isPending}>
@@ -82,6 +124,12 @@ export function InvoiceBasicActions({ invoice, isPending, onCloseDropdown }: Inv
         disabled={isPending || isSendingEmail}
       >
         <Send className="mr-2 h-4 w-4 text-blue-600" /> Send Class Confirmation
+      </DropdownMenuItem>
+      <DropdownMenuItem 
+        onClick={handleSendPaymentReceipt} 
+        disabled={isPending || isSendingReceipt}
+      >
+        <Receipt className="mr-2 h-4 w-4 text-green-600" /> Send Payment Receipt
       </DropdownMenuItem>
     </>
   );
