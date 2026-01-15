@@ -189,30 +189,12 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
     if (unallocatedCourseFee > 0) {
       console.log(`[FinancialProcessor] Unallocated course fees: R${unallocatedCourseFee.toFixed(2)} from ${unallocatedItemCount} items`);
       
-      // Calculate average fee percentages from processed classes
-      let avgAdminPercent = 10;
-      let avgTrainerPercent = 30;
-      let avgFranchisePercent = 15;
-      
-      let totalClassRevenue = 0;
-      let totalAdminFee = 0;
-      let totalTrainerFee = 0;
-      let totalFranchiseFee = 0;
-      
-      classSummaries.forEach(summary => {
-        if (summary.totalRevenue > 0) {
-          totalClassRevenue += summary.totalRevenue;
-          totalAdminFee += summary.adminFee;
-          totalTrainerFee += summary.instructorFee;
-          totalFranchiseFee += summary.franchiseFee;
-        }
-      });
-      
-      if (totalClassRevenue > 0) {
-        avgAdminPercent = (totalAdminFee / totalClassRevenue) * 100;
-        avgTrainerPercent = (totalTrainerFee / totalClassRevenue) * 100;
-        avgFranchisePercent = (totalFranchiseFee / totalClassRevenue) * 100;
-      }
+      // For any unallocated course-fee items (no booking link), apply the platform-standard fee rates
+      // (these are hard-set business rules: Admin 10%, Trainer 40%, Franchise 15%).
+      // This avoids skewing dashboard percentages due to data linkage issues.
+      const avgAdminPercent = 10;
+      const avgTrainerPercent = 40;
+      const avgFranchisePercent = 15;
 
       const unallocatedAdminFee = unallocatedCourseFee * (avgAdminPercent / 100);
       const unallocatedTrainerFee = unallocatedCourseFee * (avgTrainerPercent / 100);

@@ -17,7 +17,7 @@ import { toast } from "sonner";
 import { Loader2, AlertCircle } from "lucide-react";
 import { Invoice } from "@/hooks/invoices/types";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { isEnrollmentFeeItem } from "@/lib/invoiceItemUtils";
+import { isEnrollmentFeeItem, applyInvoiceDiscountToItems } from "@/lib/invoiceItemUtils";
 
 export default function FinancialDashboard() {
   const [timeframe, setTimeframe] = useState<'monthly' | 'quarterly' | 'yearly'>('monthly');
@@ -70,35 +70,43 @@ export default function FinancialDashboard() {
   // Calculate revenue metrics from invoices
   // IMPORTANT: Separate course fees from enrollment fees
   // Enrollment fees are pass-through to franchise owner and excluded from fee calculations
-  // CRITICAL: Apply invoice-level discounts to get NET amounts for consistency with fee calculations
+  // CRITICAL: Use the SAME discount allocator as the rest of the finance system
   const revenueMetrics = useMemo(() => {
     let courseRevenue = 0;
     let enrollmentFees = 0;
     let collectedCourse = 0;
     let pendingCourse = 0;
     let overdueCourse = 0;
-    
+
     termFilteredInvoices.forEach(inv => {
-      // If invoice has items with item_type, use that to separate
+      // If invoice has items with item_type, split course vs enrollment using NET amounts
       if (inv.items && inv.items.length > 0) {
-        // Calculate discount ratio for this invoice to get net amounts
-        const subtotal = inv.subtotal || inv.items.reduce((sum, i) => sum + (i.amount || 0), 0);
-        const monetaryDiscount = inv.monetary_discount || 0;
-        const discountRatio = subtotal > 0 ? monetaryDiscount / subtotal : 0;
-        
-        inv.items.forEach(item => {
-          const rawAmount = item.amount || 0;
-          // Apply proportional discount to get net amount
-          const netAmount = rawAmount - (rawAmount * discountRatio);
-          
-          if (isEnrollmentFeeItem(item)) {
-            enrollmentFees += netAmount;
-          } else {
-            courseRevenue += netAmount;
-            if (inv.status === 'paid') collectedCourse += netAmount;
-            else if (inv.status === 'sent') pendingCourse += netAmount;
-            else if (inv.status === 'overdue') overdueCourse += netAmount;
+        const itemsWithInvoiceData = inv.items.map(item => ({
+          ...item,
+          invoice_id: inv.id,
+          invoices: {
+            subtotal: inv.subtotal,
+            monetary_discount: inv.monetary_discount,
+            discount_type: inv.discount_type,
+            discount_amount: inv.discount_amount,
+            status: inv.status,
+          },
+        }));
+
+        const discountedItems = applyInvoiceDiscountToItems(itemsWithInvoiceData as any);
+
+        discountedItems.forEach(item => {
+          const amount = (item as any).net_amount ?? item.amount ?? 0;
+
+          if (isEnrollmentFeeItem(item as any)) {
+            enrollmentFees += amount;
+            return;
           }
+
+          courseRevenue += amount;
+          if (inv.status === 'paid') collectedCourse += amount;
+          else if (inv.status === 'sent') pendingCourse += amount;
+          else if (inv.status === 'overdue') overdueCourse += amount;
         });
       } else {
         // Fallback for invoices without items loaded - use total (already net of discounts)
@@ -108,13 +116,13 @@ export default function FinancialDashboard() {
         else if (inv.status === 'overdue') overdueCourse += inv.total;
       }
     });
-    
+
     return {
       totalRevenue: courseRevenue,
       enrollmentFees,
       collectedRevenue: collectedCourse,
       pendingRevenue: pendingCourse,
-      overdueRevenue: overdueCourse
+      overdueRevenue: overdueCourse,
     };
   }, [termFilteredInvoices]);
   
