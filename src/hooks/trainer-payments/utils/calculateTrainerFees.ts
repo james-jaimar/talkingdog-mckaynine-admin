@@ -1,6 +1,6 @@
-
 import { Schedule, Booking, InvoiceItem } from "../types";
-import { getCourseFeeAmount } from "@/lib/invoiceItemUtils";
+import { getCourseFeeAmount, applyInvoiceDiscountToItems } from "@/lib/invoiceItemUtils";
+import { roundToCents } from "@/lib/invoiceMath";
 
 interface RevenueDetails {
   revenue: number;
@@ -10,6 +10,9 @@ interface RevenueDetails {
 
 /**
  * Calculate revenue for a class based on bookings and invoice items
+ * 
+ * IMPORTANT: This now applies invoice-level discounts to get accurate net amounts
+ * before calculating trainer fees.
  */
 export function calculateClassRevenue(
   bookings: Booking[],
@@ -57,32 +60,48 @@ export function calculateClassRevenue(
     return matchesBooking && matchesBranch;
   });
   
-  // Calculate actual revenue from paid invoices
-  const paidInvoiceItems = branchFilteredInvoiceItems.filter(item => 
-    item.booking_id && 
-    bookingIds.includes(item.booking_id) && 
-    item.invoices?.status === 'paid'
-  );
+  // Apply invoice-level discounts to get accurate net amounts
+  // Transform items to have the invoices shape expected by applyInvoiceDiscountToItems
+  const itemsWithInvoiceData = branchFilteredInvoiceItems.map(item => ({
+    ...item,
+    invoices: item.invoices ? {
+      subtotal: item.invoices.subtotal,
+      monetary_discount: item.invoices.monetary_discount,
+      discount_type: item.invoices.discount_type,
+      discount_amount: item.invoices.discount_amount,
+      status: item.invoices.status
+    } : null
+  }));
+  
+  const discountedItems = applyInvoiceDiscountToItems(itemsWithInvoiceData);
+  
+  // Create a map of original item id to discounted item for status lookup
+  const discountedItemMap = new Map(discountedItems.map(item => [item.id, item]));
+  
+  // Calculate actual revenue from paid invoices (using net amounts)
+  const paidDiscountedItems = discountedItems.filter(item => {
+    const originalItem = branchFilteredInvoiceItems.find(i => i.id === item.id);
+    return originalItem?.invoices?.status === 'paid';
+  });
 
-  // Calculate potential revenue from all invoice items (paid or unpaid)
-  const allValidInvoiceItems = branchFilteredInvoiceItems.filter(item => 
-    item.booking_id && 
-    bookingIds.includes(item.booking_id) && 
-    item.invoices?.status !== 'cancelled'
-  );
+  // Calculate potential revenue from all invoice items (paid or unpaid, using net amounts)
+  const allValidDiscountedItems = discountedItems.filter(item => {
+    const originalItem = branchFilteredInvoiceItems.find(i => i.id === item.id);
+    return originalItem?.invoices?.status !== 'cancelled';
+  });
 
   // If there are paid items, calculate actual revenue
-  // IMPORTANT: Use only course fees (exclude enrollment fees) for trainer fee calculations
-  if (paidInvoiceItems.length > 0) {
-    // Get course fee amount only (excluding enrollment fees)
-    const paidAmount = getCourseFeeAmount(paidInvoiceItems);
+  // IMPORTANT: Use only course fees (exclude enrollment fees) and use NET amounts
+  if (paidDiscountedItems.length > 0) {
+    // Get course fee amount only (excluding enrollment fees), using net_amount
+    const paidAmount = getCourseFeeAmount(paidDiscountedItems, true);
     
     // Apply trainer fee calculation
     if (trainerFeeType === 'percentage') {
-      revenue = paidAmount * (trainerFeeValue / 100);
+      revenue = roundToCents(paidAmount * (trainerFeeValue / 100));
     } else if (trainerFeeType === 'fixed') {
       // For fixed fee, we apply the fixed amount per booking
-      revenue = paidInvoiceItems.length * trainerFeeValue;
+      revenue = roundToCents(paidDiscountedItems.length * trainerFeeValue);
     }
     
     // If there are paid invoice items, consider the class as paid
@@ -90,26 +109,26 @@ export function calculateClassRevenue(
   }
 
   // Calculate potential revenue from all valid invoice items
-  // IMPORTANT: Use only course fees (exclude enrollment fees)
-  if (allValidInvoiceItems.length > 0) {
-    // Get course fee amount only (excluding enrollment fees)
-    const totalAmount = getCourseFeeAmount(allValidInvoiceItems);
+  // IMPORTANT: Use only course fees (exclude enrollment fees) and use NET amounts
+  if (allValidDiscountedItems.length > 0) {
+    // Get course fee amount only (excluding enrollment fees), using net_amount
+    const totalAmount = getCourseFeeAmount(allValidDiscountedItems, true);
     
     // Apply trainer fee calculation
     if (trainerFeeType === 'percentage') {
-      potentialRevenue = totalAmount * (trainerFeeValue / 100);
+      potentialRevenue = roundToCents(totalAmount * (trainerFeeValue / 100));
     } else if (trainerFeeType === 'fixed') {
       // For fixed fee, we apply the fixed amount per booking
-      potentialRevenue = allValidInvoiceItems.length * trainerFeeValue;
+      potentialRevenue = roundToCents(allValidDiscountedItems.length * trainerFeeValue);
     }
   } else if (bookings.length > 0 && schedule.classes.course_fee) {
     // If no invoice items but bookings exist, calculate based on course fee
     const estimatedTotal = bookings.length * (schedule.classes.course_fee || 0);
     
     if (trainerFeeType === 'percentage') {
-      potentialRevenue = estimatedTotal * (trainerFeeValue / 100);
+      potentialRevenue = roundToCents(estimatedTotal * (trainerFeeValue / 100));
     } else if (trainerFeeType === 'fixed') {
-      potentialRevenue = bookings.length * trainerFeeValue;
+      potentialRevenue = roundToCents(bookings.length * trainerFeeValue);
     }
   }
 

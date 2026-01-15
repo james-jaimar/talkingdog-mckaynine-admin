@@ -1,6 +1,7 @@
 import { TrainerPaymentData, TrainerClassDetail, Schedule, Booking, InvoiceItem } from "../types";
 import { calculateClassRevenue } from "./calculateTrainerFees";
-import { getCourseFeeAmount } from "@/lib/invoiceItemUtils";
+import { getCourseFeeAmount, applyInvoiceDiscountToItems } from "@/lib/invoiceItemUtils";
+import { roundToCents } from "@/lib/invoiceMath";
 
 export function formatTrainerPaymentData(
   trainer: { id: string; first_name: string; last_name: string; email?: string },
@@ -170,16 +171,31 @@ export function formatTrainerPaymentData(
       const dogName = dogData?.name || 'Unknown Dog';
       const dogBreed = dogData?.breed || '';
       
-      // Get invoice items for this specific booking and calculate course fee (excluding enrollment fees)
+      // Get invoice items for this specific booking and apply invoice-level discounts
       const bookingInvoiceItems = invoiceItems.filter(item => item.booking_id === booking.id);
-      const courseFee = getCourseFeeAmount(bookingInvoiceItems);
+      
+      // Transform items for discount application
+      const itemsWithInvoiceData = bookingInvoiceItems.map(item => ({
+        ...item,
+        invoices: item.invoices ? {
+          subtotal: item.invoices.subtotal,
+          monetary_discount: item.invoices.monetary_discount,
+          discount_type: item.invoices.discount_type,
+          discount_amount: item.invoices.discount_amount,
+          status: item.invoices.status
+        } : null
+      }));
+      
+      // Apply discounts and get course fee (using net_amount)
+      const discountedItems = applyInvoiceDiscountToItems(itemsWithInvoiceData);
+      const courseFee = getCourseFeeAmount(discountedItems, true);
         
-      // Calculate individual commission based on THIS booking's course fee
+      // Calculate individual commission based on THIS booking's course fee (after discount)
       let perBookingCommission = 0;
       if (trainerFeeType === 'percentage') {
-        perBookingCommission = courseFee * (feeValue / 100);
+        perBookingCommission = roundToCents(courseFee * (feeValue / 100));
       } else if (trainerFeeType === 'fixed') {
-        perBookingCommission = feeValue;
+        perBookingCommission = roundToCents(feeValue);
       }
         
       return {

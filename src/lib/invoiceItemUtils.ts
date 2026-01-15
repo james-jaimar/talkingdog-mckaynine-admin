@@ -1,7 +1,11 @@
 /**
  * Utility functions for working with invoice items
  * Specifically for identifying and filtering enrollment fees from course fees
+ * 
+ * IMPORTANT: All discount calculations use cents-based rounding to prevent drift.
  */
+
+import { roundToCents } from './invoiceMath';
 
 export interface InvoiceItemLike {
   description?: string;
@@ -37,81 +41,163 @@ export function isEnrollmentFeeItem(item: InvoiceItemLike): boolean {
 }
 
 /**
- * Apply invoice-level discount proportionally to invoice items
- * Returns items with discounted amounts based on their share of the subtotal
- * 
- * This is crucial for accurate financial reporting when manual discounts are applied
- * to invoices (e.g., 25% discount). The discount is distributed proportionally
- * across all items based on their share of the invoice subtotal.
+ * Enhanced result type that preserves original item properties plus net_amount
  */
-export function applyInvoiceDiscountToItems<T extends InvoiceItemWithDiscount>(
+export interface DiscountedInvoiceItem {
+  amount: number;          // Original amount
+  net_amount: number;      // Amount after invoice-level discount
+  description?: string;
+  item_type?: string;
+  invoice_id?: string;
+  booking_id?: string;
+  id?: string;
+}
+
+/**
+ * Apply invoice-level discount proportionally to invoice items
+ * 
+ * This version uses a precise cents-based algorithm to prevent rounding drift:
+ * 1. Calculate each item's share of the discount in cents
+ * 2. Track accumulated rounding error
+ * 3. Adjust the final item to ensure sum(net_amounts) === subtotal - monetary_discount
+ * 
+ * Returns items with both original 'amount' and discounted 'net_amount'
+ */
+export function applyInvoiceDiscountToItems<T extends InvoiceItemWithDiscount & { id?: string; invoice_id?: string; booking_id?: string }>(
   items: T[]
-): Array<{ amount: number; description?: string; item_type?: string }> {
+): DiscountedInvoiceItem[] {
   if (!items || items.length === 0) return [];
   
-  const discountedItems: Array<{ amount: number; description?: string; item_type?: string }> = [];
+  // Group items by invoice to apply discount per-invoice
+  const itemsByInvoice = new Map<string, T[]>();
+  const noInvoiceItems: T[] = [];
   
   items.forEach(item => {
-    const invoice = item.invoices;
-    const originalAmount = item.amount || 0;
+    const invoiceKey = item.invoices ? JSON.stringify({
+      subtotal: item.invoices.subtotal,
+      monetary_discount: item.invoices.monetary_discount
+    }) : null;
     
-    if (!invoice) {
-      // No invoice data, use original amount
-      discountedItems.push({
-        amount: originalAmount,
-        description: item.description,
-        item_type: item.item_type
+    if (!invoiceKey || !item.invoices) {
+      noInvoiceItems.push(item);
+    } else {
+      if (!itemsByInvoice.has(invoiceKey)) {
+        itemsByInvoice.set(invoiceKey, []);
+      }
+      itemsByInvoice.get(invoiceKey)!.push(item);
+    }
+  });
+  
+  const result: DiscountedInvoiceItem[] = [];
+  
+  // Process items without invoice data (no discount applied)
+  noInvoiceItems.forEach(item => {
+    const originalAmount = item.amount || 0;
+    result.push({
+      amount: originalAmount,
+      net_amount: originalAmount,
+      description: item.description,
+      item_type: item.item_type,
+      id: item.id,
+      invoice_id: item.invoice_id,
+      booking_id: item.booking_id
+    });
+  });
+  
+  // Process items grouped by invoice
+  itemsByInvoice.forEach((invoiceItems) => {
+    const invoice = invoiceItems[0].invoices!;
+    const subtotal = invoice.subtotal || 0;
+    const monetaryDiscount = invoice.monetary_discount || 0;
+    
+    // If no discount or invalid subtotal, keep original amounts
+    if (monetaryDiscount <= 0 || subtotal <= 0) {
+      invoiceItems.forEach(item => {
+        const originalAmount = item.amount || 0;
+        result.push({
+          amount: originalAmount,
+          net_amount: originalAmount,
+          description: item.description,
+          item_type: item.item_type,
+          id: item.id,
+          invoice_id: item.invoice_id,
+          booking_id: item.booking_id
+        });
       });
       return;
     }
     
-    const subtotal = invoice.subtotal || 0;
-    const monetaryDiscount = invoice.monetary_discount || 0;
+    // Calculate target net total (what the sum of net_amounts should be)
+    const targetNetTotal = roundToCents(subtotal - monetaryDiscount);
+    const discountRatio = monetaryDiscount / subtotal;
     
-    // If there's a discount and we have a valid subtotal
-    if (monetaryDiscount > 0 && subtotal > 0) {
-      // Calculate the discount ratio for this invoice
-      const discountRatio = monetaryDiscount / subtotal;
+    // Calculate net amounts using cents-based algorithm
+    let accumulatedNet = 0;
+    const processedItems: DiscountedInvoiceItem[] = [];
+    
+    invoiceItems.forEach((item, index) => {
+      const originalAmount = item.amount || 0;
+      const isLast = index === invoiceItems.length - 1;
       
-      // Apply proportional discount to this item (round to nearest cent)
-      const itemDiscount = Math.round(originalAmount * discountRatio * 100) / 100;
-      const discountedAmount = Math.round((originalAmount - itemDiscount) * 100) / 100;
+      let netAmount: number;
+      if (isLast) {
+        // Last item gets the remainder to ensure exact sum
+        netAmount = roundToCents(targetNetTotal - accumulatedNet);
+        // Ensure non-negative
+        netAmount = Math.max(0, netAmount);
+      } else {
+        // Apply proportional discount
+        const itemDiscount = originalAmount * discountRatio;
+        netAmount = roundToCents(originalAmount - itemDiscount);
+        accumulatedNet += netAmount;
+      }
       
-      discountedItems.push({
-        amount: discountedAmount,
-        description: item.description,
-        item_type: item.item_type
-      });
-    } else {
-      // No discount or invalid subtotal, use original amount
-      discountedItems.push({
+      processedItems.push({
         amount: originalAmount,
+        net_amount: netAmount,
         description: item.description,
-        item_type: item.item_type
+        item_type: item.item_type,
+        id: item.id,
+        invoice_id: item.invoice_id,
+        booking_id: item.booking_id
       });
-    }
+    });
+    
+    result.push(...processedItems);
   });
   
-  return discountedItems;
+  return result;
 }
 
 /**
  * Get the course fee amount from a list of invoice items
  * Excludes enrollment fees which are pass-through to the franchise owner
+ * 
+ * @param items - Items with 'amount' or 'net_amount' property
+ * @param useNetAmount - If true, use net_amount (after discount); otherwise use amount
  */
-export function getCourseFeeAmount(items: InvoiceItemLike[]): number {
-  return items
+export function getCourseFeeAmount(items: (InvoiceItemLike & { net_amount?: number })[], useNetAmount = true): number {
+  return roundToCents(items
     .filter(item => !isEnrollmentFeeItem(item))
-    .reduce((sum, item) => sum + (item.amount || 0), 0);
+    .reduce((sum, item) => {
+      const value = useNetAmount && 'net_amount' in item ? item.net_amount : item.amount;
+      return sum + (value || 0);
+    }, 0));
 }
 
 /**
  * Get the enrollment fee amount from a list of invoice items
+ * 
+ * @param items - Items with 'amount' or 'net_amount' property  
+ * @param useNetAmount - If true, use net_amount (after discount); otherwise use amount
  */
-export function getEnrollmentFeeAmount(items: InvoiceItemLike[]): number {
-  return items
+export function getEnrollmentFeeAmount(items: (InvoiceItemLike & { net_amount?: number })[], useNetAmount = true): number {
+  return roundToCents(items
     .filter(item => isEnrollmentFeeItem(item))
-    .reduce((sum, item) => sum + (item.amount || 0), 0);
+    .reduce((sum, item) => {
+      const value = useNetAmount && 'net_amount' in item ? item.net_amount : item.amount;
+      return sum + (value || 0);
+    }, 0));
 }
 
 /**
