@@ -9,6 +9,17 @@ export interface InvoiceItemLike {
   amount?: number;
 }
 
+export interface InvoiceItemWithDiscount extends InvoiceItemLike {
+  invoices?: {
+    subtotal?: number;
+    monetary_discount?: number;
+    discount_type?: string;
+    discount_amount?: number;
+    status?: string;
+    payment_received?: boolean;
+  } | null;
+}
+
 /**
  * Check if an invoice item is an enrollment fee
  * Enrollment fees should be excluded from percentage-based fee calculations
@@ -23,6 +34,65 @@ export function isEnrollmentFeeItem(item: InvoiceItemLike): boolean {
   return desc.includes('enrollment fee') || 
          desc.includes('enrolment fee') || 
          desc.includes('starter kit');
+}
+
+/**
+ * Apply invoice-level discount proportionally to invoice items
+ * Returns items with discounted amounts based on their share of the subtotal
+ * 
+ * This is crucial for accurate financial reporting when manual discounts are applied
+ * to invoices (e.g., 25% discount). The discount is distributed proportionally
+ * across all items based on their share of the invoice subtotal.
+ */
+export function applyInvoiceDiscountToItems<T extends InvoiceItemWithDiscount>(
+  items: T[]
+): Array<{ amount: number; description?: string; item_type?: string }> {
+  if (!items || items.length === 0) return [];
+  
+  const discountedItems: Array<{ amount: number; description?: string; item_type?: string }> = [];
+  
+  items.forEach(item => {
+    const invoice = item.invoices;
+    const originalAmount = item.amount || 0;
+    
+    if (!invoice) {
+      // No invoice data, use original amount
+      discountedItems.push({
+        amount: originalAmount,
+        description: item.description,
+        item_type: item.item_type
+      });
+      return;
+    }
+    
+    const subtotal = invoice.subtotal || 0;
+    const monetaryDiscount = invoice.monetary_discount || 0;
+    
+    // If there's a discount and we have a valid subtotal
+    if (monetaryDiscount > 0 && subtotal > 0) {
+      // Calculate the discount ratio for this invoice
+      const discountRatio = monetaryDiscount / subtotal;
+      
+      // Apply proportional discount to this item (round to nearest cent)
+      const itemDiscount = Math.round(originalAmount * discountRatio * 100) / 100;
+      const discountedAmount = Math.round((originalAmount - itemDiscount) * 100) / 100;
+      
+      discountedItems.push({
+        amount: discountedAmount,
+        description: item.description,
+        item_type: item.item_type
+      });
+    } else {
+      // No discount or invalid subtotal, use original amount
+      discountedItems.push({
+        amount: originalAmount,
+        description: item.description,
+        item_type: item.item_type
+      });
+    }
+  });
+  
+  return discountedItems;
 }
 
 /**
