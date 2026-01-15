@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
-export function useHandlersList(classId: string, searchQuery: string) {
+export function useHandlersList(classId: string, searchQuery: string, branchId?: string) {
   const [processingDogId, setProcessingDogId] = useState<string | null>(null);
 
   // Fetch schedule IDs for the class
@@ -61,6 +61,11 @@ export function useHandlersList(classId: string, searchQuery: string) {
               breed
             )
           `);
+        
+        // Filter by branch to prevent cross-branch enrollments
+        if (branchId) {
+          query = query.eq('branch_id', branchId);
+        }
         
         // Add search filter if searchQuery exists
         if (searchQuery) {

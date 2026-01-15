@@ -9,6 +9,7 @@ interface HandlerSelectionTabProps {
   setSearchQuery: (query: string) => void;
   onSelect: (handlerId: string, dogIds: string[]) => void;
   classId: string;
+  branchId: string;
   isProcessing: boolean;
 }
 
@@ -17,6 +18,7 @@ export function HandlerSelectionTab({
   setSearchQuery,
   onSelect,
   classId,
+  branchId,
   isProcessing
 }: HandlerSelectionTabProps) {
   // Track selected handler for displaying dogs
@@ -33,6 +35,7 @@ export function HandlerSelectionTab({
         searchQuery={searchQuery}
         onSelect={onSelect}
         classId={classId}
+        branchId={branchId}
         isProcessing={isProcessing}
         selectedHandlerId={selectedHandlerId}
         setSelectedHandlerId={setSelectedHandlerId}
