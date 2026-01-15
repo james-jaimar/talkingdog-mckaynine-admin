@@ -99,9 +99,9 @@ export const addToExistingInvoice = async ({
       const dogName = dogNames[index] || `Dog ${index + 1}`;
       const bookingId = bookingIds[index];
 
-      // Apply 25% discount since this is a 2nd dog across classes
-      const discountAmount = Math.round(classPrice * MULTI_DOG_DISCOUNT_PERCENT / 100);
-      const discountedPrice = classPrice - discountAmount;
+      // Apply 25% discount since this is a 2nd dog across classes (round to nearest cent)
+      const discountAmount = Math.round(classPrice * MULTI_DOG_DISCOUNT_PERCENT) / 100;
+      const discountedPrice = Math.round((classPrice - discountAmount) * 100) / 100;
       totalDiscount += discountAmount;
 
       // Add course fee item with discount
