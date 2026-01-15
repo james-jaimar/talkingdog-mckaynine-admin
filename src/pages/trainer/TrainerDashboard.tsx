@@ -10,6 +10,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
+import { getNextOccurrence, ScheduleForOccurrence } from "@/utils/scheduleOccurrences";
 import {
   Table,
   TableBody,
@@ -19,20 +20,39 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
+interface ScheduleWithNextOccurrence {
+  id: string;
+  start_time: string;
+  end_time: string;
+  term_number: string | null;
+  academic_year: number | null;
+  selected_dates: string[] | null;
+  recurring: boolean | null;
+  recurrence_pattern: string | null;
+  classes: {
+    id: string;
+    name: string;
+    class_type: string;
+    capacity: number;
+    branch_id: string;
+  } | null;
+  bookings: { id: string; status: string }[];
+  nextOccurrence: Date;
+}
+
 export default function TrainerDashboard() {
   const { isTrainer, trainerProfile } = useAuth();
   const { currentBranch } = useBranch();
   const navigate = useNavigate();
 
   // Fetch upcoming classes for this trainer, filtered by branch
+  // Now includes selected_dates and recurrence info to compute true next occurrence
   const { data: upcomingClasses = [], isLoading: isLoadingClasses } = useQuery({
     queryKey: ['trainer-dashboard-classes', trainerProfile?.id, currentBranch?.id],
     queryFn: async () => {
       if (!trainerProfile?.id) return [];
       
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      
+      // Fetch all schedules for this trainer (we'll filter upcoming client-side using occurrences)
       let query = supabase
         .from('class_schedules')
         .select(`
@@ -41,6 +61,9 @@ export default function TrainerDashboard() {
           end_time,
           term_number,
           academic_year,
+          selected_dates,
+          recurring,
+          recurrence_pattern,
           classes:class_id (
             id,
             name,
@@ -54,9 +77,7 @@ export default function TrainerDashboard() {
           )
         `)
         .eq('trainer_id', trainerProfile.id)
-        .gte('start_time', today.toISOString())
-        .order('start_time', { ascending: true })
-        .limit(10);
+        .order('start_time', { ascending: true });
       
       const { data, error } = await query;
       
@@ -66,11 +87,39 @@ export default function TrainerDashboard() {
       }
       
       // Filter by branch on client side (classes.branch_id is nested)
-      const filteredData = currentBranch?.id 
+      const branchFiltered = currentBranch?.id 
         ? (data || []).filter((item: any) => item.classes?.branch_id === currentBranch.id)
         : data || [];
       
-      return filteredData;
+      const now = new Date();
+      
+      // Compute next occurrence for each schedule and filter to upcoming only
+      const schedulesWithNext: ScheduleWithNextOccurrence[] = [];
+      
+      for (const schedule of branchFiltered) {
+        const scheduleData: ScheduleForOccurrence = {
+          start_time: schedule.start_time,
+          end_time: schedule.end_time,
+          selected_dates: schedule.selected_dates,
+          recurring: schedule.recurring,
+          recurrence_pattern: schedule.recurrence_pattern,
+        };
+        
+        const nextOccurrence = getNextOccurrence(scheduleData, now);
+        
+        if (nextOccurrence) {
+          schedulesWithNext.push({
+            ...schedule,
+            nextOccurrence,
+          });
+        }
+      }
+      
+      // Sort by next occurrence (soonest first)
+      schedulesWithNext.sort((a, b) => a.nextOccurrence.getTime() - b.nextOccurrence.getTime());
+      
+      // Limit to 10 for dashboard
+      return schedulesWithNext.slice(0, 10);
     },
     enabled: !!trainerProfile?.id,
   });
@@ -228,9 +277,9 @@ export default function TrainerDashboard() {
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div className="flex items-start gap-3">
                       <div className="bg-primary text-primary-foreground rounded-lg p-2 sm:p-3 text-center min-w-[50px] sm:min-w-[60px]">
-                        <div className="text-[10px] sm:text-xs uppercase">{format(new Date(nextClass.start_time), "EEE")}</div>
-                        <div className="text-lg sm:text-xl font-bold">{format(new Date(nextClass.start_time), "d")}</div>
-                        <div className="text-[10px] sm:text-xs">{format(new Date(nextClass.start_time), "MMM")}</div>
+                        <div className="text-[10px] sm:text-xs uppercase">{format(nextClass.nextOccurrence, "EEE")}</div>
+                        <div className="text-lg sm:text-xl font-bold">{format(nextClass.nextOccurrence, "d")}</div>
+                        <div className="text-[10px] sm:text-xs">{format(nextClass.nextOccurrence, "MMM")}</div>
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground">Next Class</p>
@@ -238,7 +287,7 @@ export default function TrainerDashboard() {
                         <div className="flex flex-wrap items-center gap-2 mt-1">
                           <Badge variant="secondary" className="text-xs">{nextClass.classes?.class_type}</Badge>
                           <span className="text-xs sm:text-sm text-muted-foreground">
-                            {format(new Date(nextClass.start_time), "p")}
+                            {format(nextClass.nextOccurrence, "p")}
                           </span>
                           <span className="text-xs sm:text-sm text-muted-foreground">
                             • {nextClass.bookings?.length || 0} students
@@ -297,10 +346,10 @@ export default function TrainerDashboard() {
                           {upcomingClasses.map((schedule) => (
                             <TableRow key={schedule.id}>
                               <TableCell className="font-medium">
-                                {format(new Date(schedule.start_time), "EEE, MMM d")}
+                                {format(schedule.nextOccurrence, "EEE, MMM d")}
                               </TableCell>
                               <TableCell>
-                                {format(new Date(schedule.start_time), "HH:mm")}
+                                {format(schedule.nextOccurrence, "HH:mm")}
                               </TableCell>
                               <TableCell>{schedule.classes?.name}</TableCell>
                               <TableCell>
@@ -335,16 +384,16 @@ export default function TrainerDashboard() {
                           <div className="flex items-center gap-3">
                             <div className="bg-muted rounded-lg p-2 text-center min-w-[44px]">
                               <div className="text-[10px] uppercase text-muted-foreground">
-                                {format(new Date(schedule.start_time), "EEE")}
+                                {format(schedule.nextOccurrence, "EEE")}
                               </div>
                               <div className="text-sm font-bold">
-                                {format(new Date(schedule.start_time), "d")}
+                                {format(schedule.nextOccurrence, "d")}
                               </div>
                             </div>
                             <div>
                               <p className="font-medium text-sm">{schedule.classes?.name}</p>
                               <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <span>{format(new Date(schedule.start_time), "HH:mm")}</span>
+                                <span>{format(schedule.nextOccurrence, "HH:mm")}</span>
                                 <span>•</span>
                                 <span>{schedule.bookings?.length || 0} students</span>
                               </div>
