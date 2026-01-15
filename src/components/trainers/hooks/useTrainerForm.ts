@@ -21,15 +21,42 @@ export function useTrainerForm(trainer: Trainer, onSuccess: () => void) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
-  // Get the branch ID value, handling different formats
-  let initialBranchIds: string[] = [];
-  if (trainer.branch_id) {
-    initialBranchIds = [trainer.branch_id];
-  } else if (Array.isArray(trainer.branch_ids) && trainer.branch_ids.length > 0) {
-    initialBranchIds = trainer.branch_ids;
-  }
+  // Get the branch IDs - will be loaded from trainer_branches table
+  const [initialBranchIds, setInitialBranchIds] = useState<string[]>([]);
 
-  console.log("[useTrainerForm] Initial branch IDs:", initialBranchIds);
+  // Fetch trainer's branches from the junction table
+  useEffect(() => {
+    const fetchTrainerBranches = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('trainer_branches')
+          .select('branch_id')
+          .eq('trainer_id', trainer.id);
+        
+        if (error) {
+          console.error("[useTrainerForm] Error fetching trainer branches:", error);
+          // Fallback to legacy branch_id
+          if (trainer.branch_id) {
+            setInitialBranchIds([trainer.branch_id]);
+          }
+          return;
+        }
+        
+        const branchIds = data?.map(tb => tb.branch_id) || [];
+        console.log("[useTrainerForm] Loaded trainer branches:", branchIds);
+        setInitialBranchIds(branchIds);
+        
+        // Update form with loaded values
+        if (branchIds.length > 0) {
+          form.setValue('branchIds', branchIds);
+        }
+      } catch (err) {
+        console.error("[useTrainerForm] Exception fetching trainer branches:", err);
+      }
+    };
+    
+    fetchTrainerBranches();
+  }, [trainer.id]);
   
   // Pre-populate form with trainer data
   const defaultValues: TrainerFormValues = {
@@ -100,7 +127,7 @@ export function useTrainerForm(trainer: Trainer, onSuccess: () => void) {
     try {
       console.log("[useTrainerForm] Submitting trainer form with values:", values);
       
-      // Update using the correct field name (branch_id not branch_ids)
+      // Update trainer basic info (keep branch_id for backwards compatibility - use first selected)
       const { error } = await supabase
         .from("trainers")
         .update({
@@ -116,6 +143,34 @@ export function useTrainerForm(trainer: Trainer, onSuccess: () => void) {
         .eq("id", trainer.id);
       
       if (error) throw error;
+      
+      // Update trainer_branches junction table
+      // First, delete existing entries
+      const { error: deleteError } = await supabase
+        .from('trainer_branches')
+        .delete()
+        .eq('trainer_id', trainer.id);
+      
+      if (deleteError) {
+        console.error("[useTrainerForm] Error deleting trainer branches:", deleteError);
+      }
+      
+      // Then, insert new entries
+      if (values.branchIds.length > 0) {
+        const branchEntries = values.branchIds.map(branchId => ({
+          trainer_id: trainer.id,
+          branch_id: branchId
+        }));
+        
+        const { error: insertError } = await supabase
+          .from('trainer_branches')
+          .insert(branchEntries);
+        
+        if (insertError) {
+          console.error("[useTrainerForm] Error inserting trainer branches:", insertError);
+          throw insertError;
+        }
+      }
       
       toast({
         title: "Trainer updated successfully",

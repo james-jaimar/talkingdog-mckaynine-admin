@@ -2066,6 +2066,42 @@ export type Database = {
           },
         ]
       }
+      trainer_branches: {
+        Row: {
+          branch_id: string
+          created_at: string
+          id: string
+          trainer_id: string
+        }
+        Insert: {
+          branch_id: string
+          created_at?: string
+          id?: string
+          trainer_id: string
+        }
+        Update: {
+          branch_id?: string
+          created_at?: string
+          id?: string
+          trainer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trainer_branches_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trainer_branches_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "trainers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trainer_payments: {
         Row: {
           amount: number

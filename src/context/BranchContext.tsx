@@ -20,9 +20,11 @@ const BranchContext = createContext<BranchContextType | undefined>(undefined);
 
 export function BranchProvider({ children }: { children: React.ReactNode }) {
   const [currentBranch, setCurrentBranchState] = useState<Branch | null>(null);
+  const [trainerBranchIds, setTrainerBranchIds] = useState<string[] | null>(null);
   const queryClient = useQueryClient();
   
-  const { data: branches, isLoading } = useQuery({
+  // Fetch all branches
+  const { data: allBranches, isLoading: isLoadingBranches } = useQuery({
     queryKey: ['branches-basic'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -40,6 +42,64 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
     },
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
+  
+  // Fetch trainer's assigned branches when user is logged in
+  useEffect(() => {
+    const checkTrainerBranches = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setTrainerBranchIds(null);
+        return;
+      }
+      
+      // Check if user is a trainer
+      const { data: trainerData } = await supabase
+        .from('trainers')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      if (!trainerData) {
+        // User is not a trainer, show all branches
+        setTrainerBranchIds(null);
+        return;
+      }
+      
+      // Fetch trainer's branch assignments
+      const { data: trainerBranches, error } = await supabase
+        .from('trainer_branches')
+        .select('branch_id')
+        .eq('trainer_id', trainerData.id);
+      
+      if (error) {
+        console.error("Error fetching trainer branches:", error);
+        setTrainerBranchIds(null);
+        return;
+      }
+      
+      const branchIds = trainerBranches?.map(tb => tb.branch_id) || [];
+      console.log("Trainer assigned to branches:", branchIds);
+      setTrainerBranchIds(branchIds.length > 0 ? branchIds : null);
+    };
+    
+    checkTrainerBranches();
+    
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+      checkTrainerBranches();
+    });
+    
+    return () => subscription.unsubscribe();
+  }, []);
+  
+  // Filter branches for trainers (if they have assigned branches)
+  const branches = React.useMemo(() => {
+    if (!allBranches) return [];
+    if (!trainerBranchIds) return allBranches; // Show all for non-trainers or trainers with no assignments
+    return allBranches.filter(b => trainerBranchIds.includes(b.id));
+  }, [allBranches, trainerBranchIds]);
+  
+  const isLoading = isLoadingBranches;
 
   // Enhanced setCurrentBranch to update localStorage and invalidate queries
   const setCurrentBranch = useCallback((branch: Branch | null) => {
