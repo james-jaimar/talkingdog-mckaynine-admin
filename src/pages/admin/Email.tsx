@@ -1,13 +1,16 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Helmet } from "react-helmet";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Inbox, Send, RefreshCw, Play, Trash2, RotateCcw, Mail, Clock, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Inbox, Send, RefreshCw, Play, Trash2, RotateCcw, Mail, Clock, AlertCircle, CheckCircle2, Search, X } from "lucide-react";
 import { useEmailQueue, QueuedEmail } from "@/hooks/useEmailQueue";
-import { format } from "date-fns";
+import { format, parseISO, isWithinInterval, startOfDay, endOfDay } from "date-fns";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   AlertDialog,
@@ -42,6 +45,42 @@ export default function EmailPage() {
 
   const [selectedEmail, setSelectedEmail] = useState<QueuedEmail | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  
+  // Sent tab filters
+  const [sentSearchQuery, setSentSearchQuery] = useState("");
+  const [sentDateFilter, setSentDateFilter] = useState<Date | undefined>(undefined);
+
+  // Filter sent emails
+  const filteredSent = useMemo(() => {
+    return sent.filter((email) => {
+      // Search filter - check handler name, email address, and subject
+      const searchLower = sentSearchQuery.toLowerCase();
+      const handlerName = email.handler 
+        ? `${email.handler.first_name} ${email.handler.last_name}`.toLowerCase() 
+        : "";
+      const matchesSearch = !sentSearchQuery || 
+        email.to_email.toLowerCase().includes(searchLower) ||
+        email.subject.toLowerCase().includes(searchLower) ||
+        handlerName.includes(searchLower);
+
+      // Date filter
+      let matchesDate = true;
+      if (sentDateFilter && email.sent_at) {
+        const emailDate = parseISO(email.sent_at);
+        matchesDate = isWithinInterval(emailDate, {
+          start: startOfDay(sentDateFilter),
+          end: endOfDay(sentDateFilter)
+        });
+      }
+
+      return matchesSearch && matchesDate;
+    });
+  }, [sent, sentSearchQuery, sentDateFilter]);
+
+  const clearSentFilters = () => {
+    setSentSearchQuery("");
+    setSentDateFilter(undefined);
+  };
 
   const getStatusBadge = (status: string, retryCount?: number) => {
     switch (status) {
@@ -231,25 +270,78 @@ export default function EmailPage() {
         <TabsContent value="sent">
           <Card>
             <CardHeader>
-              <CardTitle>Sent Emails</CardTitle>
-              <CardDescription>
-                Recently sent emails. Click to view details or resend.
-              </CardDescription>
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <CardTitle>Sent Emails</CardTitle>
+                  <CardDescription>
+                    Recently sent emails. Click to view details or resend.
+                  </CardDescription>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {/* Search Input */}
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search handler, email, subject..."
+                      value={sentSearchQuery}
+                      onChange={(e) => setSentSearchQuery(e.target.value)}
+                      className="pl-8 w-[220px]"
+                    />
+                  </div>
+                  
+                  {/* Date Filter */}
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="gap-2">
+                        <Clock className="h-4 w-4" />
+                        {sentDateFilter ? format(sentDateFilter, "MMM d, yyyy") : "Filter by date"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="end">
+                      <Calendar
+                        mode="single"
+                        selected={sentDateFilter}
+                        onSelect={setSentDateFilter}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+
+                  {/* Clear Filters */}
+                  {(sentSearchQuery || sentDateFilter) && (
+                    <Button variant="ghost" size="sm" onClick={clearSentFilters} className="gap-1">
+                      <X className="h-4 w-4" />
+                      Clear
+                    </Button>
+                  )}
+                </div>
+              </div>
+              {/* Filter summary */}
+              {(sentSearchQuery || sentDateFilter) && (
+                <div className="text-sm text-muted-foreground mt-2">
+                  Showing {filteredSent.length} of {sent.length} emails
+                </div>
+              )}
             </CardHeader>
             <CardContent>
               {isLoadingSent ? (
                 <div className="flex items-center justify-center py-8">
                   <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
                 </div>
-              ) : sent.length === 0 ? (
+              ) : filteredSent.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <Send className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                  <p>No sent emails</p>
+                  <p>{sent.length === 0 ? "No sent emails" : "No emails match your filters"}</p>
+                  {sent.length > 0 && (
+                    <Button variant="link" onClick={clearSentFilters} className="mt-2">
+                      Clear filters
+                    </Button>
+                  )}
                 </div>
               ) : (
                 <ScrollArea className="h-[500px]">
                   <div className="space-y-2">
-                    {sent.map((email) => (
+                    {filteredSent.map((email) => (
                       <div
                         key={email.id}
                         className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 cursor-pointer"
