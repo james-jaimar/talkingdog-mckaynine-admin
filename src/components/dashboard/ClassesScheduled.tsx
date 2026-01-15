@@ -21,17 +21,19 @@ export function ClassesScheduled({ branchId }: ClassesScheduledProps) {
       // Don't fetch data if no branch is selected
       if (!branchId) return [];
       
-      // Use today's date and time for accurate filtering
+      // Use today's date for filtering
       const now = new Date();
-      const startDate = now.toISOString();
+      const todayStr = now.toISOString().split('T')[0]; // YYYY-MM-DD format
       
-      // Build the query with branch filter and date range - using more precise filtering
+      // Build the query with branch filter - fetch ALL schedules for the branch/term
+      // and filter by upcoming dates client-side (since selected_dates contains future occurrences)
       let query = supabase
         .from('class_schedules')
         .select(`
           id,
           start_time,
           term_id,
+          selected_dates,
           classes!inner(
             name,
             class_type,
@@ -43,22 +45,54 @@ export function ClassesScheduled({ branchId }: ClassesScheduledProps) {
             avatar_url
           )
         `)
-        .eq('classes.branch_id', branchId)
-        .gte('start_time', startDate); // Only classes that haven't started yet
+        .eq('classes.branch_id', branchId);
       
       // Add term filter if a term is selected
       if (termData?.id) {
         query = query.eq('term_id', termData.id);
       }
       
-      const { data, error } = await query
-        .order('start_time', { ascending: true }) // Ensure proper ordering by date
-        .limit(5); // Limit to 5 upcoming classes
+      const { data, error } = await query;
       
       if (error) throw error;
       
-      console.log('Upcoming classes fetched:', data);
-      return data;
+      // Process each schedule to find the next upcoming date
+      const upcomingClasses = data
+        ?.map((schedule) => {
+          // Check if schedule has selected_dates with future dates
+          const selectedDates = schedule.selected_dates as string[] | null;
+          let nextOccurrence: Date | null = null;
+          
+          if (selectedDates && selectedDates.length > 0) {
+            // Find the first date that is today or in the future
+            for (const dateStr of selectedDates) {
+              const date = new Date(dateStr);
+              if (date >= now) {
+                nextOccurrence = date;
+                break;
+              }
+            }
+          } else {
+            // Fall back to start_time if no selected_dates
+            const startTime = new Date(schedule.start_time);
+            if (startTime >= now) {
+              nextOccurrence = startTime;
+            }
+          }
+          
+          if (!nextOccurrence) return null;
+          
+          return {
+            ...schedule,
+            nextOccurrence,
+          };
+        })
+        .filter((s): s is NonNullable<typeof s> => s !== null)
+        .sort((a, b) => a.nextOccurrence.getTime() - b.nextOccurrence.getTime())
+        .slice(0, 5); // Limit to 5 upcoming classes
+      
+      console.log('Upcoming classes fetched:', upcomingClasses);
+      return upcomingClasses;
     },
     enabled: !!branchId,
     staleTime: 30 * 1000, // Cache for 30 seconds
@@ -94,7 +128,7 @@ export function ClassesScheduled({ branchId }: ClassesScheduledProps) {
         ) : classes && classes.length > 0 ? (
           <div className="space-y-3">
             {classes.map((classSchedule) => {
-              const { day, date, time } = formatDate(classSchedule.start_time);
+              const { day, date, time } = formatDate(classSchedule.nextOccurrence.toISOString());
               
               return (
                 <div key={classSchedule.id} className="flex items-start p-2 sm:p-3 rounded-lg border hover:bg-gray-50">
