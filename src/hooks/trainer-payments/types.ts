@@ -76,6 +76,11 @@ export interface InvoiceItem {
     status: string;
     payment_date?: string;
     client_id?: string;
+    // Invoice discount fields for proper net amount calculation
+    subtotal?: number;
+    monetary_discount?: number;
+    discount_type?: string;
+    discount_amount?: number;
     client?: {
       branch_id: string; // Add branch_id field
     };

@@ -145,6 +145,7 @@ export async function fetchAllBookings(scheduleIds: string[], branchId?: string)
 }
 
 // Batched version: Fetch all invoice items for all bookings at once
+// Includes invoice discount fields for proper discount distribution
 export async function fetchAllInvoiceItems(bookingIds: string[], branchId?: string): Promise<InvoiceItem[]> {
   if (bookingIds.length === 0) return [];
 
@@ -164,6 +165,10 @@ export async function fetchAllInvoiceItems(bookingIds: string[], branchId?: stri
         status,
         payment_date,
         client_id,
+        subtotal,
+        monetary_discount,
+        discount_type,
+        discount_amount,
         client:client_id (
           branch_id
         )
@@ -190,7 +195,17 @@ export async function fetchAllInvoiceItems(bookingIds: string[], branchId?: stri
     unit_price: item.unit_price || item.amount || 0,
     amount: item.amount || 0,
     item_type: item.item_type,
-    invoices: item.invoices,
+    invoices: item.invoices ? {
+      id: item.invoices.id,
+      status: item.invoices.status,
+      payment_date: item.invoices.payment_date,
+      client_id: item.invoices.client_id,
+      subtotal: item.invoices.subtotal,
+      monetary_discount: item.invoices.monetary_discount,
+      discount_type: item.invoices.discount_type,
+      discount_amount: item.invoices.discount_amount,
+      client: item.invoices.client
+    } : undefined,
     branch_id: item.invoices?.client?.branch_id
   })) as InvoiceItem[];
 

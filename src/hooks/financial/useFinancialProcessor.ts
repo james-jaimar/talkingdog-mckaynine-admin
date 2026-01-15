@@ -1,15 +1,18 @@
 import { useState, useEffect, useMemo } from "react";
 import { FinancialData, ClassFinance } from "./types";
-import { getCourseFeeAmount, isEnrollmentFeeItem } from "@/lib/invoiceItemUtils";
+import { isEnrollmentFeeItem, applyInvoiceDiscountToItems, DiscountedInvoiceItem } from "@/lib/invoiceItemUtils";
+import { roundToCents } from "@/lib/invoiceMath";
 
 /**
  * Simplified financial processor
  * 
  * Strategy:
- * 1. Group invoice items by invoice_id
- * 2. For items with booking_id, map to class via booking -> class_schedule -> class
+ * 1. Apply invoice-level discounts to get net amounts per item
+ * 2. Group invoice items by class via booking -> class_schedule -> class
  * 3. For items without booking_id, put in "Unallocated" bucket
  * 4. Calculate fees based on course fee only (exclude enrollment fees)
+ * 
+ * IMPORTANT: Uses net_amount (after invoice discounts) for all revenue calculations
  */
 export function useFinancialProcessor(financialData: FinancialData | undefined) {
   const [classFinances, setClassFinances] = useState<ClassFinance[]>([]);
@@ -33,6 +36,17 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
     console.log(`[FinancialProcessor] Processing data for branch ${branchId}`);
     console.log(`[FinancialProcessor] Input: ${invoiceItems?.length || 0} invoice items, ${bookingsWithInvoices?.length || 0} bookings`);
 
+    // STEP 1: Apply invoice-level discounts to get net amounts
+    const discountedItems = applyInvoiceDiscountToItems(invoiceItems || []);
+    
+    // Create a map for quick lookup of net_amount by item id
+    const netAmountMap = new Map<string, number>();
+    discountedItems.forEach(item => {
+      if (item.id) {
+        netAmountMap.set(item.id, item.net_amount);
+      }
+    });
+
     // Create a map of booking ID -> booking details for quick lookup
     const bookingMap = new Map<string, any>();
     (bookingsWithInvoices || []).forEach(booking => {
@@ -49,14 +63,15 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
     let unallocatedInvoiceIds = new Set<string>();
     let unallocatedItemCount = 0;
 
-    // Process each invoice item
-    (invoiceItems || []).forEach(item => {
+    // Process each invoice item using the discounted items list
+    discountedItems.forEach(item => {
       // Skip enrollment fees from class allocation (they go to franchise owner)
       if (isEnrollmentFeeItem(item)) {
         return;
       }
 
-      const amount = item.amount || 0;
+      // Use net_amount (after invoice discount) for revenue
+      const amount = item.net_amount || 0;
 
       // If no booking_id, this is unallocated
       if (!item.booking_id) {

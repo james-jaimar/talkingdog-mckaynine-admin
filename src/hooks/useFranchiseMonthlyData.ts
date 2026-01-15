@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useBranch } from '@/context/BranchContext';
-import { getCourseFeeAmount, getEnrollmentFeeAmount } from '@/lib/invoiceItemUtils';
+import { isEnrollmentFeeItem } from '@/lib/invoiceItemUtils';
+import { roundToCents } from '@/lib/invoiceMath';
 import { startOfMonth, endOfMonth, format } from 'date-fns';
 
 export interface FranchiseHandler {
@@ -128,6 +129,7 @@ export function useFranchiseMonthlyData({ month, year }: UseFranchiseMonthlyData
       // An invoice is included if:
       // 1. franchise_report_month matches the target month, OR
       // 2. franchise_report_month is NULL and issued_date falls within the month
+      // Include discount fields for proper net amount calculation
       const { data: invoicesData, error: invoicesError } = await supabase
         .from('invoices')
         .select(`
@@ -137,6 +139,10 @@ export function useFranchiseMonthlyData({ month, year }: UseFranchiseMonthlyData
           status,
           payment_received,
           franchise_report_month,
+          subtotal,
+          monetary_discount,
+          discount_type,
+          discount_amount,
           client:client_id (
             id,
             first_name,
@@ -196,9 +202,15 @@ export function useFranchiseMonthlyData({ month, year }: UseFranchiseMonthlyData
         .maybeSingle();
 
       // Process the data - group by class
+      // IMPORTANT: Apply invoice-level discounts to items for accurate amounts
       const classHandlersMap = new Map<string, { classData: any; handlers: FranchiseHandler[] }>();
 
       branchInvoices.forEach(invoice => {
+        // Calculate discount ratio for this invoice
+        const invoiceSubtotal = invoice.subtotal || 0;
+        const invoiceDiscount = invoice.monetary_discount || 0;
+        const discountRatio = invoiceSubtotal > 0 ? invoiceDiscount / invoiceSubtotal : 0;
+        
         invoice.invoice_items?.forEach(item => {
           if (!item.booking?.class_schedule?.class_id) return;
 
@@ -212,40 +224,43 @@ export function useFranchiseMonthlyData({ month, year }: UseFranchiseMonthlyData
 
           const entry = classHandlersMap.get(classId)!;
           
+          // Apply proportional discount to this item
+          const originalAmount = item.amount || 0;
+          const itemDiscount = roundToCents(originalAmount * discountRatio);
+          const netAmount = roundToCents(originalAmount - itemDiscount);
+          
+          // Check if this is an enrollment fee
+          const isEnrollmentFee = isEnrollmentFeeItem({
+            item_type: item.item_type,
+            description: item.description
+          });
+          
           // Check if this handler+dog combo already exists
           const existingHandler = entry.handlers.find(
             h => h.clientId === invoice.client?.id && h.dogId === item.booking?.dog?.id
           );
 
           if (existingHandler) {
-            // Aggregate amounts
-            const isEnrollmentFee = item.item_type === 'enrollment_fee' || 
-              item.description?.toLowerCase().includes('enrollment') ||
-              item.description?.toLowerCase().includes('starter kit');
-            
+            // Aggregate amounts (using net amounts after discount)
             if (isEnrollmentFee) {
-              existingHandler.enrollmentFeeAmount += item.amount || 0;
+              existingHandler.enrollmentFeeAmount += netAmount;
             } else {
-              existingHandler.courseFeeAmount += item.amount || 0;
+              existingHandler.courseFeeAmount += netAmount;
             }
             
-            // Recalculate franchise fee and total
+            // Recalculate franchise fee based on updated course fee
             existingHandler.franchiseFee = classData.mckaynine_commission_type === 'percentage'
-              ? (existingHandler.courseFeeAmount * (classData.mckaynine_commission_value || 0)) / 100
-              : classData.mckaynine_commission_value || 0;
-            existingHandler.totalAmount = existingHandler.enrollmentFeeAmount + existingHandler.franchiseFee;
+              ? roundToCents((existingHandler.courseFeeAmount * (classData.mckaynine_commission_value || 0)) / 100)
+              : roundToCents(classData.mckaynine_commission_value || 0);
+            existingHandler.totalAmount = roundToCents(existingHandler.enrollmentFeeAmount + existingHandler.franchiseFee);
           } else {
-            // Determine if this item is course fee or enrollment fee
-            const isEnrollmentFee = item.item_type === 'enrollment_fee' || 
-              item.description?.toLowerCase().includes('enrollment') ||
-              item.description?.toLowerCase().includes('starter kit');
-            
-            const courseFeeAmount = isEnrollmentFee ? 0 : (item.amount || 0);
-            const enrollmentFeeAmount = isEnrollmentFee ? (item.amount || 0) : 0;
+            // New handler entry (using net amounts after discount)
+            const courseFeeAmount = isEnrollmentFee ? 0 : netAmount;
+            const enrollmentFeeAmount = isEnrollmentFee ? netAmount : 0;
 
             const franchiseFee = classData.mckaynine_commission_type === 'percentage'
-              ? (courseFeeAmount * (classData.mckaynine_commission_value || 0)) / 100
-              : classData.mckaynine_commission_value || 0;
+              ? roundToCents((courseFeeAmount * (classData.mckaynine_commission_value || 0)) / 100)
+              : roundToCents(classData.mckaynine_commission_value || 0);
 
             const totalClasses = (item.booking.class_schedule?.selected_dates || []).length;
 
@@ -262,7 +277,7 @@ export function useFranchiseMonthlyData({ month, year }: UseFranchiseMonthlyData
               courseFeeAmount,
               enrollmentFeeAmount,
               franchiseFee,
-              totalAmount: enrollmentFeeAmount + franchiseFee,
+              totalAmount: roundToCents(enrollmentFeeAmount + franchiseFee),
               invoiceDate: invoice.issued_date
             });
           }
