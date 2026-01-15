@@ -70,6 +70,7 @@ export default function FinancialDashboard() {
   // Calculate revenue metrics from invoices
   // IMPORTANT: Separate course fees from enrollment fees
   // Enrollment fees are pass-through to franchise owner and excluded from fee calculations
+  // CRITICAL: Apply invoice-level discounts to get NET amounts for consistency with fee calculations
   const revenueMetrics = useMemo(() => {
     let courseRevenue = 0;
     let enrollmentFees = 0;
@@ -80,20 +81,27 @@ export default function FinancialDashboard() {
     termFilteredInvoices.forEach(inv => {
       // If invoice has items with item_type, use that to separate
       if (inv.items && inv.items.length > 0) {
+        // Calculate discount ratio for this invoice to get net amounts
+        const subtotal = inv.subtotal || inv.items.reduce((sum, i) => sum + (i.amount || 0), 0);
+        const monetaryDiscount = inv.monetary_discount || 0;
+        const discountRatio = subtotal > 0 ? monetaryDiscount / subtotal : 0;
+        
         inv.items.forEach(item => {
-          const amount = item.amount || 0;
+          const rawAmount = item.amount || 0;
+          // Apply proportional discount to get net amount
+          const netAmount = rawAmount - (rawAmount * discountRatio);
+          
           if (isEnrollmentFeeItem(item)) {
-            enrollmentFees += amount;
+            enrollmentFees += netAmount;
           } else {
-            courseRevenue += amount;
-            if (inv.status === 'paid') collectedCourse += amount;
-            else if (inv.status === 'sent') pendingCourse += amount;
-            else if (inv.status === 'overdue') overdueCourse += amount;
+            courseRevenue += netAmount;
+            if (inv.status === 'paid') collectedCourse += netAmount;
+            else if (inv.status === 'sent') pendingCourse += netAmount;
+            else if (inv.status === 'overdue') overdueCourse += netAmount;
           }
         });
       } else {
-        // Fallback for invoices without items loaded - use total
-        // This may include enrollment fees, but is the best we can do
+        // Fallback for invoices without items loaded - use total (already net of discounts)
         courseRevenue += inv.total;
         if (inv.status === 'paid') collectedCourse += inv.total;
         else if (inv.status === 'sent') pendingCourse += inv.total;
