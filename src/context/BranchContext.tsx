@@ -43,7 +43,7 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
   
-  // Fetch trainer's assigned branches when user is logged in
+  // Fetch trainer's assigned branches when user is logged in (only for trainers who are NOT admins)
   useEffect(() => {
     const checkTrainerBranches = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -52,7 +52,21 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
         return;
       }
       
-      // Check if user is a trainer
+      // First, check if user is an admin - admins should see all branches
+      const { data: userRoles } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id);
+      
+      const roles = userRoles?.map(r => r.role) || [];
+      if (roles.includes('admin') || roles.includes('platform_admin')) {
+        // Admins see all branches regardless of trainer status
+        console.log("User is admin, showing all branches");
+        setTrainerBranchIds(null);
+        return;
+      }
+      
+      // Check if user is a trainer (and not an admin)
       const { data: trainerData } = await supabase
         .from('trainers')
         .select('id')
