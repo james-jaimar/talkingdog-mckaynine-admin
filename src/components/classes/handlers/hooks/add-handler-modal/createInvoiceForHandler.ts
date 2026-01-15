@@ -107,9 +107,9 @@ export const createInvoiceForHandler = async ({
       let discountNote = "";
       
       if (isSecondDog) {
-        // Apply 25% discount to 2nd dog's course fee
-        const discountAmount = Math.round(classPrice * MULTI_DOG_DISCOUNT_PERCENT / 100);
-        dogClassPrice = classPrice - discountAmount;
+        // Apply 25% discount to 2nd dog's course fee (round to nearest cent)
+        const discountAmount = Math.round(classPrice * MULTI_DOG_DISCOUNT_PERCENT) / 100;
+        dogClassPrice = Math.round((classPrice - discountAmount) * 100) / 100;
         totalDiscount += discountAmount;
         discountNote = ` (25% multi-dog discount applied)`;
       }
