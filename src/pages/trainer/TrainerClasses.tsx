@@ -4,13 +4,14 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Helmet } from "react-helmet";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
 import { Users, ChevronRight, Loader2, CalendarCheck } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { getNextOccurrence, getLastOccurrence, ScheduleForOccurrence } from "@/utils/scheduleOccurrences";
 import {
   Table,
   TableBody,
@@ -19,6 +20,27 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+
+interface ScheduleWithOccurrence {
+  id: string;
+  start_time: string;
+  end_time: string;
+  term_number: string | null;
+  academic_year: number | null;
+  selected_dates: string[] | null;
+  recurring: boolean | null;
+  recurrence_pattern: string | null;
+  classes: {
+    id: string;
+    name: string;
+    class_type: string;
+    capacity: number;
+    description: string | null;
+    branch_id: string;
+  } | null;
+  bookings: { id: string; status: string }[];
+  displayDate: Date;
+}
 
 export default function TrainerClasses() {
   const { trainerProfile, isTrainer } = useAuth();
@@ -46,10 +68,10 @@ export default function TrainerClasses() {
     enabled: !!trainerProfile?.id,
   });
 
-  const { data: classes = [], isLoading } = useQuery({
+  const { data: classData, isLoading } = useQuery({
     queryKey: ['trainer-all-classes', trainerProfile?.id, currentBranch?.id, trainerBranches],
     queryFn: async () => {
-      if (!trainerProfile?.id) return [];
+      if (!trainerProfile?.id) return { upcoming: [], past: [] };
 
       const { data, error } = await supabase
         .from('class_schedules')
@@ -59,6 +81,9 @@ export default function TrainerClasses() {
           end_time,
           term_number,
           academic_year,
+          selected_dates,
+          recurring,
+          recurrence_pattern,
           classes:class_id (
             id,
             name,
@@ -77,23 +102,58 @@ export default function TrainerClasses() {
 
       if (error) {
         console.error("Error fetching trainer classes:", error);
-        return [];
+        return { upcoming: [], past: [] };
       }
 
       // Filter by branch - if current branch is selected, only show that branch's classes
-      // If the trainer has multiple branches, they can switch between them using the branch selector
-      const filteredData = currentBranch?.id 
+      const branchFiltered = currentBranch?.id 
         ? (data || []).filter((item: any) => item.classes?.branch_id === currentBranch.id)
         : data || [];
 
-      return filteredData;
+      const now = new Date();
+      const upcomingSchedules: ScheduleWithOccurrence[] = [];
+      const pastSchedules: ScheduleWithOccurrence[] = [];
+
+      for (const schedule of branchFiltered) {
+        const scheduleData: ScheduleForOccurrence = {
+          start_time: schedule.start_time,
+          end_time: schedule.end_time,
+          selected_dates: schedule.selected_dates,
+          recurring: schedule.recurring,
+          recurrence_pattern: schedule.recurrence_pattern,
+        };
+
+        const nextOccurrence = getNextOccurrence(scheduleData, now);
+        const lastOccurrence = getLastOccurrence(scheduleData, now);
+
+        if (nextOccurrence) {
+          // Has future occurrences - it's upcoming
+          upcomingSchedules.push({
+            ...schedule,
+            displayDate: nextOccurrence,
+          });
+        } else if (lastOccurrence) {
+          // No future occurrences but has past ones - it's past
+          pastSchedules.push({
+            ...schedule,
+            displayDate: lastOccurrence,
+          });
+        }
+      }
+
+      // Sort upcoming by next occurrence (soonest first)
+      upcomingSchedules.sort((a, b) => a.displayDate.getTime() - b.displayDate.getTime());
+      
+      // Sort past by last occurrence (most recent first)
+      pastSchedules.sort((a, b) => b.displayDate.getTime() - a.displayDate.getTime());
+
+      return { upcoming: upcomingSchedules, past: pastSchedules };
     },
     enabled: !!trainerProfile?.id,
   });
 
-  const now = new Date();
-  const upcomingClasses = classes.filter(c => new Date(c.start_time) >= now);
-  const pastClasses = classes.filter(c => new Date(c.start_time) < now).reverse();
+  const upcomingClasses = classData?.upcoming || [];
+  const pastClasses = classData?.past || [];
 
   if (!isTrainer) {
     return (
@@ -105,7 +165,7 @@ export default function TrainerClasses() {
     );
   }
 
-  const ClassTable = ({ schedules, isPast = false }: { schedules: typeof classes; isPast?: boolean }) => (
+  const ClassTable = ({ schedules, isPast = false }: { schedules: ScheduleWithOccurrence[]; isPast?: boolean }) => (
     <>
       {/* Desktop Table */}
       <div className="hidden sm:block">
@@ -131,10 +191,10 @@ export default function TrainerClasses() {
               schedules.map((schedule) => (
                 <TableRow key={schedule.id} className={isPast ? "opacity-60" : ""}>
                   <TableCell className="font-medium">
-                    {format(new Date(schedule.start_time), "EEE, MMM d, yyyy")}
+                    {format(schedule.displayDate, "EEE, MMM d, yyyy")}
                   </TableCell>
                   <TableCell>
-                    {format(new Date(schedule.start_time), "HH:mm")} - {format(new Date(schedule.end_time), "HH:mm")}
+                    {format(schedule.displayDate, "HH:mm")} - {format(new Date(schedule.end_time), "HH:mm")}
                   </TableCell>
                   <TableCell>{schedule.classes?.name}</TableCell>
                   <TableCell>
@@ -181,13 +241,13 @@ export default function TrainerClasses() {
                   <div className="flex items-start gap-3">
                     <div className="bg-muted rounded-lg p-2 text-center min-w-[50px]">
                       <div className="text-[10px] uppercase text-muted-foreground">
-                        {format(new Date(schedule.start_time), "EEE")}
+                        {format(schedule.displayDate, "EEE")}
                       </div>
                       <div className="text-lg font-bold">
-                        {format(new Date(schedule.start_time), "d")}
+                        {format(schedule.displayDate, "d")}
                       </div>
                       <div className="text-[10px] text-muted-foreground">
-                        {format(new Date(schedule.start_time), "MMM")}
+                        {format(schedule.displayDate, "MMM")}
                       </div>
                     </div>
                     <div className="flex-1">
@@ -195,7 +255,7 @@ export default function TrainerClasses() {
                       <div className="flex flex-wrap items-center gap-2 mt-1">
                         <Badge variant="secondary" className="text-xs">{schedule.classes?.class_type}</Badge>
                         <span className="text-xs text-muted-foreground">
-                          {format(new Date(schedule.start_time), "HH:mm")}
+                          {format(schedule.displayDate, "HH:mm")}
                         </span>
                       </div>
                       <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
