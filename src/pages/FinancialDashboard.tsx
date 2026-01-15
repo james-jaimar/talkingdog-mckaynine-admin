@@ -126,7 +126,7 @@ export default function FinancialDashboard() {
     };
   }, [termFilteredInvoices]);
   
-  const { totalRevenue, enrollmentFees, collectedRevenue, pendingRevenue, overdueRevenue } = revenueMetrics;
+  const { enrollmentFees, collectedRevenue, pendingRevenue, overdueRevenue } = revenueMetrics;
   
   // Format date range for query params if available
   const fromDate = termDateRange?.startDate ? new Date(termDateRange.startDate).toISOString() : undefined;
@@ -157,9 +157,15 @@ export default function FinancialDashboard() {
   }, [classFinances, currentBranch?.id]);
   
   // Calculate all financial metrics from class finances - using the NET revenue in all calculations
+  // CRITICAL: Use classFinances as single source of truth for revenue to ensure percentages align
   const totalAdmin = classFinances.reduce((sum, item) => sum + item.adminFee, 0);
   const totalTrainer = classFinances.reduce((sum, item) => sum + item.instructorFee, 0);
   const totalFranchise = classFinances.reduce((sum, item) => sum + item.franchiseFee, 0);
+  const classFinancesTotalRevenue = classFinances.reduce((sum, item) => sum + item.totalRevenue, 0);
+  
+  // Use classFinances revenue as the base for fee percentage calculations
+  // This ensures fees/revenue = exact class-configured percentages (10%, 40%, 15%)
+  const totalRevenue = classFinancesTotalRevenue;
   
   // Calculate profit as NET revenue minus all fees
   const profit = totalRevenue - totalAdmin - totalTrainer - totalFranchise;
