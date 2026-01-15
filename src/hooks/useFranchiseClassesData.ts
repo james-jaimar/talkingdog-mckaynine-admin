@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useBranch } from '@/context/BranchContext';
 import { useTerm } from '@/context/TermContext';
-import { getCourseFeeAmount, getEnrollmentFeeAmount } from '@/lib/invoiceItemUtils';
+import { getCourseFeeAmount, getEnrollmentFeeAmount, applyInvoiceDiscountToItems } from '@/lib/invoiceItemUtils';
 
 export interface FranchiseHandler {
   clientId: string;
@@ -124,6 +124,7 @@ export function useFranchiseClassesData(termId?: string) {
       console.log(`Retrieved ${classes?.length || 0} classes for branch ${currentBranch.name}`);
 
       // Get schedules for the specific term with enhanced debugging
+      // Include invoice-level discount fields to properly calculate discounted amounts
       const { data: scheduleData, error: scheduleError } = await supabase
         .from('class_schedules')
         .select(`
@@ -144,7 +145,11 @@ export function useFranchiseClassesData(termId?: string) {
               item_type,
               invoices:invoice_id (
                 status,
-                payment_received
+                payment_received,
+                subtotal,
+                monetary_discount,
+                discount_type,
+                discount_amount
               )
             )
           )
@@ -213,15 +218,19 @@ export function useFranchiseClassesData(termId?: string) {
             
             // Check payment status from invoices and get invoice amount
             // IMPORTANT: Use only course fees for fee calculations, exclude enrollment fees
+            // Apply invoice-level discounts proportionally to items
             let paymentStatus = booking.payment_status;
             let invoiceAmount = 0; // This will be the COURSE FEE only (excl enrollment fee)
             let enrollmentFeeAmount = 0; // Track enrollment fees separately
             
             if (booking.invoice_items && booking.invoice_items.length > 0) {
-              // Get course fee amount only (excluding enrollment fees)
-              invoiceAmount = getCourseFeeAmount(booking.invoice_items);
-              // Get enrollment fee amount separately
-              enrollmentFeeAmount = getEnrollmentFeeAmount(booking.invoice_items);
+              // Apply invoice-level discounts to items first
+              const discountedItems = applyInvoiceDiscountToItems(booking.invoice_items);
+              
+              // Get course fee amount only (excluding enrollment fees) - now with discounts applied
+              invoiceAmount = getCourseFeeAmount(discountedItems);
+              // Get enrollment fee amount separately - now with discounts applied
+              enrollmentFeeAmount = getEnrollmentFeeAmount(discountedItems);
               
               // Check if any invoice is paid
               const hasPaidInvoice = booking.invoice_items.some(item => 

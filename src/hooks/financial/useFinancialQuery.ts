@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { FinancialData } from "./types";
-import { getCourseFeeAmount, getEnrollmentFeeAmount } from "@/lib/invoiceItemUtils";
+import { getCourseFeeAmount, getEnrollmentFeeAmount, applyInvoiceDiscountToItems } from "@/lib/invoiceItemUtils";
 
 /**
  * Simplified financial query hook
@@ -10,6 +10,7 @@ import { getCourseFeeAmount, getEnrollmentFeeAmount } from "@/lib/invoiceItemUti
  * 1. Fetch invoices filtered by branch, status, and date range
  * 2. Use invoice IDs to fetch invoice_items (no nested join filtering)
  * 3. Use booking IDs from invoice_items to fetch only relevant bookings
+ * 4. Apply invoice-level discounts proportionally to items for accurate revenue
  * 
  * This eliminates nested join filtering issues and ensures data consistency.
  */
@@ -35,6 +36,7 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
       console.log(`[FinancialQuery] Fetching for branch ${branchId}, dates: ${fromDate} to ${toDate}`);
 
       // STEP 1: Fetch invoices for this branch with date/status filters
+      // Include discount fields for applying invoice-level discounts to items
       let invoicesQuery = supabase
         .from('invoices')
         .select(`
@@ -45,6 +47,9 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
           client_id,
           issued_date,
           invoice_number,
+          monetary_discount,
+          discount_type,
+          discount_amount,
           client:client_id (
             id,
             branch_id
@@ -123,8 +128,26 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
       console.log(`[FinancialQuery] Items with booking_id: ${itemsWithBooking}, without: ${itemsWithoutBooking}`);
 
       // Calculate course fee and enrollment fee from invoice items
-      const courseFeeRevenue = getCourseFeeAmount(invoiceItems);
-      const enrollmentFeeRevenue = getEnrollmentFeeAmount(invoiceItems);
+      // First, enhance items with invoice discount info, then apply discounts
+      const itemsWithInvoiceData = invoiceItems.map(item => {
+        const invoice = invoices.find(inv => inv.id === item.invoice_id);
+        return {
+          ...item,
+          invoices: invoice ? {
+            subtotal: invoice.subtotal,
+            monetary_discount: invoice.monetary_discount,
+            discount_type: invoice.discount_type,
+            discount_amount: invoice.discount_amount,
+            status: invoice.status
+          } : null
+        };
+      });
+      
+      // Apply invoice-level discounts to get accurate amounts
+      const discountedItems = applyInvoiceDiscountToItems(itemsWithInvoiceData);
+      
+      const courseFeeRevenue = getCourseFeeAmount(discountedItems);
+      const enrollmentFeeRevenue = getEnrollmentFeeAmount(discountedItems);
 
       // STEP 3: Get unique booking IDs from invoice items and fetch only those bookings
       const bookingIds = [...new Set(invoiceItems
@@ -196,6 +219,7 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
       }
 
       // Enhance invoice items with invoice reference for processor compatibility
+      // Include discount information so processor can apply discounts
       const enhancedInvoiceItems = invoiceItems.map(item => {
         const invoice = invoices.find(inv => inv.id === item.invoice_id);
         return {
@@ -204,6 +228,10 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
             id: invoice.id,
             status: invoice.status,
             total: invoice.total,
+            subtotal: invoice.subtotal,
+            monetary_discount: invoice.monetary_discount,
+            discount_type: invoice.discount_type,
+            discount_amount: invoice.discount_amount,
             client: invoice.client
           } : null
         };
