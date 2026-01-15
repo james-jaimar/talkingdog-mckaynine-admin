@@ -4,7 +4,6 @@ import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/comp
 import { UseFormReturn } from "react-hook-form";
 import { TrainerFormValues } from "../schemas/trainerFormSchema";
 import { Loader } from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 
 interface TrainerSpecialtyFieldsProps {
@@ -40,14 +39,11 @@ export function TrainerSpecialtyFields({
         control={form.control}
         name="branchIds"
         render={({ field }) => {
-          // Extract the first branch ID if available
-          const branchValue = field.value && field.value.length > 0 
-            ? field.value[0] 
-            : undefined;
+          const selectedBranches = field.value || [];
           
           return (
             <FormItem>
-              <FormLabel>Branch</FormLabel>
+              <FormLabel>Branches</FormLabel>
               <FormControl>
                 {isLoadingBranches ? (
                   <div className="flex items-center space-x-2 h-10 px-3 py-2 border rounded-md">
@@ -55,27 +51,35 @@ export function TrainerSpecialtyFields({
                     <span className="text-sm text-muted-foreground">Loading branches...</span>
                   </div>
                 ) : branches.length > 0 ? (
-                  <Select 
-                    value={branchValue}
-                    onValueChange={(value) => {
-                      console.log("[TrainerSpecialtyFields] Branch selected:", value);
-                      form.setValue('branchIds', [value], { 
-                        shouldValidate: true, 
-                        shouldDirty: true 
-                      });
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a branch" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {branches.map((branch) => (
-                        <SelectItem key={branch.value} value={branch.value}>
-                          {branch.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="grid grid-cols-2 gap-2 border border-input p-3 rounded-md">
+                    {branches.map((branch) => {
+                      const isChecked = selectedBranches.includes(branch.value);
+                      return (
+                        <div key={branch.value} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`branch-${branch.value}`}
+                            checked={isChecked}
+                            onCheckedChange={(checked) => {
+                              const updatedValues = checked
+                                ? [...selectedBranches, branch.value]
+                                : selectedBranches.filter(id => id !== branch.value);
+                              
+                              form.setValue('branchIds', updatedValues, {
+                                shouldValidate: true,
+                                shouldDirty: true
+                              });
+                            }}
+                          />
+                          <label 
+                            htmlFor={`branch-${branch.value}`}
+                            className="text-sm cursor-pointer"
+                          >
+                            {branch.label}
+                          </label>
+                        </div>
+                      );
+                    })}
+                  </div>
                 ) : (
                   <div className="text-sm text-muted-foreground border border-input p-2 rounded">
                     No branches available. Please add branches first.

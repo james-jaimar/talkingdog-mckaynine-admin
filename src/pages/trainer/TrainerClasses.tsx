@@ -25,8 +25,29 @@ export default function TrainerClasses() {
   const { currentBranch } = useBranch();
   const navigate = useNavigate();
 
+  // Fetch trainer's assigned branches
+  const { data: trainerBranches = [] } = useQuery({
+    queryKey: ['trainer-branches', trainerProfile?.id],
+    queryFn: async () => {
+      if (!trainerProfile?.id) return [];
+      
+      const { data, error } = await supabase
+        .from('trainer_branches')
+        .select('branch_id')
+        .eq('trainer_id', trainerProfile.id);
+      
+      if (error) {
+        console.error("Error fetching trainer branches:", error);
+        return [];
+      }
+      
+      return data?.map(tb => tb.branch_id) || [];
+    },
+    enabled: !!trainerProfile?.id,
+  });
+
   const { data: classes = [], isLoading } = useQuery({
-    queryKey: ['trainer-all-classes', trainerProfile?.id, currentBranch?.id],
+    queryKey: ['trainer-all-classes', trainerProfile?.id, currentBranch?.id, trainerBranches],
     queryFn: async () => {
       if (!trainerProfile?.id) return [];
 
@@ -59,7 +80,8 @@ export default function TrainerClasses() {
         return [];
       }
 
-      // Filter by branch on client side
+      // Filter by branch - if current branch is selected, only show that branch's classes
+      // If the trainer has multiple branches, they can switch between them using the branch selector
       const filteredData = currentBranch?.id 
         ? (data || []).filter((item: any) => item.classes?.branch_id === currentBranch.id)
         : data || [];

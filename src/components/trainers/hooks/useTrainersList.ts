@@ -22,15 +22,10 @@ export function useTrainersList() {
         
         console.log("[useTrainersList] Profiles with trainer role:", trainersProfiles?.length);
         
-        // STEP 2: Get trainers from trainers table with branch data
+        // STEP 2: Get trainers from trainers table
         const { data: trainersTable, error: trainersError } = await supabase
           .from('trainers')
-          .select(`
-            *,
-            branches:branch_id (
-              name
-            )
-          `);
+          .select('*');
         
         if (trainersError) {
           console.error("[useTrainersList] Error fetching trainers from trainers table:", trainersError);
@@ -38,6 +33,31 @@ export function useTrainersList() {
         }
         
         console.log("[useTrainersList] Trainers from trainers table:", trainersTable?.length);
+        
+        // STEP 3: Get trainer branches from junction table
+        const { data: trainerBranches, error: branchesError } = await supabase
+          .from('trainer_branches')
+          .select(`
+            trainer_id,
+            branches:branch_id (
+              id,
+              name
+            )
+          `);
+        
+        if (branchesError) {
+          console.error("[useTrainersList] Error fetching trainer branches:", branchesError);
+        }
+        
+        // Create a map of trainer_id to branch names
+        const trainerBranchMap = new Map<string, string[]>();
+        trainerBranches?.forEach(tb => {
+          if (tb.branches) {
+            const existing = trainerBranchMap.get(tb.trainer_id) || [];
+            existing.push((tb.branches as any).name);
+            trainerBranchMap.set(tb.trainer_id, existing);
+          }
+        });
 
         // Filter to ensure we only get profiles that actually contain 'trainer' role
         const filteredProfileTrainers = trainersProfiles?.filter(profile => {
@@ -84,8 +104,8 @@ export function useTrainersList() {
         
         // Then add/override with data from the trainers table
         trainersTable?.forEach(trainer => {
-          // Extract branch name if available
-          const branchNames = trainer.branches ? [trainer.branches.name] : null;
+          // Get branch names from the junction table
+          const branchNames = trainerBranchMap.get(trainer.id) || null;
           
           // If this trainer has a user_id that matches a profile trainer, merge the data
           if (trainer.user_id && trainersMap.has(trainer.user_id)) {
