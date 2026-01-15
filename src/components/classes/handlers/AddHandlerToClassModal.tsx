@@ -72,6 +72,7 @@ export function AddHandlerToClassModal({
             setSearchQuery={setSearchQuery}
             onSelect={addHandlerToClass}
             classId={classId}
+            branchId={classData?.branch_id || ''}
             isProcessing={isProcessing}
           />
         </Tabs>

@@ -15,6 +15,7 @@ interface ExistingHandlersListProps {
   searchQuery: string;
   onSelect: (handlerId: string, dogIds: string[]) => void;
   classId: string;
+  branchId: string;
   isProcessing: boolean;
   selectedHandlerId: string | null;
   setSelectedHandlerId: (id: string | null) => void;
@@ -24,6 +25,7 @@ export function ExistingHandlersList({
   searchQuery, 
   onSelect, 
   classId, 
+  branchId,
   isProcessing,
   selectedHandlerId,
   setSelectedHandlerId
@@ -35,7 +37,7 @@ export function ExistingHandlersList({
     isLoading,
     error,
     refetch,
-  } = useHandlersList(classId, searchQuery);
+  } = useHandlersList(classId, searchQuery, branchId);
 
   // Handle handler selection with multiple dogs
   const handleSelect = (handlerId: string, dogIds: string[]) => {
