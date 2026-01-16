@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { GitBranch, Mail, MapPin, Phone, Briefcase, Stethoscope, Send, FileCheck, Syringe } from "lucide-react";
+import { GitBranch, Mail, MapPin, Phone, Briefcase, Stethoscope, Send, FileCheck, Syringe, UserPlus } from "lucide-react";
 import { formatPhoneNumber } from "../utils/handlerUtils";
 import { useBranch } from "@/context/BranchContext";
 import { useEffect, useMemo } from "react";
@@ -31,6 +31,11 @@ interface HandlerInfoProps {
     vet_name?: string;
     account_holder_name?: string;
     created_at: string;
+    // Secondary contact fields
+    secondary_first_name?: string;
+    secondary_last_name?: string;
+    secondary_email?: string;
+    secondary_phone?: string;
     uses_whatsapp_status?: ConsentStatus;
     social_media_consent_status?: ConsentStatus;
     enrollment_registrations?: EnrollmentRegistration[];
@@ -148,6 +153,39 @@ export function HandlerInfo({ handler }: HandlerInfoProps) {
             )}
           </div>
         </div>
+
+        {/* Secondary Contact */}
+        {(handler.secondary_first_name || handler.secondary_email || handler.secondary_phone) && (
+          <div className="space-y-1">
+            <h3 className="font-semibold text-muted-foreground text-sm flex items-center gap-2">
+              <UserPlus className="h-4 w-4" />
+              Secondary Contact
+            </h3>
+            <div className="grid gap-2 pl-6">
+              {(handler.secondary_first_name || handler.secondary_last_name) && (
+                <div className="text-sm font-medium">
+                  {handler.secondary_first_name} {handler.secondary_last_name}
+                </div>
+              )}
+              {handler.secondary_email && (
+                <div className="flex items-center gap-2">
+                  <Mail className="h-4 w-4 text-muted-foreground" />
+                  <a href={`mailto:${handler.secondary_email}`} className="text-sm hover:underline">
+                    {handler.secondary_email}
+                  </a>
+                </div>
+              )}
+              {handler.secondary_phone && (
+                <div className="flex items-center gap-2">
+                  <Phone className="h-4 w-4 text-muted-foreground" />
+                  <a href={`tel:${handler.secondary_phone}`} className="text-sm hover:underline">
+                    {formatPhoneNumber(handler.secondary_phone)}
+                  </a>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Additional Handler Info */}
         {(handler.occupation || handler.vet_name || handler.account_holder_name) && (
@@ -271,6 +309,8 @@ export function HandlerInfo({ handler }: HandlerInfoProps) {
         first_name: handler.first_name,
         last_name: handler.last_name,
         email: handler.email,
+        secondary_email: handler.secondary_email,
+        secondary_first_name: handler.secondary_first_name,
       }}
     />
     </>

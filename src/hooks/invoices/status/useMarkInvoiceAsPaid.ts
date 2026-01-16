@@ -2,12 +2,13 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { generateClassConfirmationEmail } from "@/lib/email/generateClassConfirmation";
-import { generatePaymentReceiptEmail } from "@/lib/email/generatePaymentReceipt";
+import { generateClassConfirmationEmails } from "@/lib/email/generateClassConfirmation";
+import { generatePaymentReceiptEmails } from "@/lib/email/generatePaymentReceipt";
 
 /**
  * Hook to mark an invoice as paid
  * Also queues a payment receipt and class confirmation email automatically
+ * Supports secondary contact - will queue emails to both addresses if secondary exists
  */
 export function useMarkInvoiceAsPaid() {
   const queryClient = useQueryClient();
@@ -45,11 +46,11 @@ export function useMarkInvoiceAsPaid() {
       
       let emailsQueued = 0;
       
-      // Generate and queue payment receipt email
+      // Generate and queue payment receipt emails (including secondary contact)
       try {
-        const receiptData = await generatePaymentReceiptEmail(invoiceId);
+        const receiptEmails = await generatePaymentReceiptEmails(invoiceId);
         
-        if (receiptData) {
+        for (const receiptData of receiptEmails) {
           const { error: receiptError } = await supabase
             .from("email_queue")
             .insert({
@@ -69,14 +70,14 @@ export function useMarkInvoiceAsPaid() {
           }
         }
       } catch (receiptError) {
-        console.warn("Error queueing receipt email:", receiptError);
+        console.warn("Error queueing receipt emails:", receiptError);
       }
       
-      // Generate and queue class confirmation email
+      // Generate and queue class confirmation emails (including secondary contact)
       try {
-        const confirmationData = await generateClassConfirmationEmail(invoiceId);
+        const confirmationEmails = await generateClassConfirmationEmails(invoiceId);
         
-        if (confirmationData) {
+        for (const confirmationData of confirmationEmails) {
           const { error: confirmationError } = await supabase
             .from("email_queue")
             .insert({
@@ -96,11 +97,13 @@ export function useMarkInvoiceAsPaid() {
           }
         }
       } catch (emailError) {
-        console.warn("Error queueing confirmation email:", emailError);
+        console.warn("Error queueing confirmation emails:", emailError);
       }
       
       // Show appropriate toast based on emails queued
-      if (emailsQueued === 2) {
+      if (emailsQueued > 2) {
+        toast.success(`Invoice marked as paid - ${emailsQueued} emails queued (including secondary contact)`);
+      } else if (emailsQueued === 2) {
         toast.success("Invoice marked as paid - receipt & confirmation emails queued");
       } else if (emailsQueued === 1) {
         toast.success("Invoice marked as paid - email queued");

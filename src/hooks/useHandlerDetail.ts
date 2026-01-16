@@ -50,6 +50,10 @@ export function useHandlerDetail(id: string | undefined) {
         ...data,
         uses_whatsapp_status: (data.uses_whatsapp_status as ConsentStatus) || 'not_marked',
         social_media_consent_status: (data.social_media_consent_status as ConsentStatus) || 'not_marked',
+        secondary_first_name: data.secondary_first_name || undefined,
+        secondary_last_name: data.secondary_last_name || undefined,
+        secondary_email: data.secondary_email || undefined,
+        secondary_phone: data.secondary_phone || undefined,
         enrollment_registrations: data.enrollment_registrations || []
       };
 

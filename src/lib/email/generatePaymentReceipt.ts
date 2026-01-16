@@ -56,14 +56,14 @@ function formatCurrency(amount: number): string {
 }
 
 /**
- * Generates a payment receipt email for a paid invoice
- * Returns null if handler has no email
+ * Generates payment receipt emails for a paid invoice
+ * Returns an array of email data (one for primary, one for secondary if exists)
  */
-export async function generatePaymentReceiptEmail(
+export async function generatePaymentReceiptEmails(
   invoiceId: string
-): Promise<ReceiptEmailData | null> {
+): Promise<ReceiptEmailData[]> {
   try {
-    // Fetch invoice with all related data
+    // Fetch invoice with all related data including secondary email
     const { data: invoiceData, error: invoiceError } = await supabase
       .from("invoices")
       .select(`
@@ -83,6 +83,7 @@ export async function generatePaymentReceiptEmail(
           first_name,
           last_name,
           email,
+          secondary_email,
           branch_id
         )
       `)
@@ -91,14 +92,14 @@ export async function generatePaymentReceiptEmail(
 
     if (invoiceError || !invoiceData) {
       console.warn("Could not fetch invoice for receipt email:", invoiceError);
-      return null;
+      return [];
     }
 
     const client = invoiceData.clients as any;
     
     if (!client?.email) {
       console.warn("No email address for client:", client?.id);
-      return null;
+      return [];
     }
 
     // Fetch invoice items
@@ -110,7 +111,7 @@ export async function generatePaymentReceiptEmail(
 
     if (itemsError) {
       console.warn("Could not fetch invoice items:", itemsError);
-      return null;
+      return [];
     }
 
     const items: InvoiceItem[] = itemsData || [];
@@ -147,17 +148,43 @@ export async function generatePaymentReceiptEmail(
     const htmlContent = renderTemplate(template, variablesWithSignature);
     const subject = renderTemplate(templateSubject, { invoice_number: invoiceData.invoice_number });
 
-    return {
+    const emails: ReceiptEmailData[] = [];
+
+    // Add primary email
+    emails.push({
       to_email: client.email,
       subject,
       html_content: htmlContent,
       handler_id: client.id,
       branch_id: client.branch_id,
-    };
+    });
+
+    // Add secondary email if exists
+    if (client.secondary_email) {
+      emails.push({
+        to_email: client.secondary_email,
+        subject,
+        html_content: htmlContent,
+        handler_id: client.id,
+        branch_id: client.branch_id,
+      });
+    }
+
+    return emails;
   } catch (error) {
     console.error("Error generating payment receipt email:", error);
-    return null;
+    return [];
   }
+}
+
+/**
+ * @deprecated Use generatePaymentReceiptEmails instead (returns array for secondary contact support)
+ */
+export async function generatePaymentReceiptEmail(
+  invoiceId: string
+): Promise<ReceiptEmailData | null> {
+  const emails = await generatePaymentReceiptEmails(invoiceId);
+  return emails.length > 0 ? emails[0] : null;
 }
 
 /**

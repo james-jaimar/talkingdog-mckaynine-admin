@@ -902,6 +902,10 @@ export type Database = {
           onboarding_status: string
           phone: string | null
           postal_code: string | null
+          secondary_email: string | null
+          secondary_first_name: string | null
+          secondary_last_name: string | null
+          secondary_phone: string | null
           social_media_consent_status: string
           updated_at: string
           uses_whatsapp_status: string
@@ -925,6 +929,10 @@ export type Database = {
           onboarding_status?: string
           phone?: string | null
           postal_code?: string | null
+          secondary_email?: string | null
+          secondary_first_name?: string | null
+          secondary_last_name?: string | null
+          secondary_phone?: string | null
           social_media_consent_status?: string
           updated_at?: string
           uses_whatsapp_status?: string
@@ -948,6 +956,10 @@ export type Database = {
           onboarding_status?: string
           phone?: string | null
           postal_code?: string | null
+          secondary_email?: string | null
+          secondary_first_name?: string | null
+          secondary_last_name?: string | null
+          secondary_phone?: string | null
           social_media_consent_status?: string
           updated_at?: string
           uses_whatsapp_status?: string

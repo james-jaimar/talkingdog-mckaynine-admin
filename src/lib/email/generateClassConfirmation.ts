@@ -50,14 +50,14 @@ interface ConfirmationEmailData {
 }
 
 /**
- * Generates a class confirmation email for a paid invoice
- * Returns null if the invoice has no bookings or handler has no email
+ * Generates class confirmation emails for a paid invoice
+ * Returns an array of email data (one for primary, one for secondary if exists)
  */
-export async function generateClassConfirmationEmail(
+export async function generateClassConfirmationEmails(
   invoiceId: string
-): Promise<ConfirmationEmailData | null> {
+): Promise<ConfirmationEmailData[]> {
   try {
-    // Fetch invoice with all related booking and class data
+    // Fetch invoice with all related booking and class data including secondary email
     const { data: invoiceData, error: invoiceError } = await supabase
       .from("invoices")
       .select(`
@@ -68,6 +68,7 @@ export async function generateClassConfirmationEmail(
           first_name,
           last_name,
           email,
+          secondary_email,
           branch_id
         )
       `)
@@ -76,14 +77,14 @@ export async function generateClassConfirmationEmail(
 
     if (invoiceError || !invoiceData) {
       console.warn("Could not fetch invoice for confirmation email:", invoiceError);
-      return null;
+      return [];
     }
 
     const client = invoiceData.clients as any;
     
     if (!client?.email) {
       console.warn("No email address for client:", client?.id);
-      return null;
+      return [];
     }
 
     // Fetch invoice items with booking details
@@ -116,7 +117,7 @@ export async function generateClassConfirmationEmail(
 
     if (itemsError) {
       console.warn("Could not fetch invoice items:", itemsError);
-      return null;
+      return [];
     }
 
     // Filter to only items with bookings and deduplicate by booking_id
@@ -133,7 +134,7 @@ export async function generateClassConfirmationEmail(
 
     if (bookingItems.length === 0) {
       console.log("No bookings on invoice - skipping confirmation email");
-      return null;
+      return [];
     }
 
     // Extract class enrollment details
@@ -180,17 +181,43 @@ export async function generateClassConfirmationEmail(
     const htmlContent = renderTemplate(template, variablesWithSignature);
     const subject = renderTemplate(templateSubject, { class_name: primaryClassName });
 
-    return {
+    const emails: ConfirmationEmailData[] = [];
+
+    // Add primary email
+    emails.push({
       to_email: client.email,
       subject,
       html_content: htmlContent,
       handler_id: client.id,
       branch_id: client.branch_id,
-    };
+    });
+
+    // Add secondary email if exists
+    if (client.secondary_email) {
+      emails.push({
+        to_email: client.secondary_email,
+        subject,
+        html_content: htmlContent,
+        handler_id: client.id,
+        branch_id: client.branch_id,
+      });
+    }
+
+    return emails;
   } catch (error) {
     console.error("Error generating class confirmation email:", error);
-    return null;
+    return [];
   }
+}
+
+/**
+ * @deprecated Use generateClassConfirmationEmails instead (returns array for secondary contact support)
+ */
+export async function generateClassConfirmationEmail(
+  invoiceId: string
+): Promise<ConfirmationEmailData | null> {
+  const emails = await generateClassConfirmationEmails(invoiceId);
+  return emails.length > 0 ? emails[0] : null;
 }
 
 /**

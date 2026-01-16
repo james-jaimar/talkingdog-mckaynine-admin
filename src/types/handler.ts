@@ -37,6 +37,11 @@ export interface HandlerData {
   occupation?: string;
   vet_name?: string;
   account_holder_name?: string;
+  // Secondary contact fields
+  secondary_first_name?: string;
+  secondary_last_name?: string;
+  secondary_email?: string;
+  secondary_phone?: string;
   uses_whatsapp_status: ConsentStatus;
   social_media_consent_status: ConsentStatus;
   // Handler-level admin verification fields
