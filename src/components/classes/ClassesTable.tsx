@@ -13,7 +13,8 @@ import { ClassesTableHeader } from "./table/ClassesTableHeader";
 import { DragDropContext, Droppable, DropResult } from "react-beautiful-dnd";
 import { ClassWithSchedules } from "./hooks/types/class-with-schedules";
 import { toast } from "@/components/ui/use-toast";
-
+import { MobileClassesList } from "./mobile/MobileClassesList";
+import { useIsMobile } from "@/hooks/useIsMobile";
 export function ClassesTable() {
   const { 
     activeClasses,
@@ -30,6 +31,7 @@ export function ClassesTable() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const queryClient = useQueryClient();
   const { currentBranch } = useBranch();
+  const isMobile = useIsMobile();
   
   const handleEdit = (classItem: ClassWithSchedules) => {
     setEditingClass(classItem);
@@ -97,38 +99,49 @@ export function ClassesTable() {
 
   return (
     <>
-      <DragDropContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-        <Card>
-          <CardContent className="p-0 overflow-auto relative">
-            <Table>
-              <ClassesTableHeader />
-              <Droppable droppableId="classes-table">
-                {(provided) => (
-                  <TableBody 
-                    className="relative" 
-                    data-testid="classes-table-body"
-                    ref={provided.innerRef}
-                    {...provided.droppableProps}
-                  >
-                    {Array.isArray(sortedActiveClasses) && sortedActiveClasses.map((classItem, index) => (
-                      <ClassTableRow
-                        key={classItem.id}
-                        classItem={classItem}
-                        index={index}
-                        totalClasses={sortedActiveClasses.length}
-                        onEdit={() => handleEdit(classItem)}
-                        isLoading={isLoading}
-                        isMoving={isMoving || isItemMoving(classItem.id)}
-                      />
-                    ))}
-                    {provided.placeholder}
-                  </TableBody>
-                )}
-              </Droppable>
-            </Table>
-          </CardContent>
-        </Card>
-      </DragDropContext>
+      {/* Mobile View */}
+      {isMobile && (
+        <MobileClassesList 
+          classes={sortedActiveClasses} 
+          onEdit={handleEdit} 
+        />
+      )}
+
+      {/* Desktop View */}
+      {!isMobile && (
+        <DragDropContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+          <Card>
+            <CardContent className="p-0 overflow-auto relative">
+              <Table>
+                <ClassesTableHeader />
+                <Droppable droppableId="classes-table">
+                  {(provided) => (
+                    <TableBody 
+                      className="relative" 
+                      data-testid="classes-table-body"
+                      ref={provided.innerRef}
+                      {...provided.droppableProps}
+                    >
+                      {Array.isArray(sortedActiveClasses) && sortedActiveClasses.map((classItem, index) => (
+                        <ClassTableRow
+                          key={classItem.id}
+                          classItem={classItem}
+                          index={index}
+                          totalClasses={sortedActiveClasses.length}
+                          onEdit={() => handleEdit(classItem)}
+                          isLoading={isLoading}
+                          isMoving={isMoving || isItemMoving(classItem.id)}
+                        />
+                      ))}
+                      {provided.placeholder}
+                    </TableBody>
+                  )}
+                </Droppable>
+              </Table>
+            </CardContent>
+          </Card>
+        </DragDropContext>
+      )}
       
       <EditClassModal
         open={isEditModalOpen}

@@ -13,6 +13,8 @@ import { BatchAttendanceModal } from "./attendance/BatchAttendanceModal";
 import { TableActions } from "./table-actions/TableActions";
 import { HandlersTableContainer } from "./table/HandlersTableContainer";
 import { MobileHandlersList } from "./mobile/MobileHandlersList";
+import { MobileDateSelector } from "./mobile/MobileDateSelector";
+import { MobileAttendanceStats } from "./mobile/MobileAttendanceStats";
 import { Loader2 } from "lucide-react";
 
 interface ClassHandlersTableProps {
@@ -23,6 +25,7 @@ interface ClassHandlersTableProps {
 export function ClassHandlersTable({ classId, classType }: ClassHandlersTableProps) {
   const [initialLoadAttempted, setInitialLoadAttempted] = useState<boolean>(false);
   const [batchAttendanceOpen, setBatchAttendanceOpen] = useState(false);
+  const [mobileSelectedDate, setMobileSelectedDate] = useState<string | null>(null);
   const isMobile = useIsMobile();
   
   const { data: handlers, isLoading: isLoadingHandlers, refetch, error } = useClassHandlers(classId);
@@ -174,10 +177,28 @@ export function ClassHandlersTable({ classId, classType }: ClassHandlersTablePro
       )}
 
       {isMobile && (
-        <MobileHandlersList 
-          handlers={handlers}
-          startEditing={startEditing}
-        />
+        <div className="sm:hidden">
+          {/* Mobile Date Selector */}
+          <MobileDateSelector
+            dates={sortedDates}
+            selectedDate={mobileSelectedDate}
+            onSelectDate={setMobileSelectedDate}
+          />
+          
+          {/* Mobile Attendance Stats */}
+          <MobileAttendanceStats
+            bookings={handlers}
+            selectedDate={mobileSelectedDate}
+          />
+          
+          {/* Mobile Handlers List */}
+          <MobileHandlersList 
+            handlers={handlers}
+            selectedDate={mobileSelectedDate}
+            classId={classId}
+            startEditing={startEditing}
+          />
+        </div>
       )}
 
       <RemoveHandlerDialog
