@@ -34,6 +34,8 @@ interface SendQuickEmailModalProps {
     first_name: string;
     last_name: string;
     email: string;
+    secondary_email?: string;
+    secondary_first_name?: string;
   };
 }
 
@@ -52,13 +54,14 @@ export function SendQuickEmailModal({ open, onOpenChange, handler }: SendQuickEm
   const [activeTab, setActiveTab] = useState<"compose" | "preview">("compose");
   const [isSending, setIsSending] = useState(false);
   const [includeBankingDetails, setIncludeBankingDetails] = useState(true);
+  const [includeSecondaryContact, setIncludeSecondaryContact] = useState(true);
   
   // Dog selection
   const [dogs, setDogs] = useState<DogInfo[]>([]);
   const [selectedDogIds, setSelectedDogIds] = useState<string[]>([]);
   
   // Attachment selection
-  const [selectedAttachments, setSelectedAttachments] = useState<EmailAttachment[]>([]);
+  const [selectedAttachments, setSelectedAttachments] = useState<EmailAttachment[]>();
 
   const templatesLoading = prebuiltLoading || customLoading;
   
@@ -113,8 +116,9 @@ export function SendQuickEmailModal({ open, onOpenChange, handler }: SendQuickEm
       setSelectedDogIds([]);
       setSelectedAttachments([]);
       setIncludeBankingDetails(true);
+      setIncludeSecondaryContact(!!handler.secondary_email);
     }
-  }, [open, handler.id]);
+  }, [open, handler.id, handler.secondary_email]);
 
   const toggleDogSelection = (dogId: string) => {
     setSelectedDogIds(prev => 
@@ -241,7 +245,21 @@ export function SendQuickEmailModal({ open, onOpenChange, handler }: SendQuickEm
         template_id: templateId,
       });
 
-      toast.success(`Email queued for ${handler.email}`);
+      // Also queue for secondary contact if enabled and exists
+      if (includeSecondaryContact && handler.secondary_email) {
+        await addToQueue.mutateAsync({
+          to_email: handler.secondary_email,
+          subject,
+          html_content: html,
+          from_name: currentBranch?.name ? `${currentBranch.name} McKaynine` : "McKaynine",
+          attachments: attachmentUrls.length > 0 ? attachmentUrls : undefined,
+          handler_id: handler.id,
+          template_id: templateId,
+        });
+        toast.success(`Emails queued for ${handler.email} and ${handler.secondary_email}`);
+      } else {
+        toast.success(`Email queued for ${handler.email}`);
+      }
       onOpenChange(false);
     } catch (error: any) {
       console.error("Error queuing email:", error);
