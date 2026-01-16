@@ -46,38 +46,44 @@ export const adminNavItems = [
   },
 ];
 
-// Primary navigation items for admin
+// Primary navigation items for admin - prioritized for mobile use
 export const adminPrimaryNavItems = [
   {
     name: "Dashboard",
     path: "/dashboard",
-    icon: Home
+    icon: Home,
+    mobileShow: true
   },
   {
     name: "Classes",
     path: "/classes",
-    icon: Calendar
+    icon: Calendar,
+    mobileShow: true
   },
   {
     name: "Schedules", 
     path: "/schedules",
     icon: Calendar,
-    developerOnly: true
+    developerOnly: true,
+    mobileShow: false
   },
   {
     name: "Handlers",
     path: "/handlers",
-    icon: Users
+    icon: Users,
+    mobileShow: true
   },
   {
     name: "Invoices",
     path: "/invoices",
-    icon: FileText
+    icon: FileText,
+    mobileShow: false
   },
   {
     name: "Email",
     path: "/admin/email",
-    icon: Mail
+    icon: Mail,
+    mobileShow: false
   }
 ];
 
