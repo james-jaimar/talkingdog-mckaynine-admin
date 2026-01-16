@@ -1,5 +1,5 @@
 
-import { Home, Calendar, Users, FileText, BarChart2, Settings, UserPlus, Building, Dog, Map, AlertCircle, ScanLine, Mail, ClipboardList, Palette } from "lucide-react";
+import { Home, Calendar, Users, FileText, BarChart2, Settings, UserPlus, Building, Dog, Map, AlertCircle, ScanLine, Mail, ClipboardList, Palette, KeyRound } from "lucide-react";
 
 export const adminNavItems = [
   {
@@ -97,6 +97,11 @@ export const adminSecondaryNavItems = [
     name: "Users",
     path: "/user-admin",
     icon: UserPlus
+  },
+  {
+    name: "Handler Accounts",
+    path: "/admin/handler-accounts",
+    icon: KeyRound
   },
   {
     name: "Branches",
