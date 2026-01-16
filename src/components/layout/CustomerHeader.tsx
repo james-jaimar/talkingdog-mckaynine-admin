@@ -12,15 +12,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Menu, X, Home, User, FileText, MessageSquare, LogOut, ChevronDown, Dog } from "lucide-react";
+import { Menu, X, Home, User, FileText, MessageSquare, LogOut, ChevronDown, Dog, Calendar } from "lucide-react";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { cn } from "@/lib/utils";
 
 const customerNavItems = [
   { name: "Dashboard", path: "/customer/dashboard", icon: Home },
+  { name: "My Classes", path: "/customer/classes", icon: Calendar },
   { name: "My Profile", path: "/customer/profile", icon: User },
-  { name: "My Dogs", path: "/customer/profile", icon: Dog },
   { name: "Messages", path: "/customer/messages", icon: MessageSquare },
   { name: "Invoices", path: "/customer/invoices", icon: FileText },
 ];

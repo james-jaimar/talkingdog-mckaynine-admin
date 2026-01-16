@@ -1,6 +1,10 @@
 
+
 import { Navigate } from "react-router-dom";
 import Auth from "@/pages/Auth";
+import CustomerLogin from "@/pages/CustomerLogin";
+import ForgotPassword from "@/pages/ForgotPassword";
+import ResetPassword from "@/pages/ResetPassword";
 import NotFound from "@/pages/NotFound";
 import { useAuth } from "@/context/auth";
 import { Loader2 } from "lucide-react";
@@ -63,9 +67,23 @@ export const publicRoutes = [
     path: "/auth",
     element: <Auth />,
   },
-  // Redirect legacy route
+  // Dedicated customer/handler login page
+  {
+    path: "/customer-login",
+    element: <CustomerLogin />,
+  },
+  // Legacy route redirect
   {
     path: "/customer/login",
-    element: <Navigate to="/auth" replace />,
+    element: <Navigate to="/customer-login" replace />,
+  },
+  // Password reset flow
+  {
+    path: "/forgot-password",
+    element: <ForgotPassword />,
+  },
+  {
+    path: "/reset-password",
+    element: <ResetPassword />,
   },
 ];
