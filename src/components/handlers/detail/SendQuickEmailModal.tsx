@@ -61,7 +61,7 @@ export function SendQuickEmailModal({ open, onOpenChange, handler }: SendQuickEm
   const [selectedDogIds, setSelectedDogIds] = useState<string[]>([]);
   
   // Attachment selection
-  const [selectedAttachments, setSelectedAttachments] = useState<EmailAttachment[]>();
+  const [selectedAttachments, setSelectedAttachments] = useState<EmailAttachment[]>([]);
 
   const templatesLoading = prebuiltLoading || customLoading;
   
