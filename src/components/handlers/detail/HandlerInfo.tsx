@@ -1,10 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { GitBranch, Mail, MapPin, Phone, Briefcase, Stethoscope, Send, FileCheck, Syringe, UserPlus } from "lucide-react";
 import { formatPhoneNumber } from "../utils/handlerUtils";
 import { useBranch } from "@/context/BranchContext";
-import { useEffect, useMemo } from "react";
 import { EnrollmentRegistration } from "@/types/handler";
 import { SendQuickEmailModal } from "./SendQuickEmailModal";
 import { Checkbox } from "@/components/ui/checkbox";
