@@ -13,6 +13,7 @@ export function ClassHandlersTableHeader({ scheduleDates, classType }: ClassHand
     <TableHeader>
       <TableRow>
         <TableHead className="w-[200px]">Handler / Dog</TableHead>
+        <TableHead className="w-[120px]">Phone</TableHead>
         {isPuppyClass && <TableHead className="text-center w-20">Age</TableHead>}
         <TableHead className="text-center">Enrol</TableHead>
         <TableHead className="text-center">Vacc</TableHead>
