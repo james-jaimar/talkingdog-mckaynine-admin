@@ -77,6 +77,10 @@ export function BookingRow({
         ) : null}
       </TableCell>
       
+      <TableCell className="text-sm text-muted-foreground">
+        {booking.clients?.phone || "—"}
+      </TableCell>
+      
       {isPuppyClass && (
         <TableCell className="text-center text-sm text-muted-foreground">
           {getPuppyAgeInWeeks()}
