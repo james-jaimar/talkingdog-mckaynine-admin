@@ -8,6 +8,7 @@ import CustomerInvoices from "@/pages/CustomerInvoices";
 import CustomerInvoiceDetail from "@/pages/CustomerInvoiceDetail";
 import CustomerPuppyClassForm from "@/pages/CustomerPuppyClassForm";
 import CustomerClassEnrollment from "@/pages/customer/CustomerClassEnrollment";
+import CustomerClasses from "@/pages/customer/CustomerClasses";
 
 export const customerRoutes = [
   {
@@ -59,12 +60,12 @@ export const customerRoutes = [
       </RequireAuth>
     ),
   },
-  // Redirect customer URLs that haven't been implemented yet
+  // My Classes page
   {
     path: "/customer/classes",
     element: (
       <RequireAuth>
-        <Navigate to="/customer/dashboard" replace />
+        <CustomerClasses />
       </RequireAuth>
     ),
   },
