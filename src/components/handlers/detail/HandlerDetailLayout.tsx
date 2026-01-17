@@ -2,6 +2,7 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Helmet } from "react-helmet";
 import { HandlerDetailHeader } from "./HandlerDetailHeader";
 import { HandlerInfo } from "./HandlerInfo";
+import { HandlerPortalAccess } from "./HandlerPortalAccess";
 import { HandlerCommunications } from "./HandlerCommunications";
 import { HandlerEmailHistory } from "./HandlerEmailHistory";
 import { DogsList } from "./DogsList";
@@ -40,6 +41,10 @@ export function HandlerDetailLayout({
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="space-y-6">
             <HandlerInfo handler={handler} />
+            <HandlerPortalAccess 
+              handler={handler} 
+              onUpdate={onHandlerUpdated}
+            />
             <HandlerEmailHistory handlerId={handler.id} />
             <HandlerCommunications 
               clientId={handler.id}
