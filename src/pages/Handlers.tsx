@@ -4,6 +4,7 @@ import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AddHandlerModal } from "@/components/handlers/AddHandlerModal";
 import { ImportHandlersModal } from "@/components/handlers/import/ImportHandlersModal";
+import { BulkCreateAccountsDialog } from "@/components/handlers/BulkCreateAccountsDialog";
 import { HandlerSearchBar } from "@/components/handlers/HandlerSearchBar";
 import { HandlerAlphabetPagination } from "@/components/handlers/HandlerAlphabetPagination";
 import { HandlerTable } from "@/components/handlers/HandlerTable";
@@ -48,6 +49,7 @@ export default function Handlers() {
             <Button variant="outline" className="flex items-center gap-1">
               <ImportHandlersModal />
             </Button>
+            <BulkCreateAccountsDialog />
           </div>
         </div>
         
