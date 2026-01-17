@@ -117,11 +117,12 @@ export default function HandlerAccounts() {
   };
 
   const handleResetPassword = async () => {
-    if (!selectedHandler?.auth_user_id || !password) return;
+    if (!selectedHandler?.id || !password) return;
     
     try {
+      // Use handlerId instead of auth_user_id - the edge function validates the target is a handler
       await resetPassword.mutateAsync({
-        authUserId: selectedHandler.auth_user_id,
+        handlerId: selectedHandler.id,
         password
       });
       setResetDialogOpen(false);
@@ -385,12 +386,21 @@ export default function HandlerAccounts() {
       <Dialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Reset Password</DialogTitle>
+            <DialogTitle>Reset Handler Password</DialogTitle>
             <DialogDescription>
-              Enter a new password for {selectedHandler?.first_name} {selectedHandler?.last_name}
+              You are about to reset the password for this handler account.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
+            {/* Prominent display of target handler */}
+            <div className="bg-muted p-4 rounded-lg border">
+              <p className="text-sm text-muted-foreground mb-1">Resetting password for:</p>
+              <p className="font-semibold text-lg">
+                {selectedHandler?.first_name} {selectedHandler?.last_name}
+              </p>
+              <p className="text-sm text-primary font-medium">{selectedHandler?.email}</p>
+            </div>
+            
             <div className="space-y-2">
               <Label htmlFor="new-password">New Password</Label>
               <div className="relative">
