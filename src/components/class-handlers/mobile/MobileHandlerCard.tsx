@@ -1,4 +1,4 @@
-import { Phone, Edit2, Check, X, AlertTriangle, CalendarDays } from "lucide-react";
+import { Phone, Edit2, Check, X, AlertTriangle, CalendarDays, CheckCircle, Loader2, Clock, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Booking } from "../types/booking";
@@ -6,7 +6,8 @@ import { differenceInWeeks } from "date-fns";
 import { useAttendance } from "../attendance/useAttendance";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-
+import { useInvoiceStatus } from "../booking-row/useInvoiceStatus";
+import { useMemo } from "react";
 interface MobileHandlerCardProps {
   booking: Booking;
   selectedDate: string | null;
@@ -27,6 +28,22 @@ export function MobileHandlerCard({
   const { updateAttendance, isSubmitting } = useAttendance(classId);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  
+  // Use same invoice status hook as desktop for accurate payment status
+  const { data: invoiceData, isLoading: isLoadingInvoice } = useInvoiceStatus(booking.id);
+  
+  // Determine payment status from invoice data (same logic as PaymentStatusBadge)
+  const paymentStatus = useMemo(() => {
+    if (isLoadingInvoice) return { status: 'loading', display: 'Loading...', isPaid: false };
+    if (!invoiceData) return { status: 'unpaid', display: 'Unpaid', isPaid: false };
+    if (invoiceData.isPaid || invoiceData.invoices?.payment_received || invoiceData.invoices?.status === 'paid') {
+      return { status: 'paid', display: 'Paid', isPaid: true };
+    }
+    if (invoiceData.invoices?.status === 'pending') {
+      return { status: 'pending', display: 'Pending', isPaid: false };
+    }
+    return { status: 'unpaid', display: 'Unpaid', isPaid: false };
+  }, [invoiceData, isLoadingInvoice]);
 
   // Calculate dog age in weeks
   const getDogAge = () => {
@@ -140,17 +157,26 @@ export function MobileHandlerCard({
           </div>
         </div>
         
-        {/* Payment Status Badge */}
-        <Badge 
-          variant="outline" 
-          className={`shrink-0 ml-2 ${
-            booking.computed_payment_status === 'paid' 
-              ? 'bg-green-100 text-green-800 border-green-200' 
-              : 'bg-red-100 text-red-800 border-red-200'
-          }`}
-        >
-          {booking.computed_payment_status === 'paid' ? 'Paid' : 'Unpaid'}
-        </Badge>
+        {/* Payment Status Badge - using invoice data like desktop */}
+        {isLoadingInvoice ? (
+          <Badge variant="outline" className="shrink-0 ml-2 bg-gray-100">
+            <Loader2 className="h-3 w-3 animate-spin" />
+          </Badge>
+        ) : (
+          <Badge 
+            variant="outline" 
+            className={`shrink-0 ml-2 ${
+              paymentStatus.isPaid 
+                ? 'bg-green-100 text-green-800 border-green-200' 
+                : paymentStatus.status === 'pending'
+                  ? 'bg-yellow-100 text-yellow-800 border-yellow-200'
+                  : 'bg-red-100 text-red-800 border-red-200'
+            }`}
+          >
+            {paymentStatus.isPaid && <CheckCircle className="h-3 w-3 mr-1" />}
+            {paymentStatus.display}
+          </Badge>
+        )}
       </div>
 
       {/* Phone Number - Tappable */}
