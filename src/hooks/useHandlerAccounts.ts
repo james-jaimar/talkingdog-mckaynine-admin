@@ -112,13 +112,13 @@ export function useHandlerAccounts() {
     }
   });
 
-  // Reset handler password
+  // Reset handler password - uses handler-account endpoint with role validation
   const resetPassword = useMutation({
     mutationFn: async ({ 
-      authUserId, 
+      handlerId, 
       password 
     }: { 
-      authUserId: string; 
+      handlerId: string; 
       password: string;
     }) => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -127,12 +127,12 @@ export function useHandlerAccounts() {
         throw new Error("Not authenticated");
       }
 
-      // Use existing user-role edge function for password reset
-      const { data, error } = await supabase.functions.invoke('user-role', {
+      // Use handler-account endpoint which validates target is a handler (not admin/trainer)
+      const { data, error } = await supabase.functions.invoke('handler-account', {
         method: 'POST',
         body: { 
           operation: 'reset_password',
-          userId: authUserId,
+          handlerId,  // Pass handler ID, not auth_user_id - the function will validate
           password
         },
         headers: {
