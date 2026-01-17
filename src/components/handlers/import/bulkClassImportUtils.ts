@@ -1,6 +1,6 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { generateInvoiceNumber } from "@/hooks/invoices/useInvoiceUtilities";
-
+import { autoCreateHandlerAccount } from "@/lib/account/autoCreateHandlerAccount";
 export interface BulkImportRow {
   handler_name: string;
   email: string;
@@ -421,6 +421,15 @@ async function getOrCreateClient(
   if (error) {
     console.error("Client creation error:", error);
     return { clientId: null, created: false };
+  }
+
+  // Auto-create handler login account (non-blocking)
+  if (newClient?.id && branchId) {
+    try {
+      await autoCreateHandlerAccount(newClient.id, email, branchId);
+    } catch (accountError) {
+      console.warn("Auto account creation failed during bulk import (non-blocking):", accountError);
+    }
   }
 
   return { clientId: newClient.id, created: true };

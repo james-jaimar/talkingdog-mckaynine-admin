@@ -5,6 +5,7 @@ import { useDogCreation } from "./createDog";
 import { useEnrollmentCreation } from "./createEnrollment";
 import { useClientNotesUpdate } from "./updateClientNotes";
 import { QueryClient } from "@tanstack/react-query";
+import { autoCreateHandlerAccount } from "@/lib/account/autoCreateHandlerAccount";
 
 export function useHandlerSubmission(queryClient: QueryClient, toast: any) {
   // Import all the service hooks
@@ -43,6 +44,27 @@ export function useHandlerSubmission(queryClient: QueryClient, toast: any) {
     // Update client notes with preferences
     await updateClientNotes(data, clientData.id);
 
+    // Auto-create handler login account (non-blocking)
+    // Password is generated automatically, admin can reset later if needed
+    try {
+      const accountResult = await autoCreateHandlerAccount(
+        clientData.id,
+        data.email,
+        branchId
+      );
+      
+      if (accountResult.success) {
+        console.log("Handler account auto-created successfully");
+      } else if (accountResult.skipped) {
+        console.log("Handler account creation skipped:", accountResult.skipReason);
+      } else {
+        console.warn("Handler account creation failed (non-blocking):", accountResult.error);
+      }
+    } catch (accountError) {
+      // Non-blocking - log but don't fail the handler creation
+      console.warn("Auto account creation error (non-blocking):", accountError);
+    }
+
     console.log("Handler creation complete, refreshing data");
     
     // Force immediate data refresh
@@ -54,3 +76,4 @@ export function useHandlerSubmission(queryClient: QueryClient, toast: any) {
   
   return { submitHandler };
 }
+
