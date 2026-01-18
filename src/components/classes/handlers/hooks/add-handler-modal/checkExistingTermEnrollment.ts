@@ -13,18 +13,21 @@ export interface ExistingTermEnrollment {
 }
 
 /**
- * Check if a handler has other dogs enrolled in classes within the same term.
+ * Check if a handler has other dogs enrolled in classes within the same term AND branch.
  * This is used to apply multi-dog discounts across different classes.
+ * Multi-dog discounts only apply within the same branch.
  * 
  * @param handlerId - The client/handler ID
  * @param termId - The term ID to check enrollments for
  * @param currentDogIds - Array of dog IDs being enrolled (to exclude from check)
- * @returns Information about existing enrollments in the same term
+ * @param branchId - The branch ID of the class being enrolled in (for same-branch filtering)
+ * @returns Information about existing enrollments in the same term and branch
  */
 export const checkExistingTermEnrollment = async (
   handlerId: string,
   termId: string | null,
-  currentDogIds: string[]
+  currentDogIds: string[],
+  branchId?: string
 ): Promise<ExistingTermEnrollment> => {
   // If no term ID, can't do term-based checking
   if (!termId) {
@@ -39,12 +42,14 @@ export const checkExistingTermEnrollment = async (
     console.log("MULTI-DOG-CHECK: Checking for existing enrollments", { 
       handlerId, 
       termId, 
-      currentDogIds 
+      currentDogIds,
+      branchId // Log branch ID for debugging
     });
 
     // Find other dogs belonging to this handler that are enrolled in classes this term
     // Exclude the current dog(s) being enrolled
-    const { data: existingBookings, error } = await supabase
+    // Also filter by branch to ensure multi-dog discounts only apply within same branch
+    let query = supabase
       .from('bookings')
       .select(`
         id,
@@ -58,7 +63,8 @@ export const checkExistingTermEnrollment = async (
           term_id,
           classes!inner (
             id,
-            name
+            name,
+            branch_id
           )
         ),
         invoice_items (
@@ -72,7 +78,14 @@ export const checkExistingTermEnrollment = async (
       `)
       .eq('client_id', handlerId)
       .eq('class_schedules.term_id', termId)
-      .not('dog_id', 'in', `(${currentDogIds.join(',')})`)
+      .not('dog_id', 'in', `(${currentDogIds.join(',')})`);
+
+    // Only apply branch filter if branchId is provided
+    if (branchId) {
+      query = query.eq('class_schedules.classes.branch_id', branchId);
+    }
+
+    const { data: existingBookings, error } = await query
       .order('created_at', { ascending: true })
       .limit(1);
 
@@ -85,7 +98,7 @@ export const checkExistingTermEnrollment = async (
     }
 
     if (!existingBookings || existingBookings.length === 0) {
-      console.log("MULTI-DOG-CHECK: No existing enrollments found for this handler in this term");
+      console.log("MULTI-DOG-CHECK: No existing enrollments found for this handler in this term/branch");
       return {
         hasExistingEnrollment: false,
         totalDogsInTerm: 0,

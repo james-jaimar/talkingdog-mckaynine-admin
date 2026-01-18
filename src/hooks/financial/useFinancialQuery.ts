@@ -36,7 +36,7 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
       console.log(`[FinancialQuery] Fetching for branch ${branchId}, dates: ${fromDate} to ${toDate}`);
 
       // STEP 1: Fetch invoices for this branch with date/status filters
-      // Include discount fields for applying invoice-level discounts to items
+      // Now using invoice.branch_id for proper branch filtering (supports multi-branch handlers)
       let invoicesQuery = supabase
         .from('invoices')
         .select(`
@@ -50,11 +50,13 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
           monetary_discount,
           discount_type,
           discount_amount,
+          branch_id,
           client:client_id (
             id,
             branch_id
           )
         `)
+        .eq('branch_id', branchId) // Filter by invoice's branch_id directly
         .in('status', ['sent', 'paid', 'overdue']);
 
       // Apply date filters if provided
@@ -65,24 +67,19 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
         invoicesQuery = invoicesQuery.lte('issued_date', toDate);
       }
 
-      const { data: allInvoices, error: invoicesError } = await invoicesQuery;
+      const { data: invoices, error: invoicesError } = await invoicesQuery;
 
       if (invoicesError) {
         console.error("[FinancialQuery] Error fetching invoices:", invoicesError);
         throw invoicesError;
       }
 
-      // Filter invoices to only include those for this branch
-      const invoices = (allInvoices || []).filter(inv => 
-        inv.client?.branch_id === branchId
-      );
-
-      const invoiceIds = invoices.map(inv => inv.id);
+      const invoiceIds = (invoices || []).map(inv => inv.id);
       
-      console.log(`[FinancialQuery] Found ${invoices.length} invoices for branch (filtered from ${allInvoices?.length || 0} total)`);
+      console.log(`[FinancialQuery] Found ${invoices?.length || 0} invoices for branch ${branchId}`);
 
-      // Calculate total revenue from filtered invoices
-      const totalRevenue = invoices.reduce((sum, inv) => sum + (inv.total || 0), 0);
+      // Calculate total revenue from invoices (already filtered by branch_id)
+      const totalRevenue = (invoices || []).reduce((sum, inv) => sum + (inv.total || 0), 0);
 
       // STEP 2: Fetch invoice items by invoice IDs (simple IN query, no nested filters)
       let invoiceItems: any[] = [];
