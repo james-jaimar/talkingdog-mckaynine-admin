@@ -143,6 +143,7 @@ export function useFranchiseMonthlyData({ month, year }: UseFranchiseMonthlyData
           monetary_discount,
           discount_type,
           discount_amount,
+          branch_id,
           client:client_id (
             id,
             first_name,
@@ -174,11 +175,11 @@ export function useFranchiseMonthlyData({ month, year }: UseFranchiseMonthlyData
       }
 
       // Filter invoices:
-      // 1. By branch (client's branch)
+      // 1. By invoice's branch_id (not client's branch_id - supports multi-branch handlers)
       // 2. By franchise month allocation OR issued date
       const branchInvoices = invoicesData?.filter(inv => {
-        // Must belong to current branch
-        if (inv.client?.branch_id !== currentBranch.id) return false;
+        // Must belong to current branch - use invoice's branch_id directly
+        if (inv.branch_id !== currentBranch.id) return false;
 
         // If franchise_report_month is set, use that
         if (inv.franchise_report_month) {

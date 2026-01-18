@@ -31,13 +31,17 @@ export function BranchAllocationCheck() {
     try {
       setIsChecking(true);
       
-      // Check unassigned handlers
-      const { data: unassignedHandlers, error: handlersError } = await supabase
+      // Check unassigned handlers - those with no entry in client_branches
+      const { data: allClients } = await supabase
         .from('clients')
-        .select('id')
-        .is('branch_id', null);
+        .select('id');
       
-      if (handlersError) throw handlersError;
+      const { data: clientsWithBranches } = await supabase
+        .from('client_branches')
+        .select('client_id');
+      
+      const clientsWithBranchSet = new Set(clientsWithBranches?.map(cb => cb.client_id) || []);
+      const unassignedHandlerCount = (allClients || []).filter(c => !clientsWithBranchSet.has(c.id)).length;
       
       // Check unassigned classes
       const { data: unassignedClasses, error: classesError } = await supabase
@@ -56,7 +60,7 @@ export function BranchAllocationCheck() {
       if (trainersError) throw trainersError;
       
       setStats({
-        unassignedHandlers: unassignedHandlers?.length || 0,
+        unassignedHandlers: unassignedHandlerCount,
         unassignedClasses: unassignedClasses?.length || 0,
         unassignedTrainers: unassignedTrainers?.length || 0
       });

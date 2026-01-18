@@ -30,6 +30,21 @@ export function useHandlerAccounts() {
     queryKey: ['handler-accounts', currentBranch?.id],
     queryFn: async () => {
       try {
+        // First get client IDs from client_branches junction table
+        let handlerIds: string[] = [];
+        
+        if (currentBranch) {
+          const { data: clientBranches, error: cbError } = await supabase
+            .from('client_branches')
+            .select('client_id')
+            .eq('branch_id', currentBranch.id);
+          
+          if (cbError) throw cbError;
+          handlerIds = clientBranches?.map(cb => cb.client_id) || [];
+          
+          if (handlerIds.length === 0) return [];
+        }
+        
         let query = supabase
           .from('clients')
           .select(`
@@ -45,8 +60,9 @@ export function useHandlerAccounts() {
           `)
           .order('first_name', { ascending: true });
 
-        if (currentBranch) {
-          query = query.eq('branch_id', currentBranch.id);
+        // Filter by handlers that have access to this branch
+        if (currentBranch && handlerIds.length > 0) {
+          query = query.in('id', handlerIds);
         }
 
         const { data, error } = await query;

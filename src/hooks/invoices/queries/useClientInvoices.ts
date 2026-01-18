@@ -22,21 +22,23 @@ export function useClientInvoices(clientId?: string) {
       try {
         console.log(`Fetching invoices for client ${clientId} in branch ${currentBranch?.name || 'unknown'}`);
         
-        // First, verify that the client belongs to the current branch
+        // Check if client belongs to the current branch via client_branches junction table
         if (branchId) {
-          const { data: clientData, error: clientError } = await supabase
-            .from('clients')
+          const { data: clientBranchData, error: cbError } = await supabase
+            .from('client_branches')
             .select('branch_id')
-            .eq('id', clientId)
+            .eq('client_id', clientId)
+            .eq('branch_id', branchId)
             .maybeSingle();
             
-          if (clientError) {
-            console.error("Error fetching client data:", clientError);
-            throw clientError;
+          if (cbError) {
+            console.error("Error checking client branch access:", cbError);
+            throw cbError;
           }
           
-          if (!clientData || clientData.branch_id !== branchId) {
-            console.warn(`Client ${clientId} does not belong to current branch ${currentBranch?.name}`);
+          // If the client doesn't have access to this branch, return empty invoices
+          if (!clientBranchData) {
+            console.warn(`Client ${clientId} does not have access to current branch ${currentBranch?.name}`);
             return [];
           }
         }

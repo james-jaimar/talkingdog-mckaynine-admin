@@ -20,7 +20,8 @@ export function RecentBookings({ branchId }: RecentBookingsProps) {
       // Don't fetch data if no branch is selected
       if (!branchId) return [];
       
-      // Build the query with branch filter - join with invoice_items and invoices to get accurate payment status
+      // Build the query with branch filter based on CLASS branch (not client branch)
+      // This correctly shows bookings for classes at this branch
       let query = supabase
         .from('bookings')
         .select(`
@@ -28,12 +29,12 @@ export function RecentBookings({ branchId }: RecentBookingsProps) {
           status,
           payment_status,
           created_at,
-          clients!inner(first_name, last_name, branch_id),
+          clients(first_name, last_name, branch_id),
           dogs(name),
-          class_schedules(
+          class_schedules!inner(
             start_time,
             term_id,
-            classes(name)
+            classes!inner(name, branch_id)
           ),
           invoice_items:invoice_items(
             invoice_id,
@@ -44,7 +45,7 @@ export function RecentBookings({ branchId }: RecentBookingsProps) {
             )
           )
         `)
-        .eq('clients.branch_id', branchId);
+        .eq('class_schedules.classes.branch_id', branchId);
       
       // Filter by term if selected
       if (termData?.id) {
