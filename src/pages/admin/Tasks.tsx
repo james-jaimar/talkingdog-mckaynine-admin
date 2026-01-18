@@ -22,7 +22,6 @@ const TASK_TYPE_OPTIONS = [
   { value: "send_info_pack", label: "Send Info Pack" },
   { value: "enrollment", label: "Enrollment" },
   { value: "follow_up", label: "Follow Up" },
-  { value: "trainer_note", label: "Trainer Note" },
   { value: "other", label: "Other" },
 ];
 

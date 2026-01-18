@@ -1,5 +1,5 @@
 
-import { Home, Calendar, Users, FileText, BarChart2, UserPlus, Building, Map, AlertCircle, ScanLine, Mail, ClipboardList, Palette } from "lucide-react";
+import { Home, Calendar, Users, FileText, BarChart2, UserPlus, Building, Map, AlertCircle, ScanLine, Mail, ClipboardList, Palette, MessageSquare } from "lucide-react";
 
 export const adminNavItems = [
   {
@@ -83,6 +83,12 @@ export const adminPrimaryNavItems = [
     name: "Email",
     path: "/admin/email",
     icon: Mail,
+    mobileShow: false
+  },
+  {
+    name: "Trainer Notes",
+    path: "/admin/trainer-notes",
+    icon: MessageSquare,
     mobileShow: false
   }
 ];

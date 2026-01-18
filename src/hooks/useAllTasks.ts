@@ -51,6 +51,7 @@ export function useAllTasks(filters: TaskFilters = {}) {
             email
           )
         `)
+        .neq("task_type", "trainer_note") // Exclude trainer notes - they have their own page
         .order("created_at", { ascending: false });
 
       // Apply filters
@@ -155,7 +156,8 @@ export function usePendingTaskCount() {
       const { count, error } = await supabase
         .from("handler_tasks")
         .select("*", { count: "exact", head: true })
-        .eq("status", "pending");
+        .eq("status", "pending")
+        .neq("task_type", "trainer_note"); // Exclude trainer notes from task count
 
       if (error) throw error;
       return count || 0;
