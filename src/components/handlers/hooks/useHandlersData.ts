@@ -98,6 +98,27 @@ export function useHandlersData() {
     queryFn: async () => {
       try {
         console.log(`Fetching handlers for branch: ${currentBranch?.id || 'all'}`);
+        
+        // First, get client IDs that have access to this branch via client_branches
+        let handlerIdsInBranch: string[] = [];
+        if (currentBranch) {
+          const { data: clientBranches, error: cbError } = await supabase
+            .from('client_branches')
+            .select('client_id')
+            .eq('branch_id', currentBranch.id);
+          
+          if (cbError) {
+            console.error("Error fetching client branches:", cbError);
+            throw cbError;
+          }
+          handlerIdsInBranch = clientBranches?.map(cb => cb.client_id) || [];
+          
+          // If no handlers in this branch, return empty array
+          if (handlerIdsInBranch.length === 0) {
+            return [];
+          }
+        }
+        
         let query = supabase
           .from('clients')
           .select(`
@@ -140,8 +161,9 @@ export function useHandlersData() {
             )
           `);
 
-        if (currentBranch) {
-          query = query.eq('branch_id', currentBranch.id);
+        // Filter by handlers that have access to this branch
+        if (currentBranch && handlerIdsInBranch.length > 0) {
+          query = query.in('id', handlerIdsInBranch);
         }
         query = query.order('first_name', { ascending: true });
         const { data: clientsData, error } = await query;

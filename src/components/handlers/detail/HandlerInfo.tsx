@@ -1,9 +1,8 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { GitBranch, Mail, MapPin, Phone, Briefcase, Stethoscope, Send, FileCheck, Syringe, UserPlus } from "lucide-react";
+import { Mail, MapPin, Phone, Briefcase, Stethoscope, Send, FileCheck, Syringe, UserPlus } from "lucide-react";
 import { formatPhoneNumber } from "../utils/handlerUtils";
-import { useBranch } from "@/context/BranchContext";
 import { EnrollmentRegistration } from "@/types/handler";
 import { SendQuickEmailModal } from "./SendQuickEmailModal";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -11,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { ClickableConsentBadge } from "../status/ClickableConsentBadge";
+import { MultiBranchSelector } from "./MultiBranchSelector";
 
 type ConsentStatus = 'yes' | 'no' | 'not_marked' | 'unsure';
 
@@ -46,20 +46,10 @@ interface HandlerInfoProps {
 
 
 export function HandlerInfo({ handler }: HandlerInfoProps) {
-  const { branches } = useBranch();
-  const [branchName, setBranchName] = useState<string>("");
   const [emailModalOpen, setEmailModalOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  useEffect(() => {
-    if (handler.branch_id && branches) {
-      const branch = branches.find(b => b.id === handler.branch_id);
-      if (branch) {
-        setBranchName(branch.name);
-      }
-    }
-  }, [handler.branch_id, branches]);
 
   // Get consent statuses from the most recent enrollment registration
   const consentStatuses = useMemo(() => {
@@ -144,14 +134,12 @@ export function HandlerInfo({ handler }: HandlerInfoProps) {
               </div>
             )}
 
-            {branchName && (
-              <div className="flex items-center gap-2">
-                <GitBranch className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm">{branchName}</span>
-              </div>
-            )}
           </div>
         </div>
+
+        {/* Multi-Branch Selector */}
+        <MultiBranchSelector handlerId={handler.id} />
+
 
         {/* Secondary Contact */}
         {(handler.secondary_first_name || handler.secondary_email || handler.secondary_phone) && (

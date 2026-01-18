@@ -46,7 +46,25 @@ export function useHandlersList(classId: string, searchQuery: string, branchId?:
           existingClientDogPairs.add(`${booking.client_id}-${booking.dog_id}`);
         });
         
-        // Then fetch all handlers with their dogs
+        // Fetch handlers that have access to this branch via client_branches junction table
+        let handlersInBranch: string[] = [];
+        
+        if (branchId) {
+          const { data: clientBranches, error: cbError } = await supabase
+            .from('client_branches')
+            .select('client_id')
+            .eq('branch_id', branchId);
+          
+          if (cbError) throw cbError;
+          handlersInBranch = clientBranches?.map(cb => cb.client_id) || [];
+          
+          // If no handlers in this branch, return empty array
+          if (handlersInBranch.length === 0) {
+            return [];
+          }
+        }
+        
+        // Then fetch handlers with their dogs
         let query = supabase
           .from('clients')
           .select(`
@@ -62,9 +80,9 @@ export function useHandlersList(classId: string, searchQuery: string, branchId?:
             )
           `);
         
-        // Filter by branch to prevent cross-branch enrollments
-        if (branchId) {
-          query = query.eq('branch_id', branchId);
+        // Filter by handlers that have access to this branch
+        if (branchId && handlersInBranch.length > 0) {
+          query = query.in('id', handlersInBranch);
         }
         
         // Add search filter if searchQuery exists
