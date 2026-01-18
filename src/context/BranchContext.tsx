@@ -138,6 +138,9 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       queryClient.invalidateQueries({ queryKey: ['client-invoices'] });
       queryClient.invalidateQueries({ queryKey: ['invoice-details'] });
+      // CRITICAL: Invalidate financial data to prevent cross-branch pollution
+      queryClient.invalidateQueries({ queryKey: ['financial-data'] });
+      queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
       
       toast({
         title: "Branch Changed",

@@ -108,6 +108,13 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
         return;
       }
 
+      // CRITICAL: Skip bookings where the class belongs to a different branch
+      // This prevents cross-pollination of financial data between branches
+      if (branchId && classData.branch_id && classData.branch_id !== branchId) {
+        console.warn(`[FinancialProcessor] Skipping booking ${item.booking_id} - class branch ${classData.branch_id} != current branch ${branchId}`);
+        return;
+      }
+
       const className = classData.name;
 
       // Get or create class summary
