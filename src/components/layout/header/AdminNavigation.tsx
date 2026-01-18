@@ -3,6 +3,7 @@ import { adminPrimaryNavItems, adminSecondaryNavItems } from "./navigation-items
 import { useAuth } from "@/context/auth";
 import { Badge } from "@/components/ui/badge";
 import { usePendingTaskCount } from "@/hooks/useAllTasks";
+import { usePendingTrainerNoteCount } from "@/hooks/useTrainerNotes";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useState } from "react";
 
@@ -15,6 +16,7 @@ interface AdminNavigationProps {
 export const AdminNavigation = ({ isMobile, onMobileClose, showPrimaryOnly = true }: AdminNavigationProps) => {
   const { isPlatformAdmin } = useAuth();
   const { count: pendingTaskCount } = usePendingTaskCount();
+  const { count: pendingTrainerNoteCount } = usePendingTrainerNoteCount();
   const [showMoreMobile, setShowMoreMobile] = useState(false);
   const items = showPrimaryOnly ? adminPrimaryNavItems : adminSecondaryNavItems;
   
@@ -66,6 +68,11 @@ export const AdminNavigation = ({ isMobile, onMobileClose, showPrimaryOnly = tru
               {pendingTaskCount > 99 ? "99+" : pendingTaskCount}
             </span>
           )}
+          {item.name === "Trainer Notes" && pendingTrainerNoteCount > 0 && (
+            <span className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+              {pendingTrainerNoteCount > 99 ? "99+" : pendingTrainerNoteCount}
+            </span>
+          )}
         </Link>
       ))}
 
@@ -100,6 +107,11 @@ export const AdminNavigation = ({ isMobile, onMobileClose, showPrimaryOnly = tru
                   {item.name === "Tasks" && pendingTaskCount > 0 && (
                     <span className="ml-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
                       {pendingTaskCount > 99 ? "99+" : pendingTaskCount}
+                    </span>
+                  )}
+                  {item.name === "Trainer Notes" && pendingTrainerNoteCount > 0 && (
+                    <span className="ml-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                      {pendingTrainerNoteCount > 99 ? "99+" : pendingTrainerNoteCount}
                     </span>
                   )}
                 </Link>

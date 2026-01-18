@@ -15,6 +15,7 @@ import IntakeScans from "@/pages/admin/IntakeScans";
 import Tasks from "@/pages/admin/Tasks";
 import EmailTemplates from "@/pages/admin/EmailTemplates";
 import Email from "@/pages/admin/Email";
+import TrainerNotes from "@/pages/admin/TrainerNotes";
 
 // Each route is protected with RequireAdmin component
 export const adminRoutes = [
@@ -94,6 +95,10 @@ export const adminRoutes = [
   {
     path: "/admin/email",
     element: <Email />,
+  },
+  {
+    path: "/admin/trainer-notes",
+    element: <TrainerNotes />,
   },
   {
     path: "/invoices",
