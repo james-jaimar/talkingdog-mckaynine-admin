@@ -58,6 +58,7 @@ export function useClientInvoices(clientId?: string) {
             )
           `)
           .eq('client_id', clientId)
+          .eq('branch_id', branchId)
           .order('created_at', { ascending: false });
 
         if (error) {
