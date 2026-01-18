@@ -46,6 +46,18 @@ export function useClientCreation() {
         throw new Error(`Failed to create handler: ${error.message}`);
       }
 
+      // Also add to client_branches junction table
+      if (newClient && branchId) {
+        const { error: branchError } = await supabase
+          .from('client_branches')
+          .insert({ client_id: newClient.id, branch_id: branchId });
+        
+        if (branchError && branchError.code !== '23505') {
+          console.error("Error adding to client_branches:", branchError);
+          // Don't throw - the client was created, just log the warning
+        }
+      }
+
       console.log("Client created successfully:", newClient);
       return newClient;
     } catch (error) {

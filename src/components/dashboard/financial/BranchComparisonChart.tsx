@@ -49,6 +49,7 @@ export function BranchComparisonChart({ branchId, timeframe, dateRange, isLoadin
         const toDate = (dateRange.to || dateRange.from).toISOString();
         
         // Get revenue for each branch within date range
+        // Now using invoice.branch_id directly instead of joining to clients
         const branchData = await Promise.all(branches.map(async (branch, index) => {
           const { data: invoices, error: invoiceError } = await supabase
             .from('invoices')
@@ -57,11 +58,9 @@ export function BranchComparisonChart({ branchId, timeframe, dateRange, isLoadin
               total,
               status,
               issued_date,
-              clients!inner (
-                branch_id
-              )
+              branch_id
             `)
-            .eq('clients.branch_id', branch.id)
+            .eq('branch_id', branch.id)
             .gte('issued_date', fromDate)
             .lte('issued_date', toDate)
             .eq('status', 'paid');

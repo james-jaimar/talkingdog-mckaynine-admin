@@ -109,6 +109,18 @@ export function useEnrollmentSubmission() {
       throw new Error(`Failed to create client: ${insertError.message}`);
     }
 
+    // Also add to client_branches junction table
+    if (newClient && branchId) {
+      const { error: branchError } = await supabase
+        .from('client_branches')
+        .insert({ client_id: newClient.id, branch_id: branchId });
+      
+      if (branchError && branchError.code !== '23505') {
+        console.error("Error adding to client_branches:", branchError);
+        // Don't throw - the client was created, just log the warning
+      }
+    }
+
     console.log("Created new client:", newClient.id);
     return { id: newClient.id, isNew: true };
   };

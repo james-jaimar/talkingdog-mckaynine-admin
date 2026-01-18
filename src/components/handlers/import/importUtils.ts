@@ -77,6 +77,15 @@ export async function processImportData(
           .single();
 
         if (error) throw error;
+        
+        // Also add to client_branches junction table
+        if (newClient && branchId) {
+          await supabase
+            .from('client_branches')
+            .insert({ client_id: newClient.id, branch_id: branchId })
+            .throwOnError();
+        }
+        
         clientId = newClient.id;
         console.log(`Created new client: ${handlerName} (${email}) with ID: ${clientId}`);
       } else {
@@ -90,6 +99,13 @@ export async function processImportData(
             .update({ branch_id: branchId })
             .eq("id", clientId);
           console.log(`Updated branch_id to ${branchId} for client: ${clientId}`);
+        }
+        
+        // Ensure client is in client_branches junction table
+        if (branchId) {
+          await supabase
+            .from('client_branches')
+            .upsert({ client_id: clientId, branch_id: branchId }, { onConflict: 'client_id,branch_id' });
         }
       }
 

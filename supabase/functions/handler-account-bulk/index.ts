@@ -104,6 +104,33 @@ async function handleCreateAllAccounts(
 
   try {
     // Get all handlers without accounts
+    // If branchId is specified, filter via client_branches junction table
+    let handlerIds: string[] = [];
+    
+    if (branchId) {
+      const { data: clientBranches, error: cbError } = await supabase
+        .from('client_branches')
+        .select('client_id')
+        .eq('branch_id', branchId);
+      
+      if (cbError) {
+        throw new Error(`Failed to fetch client branches: ${cbError.message}`);
+      }
+      handlerIds = clientBranches?.map(cb => cb.client_id) || [];
+      
+      if (handlerIds.length === 0) {
+        return new Response(
+          JSON.stringify({
+            success: true,
+            message: "No handlers found in this branch",
+            results: [],
+            summary: { created: 0, skipped: 0, failed: 0 }
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+    
     let query = supabase
       .from('clients')
       .select('id, first_name, last_name, email, branch_id, auth_user_id')
@@ -111,8 +138,8 @@ async function handleCreateAllAccounts(
       .not('email', 'is', null)
       .order('first_name');
 
-    if (branchId) {
-      query = query.eq('branch_id', branchId);
+    if (branchId && handlerIds.length > 0) {
+      query = query.in('id', handlerIds);
     }
 
     const { data: handlers, error: fetchError } = await query;

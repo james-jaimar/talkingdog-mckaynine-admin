@@ -423,6 +423,13 @@ async function getOrCreateClient(
     return { clientId: null, created: false };
   }
 
+  // Also add to client_branches junction table
+  if (newClient && branchId) {
+    await supabase
+      .from('client_branches')
+      .insert({ client_id: newClient.id, branch_id: branchId });
+  }
+
   // Auto-create handler login account (non-blocking)
   if (newClient?.id && branchId) {
     try {

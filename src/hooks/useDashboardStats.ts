@@ -16,39 +16,53 @@ export function useDashboardStats() {
     setRefreshTrigger(prev => prev + 1);
   }, []);
   
-  // Clients count - no change needed as it's branch-specific but not term-specific
+  // Clients count - using client_branches junction table
   const { data: clientCount, refetch: refetchClients } = useQuery({
     queryKey: ['dashboard-stats-clients', currentBranch?.id],
     queryFn: async () => {
       console.log("Fetching clients count for branch:", currentBranch?.id);
       if (!currentBranch?.id) return 0;
-      const { count } = await supabase
-        .from('clients')
-        .select('id', { count: 'exact', head: true })
+      
+      // Get client IDs from the client_branches junction table
+      const { data: clientBranches, error } = await supabase
+        .from('client_branches')
+        .select('client_id', { count: 'exact', head: true })
         .eq('branch_id', currentBranch.id);
+      
+      if (error) {
+        console.error("Error fetching client count:", error);
+        return 0;
+      }
+      
+      // Get count directly from the junction table
+      const { count } = await supabase
+        .from('client_branches')
+        .select('client_id', { count: 'exact', head: true })
+        .eq('branch_id', currentBranch.id);
+      
       return count || 0;
     },
     enabled: !!currentBranch?.id,
     staleTime: 60 * 1000, // Cache for 1 minute
   });
 
-  // Dogs count - no change needed as it's branch-specific but not term-specific
+  // Dogs count - using client_branches junction table
   const { data: dogCount, refetch: refetchDogs } = useQuery({
     queryKey: ['dashboard-stats-dogs', currentBranch?.id],
     queryFn: async () => {
       console.log("Fetching dogs count for branch:", currentBranch?.id);
       if (!currentBranch?.id) return 0;
       
-      // Use a different approach: first get all clients from this branch
-      const { data: branchClients } = await supabase
-        .from('clients')
-        .select('id')
+      // First get all client IDs from this branch via junction table
+      const { data: clientBranches } = await supabase
+        .from('client_branches')
+        .select('client_id')
         .eq('branch_id', currentBranch.id);
       
-      if (!branchClients || branchClients.length === 0) return 0;
+      if (!clientBranches || clientBranches.length === 0) return 0;
       
       // Then count dogs belonging to these clients
-      const clientIds = branchClients.map(client => client.id);
+      const clientIds = clientBranches.map(cb => cb.client_id);
       
       const { count } = await supabase
         .from('dogs')
@@ -61,17 +75,18 @@ export function useDashboardStats() {
     staleTime: 60 * 1000, // Cache for 1 minute
   });
 
-  // Bookings count - term-specific
+  // Bookings count - term-specific, using invoice.branch_id for accurate attribution
   const { data: bookingCount, refetch: refetchBookings } = useQuery({
     queryKey: ['dashboard-stats-bookings', currentBranch?.id, termData?.id, refreshTrigger],
     queryFn: async () => {
       console.log("Fetching bookings count for branch:", currentBranch?.id, "and term:", termData?.id);
       if (!currentBranch?.id) return 0;
       
+      // Get bookings for classes in this branch (class determines branch, not client)
       let query = supabase
         .from('bookings')
-        .select('id, clients!inner(branch_id), class_schedules!inner(term_id)', { count: 'exact', head: true })
-        .eq('clients.branch_id', currentBranch.id);
+        .select('id, class_schedules!inner(term_id, classes!inner(branch_id))', { count: 'exact', head: true })
+        .eq('class_schedules.classes.branch_id', currentBranch.id);
       
       if (termData?.id) {
         query = query.eq('class_schedules.term_id', termData.id);
