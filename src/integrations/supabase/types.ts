@@ -837,6 +837,42 @@ export type Database = {
           },
         ]
       }
+      client_branches: {
+        Row: {
+          branch_id: string
+          client_id: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          branch_id: string
+          client_id: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          branch_id?: string
+          client_id?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_branches_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_branches_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_messages: {
         Row: {
           attachment_type: string | null
