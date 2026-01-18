@@ -206,7 +206,18 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
         }
       }
 
-      console.log(`[FinancialQuery] Found ${bookings.length} bookings`);
+      // CRITICAL: Filter out any bookings where the class branch doesn't match the requested branch
+      // This prevents cross-pollination of financial data between branches
+      const filteredBookings = bookings.filter(booking => {
+        const classBranchId = booking.class_schedules?.classes?.branch_id;
+        if (classBranchId && classBranchId !== branchId) {
+          console.warn(`[FinancialQuery] Filtering out booking ${booking.id} - class branch ${classBranchId} != requested branch ${branchId}`);
+          return false;
+        }
+        return true;
+      });
+
+      console.log(`[FinancialQuery] Found ${bookings.length} bookings, ${filteredBookings.length} after branch filter`);
 
       // STEP 4: Get invalid invoices count
       const { count: invalidCount, error: invalidError } = await supabase
@@ -247,7 +258,7 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
         - Enrollment fees: R${enrollmentFeeRevenue.toFixed(2)}`);
 
       return {
-        bookingsWithInvoices: bookings,
+        bookingsWithInvoices: filteredBookings,
         allInvoicesCount: invoices.length,
         invalidInvoicesCount: invalidCount || 0,
         totalRevenue,
