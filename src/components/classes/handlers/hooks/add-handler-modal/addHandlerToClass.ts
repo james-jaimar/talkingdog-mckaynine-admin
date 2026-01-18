@@ -18,7 +18,7 @@ interface AddHandlerToClassProps {
   onSuccess: () => void;
   queryClient: QueryClient;
   toast: any;
-  createInvoiceProps: Omit<CreateInvoiceProps, 'bookingIds' | 'className' | 'classPrice' | 'dogNames' | 'enrollmentFee' | 'classDate' | 'dogIds'>;
+  createInvoiceProps: Omit<CreateInvoiceProps, 'bookingIds' | 'className' | 'classPrice' | 'dogNames' | 'enrollmentFee' | 'classDate' | 'dogIds' | 'classBranchId'>;
 }
 
 export const addHandlerToClass = async ({
@@ -83,7 +83,8 @@ export const addHandlerToClass = async ({
     }
     
     // Check for existing enrollments in this term (for multi-dog discount across classes)
-    const existingEnrollment = await checkExistingTermEnrollment(handlerId, termId, dogIds);
+    // Pass the class branch ID to ensure discounts only apply within same branch
+    const existingEnrollment = await checkExistingTermEnrollment(handlerId, termId, dogIds, classDetails.branchId);
     
     // Create booking records for each dog
     const bookingIds: string[] = [];
@@ -194,6 +195,7 @@ export const addHandlerToClass = async ({
             enrollmentFee,
             dogNames,
             classDate,
+            classBranchId: classDetails.branchId, // Pass class branch for proper invoice attribution
           });
           
           if (!invoiceCreated) {

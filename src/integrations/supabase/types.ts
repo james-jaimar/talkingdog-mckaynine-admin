@@ -1766,6 +1766,7 @@ export type Database = {
       }
       invoices: {
         Row: {
+          branch_id: string | null
           client_id: string
           created_at: string
           discount_amount: number
@@ -1791,6 +1792,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          branch_id?: string | null
           client_id: string
           created_at?: string
           discount_amount?: number
@@ -1816,6 +1818,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          branch_id?: string | null
           client_id?: string
           created_at?: string
           discount_amount?: number
@@ -1841,6 +1844,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "invoices_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "invoices_client_id_fkey"
             columns: ["client_id"]

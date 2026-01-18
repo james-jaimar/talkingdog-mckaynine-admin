@@ -49,6 +49,9 @@ export interface Invoice {
   // Franchise reporting allocation
   franchise_report_month?: string | null; // Format: 'YYYY-MM'
   
+  // Branch attribution for multi-branch handlers
+  branch_id?: string | null; // Branch where the class took place
+  
   // Generated fields
   classInfo?: string;
   dogInfo?: string;

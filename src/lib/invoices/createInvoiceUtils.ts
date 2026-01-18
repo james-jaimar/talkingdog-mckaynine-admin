@@ -88,6 +88,7 @@ export async function createInvoice(invoiceData: any) {
 
     // Only include fields that exist in the database schema
     // Remove admin_fee, trainer_fee, and franchise_fee from the payload
+    // Include branch_id for proper branch attribution (supports multi-branch handlers)
     const insertData = {
       client_id: calculatedData.client_id,
       invoice_number: calculatedData.invoice_number,
@@ -104,6 +105,7 @@ export async function createInvoice(invoiceData: any) {
       monetary_discount,
       original_discount_amount,
       original_discount_type,
+      branch_id: calculatedData.branch_id || null, // Branch from class for proper attribution
     };
 
     console.log("Inserting invoice with sanitized data:", insertData);

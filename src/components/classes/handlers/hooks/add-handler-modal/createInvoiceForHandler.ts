@@ -15,6 +15,7 @@ export interface CreateInvoiceProps {
   currentBranch?: { id: string; name: string } | null;
   enrollmentFee?: number;
   classDate?: Date;
+  classBranchId?: string; // Branch ID from the class for proper invoice attribution
 }
 
 const MULTI_DOG_DISCOUNT_PERCENT = 25; // 25% discount for 2nd dog
@@ -31,6 +32,7 @@ export const createInvoiceForHandler = async ({
   currentBranch,
   enrollmentFee = 0,
   classDate,
+  classBranchId,
 }: CreateInvoiceProps): Promise<boolean> => {
   try {
     console.log("CREATE-INVOICE: Starting invoice creation with params:", {
@@ -146,6 +148,7 @@ export const createInvoiceForHandler = async ({
     const dueDate = invoiceDate; // Due date defaults to same as issued date
 
     // Create the invoice data object
+    // Use classBranchId for proper branch attribution (supports multi-branch handlers)
     const invoiceData = {
       client_id: handlerId,
       invoice_number: invoiceNumber,
@@ -163,6 +166,7 @@ export const createInvoiceForHandler = async ({
       subtotal,
       total: subtotal,
       monetary_discount: 0,
+      branch_id: classBranchId || currentBranch?.id || null, // Use class branch for proper attribution
     };
 
     console.log("CREATE-INVOICE: About to create invoice with data:", invoiceData);
