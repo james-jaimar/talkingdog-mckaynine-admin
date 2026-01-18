@@ -109,9 +109,13 @@ export function TrainersTable() {
                   </TableCell>
                   <TableCell className="hidden md:table-cell">
                     {trainer.branch_names && trainer.branch_names.length > 0 ? (
-                      <Badge variant="secondary">
-                        {trainer.branch_names[0]}
-                      </Badge>
+                      <div className="flex flex-wrap gap-1">
+                        {trainer.branch_names.map((branch, index) => (
+                          <Badge key={index} variant="secondary">
+                            {branch}
+                          </Badge>
+                        ))}
+                      </div>
                     ) : trainer.branch_id ? (
                       <Badge variant="secondary">
                         Assigned
