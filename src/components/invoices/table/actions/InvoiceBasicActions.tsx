@@ -4,8 +4,8 @@ import { Eye, Edit, Send, Receipt } from "lucide-react";
 import { Invoice } from "@/types/invoice";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { generateClassConfirmationEmail } from "@/lib/email/generateClassConfirmation";
-import { generatePaymentReceiptEmail } from "@/lib/email/generatePaymentReceipt";
+import { generateClassConfirmationEmails } from "@/lib/email/generateClassConfirmation";
+import { generatePaymentReceiptEmails } from "@/lib/email/generatePaymentReceipt";
 import { toast } from "sonner";
 
 interface InvoiceBasicActionsProps {
@@ -36,32 +36,42 @@ export function InvoiceBasicActions({ invoice, isPending, onCloseDropdown }: Inv
     setIsSendingEmail(true);
     
     try {
-      toast.info("Generating class confirmation email...");
+      toast.info("Generating class confirmation email(s)...");
       
-      const emailData = await generateClassConfirmationEmail(invoice.id);
+      const emailsData = await generateClassConfirmationEmails(invoice.id);
       
-      if (!emailData) {
+      if (emailsData.length === 0) {
         toast.warning("No class bookings found on this invoice to send confirmation for");
         return;
       }
       
-      const { error: queueError } = await supabase
-        .from("email_queue")
-        .insert({
-          branch_id: emailData.branch_id,
-          to_email: emailData.to_email,
-          subject: emailData.subject,
-          html_content: emailData.html_content,
-          handler_id: emailData.handler_id,
-          status: "pending",
-        });
+      let queued = 0;
+      for (const emailData of emailsData) {
+        const { error: queueError } = await supabase
+          .from("email_queue")
+          .insert({
+            branch_id: emailData.branch_id,
+            to_email: emailData.to_email,
+            subject: emailData.subject,
+            html_content: emailData.html_content,
+            handler_id: emailData.handler_id,
+            status: "pending",
+          });
 
-      if (queueError) {
-        console.error("Error queueing confirmation email:", queueError);
-        toast.error("Failed to queue confirmation email");
+        if (queueError) {
+          console.error("Error queueing confirmation email:", queueError);
+        } else {
+          console.log("Class confirmation email queued for:", emailData.to_email);
+          queued++;
+        }
+      }
+      
+      if (queued > 1) {
+        toast.success(`Class confirmation emails queued for ${queued} recipients`);
+      } else if (queued === 1) {
+        toast.success(`Class confirmation email queued for ${emailsData[0].to_email}`);
       } else {
-        console.log("Class confirmation email queued for:", emailData.to_email);
-        toast.success(`Class confirmation email queued for ${emailData.to_email}`);
+        toast.error("Failed to queue confirmation emails");
       }
     } catch (error) {
       console.error("Error sending class confirmation:", error);
@@ -76,32 +86,42 @@ export function InvoiceBasicActions({ invoice, isPending, onCloseDropdown }: Inv
     setIsSendingReceipt(true);
     
     try {
-      toast.info("Generating payment receipt...");
+      toast.info("Generating payment receipt(s)...");
       
-      const receiptData = await generatePaymentReceiptEmail(invoice.id);
+      const receiptsData = await generatePaymentReceiptEmails(invoice.id);
       
-      if (!receiptData) {
+      if (receiptsData.length === 0) {
         toast.warning("Could not generate payment receipt for this invoice");
         return;
       }
       
-      const { error: queueError } = await supabase
-        .from("email_queue")
-        .insert({
-          branch_id: receiptData.branch_id,
-          to_email: receiptData.to_email,
-          subject: receiptData.subject,
-          html_content: receiptData.html_content,
-          handler_id: receiptData.handler_id,
-          status: "pending",
-        });
+      let queued = 0;
+      for (const receiptData of receiptsData) {
+        const { error: queueError } = await supabase
+          .from("email_queue")
+          .insert({
+            branch_id: receiptData.branch_id,
+            to_email: receiptData.to_email,
+            subject: receiptData.subject,
+            html_content: receiptData.html_content,
+            handler_id: receiptData.handler_id,
+            status: "pending",
+          });
 
-      if (queueError) {
-        console.error("Error queueing receipt email:", queueError);
-        toast.error("Failed to queue payment receipt");
+        if (queueError) {
+          console.error("Error queueing receipt email:", queueError);
+        } else {
+          console.log("Payment receipt email queued for:", receiptData.to_email);
+          queued++;
+        }
+      }
+      
+      if (queued > 1) {
+        toast.success(`Payment receipts queued for ${queued} recipients`);
+      } else if (queued === 1) {
+        toast.success(`Payment receipt queued for ${receiptsData[0].to_email}`);
       } else {
-        console.log("Payment receipt email queued for:", receiptData.to_email);
-        toast.success(`Payment receipt queued for ${receiptData.to_email}`);
+        toast.error("Failed to queue payment receipts");
       }
     } catch (error) {
       console.error("Error sending payment receipt:", error);
