@@ -63,13 +63,13 @@ export async function generateClassConfirmationEmails(
       .select(`
         id,
         client_id,
+        branch_id,
         clients!inner (
           id,
           first_name,
           last_name,
           email,
-          secondary_email,
-          branch_id
+          secondary_email
         )
       `)
       .eq("id", invoiceId)
@@ -153,11 +153,12 @@ export async function generateClassConfirmationEmails(
       };
     });
 
-    // Get branch name for signature
+    // Get branch name for signature - use invoice branch_id
+    const branchId = invoiceData.branch_id;
     const { data: branchData } = await supabase
       .from("branches")
       .select("name")
-      .eq("id", client.branch_id)
+      .eq("id", branchId)
       .single();
 
     // Build class details HTML
@@ -173,8 +174,8 @@ export async function generateClassConfirmationEmails(
       branch_name: branchData?.name || "McKaynine",
     };
 
-    // Fetch the template from database (or fallback to hardcoded)
-    const { template, subject: templateSubject } = await getClassConfirmationTemplate(client.branch_id);
+    // Fetch the template from database (or fallback to hardcoded) - use invoice branch_id
+    const { template, subject: templateSubject } = await getClassConfirmationTemplate(branchId);
 
     // Render template with signature
     const variablesWithSignature = getVariablesWithSignature(variables);
@@ -183,13 +184,13 @@ export async function generateClassConfirmationEmails(
 
     const emails: ConfirmationEmailData[] = [];
 
-    // Add primary email
+    // Add primary email - use invoice branch_id
     emails.push({
       to_email: client.email,
       subject,
       html_content: htmlContent,
       handler_id: client.id,
-      branch_id: client.branch_id,
+      branch_id: branchId,
     });
 
     // Add secondary email if exists
@@ -199,7 +200,7 @@ export async function generateClassConfirmationEmails(
         subject,
         html_content: htmlContent,
         handler_id: client.id,
-        branch_id: client.branch_id,
+        branch_id: branchId,
       });
     }
 

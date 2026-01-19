@@ -78,13 +78,13 @@ export async function generatePaymentReceiptEmails(
         tax_amount,
         total,
         client_id,
+        branch_id,
         clients!inner (
           id,
           first_name,
           last_name,
           email,
-          secondary_email,
-          branch_id
+          secondary_email
         )
       `)
       .eq("id", invoiceId)
@@ -116,11 +116,12 @@ export async function generatePaymentReceiptEmails(
 
     const items: InvoiceItem[] = itemsData || [];
 
-    // Get branch name for signature
+    // Get branch name for signature - use invoice branch_id
+    const branchId = invoiceData.branch_id;
     const { data: branchData } = await supabase
       .from("branches")
       .select("name")
-      .eq("id", client.branch_id)
+      .eq("id", branchId)
       .single();
 
     // Build payment summary HTML
@@ -140,8 +141,8 @@ export async function generatePaymentReceiptEmails(
       branch_name: branchData?.name || "McKaynine",
     };
 
-    // Fetch the template from database (or fallback to hardcoded)
-    const { template, subject: templateSubject } = await getPaymentReceiptTemplate(client.branch_id);
+    // Fetch the template from database (or fallback to hardcoded) - use invoice branch_id
+    const { template, subject: templateSubject } = await getPaymentReceiptTemplate(branchId);
 
     // Render template with signature
     const variablesWithSignature = getVariablesWithSignature(variables);
@@ -150,13 +151,13 @@ export async function generatePaymentReceiptEmails(
 
     const emails: ReceiptEmailData[] = [];
 
-    // Add primary email
+    // Add primary email - use invoice branch_id
     emails.push({
       to_email: client.email,
       subject,
       html_content: htmlContent,
       handler_id: client.id,
-      branch_id: client.branch_id,
+      branch_id: branchId,
     });
 
     // Add secondary email if exists
@@ -166,7 +167,7 @@ export async function generatePaymentReceiptEmails(
         subject,
         html_content: htmlContent,
         handler_id: client.id,
-        branch_id: client.branch_id,
+        branch_id: branchId,
       });
     }
 
