@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { format } from "date-fns";
+import { format, startOfMonth, endOfMonth, addMonths, subMonths } from "date-fns";
 import { Loader2, Calculator, GitBranch } from "lucide-react";
 import { InvoiceTableActions } from "./InvoiceTableActions";
 import { BulkActionsToolbar } from "./BulkActionsToolbar";
@@ -71,7 +71,34 @@ export function InvoicesTable({
     }
   };
 
-  // Calculate totals for table footer
+  // Get color classes for franchise month badges based on relative month
+  const getFranchiseMonthBadgeClasses = (franchiseMonth: string) => {
+    const now = new Date();
+    const currentMonthStr = format(now, "yyyy-MM");
+    const nextMonthStr = format(addMonths(now, 1), "yyyy-MM");
+    const prevMonthStr = format(subMonths(now, 1), "yyyy-MM");
+    const prev2MonthStr = format(subMonths(now, 2), "yyyy-MM");
+    const prev3MonthStr = format(subMonths(now, 3), "yyyy-MM");
+
+    if (franchiseMonth === currentMonthStr) {
+      return "bg-blue-50 text-blue-700 border-blue-200";
+    } else if (franchiseMonth === nextMonthStr) {
+      return "bg-emerald-50 text-emerald-700 border-emerald-200";
+    } else if (franchiseMonth === prevMonthStr) {
+      return "bg-amber-50 text-amber-700 border-amber-200";
+    } else if (franchiseMonth === prev2MonthStr) {
+      return "bg-orange-50 text-orange-700 border-orange-200";
+    } else if (franchiseMonth === prev3MonthStr) {
+      return "bg-red-50 text-red-700 border-red-200";
+    } else if (franchiseMonth > currentMonthStr) {
+      // Future months beyond next month
+      return "bg-emerald-50 text-emerald-700 border-emerald-200";
+    } else {
+      // Older months
+      return "bg-gray-50 text-gray-600 border-gray-200";
+    }
+  };
+
   const calculateInvoiceTotals = () => {
     const totalAmount = invoices.reduce((sum, invoice) => sum + invoice.total, 0);
     const paidAmount = invoices.reduce((sum, invoice) => 
@@ -285,7 +312,10 @@ export function InvoicesTable({
                   <TableCell>{format(new Date(invoice.due_date), "PP")}</TableCell>
                   <TableCell>
                     {invoice.franchise_report_month ? (
-                      <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                      <Badge 
+                        variant="outline" 
+                        className={getFranchiseMonthBadgeClasses(invoice.franchise_report_month)}
+                      >
                         {format(new Date(invoice.franchise_report_month + '-01'), "MMM yyyy")}
                       </Badge>
                     ) : (

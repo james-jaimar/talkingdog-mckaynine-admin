@@ -32,28 +32,39 @@ export function InvoiceFilterTabs({
   return (
     <div className="flex flex-col gap-4 md:flex-row md:justify-between mb-4">
       <Tabs value={activeTab} className="w-full md:w-auto">
-        <TabsList className="w-full md:w-auto grid grid-cols-2 md:grid-cols-6">
+        <TabsList className="w-full md:w-auto flex flex-wrap gap-1">
           <TabsTrigger 
             value="current" 
             onClick={() => handleTabChange("current")}
+            className="data-[state=active]:bg-blue-600 data-[state=active]:text-white"
           >
             Current Month
           </TabsTrigger>
           <TabsTrigger 
+            value="next1" 
+            onClick={() => handleTabChange("next1")}
+            className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white"
+          >
+            Next Month
+          </TabsTrigger>
+          <TabsTrigger 
             value="prev1" 
             onClick={() => handleTabChange("prev1")}
+            className="data-[state=active]:bg-amber-600 data-[state=active]:text-white"
           >
             Last Month
           </TabsTrigger>
           <TabsTrigger 
             value="prev2" 
             onClick={() => handleTabChange("prev2")}
+            className="data-[state=active]:bg-orange-600 data-[state=active]:text-white"
           >
             2 Months Ago
           </TabsTrigger>
           <TabsTrigger 
             value="prev3" 
             onClick={() => handleTabChange("prev3")}
+            className="data-[state=active]:bg-red-600 data-[state=active]:text-white"
           >
             3 Months Ago
           </TabsTrigger>
@@ -61,6 +72,7 @@ export function InvoiceFilterTabs({
             <TabsTrigger 
               value="term" 
               onClick={() => handleTabChange("term")}
+              className="data-[state=active]:bg-purple-600 data-[state=active]:text-white"
             >
               Current Term
             </TabsTrigger>
@@ -68,6 +80,7 @@ export function InvoiceFilterTabs({
           <TabsTrigger 
             value="all" 
             onClick={() => handleTabChange("all")}
+            className="data-[state=active]:bg-gray-600 data-[state=active]:text-white"
           >
             All Time
           </TabsTrigger>

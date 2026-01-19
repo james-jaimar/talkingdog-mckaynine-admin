@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { InvoiceStatus } from "@/types/invoice";
 import { useQueryClient } from "@tanstack/react-query";
-import { startOfMonth, endOfMonth, subMonths, format } from "date-fns";
+import { startOfMonth, endOfMonth, subMonths, addMonths, format } from "date-fns";
 import { InvoiceFinancialSummary } from "@/components/invoices/summary/InvoiceFinancialSummary";
 import { InvoiceFilterTabs } from "@/components/invoices/filters/InvoiceFilterTabs";
 import { useTerm } from "@/context/TermContext";
@@ -53,8 +53,10 @@ export default function Invoices() {
     };
   };
 
-  const getPreviousMonthRange = (monthsBack: number) => {
-    const date = subMonths(new Date(), monthsBack);
+  const getMonthRange = (monthsOffset: number) => {
+    const date = monthsOffset >= 0 
+      ? addMonths(new Date(), monthsOffset)
+      : subMonths(new Date(), Math.abs(monthsOffset));
     return {
       start: startOfMonth(date),
       end: endOfMonth(date),
@@ -65,9 +67,10 @@ export default function Invoices() {
   // Add term date range to the options
   const monthRanges = {
     "current": getCurrentMonthRange(),
-    "prev1": getPreviousMonthRange(1),
-    "prev2": getPreviousMonthRange(2),
-    "prev3": getPreviousMonthRange(3),
+    "next1": getMonthRange(1),
+    "prev1": getMonthRange(-1),
+    "prev2": getMonthRange(-2),
+    "prev3": getMonthRange(-3),
     "term": termDateRange 
       ? { 
           start: new Date(termDateRange.startDate), 
