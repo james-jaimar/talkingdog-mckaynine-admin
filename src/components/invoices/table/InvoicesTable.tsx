@@ -311,18 +311,17 @@ export function InvoicesTable({
                   <TableCell>{format(new Date(invoice.issued_date), "PP")}</TableCell>
                   <TableCell>{format(new Date(invoice.due_date), "PP")}</TableCell>
                   <TableCell>
-                    {invoice.franchise_report_month ? (
-                      <Badge 
-                        variant="outline" 
-                        className={getFranchiseMonthBadgeClasses(invoice.franchise_report_month)}
-                      >
-                        {format(new Date(invoice.franchise_report_month + '-01'), "MMM yyyy")}
-                      </Badge>
-                    ) : (
-                      <span className="text-muted-foreground text-xs">
-                        {format(new Date(invoice.issued_date), "MMM yyyy")}
-                      </span>
-                    )}
+                    {(() => {
+                      const displayMonth = invoice.franchise_report_month || format(new Date(invoice.issued_date), "yyyy-MM");
+                      return (
+                        <Badge 
+                          variant="outline" 
+                          className={getFranchiseMonthBadgeClasses(displayMonth)}
+                        >
+                          {format(new Date(displayMonth + '-01'), "MMM yyyy")}
+                        </Badge>
+                      );
+                    })()}
                   </TableCell>
                   <TableCell>{getStatusBadge(invoice.status)}</TableCell>
                   <TableCell>R {invoice.total.toFixed(2)}</TableCell>
