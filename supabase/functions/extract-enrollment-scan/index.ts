@@ -30,6 +30,7 @@ Extract these fields exactly:
   - Map "good", "great", "friendly", "fine" → "Great"
   - Map "ok", "fair", "average", "sometimes" → "OK"  
   - Map "poor", "bad", "aggressive", "nervous", "not good" → "Not good"
+  - IMPORTANT: Look for handwritten notes/details next to or after the social behavior checkboxes (e.g., "bit rough", "fine with most people", "nervous around strangers") and capture these in social_behavior.details
 - Training goal: MUST be one of: "Competitive dog sport", "Chilled canine companion"
   - DEFAULT to "Chilled canine companion" unless form clearly indicates competition, sport, agility, trials, etc.
 - Has behavior problems (true/false), behavior problems details
