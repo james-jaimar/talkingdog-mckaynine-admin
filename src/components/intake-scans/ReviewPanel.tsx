@@ -272,9 +272,9 @@ export function ReviewPanel({ job, onUpdateData }: ReviewPanelProps) {
                           <SelectValue placeholder="Select status" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="intact">Intact</SelectItem>
-                          <SelectItem value="spayed">Spayed</SelectItem>
-                          <SelectItem value="neutered">Neutered</SelectItem>
+                          <SelectItem value="When old enough">When old enough</SelectItem>
+                          <SelectItem value="Already done">Already done</SelectItem>
+                          <SelectItem value="Not planning to">Not planning to</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -292,28 +292,84 @@ export function ReviewPanel({ job, onUpdateData }: ReviewPanelProps) {
                             <SelectValue placeholder="Select source" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="breeder">Breeder</SelectItem>
-                            <SelectItem value="rescue">Rescue</SelectItem>
-                            <SelectItem value="shelter">Shelter</SelectItem>
-                            <SelectItem value="pet_store">Pet Store</SelectItem>
-                            <SelectItem value="friend">Friend</SelectItem>
-                            <SelectItem value="other">Other</SelectItem>
+                            <SelectItem value="Breeder">Breeder</SelectItem>
+                            <SelectItem value="Rescue">Rescue</SelectItem>
+                            <SelectItem value="Shelter">Shelter</SelectItem>
+                            <SelectItem value="Pet store">Pet Store</SelectItem>
+                            <SelectItem value="Friend/family">Friend/Family</SelectItem>
+                            <SelectItem value="Advert">Advert</SelectItem>
+                            <SelectItem value="Born in home">Born in home</SelectItem>
+                            <SelectItem value="Stray">Stray</SelectItem>
+                            <SelectItem value="Other">Other</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
-                      <FormField
-                        label="Age at Acquisition"
-                        value={dog.age_at_acquisition}
-                        onChange={(v) => updateDogField(dogIndex, 'age_at_acquisition', v)}
-                        confidence={getConfidence(`dogs.${dogIndex}.age_at_acquisition`)}
-                      />
+                      <div>
+                        <Label className="flex items-center gap-2">
+                          Age at Acquisition
+                          <ConfidenceIndicator level={getConfidence(`dogs.${dogIndex}.age_at_acquisition`)} />
+                        </Label>
+                        <Select
+                          value={dog.age_at_acquisition}
+                          onValueChange={(v) => updateDogField(dogIndex, 'age_at_acquisition', v)}
+                        >
+                          <SelectTrigger className="mt-1">
+                            <SelectValue placeholder="Select age" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Less than 2 months">Less than 2 months</SelectItem>
+                            <SelectItem value="2-4 months">2-4 months</SelectItem>
+                            <SelectItem value="4-12 months">4-12 months</SelectItem>
+                            <SelectItem value="Older than 1 year">Older than 1 year</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
-                    <FormField
-                      label="Children at Home"
-                      value={dog.children_at_home}
-                      onChange={(v) => updateDogField(dogIndex, 'children_at_home', v)}
-                      confidence={getConfidence(`dogs.${dogIndex}.children_at_home`)}
-                    />
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label className="flex items-center gap-2">
+                          Children at Home
+                          <ConfidenceIndicator level={getConfidence(`dogs.${dogIndex}.children_at_home`)} />
+                        </Label>
+                        <Select
+                          value={dog.children_at_home}
+                          onValueChange={(v) => updateDogField(dogIndex, 'children_at_home', v)}
+                        >
+                          <SelectTrigger className="mt-1">
+                            <SelectValue placeholder="Select" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Babies/toddlers">Babies/Toddlers</SelectItem>
+                            <SelectItem value="Children">Children</SelectItem>
+                            <SelectItem value="Teenagers">Teenagers</SelectItem>
+                            <SelectItem value="None">None</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label className="flex items-center gap-2">
+                          Other Pets at Home
+                          <ConfidenceIndicator level={getConfidence(`dogs.${dogIndex}.other_pets`)} />
+                        </Label>
+                        <Select
+                          value={Array.isArray(dog.other_pets) && dog.other_pets.length > 0 
+                            ? (typeof dog.other_pets[0] === 'string' ? dog.other_pets[0] : 'none')
+                            : 'none'}
+                          onValueChange={(v) => updateDogField(dogIndex, 'other_pets', v === 'none' ? [] : [v])}
+                        >
+                          <SelectTrigger className="mt-1">
+                            <SelectValue placeholder="Select" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="dogs">Dog/s</SelectItem>
+                            <SelectItem value="cats">Cat/s</SelectItem>
+                            <SelectItem value="birds">Bird/s</SelectItem>
+                            <SelectItem value="livestock">Livestock</SelectItem>
+                            <SelectItem value="none">None</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
                     
                     <div className="border-t pt-4 mt-4">
                       <h4 className="font-medium mb-3">Social Behavior</h4>
@@ -328,10 +384,9 @@ export function ReviewPanel({ job, onUpdateData }: ReviewPanelProps) {
                               <SelectValue placeholder="Select" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="good">Good</SelectItem>
-                              <SelectItem value="fair">Fair</SelectItem>
-                              <SelectItem value="poor">Poor</SelectItem>
-                              <SelectItem value="unknown">Unknown</SelectItem>
+                              <SelectItem value="Great">Great</SelectItem>
+                              <SelectItem value="OK">OK</SelectItem>
+                              <SelectItem value="Not good">Not good</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -345,10 +400,9 @@ export function ReviewPanel({ job, onUpdateData }: ReviewPanelProps) {
                               <SelectValue placeholder="Select" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="good">Good</SelectItem>
-                              <SelectItem value="fair">Fair</SelectItem>
-                              <SelectItem value="poor">Poor</SelectItem>
-                              <SelectItem value="unknown">Unknown</SelectItem>
+                              <SelectItem value="Great">Great</SelectItem>
+                              <SelectItem value="OK">OK</SelectItem>
+                              <SelectItem value="Not good">Not good</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -362,10 +416,9 @@ export function ReviewPanel({ job, onUpdateData }: ReviewPanelProps) {
                               <SelectValue placeholder="Select" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="good">Good</SelectItem>
-                              <SelectItem value="fair">Fair</SelectItem>
-                              <SelectItem value="poor">Poor</SelectItem>
-                              <SelectItem value="unknown">Unknown</SelectItem>
+                              <SelectItem value="Great">Great</SelectItem>
+                              <SelectItem value="OK">OK</SelectItem>
+                              <SelectItem value="Not good">Not good</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -374,13 +427,24 @@ export function ReviewPanel({ job, onUpdateData }: ReviewPanelProps) {
 
                     <div className="border-t pt-4 mt-4">
                       <h4 className="font-medium mb-3">Training & Health</h4>
-                      <FormField
-                        label="Training Goal"
-                        value={dog.training_goal}
-                        onChange={(v) => updateDogField(dogIndex, 'training_goal', v)}
-                        confidence={getConfidence(`dogs.${dogIndex}.training_goal`)}
-                        multiline
-                      />
+                      <div>
+                        <Label className="flex items-center gap-2">
+                          Training Goal
+                          <ConfidenceIndicator level={getConfidence(`dogs.${dogIndex}.training_goal`)} />
+                        </Label>
+                        <Select
+                          value={dog.training_goal || 'Chilled canine companion'}
+                          onValueChange={(v) => updateDogField(dogIndex, 'training_goal', v)}
+                        >
+                          <SelectTrigger className="mt-1">
+                            <SelectValue placeholder="Select goal" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Competitive dog sport">🏆 Competitive Dog Sport</SelectItem>
+                            <SelectItem value="Chilled canine companion">🛋️ Chilled Canine Companion</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                       <div className="flex items-center gap-4 mt-4">
                         <div className="flex items-center gap-2">
                           <Switch

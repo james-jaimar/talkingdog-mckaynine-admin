@@ -16,9 +16,24 @@ Focus ONLY on page 2 which contains the handwritten enrollment form data.
 
 Extract these fields exactly:
 - Owner section: name (split into first_name and last_name), account holder name, email, phone, occupation, vet name
-- Dog section: name, birth date (format as YYYY-MM-DD if possible), gender (male/female), breed, spay/neuter status (intact/spayed/neutered), acquired from (breeder/rescue/shelter/pet_store/friend/other), acquired from other details, age at acquisition
-- Home section: other pets (array of objects with type and count), children at home (yes/no/ages description), social behavior ratings (with_dogs, with_other_animals, with_people - each as good/fair/poor/unknown)
-- Training section: overall training goal, has behavior problems (true/false), behavior problems details, has health problems (true/false), health problems details
+- Dog section: name, birth date (format as YYYY-MM-DD if possible), gender (male/female), breed
+- Spay/neuter status: MUST be one of these exact values: "When old enough", "Already done", "Not planning to"
+  - Map "intact", "not spayed", "not neutered" → "When old enough"
+  - Map "spayed", "neutered", "fixed", "done", "yes" → "Already done"
+  - Map "no", "never", "not planning" → "Not planning to"
+- Acquired from: breeder/rescue/shelter/pet_store/friend/advert/born_in_home/stray/other
+- Age at acquisition: MUST be one of: "Less than 2 months", "2-4 months", "4-12 months", "Older than 1 year"
+- Other pets at home: array of strings from: "dogs", "cats", "birds", "livestock", "none"
+- Children at home: MUST be one of: "Babies/toddlers", "Children", "Teenagers", "None"
+  - If multiple types, pick the youngest category
+- Social behavior ratings (with_dogs, with_other_animals, with_people): MUST be one of "Great", "OK", "Not good"
+  - Map "good", "great", "friendly", "fine" → "Great"
+  - Map "ok", "fair", "average", "sometimes" → "OK"  
+  - Map "poor", "bad", "aggressive", "nervous", "not good" → "Not good"
+- Training goal: MUST be one of: "Competitive dog sport", "Chilled canine companion"
+  - DEFAULT to "Chilled canine companion" unless form clearly indicates competition, sport, agility, trials, etc.
+- Has behavior problems (true/false), behavior problems details
+- Has health problems (true/false), health problems details
 - Class section: class type (Puppy/EO/CGC Bronze/CGC Silver/Beginner/Novice/WT/A-Test/Yoga/Other), class type other if Other selected, branch name, how they heard about us (array of sources)
 - Permissions: WhatsApp group permission (yes/no), Photo permission (yes/no)
 - Acknowledgements: list which acknowledgement checkboxes are checked (training_equipment, treats, waste_disposal, onlead_socializing, equipment_supervision)
