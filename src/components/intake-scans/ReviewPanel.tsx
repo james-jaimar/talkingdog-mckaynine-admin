@@ -423,6 +423,15 @@ export function ReviewPanel({ job, onUpdateData }: ReviewPanelProps) {
                           </Select>
                         </div>
                       </div>
+                      <div className="mt-3">
+                        <Label>Details / Notes</Label>
+                        <Input
+                          value={dog.social_behavior?.details || ''}
+                          onChange={(e) => updateDogSocialBehavior(dogIndex, 'details', e.target.value)}
+                          placeholder="e.g., Bit rough with dogs, fine with most people"
+                          className="mt-1"
+                        />
+                      </div>
                     </div>
 
                     <div className="border-t pt-4 mt-4">
