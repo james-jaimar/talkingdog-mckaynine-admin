@@ -23,7 +23,8 @@ Extract these fields exactly:
   - Map "no", "never", "not planning" → "Not planning to"
 - Acquired from: breeder/rescue/shelter/pet_store/friend/advert/born_in_home/stray/other
 - Age at acquisition: MUST be one of: "Less than 2 months", "2-4 months", "4-12 months", "Older than 1 year"
-- Other pets at home: array of strings from: "dogs", "cats", "birds", "livestock", "none"
+- Other pets at home: array of strings from: "dogs", "cats", "dogs_and_cats", "birds", "livestock", "none"
+  - If both dogs AND cats are indicated, use "dogs_and_cats" instead of separate entries
 - Children at home: MUST be one of: "Babies/toddlers", "Children", "Teenagers", "None"
   - If multiple types, pick the youngest category
 - Social behavior ratings (with_dogs, with_other_animals, with_people): MUST be one of "Great", "OK", "Not good"
