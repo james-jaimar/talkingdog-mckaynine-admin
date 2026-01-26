@@ -22,7 +22,27 @@ interface BasicInfoTabProps {
 }
 
 function formatOtherPets(otherPets?: unknown) {
-  if (!otherPets || typeof otherPets !== 'object') return null;
+  if (!otherPets) return null;
+  
+  // Handle array format (from intake scans)
+  if (Array.isArray(otherPets)) {
+    if (otherPets.length === 0) return 'None';
+    const petLabels: Record<string, string> = {
+      'dogs': 'Dog/s',
+      'cats': 'Cat/s',
+      'dogs_and_cats': 'Dogs and cats',
+      'birds': 'Bird/s',
+      'livestock': 'Livestock',
+      'none': 'None'
+    };
+    return otherPets
+      .filter(pet => pet !== 'none')
+      .map(pet => petLabels[pet] || (typeof pet === 'string' ? pet.charAt(0).toUpperCase() + pet.slice(1) : pet))
+      .join(', ') || 'None';
+  }
+  
+  // Handle object format (legacy)
+  if (typeof otherPets !== 'object') return null;
   const petsObj = otherPets as Record<string, boolean>;
   const pets = Object.entries(petsObj)
     .filter(([key, value]) => value === true && key !== 'none')
