@@ -363,6 +363,7 @@ export function ReviewPanel({ job, onUpdateData }: ReviewPanelProps) {
                           <SelectContent>
                             <SelectItem value="dogs">Dog/s</SelectItem>
                             <SelectItem value="cats">Cat/s</SelectItem>
+                            <SelectItem value="dogs_and_cats">Dogs and cats</SelectItem>
                             <SelectItem value="birds">Bird/s</SelectItem>
                             <SelectItem value="livestock">Livestock</SelectItem>
                             <SelectItem value="none">None</SelectItem>
