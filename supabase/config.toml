@@ -44,4 +44,4 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.sync-invoice-to-io]
-verify_jwt = true
+verify_jwt = false
