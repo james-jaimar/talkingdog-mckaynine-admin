@@ -11,8 +11,8 @@ const TEST_MODE = true;
 const TEST_CLIENT_EMAILS = ["jimmybhawkins@gmail.com"];
 
 // Branch IDs for mapping to IO credentials
-const DELTA_BRANCH_ID = "6351a9e8-77db-46cc-8c54-72be8eb01b65";
-const RANDBURG_BRANCH_ID = "284817cf-de0d-4cb1-8e1d-00bb34baf0da";
+const DELTA_BRANCH_ID = "6351a9e8-77db-403b-ab1f-cd47e393a006";
+const RANDBURG_BRANCH_ID = "284817cf-de0d-43b9-a506-a3efa625ae1c";
 
 // IO API base URL
 const IO_API_BASE = "https://www.invoicesonline.co.za/api";
