@@ -268,6 +268,42 @@ async function createIOPayment(
   return { success: false, error: `Unexpected response: ${JSON.stringify(result)}` };
 }
 
+// Test IO credentials by attempting a simple API call
+async function testIOCredentials(branchId: string | null): Promise<{ success: boolean; branch: string; error?: string }> {
+  const branchName = getBranchName(branchId);
+  const credentials = getIOCredentials(branchId);
+  
+  if (!credentials) {
+    return { success: false, branch: branchName, error: "No credentials configured" };
+  }
+
+  try {
+    // Try to get a non-existent client - this validates credentials work
+    const result = await callIOAPI("GetClientID.php", {
+      username: credentials.username,
+      password: credentials.password,
+      ClientName: "Test Connection",
+      ClientEmail: "test-connection@lovable.dev",
+      ClientBranchName: branchName,
+    });
+
+    console.log(`Test result for ${branchName}:`, result);
+    
+    // If we get an error about invalid credentials, return that
+    if (typeof result === "object" && result !== null) {
+      const r = result as Record<string, unknown>;
+      if (r.error && String(r.error).toLowerCase().includes("invalid")) {
+        return { success: false, branch: branchName, error: String(r.error) };
+      }
+    }
+    
+    // Any response (even "client not found") means credentials are valid
+    return { success: true, branch: branchName };
+  } catch (error) {
+    return { success: false, branch: branchName, error: error.message };
+  }
+}
+
 Deno.serve(async (req) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
@@ -275,8 +311,32 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Verify authentication
+    // Get auth header for later use
     const authHeader = req.headers.get('Authorization');
+    
+    const { invoice_id, action } = await req.json();
+
+    // Handle test credentials action - allow without full auth for credential testing
+    if (action === "test_credentials") {
+      console.log("Testing IO credentials for both branches...");
+      
+      const deltaResult = await testIOCredentials(DELTA_BRANCH_ID);
+      const randburgResult = await testIOCredentials(RANDBURG_BRANCH_ID);
+      
+      console.log("Delta result:", JSON.stringify(deltaResult));
+      console.log("Randburg result:", JSON.stringify(randburgResult));
+      
+      return new Response(
+        JSON.stringify({
+          delta: deltaResult,
+          randburg: randburgResult,
+          overall_success: deltaResult.success && randburgResult.success
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Full auth check for actual invoice operations
     if (!authHeader?.startsWith('Bearer ')) {
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
@@ -309,8 +369,6 @@ Deno.serve(async (req) => {
     // Use service role for database operations
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { invoice_id, action } = await req.json();
-
     if (!invoice_id) {
       return new Response(
         JSON.stringify({ error: "invoice_id is required" }),
@@ -319,7 +377,6 @@ Deno.serve(async (req) => {
     }
 
     console.log(`Processing sync request: invoice_id=${invoice_id}, action=${action}`);
-
     // Fetch invoice with client and items
     const { data: invoice, error: invoiceError } = await supabase
       .from("invoices")
