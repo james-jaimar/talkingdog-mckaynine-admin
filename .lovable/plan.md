@@ -1,59 +1,44 @@
 
+# Fix IO Integration - Correct Branch IDs
 
-# Sync Invoice to IO on Creation (Draft)
+## Problem Identified
 
-## Current vs Desired Flow
+The edge function has **incorrect branch IDs** that don't match the actual database values:
 
-**Current Flow:**
-```
-Invoice Created (draft) → Mark as Sent → IO sync → PDF available
-```
+| Branch | Current (Wrong) | Correct |
+|--------|-----------------|---------|
+| Delta | `6351a9e8-77db-46cc-8c54-72be8eb01b65` | `6351a9e8-77db-403b-ab1f-cd47e393a006` |
+| Randburg | `284817cf-de0d-4cb1-8e1d-00bb34baf0da` | `284817cf-de0d-43b9-a506-a3efa625ae1c` |
 
-**Desired Flow:**
-```
-Invoice Created (draft) → IO sync immediately → PDF available → Can send to handler
-```
+This caused the error: `"No IO credentials configured for this branch"` because the invoice's `branch_id` didn't match either of the hardcoded values.
 
-## Changes Required
+## Solution
 
-### 1. Modify `src/lib/invoices/createInvoiceUtils.ts`
-
-Add IO sync trigger after successful invoice creation:
+Update lines 14-15 in `supabase/functions/sync-invoice-to-io/index.ts`:
 
 ```typescript
-// After line 163 (toast.success)
-import { syncInvoiceToIO } from "@/hooks/invoices/useIOSync";
+// Before (wrong):
+const DELTA_BRANCH_ID = "6351a9e8-77db-46cc-8c54-72be8eb01b65";
+const RANDBURG_BRANCH_ID = "284817cf-de0d-4cb1-8e1d-00bb34baf0da";
 
-// ... after invoice and items created successfully ...
-
-toast.success("Invoice created successfully");
-
-// Trigger IO sync in background (fire and forget)
-syncInvoiceToIO(invoice.id, 'invoice').catch(err => {
-  console.error('[IO Sync] Background sync error on creation:', err);
-});
-
-return invoice;
+// After (correct):
+const DELTA_BRANCH_ID = "6351a9e8-77db-403b-ab1f-cd47e393a006";
+const RANDBURG_BRANCH_ID = "284817cf-de0d-43b9-a506-a3efa625ae1c";
 ```
 
-### 2. Why This Works
+## Verified Items
 
-- The sync runs in the background (doesn't block invoice creation)
-- Works for draft invoices - IO will create the invoice regardless of local status
-- PDF URL will be saved to `io_invoice_url` column for later use
-- Test mode filter still applies - only syncs for `jimmybhawkins@gmail.com`
+The IO invoice data format is correct:
+- Product code, quantity, description, unit price, currency, VAT settings are all properly formatted
+- Client creation uses correct fields (name, email, phone, address)
+- Payment sync uses EFT method and correct date format
 
-### 3. Keep Existing Triggers
-
-The existing triggers in `useMarkInvoiceAsSent` and `useMarkInvoiceAsPaid` should remain as fallbacks:
-- If invoice wasn't synced on creation (e.g., test mode skipped it), it will sync when marked sent
-- Payment sync still triggers when marked paid
-
-## Implementation Summary
+## Files to Modify
 
 | File | Change |
 |------|--------|
-| `src/lib/invoices/createInvoiceUtils.ts` | Add `syncInvoiceToIO` call after successful creation |
+| `supabase/functions/sync-invoice-to-io/index.ts` | Fix branch ID constants on lines 14-15 |
 
-This is a minimal change - just adding one async call to trigger the background sync immediately when an invoice is created.
+## After Fix
 
+Re-deploy the edge function and create a new test invoice for `jimmybhawkins@gmail.com`. The sync should now work and populate the `io_invoice_url` field.
