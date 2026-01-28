@@ -1,7 +1,7 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { calculateInvoiceComponents } from "@/lib/calculateInvoiceComponents";
+import { syncInvoiceToIO } from "@/hooks/invoices/useIOSync";
 
 /**
  * Centralized utility for creating invoices with improved error handling
@@ -161,6 +161,12 @@ export async function createInvoice(invoiceData: any) {
     }
     
     toast.success("Invoice created successfully");
+    
+    // Trigger IO sync in background (fire and forget)
+    syncInvoiceToIO(invoice.id, 'invoice').catch(err => {
+      console.error('[IO Sync] Background sync error on creation:', err);
+    });
+    
     return invoice;
   } catch (error: any) {
     console.error("Invoice creation failed:", error);
