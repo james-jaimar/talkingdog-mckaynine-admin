@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Invoice } from "../types";
 import { toast } from "sonner";
+import { syncInvoiceToIO } from "../useIOSync";
 
 interface UseMarkInvoiceAsSentProps {
   onSuccess?: () => void;
@@ -55,6 +56,11 @@ export const useMarkInvoiceAsSent = ({ onSuccess, onError }: UseMarkInvoiceAsSen
       // Invalidate the invoices queries to refetch the updated data
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       queryClient.invalidateQueries({ queryKey: ['invoices', updatedInvoice.id] });
+
+      // Trigger IO sync in background (don't await - fire and forget)
+      syncInvoiceToIO(updatedInvoice.id, 'invoice').catch(err => {
+        console.error('[IO Sync] Background sync error:', err);
+      });
 
       // Optionally execute the provided onSuccess callback
       onSuccess?.();

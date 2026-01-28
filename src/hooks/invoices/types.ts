@@ -15,6 +15,9 @@ export interface Client {
 // Define InvoiceStatus as a type for better type checking
 export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled' | 'invalid';
 
+// IO Sync Status type
+export type IOSyncStatus = 'pending' | 'synced' | 'failed' | 'payment_synced' | null;
+
 export interface Invoice {
   id: string;
   invoice_number: string;
@@ -51,6 +54,16 @@ export interface Invoice {
   
   // Branch attribution for multi-branch handlers
   branch_id?: string | null; // Branch where the class took place
+  
+  // InvoicesOnline (IO) sync fields
+  io_sync_status?: IOSyncStatus;
+  io_sync_error?: string | null;
+  io_synced_at?: string | null;
+  io_document_id?: string | null;
+  io_invoice_number?: string | null;
+  io_invoice_url?: string | null;
+  io_payment_url?: string | null;
+  io_client_id?: number | null;
   
   // Generated fields
   classInfo?: string;
