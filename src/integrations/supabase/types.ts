@@ -932,6 +932,8 @@ export type Database = {
           enrollment_verified: boolean | null
           first_name: string
           id: string
+          io_client_id_delta: number | null
+          io_client_id_randburg: number | null
           last_name: string
           notes: string | null
           occupation: string | null
@@ -959,6 +961,8 @@ export type Database = {
           enrollment_verified?: boolean | null
           first_name: string
           id?: string
+          io_client_id_delta?: number | null
+          io_client_id_randburg?: number | null
           last_name: string
           notes?: string | null
           occupation?: string | null
@@ -986,6 +990,8 @@ export type Database = {
           enrollment_verified?: boolean | null
           first_name?: string
           id?: string
+          io_client_id_delta?: number | null
+          io_client_id_randburg?: number | null
           last_name?: string
           notes?: string | null
           occupation?: string | null
@@ -1813,6 +1819,14 @@ export type Database = {
           franchise_report_month: string | null
           id: string
           invoice_number: string
+          io_client_id: number | null
+          io_document_id: string | null
+          io_invoice_number: string | null
+          io_invoice_url: string | null
+          io_payment_url: string | null
+          io_sync_error: string | null
+          io_sync_status: string | null
+          io_synced_at: string | null
           issued_date: string
           monetary_discount: number | null
           notes: string | null
@@ -1839,6 +1853,14 @@ export type Database = {
           franchise_report_month?: string | null
           id?: string
           invoice_number: string
+          io_client_id?: number | null
+          io_document_id?: string | null
+          io_invoice_number?: string | null
+          io_invoice_url?: string | null
+          io_payment_url?: string | null
+          io_sync_error?: string | null
+          io_sync_status?: string | null
+          io_synced_at?: string | null
           issued_date?: string
           monetary_discount?: number | null
           notes?: string | null
@@ -1865,6 +1887,14 @@ export type Database = {
           franchise_report_month?: string | null
           id?: string
           invoice_number?: string
+          io_client_id?: number | null
+          io_document_id?: string | null
+          io_invoice_number?: string | null
+          io_invoice_url?: string | null
+          io_payment_url?: string | null
+          io_sync_error?: string | null
+          io_sync_status?: string | null
+          io_synced_at?: string | null
           issued_date?: string
           monetary_discount?: number | null
           notes?: string | null

@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { generateClassConfirmationEmails } from "@/lib/email/generateClassConfirmation";
 import { generatePaymentReceiptEmails } from "@/lib/email/generatePaymentReceipt";
+import { syncInvoiceToIO } from "../useIOSync";
 
 /**
  * Hook to mark an invoice as paid
@@ -43,6 +44,11 @@ export function useMarkInvoiceAsPaid() {
       queryClient.invalidateQueries({ queryKey: ['invoice', invoiceId] });
       queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
       queryClient.invalidateQueries({ queryKey: ['classes-list-data'] });
+      
+      // Trigger IO payment sync in background (don't await - fire and forget)
+      syncInvoiceToIO(invoiceId, 'payment').catch(err => {
+        console.error('[IO Sync] Background payment sync error:', err);
+      });
       
       let emailsQueued = 0;
       
