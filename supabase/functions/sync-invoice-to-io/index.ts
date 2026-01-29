@@ -209,8 +209,21 @@ async function createIOInvoice(
     data: data,
   });
 
-  // Check for success response
-  if (typeof result === "object" && result !== null) {
+  // Check for success response - IO returns an array with status and document info
+  if (Array.isArray(result) && result.length >= 2) {
+    const docInfo = result[1] as Record<string, unknown>;
+    if (docInfo.document_id || docInfo.invoice_nr) {
+      return {
+        success: true,
+        documentId: String(docInfo.document_id || ""),
+        invoiceNumber: String(docInfo.invoice_nr || docInfo.document_nr || ""),
+        url: String(docInfo.url || ""),
+      };
+    }
+  }
+
+  // Also check for single object response as fallback
+  if (typeof result === "object" && result !== null && !Array.isArray(result)) {
     const r = result as Record<string, unknown>;
     if (r.document_id || r.invoice_nr) {
       return {
