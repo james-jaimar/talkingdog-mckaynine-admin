@@ -1,44 +1,57 @@
 
-# Fix IO Integration - Correct Branch IDs
+# Fix IO Sync - CORS Headers Issue
 
 ## Problem Identified
 
-The edge function has **incorrect branch IDs** that don't match the actual database values:
+The edge function `sync-invoice-to-io` is returning **401 Unauthorized** because the `Authorization` header is not reaching the function. This is caused by incomplete CORS headers.
 
-| Branch | Current (Wrong) | Correct |
-|--------|-----------------|---------|
-| Delta | `6351a9e8-77db-46cc-8c54-72be8eb01b65` | `6351a9e8-77db-403b-ab1f-cd47e393a006` |
-| Randburg | `284817cf-de0d-4cb1-8e1d-00bb34baf0da` | `284817cf-de0d-43b9-a506-a3efa625ae1c` |
+**Evidence:**
+- Edge function was called at 05:02 AM today
+- Returned 401 status code
+- No internal logs were generated (meaning it fails at the auth check before any console.log)
+- The auth check at line 340 fails because `authHeader` is null/undefined
 
-This caused the error: `"No IO credentials configured for this branch"` because the invoice's `branch_id` didn't match either of the hardcoded values.
+## Root Cause
+
+Current CORS headers:
+```javascript
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
+};
+```
+
+The Supabase JS client sends additional headers that are not included, causing the CORS preflight to fail and the `Authorization` header to be stripped.
 
 ## Solution
 
-Update lines 14-15 in `supabase/functions/sync-invoice-to-io/index.ts`:
+Update the CORS headers to include all headers sent by the Supabase JS client:
 
-```typescript
-// Before (wrong):
-const DELTA_BRANCH_ID = "6351a9e8-77db-46cc-8c54-72be8eb01b65";
-const RANDBURG_BRANCH_ID = "284817cf-de0d-4cb1-8e1d-00bb34baf0da";
-
-// After (correct):
-const DELTA_BRANCH_ID = "6351a9e8-77db-403b-ab1f-cd47e393a006";
-const RANDBURG_BRANCH_ID = "284817cf-de0d-43b9-a506-a3efa625ae1c";
+```javascript
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
+};
 ```
-
-## Verified Items
-
-The IO invoice data format is correct:
-- Product code, quantity, description, unit price, currency, VAT settings are all properly formatted
-- Client creation uses correct fields (name, email, phone, address)
-- Payment sync uses EFT method and correct date format
 
 ## Files to Modify
 
 | File | Change |
 |------|--------|
-| `supabase/functions/sync-invoice-to-io/index.ts` | Fix branch ID constants on lines 14-15 |
+| `supabase/functions/sync-invoice-to-io/index.ts` | Update `corsHeaders` on lines 3-7 to include all required Supabase client headers |
 
 ## After Fix
 
-Re-deploy the edge function and create a new test invoice for `jimmybhawkins@gmail.com`. The sync should now work and populate the `io_invoice_url` field.
+1. Re-deploy the edge function
+2. Create a new test invoice for `jimmybhawkins@gmail.com`
+3. Verify the IO sync succeeds and `io_invoice_url` is populated
+
+## Technical Details
+
+When a browser makes a cross-origin request with custom headers (like `Authorization`), it first sends a preflight OPTIONS request. If the server doesn't acknowledge all the headers being sent in `Access-Control-Allow-Headers`, the browser will either:
+- Strip those headers from the actual request
+- Block the request entirely
+
+By adding the missing Supabase-specific headers, the preflight will succeed and the `Authorization` header will be included in the actual POST request.
