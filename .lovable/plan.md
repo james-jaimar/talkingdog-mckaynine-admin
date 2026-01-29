@@ -1,57 +1,87 @@
 
-# Fix IO Sync - CORS Headers Issue
+# Fix IO Invoice Response Parsing
 
 ## Problem Identified
 
-The edge function `sync-invoice-to-io` is returning **401 Unauthorized** because the `Authorization` header is not reaching the function. This is caused by incomplete CORS headers.
+The InvoicesOnline API **successfully created the invoice** (Invoice 235), but our edge function failed to parse the success response correctly, causing it to return a 500 error despite the invoice being created in IO.
 
-**Evidence:**
-- Edge function was called at 05:02 AM today
-- Returned 401 status code
-- No internal logs were generated (meaning it fails at the auth check before any console.log)
-- The auth check at line 340 fails because `authHeader` is null/undefined
+### Evidence from Logs
 
-## Root Cause
-
-Current CORS headers:
-```javascript
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
-};
+**IO API Response (actual):**
+```json
+[
+  {"type":"success","message":"Invoice 235 generated successfully."},
+  {"url":"https://www.invoicesonline.co.za/scripts/Download.php?type=invoice&id=2651087...",
+   "invoice_nr":235,
+   "document_nr":235,
+   "document_id":"2651087",
+   "email_url":"..."}
+]
 ```
 
-The Supabase JS client sends additional headers that are not included, causing the CORS preflight to fail and the `Authorization` header to be stripped.
+**Current code expects:** A single object with `document_id` at root level
+**Actual response:** An array where index 1 contains the document details
+
+### Root Cause
+
+In `supabase/functions/sync-invoice-to-io/index.ts`, the `createIOInvoice` function (lines 212-228) checks:
+```typescript
+if (r.document_id || r.invoice_nr) { ... }
+```
+
+But since `result` is an array, `r.document_id` is undefined, so it falls through to return the "Unexpected response" error.
 
 ## Solution
 
-Update the CORS headers to include all headers sent by the Supabase JS client:
+Update the response parsing to handle the array format:
 
-```javascript
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
-};
+```typescript
+// Check for success response - IO returns an array with status and document info
+if (Array.isArray(result) && result.length >= 2) {
+  const docInfo = result[1] as Record<string, unknown>;
+  if (docInfo.document_id || docInfo.invoice_nr) {
+    return {
+      success: true,
+      documentId: String(docInfo.document_id || ""),
+      invoiceNumber: String(docInfo.invoice_nr || docInfo.document_nr || ""),
+      url: String(docInfo.url || ""),
+    };
+  }
+}
+
+// Also keep the original object check as fallback
+if (typeof result === "object" && result !== null && !Array.isArray(result)) {
+  const r = result as Record<string, unknown>;
+  if (r.document_id || r.invoice_nr) {
+    return {
+      success: true,
+      documentId: String(r.document_id || ""),
+      invoiceNumber: String(r.invoice_nr || r.document_nr || ""),
+      url: String(r.url || ""),
+    };
+  }
+  if (r.error) {
+    return { success: false, error: String(r.error) };
+  }
+}
 ```
 
 ## Files to Modify
 
 | File | Change |
 |------|--------|
-| `supabase/functions/sync-invoice-to-io/index.ts` | Update `corsHeaders` on lines 3-7 to include all required Supabase client headers |
+| `supabase/functions/sync-invoice-to-io/index.ts` | Update `createIOInvoice` function (lines 212-228) to handle array response format from IO API |
 
 ## After Fix
 
 1. Re-deploy the edge function
 2. Create a new test invoice for `jimmybhawkins@gmail.com`
-3. Verify the IO sync succeeds and `io_invoice_url` is populated
+3. Verify:
+   - Invoice syncs successfully (no error toast)
+   - `io_sync_status` = "synced" in database
+   - `io_invoice_url` is populated with the PDF download link
+   - Invoice appears in InvoicesOnline dashboard
 
-## Technical Details
+## Note
 
-When a browser makes a cross-origin request with custom headers (like `Authorization`), it first sends a preflight OPTIONS request. If the server doesn't acknowledge all the headers being sent in `Access-Control-Allow-Headers`, the browser will either:
-- Strip those headers from the actual request
-- Block the request entirely
-
-By adding the missing Supabase-specific headers, the preflight will succeed and the `Authorization` header will be included in the actual POST request.
+The invoice `INV-McD-2602-0004` was actually created in IO as Invoice 235. The only issue was our code failing to recognize the success response.
