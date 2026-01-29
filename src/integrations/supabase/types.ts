@@ -1820,6 +1820,9 @@ export type Database = {
           id: string
           invoice_number: string
           io_client_id: number | null
+          io_credit_note_id: string | null
+          io_credit_note_number: string | null
+          io_credit_note_url: string | null
           io_document_id: string | null
           io_invoice_number: string | null
           io_invoice_url: string | null
@@ -1854,6 +1857,9 @@ export type Database = {
           id?: string
           invoice_number: string
           io_client_id?: number | null
+          io_credit_note_id?: string | null
+          io_credit_note_number?: string | null
+          io_credit_note_url?: string | null
           io_document_id?: string | null
           io_invoice_number?: string | null
           io_invoice_url?: string | null
@@ -1888,6 +1894,9 @@ export type Database = {
           id?: string
           invoice_number?: string
           io_client_id?: number | null
+          io_credit_note_id?: string | null
+          io_credit_note_number?: string | null
+          io_credit_note_url?: string | null
           io_document_id?: string | null
           io_invoice_number?: string | null
           io_invoice_url?: string | null
