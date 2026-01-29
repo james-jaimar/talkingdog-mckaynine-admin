@@ -281,6 +281,66 @@ async function createIOPayment(
   return { success: false, error: `Unexpected response: ${JSON.stringify(result)}` };
 }
 
+// Create credit note in IO to reverse/void an invoice
+async function createIOCreditNote(
+  credentials: IOCredentials,
+  ioClientId: number,
+  invoice: InvoiceData
+): Promise<{ success: boolean; documentId?: string; creditNoteNumber?: string; url?: string; error?: string }> {
+  console.log(`Creating IO credit note for client ${ioClientId}, reversing invoice ${invoice.invoice_number}`);
+
+  // Format items for IO API - same format as invoice but with "Credit Note" prefix
+  const data = invoice.items.map((item) => ({
+    "0": "", // prod_code
+    "1": item.quantity, // qty
+    "2": `Credit Note: ${item.description}`, // description with CN prefix
+    "3": item.unit_price, // amount per unit
+    "4": "ZAR", // currency
+    "5": 0, // vat_applies (no VAT)
+    "6": 0, // vat_percentage
+    "7": 0, // amount_includes_vat
+  }));
+
+  const result = await callIOAPI("GenerateNewCreditNote.php", {
+    username: credentials.username,
+    password: credentials.password,
+    ClientID: ioClientId,
+    EmailToClient: false, // We handle emails ourselves
+    data: data,
+  });
+
+  // Check for success response - IO returns an array with status and document info
+  if (Array.isArray(result) && result.length >= 2) {
+    const docInfo = result[1] as Record<string, unknown>;
+    if (docInfo.document_id || docInfo.invoice_nr) {
+      return {
+        success: true,
+        documentId: String(docInfo.document_id || ""),
+        creditNoteNumber: String(docInfo.invoice_nr || docInfo.document_nr || ""),
+        url: String(docInfo.url || ""),
+      };
+    }
+  }
+
+  // Also check for single object response as fallback
+  if (typeof result === "object" && result !== null && !Array.isArray(result)) {
+    const r = result as Record<string, unknown>;
+    if (r.document_id || r.invoice_nr) {
+      return {
+        success: true,
+        documentId: String(r.document_id || ""),
+        creditNoteNumber: String(r.invoice_nr || r.document_nr || ""),
+        url: String(r.url || ""),
+      };
+    }
+    if (r.error) {
+      return { success: false, error: String(r.error) };
+    }
+  }
+
+  return { success: false, error: `Unexpected response: ${JSON.stringify(result)}` };
+}
+
 // Test IO credentials by attempting a simple API call
 async function testIOCredentials(branchId: string | null): Promise<{ success: boolean; branch: string; error?: string }> {
   const branchName = getBranchName(branchId);
@@ -615,8 +675,59 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Handle credit note (void/delete invoice)
+    if (action === "credit_note") {
+      // Check if invoice was synced first
+      if (!invoice.io_document_id) {
+        return new Response(
+          JSON.stringify({ error: "Invoice must be synced to IO before issuing credit note" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const result = await createIOCreditNote(credentials, ioClientId, invoiceData);
+      
+      if (result.success) {
+        await supabase
+          .from("invoices")
+          .update({
+            io_sync_status: "credit_note_issued",
+            io_sync_error: null,
+            io_synced_at: new Date().toISOString(),
+            io_credit_note_id: result.documentId,
+            io_credit_note_number: result.creditNoteNumber,
+            io_credit_note_url: result.url,
+          })
+          .eq("id", invoice_id);
+
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            action: "credit_note",
+            io_credit_note_id: result.documentId,
+            io_credit_note_number: result.creditNoteNumber,
+            io_credit_note_url: result.url,
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      } else {
+        await supabase
+          .from("invoices")
+          .update({
+            io_sync_status: "failed",
+            io_sync_error: result.error,
+          })
+          .eq("id", invoice_id);
+
+        return new Response(
+          JSON.stringify({ error: result.error }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
     return new Response(
-      JSON.stringify({ error: "Invalid action. Use 'invoice' or 'payment'" }),
+      JSON.stringify({ error: "Invalid action. Use 'invoice', 'payment', or 'credit_note'" }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 
