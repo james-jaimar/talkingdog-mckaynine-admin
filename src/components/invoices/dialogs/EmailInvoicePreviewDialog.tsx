@@ -31,12 +31,14 @@ interface EmailInvoicePreviewDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   selectedInvoice: Invoice | null;
+  preparedPdfBase64?: string; // Pre-prepared PDF from IO sync workflow
 }
 
 export function EmailInvoicePreviewDialog({
   open,
   onOpenChange,
-  selectedInvoice
+  selectedInvoice,
+  preparedPdfBase64,
 }: EmailInvoicePreviewDialogProps) {
   const { currentBranch } = useBranch();
   const { addToQueue, processQueue } = useEmailQueue();
@@ -114,8 +116,13 @@ export function EmailInvoicePreviewDialog({
     try {
       toast.info("Preparing invoice for email...");
       
-      // Generate the PDF as base64
-      const pdfBase64 = await getInvoiceAsBase64(selectedInvoice);
+      // Use pre-prepared PDF from IO if available, otherwise generate locally
+      let pdfBase64 = preparedPdfBase64;
+      if (!pdfBase64) {
+        console.log("No pre-prepared PDF, generating locally...");
+        pdfBase64 = await getInvoiceAsBase64(selectedInvoice);
+      }
+      
       if (!pdfBase64) {
         throw new Error("Failed to generate invoice PDF");
       }
