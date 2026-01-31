@@ -46,6 +46,11 @@ interface ReceiptEmailData {
   html_content: string;
   handler_id: string;
   branch_id: string;
+  attachments?: Array<{
+    filename: string;
+    content: string; // base64
+    type: string;
+  }>;
 }
 
 /**
@@ -58,9 +63,12 @@ function formatCurrency(amount: number): string {
 /**
  * Generates payment receipt emails for a paid invoice
  * Returns an array of email data (one for primary, one for secondary if exists)
+ * @param invoiceId - The invoice ID
+ * @param paymentPdfBase64 - Optional IO payment receipt PDF in base64 format
  */
 export async function generatePaymentReceiptEmails(
-  invoiceId: string
+  invoiceId: string,
+  paymentPdfBase64?: string
 ): Promise<ReceiptEmailData[]> {
   try {
     // Fetch invoice with all related data including secondary email
@@ -151,6 +159,17 @@ export async function generatePaymentReceiptEmails(
 
     const emails: ReceiptEmailData[] = [];
 
+    // Build attachments array if we have a payment PDF from IO
+    const attachments = paymentPdfBase64
+      ? [
+          {
+            filename: `Payment_Receipt_${invoiceData.invoice_number}.pdf`,
+            content: paymentPdfBase64,
+            type: "application/pdf",
+          },
+        ]
+      : undefined;
+
     // Add primary email - use invoice branch_id
     emails.push({
       to_email: client.email,
@@ -158,6 +177,7 @@ export async function generatePaymentReceiptEmails(
       html_content: htmlContent,
       handler_id: client.id,
       branch_id: branchId,
+      attachments,
     });
 
     // Add secondary email if exists
@@ -168,6 +188,7 @@ export async function generatePaymentReceiptEmails(
         html_content: htmlContent,
         handler_id: client.id,
         branch_id: branchId,
+        attachments,
       });
     }
 
