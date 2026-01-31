@@ -16,6 +16,7 @@ import Tasks from "@/pages/admin/Tasks";
 import EmailTemplates from "@/pages/admin/EmailTemplates";
 import Email from "@/pages/admin/Email";
 import TrainerNotes from "@/pages/admin/TrainerNotes";
+import Settings from "@/pages/admin/Settings";
 
 // Each route is protected with RequireAdmin component
 export const adminRoutes = [
@@ -119,5 +120,9 @@ export const adminRoutes = [
   {
     path: "/financial-reports",
     element: <FinancialReports />,
+  },
+  {
+    path: "/admin/settings",
+    element: <Settings />,
   },
 ];

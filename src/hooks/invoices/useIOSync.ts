@@ -2,13 +2,28 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 /**
- * IO Mode Configuration
- * When IO_OFFLINE_MODE is true, the system uses local PDF generation
- * When false (default), the system REQUIRES IO PDF - no silent fallback
- * 
- * To switch modes, change this constant. Future enhancement: move to database setting.
+ * Get IO offline mode setting from database
+ * Returns true if offline mode is enabled, false otherwise
  */
-export const IO_OFFLINE_MODE = false;
+async function getIOOfflineModeFromDB(): Promise<boolean> {
+  try {
+    const { data, error } = await supabase
+      .from('system_settings')
+      .select('value')
+      .eq('key', 'io_offline_mode')
+      .maybeSingle();
+    
+    if (error) {
+      console.error('[IO Sync] Error fetching IO offline mode setting:', error);
+      return false; // Default to online mode if we can't fetch the setting
+    }
+    
+    return data?.value === true;
+  } catch (err) {
+    console.error('[IO Sync] Unexpected error fetching IO offline mode:', err);
+    return false;
+  }
+}
 
 /**
  * Sync invoice to InvoicesOnline (IO)
@@ -169,16 +184,19 @@ export async function fetchIOPDF(invoiceId: string): Promise<{
  * Sync invoice to IO and fetch the PDF in one workflow
  * Shows progress to the user via callback
  * 
- * When IO_OFFLINE_MODE is true: skips IO entirely, returns useLocalPdf flag
- * When IO_OFFLINE_MODE is false: REQUIRES IO PDF, returns error on failure (no silent fallback)
+ * When IO offline mode is enabled in system settings: skips IO entirely, returns useLocalPdf flag
+ * When IO offline mode is disabled: REQUIRES IO PDF, returns error on failure (no silent fallback)
  */
 export async function syncAndGetPDF(
   invoiceId: string,
   onProgress: (step: number, message: string) => void
 ): Promise<{ success: boolean; pdfBase64?: string; error?: string; useLocalPdf?: boolean }> {
   
+  // Check if IO offline mode is enabled in database settings
+  const isOfflineMode = await getIOOfflineModeFromDB();
+  
   // If IO is explicitly offline, signal to use local PDF immediately
-  if (IO_OFFLINE_MODE) {
+  if (isOfflineMode) {
     onProgress(1, "IO offline mode - using local PDF generation...");
     return { success: true, useLocalPdf: true };
   }
