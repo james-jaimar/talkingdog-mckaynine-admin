@@ -1,171 +1,161 @@
 
-# Add IO Payment Receipt PDF to Payment Workflow
+# Fix Email Invoice Workflow Issues
 
-## Problem Summary
+## Issues Found
 
-There are two gaps in the current Mark as Paid workflow:
+After investigating the logs, database, and code, I found three main issues:
 
-1. **Payment sync requires invoice to be synced first** - If someone marks as paid before emailing, the IO payment sync fails silently
-2. **No IO payment receipt PDF** - We generate our own receipt email, but don't fetch or attach the official IO payment receipt PDF
+### Issue 1: Email Preview Dialog Not Opening After Sync
 
-## Current vs Desired Workflow
+**What's happening**: The IO sync completes successfully (logs show invoice synced, PDF fetched at 424KB), but the preview dialog never opens. The user sees a quick flash then a toast saying "Synced to IO" but no email composition screen.
 
-```text
-CURRENT:
-Mark as Paid clicked
-    │
-    ├── Update local DB (status: paid)
-    ├── Fire-and-forget IO payment sync (often fails if not synced)
-    └── Queue local payment receipt email (no PDF attachment)
+**Root cause**: Looking at `EmailInvoiceProgressDialog.tsx`, the flow is:
+1. `syncAndGetPDF()` runs and succeeds
+2. `onReady(pdfBase64)` should be called
+3. In `InvoiceBasicActions.tsx`, `handlePdfReady()` should close progress dialog and open preview dialog
 
-DESIRED:
-Mark as Paid clicked
-    │
-    ├── Update local DB (status: paid)
-    ├── Check if invoice synced to IO
-    │   └── If NOT synced: Sync invoice first, then sync payment
-    │   └── If synced: Just sync payment
-    ├── Fetch payment receipt PDF from io_payment_url
-    └── Queue payment receipt email WITH IO PDF attached
+The issue is likely that errors or unhandled promise rejections are occurring silently. The dialog may also be closing due to a state reset before the preview opens.
+
+**Fix**: Add better error handling and ensure state transitions are synchronous.
+
+---
+
+### Issue 2: Invoice Date Shows Today's Date in IO (Not Invoice Date)
+
+**What's happening**: Despite sending `InvoiceDate: 2026-02-06`, IO created the invoice with date `31-01` (January 31st, today).
+
+**Root cause**: Looking at the edge function logs:
 ```
+Using invoice date: 2026-02-06
+```
+
+We ARE sending the correct date, but looking at line 236 in the edge function:
+```typescript
+InvoiceDate: invoiceDate, // Pass the correct invoice date
+```
+
+The issue might be with IO's API - it may require a different date format or parameter name. We need to investigate whether IO accepts `InvoiceDate` or requires something else.
+
+**Fix**: Research the IO API requirements for the date parameter. Try different formats if needed.
+
+---
+
+### Issue 3: Missing `io_payment_url` in Edge Function SELECT Query
+
+**What's happening**: When trying to fetch a payment PDF, the `get_payment_pdf` action checks for `invoice.io_payment_url` (line 626), but the SELECT query (lines 523-555) doesn't include `io_payment_url` in the fields.
+
+**Current SELECT** (missing `io_payment_url`):
+```sql
+io_client_id,
+io_document_id,
+io_sync_status,
+io_invoice_url,  -- ← Only this is selected
+```
+
+**Fix**: Add `io_payment_url` to the SELECT query in the edge function.
+
+---
 
 ## Implementation Plan
 
-### 1. Add Payment Receipt PDF Fetch to Edge Function
+### File 1: `supabase/functions/sync-invoice-to-io/index.ts`
 
-Add a new action `get_payment_pdf` to `supabase/functions/sync-invoice-to-io/index.ts`:
-
+**Change 1**: Add `io_payment_url` to the SELECT query (around line 540):
 ```typescript
-// Handle get_payment_pdf action - fetch payment receipt PDF from IO
-if (action === "get_payment_pdf") {
-  if (!invoice.io_payment_url) {
-    return Response with error "Payment not synced to IO yet"
-  }
-  
-  const pdfResult = await fetchIOPDF(invoice.io_payment_url);
-  return Response with pdf_base64
-}
+io_invoice_url,
+io_payment_url,  // ADD THIS LINE
+clients!inner (
 ```
 
-### 2. Add Helper Functions to useIOSync.ts
-
-Add new functions to handle the payment workflow:
-
+**Change 2**: Investigate the IO API date format. Currently we send:
 ```typescript
-/**
- * Sync payment to IO - handles invoice sync if needed first
- */
-export async function syncPaymentToIO(
-  invoiceId: string
-): Promise<{ success: boolean; error?: string; io_payment_url?: string }>
-
-/**
- * Fetch payment receipt PDF from IO
- */
-export async function fetchIOPaymentPDF(invoiceId: string): Promise<{
-  success: boolean;
-  pdfBase64?: string;
-  error?: string;
-}>
+InvoiceDate: invoiceDate  // format: 2026-02-06
 ```
+We may need to try different formats or check IO documentation.
 
-### 3. Update useMarkInvoiceAsPaid to Handle Full Workflow
+---
 
-Modify `src/hooks/invoices/status/useMarkInvoiceAsPaid.ts`:
+### File 2: `src/components/invoices/dialogs/EmailInvoiceProgressDialog.tsx`
+
+**Changes**:
+- Add better logging to track where the flow breaks
+- Ensure `onReady` callback is called with proper error handling
+- Add a small delay before closing to ensure state propagates
 
 ```typescript
-onSuccess: async (_, invoiceId) => {
-  // Step 1: Check if IO offline mode
-  const isOfflineMode = await getIOOfflineModeFromDB();
-  
-  if (!isOfflineMode) {
-    // Step 2: Check if invoice already synced to IO
-    const { data: invoice } = await supabase
-      .from('invoices')
-      .select('io_document_id')
-      .eq('id', invoiceId)
-      .single();
-    
-    // Step 3: If not synced, sync invoice first
-    if (!invoice?.io_document_id) {
-      const invoiceSyncResult = await syncInvoiceToIO(invoiceId, 'invoice');
-      if (!invoiceSyncResult.success && !invoiceSyncResult.skipped) {
-        console.error('[IO Sync] Invoice sync failed before payment');
-      }
+if (result.success) {
+  if (result.useLocalPdf) {
+    setStepMessage("Generating local PDF...");
+    try {
+      const localPdf = await getInvoiceAsBase64(invoice);
+      console.log('[EmailProgress] Local PDF generated, calling onReady...');
+      setStatus("success");
+      setTimeout(() => {
+        onReady(localPdf);
+      }, 500);
+    } catch (pdfErr) {
+      console.error('[EmailProgress] Local PDF error:', pdfErr);
+      setStatus("error");
+      setErrorMessage(`Failed to generate local PDF: ${String(pdfErr)}`);
     }
-    
-    // Step 4: Now sync the payment
-    const paymentResult = await syncInvoiceToIO(invoiceId, 'payment');
-    
-    // Step 5: If payment sync succeeded, fetch payment receipt PDF
-    if (paymentResult.success && paymentResult.io_payment_url) {
-      const pdfResult = await fetchIOPaymentPDF(invoiceId);
-      if (pdfResult.success && pdfResult.pdfBase64) {
-        // Store for email attachment or pass to email queue
-      }
-    }
+  } else if (result.pdfBase64) {
+    console.log('[EmailProgress] IO PDF received, calling onReady...');
+    setStatus("success");
+    setTimeout(() => {
+      onReady(result.pdfBase64!);
+    }, 500);
+  } else {
+    // This shouldn't happen with the new strict mode
+    console.error('[EmailProgress] No PDF in result');
+    setStatus("error");
+    setErrorMessage("No PDF available from InvoicesOnline.");
   }
-  
-  // Rest of email queueing logic...
 }
 ```
 
-### 4. Update Payment Receipt Email to Include PDF Attachment
+---
 
-Modify `src/lib/email/generatePaymentReceipt.ts`:
+### File 3: `src/components/invoices/table/actions/InvoiceBasicActions.tsx`
 
-```typescript
-interface ReceiptEmailData {
-  // ... existing fields
-  attachments?: Array<{
-    filename: string;
-    content: string; // base64
-    type: string;
-  }>;
-}
-```
-
-And update `generatePaymentReceiptEmails` to accept optional PDF:
+**Changes**:
+- Add logging to `handlePdfReady` to trace the flow
+- Ensure dialog state transitions properly
 
 ```typescript
-export async function generatePaymentReceiptEmails(
-  invoiceId: string,
-  paymentPdfBase64?: string // NEW: Optional IO PDF
-): Promise<ReceiptEmailData[]>
+const handlePdfReady = (pdfBase64: string | undefined) => {
+  console.log('[InvoiceActions] PDF ready, transitioning to preview dialog...');
+  console.log('[InvoiceActions] PDF size:', pdfBase64?.length || 0);
+  setPreparedPdfBase64(pdfBase64);
+  setEmailProgressOpen(false);
+  // Small delay to ensure state clears before opening new dialog
+  setTimeout(() => {
+    setEmailPreviewOpen(true);
+  }, 100);
+};
 ```
 
-### 5. Files to Modify
+---
 
-| File | Change |
-|------|--------|
-| `supabase/functions/sync-invoice-to-io/index.ts` | Add `get_payment_pdf` action |
-| `src/hooks/invoices/useIOSync.ts` | Add `fetchIOPaymentPDF()`, add `getIOOfflineModeFromDB()` export |
-| `src/hooks/invoices/status/useMarkInvoiceAsPaid.ts` | Full IO workflow: check sync → sync invoice if needed → sync payment → fetch PDF |
-| `src/lib/email/generatePaymentReceipt.ts` | Accept optional PDF attachment parameter |
+## Summary of Changes
 
-### 6. Offline Mode Handling
+| File | Issue | Fix |
+|------|-------|-----|
+| `sync-invoice-to-io/index.ts` | Missing `io_payment_url` in SELECT | Add to query fields |
+| `sync-invoice-to-io/index.ts` | IO ignoring InvoiceDate | Investigate IO API format |
+| `EmailInvoiceProgressDialog.tsx` | Silent failures, no logging | Add console logs for debugging |
+| `InvoiceBasicActions.tsx` | Dialog transition race condition | Add logging and setTimeout delay |
 
-When IO offline mode is enabled:
-- Skip all IO operations
-- Use existing local payment receipt email (no PDF)
-- No changes to current behavior
+## Testing After Fix
 
-When IO is online:
-- Ensure invoice is synced first
-- Sync payment
-- Fetch payment PDF
-- Attach to email
+1. Click "Email Invoice" on a draft invoice
+2. Should see progress dialog with steps completing
+3. After ~3-5 seconds, preview dialog should open with email composer
+4. Check console for log messages tracing the flow
+5. Verify invoice date in IO matches local invoice date
 
-## Technical Notes
+## IO Date Issue Investigation
 
-- The IO API returns `io_payment_url` when payment is recorded
-- This URL points to the official payment receipt PDF
-- We already have `fetchIOPDF()` function that works for any IO URL
-- The email queue table has an `attachments` jsonb column ready to use
-
-## Error Handling
-
-- If invoice sync fails: Log warning, continue with local receipt (degraded mode)
-- If payment sync fails: Log warning, continue with local receipt
-- If PDF fetch fails: Log warning, send email without attachment
-- In all cases: User still gets a receipt, just maybe without the official IO PDF
+This may require separate investigation. Options to try:
+- Different date format: `06-02-2026` or `06/02/2026`
+- Different parameter name: `invoice_date` instead of `InvoiceDate`
+- Check if IO has timezone handling issues
