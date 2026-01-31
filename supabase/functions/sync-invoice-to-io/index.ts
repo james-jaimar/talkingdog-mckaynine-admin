@@ -538,6 +538,7 @@ Deno.serve(async (req) => {
         io_document_id,
         io_sync_status,
         io_invoice_url,
+        io_payment_url,
         clients!inner (
           id,
           email,

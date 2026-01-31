@@ -52,26 +52,31 @@ export function EmailInvoiceProgressDialog({
           setStepMessage("Generating local PDF...");
           try {
             const localPdf = await getInvoiceAsBase64(invoice);
+            console.log('[EmailProgress] Local PDF generated, calling onReady...');
             setStatus("success");
             setTimeout(() => {
               onReady(localPdf);
             }, 500);
           } catch (pdfErr) {
+            console.error('[EmailProgress] Local PDF error:', pdfErr);
             setStatus("error");
             setErrorMessage(`Failed to generate local PDF: ${String(pdfErr)}`);
           }
         } else if (result.pdfBase64) {
           // Got IO PDF successfully
+          console.log('[EmailProgress] IO PDF received, size:', result.pdfBase64.length, 'calling onReady...');
           setStatus("success");
           setTimeout(() => {
             onReady(result.pdfBase64!);
           }, 500);
         } else {
           // This shouldn't happen with the new strict mode
+          console.error('[EmailProgress] No PDF in result');
           setStatus("error");
           setErrorMessage("No PDF available from InvoicesOnline.");
         }
       } else {
+        console.error('[EmailProgress] Sync failed:', result.error);
         setStatus("error");
         setErrorMessage(result.error || "Unknown error occurred");
       }
