@@ -10,12 +10,13 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Loader2, CheckCircle2, XCircle, RefreshCw } from "lucide-react";
 import { syncAndGetPDF } from "@/hooks/invoices/useIOSync";
+import { getInvoiceAsBase64 } from "@/components/invoices/pdf/InvoicePDFGenerator";
 
 interface EmailInvoiceProgressDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   invoice: Invoice;
-  onReady: (pdfBase64: string | undefined) => void;
+  onReady: (pdfBase64: string) => void;
   onError: (error: string) => void;
 }
 
@@ -46,11 +47,30 @@ export function EmailInvoiceProgressDialog({
       const result = await syncAndGetPDF(invoice.id, handleProgress);
       
       if (result.success) {
-        setStatus("success");
-        // Small delay for UX before transitioning
-        setTimeout(() => {
-          onReady(result.pdfBase64);
-        }, 500);
+        // Check if we need to generate local PDF (offline mode or test mode)
+        if (result.useLocalPdf) {
+          setStepMessage("Generating local PDF...");
+          try {
+            const localPdf = await getInvoiceAsBase64(invoice);
+            setStatus("success");
+            setTimeout(() => {
+              onReady(localPdf);
+            }, 500);
+          } catch (pdfErr) {
+            setStatus("error");
+            setErrorMessage(`Failed to generate local PDF: ${String(pdfErr)}`);
+          }
+        } else if (result.pdfBase64) {
+          // Got IO PDF successfully
+          setStatus("success");
+          setTimeout(() => {
+            onReady(result.pdfBase64!);
+          }, 500);
+        } else {
+          // This shouldn't happen with the new strict mode
+          setStatus("error");
+          setErrorMessage("No PDF available from InvoicesOnline.");
+        }
       } else {
         setStatus("error");
         setErrorMessage(result.error || "Unknown error occurred");
@@ -59,7 +79,7 @@ export function EmailInvoiceProgressDialog({
       setStatus("error");
       setErrorMessage(String(err));
     }
-  }, [invoice.id, handleProgress, onReady]);
+  }, [invoice, handleProgress, onReady]);
 
   useEffect(() => {
     if (open) {

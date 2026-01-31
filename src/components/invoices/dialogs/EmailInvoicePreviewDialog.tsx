@@ -116,16 +116,11 @@ export function EmailInvoicePreviewDialog({
     try {
       toast.info("Preparing invoice for email...");
       
-      // Use pre-prepared PDF from IO if available, otherwise generate locally
-      let pdfBase64 = preparedPdfBase64;
-      if (!pdfBase64) {
-        console.log("No pre-prepared PDF, generating locally...");
-        pdfBase64 = await getInvoiceAsBase64(selectedInvoice);
+      // Require pre-prepared PDF - no silent fallback to local generation
+      if (!preparedPdfBase64) {
+        throw new Error("No PDF available. Please go back and retry the email preparation.");
       }
-      
-      if (!pdfBase64) {
-        throw new Error("Failed to generate invoice PDF");
-      }
+      const pdfBase64 = preparedPdfBase64;
       
       // Build the custom email HTML
       const content = {

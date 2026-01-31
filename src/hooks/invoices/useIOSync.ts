@@ -2,6 +2,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 /**
+ * IO Mode Configuration
+ * When IO_OFFLINE_MODE is true, the system uses local PDF generation
+ * When false (default), the system REQUIRES IO PDF - no silent fallback
+ * 
+ * To switch modes, change this constant. Future enhancement: move to database setting.
+ */
+export const IO_OFFLINE_MODE = false;
+
+/**
  * Sync invoice to InvoicesOnline (IO)
  * This is a background operation that doesn't block the UI
  * Returns result object for callers that need to check success
@@ -159,11 +168,20 @@ export async function fetchIOPDF(invoiceId: string): Promise<{
 /**
  * Sync invoice to IO and fetch the PDF in one workflow
  * Shows progress to the user via callback
+ * 
+ * When IO_OFFLINE_MODE is true: skips IO entirely, returns useLocalPdf flag
+ * When IO_OFFLINE_MODE is false: REQUIRES IO PDF, returns error on failure (no silent fallback)
  */
 export async function syncAndGetPDF(
   invoiceId: string,
   onProgress: (step: number, message: string) => void
-): Promise<{ success: boolean; pdfBase64?: string; error?: string }> {
+): Promise<{ success: boolean; pdfBase64?: string; error?: string; useLocalPdf?: boolean }> {
+  
+  // If IO is explicitly offline, signal to use local PDF immediately
+  if (IO_OFFLINE_MODE) {
+    onProgress(1, "IO offline mode - using local PDF generation...");
+    return { success: true, useLocalPdf: true };
+  }
   
   onProgress(1, "Checking InvoicesOnline sync status...");
   
@@ -188,22 +206,24 @@ export async function syncAndGetPDF(
       return { success: false, error: syncResult.error || 'Failed to sync to IO' };
     }
     
-    // If skipped (test mode), we need to use local PDF
+    // If skipped (test mode), use local PDF
     if (syncResult.skipped) {
       onProgress(2, "Test mode - using local PDF generation...");
-      return { success: true, pdfBase64: undefined }; // Signal to use local PDF
+      return { success: true, useLocalPdf: true };
     }
   }
   
   onProgress(2, "Fetching PDF from InvoicesOnline...");
   
-  // Step 3: Get PDF from IO
+  // Step 3: Get PDF from IO - NO SILENT FALLBACK
   const pdfResult = await fetchIOPDF(invoiceId);
   
   if (!pdfResult.success || !pdfResult.pdfBase64) {
-    onProgress(3, "IO PDF unavailable, using local generation...");
-    // Return success but no PDF - caller should fallback to local generation
-    return { success: true, pdfBase64: undefined };
+    // IO is online but PDF fetch failed - return error, don't silently fallback
+    return { 
+      success: false, 
+      error: pdfResult.error || 'Failed to fetch PDF from InvoicesOnline. Please retry or contact support.' 
+    };
   }
   
   onProgress(4, "Ready!");
