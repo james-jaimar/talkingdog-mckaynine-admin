@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { encode as base64Encode } from "https://deno.land/std@0.208.0/encoding/base64.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -25,6 +26,7 @@ interface IOCredentials {
 interface InvoiceData {
   id: string;
   invoice_number: string;
+  issued_date: string;
   client_id: string;
   total: number;
   subtotal: number;
@@ -34,6 +36,8 @@ interface InvoiceData {
   payment_date: string | null;
   branch_id: string | null;
   io_client_id: number | null;
+  io_document_id: string | null;
+  io_invoice_url: string | null;
   items: Array<{
     description: string;
     quantity: number;
@@ -77,6 +81,18 @@ function getBranchName(branchId: string | null): string {
   if (branchId === DELTA_BRANCH_ID) return "delta";
   if (branchId === RANDBURG_BRANCH_ID) return "randburg";
   return "unknown";
+}
+
+// Generate IO invoice prefix based on branch and date
+// Format: McD-YYMM- for Delta, McR-YYMM- for Randburg (exactly 9 characters)
+function getIOInvoicePrefix(branchId: string | null, invoiceDate?: string): string {
+  const date = invoiceDate ? new Date(invoiceDate) : new Date();
+  const yy = String(date.getFullYear()).slice(-2);
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  
+  if (branchId === DELTA_BRANCH_ID) return `McD-${yy}${mm}-`;
+  if (branchId === RANDBURG_BRANCH_ID) return `McR-${yy}${mm}-`;
+  return `McK-${yy}${mm}-`; // Fallback for unknown branch
 }
 
 // Call IO API
@@ -189,6 +205,16 @@ async function createIOInvoice(
 ): Promise<{ success: boolean; documentId?: string; invoiceNumber?: string; url?: string; error?: string }> {
   console.log(`Creating IO invoice for client ${ioClientId}, invoice ${invoice.invoice_number}`);
 
+  // Generate prefix from branch and invoice date
+  const prefix = getIOInvoicePrefix(invoice.branch_id, invoice.issued_date);
+  console.log(`Using IO invoice prefix: ${prefix}`);
+  
+  // Format invoice date for IO (YYYY-MM-DD)
+  const invoiceDate = invoice.issued_date 
+    ? new Date(invoice.issued_date).toISOString().split("T")[0]
+    : new Date().toISOString().split("T")[0];
+  console.log(`Using invoice date: ${invoiceDate}`);
+
   // Format items for IO API
   const data = invoice.items.map((item, index) => ({
     "0": "", // prod_code
@@ -206,6 +232,8 @@ async function createIOInvoice(
     password: credentials.password,
     ClientID: ioClientId,
     EmailToClient: false, // We handle emails ourselves
+    prepend_nr: prefix, // Add branch and date prefix to IO invoice number
+    InvoiceDate: invoiceDate, // Pass the correct invoice date
     data: data,
   });
 
@@ -289,6 +317,15 @@ async function createIOCreditNote(
 ): Promise<{ success: boolean; documentId?: string; creditNoteNumber?: string; url?: string; error?: string }> {
   console.log(`Creating IO credit note for client ${ioClientId}, reversing invoice ${invoice.invoice_number}`);
 
+  // Generate prefix from branch and invoice date
+  const prefix = getIOInvoicePrefix(invoice.branch_id, invoice.issued_date);
+  console.log(`Using IO credit note prefix: ${prefix}`);
+  
+  // Format credit note date (use invoice issued_date for consistency)
+  const creditDate = invoice.issued_date 
+    ? new Date(invoice.issued_date).toISOString().split("T")[0]
+    : new Date().toISOString().split("T")[0];
+
   // Format items for IO API - same format as invoice but with "Credit Note" prefix
   const data = invoice.items.map((item) => ({
     "0": "", // prod_code
@@ -306,6 +343,8 @@ async function createIOCreditNote(
     password: credentials.password,
     ClientID: ioClientId,
     EmailToClient: false, // We handle emails ourselves
+    prepend_nr: prefix, // Add branch and date prefix
+    InvoiceDate: creditDate, // Pass the credit note date
     data: data,
   });
 
@@ -339,6 +378,35 @@ async function createIOCreditNote(
   }
 
   return { success: false, error: `Unexpected response: ${JSON.stringify(result)}` };
+}
+
+// Fetch PDF from IO invoice URL
+async function fetchIOPDF(
+  invoiceUrl: string
+): Promise<{ success: boolean; pdfBase64?: string; error?: string }> {
+  console.log(`Fetching PDF from IO URL: ${invoiceUrl}`);
+  
+  try {
+    const response = await fetch(invoiceUrl);
+    
+    if (!response.ok) {
+      return { success: false, error: `Failed to fetch PDF: ${response.status} ${response.statusText}` };
+    }
+    
+    const contentType = response.headers.get("content-type");
+    console.log(`PDF response content-type: ${contentType}`);
+    
+    const arrayBuffer = await response.arrayBuffer();
+    const uint8Array = new Uint8Array(arrayBuffer);
+    const pdfBase64 = base64Encode(uint8Array);
+    
+    console.log(`PDF fetched successfully, size: ${pdfBase64.length} chars`);
+    
+    return { success: true, pdfBase64 };
+  } catch (error) {
+    console.error(`Error fetching PDF: ${error.message}`);
+    return { success: false, error: error.message };
+  }
 }
 
 // Test IO credentials by attempting a simple API call
@@ -450,12 +518,14 @@ Deno.serve(async (req) => {
     }
 
     console.log(`Processing sync request: invoice_id=${invoice_id}, action=${action}`);
+    
     // Fetch invoice with client and items
     const { data: invoice, error: invoiceError } = await supabase
       .from("invoices")
       .select(`
         id,
         invoice_number,
+        issued_date,
         client_id,
         total,
         subtotal,
@@ -467,6 +537,7 @@ Deno.serve(async (req) => {
         io_client_id,
         io_document_id,
         io_sync_status,
+        io_invoice_url,
         clients!inner (
           id,
           email,
@@ -506,6 +577,7 @@ Deno.serve(async (req) => {
     const invoiceData: InvoiceData = {
       id: invoice.id,
       invoice_number: invoice.invoice_number,
+      issued_date: invoice.issued_date,
       client_id: invoice.client_id,
       total: invoice.total,
       subtotal: invoice.subtotal,
@@ -515,9 +587,39 @@ Deno.serve(async (req) => {
       payment_date: invoice.payment_date,
       branch_id: invoice.branch_id,
       io_client_id: invoice.io_client_id,
+      io_document_id: invoice.io_document_id,
+      io_invoice_url: invoice.io_invoice_url,
       items: items || [],
       client: client,
     };
+
+    // Handle get_pdf action - fetch PDF from IO
+    if (action === "get_pdf") {
+      if (!invoice.io_invoice_url) {
+        return new Response(
+          JSON.stringify({ error: "Invoice not synced to IO yet - no PDF URL available" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      const pdfResult = await fetchIOPDF(invoice.io_invoice_url);
+      
+      if (pdfResult.success) {
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            action: "get_pdf",
+            pdf_base64: pdfResult.pdfBase64,
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      } else {
+        return new Response(
+          JSON.stringify({ error: pdfResult.error }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
 
     // TEST MODE CHECK
     if (TEST_MODE && !TEST_CLIENT_EMAILS.includes(client.email.toLowerCase())) {
@@ -727,7 +829,7 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ error: "Invalid action. Use 'invoice', 'payment', or 'credit_note'" }),
+      JSON.stringify({ error: "Invalid action. Use 'invoice', 'payment', 'credit_note', or 'get_pdf'" }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 

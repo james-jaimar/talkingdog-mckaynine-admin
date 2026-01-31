@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
-import { Eye, Edit, Send, Receipt } from "lucide-react";
+import { Eye, Edit, Send, Receipt, Mail } from "lucide-react";
 import { Invoice } from "@/types/invoice";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { generateClassConfirmationEmails } from "@/lib/email/generateClassConfirmation";
 import { generatePaymentReceiptEmails } from "@/lib/email/generatePaymentReceipt";
 import { toast } from "sonner";
+import { EmailInvoiceProgressDialog } from "@/components/invoices/dialogs/EmailInvoiceProgressDialog";
+import { EmailInvoicePreviewDialog } from "@/components/invoices/dialogs/EmailInvoicePreviewDialog";
 
 interface InvoiceBasicActionsProps {
   invoice: Invoice;
@@ -18,6 +20,9 @@ export function InvoiceBasicActions({ invoice, isPending, onCloseDropdown }: Inv
   const navigate = useNavigate();
   const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [isSendingReceipt, setIsSendingReceipt] = useState(false);
+  const [emailProgressOpen, setEmailProgressOpen] = useState(false);
+  const [emailPreviewOpen, setEmailPreviewOpen] = useState(false);
+  const [preparedPdfBase64, setPreparedPdfBase64] = useState<string | undefined>(undefined);
 
   const handleView = () => {
     onCloseDropdown();
@@ -131,6 +136,22 @@ export function InvoiceBasicActions({ invoice, isPending, onCloseDropdown }: Inv
     }
   };
 
+  const handleEmailInvoice = () => {
+    onCloseDropdown();
+    setEmailProgressOpen(true);
+  };
+
+  const handlePdfReady = (pdfBase64: string | undefined) => {
+    setPreparedPdfBase64(pdfBase64);
+    setEmailProgressOpen(false);
+    setEmailPreviewOpen(true);
+  };
+
+  const handleEmailError = (error: string) => {
+    setEmailProgressOpen(false);
+    toast.error(`Failed to prepare invoice: ${error}`);
+  };
+
   return (
     <>
       <DropdownMenuItem onClick={handleView} disabled={isPending}>
@@ -151,6 +172,28 @@ export function InvoiceBasicActions({ invoice, isPending, onCloseDropdown }: Inv
       >
         <Receipt className="mr-2 h-4 w-4 text-green-600" /> Send Payment Receipt
       </DropdownMenuItem>
+      <DropdownMenuItem 
+        onClick={handleEmailInvoice} 
+        disabled={isPending}
+      >
+        <Mail className="mr-2 h-4 w-4 text-purple-600" /> Email Invoice
+      </DropdownMenuItem>
+
+      {/* Email Invoice Dialogs */}
+      <EmailInvoiceProgressDialog
+        open={emailProgressOpen}
+        onOpenChange={setEmailProgressOpen}
+        invoice={invoice}
+        onReady={handlePdfReady}
+        onError={handleEmailError}
+      />
+
+      <EmailInvoicePreviewDialog
+        open={emailPreviewOpen}
+        onOpenChange={setEmailPreviewOpen}
+        selectedInvoice={invoice}
+        preparedPdfBase64={preparedPdfBase64}
+      />
     </>
   );
 }
