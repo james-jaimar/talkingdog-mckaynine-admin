@@ -1,158 +1,171 @@
 
-# Strict IO PDF Mode with Explicit Offline Switch
+# Add IO Payment Receipt PDF to Payment Workflow
 
-## The Problem
+## Problem Summary
 
-Currently, the system silently falls back to local PDF generation when IO PDF fetch fails:
+There are two gaps in the current Mark as Paid workflow:
+
+1. **Payment sync requires invoice to be synced first** - If someone marks as paid before emailing, the IO payment sync fails silently
+2. **No IO payment receipt PDF** - We generate our own receipt email, but don't fetch or attach the official IO payment receipt PDF
+
+## Current vs Desired Workflow
+
+```text
+CURRENT:
+Mark as Paid clicked
+    │
+    ├── Update local DB (status: paid)
+    ├── Fire-and-forget IO payment sync (often fails if not synced)
+    └── Queue local payment receipt email (no PDF attachment)
+
+DESIRED:
+Mark as Paid clicked
+    │
+    ├── Update local DB (status: paid)
+    ├── Check if invoice synced to IO
+    │   └── If NOT synced: Sync invoice first, then sync payment
+    │   └── If synced: Just sync payment
+    ├── Fetch payment receipt PDF from io_payment_url
+    └── Queue payment receipt email WITH IO PDF attached
+```
+
+## Implementation Plan
+
+### 1. Add Payment Receipt PDF Fetch to Edge Function
+
+Add a new action `get_payment_pdf` to `supabase/functions/sync-invoice-to-io/index.ts`:
 
 ```typescript
-// Current behavior in syncAndGetPDF (lines 203-206)
-if (!pdfResult.success || !pdfResult.pdfBase64) {
-  onProgress(3, "IO PDF unavailable, using local generation...");
-  return { success: true, pdfBase64: undefined }; // Quietly fallback
+// Handle get_payment_pdf action - fetch payment receipt PDF from IO
+if (action === "get_payment_pdf") {
+  if (!invoice.io_payment_url) {
+    return Response with error "Payment not synced to IO yet"
+  }
+  
+  const pdfResult = await fetchIOPDF(invoice.io_payment_url);
+  return Response with pdf_base64
 }
 ```
 
-And in `EmailInvoicePreviewDialog` (lines 120-124):
-```typescript
-if (!pdfBase64) {
-  console.log("No pre-prepared PDF, generating locally...");
-  pdfBase64 = await getInvoiceAsBase64(selectedInvoice); // Silent fallback
-}
-```
+### 2. Add Helper Functions to useIOSync.ts
 
-This means errors with IO get hidden, and you might not realize you're sending locally-generated PDFs instead of the official IO ones.
-
-## The Solution
-
-1. **Create an explicit IO_OFFLINE toggle** - When `true`, use local PDF. When `false`, IO is required
-2. **Remove silent fallbacks** - If IO is online and fails, show an error. Don't quietly use local
-3. **Add clear messaging** - User knows exactly which mode they're in
-
-## Where to Store the Setting
-
-**Option A: Database setting (recommended)**
-- Add a `system_settings` table with `io_offline_mode` boolean
-- Can be toggled via an admin settings page
-
-**Option B: Environment variable**
-- Add `IO_OFFLINE_MODE` as a secret/env var in the edge function
-- Requires deployment to change
-
-**Option C: Code constant (quick & simple)**
-- Add `IO_OFFLINE_MODE = false` constant in `useIOSync.ts`
-- Easy to toggle during development but requires code change
-
-I recommend **Option A** for production use, but we can start with **Option C** for immediate implementation and migrate to Option A later.
-
-## Implementation
-
-### 1. Add IO Mode Configuration
-
-In `src/hooks/invoices/useIOSync.ts`, add a configuration constant:
+Add new functions to handle the payment workflow:
 
 ```typescript
 /**
- * IO Mode Configuration
- * When IO_OFFLINE_MODE is true, the system uses local PDF generation
- * When false (default), the system REQUIRES IO PDF - no silent fallback
+ * Sync payment to IO - handles invoice sync if needed first
  */
-export const IO_OFFLINE_MODE = false;
+export async function syncPaymentToIO(
+  invoiceId: string
+): Promise<{ success: boolean; error?: string; io_payment_url?: string }>
+
+/**
+ * Fetch payment receipt PDF from IO
+ */
+export async function fetchIOPaymentPDF(invoiceId: string): Promise<{
+  success: boolean;
+  pdfBase64?: string;
+  error?: string;
+}>
 ```
 
-### 2. Update `syncAndGetPDF` - No More Silent Fallback
+### 3. Update useMarkInvoiceAsPaid to Handle Full Workflow
+
+Modify `src/hooks/invoices/status/useMarkInvoiceAsPaid.ts`:
 
 ```typescript
-export async function syncAndGetPDF(
+onSuccess: async (_, invoiceId) => {
+  // Step 1: Check if IO offline mode
+  const isOfflineMode = await getIOOfflineModeFromDB();
+  
+  if (!isOfflineMode) {
+    // Step 2: Check if invoice already synced to IO
+    const { data: invoice } = await supabase
+      .from('invoices')
+      .select('io_document_id')
+      .eq('id', invoiceId)
+      .single();
+    
+    // Step 3: If not synced, sync invoice first
+    if (!invoice?.io_document_id) {
+      const invoiceSyncResult = await syncInvoiceToIO(invoiceId, 'invoice');
+      if (!invoiceSyncResult.success && !invoiceSyncResult.skipped) {
+        console.error('[IO Sync] Invoice sync failed before payment');
+      }
+    }
+    
+    // Step 4: Now sync the payment
+    const paymentResult = await syncInvoiceToIO(invoiceId, 'payment');
+    
+    // Step 5: If payment sync succeeded, fetch payment receipt PDF
+    if (paymentResult.success && paymentResult.io_payment_url) {
+      const pdfResult = await fetchIOPaymentPDF(invoiceId);
+      if (pdfResult.success && pdfResult.pdfBase64) {
+        // Store for email attachment or pass to email queue
+      }
+    }
+  }
+  
+  // Rest of email queueing logic...
+}
+```
+
+### 4. Update Payment Receipt Email to Include PDF Attachment
+
+Modify `src/lib/email/generatePaymentReceipt.ts`:
+
+```typescript
+interface ReceiptEmailData {
+  // ... existing fields
+  attachments?: Array<{
+    filename: string;
+    content: string; // base64
+    type: string;
+  }>;
+}
+```
+
+And update `generatePaymentReceiptEmails` to accept optional PDF:
+
+```typescript
+export async function generatePaymentReceiptEmails(
   invoiceId: string,
-  onProgress: (step: number, message: string) => void
-): Promise<{ success: boolean; pdfBase64?: string; error?: string; useLocalPdf?: boolean }> {
-  
-  // If IO is explicitly offline, signal to use local PDF
-  if (IO_OFFLINE_MODE) {
-    onProgress(1, "IO offline mode - using local PDF generation...");
-    return { success: true, useLocalPdf: true };
-  }
-  
-  onProgress(1, "Checking InvoicesOnline sync status...");
-  
-  // ... existing sync logic ...
-  
-  onProgress(2, "Fetching PDF from InvoicesOnline...");
-  
-  const pdfResult = await fetchIOPDF(invoiceId);
-  
-  // CHANGED: No more silent fallback - if IO fails, return error
-  if (!pdfResult.success || !pdfResult.pdfBase64) {
-    return { 
-      success: false, 
-      error: pdfResult.error || 'Failed to fetch PDF from InvoicesOnline. Please retry or enable IO Offline Mode.' 
-    };
-  }
-  
-  onProgress(4, "Ready!");
-  return { success: true, pdfBase64: pdfResult.pdfBase64 };
-}
+  paymentPdfBase64?: string // NEW: Optional IO PDF
+): Promise<ReceiptEmailData[]>
 ```
 
-### 3. Update Progress Dialog to Handle Local PDF Mode
-
-In `EmailInvoiceProgressDialog.tsx`, handle the `useLocalPdf` flag:
-
-```typescript
-if (result.success) {
-  if (result.useLocalPdf) {
-    // IO offline mode - need to generate PDF locally
-    setStepMessage("Generating local PDF...");
-    const localPdf = await getInvoiceAsBase64(invoice);
-    onReady(localPdf);
-  } else {
-    onReady(result.pdfBase64);
-  }
-}
-```
-
-### 4. Remove Fallback from Email Dialog
-
-In `EmailInvoicePreviewDialog.tsx`, remove the silent fallback:
-
-```typescript
-// BEFORE:
-let pdfBase64 = preparedPdfBase64;
-if (!pdfBase64) {
-  console.log("No pre-prepared PDF, generating locally...");
-  pdfBase64 = await getInvoiceAsBase64(selectedInvoice);
-}
-
-// AFTER:
-if (!preparedPdfBase64) {
-  throw new Error("No PDF available. Please go back and retry.");
-}
-const pdfBase64 = preparedPdfBase64;
-```
-
-## New Behavior Matrix
-
-| IO_OFFLINE_MODE | IO Sync Result | PDF Fetch Result | Outcome |
-|-----------------|----------------|------------------|---------|
-| `true` | Skipped | Skipped | Uses local jsPDF |
-| `false` | Success | Success | Uses IO PDF |
-| `false` | Success | **Fails** | **Error shown** (no fallback) |
-| `false` | **Fails** | N/A | **Error shown** (no fallback) |
-
-## Files to Modify
+### 5. Files to Modify
 
 | File | Change |
 |------|--------|
-| `src/hooks/invoices/useIOSync.ts` | Add `IO_OFFLINE_MODE` constant, remove silent fallback, add `useLocalPdf` return flag |
-| `src/components/invoices/dialogs/EmailInvoiceProgressDialog.tsx` | Handle `useLocalPdf` flag, generate local PDF when in offline mode |
-| `src/components/invoices/dialogs/EmailInvoicePreviewDialog.tsx` | Remove silent fallback, require `preparedPdfBase64` |
+| `supabase/functions/sync-invoice-to-io/index.ts` | Add `get_payment_pdf` action |
+| `src/hooks/invoices/useIOSync.ts` | Add `fetchIOPaymentPDF()`, add `getIOOfflineModeFromDB()` export |
+| `src/hooks/invoices/status/useMarkInvoiceAsPaid.ts` | Full IO workflow: check sync → sync invoice if needed → sync payment → fetch PDF |
+| `src/lib/email/generatePaymentReceipt.ts` | Accept optional PDF attachment parameter |
 
-## Future Enhancement (Optional)
+### 6. Offline Mode Handling
 
-Once this is working, we can add:
-1. A database `system_settings` table with `io_offline_mode` column
-2. An admin toggle in Settings page to switch modes
-3. Real-time check of IO API health to auto-detect offline status
+When IO offline mode is enabled:
+- Skip all IO operations
+- Use existing local payment receipt email (no PDF)
+- No changes to current behavior
 
-But for now, the simple constant gives you the control you need to explicitly choose which mode to run in.
+When IO is online:
+- Ensure invoice is synced first
+- Sync payment
+- Fetch payment PDF
+- Attach to email
+
+## Technical Notes
+
+- The IO API returns `io_payment_url` when payment is recorded
+- This URL points to the official payment receipt PDF
+- We already have `fetchIOPDF()` function that works for any IO URL
+- The email queue table has an `attachments` jsonb column ready to use
+
+## Error Handling
+
+- If invoice sync fails: Log warning, continue with local receipt (degraded mode)
+- If payment sync fails: Log warning, continue with local receipt
+- If PDF fetch fails: Log warning, send email without attachment
+- In all cases: User still gets a receipt, just maybe without the official IO PDF
