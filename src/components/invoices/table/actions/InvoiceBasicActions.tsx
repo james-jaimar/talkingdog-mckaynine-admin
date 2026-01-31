@@ -138,7 +138,13 @@ export function InvoiceBasicActions({ invoice, isPending, onCloseDropdown }: Inv
 
   const handleEmailInvoice = () => {
     onCloseDropdown();
-    setEmailProgressOpen(true);
+    // Defer opening to the next tick so the DropdownMenu click doesn't
+    // immediately register as an outside click on the dialog (causing a flash).
+    setPreparedPdfBase64(undefined);
+    setEmailPreviewOpen(false);
+    setTimeout(() => {
+      setEmailProgressOpen(true);
+    }, 0);
   };
 
   const handlePdfReady = (pdfBase64: string | undefined) => {
