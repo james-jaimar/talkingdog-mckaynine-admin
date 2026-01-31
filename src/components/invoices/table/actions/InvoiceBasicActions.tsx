@@ -142,9 +142,15 @@ export function InvoiceBasicActions({ invoice, isPending, onCloseDropdown }: Inv
   };
 
   const handlePdfReady = (pdfBase64: string | undefined) => {
+    console.log('[InvoiceActions] PDF ready, transitioning to preview dialog...');
+    console.log('[InvoiceActions] PDF size:', pdfBase64?.length || 0);
     setPreparedPdfBase64(pdfBase64);
     setEmailProgressOpen(false);
-    setEmailPreviewOpen(true);
+    // Small delay to ensure state clears before opening new dialog
+    setTimeout(() => {
+      console.log('[InvoiceActions] Opening email preview dialog');
+      setEmailPreviewOpen(true);
+    }, 100);
   };
 
   const handleEmailError = (error: string) => {
