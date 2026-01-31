@@ -4,12 +4,19 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { generateClassConfirmationEmails } from "@/lib/email/generateClassConfirmation";
 import { generatePaymentReceiptEmails } from "@/lib/email/generatePaymentReceipt";
-import { syncInvoiceToIO } from "../useIOSync";
+import { syncInvoiceToIO, fetchIOPaymentPDF, getIOOfflineModeFromDB } from "../useIOSync";
 
 /**
  * Hook to mark an invoice as paid
  * Also queues a payment receipt and class confirmation email automatically
  * Supports secondary contact - will queue emails to both addresses if secondary exists
+ * 
+ * IO Workflow:
+ * 1. Check if IO offline mode is enabled
+ * 2. If online: ensure invoice is synced to IO first (if not already)
+ * 3. Sync payment to IO
+ * 4. Fetch payment receipt PDF from IO
+ * 5. Attach PDF to payment receipt email
  */
 export function useMarkInvoiceAsPaid() {
   const queryClient = useQueryClient();
@@ -45,16 +52,57 @@ export function useMarkInvoiceAsPaid() {
       queryClient.invalidateQueries({ queryKey: ['financial-bookings'] });
       queryClient.invalidateQueries({ queryKey: ['classes-list-data'] });
       
-      // Trigger IO payment sync in background (don't await - fire and forget)
-      syncInvoiceToIO(invoiceId, 'payment').catch(err => {
-        console.error('[IO Sync] Background payment sync error:', err);
-      });
+      let paymentPdfBase64: string | undefined;
+      
+      // Check if IO offline mode is enabled
+      const isOfflineMode = await getIOOfflineModeFromDB();
+      
+      if (!isOfflineMode) {
+        // Step 1: Check if invoice is already synced to IO
+        const { data: invoice } = await supabase
+          .from('invoices')
+          .select('io_document_id')
+          .eq('id', invoiceId)
+          .single();
+        
+        // Step 2: If not synced, sync invoice first
+        if (!invoice?.io_document_id) {
+          console.log('[IO Sync] Invoice not synced yet, syncing before payment...');
+          const invoiceSyncResult = await syncInvoiceToIO(invoiceId, 'invoice');
+          
+          if (!invoiceSyncResult.success && !invoiceSyncResult.skipped) {
+            console.warn('[IO Sync] Invoice sync failed before payment, continuing with local receipt');
+          }
+        }
+        
+        // Step 3: Sync the payment to IO
+        console.log('[IO Sync] Syncing payment to IO...');
+        const paymentResult = await syncInvoiceToIO(invoiceId, 'payment');
+        
+        if (paymentResult.success && !paymentResult.skipped) {
+          // Step 4: Fetch payment receipt PDF from IO
+          console.log('[IO Sync] Fetching payment receipt PDF from IO...');
+          const pdfResult = await fetchIOPaymentPDF(invoiceId);
+          
+          if (pdfResult.success && pdfResult.pdfBase64) {
+            paymentPdfBase64 = pdfResult.pdfBase64;
+            console.log('[IO Sync] Payment receipt PDF fetched successfully');
+          } else {
+            console.warn('[IO Sync] Could not fetch payment PDF:', pdfResult.error);
+          }
+        } else if (!paymentResult.success) {
+          console.warn('[IO Sync] Payment sync failed:', paymentResult.error);
+        }
+      } else {
+        console.log('[IO Sync] IO offline mode enabled, skipping IO sync');
+      }
       
       let emailsQueued = 0;
       
       // Generate and queue payment receipt emails (including secondary contact)
+      // Pass the IO payment PDF if we have it
       try {
-        const receiptEmails = await generatePaymentReceiptEmails(invoiceId);
+        const receiptEmails = await generatePaymentReceiptEmails(invoiceId, paymentPdfBase64);
         
         for (const receiptData of receiptEmails) {
           const { error: receiptError } = await supabase
@@ -66,12 +114,14 @@ export function useMarkInvoiceAsPaid() {
               html_content: receiptData.html_content,
               handler_id: receiptData.handler_id,
               status: "pending",
+              attachments: receiptData.attachments || null,
             });
 
           if (receiptError) {
             console.warn("Could not queue receipt email:", receiptError);
           } else {
-            console.log("Payment receipt email queued for:", receiptData.to_email);
+            console.log("Payment receipt email queued for:", receiptData.to_email, 
+              receiptData.attachments ? "(with IO PDF attachment)" : "(no attachment)");
             emailsQueued++;
           }
         }
@@ -106,13 +156,14 @@ export function useMarkInvoiceAsPaid() {
         console.warn("Error queueing confirmation emails:", emailError);
       }
       
-      // Show appropriate toast based on emails queued
+      // Show appropriate toast based on emails queued and PDF attachment
+      const hasIOPdf = !!paymentPdfBase64;
       if (emailsQueued > 2) {
-        toast.success(`Invoice marked as paid - ${emailsQueued} emails queued (including secondary contact)`);
+        toast.success(`Invoice marked as paid - ${emailsQueued} emails queued${hasIOPdf ? ' with IO receipt' : ''}`);
       } else if (emailsQueued === 2) {
-        toast.success("Invoice marked as paid - receipt & confirmation emails queued");
+        toast.success(`Invoice marked as paid - receipt & confirmation emails queued${hasIOPdf ? ' with IO receipt' : ''}`);
       } else if (emailsQueued === 1) {
-        toast.success("Invoice marked as paid - email queued");
+        toast.success(`Invoice marked as paid - email queued${hasIOPdf ? ' with IO receipt' : ''}`);
       } else {
         toast.success("Invoice marked as paid");
       }

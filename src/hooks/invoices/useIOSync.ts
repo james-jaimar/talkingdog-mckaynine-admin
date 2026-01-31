@@ -4,8 +4,9 @@ import { toast } from "sonner";
 /**
  * Get IO offline mode setting from database
  * Returns true if offline mode is enabled, false otherwise
+ * Exported for use in other hooks (e.g., useMarkInvoiceAsPaid)
  */
-async function getIOOfflineModeFromDB(): Promise<boolean> {
+export async function getIOOfflineModeFromDB(): Promise<boolean> {
   try {
     const { data, error } = await supabase
       .from('system_settings')
@@ -91,6 +92,47 @@ export async function syncInvoiceToIO(
 }
 
 /**
+ * Fetch PDF from IO for an invoice
+ * Returns base64-encoded PDF or error
+ */
+export async function fetchIOPDF(invoiceId: string): Promise<{
+  success: boolean;
+  pdfBase64?: string;
+  error?: string;
+}> {
+  console.log(`[IO Sync] Fetching PDF for invoice ${invoiceId}`);
+  
+  try {
+    const { data, error } = await supabase.functions.invoke('sync-invoice-to-io', {
+      body: {
+        invoice_id: invoiceId,
+        action: 'get_pdf',
+      },
+    });
+
+    if (error) {
+      console.error('[IO Sync] PDF fetch edge function error:', error);
+      return { success: false, error: error.message };
+    }
+
+    console.log('[IO Sync] PDF fetch response:', data?.success ? 'Success' : data);
+
+    if (data?.success && data?.pdf_base64) {
+      return { success: true, pdfBase64: data.pdf_base64 };
+    }
+
+    if (data?.error) {
+      return { success: false, error: data.error };
+    }
+
+    return { success: false, error: 'No PDF data returned' };
+  } catch (err) {
+    console.error('[IO Sync] PDF fetch unexpected error:', err);
+    return { success: false, error: String(err) };
+  }
+}
+
+/**
  * Issue a credit note in InvoicesOnline for an invoice being deleted
  * Returns success/error result without throwing
  */
@@ -140,30 +182,30 @@ export async function issueCreditNote(invoiceId: string): Promise<{
 }
 
 /**
- * Fetch PDF from IO for an invoice
+ * Fetch payment receipt PDF from IO
  * Returns base64-encoded PDF or error
  */
-export async function fetchIOPDF(invoiceId: string): Promise<{
+export async function fetchIOPaymentPDF(invoiceId: string): Promise<{
   success: boolean;
   pdfBase64?: string;
   error?: string;
 }> {
-  console.log(`[IO Sync] Fetching PDF for invoice ${invoiceId}`);
+  console.log(`[IO Sync] Fetching payment PDF for invoice ${invoiceId}`);
   
   try {
     const { data, error } = await supabase.functions.invoke('sync-invoice-to-io', {
       body: {
         invoice_id: invoiceId,
-        action: 'get_pdf',
+        action: 'get_payment_pdf',
       },
     });
 
     if (error) {
-      console.error('[IO Sync] PDF fetch edge function error:', error);
+      console.error('[IO Sync] Payment PDF fetch edge function error:', error);
       return { success: false, error: error.message };
     }
 
-    console.log('[IO Sync] PDF fetch response:', data?.success ? 'Success' : data);
+    console.log('[IO Sync] Payment PDF fetch response:', data?.success ? 'Success' : data);
 
     if (data?.success && data?.pdf_base64) {
       return { success: true, pdfBase64: data.pdf_base64 };
@@ -173,9 +215,9 @@ export async function fetchIOPDF(invoiceId: string): Promise<{
       return { success: false, error: data.error };
     }
 
-    return { success: false, error: 'No PDF data returned' };
+    return { success: false, error: 'No payment PDF data returned' };
   } catch (err) {
-    console.error('[IO Sync] PDF fetch unexpected error:', err);
+    console.error('[IO Sync] Payment PDF fetch unexpected error:', err);
     return { success: false, error: String(err) };
   }
 }

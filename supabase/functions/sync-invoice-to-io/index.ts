@@ -593,7 +593,7 @@ Deno.serve(async (req) => {
       client: client,
     };
 
-    // Handle get_pdf action - fetch PDF from IO
+    // Handle get_pdf action - fetch invoice PDF from IO
     if (action === "get_pdf") {
       if (!invoice.io_invoice_url) {
         return new Response(
@@ -609,6 +609,34 @@ Deno.serve(async (req) => {
           JSON.stringify({ 
             success: true, 
             action: "get_pdf",
+            pdf_base64: pdfResult.pdfBase64,
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      } else {
+        return new Response(
+          JSON.stringify({ error: pdfResult.error }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
+    // Handle get_payment_pdf action - fetch payment receipt PDF from IO
+    if (action === "get_payment_pdf") {
+      if (!invoice.io_payment_url) {
+        return new Response(
+          JSON.stringify({ error: "Payment not synced to IO yet - no payment PDF URL available" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      const pdfResult = await fetchIOPDF(invoice.io_payment_url);
+      
+      if (pdfResult.success) {
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            action: "get_payment_pdf",
             pdf_base64: pdfResult.pdfBase64,
           }),
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -829,7 +857,7 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ error: "Invalid action. Use 'invoice', 'payment', 'credit_note', or 'get_pdf'" }),
+      JSON.stringify({ error: "Invalid action. Use 'invoice', 'payment', 'credit_note', 'get_pdf', or 'get_payment_pdf'" }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 
