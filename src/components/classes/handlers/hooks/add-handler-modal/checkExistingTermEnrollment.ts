@@ -1,5 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
+import { getHouseholdMemberIds } from "@/hooks/useHouseholdLinks";
 
 export interface ExistingTermEnrollment {
   hasExistingEnrollment: boolean;
@@ -10,11 +11,15 @@ export interface ExistingTermEnrollment {
   existingInvoiceStatus?: string;
   totalDogsInTerm: number;
   existingBookingId?: string;
+  // Household-specific fields
+  isHouseholdEnrollment?: boolean;
+  existingHandlerId?: string;
+  existingHandlerName?: string;
 }
 
 /**
- * Check if a handler has other dogs enrolled in classes within the same term AND branch.
- * This is used to apply multi-dog discounts across different classes.
+ * Check if a handler (or any household member) has dogs enrolled in classes within the same term AND branch.
+ * This is used to apply multi-dog discounts across different classes and households.
  * Multi-dog discounts only apply within the same branch.
  * 
  * @param handlerId - The client/handler ID
@@ -39,14 +44,20 @@ export const checkExistingTermEnrollment = async (
   }
 
   try {
+    // Get all household member IDs (includes the current handler)
+    const householdMemberIds = await getHouseholdMemberIds(handlerId);
+    const isPartOfHousehold = householdMemberIds.length > 1;
+
     console.log("MULTI-DOG-CHECK: Checking for existing enrollments", { 
       handlerId, 
       termId, 
       currentDogIds,
-      branchId // Log branch ID for debugging
+      branchId,
+      householdMemberIds,
+      isPartOfHousehold,
     });
 
-    // Find other dogs belonging to this handler that are enrolled in classes this term
+    // Find dogs belonging to ANY household member that are enrolled in classes this term
     // Exclude the current dog(s) being enrolled
     // Also filter by branch to ensure multi-dog discounts only apply within same branch
     let query = supabase
@@ -54,9 +65,15 @@ export const checkExistingTermEnrollment = async (
       .select(`
         id,
         dog_id,
+        client_id,
         dogs!inner (
           id,
           name
+        ),
+        clients!inner (
+          id,
+          first_name,
+          last_name
         ),
         class_schedules!inner (
           id,
@@ -76,7 +93,7 @@ export const checkExistingTermEnrollment = async (
           )
         )
       `)
-      .eq('client_id', handlerId)
+      .in('client_id', householdMemberIds)
       .eq('class_schedules.term_id', termId)
       .not('dog_id', 'in', `(${currentDogIds.join(',')})`);
 
@@ -98,7 +115,7 @@ export const checkExistingTermEnrollment = async (
     }
 
     if (!existingBookings || existingBookings.length === 0) {
-      console.log("MULTI-DOG-CHECK: No existing enrollments found for this handler in this term/branch");
+      console.log("MULTI-DOG-CHECK: No existing enrollments found for this handler/household in this term/branch");
       return {
         hasExistingEnrollment: false,
         totalDogsInTerm: 0,
@@ -107,6 +124,7 @@ export const checkExistingTermEnrollment = async (
 
     const existingBooking = existingBookings[0];
     const dogs = existingBooking.dogs as { id: string; name: string };
+    const clients = existingBooking.clients as { id: string; first_name: string; last_name: string };
     const classSchedules = existingBooking.class_schedules as { 
       id: string; 
       term_id: string; 
@@ -122,11 +140,14 @@ export const checkExistingTermEnrollment = async (
       item.invoices && item.invoices.status !== 'cancelled'
     );
 
-    // Count total unique dogs enrolled for this handler in this term
+    // Determine if this is a household enrollment (different handler)
+    const isHouseholdEnrollment = existingBooking.client_id !== handlerId;
+
+    // Count total unique dogs enrolled for all household members in this term
     const { count: totalDogsCount } = await supabase
       .from('bookings')
       .select('dog_id', { count: 'exact', head: true })
-      .eq('client_id', handlerId)
+      .in('client_id', householdMemberIds)
       .eq('class_schedules.term_id', termId);
 
     const result: ExistingTermEnrollment = {
@@ -138,6 +159,12 @@ export const checkExistingTermEnrollment = async (
       existingInvoiceStatus: validInvoiceItem?.invoices?.status,
       existingBookingId: existingBooking.id,
       totalDogsInTerm: (totalDogsCount || 0) + currentDogIds.length,
+      // Household-specific fields
+      isHouseholdEnrollment,
+      existingHandlerId: existingBooking.client_id,
+      existingHandlerName: isHouseholdEnrollment 
+        ? `${clients?.first_name} ${clients?.last_name}` 
+        : undefined,
     };
 
     console.log("MULTI-DOG-CHECK: Found existing enrollment", result);
