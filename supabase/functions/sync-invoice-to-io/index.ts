@@ -37,6 +37,7 @@ interface InvoiceData {
   branch_id: string | null;
   io_client_id: number | null;
   io_document_id: string | null;
+  io_invoice_number: string | null;
   io_invoice_url: string | null;
   items: Array<{
     description: string;
@@ -326,11 +327,11 @@ async function createIOCreditNote(
     ? new Date(invoice.issued_date).toISOString().split("T")[0]
     : new Date().toISOString().split("T")[0];
 
-  // Format items for IO API - same format as invoice but with "Credit Note" prefix
+  // Format items for IO API - include reference to original invoice in description
   const data = invoice.items.map((item) => ({
     "0": "", // prod_code
     "1": item.quantity, // qty
-    "2": `Credit Note: ${item.description}`, // description with CN prefix
+    "2": `CN for ${invoice.invoice_number}: ${item.description}`, // Clear reference to original invoice
     "3": item.unit_price, // amount per unit
     "4": "ZAR", // currency
     "5": 0, // vat_applies (no VAT)
@@ -345,6 +346,8 @@ async function createIOCreditNote(
     EmailToClient: false, // We handle emails ourselves
     prepend_nr: prefix, // Add branch and date prefix
     InvoiceDate: creditDate, // Pass the credit note date
+    OrderNr: invoice.io_invoice_number || "", // Reference to original IO invoice (max 10 chars)
+    AdditionalValue1: invoice.invoice_number, // McKaynine invoice number (max 32 chars)
     data: data,
   });
 
@@ -536,6 +539,7 @@ Deno.serve(async (req) => {
         branch_id,
         io_client_id,
         io_document_id,
+        io_invoice_number,
         io_sync_status,
         io_invoice_url,
         io_payment_url,
@@ -589,6 +593,7 @@ Deno.serve(async (req) => {
       branch_id: invoice.branch_id,
       io_client_id: invoice.io_client_id,
       io_document_id: invoice.io_document_id,
+      io_invoice_number: invoice.io_invoice_number,
       io_invoice_url: invoice.io_invoice_url,
       items: items || [],
       client: client,
