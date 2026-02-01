@@ -1,161 +1,108 @@
 
-# Fix Email Invoice Workflow Issues
+Goal
+- Fix “Email Invoice” flashing then disappearing by ensuring the dialogs are not mounted inside (and therefore destroyed by) the Radix DropdownMenu lifecycle.
+- Add deeper, end-to-end visibility so that if IO/network issues happen, the user sees a stable dialog with an actionable error instead of a flash.
 
-## Issues Found
+What’s actually happening (root cause)
+- `InvoiceBasicActions` is rendered inside `<DropdownMenuContent>` (see `src/components/invoices/table/InvoiceTableActions.tsx`).
+- `InvoiceBasicActions` currently renders BOTH:
+  - `EmailInvoiceProgressDialog`
+  - `EmailInvoicePreviewDialog`
+- When you click a dropdown item, Radix closes the dropdown. Closing the dropdown unmounts `DropdownMenuContent` and all children inside it.
+- That unmount destroys the dialog components immediately. The dialog “opens” for a frame (flash), then disappears because its component is gone, not because of outside-click handlers.
+- This also explains why the edge function can return `200 OK` while you still see “flash then nothing”: the backend call may continue, but the UI that should display progress is already unmounted.
 
-After investigating the logs, database, and code, I found three main issues:
+High-level solution
+- Lift the “Email Invoice” dialog state and dialog components OUTSIDE the dropdown menu content, into a stable parent that does not unmount when the dropdown closes.
+- Keep the dropdown action item as a trigger only (it calls a callback).
+- Reuse the pattern already used elsewhere (the dialog is rendered outside a small trigger area), e.g. in `src/components/invoices/InvoicesList.tsx` and `src/components/invoices/detail/ClientInfoCard.tsx`, where `EmailInvoicePreviewDialog` is mounted outside transient UI.
 
-### Issue 1: Email Preview Dialog Not Opening After Sync
+Implementation plan (frontend)
 
-**What's happening**: The IO sync completes successfully (logs show invoice synced, PDF fetched at 424KB), but the preview dialog never opens. The user sees a quick flash then a toast saying "Synced to IO" but no email composition screen.
+1) Refactor ownership of the Email Invoice workflow to a stable parent
+- Target file: `src/components/invoices/table/InvoiceTableActions.tsx`
+- Add state in `InvoiceTableActions` for:
+  - `emailProgressOpen: boolean`
+  - `emailPreviewOpen: boolean`
+  - `preparedPdfBase64?: string`
+  - `selectedInvoiceForEmail?: Invoice` (or `Invoice | null`)
+- Render the dialogs at the bottom of `InvoiceTableActions` (sibling to the DropdownMenu, not inside it):
+  - `<EmailInvoiceProgressDialog open={emailProgressOpen} ... invoice={selectedInvoiceForEmail} ... />`
+  - `<EmailInvoicePreviewDialog open={emailPreviewOpen} selectedInvoice={selectedInvoiceForEmail} preparedPdfBase64={preparedPdfBase64} ... />`
+- Important: `EmailInvoiceProgressDialog` currently requires `invoice: Invoice` (non-null). We will either:
+  - Option A (preferred): Update `EmailInvoiceProgressDialog` prop type to accept `invoice: Invoice | null` and render nothing / no-op if null.
+  - Option B: Guard rendering: only render the dialog components when `selectedInvoiceForEmail` is non-null, and pass it as `invoice`.
 
-**Root cause**: Looking at `EmailInvoiceProgressDialog.tsx`, the flow is:
-1. `syncAndGetPDF()` runs and succeeds
-2. `onReady(pdfBase64)` should be called
-3. In `InvoiceBasicActions.tsx`, `handlePdfReady()` should close progress dialog and open preview dialog
+2) Change `InvoiceBasicActions` to become a “pure actions list” (no dialogs)
+- Target file: `src/components/invoices/table/actions/InvoiceBasicActions.tsx`
+- Remove local state:
+  - `emailProgressOpen`, `emailPreviewOpen`, `preparedPdfBase64`
+- Remove rendering of `EmailInvoiceProgressDialog` and `EmailInvoicePreviewDialog` from this component entirely.
+- Replace `handleEmailInvoice` logic with a callback prop:
+  - Add prop: `onEmailInvoice: (invoice: Invoice) => void`
+  - On click: `onCloseDropdown(); onEmailInvoice(invoice);`
+- Keep other actions unchanged.
 
-The issue is likely that errors or unhandled promise rejections are occurring silently. The dialog may also be closing due to a state reset before the preview opens.
+3) Wire the action callback from parent to child
+- Target file: `src/components/invoices/table/InvoiceTableActions.tsx`
+- When rendering `InvoiceBasicActions`, pass:
+  - `onEmailInvoice={(inv) => { ... }}`
+- In that handler:
+  - Close dropdown (you already do with `onCloseDropdown`, but ensure parent doesn’t reopen it)
+  - Set `selectedInvoiceForEmail = inv`
+  - Reset `preparedPdfBase64 = undefined`
+  - Ensure preview is closed: `setEmailPreviewOpen(false)`
+  - Open progress dialog on next tick (safe timing):
+    - `setTimeout(() => setEmailProgressOpen(true), 0)`
+  - This reuses your prior “defer open” trick, but now it will actually work because the dialog won’t be unmounted.
 
-**Fix**: Add better error handling and ensure state transitions are synchronous.
+4) Keep the current “progress -> preview” transition, but move it to the parent
+- The parent should own the “PDF ready” transition because it owns dialog state now.
+- In `InvoiceTableActions` implement:
+  - `handlePdfReady(pdfBase64)`:
+    - `setPreparedPdfBase64(pdfBase64)`
+    - `setEmailProgressOpen(false)`
+    - `setTimeout(() => setEmailPreviewOpen(true), 100)`
+  - `handleEmailError(msg)`:
+    - `setEmailProgressOpen(false)`
+    - show toast error
+- Pass these handlers into `EmailInvoiceProgressDialog`.
 
----
+5) Make the progress dialog robust if it gets closed mid-flight
+- Target file: `src/components/invoices/dialogs/EmailInvoiceProgressDialog.tsx`
+- Add an “isMounted” guard so the async `startSync()` doesn’t try to set state after unmount (common in StrictMode and transient UI):
+  - Inside `useEffect`, track a `let cancelled = false;` and check before setting state / calling `onReady`.
+- This prevents weird “flash” side effects and silent React warnings; it doesn’t fix the flash by itself, but it makes the overall workflow stable.
 
-### Issue 2: Invoice Date Shows Today's Date in IO (Not Invoice Date)
+6) Improve observability for the “network errors / elevated error rates” case (without overcomplicating)
+- When the edge function returns `200 OK` but includes `{ success: false, error: ... }`, we should surface that clearly in the progress dialog rather than only toasts.
+- Ensure `syncAndGetPDF` error messages are preserved and displayed in the dialog (`errorMessage` already exists).
+- Add a small “Copy error details” button in the error state (optional, but useful for your debugging).
+- This way, even if Lovable/Supabase/IO are having a bad day, the user sees a stable modal with a concrete error and retry controls.
 
-**What's happening**: Despite sending `InvoiceDate: 2026-02-06`, IO created the invoice with date `31-01` (January 31st, today).
+Backend / IO considerations (what we will verify, but not over-change)
+- Since you see `200 OK`, the immediate issue is UI lifecycle, not a failing HTTP request.
+- After the UI fix, we’ll re-check whether `sync-invoice-to-io` is sometimes returning `{ skipped: true }` (TEST_MODE) which triggers local PDF fallback, or returning `{ success: false }` with an error.
+- We will also verify CORS headers in `supabase/functions/_shared/cors.ts` are sufficient for any custom headers being sent, but given `200 OK`, this is likely not the blocker for the “flash” symptom.
 
-**Root cause**: Looking at the edge function logs:
-```
-Using invoice date: 2026-02-06
-```
+Validation / Testing checklist (end-to-end)
+1) From invoices table, click “…” → “Email Invoice”
+   - Expected: dropdown closes, progress dialog stays open.
+2) Confirm progress dialog advances through steps and does not disappear.
+3) Confirm:
+   - Success path: progress closes → preview dialog opens with editable content and PDF attachment available.
+   - Error path: progress dialog stays open and shows error with Retry/Cancel; does not vanish.
+4) Try on:
+   - Desktop (mouse)
+   - Mobile/touch (Radix “interact outside” behavior can differ)
+5) Confirm no new console warnings about state updates on unmounted components.
 
-We ARE sending the correct date, but looking at line 236 in the edge function:
-```typescript
-InvoiceDate: invoiceDate, // Pass the correct invoice date
-```
+Files expected to change
+- `src/components/invoices/table/InvoiceTableActions.tsx` (new state + render dialogs + pass callback)
+- `src/components/invoices/table/actions/InvoiceBasicActions.tsx` (remove dialog rendering, add `onEmailInvoice` prop)
+- `src/components/invoices/dialogs/EmailInvoiceProgressDialog.tsx` (optional but recommended: mount guards / cancellation)
+- Potentially update any types if needed (minimal changes).
 
-The issue might be with IO's API - it may require a different date format or parameter name. We need to investigate whether IO accepts `InvoiceDate` or requires something else.
-
-**Fix**: Research the IO API requirements for the date parameter. Try different formats if needed.
-
----
-
-### Issue 3: Missing `io_payment_url` in Edge Function SELECT Query
-
-**What's happening**: When trying to fetch a payment PDF, the `get_payment_pdf` action checks for `invoice.io_payment_url` (line 626), but the SELECT query (lines 523-555) doesn't include `io_payment_url` in the fields.
-
-**Current SELECT** (missing `io_payment_url`):
-```sql
-io_client_id,
-io_document_id,
-io_sync_status,
-io_invoice_url,  -- ← Only this is selected
-```
-
-**Fix**: Add `io_payment_url` to the SELECT query in the edge function.
-
----
-
-## Implementation Plan
-
-### File 1: `supabase/functions/sync-invoice-to-io/index.ts`
-
-**Change 1**: Add `io_payment_url` to the SELECT query (around line 540):
-```typescript
-io_invoice_url,
-io_payment_url,  // ADD THIS LINE
-clients!inner (
-```
-
-**Change 2**: Investigate the IO API date format. Currently we send:
-```typescript
-InvoiceDate: invoiceDate  // format: 2026-02-06
-```
-We may need to try different formats or check IO documentation.
-
----
-
-### File 2: `src/components/invoices/dialogs/EmailInvoiceProgressDialog.tsx`
-
-**Changes**:
-- Add better logging to track where the flow breaks
-- Ensure `onReady` callback is called with proper error handling
-- Add a small delay before closing to ensure state propagates
-
-```typescript
-if (result.success) {
-  if (result.useLocalPdf) {
-    setStepMessage("Generating local PDF...");
-    try {
-      const localPdf = await getInvoiceAsBase64(invoice);
-      console.log('[EmailProgress] Local PDF generated, calling onReady...');
-      setStatus("success");
-      setTimeout(() => {
-        onReady(localPdf);
-      }, 500);
-    } catch (pdfErr) {
-      console.error('[EmailProgress] Local PDF error:', pdfErr);
-      setStatus("error");
-      setErrorMessage(`Failed to generate local PDF: ${String(pdfErr)}`);
-    }
-  } else if (result.pdfBase64) {
-    console.log('[EmailProgress] IO PDF received, calling onReady...');
-    setStatus("success");
-    setTimeout(() => {
-      onReady(result.pdfBase64!);
-    }, 500);
-  } else {
-    // This shouldn't happen with the new strict mode
-    console.error('[EmailProgress] No PDF in result');
-    setStatus("error");
-    setErrorMessage("No PDF available from InvoicesOnline.");
-  }
-}
-```
-
----
-
-### File 3: `src/components/invoices/table/actions/InvoiceBasicActions.tsx`
-
-**Changes**:
-- Add logging to `handlePdfReady` to trace the flow
-- Ensure dialog state transitions properly
-
-```typescript
-const handlePdfReady = (pdfBase64: string | undefined) => {
-  console.log('[InvoiceActions] PDF ready, transitioning to preview dialog...');
-  console.log('[InvoiceActions] PDF size:', pdfBase64?.length || 0);
-  setPreparedPdfBase64(pdfBase64);
-  setEmailProgressOpen(false);
-  // Small delay to ensure state clears before opening new dialog
-  setTimeout(() => {
-    setEmailPreviewOpen(true);
-  }, 100);
-};
-```
-
----
-
-## Summary of Changes
-
-| File | Issue | Fix |
-|------|-------|-----|
-| `sync-invoice-to-io/index.ts` | Missing `io_payment_url` in SELECT | Add to query fields |
-| `sync-invoice-to-io/index.ts` | IO ignoring InvoiceDate | Investigate IO API format |
-| `EmailInvoiceProgressDialog.tsx` | Silent failures, no logging | Add console logs for debugging |
-| `InvoiceBasicActions.tsx` | Dialog transition race condition | Add logging and setTimeout delay |
-
-## Testing After Fix
-
-1. Click "Email Invoice" on a draft invoice
-2. Should see progress dialog with steps completing
-3. After ~3-5 seconds, preview dialog should open with email composer
-4. Check console for log messages tracing the flow
-5. Verify invoice date in IO matches local invoice date
-
-## IO Date Issue Investigation
-
-This may require separate investigation. Options to try:
-- Different date format: `06-02-2026` or `06/02/2026`
-- Different parameter name: `invoice_date` instead of `InvoiceDate`
-- Check if IO has timezone handling issues
+Why this “different angle” will work
+- It stops fighting Radix outside-click timing and instead fixes the actual cause: component unmounting.
+- Once dialogs live outside the dropdown, they cannot be destroyed by dropdown close, so “flash then nothing” will become either a stable progress UI or a stable error UI.
