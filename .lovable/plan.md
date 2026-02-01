@@ -1,119 +1,276 @@
 
-# Fix: Payment Sync Fails for Randburg (and Delta) - Response Parsing Bug
 
-## Problem
-When clicking "Mark as Paid", the IO payment API call succeeds, but the edge function returns a 500 error because it doesn't recognize the successful response format.
+# Delete Paid Invoice with IO Balance Correction
 
-## Root Cause
-The `createIOPayment` function checks for `r.url` or `r.invoice_nr` in the response, but the IO Payment API returns a different response structure:
+## Summary
+When deleting a **paid** invoice that was synced to InvoicesOnline (IO), the system needs to create both a **Payout** and a **Credit Note** to bring the client's IO balance back to zero.
 
-**Actual IO Payment Response:**
-```json
-[{
-  "type": "success",
-  "message": "Payment 45 recorded successfully.",
-  "PaymentNR": 45,
-  "PaymentDate": "2026-02-01",
-  "PaymentID": "2105593",
-  "TotalAmount": "1755.00",
-  "markedAsPaid": {"markedAsPaid": ["43"]}
-}]
+## Accounting Logic
+
+**Starting State (after invoice paid):**
+```text
+Invoice:  +R1,755 (client owed this)
+Payment:  -R1,755 (client paid this)
+Balance:   R0 (settled)
 ```
 
-**Current Code (lines 296-310):**
-```javascript
-if (typeof result === "object" && result !== null) {
-  const r = result as Record<string, unknown>;
-  if (r.url || r.invoice_nr) {  // ❌ Payment has PaymentID, not url/invoice_nr
-    return { success: true, url: String(r.url || "") };
-  }
-}
-return { success: false, error: `Unexpected response: ...` };  // ❌ Falls through here
+**Problem: If we only issue a credit note:**
+```text
+Credit Note: -R1,755 (reduces what client owes)
+Balance:     -R1,755 (client now has CREDIT on their account)
 ```
 
-**Why It Fails:**
-1. Response is an array, not a plain object
-2. Success fields are `type: "success"` and `PaymentID`, not `url` or `invoice_nr`
-3. Function returns "Unexpected response" error despite IO actually recording the payment
+**Solution: Payout first, then Credit Note:**
+```text
+Step 1 - Payout:      +R1,755 (as if we're refunding them - increases their balance)
+Step 2 - Credit Note: -R1,755 (reverses the original invoice)
+Balance:               R0 (back to zero!)
+```
 
-## Solution
-Update `createIOPayment` to handle the array response format, similar to how `createIOInvoice` does.
+## API Endpoints to Use
 
-### Fix for `createIOPayment`:
+1. **GenerateNewPayout.php** - Create a payout document (like a refund voucher)
+   - Required: `username`, `password`, `ClientID`, `data[]` (line items)
+   - Optional: `prepend_nr`, `OrderNr`, `AdditionalValue1`
+
+2. **GenerateNewCreditNote.php** - Already implemented, creates the credit note
+
+## Implementation Changes
+
+### 1. Edge Function: New `createIOPayout` function
 
 ```javascript
-async function createIOPayment(
+async function createIOPayout(
   credentials: IOCredentials,
   ioClientId: number,
   invoice: InvoiceData
-): Promise<{ success: boolean; paymentId?: string; url?: string; error?: string }> {
-  console.log(`Recording IO payment for client ${ioClientId}, amount ${invoice.total}`);
+): Promise<{ success: boolean; documentId?: string; payoutNumber?: string; url?: string; error?: string }>
+```
 
-  const paymentDate = invoice.payment_date 
+- Calls `GenerateNewPayout.php`
+- Uses the same prefix format (McD-/McR-)
+- Description: `Reversal for ${invoice.invoice_number}: ${item.description}`
+- `OrderNr`: Original IO invoice number
+- `AdditionalValue1`: McKaynine invoice number
+
+### 2. Edge Function: New action `reverse_paid_invoice`
+
+Sequence:
+1. Create Payout (same amount as invoice)
+2. Create Credit Note (same amount as invoice)
+3. Return combined result
+
+### 3. Frontend: Update `useDeleteInvoice` hook
+
+Check if invoice was **paid** AND synced to IO:
+- If `status === 'paid'` and `io_document_id` exists:
+  - Call new `reversePaidInvoice()` action
+- If just synced (not paid):
+  - Call existing `issueCreditNote()` action
+
+### 4. New frontend function: `reversePaidInvoice()`
+
+```typescript
+export async function reversePaidInvoice(invoiceId: string): Promise<{
+  success: boolean;
+  error?: string;
+}>
+```
+
+## Files to Modify
+
+| File | Changes |
+|------|---------|
+| `supabase/functions/sync-invoice-to-io/index.ts` | Add `createIOPayout()` function, add `reverse_paid_invoice` action handler |
+| `src/hooks/invoices/useIOSync.ts` | Add `reversePaidInvoice()` export function |
+| `src/hooks/invoices/mutations/useDeleteInvoice.ts` | Update logic to detect paid invoices and call `reversePaidInvoice()` instead of `issueCreditNote()` |
+
+## Technical Details
+
+### createIOPayout Function
+
+```javascript
+async function createIOPayout(
+  credentials: IOCredentials,
+  ioClientId: number,
+  invoice: InvoiceData
+): Promise<{ success: boolean; documentId?: string; payoutNumber?: string; url?: string; error?: string }> {
+  console.log(`Creating IO payout for client ${ioClientId}, reversing payment for ${invoice.invoice_number}`);
+
+  const prefix = getIOInvoicePrefix(invoice.branch_id, invoice.issued_date);
+  
+  const payoutDate = invoice.payment_date 
     ? new Date(invoice.payment_date).toISOString().split("T")[0]
     : new Date().toISOString().split("T")[0];
 
-  const result = await callIOAPI("GenerateNewPayment.php", {
+  // Format items - same as credit note but marked as payout
+  const data = invoice.items.map((item) => ({
+    "0": "",
+    "1": item.quantity,
+    "2": `Reversal for ${invoice.invoice_number}: ${item.description}`,
+    "3": item.unit_price,
+    "4": "ZAR",
+    "5": 0,
+    "6": 0,
+    "7": 0,
+  }));
+
+  const result = await callIOAPI("GenerateNewPayout.php", {
     username: credentials.username,
     password: credentials.password,
     ClientID: ioClientId,
-    PaymentDate: paymentDate,
-    PaymentAmount: invoice.total,
-    PaymentMethod: "EFT",
     EmailToClient: false,
+    prepend_nr: prefix,
+    InvoiceDate: payoutDate,
+    OrderNr: invoice.io_invoice_number || "",
+    AdditionalValue1: invoice.invoice_number,
+    data: data,
   });
 
-  // IO returns an array for payment responses
-  if (Array.isArray(result) && result.length > 0) {
-    const paymentInfo = result[0] as Record<string, unknown>;
-    if (paymentInfo.type === "success" || paymentInfo.PaymentID) {
-      console.log(`Payment recorded successfully: PaymentID=${paymentInfo.PaymentID}`);
+  // Parse response (same pattern as credit note)
+  if (Array.isArray(result) && result.length >= 2) {
+    const docInfo = result[1] as Record<string, unknown>;
+    if (docInfo.document_id || docInfo.invoice_nr) {
       return {
         success: true,
-        paymentId: String(paymentInfo.PaymentID || ""),
-        url: "", // Payment API doesn't return a URL
+        documentId: String(docInfo.document_id || ""),
+        payoutNumber: String(docInfo.invoice_nr || docInfo.document_nr || ""),
+        url: String(docInfo.url || ""),
       };
     }
-    if (paymentInfo.error) {
-      return { success: false, error: String(paymentInfo.error) };
-    }
   }
-
-  // Fallback: single object response
-  if (typeof result === "object" && result !== null && !Array.isArray(result)) {
-    const r = result as Record<string, unknown>;
-    if (r.type === "success" || r.PaymentID || r.url) {
-      return {
-        success: true,
-        paymentId: String(r.PaymentID || ""),
-        url: String(r.url || ""),
-      };
-    }
-    if (r.error) {
-      return { success: false, error: String(r.error) };
-    }
-  }
-
-  return { success: false, error: `Unexpected response: ${JSON.stringify(result)}` };
+  // ... fallback handling
 }
 ```
 
-## Impact
-- This bug affects **both Delta and Randburg** branches
-- All payments are actually being recorded in IO correctly
-- But the app shows an error and doesn't save the `io_payment_url` to the database
-- Emails may not be sent correctly because the success callback isn't triggered properly
+### reverse_paid_invoice Action Handler
 
-## Files to Modify
-1. `supabase/functions/sync-invoice-to-io/index.ts`
-   - Update `createIOPayment` function (lines 273-311)
-   - Add array response parsing
-   - Check for `type: "success"` or `PaymentID` fields
+```javascript
+if (action === "reverse_paid_invoice") {
+  if (!invoice.io_document_id) {
+    return new Response(
+      JSON.stringify({ error: "Invoice must be synced to IO before reversing" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
 
-## Testing
+  // Step 1: Create payout to reverse the payment effect
+  console.log("[Reverse] Step 1: Creating payout to reverse payment...");
+  const payoutResult = await createIOPayout(credentials, ioClientId, invoiceData);
+  
+  if (!payoutResult.success) {
+    return new Response(
+      JSON.stringify({ error: `Payout failed: ${payoutResult.error}` }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  // Step 2: Create credit note to reverse the invoice
+  console.log("[Reverse] Step 2: Creating credit note to reverse invoice...");
+  const creditResult = await createIOCreditNote(credentials, ioClientId, invoiceData);
+  
+  if (!creditResult.success) {
+    return new Response(
+      JSON.stringify({ 
+        error: `Credit note failed: ${creditResult.error}`,
+        payout_created: true,
+        io_payout_id: payoutResult.documentId,
+      }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  // Both succeeded - update invoice record
+  await supabase
+    .from("invoices")
+    .update({
+      io_sync_status: "reversed",
+      io_payout_id: payoutResult.documentId,
+      io_payout_number: payoutResult.payoutNumber,
+      io_credit_note_id: creditResult.documentId,
+      io_credit_note_number: creditResult.creditNoteNumber,
+    })
+    .eq("id", invoice_id);
+
+  return new Response(
+    JSON.stringify({ 
+      success: true, 
+      action: "reverse_paid_invoice",
+      io_payout_id: payoutResult.documentId,
+      io_payout_number: payoutResult.payoutNumber,
+      io_credit_note_id: creditResult.documentId,
+      io_credit_note_number: creditResult.creditNoteNumber,
+    }),
+    { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+  );
+}
+```
+
+### Updated useDeleteInvoice Hook
+
+```typescript
+mutationFn: async (invoiceId: string): Promise<{ id: string; ioActionTaken: string }> => {
+  let ioActionTaken = 'none';
+
+  const { data: invoice } = await supabase
+    .from('invoices')
+    .select('io_document_id, io_sync_status, status')
+    .eq('id', invoiceId)
+    .single();
+
+  if (invoice?.io_document_id) {
+    // Check if invoice was PAID - needs both payout and credit note
+    if (invoice.status === 'paid') {
+      console.log('[Delete] Invoice was paid and synced to IO, reversing...');
+      const result = await reversePaidInvoice(invoiceId);
+      
+      if (!result.success) {
+        console.warn('[Delete] Reverse failed:', result.error);
+        toast.warning('IO reversal could not be completed', {
+          description: result.error,
+        });
+        ioActionTaken = 'failed';
+      } else {
+        console.log('[Delete] Payout + Credit Note issued successfully');
+        ioActionTaken = 'reversed';
+      }
+    } else {
+      // Not paid - just issue credit note
+      console.log('[Delete] Invoice synced to IO (not paid), issuing credit note');
+      const result = await issueCreditNote(invoiceId);
+      
+      if (!result.success) {
+        console.warn('[Delete] Credit note failed:', result.error);
+        toast.warning('IO credit note could not be issued', {
+          description: result.error,
+        });
+        ioActionTaken = 'failed';
+      } else {
+        ioActionTaken = 'credit_note';
+      }
+    }
+  }
+
+  // Proceed with local deletion
+  const { error } = await supabase
+    .from('invoices')
+    .delete()
+    .eq('id', invoiceId);
+
+  if (error) throw error;
+
+  return { id: invoiceId, ioActionTaken };
+}
+```
+
+## Testing Steps
+
 1. Go to Randburg branch
-2. Find or create an invoice that's been synced to IO
-3. Click "Mark as Paid"
-4. Should succeed without error
-5. Check IO dashboard - payment should be recorded
-6. Check email queue - payment receipt should be queued
+2. Find a **paid** invoice that's synced to IO (or create one)
+3. Click Delete
+4. Verify in IO:
+   - A Payout was created for the same amount
+   - A Credit Note was created for the same amount
+   - The client's balance is R0
+5. Verify the invoice is deleted locally
+
