@@ -1,108 +1,136 @@
 
-Goal
-- Fix “Email Invoice” flashing then disappearing by ensuring the dialogs are not mounted inside (and therefore destroyed by) the Radix DropdownMenu lifecycle.
-- Add deeper, end-to-end visibility so that if IO/network issues happen, the user sees a stable dialog with an actionable error instead of a flash.
+# Fix: Email Invoice Dialog Disappears Immediately
 
-What’s actually happening (root cause)
-- `InvoiceBasicActions` is rendered inside `<DropdownMenuContent>` (see `src/components/invoices/table/InvoiceTableActions.tsx`).
-- `InvoiceBasicActions` currently renders BOTH:
-  - `EmailInvoiceProgressDialog`
-  - `EmailInvoicePreviewDialog`
-- When you click a dropdown item, Radix closes the dropdown. Closing the dropdown unmounts `DropdownMenuContent` and all children inside it.
-- That unmount destroys the dialog components immediately. The dialog “opens” for a frame (flash), then disappears because its component is gone, not because of outside-click handlers.
-- This also explains why the edge function can return `200 OK` while you still see “flash then nothing”: the backend call may continue, but the UI that should display progress is already unmounted.
+## Problem Summary
+When clicking "Email Invoice" in the dropdown menu, the progress dialog flashes briefly and disappears. No console logs appear, indicating the `handleEmailInvoice` callback in `InvoiceTableActions` is never being executed.
 
-High-level solution
-- Lift the “Email Invoice” dialog state and dialog components OUTSIDE the dropdown menu content, into a stable parent that does not unmount when the dropdown closes.
-- Keep the dropdown action item as a trigger only (it calls a callback).
-- Reuse the pattern already used elsewhere (the dialog is rendered outside a small trigger area), e.g. in `src/components/invoices/InvoicesList.tsx` and `src/components/invoices/detail/ClientInfoCard.tsx`, where `EmailInvoicePreviewDialog` is mounted outside transient UI.
+## Root Cause
+The issue is a **callback ordering race condition**:
 
-Implementation plan (frontend)
+1. In `InvoiceBasicActions.tsx`, the handler does:
+   ```javascript
+   const handleEmailInvoice = () => {
+     onCloseDropdown();  // <-- This triggers dropdown unmount
+     onEmailInvoice(invoice);  // <-- This may never execute
+   };
+   ```
 
-1) Refactor ownership of the Email Invoice workflow to a stable parent
-- Target file: `src/components/invoices/table/InvoiceTableActions.tsx`
-- Add state in `InvoiceTableActions` for:
-  - `emailProgressOpen: boolean`
-  - `emailPreviewOpen: boolean`
-  - `preparedPdfBase64?: string`
-  - `selectedInvoiceForEmail?: Invoice` (or `Invoice | null`)
-- Render the dialogs at the bottom of `InvoiceTableActions` (sibling to the DropdownMenu, not inside it):
-  - `<EmailInvoiceProgressDialog open={emailProgressOpen} ... invoice={selectedInvoiceForEmail} ... />`
-  - `<EmailInvoicePreviewDialog open={emailPreviewOpen} selectedInvoice={selectedInvoiceForEmail} preparedPdfBase64={preparedPdfBase64} ... />`
-- Important: `EmailInvoiceProgressDialog` currently requires `invoice: Invoice` (non-null). We will either:
-  - Option A (preferred): Update `EmailInvoiceProgressDialog` prop type to accept `invoice: Invoice | null` and render nothing / no-op if null.
-  - Option B: Guard rendering: only render the dialog components when `selectedInvoiceForEmail` is non-null, and pass it as `invoice`.
+2. When `onCloseDropdown()` is called, it sets `dropdownOpen = false` in the parent component
+3. React's state update causes the `DropdownMenuContent` (and all children including `InvoiceBasicActions`) to begin unmounting
+4. The `onEmailInvoice(invoice)` call on the next line may not execute reliably because the component is being torn down
 
-2) Change `InvoiceBasicActions` to become a “pure actions list” (no dialogs)
-- Target file: `src/components/invoices/table/actions/InvoiceBasicActions.tsx`
-- Remove local state:
-  - `emailProgressOpen`, `emailPreviewOpen`, `preparedPdfBase64`
-- Remove rendering of `EmailInvoiceProgressDialog` and `EmailInvoicePreviewDialog` from this component entirely.
-- Replace `handleEmailInvoice` logic with a callback prop:
-  - Add prop: `onEmailInvoice: (invoice: Invoice) => void`
-  - On click: `onCloseDropdown(); onEmailInvoice(invoice);`
-- Keep other actions unchanged.
+This explains why:
+- No console logs appear (the parent callback is never invoked)
+- The dialog "flashes" (React briefly mounts it but the state is inconsistent)
 
-3) Wire the action callback from parent to child
-- Target file: `src/components/invoices/table/InvoiceTableActions.tsx`
-- When rendering `InvoiceBasicActions`, pass:
-  - `onEmailInvoice={(inv) => { ... }}`
-- In that handler:
-  - Close dropdown (you already do with `onCloseDropdown`, but ensure parent doesn’t reopen it)
-  - Set `selectedInvoiceForEmail = inv`
-  - Reset `preparedPdfBase64 = undefined`
-  - Ensure preview is closed: `setEmailPreviewOpen(false)`
-  - Open progress dialog on next tick (safe timing):
-    - `setTimeout(() => setEmailProgressOpen(true), 0)`
-  - This reuses your prior “defer open” trick, but now it will actually work because the dialog won’t be unmounted.
+## Solution
+Reverse the order of operations and use asynchronous execution to ensure the parent callback fires before the dropdown state changes affect the component tree.
 
-4) Keep the current “progress -> preview” transition, but move it to the parent
-- The parent should own the “PDF ready” transition because it owns dialog state now.
-- In `InvoiceTableActions` implement:
-  - `handlePdfReady(pdfBase64)`:
-    - `setPreparedPdfBase64(pdfBase64)`
-    - `setEmailProgressOpen(false)`
-    - `setTimeout(() => setEmailPreviewOpen(true), 100)`
-  - `handleEmailError(msg)`:
-    - `setEmailProgressOpen(false)`
-    - show toast error
-- Pass these handlers into `EmailInvoiceProgressDialog`.
+### Changes Required
 
-5) Make the progress dialog robust if it gets closed mid-flight
-- Target file: `src/components/invoices/dialogs/EmailInvoiceProgressDialog.tsx`
-- Add an “isMounted” guard so the async `startSync()` doesn’t try to set state after unmount (common in StrictMode and transient UI):
-  - Inside `useEffect`, track a `let cancelled = false;` and check before setting state / calling `onReady`.
-- This prevents weird “flash” side effects and silent React warnings; it doesn’t fix the flash by itself, but it makes the overall workflow stable.
+**File 1: `src/components/invoices/table/actions/InvoiceBasicActions.tsx`**
 
-6) Improve observability for the “network errors / elevated error rates” case (without overcomplicating)
-- When the edge function returns `200 OK` but includes `{ success: false, error: ... }`, we should surface that clearly in the progress dialog rather than only toasts.
-- Ensure `syncAndGetPDF` error messages are preserved and displayed in the dialog (`errorMessage` already exists).
-- Add a small “Copy error details” button in the error state (optional, but useful for your debugging).
-- This way, even if Lovable/Supabase/IO are having a bad day, the user sees a stable modal with a concrete error and retry controls.
+Change the `handleEmailInvoice` function to:
+1. Call `onEmailInvoice(invoice)` FIRST (notify parent before any state changes)
+2. Then call `onCloseDropdown()` to close the menu
 
-Backend / IO considerations (what we will verify, but not over-change)
-- Since you see `200 OK`, the immediate issue is UI lifecycle, not a failing HTTP request.
-- After the UI fix, we’ll re-check whether `sync-invoice-to-io` is sometimes returning `{ skipped: true }` (TEST_MODE) which triggers local PDF fallback, or returning `{ success: false }` with an error.
-- We will also verify CORS headers in `supabase/functions/_shared/cors.ts` are sufficient for any custom headers being sent, but given `200 OK`, this is likely not the blocker for the “flash” symptom.
+```javascript
+const handleEmailInvoice = () => {
+  // CRITICAL: Notify parent FIRST, before closing dropdown
+  // The parent will handle opening the dialog
+  onEmailInvoice(invoice);
+  // Close dropdown after parent has captured the invoice
+  onCloseDropdown();
+};
+```
 
-Validation / Testing checklist (end-to-end)
-1) From invoices table, click “…” → “Email Invoice”
-   - Expected: dropdown closes, progress dialog stays open.
-2) Confirm progress dialog advances through steps and does not disappear.
-3) Confirm:
-   - Success path: progress closes → preview dialog opens with editable content and PDF attachment available.
-   - Error path: progress dialog stays open and shows error with Retry/Cancel; does not vanish.
-4) Try on:
-   - Desktop (mouse)
-   - Mobile/touch (Radix “interact outside” behavior can differ)
-5) Confirm no new console warnings about state updates on unmounted components.
+**File 2: `src/components/invoices/table/InvoiceTableActions.tsx`**
 
-Files expected to change
-- `src/components/invoices/table/InvoiceTableActions.tsx` (new state + render dialogs + pass callback)
-- `src/components/invoices/table/actions/InvoiceBasicActions.tsx` (remove dialog rendering, add `onEmailInvoice` prop)
-- `src/components/invoices/dialogs/EmailInvoiceProgressDialog.tsx` (optional but recommended: mount guards / cancellation)
-- Potentially update any types if needed (minimal changes).
+Update `handleEmailInvoice` to be more defensive:
+1. Remove the `setDropdownOpen(false)` call (it's redundant since child already calls `onCloseDropdown`)
+2. Add a synchronous state capture before any async operations
+3. Use `requestAnimationFrame` instead of `setTimeout(0)` for more reliable timing
 
-Why this “different angle” will work
-- It stops fighting Radix outside-click timing and instead fixes the actual cause: component unmounting.
-- Once dialogs live outside the dropdown, they cannot be destroyed by dropdown close, so “flash then nothing” will become either a stable progress UI or a stable error UI.
+```javascript
+const handleEmailInvoice = (inv: Invoice) => {
+  console.log('[InvoiceTableActions] Email Invoice clicked for:', inv.invoice_number);
+  
+  // Capture state synchronously
+  setSelectedInvoiceForEmail(inv);
+  setPreparedPdfBase64(undefined);
+  setEmailPreviewOpen(false);
+  
+  // Use requestAnimationFrame for reliable next-frame execution
+  requestAnimationFrame(() => {
+    console.log('[InvoiceTableActions] Opening progress dialog');
+    setEmailProgressOpen(true);
+  });
+};
+```
+
+**File 3: `src/components/invoices/dialogs/EmailInvoiceProgressDialog.tsx`**
+
+Add unconditional `onPointerDownOutside` and `onInteractOutside` prevention:
+- Currently these only prevent outside clicks when `status === "loading"`
+- But if the dialog opens and immediately gets an outside click event from the dropdown close, it closes
+- Change to ALWAYS prevent outside clicks (use explicit Cancel button instead)
+
+```javascript
+onPointerDownOutside={(e) => {
+  // Always prevent outside clicks - user must use Cancel button
+  e.preventDefault();
+}}
+onInteractOutside={(e) => {
+  // Always prevent - this stops the dropdown close event from closing the dialog
+  e.preventDefault();
+}}
+```
+
+## Why This Will Work
+
+1. **Callback order fix**: By calling `onEmailInvoice(invoice)` before `onCloseDropdown()`, the parent captures the invoice and sets state before any unmounting begins
+
+2. **requestAnimationFrame**: More reliable than `setTimeout(0)` for ensuring the dialog opens after the current render cycle completes
+
+3. **Unconditional outside-click prevention**: Stops any lingering events from the dropdown close from being interpreted as "click outside dialog"
+
+4. **State synchronization**: Setting `selectedInvoiceForEmail` synchronously ensures the conditional render `{selectedInvoiceForEmail && (...)}` is satisfied before attempting to open the dialog
+
+## Technical Details
+
+### Before (broken flow)
+```text
+Click "Email Invoice"
+  -> onCloseDropdown() sets dropdownOpen=false
+  -> React begins unmounting DropdownMenuContent
+  -> onEmailInvoice(invoice) may or may not execute
+  -> If it does, setTimeout fires but component tree is unstable
+  -> Dialog flashes and disappears
+```
+
+### After (fixed flow)
+```text
+Click "Email Invoice"
+  -> onEmailInvoice(invoice) called FIRST
+  -> Parent sets selectedInvoiceForEmail synchronously
+  -> onCloseDropdown() sets dropdownOpen=false
+  -> React unmounts dropdown (doesn't affect parent state)
+  -> requestAnimationFrame fires
+  -> setEmailProgressOpen(true) opens dialog stably
+  -> Dialog stays open
+```
+
+## Files to Modify
+1. `src/components/invoices/table/actions/InvoiceBasicActions.tsx` - Reorder callback execution
+2. `src/components/invoices/table/InvoiceTableActions.tsx` - Use requestAnimationFrame, remove redundant setDropdownOpen
+3. `src/components/invoices/dialogs/EmailInvoiceProgressDialog.tsx` - Unconditional outside-click prevention
+
+## Testing Checklist
+1. Click dropdown menu "..." on any invoice
+2. Click "Email Invoice"
+3. Verify console shows `[InvoiceTableActions] Email Invoice clicked for: ...`
+4. Verify progress dialog opens and stays visible
+5. Verify progress advances through steps
+6. Verify success leads to email preview dialog
+7. Verify error shows error state with Retry button
+8. Test on both desktop and mobile
