@@ -1,129 +1,102 @@
 
-# Fix: Duplicate Invoice Creation in InvoicesOnline
+# Fix: Send Payment Receipt Should Use IO Payment PDF
 
-## Problem Summary
-
-When you email an invoice that was already synced to IO, the system creates a **duplicate invoice** in InvoicesOnline:
-- Invoice #236 was already synced to IO
-- You clicked "Email Invoice" which correctly fetched PDF from #236
-- After sending, the system called `markAsSent()` which triggered **another** IO sync
-- This created a new invoice #237 in IO (duplicate!)
+## Problem
+When you manually click "Send Payment Receipt" from the invoice actions menu, the email doesn't include the official InvoicesOnline payment receipt PDF. However, when you "Mark as Paid", the automatic email correctly includes the IO PDF.
 
 ## Root Cause
-
-Two places in the code trigger IO sync without checking if the invoice is already synced:
-
-### 1. `useMarkInvoiceAsSent.ts` (line 61)
+In `InvoiceBasicActions.tsx`, the `handleSendPaymentReceipt` function calls:
 ```javascript
-// Trigger IO sync in background (don't await - fire and forget)
-syncInvoiceToIO(updatedInvoice.id, 'invoice').catch(err => {
-  console.error('[IO Sync] Background sync error:', err);
-});
+const receiptsData = await generatePaymentReceiptEmails(invoice.id);
 ```
-This runs **unconditionally** after marking an invoice as sent, even if it was already synced to IO.
 
-### 2. Edge Function `sync-invoice-to-io/index.ts` (line 719-720)
+But `generatePaymentReceiptEmails` accepts an optional second parameter for the payment PDF:
 ```javascript
-if (action === "invoice") {
-  const result = await createIOInvoice(credentials, ioClientId, invoiceData);
+export async function generatePaymentReceiptEmails(
+  invoiceId: string,
+  paymentPdfBase64?: string  // <-- This is never passed from manual send!
+)
 ```
-This creates a new invoice without checking if `io_document_id` already exists.
+
+The "Mark as Paid" flow correctly fetches and passes the IO PDF, but the manual "Send Payment Receipt" action doesn't.
 
 ## Solution
+Update `handleSendPaymentReceipt` in `InvoiceBasicActions.tsx` to:
 
-Fix both the frontend hook AND the edge function to prevent duplicate syncs:
+1. Check if IO offline mode is enabled
+2. If online, fetch the payment PDF from IO using `fetchIOPaymentPDF()`
+3. Pass the PDF to `generatePaymentReceiptEmails()`
 
-### Change 1: Update `useMarkInvoiceAsSent.ts`
-
-Only trigger IO sync if the invoice is NOT already synced (no `io_document_id`):
+### Changes to `InvoiceBasicActions.tsx`
 
 ```javascript
-onSuccess: (updatedInvoice) => {
-  // Invalidate queries...
+import { fetchIOPaymentPDF, getIOOfflineModeFromDB } from "@/hooks/invoices/useIOSync";
+
+const handleSendPaymentReceipt = async () => {
+  onCloseDropdown();
+  setIsSendingReceipt(true);
   
-  // Only trigger IO sync if not already synced
-  // Invoice data from the mutation result may not include io_document_id
-  // so we need to check the original invoice or fetch fresh data
-  supabase
-    .from('invoices')
-    .select('io_document_id')
-    .eq('id', updatedInvoice.id)
-    .single()
-    .then(({ data }) => {
-      if (!data?.io_document_id) {
-        syncInvoiceToIO(updatedInvoice.id, 'invoice').catch(err => {
-          console.error('[IO Sync] Background sync error:', err);
-        });
+  try {
+    toast.info("Preparing payment receipt...");
+    
+    let paymentPdfBase64: string | undefined;
+    
+    // Check if IO offline mode is enabled
+    const isOfflineMode = await getIOOfflineModeFromDB();
+    
+    if (!isOfflineMode) {
+      // Fetch IO payment PDF
+      toast.info("Fetching receipt from InvoicesOnline...");
+      const pdfResult = await fetchIOPaymentPDF(invoice.id);
+      
+      if (pdfResult.success && pdfResult.pdfBase64) {
+        paymentPdfBase64 = pdfResult.pdfBase64;
+        console.log('[Send Receipt] IO payment PDF fetched successfully');
       } else {
-        console.log('[IO Sync] Invoice already synced, skipping re-sync');
+        console.warn('[Send Receipt] Could not fetch IO payment PDF:', pdfResult.error);
+        // Continue without PDF - the email template still works
       }
-    });
-  
-  onSuccess?.();
-  toast.success("Invoice marked as sent successfully.");
-}
-```
-
-### Change 2: Update Edge Function `sync-invoice-to-io/index.ts`
-
-Add an idempotency check at the start of the `invoice` action handler:
-
-```javascript
-// Handle invoice sync
-if (action === "invoice") {
-  // IDEMPOTENCY CHECK: If already synced, return existing data
-  if (invoice.io_document_id && invoice.io_invoice_url) {
-    console.log(`Invoice already synced to IO: ${invoice.io_document_id}`);
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        action: "invoice",
-        already_synced: true,
-        io_document_id: invoice.io_document_id,
-        io_invoice_number: invoice.io_invoice_number,
-        io_invoice_url: invoice.io_invoice_url,
-      }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    } else {
+      console.log('[Send Receipt] IO offline mode - skipping PDF fetch');
+    }
+    
+    toast.info("Generating payment receipt(s)...");
+    
+    // Pass the IO PDF to the email generator
+    const receiptsData = await generatePaymentReceiptEmails(invoice.id, paymentPdfBase64);
+    
+    // ... rest of existing code
   }
-  
-  const result = await createIOInvoice(credentials, ioClientId, invoiceData);
-  // ... rest of handler
-}
+};
 ```
 
-## About the Invoice Number Mismatch
+## Technical Details
 
-This is separate from the duplicate issue. The numbering systems work differently:
+### Current Flow (broken)
+```text
+Click "Send Payment Receipt"
+  -> generatePaymentReceiptEmails(invoiceId)  // No PDF passed
+  -> Email queued without IO PDF attachment
+```
 
-| System | Format | Example |
-|--------|--------|---------|
-| McKaynine | Branch + YYMM + Sequential | INV-McD-2502-0004 |
-| InvoicesOnline | Prefix + IO Sequential | McD-2502-237 |
-
-The IO sequential number (237, 238, etc.) is managed by IO's own counter, not by McKaynine. This means:
-- McKaynine might have invoice #4 for February (INV-McD-2502-0004)
-- IO might assign it #237 (McD-2502-237) based on IO's global counter
-
-This is expected behaviour unless you want IO to use McKaynine's exact numbering, which would require a different API approach (custom invoice number override). Let me know if you want me to investigate that as a follow-up.
+### Fixed Flow
+```text
+Click "Send Payment Receipt"
+  -> Check IO offline mode
+  -> If online: fetchIOPaymentPDF(invoiceId)
+  -> generatePaymentReceiptEmails(invoiceId, paymentPdfBase64)
+  -> Email queued WITH IO PDF attachment
+```
 
 ## Files to Modify
-
-1. **`src/hooks/invoices/status/useMarkInvoiceAsSent.ts`**
-   - Add check for existing `io_document_id` before triggering sync
-
-2. **`supabase/functions/sync-invoice-to-io/index.ts`**
-   - Add idempotency check at start of `invoice` action handler
-   - Return existing sync data if already synced
+1. `src/components/invoices/table/actions/InvoiceBasicActions.tsx`
+   - Import `fetchIOPaymentPDF` and `getIOOfflineModeFromDB` from useIOSync
+   - Update `handleSendPaymentReceipt` to fetch IO PDF before generating emails
 
 ## Testing Checklist
-
-1. Find an invoice that has never been synced to IO
-2. Email it → should sync to IO and create new IO invoice
-3. Email it again → should NOT create duplicate, should reuse existing IO invoice
-4. Check IO dashboard → no new duplicates created
-5. Mark a previously-synced invoice as "Sent" → should not create duplicate
-
-## Summary
-
-This is a straightforward idempotency fix - the system should check "is this already synced?" before creating a new invoice in IO. Both the frontend hook and the edge function need this guard to be bulletproof.
+1. Mark an invoice as paid (to ensure payment is synced to IO)
+2. Click the dropdown menu → "Send Payment Receipt"
+3. Check toast shows "Fetching receipt from InvoicesOnline..."
+4. Check the queued email in email_queue has an attachments entry
+5. When email is sent, verify the IO PDF is attached
+6. Test with IO offline mode enabled - should skip PDF fetch gracefully
