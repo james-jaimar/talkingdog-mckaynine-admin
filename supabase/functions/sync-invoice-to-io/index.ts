@@ -717,6 +717,22 @@ Deno.serve(async (req) => {
 
     // Handle invoice sync
     if (action === "invoice") {
+      // IDEMPOTENCY CHECK: If already synced, return existing data (prevents duplicates)
+      if (invoice.io_document_id && invoice.io_invoice_url) {
+        console.log(`[IO Sync] Invoice already synced to IO: ${invoice.io_document_id}, skipping re-sync`);
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            action: "invoice",
+            already_synced: true,
+            io_document_id: invoice.io_document_id,
+            io_invoice_number: invoice.io_invoice_number,
+            io_invoice_url: invoice.io_invoice_url,
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       const result = await createIOInvoice(credentials, ioClientId, invoiceData);
       
       if (result.success) {
