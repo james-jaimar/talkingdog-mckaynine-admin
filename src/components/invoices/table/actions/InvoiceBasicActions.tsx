@@ -7,22 +7,23 @@ import { supabase } from "@/integrations/supabase/client";
 import { generateClassConfirmationEmails } from "@/lib/email/generateClassConfirmation";
 import { generatePaymentReceiptEmails } from "@/lib/email/generatePaymentReceipt";
 import { toast } from "sonner";
-import { EmailInvoiceProgressDialog } from "@/components/invoices/dialogs/EmailInvoiceProgressDialog";
-import { EmailInvoicePreviewDialog } from "@/components/invoices/dialogs/EmailInvoicePreviewDialog";
 
 interface InvoiceBasicActionsProps {
   invoice: Invoice;
   isPending: boolean;
   onCloseDropdown: () => void;
+  onEmailInvoice: (invoice: Invoice) => void;
 }
 
-export function InvoiceBasicActions({ invoice, isPending, onCloseDropdown }: InvoiceBasicActionsProps) {
+export function InvoiceBasicActions({ 
+  invoice, 
+  isPending, 
+  onCloseDropdown,
+  onEmailInvoice 
+}: InvoiceBasicActionsProps) {
   const navigate = useNavigate();
   const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [isSendingReceipt, setIsSendingReceipt] = useState(false);
-  const [emailProgressOpen, setEmailProgressOpen] = useState(false);
-  const [emailPreviewOpen, setEmailPreviewOpen] = useState(false);
-  const [preparedPdfBase64, setPreparedPdfBase64] = useState<string | undefined>(undefined);
 
   const handleView = () => {
     onCloseDropdown();
@@ -32,7 +33,6 @@ export function InvoiceBasicActions({ invoice, isPending, onCloseDropdown }: Inv
 
   const handleEdit = () => {
     onCloseDropdown();
-    // Using the same URL structure as the view action for consistency
     navigate(`/invoices/${invoice.id}/edit`);
   };
 
@@ -138,30 +138,8 @@ export function InvoiceBasicActions({ invoice, isPending, onCloseDropdown }: Inv
 
   const handleEmailInvoice = () => {
     onCloseDropdown();
-    // Defer opening to the next tick so the DropdownMenu click doesn't
-    // immediately register as an outside click on the dialog (causing a flash).
-    setPreparedPdfBase64(undefined);
-    setEmailPreviewOpen(false);
-    setTimeout(() => {
-      setEmailProgressOpen(true);
-    }, 0);
-  };
-
-  const handlePdfReady = (pdfBase64: string | undefined) => {
-    console.log('[InvoiceActions] PDF ready, transitioning to preview dialog...');
-    console.log('[InvoiceActions] PDF size:', pdfBase64?.length || 0);
-    setPreparedPdfBase64(pdfBase64);
-    setEmailProgressOpen(false);
-    // Small delay to ensure state clears before opening new dialog
-    setTimeout(() => {
-      console.log('[InvoiceActions] Opening email preview dialog');
-      setEmailPreviewOpen(true);
-    }, 100);
-  };
-
-  const handleEmailError = (error: string) => {
-    setEmailProgressOpen(false);
-    toast.error(`Failed to prepare invoice: ${error}`);
+    // Delegate to parent - dialog will be rendered outside dropdown
+    onEmailInvoice(invoice);
   };
 
   return (
@@ -190,22 +168,6 @@ export function InvoiceBasicActions({ invoice, isPending, onCloseDropdown }: Inv
       >
         <Mail className="mr-2 h-4 w-4 text-purple-600" /> Email Invoice
       </DropdownMenuItem>
-
-      {/* Email Invoice Dialogs */}
-      <EmailInvoiceProgressDialog
-        open={emailProgressOpen}
-        onOpenChange={setEmailProgressOpen}
-        invoice={invoice}
-        onReady={handlePdfReady}
-        onError={handleEmailError}
-      />
-
-      <EmailInvoicePreviewDialog
-        open={emailPreviewOpen}
-        onOpenChange={setEmailPreviewOpen}
-        selectedInvoice={invoice}
-        preparedPdfBase64={preparedPdfBase64}
-      />
     </>
   );
 }

@@ -38,6 +38,7 @@ describe('InvoiceBasicActions', () => {
     invoice: mockInvoice,
     isPending: false,
     onCloseDropdown: jest.fn(),
+    onEmailInvoice: jest.fn(),
   };
 
   beforeEach(() => {
