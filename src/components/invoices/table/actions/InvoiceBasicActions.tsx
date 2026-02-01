@@ -137,9 +137,11 @@ export function InvoiceBasicActions({
   };
 
   const handleEmailInvoice = () => {
-    onCloseDropdown();
-    // Delegate to parent - dialog will be rendered outside dropdown
+    // CRITICAL: Notify parent FIRST, before closing dropdown
+    // This ensures parent captures invoice state before unmounting begins
     onEmailInvoice(invoice);
+    // Close dropdown after parent has captured the invoice
+    onCloseDropdown();
   };
 
   return (

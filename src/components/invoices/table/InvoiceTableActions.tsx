@@ -45,15 +45,18 @@ export function InvoiceTableActions({ invoice, onOpenTransferDialog }: InvoiceTa
   // Handler for when user clicks "Email Invoice" in the dropdown
   const handleEmailInvoice = (inv: Invoice) => {
     console.log('[InvoiceTableActions] Email Invoice clicked for:', inv.invoice_number);
-    setDropdownOpen(false);
+    
+    // Capture state synchronously FIRST - before any async operations
     setSelectedInvoiceForEmail(inv);
     setPreparedPdfBase64(undefined);
     setEmailPreviewOpen(false);
-    // Defer opening to next tick so dropdown close doesn't interfere
-    setTimeout(() => {
+    
+    // Use requestAnimationFrame for reliable next-frame execution
+    // This ensures dialog opens stably after React completes current render
+    requestAnimationFrame(() => {
       console.log('[InvoiceTableActions] Opening progress dialog');
       setEmailProgressOpen(true);
-    }, 0);
+    });
   };
 
   // Handler for when PDF is ready from the progress dialog

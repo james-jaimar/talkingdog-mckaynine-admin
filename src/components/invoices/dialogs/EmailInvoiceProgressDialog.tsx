@@ -154,11 +154,13 @@ export function EmailInvoiceProgressDialog({
       <DialogContent
         className="sm:max-w-md"
         onPointerDownOutside={(e) => {
-          // Prevent outside clicks from closing while loading
-          if (status === "loading") e.preventDefault();
+          // ALWAYS prevent outside clicks - user must use Cancel button
+          // This stops lingering events from dropdown close from closing dialog
+          e.preventDefault();
         }}
         onInteractOutside={(e) => {
-          if (status === "loading") e.preventDefault();
+          // ALWAYS prevent - this stops the dropdown close event from closing the dialog
+          e.preventDefault();
         }}
       >
         <DialogHeader>
