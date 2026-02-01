@@ -327,6 +327,79 @@ async function createIOPayment(
   return { success: false, error: `Unexpected response: ${JSON.stringify(result)}` };
 }
 
+// Create payout in IO to reverse a payment effect
+async function createIOPayout(
+  credentials: IOCredentials,
+  ioClientId: number,
+  invoice: InvoiceData
+): Promise<{ success: boolean; documentId?: string; payoutNumber?: string; url?: string; error?: string }> {
+  console.log(`Creating IO payout for client ${ioClientId}, reversing payment for ${invoice.invoice_number}`);
+
+  // Generate prefix from branch and invoice date
+  const prefix = getIOInvoicePrefix(invoice.branch_id, invoice.issued_date);
+  console.log(`Using IO payout prefix: ${prefix}`);
+  
+  // Format payout date (use payment_date if available, otherwise today)
+  const payoutDate = invoice.payment_date 
+    ? new Date(invoice.payment_date).toISOString().split("T")[0]
+    : new Date().toISOString().split("T")[0];
+
+  // Format items for IO API - include reference to original invoice in description
+  const data = invoice.items.map((item) => ({
+    "0": "", // prod_code
+    "1": item.quantity, // qty
+    "2": `Reversal for ${invoice.invoice_number}: ${item.description}`, // Clear reference to original invoice
+    "3": item.unit_price, // amount per unit
+    "4": "ZAR", // currency
+    "5": 0, // vat_applies (no VAT)
+    "6": 0, // vat_percentage
+    "7": 0, // amount_includes_vat
+  }));
+
+  const result = await callIOAPI("GenerateNewPayout.php", {
+    username: credentials.username,
+    password: credentials.password,
+    ClientID: ioClientId,
+    EmailToClient: false, // We handle emails ourselves
+    prepend_nr: prefix, // Add branch and date prefix
+    InvoiceDate: payoutDate, // Pass the payout date
+    OrderNr: invoice.io_invoice_number || "", // Reference to original IO invoice (max 10 chars)
+    AdditionalValue1: invoice.invoice_number, // McKaynine invoice number (max 32 chars)
+    data: data,
+  });
+
+  // Check for success response - IO returns an array with status and document info
+  if (Array.isArray(result) && result.length >= 2) {
+    const docInfo = result[1] as Record<string, unknown>;
+    if (docInfo.document_id || docInfo.invoice_nr) {
+      return {
+        success: true,
+        documentId: String(docInfo.document_id || ""),
+        payoutNumber: String(docInfo.invoice_nr || docInfo.document_nr || ""),
+        url: String(docInfo.url || ""),
+      };
+    }
+  }
+
+  // Also check for single object response as fallback
+  if (typeof result === "object" && result !== null && !Array.isArray(result)) {
+    const r = result as Record<string, unknown>;
+    if (r.document_id || r.invoice_nr) {
+      return {
+        success: true,
+        documentId: String(r.document_id || ""),
+        payoutNumber: String(r.invoice_nr || r.document_nr || ""),
+        url: String(r.url || ""),
+      };
+    }
+    if (r.error) {
+      return { success: false, error: String(r.error) };
+    }
+  }
+
+  return { success: false, error: `Unexpected response: ${JSON.stringify(result)}` };
+}
+
 // Create credit note in IO to reverse/void an invoice
 async function createIOCreditNote(
   credentials: IOCredentials,
@@ -895,8 +968,92 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Handle reverse_paid_invoice (payout + credit note for paid invoices)
+    if (action === "reverse_paid_invoice") {
+      // Check if invoice was synced first
+      if (!invoice.io_document_id) {
+        return new Response(
+          JSON.stringify({ error: "Invoice must be synced to IO before reversing" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Step 1: Create payout to reverse the payment effect
+      console.log("[Reverse] Step 1: Creating payout to reverse payment...");
+      const payoutResult = await createIOPayout(credentials, ioClientId, invoiceData);
+      
+      if (!payoutResult.success) {
+        await supabase
+          .from("invoices")
+          .update({
+            io_sync_status: "failed",
+            io_sync_error: `Payout failed: ${payoutResult.error}`,
+          })
+          .eq("id", invoice_id);
+
+        return new Response(
+          JSON.stringify({ error: `Payout failed: ${payoutResult.error}` }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      console.log(`[Reverse] Payout created: ${payoutResult.payoutNumber}`);
+
+      // Step 2: Create credit note to reverse the invoice
+      console.log("[Reverse] Step 2: Creating credit note to reverse invoice...");
+      const creditResult = await createIOCreditNote(credentials, ioClientId, invoiceData);
+      
+      if (!creditResult.success) {
+        // Payout succeeded but credit note failed - partial failure
+        await supabase
+          .from("invoices")
+          .update({
+            io_sync_status: "partial_reversal",
+            io_sync_error: `Payout created but credit note failed: ${creditResult.error}`,
+          })
+          .eq("id", invoice_id);
+
+        return new Response(
+          JSON.stringify({ 
+            error: `Credit note failed: ${creditResult.error}`,
+            payout_created: true,
+            io_payout_number: payoutResult.payoutNumber,
+          }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      console.log(`[Reverse] Credit note created: ${creditResult.creditNoteNumber}`);
+
+      // Both succeeded - update invoice record
+      await supabase
+        .from("invoices")
+        .update({
+          io_sync_status: "reversed",
+          io_sync_error: null,
+          io_synced_at: new Date().toISOString(),
+          io_credit_note_id: creditResult.documentId,
+          io_credit_note_number: creditResult.creditNoteNumber,
+          io_credit_note_url: creditResult.url,
+        })
+        .eq("id", invoice_id);
+
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          action: "reverse_paid_invoice",
+          io_payout_number: payoutResult.payoutNumber,
+          io_payout_url: payoutResult.url,
+          io_credit_note_id: creditResult.documentId,
+          io_credit_note_number: creditResult.creditNoteNumber,
+          io_credit_note_url: creditResult.url,
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     return new Response(
-      JSON.stringify({ error: "Invalid action. Use 'invoice', 'payment', 'credit_note', 'get_pdf', or 'get_payment_pdf'" }),
+      JSON.stringify({ error: "Invalid action. Use 'invoice', 'payment', 'credit_note', 'reverse_paid_invoice', 'get_pdf', or 'get_payment_pdf'" }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 

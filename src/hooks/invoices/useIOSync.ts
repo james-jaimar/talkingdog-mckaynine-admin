@@ -182,6 +182,68 @@ export async function issueCreditNote(invoiceId: string): Promise<{
 }
 
 /**
+ * Reverse a paid invoice in InvoicesOnline
+ * Creates both a Payout (to reverse the payment effect) and a Credit Note (to reverse the invoice)
+ * This brings the client's IO balance back to zero
+ */
+export async function reversePaidInvoice(invoiceId: string): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  console.log(`[IO Sync] Reversing paid invoice ${invoiceId} (payout + credit note)`);
+  
+  try {
+    const { data, error } = await supabase.functions.invoke('sync-invoice-to-io', {
+      body: {
+        invoice_id: invoiceId,
+        action: 'reverse_paid_invoice',
+      },
+    });
+
+    if (error) {
+      console.error('[IO Sync] Reverse paid invoice edge function error:', error);
+      return { success: false, error: error.message };
+    }
+
+    console.log('[IO Sync] Reverse paid invoice response:', data);
+
+    // Handle skipped (test mode or not synced to IO)
+    if (data?.skipped) {
+      console.log(`[IO Sync] Reverse skipped: ${data.reason}`);
+      return { success: true }; // Not synced to IO, nothing to reverse
+    }
+
+    // Handle success
+    if (data?.success) {
+      toast.success('Invoice reversed in InvoicesOnline', {
+        description: `Payout ${data.io_payout_number || ''} and Credit Note ${data.io_credit_note_number || ''} created`,
+      });
+      return { success: true };
+    }
+
+    // Handle partial failure (payout succeeded but credit note failed)
+    if (data?.payout_created) {
+      console.warn('[IO Sync] Partial reversal - payout created but credit note failed');
+      toast.warning('Partial reversal in IO', {
+        description: `Payout created but credit note failed: ${data.error}`,
+      });
+      return { success: false, error: data.error };
+    }
+
+    // Handle error in response
+    if (data?.error) {
+      console.error('[IO Sync] Reverse error in response:', data.error);
+      return { success: false, error: data.error };
+    }
+
+    return { success: false, error: 'Unknown error' };
+  } catch (err) {
+    console.error('[IO Sync] Reverse paid invoice unexpected error:', err);
+    return { success: false, error: String(err) };
+  }
+}
+
+/**
  * Fetch payment receipt PDF from IO
  * Returns base64-encoded PDF or error
  */
