@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { generateClassConfirmationEmails } from "@/lib/email/generateClassConfirmation";
 import { generatePaymentReceiptEmails } from "@/lib/email/generatePaymentReceipt";
+import { fetchIOPaymentPDF, getIOOfflineModeFromDB } from "@/hooks/invoices/useIOSync";
 import { toast } from "sonner";
 
 interface InvoiceBasicActionsProps {
@@ -91,9 +92,33 @@ export function InvoiceBasicActions({
     setIsSendingReceipt(true);
     
     try {
+      toast.info("Preparing payment receipt...");
+      
+      let paymentPdfBase64: string | undefined;
+      
+      // Check if IO offline mode is enabled
+      const isOfflineMode = await getIOOfflineModeFromDB();
+      
+      if (!isOfflineMode) {
+        // Fetch IO payment PDF
+        toast.info("Fetching receipt from InvoicesOnline...");
+        const pdfResult = await fetchIOPaymentPDF(invoice.id);
+        
+        if (pdfResult.success && pdfResult.pdfBase64) {
+          paymentPdfBase64 = pdfResult.pdfBase64;
+          console.log('[Send Receipt] IO payment PDF fetched successfully');
+        } else {
+          console.warn('[Send Receipt] Could not fetch IO payment PDF:', pdfResult.error);
+          // Continue without PDF - the email template still works
+        }
+      } else {
+        console.log('[Send Receipt] IO offline mode - skipping PDF fetch');
+      }
+      
       toast.info("Generating payment receipt(s)...");
       
-      const receiptsData = await generatePaymentReceiptEmails(invoice.id);
+      // Pass the IO PDF to the email generator
+      const receiptsData = await generatePaymentReceiptEmails(invoice.id, paymentPdfBase64);
       
       if (receiptsData.length === 0) {
         toast.warning("Could not generate payment receipt for this invoice");
