@@ -1,66 +1,115 @@
 
-# Simplify: Skip IO Reversal for Paid Invoices
+# Fix Payment Receipt PDF Attachment
 
-## The Problem
-InvoicesOnline's accounting is broken - the Payout + Credit Note reversal doesn't actually zero the balance. Since IO is only used for generating PDFs (not accounting), we shouldn't waste time trying to fix their balance.
+## Problem Identified
+The InvoicesOnline `GenerateNewPayment.php` API does not return a URL to download the payment receipt PDF. Our code currently stores an empty string for `io_payment_url`, which causes the PDF fetch to fail silently.
 
-## New Approach
+**Evidence from logs:**
+- Payment API response: `{"type":"success","PaymentNR":251,"PaymentID":"2105611","TotalAmount":"1755.00"...}` - No URL returned
+- Invoice API response includes: `{"url":"https://www.invoicesonline.co.za/scripts/Download.php?type=invoice&id=2652779&bid=8978&did=239"...}` - URL is returned
 
-**When deleting an invoice synced to IO:**
+## Solution
+Construct the payment PDF URL ourselves using the returned `PaymentID` and `PaymentNR`, following the same pattern as invoice URLs.
 
-| Invoice Status | Action in IO |
-|---------------|--------------|
-| **Unpaid** | Issue Credit Note (to cancel the invoice in IO) |
-| **Paid** | **Do nothing** - just delete locally |
+**Invoice URL pattern:**
+`https://www.invoicesonline.co.za/scripts/Download.php?type=invoice&id={document_id}&bid={business_id}&did={invoice_nr}`
 
-## Why This Makes Sense
-- McKaynine is the source of truth for accounting, not IO
-- IO is only used to generate official invoice PDFs and payment receipts
-- IO's reversal mechanism is broken anyway
-- Less API calls = faster deletions
+**Payment URL pattern (to construct):**
+`https://www.invoicesonline.co.za/scripts/Download.php?type=payment&id={PaymentID}&bid={business_id}&did={PaymentNR}`
 
-## Changes Required
+## Implementation Changes
 
-### 1. `src/hooks/invoices/mutations/useDeleteInvoice.ts`
-Remove the `reversePaidInvoice()` call for paid invoices:
+### 1. Edge Function: Update `createIOPayment()` to construct the URL
 
-```typescript
-if (invoice?.io_document_id) {
-  const isPaid = invoice.status === 'paid' || invoice.payment_received === true;
-  
-  if (isPaid) {
-    // SIMPLIFIED: Don't try to reverse in IO - their accounting is broken
-    // Just log and continue with local deletion
-    console.log('[Delete] Paid invoice synced to IO - skipping IO reversal (not used for accounting)');
-    ioActionTaken = 'skipped';
-  } else {
-    // Not paid - issue credit note to cancel the invoice in IO
-    console.log('[Delete] Invoice synced to IO (not paid), issuing credit note...');
-    const creditResult = await issueCreditNote(invoiceId);
-    // ... existing credit note logic
+In `supabase/functions/sync-invoice-to-io/index.ts`:
+
+```javascript
+async function createIOPayment(
+  credentials: IOCredentials,
+  ioClientId: number,
+  invoice: InvoiceData,
+  businessId: string  // Add this parameter
+): Promise<{ success: boolean; paymentId?: string; paymentNr?: number; url?: string; error?: string }> {
+  // ... existing code ...
+
+  if (Array.isArray(result) && result.length > 0) {
+    const paymentInfo = result[0] as Record<string, unknown>;
+    if (paymentInfo.type === "success" || paymentInfo.PaymentID) {
+      const paymentId = String(paymentInfo.PaymentID || "");
+      const paymentNr = Number(paymentInfo.PaymentNR || 0);
+      
+      // Construct the payment receipt PDF URL
+      const paymentUrl = paymentId && paymentNr && businessId
+        ? `https://www.invoicesonline.co.za/scripts/Download.php?type=payment&id=${paymentId}&bid=${businessId}&did=${paymentNr}`
+        : "";
+      
+      console.log(`Payment recorded successfully: PaymentID=${paymentId}, URL=${paymentUrl}`);
+      return {
+        success: true,
+        paymentId,
+        paymentNr,
+        url: paymentUrl,
+      };
+    }
   }
+  // ...
 }
 ```
 
-### 2. Update Toast Messages
-- For paid invoices: "Invoice deleted successfully" (no IO mention)
-- For unpaid invoices: "Invoice deleted successfully" + "Credit note issued in InvoicesOnline"
+### 2. Edge Function: Pass business ID to createIOPayment
+
+The business ID is needed to construct the URL. We can get it from the IO credentials lookup or store it as a constant.
+
+```javascript
+// Business IDs for each branch (from IO account settings)
+const IO_BUSINESS_ID_DELTA = "8978";  // From the log: bid=8978
+const IO_BUSINESS_ID_RANDBURG = "XXXX"; // Need to determine
+
+function getIOBusinessId(branchId: string | null): string {
+  if (branchId === DELTA_BRANCH_ID) return IO_BUSINESS_ID_DELTA;
+  if (branchId === RANDBURG_BRANCH_ID) return IO_BUSINESS_ID_RANDBURG;
+  return "";
+}
+
+// In the payment action handler:
+const businessId = getIOBusinessId(invoiceData.branch_id);
+const result = await createIOPayment(credentials, ioClientId, invoiceData, businessId);
+```
+
+### 3. Store additional payment fields in the database
+
+Update the payment action response to store the payment ID for reference:
+
+```javascript
+if (result.success) {
+  await supabase
+    .from("invoices")
+    .update({
+      io_sync_status: "payment_synced",
+      io_sync_error: null,
+      io_synced_at: new Date().toISOString(),
+      io_payment_url: result.url,  // Now contains the constructed URL
+      io_payment_id: result.paymentId,  // Store for reference
+    })
+    .eq("id", invoice_id);
+}
+```
 
 ## Files to Modify
 
-| File | Change |
-|------|--------|
-| `src/hooks/invoices/mutations/useDeleteInvoice.ts` | Remove `reversePaidInvoice()` call, skip IO for paid invoices |
+| File | Changes |
+|------|---------|
+| `supabase/functions/sync-invoice-to-io/index.ts` | Update `createIOPayment()` to construct PDF URL, add business ID constants |
 
-## Optional Cleanup (Can Do Later)
-- Remove `reversePaidInvoice()` from `useIOSync.ts`
-- Remove `reverse_paid_invoice` action from edge function
-- Remove `createIOPayout()` from edge function
-
-These can stay for now since they're not hurting anything - we just won't call them.
+## Database Changes (Optional)
+Add `io_payment_id` column to invoices table to store the IO payment ID for reference.
 
 ## Testing
-1. Find a paid invoice that's synced to IO
-2. Delete it
-3. Should delete immediately without any IO API calls
-4. Check IO - nothing should be created (no payout, no credit note)
+1. Mark a test invoice as paid (e.g., for jimmybhawkins@gmail.com who is in the test list)
+2. Check that `io_payment_url` is populated with the constructed URL
+3. Verify the payment receipt email has the PDF attachment
+4. Confirm the PDF downloads correctly from the constructed URL
+
+## Notes
+- We need to determine the Randburg branch business ID from IO (Delta is 8978 based on logs)
+- If the URL pattern doesn't work for payments, we can fall back to using the `GetClientHistory.php` API to fetch the payment links
