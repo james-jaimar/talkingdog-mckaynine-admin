@@ -103,8 +103,7 @@ export const checkExistingTermEnrollment = async (
     }
 
     const { data: existingBookings, error } = await query
-      .order('created_at', { ascending: true })
-      .limit(1);
+      .order('created_at', { ascending: false }); // Newest first, no limit
 
     if (error) {
       console.error("MULTI-DOG-CHECK: Error checking existing enrollments:", error);
@@ -122,7 +121,30 @@ export const checkExistingTermEnrollment = async (
       };
     }
 
-    const existingBooking = existingBookings[0];
+    // Filter to only bookings that have a draft or sent invoice
+    // Paid invoices should be ignored for household discount purposes
+    const bookingWithDraftInvoice = existingBookings.find(booking => {
+      const invoiceItems = booking.invoice_items as Array<{ 
+        invoice_id: string; 
+        invoices: { id: string; invoice_number: string; status: string } 
+      }>;
+      
+      return invoiceItems?.some(item => 
+        item.invoices && 
+        (item.invoices.status === 'draft' || item.invoices.status === 'sent')
+      );
+    });
+
+    // If no booking has a draft/sent invoice, no discount applies
+    if (!bookingWithDraftInvoice) {
+      console.log("MULTI-DOG-CHECK: Existing bookings found but all have paid/cancelled invoices - no discount applicable");
+      return {
+        hasExistingEnrollment: false,
+        totalDogsInTerm: 0,
+      };
+    }
+
+    const existingBooking = bookingWithDraftInvoice;
     const dogs = existingBooking.dogs as { id: string; name: string };
     const clients = existingBooking.clients as { id: string; first_name: string; last_name: string };
     const classSchedules = existingBooking.class_schedules as { 
