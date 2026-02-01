@@ -8,7 +8,7 @@ const corsHeaders = {
 };
 
 // Test mode configuration - only sync for these emails
-const TEST_MODE = true;
+const TEST_MODE = false;
 const TEST_CLIENT_EMAILS = ["jimmybhawkins@gmail.com"];
 
 // Branch IDs for mapping to IO credentials
