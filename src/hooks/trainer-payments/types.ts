@@ -81,8 +81,10 @@ export interface InvoiceItem {
     monetary_discount?: number;
     discount_type?: string;
     discount_amount?: number;
+    // Invoice's own branch_id - used for cross-branch enrollment support
+    branch_id?: string;
     client?: {
-      branch_id: string; // Add branch_id field
+      branch_id: string;
     };
   };
   // Add bookings property to match what's being used in code

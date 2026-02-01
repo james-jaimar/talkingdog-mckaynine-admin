@@ -132,9 +132,11 @@ export async function fetchAllBookings(scheduleIds: string[], branchId?: string)
     throw error;
   }
 
-  // Filter by branch and add client property for compatibility
+  // Add client property for compatibility
+  // NOTE: Branch filtering is intentionally removed here - bookings should include
+  // cross-branch enrollments (e.g., Randburg client in Delta class). The branch
+  // filtering happens at the schedule level in useTrainerPaymentData.ts
   const bookingsWithClientData = bookings
-    .filter(booking => !branchId || booking.clients?.branch_id === branchId)
     .map(booking => ({
       ...booking,
       client: booking.clients,
@@ -169,6 +171,7 @@ export async function fetchAllInvoiceItems(bookingIds: string[], branchId?: stri
         monetary_discount,
         discount_type,
         discount_amount,
+        branch_id,
         client:client_id (
           branch_id
         )
@@ -181,9 +184,10 @@ export async function fetchAllInvoiceItems(bookingIds: string[], branchId?: stri
     throw error;
   }
 
-  // Filter by branch_id if specified
+  // Filter by invoice's branch_id (not client's branch) to support cross-branch enrollments
+  // e.g., a Randburg client enrolled in a Delta class should have invoice.branch_id = Delta
   const filteredItems = branchId 
-    ? invoiceItems.filter(item => item.invoices?.client?.branch_id === branchId)
+    ? invoiceItems.filter(item => item.invoices?.branch_id === branchId)
     : invoiceItems;
 
   const completeInvoiceItems = filteredItems.map(item => ({
