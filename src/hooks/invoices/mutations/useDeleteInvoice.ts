@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { handleMutationError } from "./useMutationUtils";
 import { useNavigate } from "react-router-dom";
-import { issueCreditNote, reversePaidInvoice } from "../useIOSync";
+import { issueCreditNote } from "../useIOSync";
 
 /**
  * Hook to delete an invoice
@@ -25,28 +25,18 @@ export function useDeleteInvoice() {
         .eq('id', invoiceId)
         .single();
 
-      // Step 2: If synced to IO, handle reversal based on payment status
+      // Step 2: If synced to IO, handle based on payment status
       if (invoice?.io_document_id) {
-        // Check if invoice was PAID - needs both payout and credit note
         const isPaid = invoice.status === 'paid' || invoice.payment_received === true;
         
         if (isPaid) {
-          console.log('[Delete] Invoice was paid and synced to IO, issuing payout + credit note...');
-          const result = await reversePaidInvoice(invoiceId);
-
-          if (!result.success) {
-            console.warn('[Delete] Reverse failed:', result.error);
-            toast.warning('IO reversal could not be completed', {
-              description: result.error,
-            });
-            ioActionTaken = 'failed';
-          } else {
-            console.log('[Delete] Payout + Credit Note issued successfully');
-            ioActionTaken = 'reversed';
-          }
+          // SIMPLIFIED: Don't try to reverse in IO - their accounting is broken
+          // IO is only used for PDF generation, not accounting
+          console.log('[Delete] Paid invoice synced to IO - skipping IO reversal (not used for accounting)');
+          ioActionTaken = 'skipped';
         } else {
-          // Not paid - just issue credit note
-          console.log('[Delete] Invoice synced to IO (not paid), issuing credit note only...');
+          // Not paid - issue credit note to cancel the invoice in IO
+          console.log('[Delete] Invoice synced to IO (not paid), issuing credit note...');
           const creditResult = await issueCreditNote(invoiceId);
 
           if (!creditResult.success) {
@@ -73,15 +63,13 @@ export function useDeleteInvoice() {
       return { id: invoiceId, ioActionTaken };
     },
     onSuccess: (result, invoiceId) => {
-      // Properly invalidate all related queries to ensure UI is updated correctly
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       queryClient.invalidateQueries({ queryKey: ['invoice', invoiceId] });
       
-      const description = result.ioActionTaken === 'reversed' 
-        ? "Payout + Credit Note issued in InvoicesOnline" 
-        : result.ioActionTaken === 'credit_note'
-          ? "Credit note issued in InvoicesOnline"
-          : undefined;
+      // Only mention IO action for credit notes (unpaid invoices)
+      const description = result.ioActionTaken === 'credit_note'
+        ? "Credit note issued in InvoicesOnline"
+        : undefined;
       
       toast.success("Invoice deleted successfully", { description });
       
