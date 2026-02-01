@@ -1,99 +1,91 @@
 
 
-# Fix: Household Discount Should Only Consider Draft Invoices
+# Fix: Duplicate Invoice Number in Household Rebalance
 
 ## The Problem
 
-When checking for existing household enrollments, the current code:
-1. Finds ANY booking from household members in the term
-2. Looks for a "non-cancelled" invoice (which includes `paid` invoices)
-3. Returns that booking as an existing enrollment
+The `rebalanceHouseholdInvoices.ts` function uses an incorrect method to generate invoice numbers. It counts the number of invoices matching the prefix instead of finding the highest existing number.
 
-This causes the household discount to fail because:
-- It finds an OLD paid invoice from a previous enrollment
-- The code in `addHandlerToClass.ts` correctly skips rebalancing for paid invoices
-- But it then also skips applying ANY discount - creating a full-price invoice
-
-## The Solution (Simplified)
-
-**Only consider bookings with draft or sent invoices.** Paid invoices should be completely ignored for household discount purposes.
-
-If no household member has a draft/sent invoice in the current term, treat it as if there's no existing enrollment.
-
----
-
-## File: `checkExistingTermEnrollment.ts`
-
-### Change 1: Remove LIMIT 1, fetch all matching bookings
+### Current Code (Lines 196-202)
 
 ```typescript
-// Before (lines 105-107):
-const { data: existingBookings, error } = await query
-  .order('created_at', { ascending: true })
+const { count } = await supabase
+  .from('invoices')
+  .select('*', { count: 'exact', head: true })
+  .like('invoice_number', `${invoicePrefix}%`);
+
+const nextNumber = ((count || 0) + 1).toString().padStart(4, '0');
+```
+
+### Why This Fails
+
+Looking at your database:
+
+| Invoice Number | Status | Notes |
+|----------------|--------|-------|
+| 0015 | sent | |
+| 0016 | sent | Suzette Nel |
+| 0017 | sent | |
+| 0018 | draft | Dean Nolte |
+| **0016** | **draft** | **DUPLICATE - Duncan Miller** |
+
+When Duncan's invoice was created:
+1. The system counted 16 invoices with prefix `INV-McD-2602-`
+2. It calculated: 16 + 1 = 17, but stored as `0016` (off by one in the logic)
+3. Actually, the count was 15 at that moment, so it generated 0016 which already existed
+
+There are also gaps in the sequence (0004 missing, 0009 missing, 0013 missing) which confirms the counting approach doesn't work.
+
+## The Fix
+
+Use the same approach as `useInvoiceUtilities.ts` - find the highest invoice number and increment it.
+
+### File: `src/components/classes/handlers/hooks/add-handler-modal/rebalanceHouseholdInvoices.ts`
+
+**Replace lines 186-202 with:**
+
+```typescript
+// 6. Create new invoice for the second handler
+// Generate invoice number using the same approach as useInvoiceUtilities
+const now = new Date();
+const yearMonth = `${now.getFullYear().toString().slice(-2)}${(now.getMonth() + 1).toString().padStart(2, '0')}`;
+
+// Determine branch prefix
+const branchPrefix = newClassBranchId === '6351a9e8-77db-403b-ab1f-cd47e393a006' ? 'McD' : 'McR';
+const invoicePrefix = `INV-${branchPrefix}-${yearMonth}-`;
+
+// Get the LAST invoice number for this prefix (not count!)
+const { data: lastInvoice } = await supabase
+  .from('invoices')
+  .select('invoice_number')
+  .ilike('invoice_number', `${invoicePrefix}%`)
+  .order('invoice_number', { ascending: false })
   .limit(1);
 
-// After - fetch all, no limit:
-const { data: existingBookings, error } = await query
-  .order('created_at', { ascending: false }); // Newest first
-```
-
-### Change 2: Only consider bookings with draft/sent invoices
-
-After fetching all bookings, find one that has a **draft** or **sent** invoice:
-
-```typescript
-// After line 123 (if no bookings), add filtering logic:
-
-// Filter to only bookings that have a draft or sent invoice
-// Paid invoices should be ignored for household discount purposes
-const bookingWithDraftInvoice = existingBookings?.find(booking => {
-  const invoiceItems = booking.invoice_items as Array<{ 
-    invoice_id: string; 
-    invoices: { id: string; invoice_number: string; status: string } 
-  }>;
-  
-  return invoiceItems?.some(item => 
-    item.invoices && 
-    (item.invoices.status === 'draft' || item.invoices.status === 'sent')
-  );
-});
-
-// If no booking has a draft/sent invoice, no discount applies
-if (!bookingWithDraftInvoice) {
-  console.log("MULTI-DOG-CHECK: Existing bookings found but all have paid invoices - no discount applicable");
-  return {
-    hasExistingEnrollment: false,
-    totalDogsInTerm: 0,
-  };
+let nextNumber = 1;
+if (lastInvoice && lastInvoice.length > 0) {
+  const lastSequence = lastInvoice[0].invoice_number.split('-').pop();
+  if (lastSequence) {
+    nextNumber = parseInt(lastSequence, 10) + 1;
+  }
 }
 
-// Use the booking with draft/sent invoice
-const existingBooking = bookingWithDraftInvoice;
+const newInvoiceNumber = `${invoicePrefix}${nextNumber.toString().padStart(4, '0')}`;
 ```
 
----
+## Key Changes
 
-## Why This Works
-
-| Scenario | Behavior |
-|----------|----------|
-| Handler A has PAID invoice from Term 1 | Ignored - no household discount triggered |
-| Handler A has DRAFT invoice from current term | Household discount triggered, 50/50 split applied |
-| Handler A has SENT invoice from current term | Household discount triggered, 50/50 split applied |
-| No household enrollments at all | No discount - standard invoice created |
-
----
+| Before | After |
+|--------|-------|
+| Uses `count` of matching invoices | Finds highest invoice number |
+| Prone to duplicates when gaps exist | Increments from actual highest number |
+| `order('created_at')` irrelevant | `order('invoice_number', desc)` finds latest |
 
 ## Expected Result
 
-**Your test case (Dean & Duncan):**
+After the fix, the next invoice created with prefix `INV-McD-2602-` will correctly be `INV-McD-2602-0019` (since 0018 is currently the highest).
 
-When Duncan enrolls in Yoga after Dean enrolled in Puppy Class:
-1. System checks for household enrollments
-2. Finds Dean's bookings, but the old ones have PAID invoices
-3. Only considers Dean's DRAFT invoice from Puppy Class enrollment
-4. If Dean's Puppy Class invoice is still DRAFT → 50/50 rebalancing applies
-5. If Dean's Puppy Class invoice is already PAID → No discount (treats as no eligible enrollment)
+## Manual Data Fix Needed
 
-This ensures the system only rebalances invoices that can actually be modified.
+You should manually update Duncan Miller's duplicate invoice number `INV-McD-2602-0016` to `INV-McD-2602-0019` or delete and recreate it to resolve the existing duplicate.
 
