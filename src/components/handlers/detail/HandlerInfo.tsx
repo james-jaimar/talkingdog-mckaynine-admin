@@ -11,6 +11,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { ClickableConsentBadge } from "../status/ClickableConsentBadge";
 import { MultiBranchSelector } from "./MultiBranchSelector";
+import { HouseholdSelector } from "./HouseholdSelector";
 
 type ConsentStatus = 'yes' | 'no' | 'not_marked' | 'unsure';
 
@@ -139,6 +140,9 @@ export function HandlerInfo({ handler }: HandlerInfoProps) {
 
         {/* Multi-Branch Selector */}
         <MultiBranchSelector handlerId={handler.id} />
+
+        {/* Household Selector */}
+        <HouseholdSelector handlerId={handler.id} />
 
 
         {/* Secondary Contact */}

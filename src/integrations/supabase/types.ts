@@ -1647,6 +1647,45 @@ export type Database = {
           },
         ]
       }
+      handler_households: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          handler_id: string
+          id: string
+          linked_handler_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          handler_id: string
+          id?: string
+          linked_handler_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          handler_id?: string
+          id?: string
+          linked_handler_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "handler_households_handler_id_fkey"
+            columns: ["handler_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "handler_households_linked_handler_id_fkey"
+            columns: ["linked_handler_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       handler_onboarding: {
         Row: {
           client_id: string | null
