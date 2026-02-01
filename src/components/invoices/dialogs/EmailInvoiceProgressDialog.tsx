@@ -107,7 +107,18 @@ export function EmailInvoiceProgressDialog({
 
   return (
     <Dialog open={open} onOpenChange={(open) => !open && handleCancel()}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent
+        className="sm:max-w-md"
+        onPointerDownOutside={(e) => {
+          // When opening from a dropdown menu, the triggering click can be
+          // interpreted as an outside interaction and immediately close the dialog.
+          // Prevent that while we're still loading.
+          if (status === "loading") e.preventDefault();
+        }}
+        onInteractOutside={(e) => {
+          if (status === "loading") e.preventDefault();
+        }}
+      >
         <DialogHeader>
           <DialogTitle>Preparing Invoice Email</DialogTitle>
         </DialogHeader>
