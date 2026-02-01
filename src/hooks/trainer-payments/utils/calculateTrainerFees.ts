@@ -53,8 +53,9 @@ export function calculateClassRevenue(
     // Check if this invoice item is for a booking in our list
     const matchesBooking = item.booking_id && bookingIds.includes(item.booking_id);
     
-    // Check if this invoice belongs to the correct branch
-    const invoiceBranchId = item.invoices?.client?.branch_id;
+    // Check if this invoice belongs to the correct branch (use invoice.branch_id, not client.branch_id)
+    // This supports cross-branch enrollments (e.g., Randburg client in Delta class)
+    const invoiceBranchId = item.invoices?.branch_id;
     const matchesBranch = !scheduleBranchId || !invoiceBranchId || scheduleBranchId === invoiceBranchId;
     
     return matchesBooking && matchesBranch;
