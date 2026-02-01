@@ -1,117 +1,99 @@
 
 
-# Investigation: Financial Report vs Trainer Statement Discrepancy
+# Fix: Household Discount Should Only Consider Draft Invoices
 
-## Summary of Findings
+## The Problem
 
-You've identified a real bug. The **Financial Report** and **Trainer Statement** are showing different numbers for the same class because they filter data differently:
+When checking for existing household enrollments, the current code:
+1. Finds ANY booking from household members in the term
+2. Looks for a "non-cancelled" invoice (which includes `paid` invoices)
+3. Returns that booking as an existing enrollment
 
-| Report | Handlers | Course Fees | Instructor/Trainer Fee |
-|--------|----------|-------------|------------------------|
-| Financial Report | 7 | R10,430 | R4,172 |
-| Trainer Statement | 6 | R8,940 | R3,576 |
-| **Missing** | 1 | R1,490 | R596 |
+This causes the household discount to fail because:
+- It finds an OLD paid invoice from a previous enrollment
+- The code in `addHandlerToClass.ts` correctly skips rebalancing for paid invoices
+- But it then also skips applying ANY discount - creating a full-price invoice
 
-## Root Cause
+## The Solution (Simplified)
 
-The missing handler is **Jane & Richard** (with dog Tally). They are registered in the **Randburg** branch but enrolled in a **Delta** class.
+**Only consider bookings with draft or sent invoices.** Paid invoices should be completely ignored for household discount purposes.
 
-### The Bug Location
+If no household member has a draft/sent invoice in the current term, treat it as if there's no existing enrollment.
 
-In `src/hooks/trainer-payments/queries/fetchTrainerData.ts`, two functions incorrectly filter by the **client's branch** instead of the **class's branch** or **invoice's branch**:
+---
 
-**1. `fetchAllBookings()` - Line 137:**
-```typescript
-// WRONG: Filters by client.branch_id
-.filter(booking => !branchId || booking.clients?.branch_id === branchId)
-```
+## File: `checkExistingTermEnrollment.ts`
 
-**2. `fetchAllInvoiceItems()` - Line 186:**
-```typescript
-// WRONG: Filters by client.branch_id via invoice
-? invoiceItems.filter(item => item.invoices?.client?.branch_id === branchId)
-```
-
-### Why This Matters
-
-- **Financial Report** correctly filters by `invoice.branch_id` (the invoice is assigned to Delta where the class is)
-- **Trainer Statement** incorrectly filters by `client.branch_id` (Jane & Richard are registered to Randburg)
-
-Since cross-branch bookings are allowed (and working correctly - the invoice IS assigned to the right branch), the trainer payment data should respect the invoice's branch, not the client's.
-
-## The Fix
-
-### File: `src/hooks/trainer-payments/queries/fetchTrainerData.ts`
-
-**Change 1: `fetchAllBookings()` function**
-
-The booking filter should check if the class's branch matches, not the client's branch. However, we don't have class info directly in this query. A better approach is to:
-1. Remove the branch filter from this function (let all bookings through)
-2. The filtering already happens in `useTrainerPaymentData.ts` where schedules are filtered by branch
-
-**Change 2: `fetchAllInvoiceItems()` function**
-
-Update to filter by `invoice.branch_id` directly instead of `invoice.client.branch_id`:
+### Change 1: Remove LIMIT 1, fetch all matching bookings
 
 ```typescript
-// Before (line 163-175):
-invoices:invoice_id (
-  ...
-  client:client_id (
-    branch_id
-  )
-)
+// Before (lines 105-107):
+const { data: existingBookings, error } = await query
+  .order('created_at', { ascending: true })
+  .limit(1);
 
-// After - add branch_id directly:
-invoices:invoice_id (
-  ...
-  branch_id,  // Add this field
-  client:client_id (
-    branch_id
-  )
-)
-
-// Before (line 185-187):
-const filteredItems = branchId 
-  ? invoiceItems.filter(item => item.invoices?.client?.branch_id === branchId)
-  : invoiceItems;
-
-// After:
-const filteredItems = branchId 
-  ? invoiceItems.filter(item => item.invoices?.branch_id === branchId)
-  : invoiceItems;
+// After - fetch all, no limit:
+const { data: existingBookings, error } = await query
+  .order('created_at', { ascending: false }); // Newest first
 ```
 
-### Additional Fix in `calculateTrainerFees.ts`
+### Change 2: Only consider bookings with draft/sent invoices
 
-Line 57 also uses the wrong branch:
+After fetching all bookings, find one that has a **draft** or **sent** invoice:
+
 ```typescript
-// Before:
-const invoiceBranchId = item.invoices?.client?.branch_id;
+// After line 123 (if no bookings), add filtering logic:
 
-// After:
-const invoiceBranchId = item.invoices?.branch_id;
+// Filter to only bookings that have a draft or sent invoice
+// Paid invoices should be ignored for household discount purposes
+const bookingWithDraftInvoice = existingBookings?.find(booking => {
+  const invoiceItems = booking.invoice_items as Array<{ 
+    invoice_id: string; 
+    invoices: { id: string; invoice_number: string; status: string } 
+  }>;
+  
+  return invoiceItems?.some(item => 
+    item.invoices && 
+    (item.invoices.status === 'draft' || item.invoices.status === 'sent')
+  );
+});
+
+// If no booking has a draft/sent invoice, no discount applies
+if (!bookingWithDraftInvoice) {
+  console.log("MULTI-DOG-CHECK: Existing bookings found but all have paid invoices - no discount applicable");
+  return {
+    hasExistingEnrollment: false,
+    totalDogsInTerm: 0,
+  };
+}
+
+// Use the booking with draft/sent invoice
+const existingBooking = bookingWithDraftInvoice;
 ```
 
-## Files to Modify
+---
 
-| File | Change |
-|------|--------|
-| `src/hooks/trainer-payments/queries/fetchTrainerData.ts` | Fix branch filtering in `fetchAllBookings()` and `fetchAllInvoiceItems()` |
-| `src/hooks/trainer-payments/utils/calculateTrainerFees.ts` | Fix branch comparison to use invoice.branch_id |
-| `src/hooks/trainer-payments/types.ts` | Add `branch_id` to the InvoiceItem.invoices type if needed |
+## Why This Works
 
-## Expected Result After Fix
+| Scenario | Behavior |
+|----------|----------|
+| Handler A has PAID invoice from Term 1 | Ignored - no household discount triggered |
+| Handler A has DRAFT invoice from current term | Household discount triggered, 50/50 split applied |
+| Handler A has SENT invoice from current term | Household discount triggered, 50/50 split applied |
+| No household enrollments at all | No discount - standard invoice created |
 
-The Trainer Statement for Ady Hawkins should show:
-- **7 handlers** (including Jane & Richard)
-- **Class Total: R4,172** (matching the Financial Report)
+---
 
-## Verification Steps
+## Expected Result
 
-After the fix:
-1. Navigate to Financial Reports → Trainers tab
-2. Select Ady Hawkins → Generate Statement
-3. Verify "15h00 Puppy Class Jan Feb" shows 7 handlers
-4. Verify the commission total is R4,172 (or very close, accounting for any rounding)
+**Your test case (Dean & Duncan):**
+
+When Duncan enrolls in Yoga after Dean enrolled in Puppy Class:
+1. System checks for household enrollments
+2. Finds Dean's bookings, but the old ones have PAID invoices
+3. Only considers Dean's DRAFT invoice from Puppy Class enrollment
+4. If Dean's Puppy Class invoice is still DRAFT → 50/50 rebalancing applies
+5. If Dean's Puppy Class invoice is already PAID → No discount (treats as no eligible enrollment)
+
+This ensures the system only rebalances invoices that can actually be modified.
 
