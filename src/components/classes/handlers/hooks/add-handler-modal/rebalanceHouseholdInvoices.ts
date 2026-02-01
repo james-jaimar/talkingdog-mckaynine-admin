@@ -184,7 +184,7 @@ export async function rebalanceHouseholdInvoices(params: RebalanceParams): Promi
     }
 
     // 6. Create new invoice for the second handler
-    // Generate invoice number
+    // Generate invoice number using the same approach as useInvoiceUtilities
     const now = new Date();
     const yearMonth = `${now.getFullYear().toString().slice(-2)}${(now.getMonth() + 1).toString().padStart(2, '0')}`;
     
@@ -192,14 +192,23 @@ export async function rebalanceHouseholdInvoices(params: RebalanceParams): Promi
     const branchPrefix = newClassBranchId === '6351a9e8-77db-403b-ab1f-cd47e393a006' ? 'McD' : 'McR';
     const invoicePrefix = `INV-${branchPrefix}-${yearMonth}-`;
     
-    // Get next invoice number
-    const { count } = await supabase
+    // Get the LAST invoice number for this prefix (not count!)
+    const { data: lastInvoice } = await supabase
       .from('invoices')
-      .select('*', { count: 'exact', head: true })
-      .like('invoice_number', `${invoicePrefix}%`);
-    
-    const nextNumber = ((count || 0) + 1).toString().padStart(4, '0');
-    const newInvoiceNumber = `${invoicePrefix}${nextNumber}`;
+      .select('invoice_number')
+      .ilike('invoice_number', `${invoicePrefix}%`)
+      .order('invoice_number', { ascending: false })
+      .limit(1);
+
+    let nextNumber = 1;
+    if (lastInvoice && lastInvoice.length > 0) {
+      const lastSequence = lastInvoice[0].invoice_number.split('-').pop();
+      if (lastSequence) {
+        nextNumber = parseInt(lastSequence, 10) + 1;
+      }
+    }
+
+    const newInvoiceNumber = `${invoicePrefix}${nextNumber.toString().padStart(4, '0')}`;
 
     // Calculate due date (30 days from now)
     const dueDate = new Date();
