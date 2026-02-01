@@ -57,10 +57,22 @@ export const useMarkInvoiceAsSent = ({ onSuccess, onError }: UseMarkInvoiceAsSen
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       queryClient.invalidateQueries({ queryKey: ['invoices', updatedInvoice.id] });
 
-      // Trigger IO sync in background (don't await - fire and forget)
-      syncInvoiceToIO(updatedInvoice.id, 'invoice').catch(err => {
-        console.error('[IO Sync] Background sync error:', err);
-      });
+      // Only trigger IO sync if not already synced
+      // The mutation result may not include io_document_id, so fetch fresh data
+      supabase
+        .from('invoices')
+        .select('io_document_id')
+        .eq('id', updatedInvoice.id)
+        .single()
+        .then(({ data }) => {
+          if (!data?.io_document_id) {
+            syncInvoiceToIO(updatedInvoice.id, 'invoice').catch(err => {
+              console.error('[IO Sync] Background sync error:', err);
+            });
+          } else {
+            console.log('[IO Sync] Invoice already synced, skipping re-sync');
+          }
+        });
 
       // Optionally execute the provided onSuccess callback
       onSuccess?.();
