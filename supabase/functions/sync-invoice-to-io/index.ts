@@ -275,7 +275,7 @@ async function createIOPayment(
   credentials: IOCredentials,
   ioClientId: number,
   invoice: InvoiceData
-): Promise<{ success: boolean; url?: string; error?: string }> {
+): Promise<{ success: boolean; paymentId?: string; url?: string; error?: string }> {
   console.log(`Recording IO payment for client ${ioClientId}, amount ${invoice.total}`);
 
   // Format payment date
@@ -293,12 +293,29 @@ async function createIOPayment(
     EmailToClient: false, // We handle emails ourselves
   });
 
-  // Check for success response
-  if (typeof result === "object" && result !== null) {
-    const r = result as Record<string, unknown>;
-    if (r.url || r.invoice_nr) {
+  // IO returns an array for payment responses
+  if (Array.isArray(result) && result.length > 0) {
+    const paymentInfo = result[0] as Record<string, unknown>;
+    if (paymentInfo.type === "success" || paymentInfo.PaymentID) {
+      console.log(`Payment recorded successfully: PaymentID=${paymentInfo.PaymentID}`);
       return {
         success: true,
+        paymentId: String(paymentInfo.PaymentID || ""),
+        url: "", // Payment API doesn't return a URL
+      };
+    }
+    if (paymentInfo.error) {
+      return { success: false, error: String(paymentInfo.error) };
+    }
+  }
+
+  // Fallback: single object response
+  if (typeof result === "object" && result !== null && !Array.isArray(result)) {
+    const r = result as Record<string, unknown>;
+    if (r.type === "success" || r.PaymentID || r.url) {
+      return {
+        success: true,
+        paymentId: String(r.PaymentID || ""),
         url: String(r.url || ""),
       };
     }
