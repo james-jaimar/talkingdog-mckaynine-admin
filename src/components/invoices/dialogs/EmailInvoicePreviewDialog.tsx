@@ -184,7 +184,18 @@ export function EmailInvoicePreviewDialog({
 
   return (
     <Dialog open={open} onOpenChange={(open) => !isSubmitting && onOpenChange(open)}>
-      <DialogContent className="sm:max-w-4xl max-h-[90vh] flex flex-col">
+      <DialogContent
+        className="sm:max-w-4xl max-h-[90vh] flex flex-col"
+        onPointerDownOutside={(e) => {
+          // Prevent the initial triggering click (often from a dropdown menu)
+          // from being interpreted as an outside click that immediately closes
+          // the dialog.
+          e.preventDefault();
+        }}
+        onInteractOutside={(e) => {
+          e.preventDefault();
+        }}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Mail className="h-5 w-5" />
