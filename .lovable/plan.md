@@ -1,19 +1,52 @@
-# Payment Receipt PDF Attachment - COMPLETED ✓
 
-## What Was Fixed
-The IO `GenerateNewPayment.php` API doesn't return a PDF URL, so we now construct it ourselves using the `PaymentID`, `PaymentNR`, and branch `BusinessID`.
 
-## Changes Made
-- Added `IO_BUSINESS_ID_DELTA` and `IO_BUSINESS_ID_RANDBURG` constants
-- Added `IO_DOWNLOAD_BASE` URL constant
-- Added `getIOBusinessId()` helper function
-- Updated `createIOPayment()` to construct the payment receipt URL
-- Updated payment action handler to pass business ID
+# URGENT FIX: Disable Test Mode in IO Sync
 
-## URL Pattern
-`https://www.invoicesonline.co.za/scripts/Download.php?type=payment&id={PaymentID}&bid={businessId}&did={PaymentNR}`
+## Problem
+TEST_MODE is enabled in the `sync-invoice-to-io` edge function, causing ALL invoices (except for `jimmybhawkins@gmail.com`) to be skipped when syncing to InvoicesOnline.
 
-## Testing
-1. Mark a test invoice as paid for jimmybhawkins@gmail.com
-2. Check `io_payment_url` is now populated with the constructed URL
-3. Verify the payment receipt email has the PDF attachment
+**Evidence from logs:**
+```text
+Test mode: Skipping sync for joy@officespaceonline.co.za (not in test list)
+Test mode: Skipping sync for roxyzim@gmail.com (not in test list)
+Test mode: Skipping sync for megan@simplybeingmeg.co.za (not in test list)
+Test mode: Skipping sync for ahumphrer@gmail.com (not in test list)
+Test mode: Skipping sync for heikeh@hardingham.co.za (not in test list)
+```
+
+## Root Cause
+
+Line 11 in `supabase/functions/sync-invoice-to-io/index.ts`:
+```javascript
+const TEST_MODE = true;  // <-- THIS IS THE PROBLEM
+```
+
+## Fix Required
+
+Change line 11 from:
+```javascript
+const TEST_MODE = true;
+```
+
+To:
+```javascript
+const TEST_MODE = false;
+```
+
+## Files to Modify
+
+| File | Change |
+|------|--------|
+| `supabase/functions/sync-invoice-to-io/index.ts` | Change `TEST_MODE = true` to `TEST_MODE = false` on line 11 |
+
+## Post-Fix: Re-sync Failed Invoices
+
+After deploying the fix, Ady will need to re-send the 10 invoices that failed to sync:
+1. For each invoice, click the "..." menu and select "Email Invoice" again
+2. This will trigger the IO sync and email workflow
+
+The invoices themselves are fine - they just need to be re-synced to IO now that test mode is disabled.
+
+## Deployment
+After the code change, the edge function will be redeployed automatically.
+
