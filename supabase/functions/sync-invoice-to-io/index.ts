@@ -15,8 +15,13 @@ const TEST_CLIENT_EMAILS = ["jimmybhawkins@gmail.com"];
 const DELTA_BRANCH_ID = "6351a9e8-77db-403b-ab1f-cd47e393a006";
 const RANDBURG_BRANCH_ID = "284817cf-de0d-43b9-a506-a3efa625ae1c";
 
+// IO Business IDs (from IO account settings) - needed for constructing PDF URLs
+const IO_BUSINESS_ID_DELTA = "8978";
+const IO_BUSINESS_ID_RANDBURG = "8978"; // TODO: Update with actual Randburg business ID when known
+
 // IO API base URL
 const IO_API_BASE = "https://www.invoicesonline.co.za/api";
+const IO_DOWNLOAD_BASE = "https://www.invoicesonline.co.za/scripts/Download.php";
 
 interface IOCredentials {
   username: string;
@@ -82,6 +87,13 @@ function getBranchName(branchId: string | null): string {
   if (branchId === DELTA_BRANCH_ID) return "delta";
   if (branchId === RANDBURG_BRANCH_ID) return "randburg";
   return "unknown";
+}
+
+// Get IO Business ID for URL construction
+function getIOBusinessId(branchId: string | null): string {
+  if (branchId === DELTA_BRANCH_ID) return IO_BUSINESS_ID_DELTA;
+  if (branchId === RANDBURG_BRANCH_ID) return IO_BUSINESS_ID_RANDBURG;
+  return "";
 }
 
 // Generate IO invoice prefix based on branch and date
@@ -274,8 +286,9 @@ async function createIOInvoice(
 async function createIOPayment(
   credentials: IOCredentials,
   ioClientId: number,
-  invoice: InvoiceData
-): Promise<{ success: boolean; paymentId?: string; url?: string; error?: string }> {
+  invoice: InvoiceData,
+  businessId: string
+): Promise<{ success: boolean; paymentId?: string; paymentNr?: number; url?: string; error?: string }> {
   console.log(`Recording IO payment for client ${ioClientId}, amount ${invoice.total}`);
 
   // Format payment date
@@ -297,11 +310,21 @@ async function createIOPayment(
   if (Array.isArray(result) && result.length > 0) {
     const paymentInfo = result[0] as Record<string, unknown>;
     if (paymentInfo.type === "success" || paymentInfo.PaymentID) {
-      console.log(`Payment recorded successfully: PaymentID=${paymentInfo.PaymentID}`);
+      const paymentId = String(paymentInfo.PaymentID || "");
+      const paymentNr = Number(paymentInfo.PaymentNR || 0);
+      
+      // Construct the payment receipt PDF URL ourselves
+      // IO doesn't return a URL for payments, but we can build it using the same pattern as invoices
+      const paymentUrl = paymentId && paymentNr && businessId
+        ? `${IO_DOWNLOAD_BASE}?type=payment&id=${paymentId}&bid=${businessId}&did=${paymentNr}`
+        : "";
+      
+      console.log(`Payment recorded successfully: PaymentID=${paymentId}, PaymentNR=${paymentNr}, URL=${paymentUrl}`);
       return {
         success: true,
-        paymentId: String(paymentInfo.PaymentID || ""),
-        url: "", // Payment API doesn't return a URL
+        paymentId,
+        paymentNr,
+        url: paymentUrl,
       };
     }
     if (paymentInfo.error) {
@@ -312,11 +335,19 @@ async function createIOPayment(
   // Fallback: single object response
   if (typeof result === "object" && result !== null && !Array.isArray(result)) {
     const r = result as Record<string, unknown>;
-    if (r.type === "success" || r.PaymentID || r.url) {
+    if (r.type === "success" || r.PaymentID) {
+      const paymentId = String(r.PaymentID || "");
+      const paymentNr = Number(r.PaymentNR || 0);
+      
+      const paymentUrl = paymentId && paymentNr && businessId
+        ? `${IO_DOWNLOAD_BASE}?type=payment&id=${paymentId}&bid=${businessId}&did=${paymentNr}`
+        : "";
+      
       return {
         success: true,
-        paymentId: String(r.PaymentID || ""),
-        url: String(r.url || ""),
+        paymentId,
+        paymentNr,
+        url: paymentUrl,
       };
     }
     if (r.error) {
@@ -880,7 +911,8 @@ Deno.serve(async (req) => {
         );
       }
 
-      const result = await createIOPayment(credentials, ioClientId, invoiceData);
+      const businessId = getIOBusinessId(invoiceData.branch_id);
+      const result = await createIOPayment(credentials, ioClientId, invoiceData, businessId);
       
       if (result.success) {
         await supabase
