@@ -1,5 +1,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
+import { allocateStarterKit } from "@/hooks/useStarterKitInventory";
+import { toast } from "sonner";
 
 const MULTI_DOG_DISCOUNT_PERCENT = 25;
 
@@ -133,9 +135,10 @@ export const addToExistingInvoice = async ({
     });
 
     // Insert new invoice items
-    const { error: insertError } = await supabase
+    const { data: insertedItems, error: insertError } = await supabase
       .from('invoice_items')
-      .insert(newItems);
+      .insert(newItems)
+      .select();
 
     if (insertError) {
       console.error("ADD-TO-INVOICE: Failed to insert new items", insertError);
@@ -143,6 +146,41 @@ export const addToExistingInvoice = async ({
         success: false,
         error: "Failed to add items to invoice",
       };
+    }
+
+    // Allocate starter kit if enrollment fee was included
+    if (enrollmentFee > 0 && insertedItems) {
+      const enrollmentItem = insertedItems.find(item => item.item_type === 'enrollment_fee');
+      if (enrollmentItem) {
+        // Fetch branch_id from existing invoice
+        const { data: invoiceData } = await supabase
+          .from('invoices')
+          .select('branch_id')
+          .eq('id', existingInvoiceId)
+          .single();
+
+        const branchId = invoiceData?.branch_id;
+        const dogName = dogNames[0] || 'Unknown';
+
+        if (branchId) {
+          const allocationResult = await allocateStarterKit(
+            enrollmentItem.id,
+            handlerId,
+            dogName,
+            branchId
+          );
+
+          if (allocationResult.success) {
+            console.log("ADD-TO-INVOICE: Starter kit allocated, remaining:", allocationResult.remainingStock);
+            if (allocationResult.remainingStock < 5) {
+              toast.warning(`Low stock warning: Only ${allocationResult.remainingStock} starter kits remaining`);
+            }
+          } else {
+            console.warn("ADD-TO-INVOICE: Starter kit allocation failed:", allocationResult.message);
+            toast.warning("Could not allocate starter kit - check stock levels");
+          }
+        }
+      }
     }
 
     // Calculate new totals

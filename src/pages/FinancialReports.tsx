@@ -8,6 +8,7 @@ import RequireAdmin from "@/components/auth/RequireAdmin";
 import { ClassFinancialReport } from "@/components/invoices/reports/ClassFinancialReport";
 import { ClassesListReport } from "@/components/invoices/reports/ClassesListReport";
 import { FranchiseClassesReport } from "@/components/invoices/reports/FranchiseClassesReport";
+import { StarterKitsReport } from "@/components/invoices/reports/StarterKitsReport";
 import { MonthSelector } from "@/components/invoices/reports/MonthSelector";
 import { startOfMonth, endOfMonth } from "date-fns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -101,6 +102,7 @@ export default function FinancialReports() {
               <TabsTrigger value="classes">Classes List</TabsTrigger>
               <TabsTrigger value="franchise">Franchise Report</TabsTrigger>
               <TabsTrigger value="trainers">Trainers</TabsTrigger>
+              <TabsTrigger value="starter-kits">Starter Kits</TabsTrigger>
             </TabsList>
 
             <TabsContent value="financial">
@@ -127,6 +129,10 @@ export default function FinancialReports() {
                 dateRange={dateRange}
                 branchId={currentBranch?.id}
               />
+            </TabsContent>
+            
+            <TabsContent value="starter-kits">
+              <StarterKitsReport />
             </TabsContent>
           </Tabs>
         </div>
