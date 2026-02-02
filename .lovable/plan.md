@@ -1,119 +1,164 @@
 
 
-# Move Month Selector Inside Financial Report Tab
+# Starter Kit Inventory Management System (Updated)
 
 ## Overview
 
-The Franchise Report tab has its own month/year selector inside the component. The user wants the same pattern for the Financial Report tab - the month selector should be **inside** the ClassFinancialReport component, not at the page level.
+Create a simple stock tracking system for enrollment fees/starter kits (bait bags). This allows Adie to:
+1. Record when she purchases kits in bulk from Shannon (incoming stock)
+2. Automatically deduct stock when handlers are enrolled in classes with enrollment fees
+3. See current stock levels at a glance
 
-## Current State
+## Key Change: App-Level Stock
 
-| Tab | Month Selector Location |
-|-----|------------------------|
-| Financial Report | Page level (passed as prop) |
-| Classes List | Page level (no selector used) |
-| Franchise Report | **Inside component** (self-managed) |
-| Trainers | Page level (passed as prop) |
-
-## Target State
-
-| Tab | Month Selector Location |
-|-----|------------------------|
-| Financial Report | **Inside component** (like Franchise) |
-| Classes List | Page level (unchanged) |
-| Franchise Report | Inside component (unchanged) |
-| Trainers | Page level (unchanged) |
+Stock is managed at the **app level** (not per-branch). Adie maintains one pool of starter kits, and either Randburg or Delta can draw from it. The allocation records will still track which branch used the kit for reporting purposes.
 
 ---
 
-## Implementation
+## Database Design
 
-### Step 1: Update ClassFinancialReport Component
+### New Table: `starter_kit_inventory`
 
-**File:** `src/components/invoices/reports/ClassFinancialReport.tsx`
+| Column | Type | Description |
+|--------|------|-------------|
+| id | uuid | Primary key |
+| quantity_added | integer | Number of kits purchased |
+| quantity_remaining | integer | Current available stock from this batch |
+| purchase_date | date | When kits were purchased |
+| unit_cost | numeric | Cost per kit (optional, for reporting) |
+| notes | text | Optional notes (e.g., "From Shannon - Feb batch") |
+| created_at | timestamp | Record creation time |
+| updated_at | timestamp | Last modification time |
 
-Add internal month/year state and MonthSelector (similar to FranchiseClassesReport):
+No branch_id - stock is global/app-level.
 
-1. **Add imports:**
-   - Import `MonthSelector` from `./MonthSelector`
-   - Import `startOfMonth`, `endOfMonth` from `date-fns`
+### New Table: `starter_kit_allocations`
 
-2. **Add internal state:**
-   ```typescript
-   const currentDate = new Date();
-   const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth() + 1);
-   const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
-   ```
+| Column | Type | Description |
+|--------|------|-------------|
+| id | uuid | Primary key |
+| inventory_batch_id | uuid | FK to starter_kit_inventory (which batch this came from) |
+| branch_id | uuid | FK to branches (which branch used this kit - for reporting) |
+| invoice_item_id | uuid | FK to invoice_items (which enrollment fee triggered this) |
+| handler_id | uuid | FK to clients |
+| dog_name | text | Which dog received the kit |
+| allocated_at | timestamp | When kit was allocated |
 
-3. **Compute dateRange internally:**
-   ```typescript
-   const dateRange = {
-     from: startOfMonth(new Date(selectedYear, selectedMonth - 1)),
-     to: endOfMonth(new Date(selectedYear, selectedMonth - 1))
-   };
-   
-   const fromDate = dateRange.from.toISOString();
-   const toDate = dateRange.to.toISOString();
-   ```
-
-4. **Add MonthSelector to header:**
-   Place the MonthSelector next to the Refresh button in the CardHeader
-
-5. **Remove dateRange prop:**
-   The component becomes self-contained like FranchiseClassesReport
-
-### Step 2: Update FinancialReports Page
-
-**File:** `src/pages/FinancialReports.tsx`
-
-1. **Remove page-level MonthSelector** from the header since Financial Report now has its own
-
-2. **Remove month/year state** that was only used for Financial Report
-
-3. **Update ClassFinancialReport usage:**
-   Remove the `dateRange` prop since it's now self-managed
-
-4. **Keep dateRange for Trainers tab:**
-   The Trainers tab still needs the dateRange prop, so we may need to keep some page-level state or let Trainers also manage its own dates
+Branch tracked on allocation for reporting (e.g., "Delta used 8 kits this month").
 
 ---
 
-## Technical Details
+## User Interface
 
-### ClassFinancialReport Changes
+### Financial Reports - New "Starter Kits" Tab
 
-The component interface changes from:
-```typescript
-interface ClassFinancialReportProps {
-  dateRange?: { from: Date; to: Date };
-  onRefreshSuccess?: () => void;
-}
+```text
++-----------------------------------------------------------------------------------+
+| Starter Kit Inventory                                            [+ Add Stock]   |
++-----------------------------------------------------------------------------------+
+
++-----------------------------------------------------------------------------------+
+| Stock Overview                                                                    |
++-----------------------------------------------------------------------------------+
+|  [  24  ]     Total kits in stock                                                 |
+|  [  18  ]     Allocated this month                                                |
+|  [  ⚠️  ]     Low stock warning (if < 5)                                          |
++-----------------------------------------------------------------------------------+
+
++-----------------------------------------------------------------------------------+
+| Stock Batches                                                                     |
++-----------------------------------------------------------------------------------+
+| Date       | Added | Remaining | Notes                    | Actions              |
+|------------|-------|-----------|--------------------------|----------------------|
+| 01 Feb 26  | 25    | 24        | From Shannon - Feb batch | Edit | Delete        |
+| 15 Jan 26  | 20    | 0         | From Shannon - Jan batch | (depleted)           |
++-----------------------------------------------------------------------------------+
+
++-----------------------------------------------------------------------------------+
+| Recent Allocations                                                                |
++-----------------------------------------------------------------------------------+
+| Date       | Handler           | Dog        | Branch    | Class                  |
+|------------|-------------------|------------|-----------|------------------------|
+| 28 Jan 26  | John Smith        | Max        | Randburg  | Puppy Training T1-2026 |
+| 25 Jan 26  | Sarah Jones       | Bella      | Delta     | EO Class T1-2026       |
++-----------------------------------------------------------------------------------+
 ```
 
-To either no props (fully self-contained) or:
-```typescript
-interface ClassFinancialReportProps {
-  onRefreshSuccess?: () => void;
-}
-```
+### Add Stock Modal
 
-### Month Label
-
-Add a computed month label for display (like Franchise Report shows "February 2026"):
-```typescript
-const monthNames = ['January', 'February', ...];
-const monthLabel = `${monthNames[selectedMonth - 1]} ${selectedYear}`;
-```
-
-This can be shown in the card title: "Class Financial Report - February 2026"
+- Quantity field (number input)
+- Purchase date (date picker, defaults to today)
+- Unit cost (optional, for tracking)
+- Notes (optional text field)
+- Save button
 
 ---
 
-## Result
+## Automatic Deduction Logic
 
-After implementation:
-- Financial Report tab will have its own month/year dropdown (like Franchise Report in screenshot 3)
-- Each tab that needs date filtering manages its own state
-- Cleaner separation of concerns between tabs
-- Consistent user experience between Financial Report and Franchise Report tabs
+When an enrollment fee invoice item is created:
+1. Find the oldest batch with remaining stock (FIFO - First In, First Out)
+2. Decrement `quantity_remaining` by 1
+3. Create an allocation record with branch_id from the invoice
+
+Triggers in:
+- `createInvoiceForHandler.ts` - when item_type is 'enrollment_fee'
+- `addToExistingInvoice.ts` - when enrollment fee is added
+- Customer self-enrollment flows
+
+If no stock available: Show warning toast but don't block the enrollment.
+
+---
+
+## Implementation Steps
+
+### Phase 1: Database Setup
+1. Create `starter_kit_inventory` table (no branch_id)
+2. Create `starter_kit_allocations` table (with branch_id for reporting)
+3. Add RLS policies (admin-only access)
+4. Create database function `allocate_starter_kit(invoice_item_id, handler_id, dog_name, branch_id)`:
+   - Finds oldest batch with stock > 0
+   - Decrements quantity_remaining
+   - Creates allocation record
+   - Returns remaining total stock (for low-stock warnings)
+
+### Phase 2: UI Components
+1. Create `StarterKitsReport.tsx` component
+2. Create `AddStockModal.tsx` for adding new batches
+3. Create `useStarterKitInventory.ts` hook for data fetching
+4. Add "Starter Kits" tab to `FinancialReports.tsx`
+
+### Phase 3: Automatic Allocation
+1. Modify `createInvoiceForHandler.ts` to call allocation after enrollment fee item
+2. Modify `addToExistingInvoice.ts` similarly
+3. Add toast notification if stock is low (< 5 remaining)
+
+---
+
+## Files to Create
+
+| File | Purpose |
+|------|---------|
+| `src/components/invoices/reports/StarterKitsReport.tsx` | Main tab component |
+| `src/components/invoices/reports/AddStockModal.tsx` | Modal for adding stock |
+| `src/hooks/useStarterKitInventory.ts` | Data fetching hook |
+
+## Files to Modify
+
+| File | Change |
+|------|--------|
+| `src/pages/FinancialReports.tsx` | Add Starter Kits tab |
+| `src/components/classes/handlers/hooks/add-handler-modal/createInvoiceForHandler.ts` | Call allocation function |
+| `src/components/classes/handlers/hooks/add-handler-modal/addToExistingInvoice.ts` | Call allocation function |
+
+---
+
+## Summary
+
+- Single global stock pool (app-level, not per-branch)
+- FIFO allocation from oldest batches first
+- Allocations track which branch used the kit
+- Automatic deduction when enrollment fees are invoiced
+- Low stock warnings when < 5 kits remain
+- Simple UI in Financial Reports tab
 
