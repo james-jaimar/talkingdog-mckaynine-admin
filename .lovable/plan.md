@@ -1,91 +1,99 @@
 
+# Replace Date Range Picker with Month Selector on Financial Reports
 
-# Fix: Duplicate Invoice Number in Household Rebalance
+## Overview
 
-## The Problem
+Replace the current date range picker on the Financial Reports page with a simple month/year dropdown selector, matching the Franchise Report tab's interface. This makes it easier to quickly select a specific month rather than picking two dates.
 
-The `rebalanceHouseholdInvoices.ts` function uses an incorrect method to generate invoice numbers. It counts the number of invoices matching the prefix instead of finding the highest existing number.
+## Current Behavior
 
-### Current Code (Lines 196-202)
+- The Financial Reports page uses a `DateRangePicker` that requires selecting two dates via calendar
+- Users must click, navigate through calendars, and select start/end dates
+
+## New Behavior
+
+- Two simple dropdowns: Month (January-December) and Year
+- Single click to open dropdown, select value
+- Much faster for monthly reporting workflows
+
+---
+
+## Implementation
+
+### File: `src/pages/FinancialReports.tsx`
+
+#### Step 1: Update Imports
+
+Replace `DateRangePicker` import with `MonthSelector`:
 
 ```typescript
-const { count } = await supabase
-  .from('invoices')
-  .select('*', { count: 'exact', head: true })
-  .like('invoice_number', `${invoicePrefix}%`);
+// Remove this:
+import { DateRangePicker } from "@/components/dashboard/financial/DateRangePicker";
+import { startOfMonth, endOfMonth, subMonths } from "date-fns";
 
-const nextNumber = ((count || 0) + 1).toString().padStart(4, '0');
+// Add this:
+import { MonthSelector } from "@/components/invoices/reports/MonthSelector";
+import { startOfMonth, endOfMonth } from "date-fns";
 ```
 
-### Why This Fails
+#### Step 2: Update State Management
 
-Looking at your database:
-
-| Invoice Number | Status | Notes |
-|----------------|--------|-------|
-| 0015 | sent | |
-| 0016 | sent | Suzette Nel |
-| 0017 | sent | |
-| 0018 | draft | Dean Nolte |
-| **0016** | **draft** | **DUPLICATE - Duncan Miller** |
-
-When Duncan's invoice was created:
-1. The system counted 16 invoices with prefix `INV-McD-2602-`
-2. It calculated: 16 + 1 = 17, but stored as `0016` (off by one in the logic)
-3. Actually, the count was 15 at that moment, so it generated 0016 which already existed
-
-There are also gaps in the sequence (0004 missing, 0009 missing, 0013 missing) which confirms the counting approach doesn't work.
-
-## The Fix
-
-Use the same approach as `useInvoiceUtilities.ts` - find the highest invoice number and increment it.
-
-### File: `src/components/classes/handlers/hooks/add-handler-modal/rebalanceHouseholdInvoices.ts`
-
-**Replace lines 186-202 with:**
+Replace the date range state with month/year state:
 
 ```typescript
-// 6. Create new invoice for the second handler
-// Generate invoice number using the same approach as useInvoiceUtilities
-const now = new Date();
-const yearMonth = `${now.getFullYear().toString().slice(-2)}${(now.getMonth() + 1).toString().padStart(2, '0')}`;
+// Remove existing dateRange state (lines 25-28)
+// Replace with:
+const currentDate = new Date();
+const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth() + 1); // 1-12
+const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
 
-// Determine branch prefix
-const branchPrefix = newClassBranchId === '6351a9e8-77db-403b-ab1f-cd47e393a006' ? 'McD' : 'McR';
-const invoicePrefix = `INV-${branchPrefix}-${yearMonth}-`;
+// Compute date range from month/year selection
+const dateRange = {
+  from: startOfMonth(new Date(selectedYear, selectedMonth - 1)),
+  to: endOfMonth(new Date(selectedYear, selectedMonth - 1))
+};
+```
 
-// Get the LAST invoice number for this prefix (not count!)
-const { data: lastInvoice } = await supabase
-  .from('invoices')
-  .select('invoice_number')
-  .ilike('invoice_number', `${invoicePrefix}%`)
-  .order('invoice_number', { ascending: false })
-  .limit(1);
+#### Step 3: Update Term Effect
 
-let nextNumber = 1;
-if (lastInvoice && lastInvoice.length > 0) {
-  const lastSequence = lastInvoice[0].invoice_number.split('-').pop();
-  if (lastSequence) {
-    nextNumber = parseInt(lastSequence, 10) + 1;
+Simplify the term change effect to update month/year instead of date range:
+
+```typescript
+useEffect(() => {
+  if (termDateRange) {
+    console.log("FinancialReports: Term date range changed, updating month/year");
+    const termStart = new Date(termDateRange.startDate);
+    setSelectedMonth(termStart.getMonth() + 1);
+    setSelectedYear(termStart.getFullYear());
   }
-}
-
-const newInvoiceNumber = `${invoicePrefix}${nextNumber.toString().padStart(4, '0')}`;
+}, [termDateRange]);
 ```
 
-## Key Changes
+#### Step 4: Replace DateRangePicker in JSX
+
+Replace the `DateRangePicker` component (lines 98-101) with `MonthSelector`:
+
+```tsx
+<MonthSelector
+  month={selectedMonth}
+  year={selectedYear}
+  onMonthChange={setSelectedMonth}
+  onYearChange={setSelectedYear}
+/>
+```
+
+#### Step 5: Remove unused handler
+
+Remove the `handleDateRangeChange` function (lines 77-82) as it's no longer needed.
+
+---
+
+## Result
 
 | Before | After |
 |--------|-------|
-| Uses `count` of matching invoices | Finds highest invoice number |
-| Prone to duplicates when gaps exist | Increments from actual highest number |
-| `order('created_at')` irrelevant | `order('invoice_number', desc)` finds latest |
+| Calendar popup requiring two date selections | Two dropdown selectors for month and year |
+| Complex interaction | Single-click selection |
+| Matches different pattern than Franchise tab | Consistent with Franchise Report tab |
 
-## Expected Result
-
-After the fix, the next invoice created with prefix `INV-McD-2602-` will correctly be `INV-McD-2602-0019` (since 0018 is currently the highest).
-
-## Manual Data Fix Needed
-
-You should manually update Duncan Miller's duplicate invoice number `INV-McD-2602-0016` to `INV-McD-2602-0019` or delete and recreate it to resolve the existing duplicate.
-
+The computed `dateRange` will automatically update when month or year changes, triggering the existing data refresh logic without any changes needed to `ClassFinancialReport` or other components.
