@@ -9,8 +9,8 @@ import RequireAdmin from "@/components/auth/RequireAdmin";
 import { ClassFinancialReport } from "@/components/invoices/reports/ClassFinancialReport";
 import { ClassesListReport } from "@/components/invoices/reports/ClassesListReport";
 import { FranchiseClassesReport } from "@/components/invoices/reports/FranchiseClassesReport";
-import { DateRangePicker } from "@/components/dashboard/financial/DateRangePicker";
-import { startOfMonth, endOfMonth, subMonths } from "date-fns";
+import { MonthSelector } from "@/components/invoices/reports/MonthSelector";
+import { startOfMonth, endOfMonth } from "date-fns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { TrainerReportsTab } from "@/components/invoices/reports/TrainerReportsTab";
@@ -21,20 +21,28 @@ export default function FinancialReports() {
   const queryClient = useQueryClient();
   const { termDateRange, termData } = useTerm();
   
-  // Set default date range based on current term if available, otherwise current month
-  const [dateRange, setDateRange] = useState({
-    from: termDateRange ? new Date(termDateRange.startDate) : startOfMonth(subMonths(new Date(), 0)),
-    to: termDateRange ? new Date(termDateRange.endDate) : endOfMonth(new Date())
-  });
+  // Month/year state for selector
+  const currentDate = new Date();
+  const [selectedMonth, setSelectedMonth] = useState(
+    termDateRange ? new Date(termDateRange.startDate).getMonth() + 1 : currentDate.getMonth() + 1
+  );
+  const [selectedYear, setSelectedYear] = useState(
+    termDateRange ? new Date(termDateRange.startDate).getFullYear() : currentDate.getFullYear()
+  );
+
+  // Compute date range from month/year selection
+  const dateRange = {
+    from: startOfMonth(new Date(selectedYear, selectedMonth - 1)),
+    to: endOfMonth(new Date(selectedYear, selectedMonth - 1))
+  };
   
-  // Update date range when term changes
+  // Update month/year when term changes
   useEffect(() => {
     if (termDateRange) {
-      console.log("FinancialReports: Term date range changed, updating date range");
-      setDateRange({
-        from: new Date(termDateRange.startDate),
-        to: new Date(termDateRange.endDate)
-      });
+      console.log("FinancialReports: Term date range changed, updating month/year");
+      const termStart = new Date(termDateRange.startDate);
+      setSelectedMonth(termStart.getMonth() + 1);
+      setSelectedYear(termStart.getFullYear());
     }
   }, [termDateRange]);
   
@@ -73,14 +81,6 @@ export default function FinancialReports() {
     toast.success("Financial data refreshed");
   };
 
-  // Handle date range changes
-  const handleDateRangeChange = (range: { from: Date; to?: Date }) => {
-    setDateRange({
-      from: range.from,
-      to: range.to || endOfMonth(new Date())
-    });
-  };
-  
   const handleTabChange = (value: string) => {
     setActiveTab(value);
   };
@@ -95,9 +95,11 @@ export default function FinancialReports() {
         <div className="container mx-auto py-6">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
             <h1 className="text-3xl font-bold">Financial Reports</h1>
-            <DateRangePicker 
-              dateRange={dateRange} 
-              onDateRangeChange={handleDateRangeChange} 
+            <MonthSelector
+              month={selectedMonth}
+              year={selectedYear}
+              onMonthChange={setSelectedMonth}
+              onYearChange={setSelectedYear}
             />
           </div>
 
