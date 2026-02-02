@@ -1,99 +1,119 @@
 
-# Replace Date Range Picker with Month Selector on Financial Reports
+
+# Move Month Selector Inside Financial Report Tab
 
 ## Overview
 
-Replace the current date range picker on the Financial Reports page with a simple month/year dropdown selector, matching the Franchise Report tab's interface. This makes it easier to quickly select a specific month rather than picking two dates.
+The Franchise Report tab has its own month/year selector inside the component. The user wants the same pattern for the Financial Report tab - the month selector should be **inside** the ClassFinancialReport component, not at the page level.
 
-## Current Behavior
+## Current State
 
-- The Financial Reports page uses a `DateRangePicker` that requires selecting two dates via calendar
-- Users must click, navigate through calendars, and select start/end dates
+| Tab | Month Selector Location |
+|-----|------------------------|
+| Financial Report | Page level (passed as prop) |
+| Classes List | Page level (no selector used) |
+| Franchise Report | **Inside component** (self-managed) |
+| Trainers | Page level (passed as prop) |
 
-## New Behavior
+## Target State
 
-- Two simple dropdowns: Month (January-December) and Year
-- Single click to open dropdown, select value
-- Much faster for monthly reporting workflows
+| Tab | Month Selector Location |
+|-----|------------------------|
+| Financial Report | **Inside component** (like Franchise) |
+| Classes List | Page level (unchanged) |
+| Franchise Report | Inside component (unchanged) |
+| Trainers | Page level (unchanged) |
 
 ---
 
 ## Implementation
 
-### File: `src/pages/FinancialReports.tsx`
+### Step 1: Update ClassFinancialReport Component
 
-#### Step 1: Update Imports
+**File:** `src/components/invoices/reports/ClassFinancialReport.tsx`
 
-Replace `DateRangePicker` import with `MonthSelector`:
+Add internal month/year state and MonthSelector (similar to FranchiseClassesReport):
 
+1. **Add imports:**
+   - Import `MonthSelector` from `./MonthSelector`
+   - Import `startOfMonth`, `endOfMonth` from `date-fns`
+
+2. **Add internal state:**
+   ```typescript
+   const currentDate = new Date();
+   const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth() + 1);
+   const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
+   ```
+
+3. **Compute dateRange internally:**
+   ```typescript
+   const dateRange = {
+     from: startOfMonth(new Date(selectedYear, selectedMonth - 1)),
+     to: endOfMonth(new Date(selectedYear, selectedMonth - 1))
+   };
+   
+   const fromDate = dateRange.from.toISOString();
+   const toDate = dateRange.to.toISOString();
+   ```
+
+4. **Add MonthSelector to header:**
+   Place the MonthSelector next to the Refresh button in the CardHeader
+
+5. **Remove dateRange prop:**
+   The component becomes self-contained like FranchiseClassesReport
+
+### Step 2: Update FinancialReports Page
+
+**File:** `src/pages/FinancialReports.tsx`
+
+1. **Remove page-level MonthSelector** from the header since Financial Report now has its own
+
+2. **Remove month/year state** that was only used for Financial Report
+
+3. **Update ClassFinancialReport usage:**
+   Remove the `dateRange` prop since it's now self-managed
+
+4. **Keep dateRange for Trainers tab:**
+   The Trainers tab still needs the dateRange prop, so we may need to keep some page-level state or let Trainers also manage its own dates
+
+---
+
+## Technical Details
+
+### ClassFinancialReport Changes
+
+The component interface changes from:
 ```typescript
-// Remove this:
-import { DateRangePicker } from "@/components/dashboard/financial/DateRangePicker";
-import { startOfMonth, endOfMonth, subMonths } from "date-fns";
-
-// Add this:
-import { MonthSelector } from "@/components/invoices/reports/MonthSelector";
-import { startOfMonth, endOfMonth } from "date-fns";
+interface ClassFinancialReportProps {
+  dateRange?: { from: Date; to: Date };
+  onRefreshSuccess?: () => void;
+}
 ```
 
-#### Step 2: Update State Management
-
-Replace the date range state with month/year state:
-
+To either no props (fully self-contained) or:
 ```typescript
-// Remove existing dateRange state (lines 25-28)
-// Replace with:
-const currentDate = new Date();
-const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth() + 1); // 1-12
-const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
-
-// Compute date range from month/year selection
-const dateRange = {
-  from: startOfMonth(new Date(selectedYear, selectedMonth - 1)),
-  to: endOfMonth(new Date(selectedYear, selectedMonth - 1))
-};
+interface ClassFinancialReportProps {
+  onRefreshSuccess?: () => void;
+}
 ```
 
-#### Step 3: Update Term Effect
+### Month Label
 
-Simplify the term change effect to update month/year instead of date range:
-
+Add a computed month label for display (like Franchise Report shows "February 2026"):
 ```typescript
-useEffect(() => {
-  if (termDateRange) {
-    console.log("FinancialReports: Term date range changed, updating month/year");
-    const termStart = new Date(termDateRange.startDate);
-    setSelectedMonth(termStart.getMonth() + 1);
-    setSelectedYear(termStart.getFullYear());
-  }
-}, [termDateRange]);
+const monthNames = ['January', 'February', ...];
+const monthLabel = `${monthNames[selectedMonth - 1]} ${selectedYear}`;
 ```
 
-#### Step 4: Replace DateRangePicker in JSX
-
-Replace the `DateRangePicker` component (lines 98-101) with `MonthSelector`:
-
-```tsx
-<MonthSelector
-  month={selectedMonth}
-  year={selectedYear}
-  onMonthChange={setSelectedMonth}
-  onYearChange={setSelectedYear}
-/>
-```
-
-#### Step 5: Remove unused handler
-
-Remove the `handleDateRangeChange` function (lines 77-82) as it's no longer needed.
+This can be shown in the card title: "Class Financial Report - February 2026"
 
 ---
 
 ## Result
 
-| Before | After |
-|--------|-------|
-| Calendar popup requiring two date selections | Two dropdown selectors for month and year |
-| Complex interaction | Single-click selection |
-| Matches different pattern than Franchise tab | Consistent with Franchise Report tab |
+After implementation:
+- Financial Report tab will have its own month/year dropdown (like Franchise Report in screenshot 3)
+- Each tab that needs date filtering manages its own state
+- Cleaner separation of concerns between tabs
+- Consistent user experience between Financial Report and Franchise Report tabs
 
-The computed `dateRange` will automatically update when month or year changes, triggering the existing data refresh logic without any changes needed to `ClassFinancialReport` or other components.
