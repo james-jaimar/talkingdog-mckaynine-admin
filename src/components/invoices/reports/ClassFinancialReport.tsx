@@ -1,4 +1,3 @@
-
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, RefreshCw, AlertTriangle } from "lucide-react";
@@ -9,19 +8,36 @@ import { ClassFinancialTable } from "./ClassFinancialTable";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { MonthSelector } from "./MonthSelector";
+import { startOfMonth, endOfMonth } from "date-fns";
 
 interface ClassFinancialReportProps {
-  dateRange?: { from: Date; to: Date };
   onRefreshSuccess?: () => void;
 }
 
-export function ClassFinancialReport({ dateRange, onRefreshSuccess }: ClassFinancialReportProps) {
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 
+                     'July', 'August', 'September', 'October', 'November', 'December'];
+
+export function ClassFinancialReport({ onRefreshSuccess }: ClassFinancialReportProps) {
   const { currentBranch } = useBranch();
   const [refreshing, setRefreshing] = useState(false);
   const queryClient = useQueryClient();
   
-  const fromDate = dateRange?.from?.toISOString();
-  const toDate = dateRange?.to?.toISOString();
+  // Internal month/year state
+  const currentDate = new Date();
+  const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
+  
+  // Compute dateRange internally
+  const dateRange = {
+    from: startOfMonth(new Date(selectedYear, selectedMonth - 1)),
+    to: endOfMonth(new Date(selectedYear, selectedMonth - 1))
+  };
+  
+  const fromDate = dateRange.from.toISOString();
+  const toDate = dateRange.to.toISOString();
+  
+  const monthLabel = `${MONTH_NAMES[selectedMonth - 1]} ${selectedYear}`;
 
   const { 
     classFinances, 
@@ -131,7 +147,7 @@ export function ClassFinancialReport({ dateRange, onRefreshSuccess }: ClassFinan
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
-          <CardTitle>Class Financial Report</CardTitle>
+          <CardTitle>Class Financial Report - {monthLabel}</CardTitle>
           <p className="text-sm text-muted-foreground mt-1">
             {totalInvoiceCount} invoices | {totalBookings} bookings | 
             Profit margin: {profitPercentage.toFixed(1)}%
@@ -141,6 +157,12 @@ export function ClassFinancialReport({ dateRange, onRefreshSuccess }: ClassFinan
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <MonthSelector
+            month={selectedMonth}
+            year={selectedYear}
+            onMonthChange={setSelectedMonth}
+            onYearChange={setSelectedYear}
+          />
           <Button 
             variant="outline" 
             size="sm" 

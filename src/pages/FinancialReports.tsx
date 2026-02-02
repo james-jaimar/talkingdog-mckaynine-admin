@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Helmet } from "react-helmet";
@@ -14,14 +13,13 @@ import { startOfMonth, endOfMonth } from "date-fns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { TrainerReportsTab } from "@/components/invoices/reports/TrainerReportsTab";
-import { useClassFinancialData } from "@/hooks/useClassFinancialData";
 import { useTerm } from "@/context/TermContext";
 
 export default function FinancialReports() {
   const queryClient = useQueryClient();
   const { termDateRange, termData } = useTerm();
   
-  // Month/year state for selector
+  // Month/year state for Trainers tab (Financial Report now manages its own)
   const currentDate = new Date();
   const [selectedMonth, setSelectedMonth] = useState(
     termDateRange ? new Date(termDateRange.startDate).getMonth() + 1 : currentDate.getMonth() + 1
@@ -30,7 +28,7 @@ export default function FinancialReports() {
     termDateRange ? new Date(termDateRange.startDate).getFullYear() : currentDate.getFullYear()
   );
 
-  // Compute date range from month/year selection
+  // Compute date range for Trainers tab
   const dateRange = {
     from: startOfMonth(new Date(selectedYear, selectedMonth - 1)),
     to: endOfMonth(new Date(selectedYear, selectedMonth - 1))
@@ -95,12 +93,6 @@ export default function FinancialReports() {
         <div className="container mx-auto py-6">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
             <h1 className="text-3xl font-bold">Financial Reports</h1>
-            <MonthSelector
-              month={selectedMonth}
-              year={selectedYear}
-              onMonthChange={setSelectedMonth}
-              onYearChange={setSelectedYear}
-            />
           </div>
 
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
@@ -114,7 +106,6 @@ export default function FinancialReports() {
             <TabsContent value="financial">
               <div className="space-y-6">
                 <ClassFinancialReport 
-                  dateRange={dateRange} 
                   onRefreshSuccess={() => {
                     refreshAllInvoiceQueries();
                     toast.success("Financial data refreshed");
