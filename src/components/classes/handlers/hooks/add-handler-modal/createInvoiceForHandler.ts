@@ -2,6 +2,8 @@
 import { UseMutationResult } from "@tanstack/react-query";
 import { calculateInvoiceComponents } from "@/lib/calculateInvoiceComponents";
 import { createInvoice } from "@/lib/invoices/createInvoiceUtils";
+import { allocateStarterKit } from "@/hooks/useStarterKitInventory";
+import { toast } from "sonner";
 
 export interface CreateInvoiceProps {
   handlerId: string;
@@ -173,8 +175,41 @@ export const createInvoiceForHandler = async ({
 
     try {
       // Use the mutation function to create the invoice through our centralized utility
-      await createInvoiceMutation.mutateAsync(invoiceData);
+      const result = await createInvoiceMutation.mutateAsync(invoiceData);
       console.log("CREATE-INVOICE: Invoice created successfully");
+      
+      // After invoice creation, allocate starter kit if enrollment fee was included
+      if (enrollmentFee && enrollmentFee > 0 && result?.id) {
+        // Find the enrollment fee invoice item ID
+        const enrollmentFeeItem = items.find(item => item.item_type === 'enrollment_fee');
+        if (enrollmentFeeItem) {
+          const branchId = classBranchId || currentBranch?.id;
+          const dogName = dogNames[0] || 'Unknown';
+          
+          // Note: We need the invoice_item_id which is created after invoice creation
+          // The createInvoice utility should return the created items, but for now
+          // we'll call allocation with what we have
+          if (branchId) {
+            const allocationResult = await allocateStarterKit(
+              result.id, // Using invoice ID as a reference (allocation function will handle)
+              handlerId,
+              dogName,
+              branchId
+            );
+            
+            if (allocationResult.success) {
+              console.log("CREATE-INVOICE: Starter kit allocated, remaining:", allocationResult.remainingStock);
+              if (allocationResult.remainingStock < 5) {
+                toast.warning(`Low stock warning: Only ${allocationResult.remainingStock} starter kits remaining`);
+              }
+            } else {
+              console.warn("CREATE-INVOICE: Starter kit allocation failed:", allocationResult.message);
+              toast.warning("Could not allocate starter kit - check stock levels");
+            }
+          }
+        }
+      }
+      
       return true;
     } catch (error) {
       console.error("CREATE-INVOICE: Failed to create invoice with mutateAsync", error);

@@ -2114,6 +2114,98 @@ export type Database = {
           },
         ]
       }
+      starter_kit_allocations: {
+        Row: {
+          allocated_at: string
+          branch_id: string | null
+          dog_name: string | null
+          handler_id: string | null
+          id: string
+          inventory_batch_id: string
+          invoice_item_id: string | null
+        }
+        Insert: {
+          allocated_at?: string
+          branch_id?: string | null
+          dog_name?: string | null
+          handler_id?: string | null
+          id?: string
+          inventory_batch_id: string
+          invoice_item_id?: string | null
+        }
+        Update: {
+          allocated_at?: string
+          branch_id?: string | null
+          dog_name?: string | null
+          handler_id?: string | null
+          id?: string
+          inventory_batch_id?: string
+          invoice_item_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "starter_kit_allocations_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "starter_kit_allocations_handler_id_fkey"
+            columns: ["handler_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "starter_kit_allocations_inventory_batch_id_fkey"
+            columns: ["inventory_batch_id"]
+            isOneToOne: false
+            referencedRelation: "starter_kit_inventory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "starter_kit_allocations_invoice_item_id_fkey"
+            columns: ["invoice_item_id"]
+            isOneToOne: false
+            referencedRelation: "invoice_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      starter_kit_inventory: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          purchase_date: string
+          quantity_added: number
+          quantity_remaining: number
+          unit_cost: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          purchase_date?: string
+          quantity_added: number
+          quantity_remaining?: number
+          unit_cost?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          purchase_date?: string
+          quantity_added?: number
+          quantity_remaining?: number
+          unit_cost?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       system_settings: {
         Row: {
           created_at: string
@@ -2447,6 +2539,19 @@ export type Database = {
       }
     }
     Functions: {
+      allocate_starter_kit: {
+        Args: {
+          p_branch_id: string
+          p_dog_name: string
+          p_handler_id: string
+          p_invoice_item_id: string
+        }
+        Returns: {
+          message: string
+          remaining_total: number
+          success: boolean
+        }[]
+      }
       calculate_trainer_payment: {
         Args: { p_booking_id: string }
         Returns: number
@@ -2495,6 +2600,7 @@ export type Database = {
           items: Json
         }[]
       }
+      get_starter_kit_stock: { Args: never; Returns: number }
       get_unread_message_count: {
         Args: { p_client_id: string }
         Returns: number
