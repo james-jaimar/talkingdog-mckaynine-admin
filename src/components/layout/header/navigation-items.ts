@@ -151,6 +151,21 @@ export const adminSecondaryNavItems = [
     path: "/platform-admin/templates",
     icon: Palette,
     developerOnly: true
+  },
+  {
+    name: "Assistants",
+    path: "/assistants",
+    icon: Users
+  },
+  {
+    name: "Training Sessions",
+    path: "/admin/training-sessions",
+    icon: Calendar
+  },
+  {
+    name: "Assistant Schedule",
+    path: "/admin/assistant-schedule",
+    icon: ClipboardList
   }
 ];
 

@@ -39,6 +39,11 @@ export const useAuthState = () => {
     return isAdmin || isPlatformAdmin; // For now, admins and platform admins are considered branch owners
   }, [isAdmin, isPlatformAdmin]);
 
+  const isAssistant = useMemo(() => {
+    if (!role) return false;
+    return role.split(',').includes('assistant');
+  }, [role]);
+
   return {
     // Core state
     session,
@@ -57,6 +62,7 @@ export const useAuthState = () => {
     isPlatformAdmin,
     isTrainer,
     isHandler,
-    isBranchOwner
+    isBranchOwner,
+    isAssistant
   };
 };

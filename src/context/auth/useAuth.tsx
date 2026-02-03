@@ -18,6 +18,7 @@ export function useAuth() {
     isTrainer: context.isTrainer,
     isHandler: context.isHandler,
     isBranchOwner: context.isBranchOwner,
+    isAssistant: context.isAssistant,
     isLoading: context.isLoading,
   };
 }
