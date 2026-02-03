@@ -429,7 +429,8 @@ export default function EmailPage() {
                   <div className="flex gap-2 mt-2 flex-wrap">
                     {selectedEmail.attachments.map((att: any, idx: number) => {
                       const filename = att.name || att.filename;
-                      const hasContent = att.content && att.encoding === "base64";
+                      // Handle both formats: encoding="base64" (invoices) or type (payment receipts)
+                      const hasContent = att.content && (att.encoding === "base64" || att.type);
                       
                       const handleDownload = () => {
                         if (!hasContent) return;
@@ -442,7 +443,7 @@ export default function EmailPage() {
                             byteNumbers[i] = byteCharacters.charCodeAt(i);
                           }
                           const byteArray = new Uint8Array(byteNumbers);
-                          const blob = new Blob([byteArray], { type: att.contentType || 'application/pdf' });
+                          const blob = new Blob([byteArray], { type: att.contentType || att.type || 'application/pdf' });
                           
                           // Trigger download
                           const link = document.createElement('a');
