@@ -8,6 +8,7 @@ import { Edit } from "lucide-react";
 import { useInvoiceDetails } from "@/hooks/invoices/useInvoiceQueries";
 import { toast } from "sonner";
 import { generateInvoicePDF } from "@/components/invoices/pdf/InvoicePDFGenerator";
+import { fetchIOPDF, getIOOfflineModeFromDB } from "@/hooks/invoices/useIOSync";
 import { InvoiceDetailHeader } from "@/components/invoices/detail/InvoiceDetailHeader";
 import { InvoiceLoadingState } from "@/components/invoices/detail/InvoiceLoadingState";
 import { InvoiceNotFound } from "@/components/invoices/detail/InvoiceNotFound";
@@ -34,6 +35,39 @@ export default function InvoiceDetail() {
     if (!invoice) return;
     
     try {
+      // Check if invoice is synced to IO and offline mode is not enabled
+      const isOfflineMode = await getIOOfflineModeFromDB();
+      
+      if (invoice.io_invoice_url && !isOfflineMode) {
+        toast.info("Fetching invoice from InvoicesOnline...");
+        const result = await fetchIOPDF(invoice.id);
+        
+        if (result.success && result.pdfBase64) {
+          // Convert base64 to blob and trigger download
+          const byteCharacters = atob(result.pdfBase64);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          const blob = new Blob([byteArray], { type: 'application/pdf' });
+          
+          const link = document.createElement('a');
+          link.href = URL.createObjectURL(blob);
+          link.download = `invoice-${invoice.invoice_number}.pdf`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(link.href);
+          
+          toast.success("Invoice PDF downloaded");
+          return;
+        } else {
+          console.warn("IO PDF fetch failed, falling back to local:", result.error);
+        }
+      }
+      
+      // Fallback: Generate local PDF (for drafts or if IO fetch fails)
       await generateInvoicePDF(invoice);
       toast.success("Invoice PDF generated successfully");
     } catch (error) {

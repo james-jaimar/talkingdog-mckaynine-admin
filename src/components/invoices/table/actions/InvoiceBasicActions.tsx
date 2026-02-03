@@ -136,6 +136,7 @@ export function InvoiceBasicActions({
             html_content: receiptData.html_content,
             handler_id: receiptData.handler_id,
             status: "pending",
+            attachments: receiptData.attachments || null,
           });
 
         if (queueError) {
