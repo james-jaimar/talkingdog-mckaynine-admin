@@ -7,10 +7,11 @@ interface AuthContextType {
   session: Session | null;
   role: string | null;
   isAdmin: boolean;
-  isPlatformAdmin: boolean; // New property
+  isPlatformAdmin: boolean;
   isTrainer: boolean;
   isHandler: boolean;
-  isBranchOwner: boolean; // New property
+  isBranchOwner: boolean;
+  isAssistant: boolean;
   isLoading: boolean;
   trainerProfile: any | null;
   login: (email: string, password: string) => Promise<any>;
@@ -23,10 +24,11 @@ export const AuthContext = createContext<AuthContextType>({
   session: null,
   role: null,
   isAdmin: false,
-  isPlatformAdmin: false, // New property
+  isPlatformAdmin: false,
   isTrainer: false,
   isHandler: false,
-  isBranchOwner: false, // New property
+  isBranchOwner: false,
+  isAssistant: false,
   isLoading: true,
   trainerProfile: null,
   login: () => Promise.resolve({}),

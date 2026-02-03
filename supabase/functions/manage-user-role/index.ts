@@ -198,6 +198,41 @@ serve(async (req) => {
       }
     }
 
+    // If user is becoming an assistant, check if there's an assistant record already
+    if (role === "assistant") {
+      // Check if user already has an assistant record linked
+      const { data: existingAssistant } = await supabaseAdmin
+        .from("assistants")
+        .select("id")
+        .eq("user_id", userId)
+        .limit(1);
+
+      // If no assistant record linked, try to find and link by email
+      if (!existingAssistant || existingAssistant.length === 0) {
+        // Get user email
+        const { data: { user: targetUser } } = await supabaseAdmin.auth.admin.getUserById(userId);
+        
+        if (targetUser?.email) {
+          // Try to find existing assistant by email
+          const { data: assistantByEmail } = await supabaseAdmin
+            .from("assistants")
+            .select("id")
+            .eq("email", targetUser.email)
+            .is("user_id", null)
+            .limit(1);
+
+          if (assistantByEmail && assistantByEmail.length > 0) {
+            // Link existing assistant record
+            await supabaseAdmin
+              .from("assistants")
+              .update({ user_id: userId })
+              .eq("id", assistantByEmail[0].id);
+          }
+          // Note: If no assistant record exists, admin must create one first via the Assistants page
+        }
+      }
+    }
+
     return new Response(
       JSON.stringify({
         success: true,

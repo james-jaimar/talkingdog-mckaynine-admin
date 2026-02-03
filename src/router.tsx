@@ -4,6 +4,7 @@ import { publicRoutes } from "./routes/publicRoutes";
 import { adminRoutes } from "./routes/adminRoutes";
 import { trainerRoutes } from "./routes/trainerRoutes";
 import { customerRoutes } from "./routes/customerRoutes";
+import { assistantAdminRoutes } from "./routes/assistantRoutes";
 import Dashboard from "./pages/Dashboard";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import Branches from "./pages/Branches";
@@ -12,6 +13,8 @@ import NotFound from "./pages/NotFound";
 import UserAdmin from "./pages/UserAdmin";
 import TemplateDesigner from "./pages/platform-admin/TemplateDesigner";
 import Trainers from "./pages/Trainers";
+import AssistantLogin from "./pages/AssistantLogin";
+import AssistantSchedulePage from "./pages/assistant/AssistantSchedule";
 
 // Create a dashboard route that ONLY works for admin users (trainers have their own dashboard)
 const dashboardRoute = {
@@ -88,6 +91,8 @@ const notFound404Route = {
 // Combine all routes
 const router = createBrowserRouter([
   ...publicRoutes,
+  { path: "/assistant-login", element: <AssistantLogin /> },
+  { path: "/assistant/schedule", element: <AssistantSchedulePage /> },
   ...adminRoutes.map(route => ({
     ...route,
     element: (
@@ -96,16 +101,24 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   })),
-  dashboardRoute, // Only accessible to trainers and admins
-  branchesRoute, // Only accessible to admins
-  unpaidHandlersRoute, // Only accessible to admins
-  userAdminRoute, // Only accessible to admins
-  templateDesignerRoute, // Only accessible to platform admins
-  trainersRoute, // Only accessible to admins
+  ...assistantAdminRoutes.map(route => ({
+    ...route,
+    element: (
+      <ProtectedRoute requiredRole="admin">
+        {route.element}
+      </ProtectedRoute>
+    ),
+  })),
+  dashboardRoute,
+  branchesRoute,
+  unpaidHandlersRoute,
+  userAdminRoute,
+  templateDesignerRoute,
+  trainersRoute,
   ...trainerRoutes,
-  ...customerRoutes, // Customer routes with handler-specific layouts
-  notFound404Route, // Explicit 404 route
-  notFoundRoute, // Must be last to catch all other routes
+  ...customerRoutes,
+  notFound404Route,
+  notFoundRoute,
 ]);
 
 export default router;
