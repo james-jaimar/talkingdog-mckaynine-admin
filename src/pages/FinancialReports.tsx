@@ -9,12 +9,13 @@ import { ClassFinancialReport } from "@/components/invoices/reports/ClassFinanci
 import { ClassesListReport } from "@/components/invoices/reports/ClassesListReport";
 import { FranchiseClassesReport } from "@/components/invoices/reports/FranchiseClassesReport";
 import { StarterKitsReport } from "@/components/invoices/reports/StarterKitsReport";
-import { MonthSelector } from "@/components/invoices/reports/MonthSelector";
 import { startOfMonth, endOfMonth } from "date-fns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { TrainerReportsTab } from "@/components/invoices/reports/TrainerReportsTab";
 import { useTerm } from "@/context/TermContext";
+import { FinancialDashboardContent } from "@/components/financial/FinancialDashboardContent";
+import { UnpaidHandlersContent } from "@/components/handlers/UnpaidHandlersContent";
 
 export default function FinancialReports() {
   const queryClient = useQueryClient();
@@ -48,8 +49,8 @@ export default function FinancialReports() {
   const { currentBranch } = useBranch();
   const { invoices, isLoading, refreshAllInvoiceQueries } = useInvoices();
   
-  // Default to 'financial' tab
-  const [activeTab, setActiveTab] = useState('financial');
+  // Default to 'dashboard' tab (previously 'financial')
+  const [activeTab, setActiveTab] = useState('dashboard');
 
   // Refresh data when component mounts, branch changes or date range changes
   useEffect(() => {
@@ -88,22 +89,28 @@ export default function FinancialReports() {
     <RequireAdmin>
       <DashboardLayout>
         <Helmet>
-          <title>Financial Reports - McKaynine Training Centre</title>
+          <title>Financial - McKaynine Training Centre</title>
         </Helmet>
         
         <div className="container mx-auto py-6">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-            <h1 className="text-3xl font-bold">Financial Reports</h1>
+            <h1 className="text-3xl font-bold">Financial</h1>
           </div>
 
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-            <TabsList className="mb-4">
+            <TabsList className="mb-4 flex-wrap h-auto gap-1">
+              <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
               <TabsTrigger value="financial">Financial Report</TabsTrigger>
               <TabsTrigger value="classes">Classes List</TabsTrigger>
               <TabsTrigger value="franchise">Franchise Report</TabsTrigger>
               <TabsTrigger value="trainers">Trainers</TabsTrigger>
               <TabsTrigger value="starter-kits">Starter Kits</TabsTrigger>
+              <TabsTrigger value="unpaid">Unpaid Handlers</TabsTrigger>
             </TabsList>
+
+            <TabsContent value="dashboard">
+              <FinancialDashboardContent />
+            </TabsContent>
 
             <TabsContent value="financial">
               <div className="space-y-6">
@@ -133,6 +140,10 @@ export default function FinancialReports() {
             
             <TabsContent value="starter-kits">
               <StarterKitsReport />
+            </TabsContent>
+
+            <TabsContent value="unpaid">
+              <UnpaidHandlersContent />
             </TabsContent>
           </Tabs>
         </div>

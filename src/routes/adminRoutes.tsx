@@ -10,13 +10,13 @@ import ClassSchedules from "@/pages/ClassSchedules";
 import Handlers from "@/pages/Handlers";
 import HandlerDetail from "@/pages/HandlerDetail";
 import FinancialReports from "@/pages/FinancialReports";
-import FinancialDashboard from "@/pages/FinancialDashboard";
 import IntakeScans from "@/pages/admin/IntakeScans";
 import Tasks from "@/pages/admin/Tasks";
 import EmailTemplates from "@/pages/admin/EmailTemplates";
 import Email from "@/pages/admin/Email";
 import TrainerNotes from "@/pages/admin/TrainerNotes";
 import Settings from "@/pages/admin/Settings";
+import Assistants from "@/pages/Assistants";
 
 // Each route is protected with RequireAdmin component
 export const adminRoutes = [
@@ -78,10 +78,6 @@ export const adminRoutes = [
     element: <FinancialReports />,
   },
   {
-    path: "/admin/financial-dashboard",
-    element: <FinancialDashboard />,
-  },
-  {
     path: "/admin/intake-scans",
     element: <IntakeScans />,
   },
@@ -113,16 +109,19 @@ export const adminRoutes = [
     path: "/invoices/:id/edit",
     element: <InvoiceEdit />,
   },
-  {
-    path: "/financial-dashboard",
-    element: <FinancialDashboard />,
-  },
+  // Consolidated financial hub
   {
     path: "/financial-reports",
     element: <FinancialReports />,
   },
+  // Consolidated admin hub
   {
     path: "/admin/settings",
     element: <Settings />,
+  },
+  // Consolidated assistants hub (includes Sessions and Schedule as tabs)
+  {
+    path: "/assistants",
+    element: <Assistants />,
   },
 ];

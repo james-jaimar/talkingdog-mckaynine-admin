@@ -1,5 +1,5 @@
 
-import { Home, Calendar, Users, FileText, BarChart2, UserPlus, Building, Map, AlertCircle, ScanLine, Mail, ClipboardList, Palette, MessageSquare } from "lucide-react";
+import { Home, Calendar, Users, FileText, BarChart2, UserPlus, Building, Map, AlertCircle, ScanLine, Mail, ClipboardList, Palette, MessageSquare, Settings } from "lucide-react";
 
 export const adminNavItems = [
   {
@@ -47,13 +47,8 @@ export const adminNavItems = [
 ];
 
 // Primary navigation items for admin - prioritized for mobile use
+// Dashboard removed - logo click navigates to dashboard
 export const adminPrimaryNavItems = [
-  {
-    name: "Dashboard",
-    path: "/dashboard",
-    icon: Home,
-    mobileShow: true
-  },
   {
     name: "Classes",
     path: "/classes",
@@ -93,27 +88,17 @@ export const adminPrimaryNavItems = [
   }
 ];
 
-// Secondary navigation items for admin
+// Secondary navigation items for admin - consolidated into fewer items
 export const adminSecondaryNavItems = [
   {
-    name: "Financial Dashboard",
-    path: "/financial-dashboard",
-    icon: BarChart2
-  },
-  {
-    name: "Financial Reports",
+    name: "Financial",
     path: "/financial-reports",
     icon: BarChart2
   },
   {
-    name: "Users",
-    path: "/user-admin",
-    icon: UserPlus
-  },
-  {
-    name: "Branches",
-    path: "/branches",
-    icon: Map
+    name: "Admin",
+    path: "/admin/settings",
+    icon: Settings
   },
   {
     name: "Branch Management",
@@ -122,19 +107,9 @@ export const adminSecondaryNavItems = [
     developerOnly: true
   },
   {
-    name: "Trainers",
-    path: "/trainers",
+    name: "Assistants",
+    path: "/assistants",
     icon: Users
-  },
-  {
-    name: "Unpaid Handlers",
-    path: "/unpaid-handlers",
-    icon: AlertCircle
-  },
-  {
-    name: "Intake Scans",
-    path: "/admin/intake-scans",
-    icon: ScanLine
   },
   {
     name: "Tasks",
@@ -142,30 +117,10 @@ export const adminSecondaryNavItems = [
     icon: ClipboardList
   },
   {
-    name: "Email Templates",
-    path: "/admin/email-templates",
-    icon: Mail
-  },
-  {
     name: "Template Designer",
     path: "/platform-admin/templates",
     icon: Palette,
     developerOnly: true
-  },
-  {
-    name: "Assistants",
-    path: "/assistants",
-    icon: Users
-  },
-  {
-    name: "Training Sessions",
-    path: "/admin/training-sessions",
-    icon: Calendar
-  },
-  {
-    name: "Assistant Schedule",
-    path: "/admin/assistant-schedule",
-    icon: ClipboardList
   }
 ];
 
