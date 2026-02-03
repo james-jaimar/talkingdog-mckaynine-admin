@@ -1,189 +1,97 @@
 
-# Fix Payment Receipt Data and Email Queue Attachment Preview
 
-## Overview
+# Fix Email Queue Attachment Download Button
 
-Two issues need to be addressed:
+## Problem
 
-1. **Payment receipts missing reference number and description** - The IO API is not receiving the invoice number and line item descriptions
-2. **Email queue attachment preview** - Admins need to be able to preview/download PDF attachments when reviewing emails in the queue
+Eddie can see the PDF attachment reference in the email queue, but the download button is disabled and not clickable. This prevents her from previewing the attachment before sending.
 
----
+## Root Cause
 
-## Issue 1: Payment Receipt Missing Reference Number and Description
+There's an **inconsistency in the attachment data structure** between different parts of the codebase:
 
-### Root Cause
+| Source | Field for encoding | Field for MIME type |
+|--------|-------------------|---------------------|
+| `generatePaymentReceipt.ts` | ❌ None | `type: "application/pdf"` |
+| `useEmailInvoice.ts` | `encoding: "base64"` | `contentType: "application/pdf"` |
+| `Email.tsx` (checks) | `encoding === "base64"` | `contentType` |
 
-The `createIOPayment` function in `supabase/functions/sync-invoice-to-io/index.ts` only passes basic payment fields to the IO API. According to the IO API documentation, `GenerateNewPayment.php` accepts these optional fields that we're not using:
+The download button logic in `Email.tsx` (line 432):
+```typescript
+const hasContent = att.content && att.encoding === "base64";
+```
 
-- **ReferenceNumber** (max 30 chars) - Should contain the invoice number
-- **Description** (string) - Should contain a summary of what the payment is for
+Since payment receipts use `type` instead of `encoding`, the button is disabled.
 
-### Current Code (lines 299-307)
+## Solution
+
+Update `Email.tsx` to handle both attachment formats:
+
+1. Check for `encoding === "base64"` OR `type` containing "pdf" or similar
+2. Use `contentType` OR `type` for the blob MIME type
+
+### Code Change
+
+**File:** `src/pages/admin/Email.tsx`
+
+Update the attachment handling logic to be more flexible:
 
 ```typescript
-const result = await callIOAPI("GenerateNewPayment.php", {
-  username: credentials.username,
-  password: credentials.password,
-  ClientID: ioClientId,
-  PaymentDate: paymentDate,
-  PaymentAmount: invoice.total,
-  PaymentMethod: "EFT",
-  EmailToClient: false,
-  // ReferenceNumber and Description are missing!
+// Current (broken for payment receipts):
+const hasContent = att.content && att.encoding === "base64";
+
+// Fixed (handles both formats):
+const hasContent = att.content && (att.encoding === "base64" || att.type);
+```
+
+And for the blob creation:
+
+```typescript
+// Current:
+const blob = new Blob([byteArray], { type: att.contentType || 'application/pdf' });
+
+// Fixed (handles both formats):
+const blob = new Blob([byteArray], { 
+  type: att.contentType || att.type || 'application/pdf' 
 });
 ```
 
-### Solution
+## Bonus: Standardize Attachment Format
 
-Update `createIOPayment` to include:
+For long-term consistency, we should also update `generatePaymentReceipt.ts` to use the same format as `useEmailInvoice.ts`:
 
-1. **ReferenceNumber**: Pass the McKaynine invoice number (e.g., "McD-2602-0017")
-2. **Description**: Build a summary from invoice items (e.g., "Group Class - Level 2 (Rex)")
+**File:** `src/lib/email/generatePaymentReceipt.ts`
 
-**File to modify:** `supabase/functions/sync-invoice-to-io/index.ts`
-
+Change from:
 ```typescript
-// Build description from invoice items
-const description = invoice.items
-  .map(item => item.description)
-  .join("; ")
-  .slice(0, 200); // IO might have a limit, keep it reasonable
-
-const result = await callIOAPI("GenerateNewPayment.php", {
-  username: credentials.username,
-  password: credentials.password,
-  ClientID: ioClientId,
-  PaymentDate: paymentDate,
-  PaymentAmount: invoice.total,
-  PaymentMethod: "EFT",
-  EmailToClient: false,
-  ReferenceNumber: invoice.invoice_number.slice(0, 30), // Max 30 chars
-  Description: description,
-});
+{
+  filename: `Payment_Receipt_${invoiceData.invoice_number}.pdf`,
+  content: paymentPdfBase64,
+  type: "application/pdf",
+}
 ```
 
----
-
-## Issue 2: Email Queue Attachment Preview
-
-### Current Behavior
-
-In `src/pages/admin/Email.tsx`, when viewing an email in the queue, attachments are displayed as badges showing only the filename. There's no way to actually view or download the attachment.
-
-### Current Code (lines 426-434)
-
-```tsx
-{selectedEmail.attachments && selectedEmail.attachments.length > 0 && (
-  <div>
-    <span className="font-medium text-sm">Attachments:</span>
-    <div className="flex gap-2 mt-1">
-      {selectedEmail.attachments.map((att: any, idx: number) => (
-        <Badge key={idx} variant="outline">{att.name || att.filename}</Badge>
-      ))}
-    </div>
-  </div>
-)}
+To:
+```typescript
+{
+  filename: `Payment_Receipt_${invoiceData.invoice_number}.pdf`,
+  content: paymentPdfBase64,
+  encoding: "base64",
+  contentType: "application/pdf",
+}
 ```
 
-### Solution
-
-Add a download button for PDF attachments that converts the base64 content to a downloadable file:
-
-**File to modify:** `src/pages/admin/Email.tsx`
-
-```tsx
-{selectedEmail.attachments && selectedEmail.attachments.length > 0 && (
-  <div>
-    <span className="font-medium text-sm">Attachments:</span>
-    <div className="flex gap-2 mt-2 flex-wrap">
-      {selectedEmail.attachments.map((att: any, idx: number) => {
-        const filename = att.name || att.filename;
-        const hasContent = att.content && att.encoding === "base64";
-        
-        const handleDownload = () => {
-          if (!hasContent) return;
-          
-          try {
-            // Convert base64 to blob
-            const byteCharacters = atob(att.content);
-            const byteNumbers = new Array(byteCharacters.length);
-            for (let i = 0; i < byteCharacters.length; i++) {
-              byteNumbers[i] = byteCharacters.charCodeAt(i);
-            }
-            const byteArray = new Uint8Array(byteNumbers);
-            const blob = new Blob([byteArray], { type: att.contentType || 'application/pdf' });
-            
-            // Trigger download
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = filename;
-            link.click();
-            URL.revokeObjectURL(link.href);
-          } catch (error) {
-            console.error("Error downloading attachment:", error);
-            toast.error("Failed to download attachment");
-          }
-        };
-        
-        return (
-          <Button
-            key={idx}
-            variant="outline"
-            size="sm"
-            className="gap-2"
-            onClick={handleDownload}
-            disabled={!hasContent}
-          >
-            <Paperclip className="h-4 w-4" />
-            {filename}
-            {hasContent && <Download className="h-3 w-3" />}
-          </Button>
-        );
-      })}
-    </div>
-  </div>
-)}
-```
-
-This gives admins the ability to:
-- See which attachments are included
-- Download and preview PDF attachments before the email is sent
-- Verify the correct document is attached
-
----
-
-## Summary of Changes
+## Files to Modify
 
 | File | Change |
 |------|--------|
-| `supabase/functions/sync-invoice-to-io/index.ts` | Add `ReferenceNumber` and `Description` to `createIOPayment` API call |
-| `src/pages/admin/Email.tsx` | Add download functionality for email queue attachments |
+| `src/pages/admin/Email.tsx` | Update attachment detection to handle both formats |
+| `src/lib/email/generatePaymentReceipt.ts` | Standardize attachment format to use `encoding` and `contentType` |
 
----
+## Expected Result
 
-## Technical Notes
+After these changes:
+- The attachment download button will be **clickable** for all emails in the queue
+- Eddie can preview PDFs before sending
+- Both invoice and payment receipt attachments will work consistently
 
-### IO API Payment Fields (from official docs)
-
-| Field | Type | Required | Notes |
-|-------|------|----------|-------|
-| ClientID | int | Yes | IO client ID |
-| PaymentDate | string | Yes | YYYY-MM-DD format |
-| PaymentAmount | decimal | Yes | 9999.99 format |
-| PaymentMethod | string | No | Defaults to "Cash" |
-| ReferenceNumber | string | No | Max 30 chars |
-| Description | string | No | Free text |
-| EmailToClient | bool | No | We set false |
-
-### Attachment Structure in Email Queue
-
-Attachments are stored as JSON with this structure:
-```json
-{
-  "filename": "invoice-McD-2602-0017.pdf",
-  "content": "base64-encoded-string...",
-  "encoding": "base64",
-  "contentType": "application/pdf"
-}
-```
