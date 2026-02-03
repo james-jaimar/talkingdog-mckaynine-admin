@@ -38,6 +38,104 @@ export type Database = {
         }
         Relationships: []
       }
+      assistant_availability: {
+        Row: {
+          assistant_id: string
+          created_at: string
+          id: string
+          marked_by: string | null
+          notes: string | null
+          status: string | null
+          training_session_slot_id: string
+          updated_at: string
+        }
+        Insert: {
+          assistant_id: string
+          created_at?: string
+          id?: string
+          marked_by?: string | null
+          notes?: string | null
+          status?: string | null
+          training_session_slot_id: string
+          updated_at?: string
+        }
+        Update: {
+          assistant_id?: string
+          created_at?: string
+          id?: string
+          marked_by?: string | null
+          notes?: string | null
+          status?: string | null
+          training_session_slot_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assistant_availability_assistant_id_fkey"
+            columns: ["assistant_id"]
+            isOneToOne: false
+            referencedRelation: "assistants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assistant_availability_training_session_slot_id_fkey"
+            columns: ["training_session_slot_id"]
+            isOneToOne: false
+            referencedRelation: "training_session_slots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assistants: {
+        Row: {
+          branch_id: string
+          created_at: string
+          email: string
+          first_name: string
+          id: string
+          is_active: boolean | null
+          last_name: string | null
+          notes: string | null
+          phone: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          branch_id: string
+          created_at?: string
+          email: string
+          first_name: string
+          id?: string
+          is_active?: boolean | null
+          last_name?: string | null
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          branch_id?: string
+          created_at?: string
+          email?: string
+          first_name?: string
+          id?: string
+          is_active?: boolean | null
+          last_name?: string | null
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assistants_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bookings: {
         Row: {
           additional_notes: string | null
@@ -251,6 +349,44 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "branch_notifications_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      branch_time_slots: {
+        Row: {
+          branch_id: string
+          created_at: string
+          display_name: string
+          id: string
+          is_default: boolean | null
+          sort_order: number | null
+          time_slot: string
+        }
+        Insert: {
+          branch_id: string
+          created_at?: string
+          display_name: string
+          id?: string
+          is_default?: boolean | null
+          sort_order?: number | null
+          time_slot: string
+        }
+        Update: {
+          branch_id?: string
+          created_at?: string
+          display_name?: string
+          id?: string
+          is_default?: boolean | null
+          sort_order?: number | null
+          time_slot?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "branch_time_slots_branch_id_fkey"
             columns: ["branch_id"]
             isOneToOne: false
             referencedRelation: "branches"
@@ -2489,6 +2625,86 @@ export type Database = {
             columns: ["branch_id"]
             isOneToOne: false
             referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      training_session_slots: {
+        Row: {
+          created_at: string
+          display_name: string
+          id: string
+          sort_order: number | null
+          time_slot: string
+          training_session_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_name: string
+          id?: string
+          sort_order?: number | null
+          time_slot: string
+          training_session_id: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string
+          id?: string
+          sort_order?: number | null
+          time_slot?: string
+          training_session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_session_slots_training_session_id_fkey"
+            columns: ["training_session_id"]
+            isOneToOne: false
+            referencedRelation: "training_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      training_sessions: {
+        Row: {
+          branch_id: string
+          created_at: string
+          id: string
+          notes: string | null
+          session_date: string
+          term_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          branch_id: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          session_date: string
+          term_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          branch_id?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          session_date?: string
+          term_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_sessions_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "training_sessions_term_id_fkey"
+            columns: ["term_id"]
+            isOneToOne: false
+            referencedRelation: "terms"
             referencedColumns: ["id"]
           },
         ]
