@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { generateClassConfirmationEmails } from "@/lib/email/generateClassConfirmation";
 import { generatePaymentReceiptEmails } from "@/lib/email/generatePaymentReceipt";
-import { fetchIOPaymentPDF, getIOOfflineModeFromDB } from "@/hooks/invoices/useIOSync";
+import { fetchIOPaymentPDF, getIOOfflineModeFromDB, syncInvoiceToIO } from "@/hooks/invoices/useIOSync";
 import { toast } from "sonner";
 
 interface InvoiceBasicActionsProps {
@@ -100,7 +100,36 @@ export function InvoiceBasicActions({
       const isOfflineMode = await getIOOfflineModeFromDB();
       
       if (!isOfflineMode) {
-        // Fetch IO payment PDF
+        // Step 1: Check current IO sync status
+        const { data: invoiceData } = await supabase
+          .from('invoices')
+          .select('io_document_id, io_payment_url')
+          .eq('id', invoice.id)
+          .single();
+        
+        // Step 2: If invoice not synced to IO, sync it first
+        if (!invoiceData?.io_document_id) {
+          toast.info("Syncing invoice to InvoicesOnline...");
+          const invoiceSyncResult = await syncInvoiceToIO(invoice.id, 'invoice');
+          
+          if (!invoiceSyncResult.success && !invoiceSyncResult.skipped) {
+            console.warn('[Send Receipt] Invoice sync failed:', invoiceSyncResult.error);
+            // Continue - email will still send, just without IO attachment
+          }
+        }
+        
+        // Step 3: If payment not synced to IO, sync it first
+        if (!invoiceData?.io_payment_url) {
+          toast.info("Syncing payment to InvoicesOnline...");
+          const paymentSyncResult = await syncInvoiceToIO(invoice.id, 'payment');
+          
+          if (!paymentSyncResult.success && !paymentSyncResult.skipped) {
+            console.warn('[Send Receipt] Payment sync failed:', paymentSyncResult.error);
+            // Continue - email will still send, just without IO attachment
+          }
+        }
+        
+        // Step 4: Fetch IO payment PDF
         toast.info("Fetching receipt from InvoicesOnline...");
         const pdfResult = await fetchIOPaymentPDF(invoice.id);
         
