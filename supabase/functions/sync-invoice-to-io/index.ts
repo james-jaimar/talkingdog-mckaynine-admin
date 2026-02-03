@@ -296,6 +296,12 @@ async function createIOPayment(
     ? new Date(invoice.payment_date).toISOString().split("T")[0]
     : new Date().toISOString().split("T")[0];
 
+  // Build description from invoice items
+  const description = invoice.items
+    .map(item => item.description)
+    .join("; ")
+    .slice(0, 200); // IO might have a limit, keep it reasonable
+
   const result = await callIOAPI("GenerateNewPayment.php", {
     username: credentials.username,
     password: credentials.password,
@@ -304,6 +310,8 @@ async function createIOPayment(
     PaymentAmount: invoice.total,
     PaymentMethod: "EFT",
     EmailToClient: false, // We handle emails ourselves
+    ReferenceNumber: invoice.invoice_number.slice(0, 30), // Max 30 chars - e.g., "McD-2602-0017"
+    Description: description, // Summary of invoice items
   });
 
   // IO returns an array for payment responses

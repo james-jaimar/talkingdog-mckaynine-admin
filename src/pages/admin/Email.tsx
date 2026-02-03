@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Inbox, Send, RefreshCw, Play, Trash2, RotateCcw, Mail, Clock, AlertCircle, CheckCircle2, Search, X } from "lucide-react";
+import { Inbox, Send, RefreshCw, Play, Trash2, RotateCcw, Mail, Clock, AlertCircle, CheckCircle2, Search, X, Download, Paperclip } from "lucide-react";
 import { useEmailQueue, QueuedEmail } from "@/hooks/useEmailQueue";
 import { format, parseISO, isWithinInterval, startOfDay, endOfDay } from "date-fns";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -426,10 +426,50 @@ export default function EmailPage() {
               {selectedEmail.attachments && selectedEmail.attachments.length > 0 && (
                 <div>
                   <span className="font-medium text-sm">Attachments:</span>
-                  <div className="flex gap-2 mt-1">
-                    {selectedEmail.attachments.map((att: any, idx: number) => (
-                      <Badge key={idx} variant="outline">{att.name || att.filename}</Badge>
-                    ))}
+                  <div className="flex gap-2 mt-2 flex-wrap">
+                    {selectedEmail.attachments.map((att: any, idx: number) => {
+                      const filename = att.name || att.filename;
+                      const hasContent = att.content && att.encoding === "base64";
+                      
+                      const handleDownload = () => {
+                        if (!hasContent) return;
+                        
+                        try {
+                          // Convert base64 to blob
+                          const byteCharacters = atob(att.content);
+                          const byteNumbers = new Array(byteCharacters.length);
+                          for (let i = 0; i < byteCharacters.length; i++) {
+                            byteNumbers[i] = byteCharacters.charCodeAt(i);
+                          }
+                          const byteArray = new Uint8Array(byteNumbers);
+                          const blob = new Blob([byteArray], { type: att.contentType || 'application/pdf' });
+                          
+                          // Trigger download
+                          const link = document.createElement('a');
+                          link.href = URL.createObjectURL(blob);
+                          link.download = filename;
+                          link.click();
+                          URL.revokeObjectURL(link.href);
+                        } catch (error) {
+                          console.error("Error downloading attachment:", error);
+                        }
+                      };
+                      
+                      return (
+                        <Button
+                          key={idx}
+                          variant="outline"
+                          size="sm"
+                          className="gap-2"
+                          onClick={handleDownload}
+                          disabled={!hasContent}
+                        >
+                          <Paperclip className="h-4 w-4" />
+                          {filename}
+                          {hasContent && <Download className="h-3 w-3" />}
+                        </Button>
+                      );
+                    })}
                   </div>
                 </div>
               )}
