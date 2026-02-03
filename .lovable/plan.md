@@ -1,142 +1,189 @@
 
+# Fix Payment Receipt Data and Email Queue Attachment Preview
 
-# Fix "Send Payment Receipt" to Ensure IO Payment Sync
+## Overview
 
-## Problem
+Two issues need to be addressed:
 
-The "Send Payment Receipt" manual action fetches the IO payment PDF, but **doesn't check whether the payment has been synced to IO first**. If the invoice was marked as paid but the IO sync failed or wasn't triggered, the `io_payment_url` will be empty and the PDF fetch will fail.
-
-The correct workflow should be:
-1. Check if the invoice is synced to IO (has `io_document_id`)
-2. If not, sync the invoice first
-3. Check if the payment is synced to IO (has `io_payment_url`)
-4. If not, sync the payment first
-5. Then fetch the payment PDF
-6. Proceed with emailing
+1. **Payment receipts missing reference number and description** - The IO API is not receiving the invoice number and line item descriptions
+2. **Email queue attachment preview** - Admins need to be able to preview/download PDF attachments when reviewing emails in the queue
 
 ---
 
-## Current vs Expected Flow
+## Issue 1: Payment Receipt Missing Reference Number and Description
 
-| Step | Current Flow | Expected Flow |
-|------|--------------|---------------|
-| 1 | Check offline mode | Check offline mode |
-| 2 | Fetch payment PDF directly | Check if invoice is synced to IO |
-| 3 | - | If not, sync invoice to IO |
-| 4 | - | Check if payment is synced to IO |
-| 5 | - | If not, sync payment to IO |
-| 6 | - | Fetch payment PDF from IO |
-| 7 | Continue with email | Continue with email |
+### Root Cause
 
----
+The `createIOPayment` function in `supabase/functions/sync-invoice-to-io/index.ts` only passes basic payment fields to the IO API. According to the IO API documentation, `GenerateNewPayment.php` accepts these optional fields that we're not using:
 
-## Solution
+- **ReferenceNumber** (max 30 chars) - Should contain the invoice number
+- **Description** (string) - Should contain a summary of what the payment is for
 
-Update `handleSendPaymentReceipt` in `InvoiceBasicActions.tsx` to follow the same pattern as `useMarkInvoiceAsPaid.ts`:
-
-### Changes to InvoiceBasicActions.tsx
+### Current Code (lines 299-307)
 
 ```typescript
-const handleSendPaymentReceipt = async () => {
-  onCloseDropdown();
-  setIsSendingReceipt(true);
-  
-  try {
-    toast.info("Preparing payment receipt...");
-    
-    let paymentPdfBase64: string | undefined;
-    
-    // Check if IO offline mode is enabled
-    const isOfflineMode = await getIOOfflineModeFromDB();
-    
-    if (!isOfflineMode) {
-      // Step 1: Check if invoice is synced to IO
-      const { data: invoiceData } = await supabase
-        .from('invoices')
-        .select('io_document_id, io_payment_url')
-        .eq('id', invoice.id)
-        .single();
-      
-      // Step 2: If invoice not synced, sync it first
-      if (!invoiceData?.io_document_id) {
-        toast.info("Syncing invoice to InvoicesOnline...");
-        const invoiceSyncResult = await syncInvoiceToIO(invoice.id, 'invoice');
-        
-        if (!invoiceSyncResult.success && !invoiceSyncResult.skipped) {
-          console.warn('[Send Receipt] Invoice sync failed:', invoiceSyncResult.error);
-          // Continue without IO - email will still send, just without attachment
-        }
-      }
-      
-      // Step 3: If payment not synced, sync it first
-      if (!invoiceData?.io_payment_url) {
-        toast.info("Syncing payment to InvoicesOnline...");
-        const paymentSyncResult = await syncInvoiceToIO(invoice.id, 'payment');
-        
-        if (!paymentSyncResult.success && !paymentSyncResult.skipped) {
-          console.warn('[Send Receipt] Payment sync failed:', paymentSyncResult.error);
-          // Continue without IO - email will still send, just without attachment
-        }
-      }
-      
-      // Step 4: Fetch IO payment PDF
-      toast.info("Fetching receipt from InvoicesOnline...");
-      const pdfResult = await fetchIOPaymentPDF(invoice.id);
-      
-      if (pdfResult.success && pdfResult.pdfBase64) {
-        paymentPdfBase64 = pdfResult.pdfBase64;
-        console.log('[Send Receipt] IO payment PDF fetched successfully');
-      } else {
-        console.warn('[Send Receipt] Could not fetch IO payment PDF:', pdfResult.error);
-      }
-    } else {
-      console.log('[Send Receipt] IO offline mode - skipping PDF fetch');
-    }
-    
-    // Continue with email generation...
-  }
-  // ... rest of function
-};
+const result = await callIOAPI("GenerateNewPayment.php", {
+  username: credentials.username,
+  password: credentials.password,
+  ClientID: ioClientId,
+  PaymentDate: paymentDate,
+  PaymentAmount: invoice.total,
+  PaymentMethod: "EFT",
+  EmailToClient: false,
+  // ReferenceNumber and Description are missing!
+});
+```
+
+### Solution
+
+Update `createIOPayment` to include:
+
+1. **ReferenceNumber**: Pass the McKaynine invoice number (e.g., "McD-2602-0017")
+2. **Description**: Build a summary from invoice items (e.g., "Group Class - Level 2 (Rex)")
+
+**File to modify:** `supabase/functions/sync-invoice-to-io/index.ts`
+
+```typescript
+// Build description from invoice items
+const description = invoice.items
+  .map(item => item.description)
+  .join("; ")
+  .slice(0, 200); // IO might have a limit, keep it reasonable
+
+const result = await callIOAPI("GenerateNewPayment.php", {
+  username: credentials.username,
+  password: credentials.password,
+  ClientID: ioClientId,
+  PaymentDate: paymentDate,
+  PaymentAmount: invoice.total,
+  PaymentMethod: "EFT",
+  EmailToClient: false,
+  ReferenceNumber: invoice.invoice_number.slice(0, 30), // Max 30 chars
+  Description: description,
+});
 ```
 
 ---
 
-## Files to Modify
+## Issue 2: Email Queue Attachment Preview
+
+### Current Behavior
+
+In `src/pages/admin/Email.tsx`, when viewing an email in the queue, attachments are displayed as badges showing only the filename. There's no way to actually view or download the attachment.
+
+### Current Code (lines 426-434)
+
+```tsx
+{selectedEmail.attachments && selectedEmail.attachments.length > 0 && (
+  <div>
+    <span className="font-medium text-sm">Attachments:</span>
+    <div className="flex gap-2 mt-1">
+      {selectedEmail.attachments.map((att: any, idx: number) => (
+        <Badge key={idx} variant="outline">{att.name || att.filename}</Badge>
+      ))}
+    </div>
+  </div>
+)}
+```
+
+### Solution
+
+Add a download button for PDF attachments that converts the base64 content to a downloadable file:
+
+**File to modify:** `src/pages/admin/Email.tsx`
+
+```tsx
+{selectedEmail.attachments && selectedEmail.attachments.length > 0 && (
+  <div>
+    <span className="font-medium text-sm">Attachments:</span>
+    <div className="flex gap-2 mt-2 flex-wrap">
+      {selectedEmail.attachments.map((att: any, idx: number) => {
+        const filename = att.name || att.filename;
+        const hasContent = att.content && att.encoding === "base64";
+        
+        const handleDownload = () => {
+          if (!hasContent) return;
+          
+          try {
+            // Convert base64 to blob
+            const byteCharacters = atob(att.content);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+              byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            const blob = new Blob([byteArray], { type: att.contentType || 'application/pdf' });
+            
+            // Trigger download
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            link.click();
+            URL.revokeObjectURL(link.href);
+          } catch (error) {
+            console.error("Error downloading attachment:", error);
+            toast.error("Failed to download attachment");
+          }
+        };
+        
+        return (
+          <Button
+            key={idx}
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={handleDownload}
+            disabled={!hasContent}
+          >
+            <Paperclip className="h-4 w-4" />
+            {filename}
+            {hasContent && <Download className="h-3 w-3" />}
+          </Button>
+        );
+      })}
+    </div>
+  </div>
+)}
+```
+
+This gives admins the ability to:
+- See which attachments are included
+- Download and preview PDF attachments before the email is sent
+- Verify the correct document is attached
+
+---
+
+## Summary of Changes
 
 | File | Change |
 |------|--------|
-| `src/components/invoices/table/actions/InvoiceBasicActions.tsx` | Add invoice/payment sync checks before fetching PDF |
+| `supabase/functions/sync-invoice-to-io/index.ts` | Add `ReferenceNumber` and `Description` to `createIOPayment` API call |
+| `src/pages/admin/Email.tsx` | Add download functionality for email queue attachments |
 
 ---
 
-## Required Imports
+## Technical Notes
 
-Add `syncInvoiceToIO` to the existing import from `useIOSync`:
+### IO API Payment Fields (from official docs)
 
-```typescript
-import { fetchIOPaymentPDF, getIOOfflineModeFromDB, syncInvoiceToIO } from "@/hooks/invoices/useIOSync";
+| Field | Type | Required | Notes |
+|-------|------|----------|-------|
+| ClientID | int | Yes | IO client ID |
+| PaymentDate | string | Yes | YYYY-MM-DD format |
+| PaymentAmount | decimal | Yes | 9999.99 format |
+| PaymentMethod | string | No | Defaults to "Cash" |
+| ReferenceNumber | string | No | Max 30 chars |
+| Description | string | No | Free text |
+| EmailToClient | bool | No | We set false |
+
+### Attachment Structure in Email Queue
+
+Attachments are stored as JSON with this structure:
+```json
+{
+  "filename": "invoice-McD-2602-0017.pdf",
+  "content": "base64-encoded-string...",
+  "encoding": "base64",
+  "contentType": "application/pdf"
+}
 ```
-
----
-
-## Regarding Local PDF Repository
-
-You mentioned storing the IO PDF in "our repository". Currently:
-
-- **Invoice PDFs**: The `io_invoice_url` is stored in the database. Each time the PDF is needed, it's fetched fresh from IO.
-- **Payment PDFs**: The `io_payment_url` is stored in the database. Same fresh fetch pattern.
-
-There's **no local caching** of the actual PDF files. If you want to implement PDF caching (e.g., store in Supabase Storage), that would be a separate enhancement. For now, the system relies on IO being available to serve the PDFs on demand.
-
----
-
-## Summary
-
-This fix ensures that when you click "Send Payment Receipt":
-1. If the invoice isn't synced to IO yet - sync it
-2. If the payment isn't synced to IO yet - sync it  
-3. Then fetch the official IO payment receipt PDF
-4. Attach it to the email
-
-This mirrors the logic already working in the "Mark as Paid" automation.
-
