@@ -1,329 +1,180 @@
 
 
-# Training Assistants Management System
+# Navigation Cleanup: Consolidating Pages into Tabbed Interfaces
 
-## Overview
+## Summary
 
-A complete system for managing volunteer training assistants at McKaynine, featuring:
-- Dedicated assistant login portal
-- Manual training session creation (set for entire term/year at once)
-- Full visibility of all assistants and their availability
-- Configurable time slots per branch
+This plan consolidates the crowded header navigation by grouping related pages into tabbed interfaces, similar to the existing Financial Reports pattern. This will significantly reduce the number of navigation items while keeping all functionality easily accessible.
 
----
+## Current State
 
-## Database Schema
+The header currently shows too many navigation links across two rows:
 
-### New Tables
+**Primary Row:** Dashboard, Classes, Handlers, Invoices, Email, Trainer Notes
+**Secondary Row:** Financial Dashboard, Financial Reports, Users, Branches, Trainers, Unpaid Handlers, Intake Scans, Tasks, Email Templates, Assistants, Training Sessions, Assistant Schedule
 
-#### `assistants` Table
-| Column | Type | Notes |
-|--------|------|-------|
-| id | uuid | Primary key |
-| user_id | uuid | FK to auth.users (nullable initially) |
-| branch_id | uuid | FK to branches |
-| first_name | text | Required |
-| last_name | text | Optional |
-| email | text | For contact/login |
-| phone | text | Optional |
-| is_active | boolean | Default true |
-| notes | text | Admin notes about the assistant |
-| created_at | timestamptz | Auto |
-| updated_at | timestamptz | Auto |
+## Changes Overview
 
-#### `training_sessions` Table
-| Column | Type | Notes |
-|--------|------|-------|
-| id | uuid | Primary key |
-| branch_id | uuid | FK to branches |
-| session_date | date | The training day |
-| term_id | uuid | Optional FK to terms |
-| notes | text | Session-specific notes |
-| created_at | timestamptz | Auto |
-| updated_at | timestamptz | Auto |
+| Change | Before | After |
+|--------|--------|-------|
+| Dashboard link | Separate nav item | Click logo to navigate |
+| Financial Dashboard + Unpaid Handlers | 2 separate nav items | Tabs in `/financial-reports` |
+| Email + Email Templates | 2 separate nav items | Tabs in `/admin/email` |
+| Users, Branches, Trainers, Intake Scans | 4 separate nav items | Tabs in new `/admin` page |
+| Assistants, Training Sessions, Assistant Schedule | 3 separate nav items | Tabs in `/assistants` |
 
-#### `training_session_slots` Table
-| Column | Type | Notes |
-|--------|------|-------|
-| id | uuid | Primary key |
-| training_session_id | uuid | FK to training_sessions |
-| time_slot | text | e.g., "14:00", "15:00" |
-| display_name | text | e.g., "2pm", "3pm" |
-| sort_order | integer | For ordering slots |
-| created_at | timestamptz | Auto |
+## Result
 
-#### `branch_time_slots` Table (for configurable defaults)
-| Column | Type | Notes |
-|--------|------|-------|
-| id | uuid | Primary key |
-| branch_id | uuid | FK to branches |
-| time_slot | text | e.g., "14:00" |
-| display_name | text | e.g., "2pm" |
-| sort_order | integer | For ordering |
-| is_default | boolean | Whether to auto-add to new sessions |
-| created_at | timestamptz | Auto |
+**Primary Row:** Classes, Handlers, Invoices, Email, Trainer Notes
+**Secondary Row:** Financial, Admin, Assistants, Tasks
 
-#### `assistant_availability` Table
-| Column | Type | Notes |
-|--------|------|-------|
-| id | uuid | Primary key |
-| assistant_id | uuid | FK to assistants |
-| training_session_slot_id | uuid | FK to training_session_slots |
-| status | text | 'available', 'unavailable', 'not_marked' |
-| notes | text | e.g., "Away on holiday" |
-| marked_by | uuid | Who set this (assistant or admin) |
-| created_at | timestamptz | Auto |
-| updated_at | timestamptz | Auto |
-
-### Role Addition
-
-```sql
-ALTER TYPE app_role ADD VALUE 'assistant';
-```
+This reduces the secondary row from 12+ items to just 4 items.
 
 ---
 
-## RLS Policies
+## Technical Implementation
 
-| Table | Policy |
-|-------|--------|
-| `assistants` | Admins full access; Assistants read all in their branch |
-| `training_sessions` | Admins full access; Assistants read their branch |
-| `training_session_slots` | Admins full access; Assistants read their branch |
-| `branch_time_slots` | Admins full access |
-| `assistant_availability` | Admins full access; Assistants read all, update own |
+### 1. Remove Dashboard from Navigation
 
----
+**File:** `src/components/layout/header/navigation-items.ts`
 
-## Admin Features
+- Remove the Dashboard entry from `adminPrimaryNavItems`
+- The logo already links to dashboard (for admins: `/dashboard`, for handlers: `/customer/dashboard`)
 
-### 1. Assistants Management Page (`/assistants`)
+### 2. Consolidate Financial Pages (`/financial-reports`)
 
-- Table listing all assistants with:
-  - Name, email, phone, branch, status
-  - Actions: Edit, Deactivate, Create Login
-- Add Assistant modal with branch selection
-- Edit Assistant modal
-- Bulk invite option (optional future enhancement)
+**File:** `src/pages/FinancialReports.tsx`
 
-### 2. Training Sessions Page (`/admin/training-sessions`)
+Current tabs: Financial Report, Classes List, Franchise Report, Trainers, Starter Kits
 
-**Session Creation Interface:**
-- Date range picker to select multiple Saturdays at once
-- Calendar view showing existing sessions
-- Quick actions: "Add all Saturdays for Term 1", "Add all Saturdays for 2026"
-- Branch selector
+New tabs: **Financial Dashboard** (new first tab), Financial Report, Classes List, Franchise Report, Trainers, Starter Kits, **Unpaid Handlers** (new last tab)
 
-**Time Slot Configuration:**
-- Per-branch default time slots (Settings section)
-- When creating sessions, auto-apply branch defaults
-- Ability to add/remove slots per session
+Changes:
+- Import the content from `FinancialDashboard.tsx` as a component
+- Import the content from `UnpaidHandlers.tsx` as a component
+- Add two new TabsTrigger/TabsContent sections
+- Update navigation to remove Financial Dashboard and Unpaid Handlers as separate links
+- Keep the main nav link as just "Financial" pointing to `/financial-reports`
 
-### 3. Assistant Schedule Grid (`/admin/assistant-schedule`)
+### 3. Consolidate Email Pages (`/admin/email`)
 
-Visual grid matching the spreadsheet layout:
+**File:** `src/pages/admin/Email.tsx`
 
-```text
-+------------+------------------+------------------+------------------+
-|            | 17th Jan         | 24th Jan         | 31st Jan         |
-| Assistants | 2pm    | 3pm     | 2pm    | 3pm     | 2pm    | 3pm     |
-+------------+--------+---------+--------+---------+--------+---------+
-| Ady        |   ✓    |    ✓    |   ✓    |         |   ✓    |    ✓    |
-| Katherine  |   -    |    -    |   -    |    -    |   -    |    -    |
-| Anene      |   ✓    |    ✓    |   ✓    |    ✓    |        |         |
-| Amy        |  N/A   |   N/A   |   ✓    |    ✓    |   ✓    |    ✓    |
-| Lizzie     |   -    |    -    |   -    |    -    |   -    |    -    |
-| Roxy       |   ✓    |         |   ✓    |    ✓    |   ✓    |    ✓    |
-+------------+--------+---------+--------+---------+--------+---------+
+Current tabs: Outbox, Sent
 
-Legend:
-✓ = Available (green)
-N/A = Unavailable (amber/highlighted)
-- = Not marked (gray)
-Empty = Not marked
-Hover = Shows notes if any
-```
+New tabs: **Email Queue** (Outbox + Sent remain subtabs or inline), **Templates** (new tab)
 
-Features:
-- Filter by branch, term, date range
-- Click cell to toggle/set availability (admin override)
-- Add notes on hover/click
-- Summary row showing total available per slot
-- Print/export option
+Changes:
+- Wrap existing Email functionality as the first tab
+- Import Email Templates content as a component
+- Add Templates as a second tab
+- Update navigation to remove Email Templates as a separate link
+- Keep the nav link as "Email" pointing to `/admin/email`
 
-### 4. Time Slot Configuration (`/admin/settings` or `/admin/training-sessions/settings`)
+### 4. Create New Admin Hub Page (`/admin`)
 
-- Configure default time slots per branch
-- Add/edit/remove slots
-- Set display names (e.g., "2pm" vs "14:00")
-- Reorder slots
+**New file:** `src/pages/admin/AdminHub.tsx`
 
----
+This new page consolidates administrative functions:
 
-## Assistant Portal
+Tabs:
+- **Users** - Content from `UserAdmin.tsx`
+- **Branches** - Content from `Branches.tsx`
+- **Trainers** - Content from `Trainers.tsx`
+- **Intake Scans** - Content from `IntakeScans.tsx`
 
-### 1. Login Page (`/assistant-login`)
+Changes:
+- Create new AdminHub page with 4 tabs
+- Extract existing page content into reusable components where needed
+- Add new route `/admin` to router
+- Update navigation to point to `/admin` with label "Admin"
 
-- Clean McKaynine branded login
-- Email/password authentication
-- "Forgot password" link
-- After login, redirect to assistant schedule
+### 5. Consolidate Assistants Pages (`/assistants`)
 
-### 2. Assistant Schedule (`/assistant/schedule`)
+**File:** `src/pages/Assistants.tsx`
 
-The main (and only) view for assistants - a simplified version of the admin grid:
+Current: Just the assistants list
 
-**Features:**
-- Shows all assistants and their availability (full visibility as requested)
-- Highlight current user's row
-- Click own cells to toggle availability
-- Add notes to own availability
-- Shows other assistants' notes (read-only)
-- Mobile-friendly card view alternative
+New tabs:
+- **Assistants** - Current content (list of training assistants)
+- **Sessions** - Content from `TrainingSessions.tsx`
+- **Schedule** - Content from `AssistantSchedule.tsx` (admin version)
 
-**Layout:**
-```text
-+----------------------------------------------------------+
-|  McKaynine Training Schedule                    [Logout] |
-+----------------------------------------------------------+
-|  Term 1 2026 - Delta Park                                |
-+----------------------------------------------------------+
-|  Your upcoming sessions:                                 |
-|  • Sat 17 Jan - 2pm ✓, 3pm ✓                            |
-|  • Sat 24 Jan - 2pm ✓, 3pm (not marked)                 |
-+----------------------------------------------------------+
-|                                                          |
-|  Full Schedule Grid (scrollable)                         |
-|  [Same grid as admin but own row is editable]            |
-|                                                          |
-+----------------------------------------------------------+
-```
+Changes:
+- Add Tabs wrapper around existing content
+- Import Training Sessions and Assistant Schedule as tab content
+- Update navigation to remove the separate links
 
-### 3. Simple Profile Page (`/assistant/profile`) (Optional)
+### 6. Update Navigation Items
 
-- Update contact details
-- Change password
-- View assigned branch
+**File:** `src/components/layout/header/navigation-items.ts`
+
+Remove from `adminPrimaryNavItems`:
+- Dashboard (logo serves this purpose)
+
+Update `adminSecondaryNavItems` to only include:
+- Financial (path: `/financial-reports`)
+- Admin (path: `/admin`)
+- Assistants (path: `/assistants`)
+- Tasks (path: `/admin/tasks`)
+
+Remove from `adminSecondaryNavItems`:
+- Financial Dashboard
+- Users
+- Branches
+- Trainers
+- Unpaid Handlers
+- Intake Scans
+- Email Templates
+- Training Sessions
+- Assistant Schedule
+
+### 7. Update Router
+
+**File:** `src/router.tsx`
+
+Changes:
+- Add new `/admin` route pointing to AdminHub
+- Keep existing routes as aliases for deep linking (optional - can be removed later)
 
 ---
 
-## Navigation Updates
+## File Changes Summary
 
-### Admin Navigation
-Add to `adminSecondaryNavItems`:
-```typescript
-{
-  name: "Assistants",
-  path: "/assistants",
-  icon: Users
-},
-{
-  name: "Training Sessions",
-  path: "/admin/training-sessions",
-  icon: Calendar
-},
-{
-  name: "Assistant Schedule",
-  path: "/admin/assistant-schedule",
-  icon: ClipboardList
-}
-```
-
-### Assistant Navigation
-New `assistantNavItems`:
-```typescript
-export const assistantNavItems = [
-  {
-    name: "My Schedule",
-    path: "/assistant/schedule",
-    icon: Calendar
-  }
-];
-```
-
----
-
-## Auth Context Updates
-
-Add to `useAuthState.ts`:
-```typescript
-const isAssistant = useMemo(() => {
-  if (!role) return false;
-  return role.split(',').includes('assistant');
-}, [role]);
-```
-
-Update `AuthContext.tsx` and `AuthProvider.tsx` to export `isAssistant`.
-
----
-
-## Edge Function Updates
-
-### `manage-user-role`
-Update to handle `assistant` role:
-- When role is added, check for existing assistant record
-- Link user_id to assistant record if email matches
-- Create assistant record if needed
-
----
-
-## File Summary
-
-### New Files
-
-| File | Purpose |
-|------|---------|
-| `src/pages/Assistants.tsx` | Admin assistant management |
-| `src/pages/admin/TrainingSessions.tsx` | Admin session creation |
-| `src/pages/admin/AssistantSchedule.tsx` | Admin schedule grid view |
-| `src/pages/AssistantLogin.tsx` | Dedicated assistant login |
-| `src/pages/assistant/AssistantSchedule.tsx` | Assistant's schedule view |
-| `src/pages/assistant/AssistantProfile.tsx` | Assistant profile (optional) |
-| `src/components/assistants/AssistantsTable.tsx` | Admin table component |
-| `src/components/assistants/AddAssistantModal.tsx` | Add assistant modal |
-| `src/components/assistants/EditAssistantModal.tsx` | Edit assistant modal |
-| `src/components/assistants/schedule/ScheduleGrid.tsx` | Reusable schedule grid |
-| `src/components/assistants/schedule/AvailabilityCell.tsx` | Grid cell component |
-| `src/components/assistants/schedule/SessionCreator.tsx` | Bulk session creation |
-| `src/components/assistants/schedule/TimeSlotConfig.tsx` | Time slot settings |
-| `src/hooks/useAssistants.ts` | Assistant data operations |
-| `src/hooks/useTrainingSessions.ts` | Session data operations |
-| `src/hooks/useAssistantAvailability.ts` | Availability operations |
-| `src/routes/assistantRoutes.tsx` | Assistant route definitions |
-
-### Modified Files
-
-| File | Change |
+| File | Action |
 |------|--------|
-| `src/router.tsx` | Add assistant routes |
-| `src/context/auth/useAuthState.ts` | Add `isAssistant` |
-| `src/context/auth/AuthContext.tsx` | Add `isAssistant` to context type |
-| `src/context/auth/AuthProvider.tsx` | Export `isAssistant` |
-| `src/context/auth/types.ts` | Add `isAssistant` to interface |
-| `src/components/layout/header/navigation-items.ts` | Add assistant nav items |
-| `src/components/layout/header/AdminNavigation.tsx` | Show assistant links |
-| `src/routes/adminRoutes.tsx` | Add admin assistant routes |
-| `supabase/functions/manage-user-role/index.ts` | Handle assistant role |
+| `src/components/layout/header/navigation-items.ts` | Modify - simplify navigation |
+| `src/pages/FinancialReports.tsx` | Modify - add Financial Dashboard and Unpaid Handlers tabs |
+| `src/pages/admin/Email.tsx` | Modify - add Email Templates tab |
+| `src/pages/admin/AdminHub.tsx` | Create - new consolidated admin page |
+| `src/pages/Assistants.tsx` | Modify - add Sessions and Schedule tabs |
+| `src/router.tsx` | Modify - add `/admin` route |
 
 ---
 
-## Implementation Order
+## Component Extraction (Reusability)
 
-1. **Database migration** - Create all new tables and add role enum value
-2. **Auth context updates** - Add `isAssistant` detection
-3. **Admin pages** - Assistants management, Training Sessions, Schedule Grid
-4. **Assistant portal** - Login page, Schedule view
-5. **Edge function updates** - Handle assistant role in manage-user-role
-6. **Routes and navigation** - Wire everything together
-7. **Testing** - End-to-end verification
+To avoid duplicating code, the existing page content will be extracted into reusable components:
+
+| Current Page | New Component |
+|--------------|---------------|
+| `FinancialDashboard.tsx` | `src/components/financial/FinancialDashboardContent.tsx` |
+| `UnpaidHandlers.tsx` | `src/components/handlers/UnpaidHandlersContent.tsx` |
+| `EmailTemplates.tsx` | Existing structure works (already self-contained) |
+| `UserAdmin.tsx` | Uses `UserAdminPanel` component (already good) |
+| `Branches.tsx` | Uses `BranchesTable` and `AddBranchModal` (already good) |
+| `Trainers.tsx` | Uses `TrainersTable` and `AddTrainerModal` (already good) |
+| `IntakeScans.tsx` | Uses `UploadPanel`, `ReviewPanel`, `StatusPanel` (already good) |
+| `TrainingSessions.tsx` | `src/components/assistants/TrainingSessionsContent.tsx` |
+| `AssistantSchedule.tsx` | `src/components/assistants/AssistantScheduleContent.tsx` |
 
 ---
 
-## Mobile Considerations
+## Benefits
 
-The assistant schedule will be mobile-responsive:
-- Grid scrolls horizontally on small screens
-- Alternative card view for mobile showing upcoming sessions
-- Large touch targets for availability toggles
-- Swipe gestures for date navigation
+1. **Cleaner Navigation** - From 12+ items to 4-5 items in secondary row
+2. **Logical Grouping** - Related functionality is co-located
+3. **Familiar Pattern** - Uses the same tabs UI already established in Financial Reports
+4. **Preserves Functionality** - All features remain accessible
+5. **Better Mobile UX** - Fewer scrolling required in the header
 
