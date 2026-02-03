@@ -121,23 +121,31 @@ export function ClassFinancialReport({ onRefreshSuccess }: ClassFinancialReportP
     return (
       <Card className="w-full">
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Class Financial Report</CardTitle>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={handleRefresh}
-            disabled={refreshing}
-          >
-            {refreshing ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <RefreshCw className="h-4 w-4 mr-2" />
-            )}
-            Refresh
-          </Button>
+          <CardTitle>Class Financial Report - {monthLabel}</CardTitle>
+          <div className="flex items-center gap-2">
+            <MonthSelector
+              month={selectedMonth}
+              year={selectedYear}
+              onMonthChange={setSelectedMonth}
+              onYearChange={setSelectedYear}
+            />
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleRefresh}
+              disabled={refreshing}
+            >
+              {refreshing ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4 mr-2" />
+              )}
+              Refresh
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="text-center">
-          <p className="text-muted-foreground py-4">No financial data available for the selected date range</p>
+          <p className="text-muted-foreground py-4">No financial data available for {monthLabel}</p>
         </CardContent>
       </Card>
     );
