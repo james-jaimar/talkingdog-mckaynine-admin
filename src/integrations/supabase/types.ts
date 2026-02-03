@@ -2781,6 +2781,7 @@ export type Database = {
           term_number: Database["public"]["Enums"]["term_number"]
         }[]
       }
+      get_assistant_branch_id: { Args: { user_uuid: string }; Returns: string }
       get_current_term: {
         Args: never
         Returns: {
