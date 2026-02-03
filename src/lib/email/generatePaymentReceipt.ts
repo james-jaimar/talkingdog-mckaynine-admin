@@ -49,7 +49,8 @@ interface ReceiptEmailData {
   attachments?: Array<{
     filename: string;
     content: string; // base64
-    type: string;
+    encoding: string;
+    contentType: string;
   }>;
 }
 
@@ -165,7 +166,8 @@ export async function generatePaymentReceiptEmails(
           {
             filename: `Payment_Receipt_${invoiceData.invoice_number}.pdf`,
             content: paymentPdfBase64,
-            type: "application/pdf",
+            encoding: "base64",
+            contentType: "application/pdf",
           },
         ]
       : undefined;
