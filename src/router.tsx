@@ -88,20 +88,12 @@ const notFound404Route = {
   element: <NotFound />,
 };
 
-// Combine all routes
+// Combine all routes - assistants routes are now consolidated
 const router = createBrowserRouter([
   ...publicRoutes,
   { path: "/assistant-login", element: <AssistantLogin /> },
   { path: "/assistant/schedule", element: <AssistantSchedulePage /> },
   ...adminRoutes.map(route => ({
-    ...route,
-    element: (
-      <ProtectedRoute requiredRole="admin">
-        {route.element}
-      </ProtectedRoute>
-    ),
-  })),
-  ...assistantAdminRoutes.map(route => ({
     ...route,
     element: (
       <ProtectedRoute requiredRole="admin">
