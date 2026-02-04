@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -50,6 +50,7 @@ interface TrainerStatementDialogProps {
   dateRange: { from: Date; to: Date };
   termInfo?: string;
   branchName?: string;
+  selectedScheduleIds?: string[];
 }
 
 export function TrainerStatementDialog({
@@ -59,16 +60,54 @@ export function TrainerStatementDialog({
   dateRange,
   termInfo = "Term Statement",
   branchName = "delta",
+  selectedScheduleIds,
 }: TrainerStatementDialogProps) {
   const [isDownloading, setIsDownloading] = useState(false);
   const { toast } = useToast();
 
-  const prepareClassData = (): ClassDetail[] => {
+  // Filter class details based on selection
+  const filteredClassDetails = useMemo(() => {
     if (!trainer.classDetails || trainer.classDetails.length === 0) {
       return [];
     }
+    
+    // If no selection provided or empty, use all classes
+    if (!selectedScheduleIds || selectedScheduleIds.length === 0) {
+      return trainer.classDetails;
+    }
+    
+    // Filter by selected schedule IDs
+    return trainer.classDetails.filter((cls: any) => 
+      selectedScheduleIds.includes(cls.scheduleId)
+    );
+  }, [trainer.classDetails, selectedScheduleIds]);
 
-    return trainer.classDetails.map((cls: any) => {
+  // Recalculate totals based on filtered classes
+  const recalculatedTotals = useMemo(() => {
+    let totalEarned = 0;
+    let paid = 0;
+    let pending = 0;
+
+    filteredClassDetails.forEach((cls: any) => {
+      const commissionAmount = cls.potentialRevenue || cls.revenue || cls.commissionAmount || cls.trainerCommission || 0;
+      totalEarned += commissionAmount;
+      
+      if (cls.isPaid) {
+        paid += commissionAmount;
+      } else {
+        pending += commissionAmount;
+      }
+    });
+
+    return { totalEarned, paid, pending };
+  }, [filteredClassDetails]);
+
+  const prepareClassData = (): ClassDetail[] => {
+    if (filteredClassDetails.length === 0) {
+      return [];
+    }
+
+    return filteredClassDetails.map((cls: any) => {
       // Get the booking count - could be 'bookings' (number) or 'bookingsCount' or array length
       let bookingsCount = 0;
       if (typeof cls.bookings === 'number') {
@@ -127,9 +166,9 @@ export function TrainerStatementDialog({
         trainerEmail: trainer.email || "No email on file",
         termInfo,
         dateRange,
-        totalCommission: trainer.totalEarned,
-        totalPaid: trainer.paid,
-        outstanding: trainer.pending,
+        totalCommission: recalculatedTotals.totalEarned,
+        totalPaid: recalculatedTotals.paid,
+        outstanding: recalculatedTotals.pending,
         classes,
         branchName,
       });
@@ -153,6 +192,9 @@ export function TrainerStatementDialog({
   };
 
   const classes = prepareClassData();
+  const selectionInfo = selectedScheduleIds && selectedScheduleIds.length > 0 
+    ? `${selectedScheduleIds.length} classes selected`
+    : "All classes";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -163,7 +205,7 @@ export function TrainerStatementDialog({
             Trainer Payment Statement
           </DialogTitle>
           <DialogDescription>
-            Statement for {trainer.trainerName} - {termInfo}
+            Statement for {trainer.trainerName} - {termInfo} ({selectionInfo})
           </DialogDescription>
         </DialogHeader>
 
@@ -174,9 +216,9 @@ export function TrainerStatementDialog({
             trainerEmail={trainer.email || "No email on file"}
             termInfo={termInfo}
             dateRange={dateRange}
-            totalCommission={trainer.totalEarned}
-            totalPaid={trainer.paid}
-            outstanding={trainer.pending}
+            totalCommission={recalculatedTotals.totalEarned}
+            totalPaid={recalculatedTotals.paid}
+            outstanding={recalculatedTotals.pending}
             classes={classes}
             branchName={branchName}
           />
