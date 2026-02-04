@@ -116,6 +116,7 @@ export function TrainerReportsTab({ dateRange, branchId }: TrainerReportsTabProp
   const formattedTrainers = trainersData.map(trainer => ({
     id: trainer.id,
     trainerName: trainer.trainerName,
+    trainerEmail: trainer.trainerEmail,
     totalEarned: trainer.totalEarned,
     paid: trainer.paid,
     pending: trainer.pending,

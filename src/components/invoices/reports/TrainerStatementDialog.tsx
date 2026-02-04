@@ -7,7 +7,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Download, FileText, Loader2 } from "lucide-react";
+import { Download, FileText, Loader2, Mail } from "lucide-react";
 import {
   generateTrainerStatementPDF,
   downloadTrainerStatementPDF,
@@ -15,6 +15,7 @@ import {
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { TrainerStatementHTMLPreview } from "./TrainerStatementHTMLPreview";
+import { TrainerStatementEmailDialog } from "./TrainerStatementEmailDialog";
 
 interface HandlerDetail {
   handlerName: string;
@@ -41,7 +42,7 @@ interface TrainerStatementDialogProps {
   trainer: {
     id: string;
     trainerName: string;
-    email?: string;
+    trainerEmail?: string;
     totalEarned: number;
     paid: number;
     pending: number;
@@ -50,6 +51,7 @@ interface TrainerStatementDialogProps {
   dateRange: { from: Date; to: Date };
   termInfo?: string;
   branchName?: string;
+  branchId?: string;
   selectedScheduleIds?: string[];
 }
 
@@ -63,6 +65,9 @@ export function TrainerStatementDialog({
   selectedScheduleIds,
 }: TrainerStatementDialogProps) {
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isGeneratingForEmail, setIsGeneratingForEmail] = useState(false);
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+  const [pdfBase64, setPdfBase64] = useState<string | null>(null);
   const { toast } = useToast();
 
   // Filter class details based on selection
@@ -163,7 +168,7 @@ export function TrainerStatementDialog({
 
       const dataUrl = await generateTrainerStatementPDF({
         trainerName: trainer.trainerName,
-        trainerEmail: trainer.email || "No email on file",
+        trainerEmail: trainer.trainerEmail || "No email on file",
         termInfo,
         dateRange,
         totalCommission: recalculatedTotals.totalEarned,
@@ -191,59 +196,130 @@ export function TrainerStatementDialog({
     }
   };
 
+  const handleEmailStatement = async () => {
+    setIsGeneratingForEmail(true);
+    try {
+      const classes = prepareClassData();
+
+      const dataUrl = await generateTrainerStatementPDF({
+        trainerName: trainer.trainerName,
+        trainerEmail: trainer.trainerEmail || "No email on file",
+        termInfo,
+        dateRange,
+        totalCommission: recalculatedTotals.totalEarned,
+        totalPaid: recalculatedTotals.paid,
+        outstanding: recalculatedTotals.pending,
+        classes,
+        branchName,
+      });
+
+      // Convert data URL to base64 (remove prefix)
+      const base64 = dataUrl.split(",")[1];
+      setPdfBase64(base64);
+      setEmailDialogOpen(true);
+    } catch (error) {
+      console.error("Error generating PDF for email:", error);
+      toast({
+        title: "Error",
+        description: "Failed to generate statement. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingForEmail(false);
+    }
+  };
+
   const classes = prepareClassData();
   const selectionInfo = selectedScheduleIds && selectedScheduleIds.length > 0 
     ? `${selectedScheduleIds.length} classes selected`
     : "All classes";
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl w-[95vw] sm:w-full h-[85vh] flex flex-col">
-        <DialogHeader className="flex-shrink-0">
-          <DialogTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" />
-            Trainer Payment Statement
-          </DialogTitle>
-          <DialogDescription>
-            Statement for {trainer.trainerName} - {termInfo} ({selectionInfo})
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-4xl w-[95vw] sm:w-full h-[85vh] flex flex-col">
+          <DialogHeader className="flex-shrink-0">
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Trainer Payment Statement
+            </DialogTitle>
+            <DialogDescription>
+              Statement for {trainer.trainerName} - {termInfo} ({selectionInfo})
+            </DialogDescription>
+          </DialogHeader>
 
-        {/* HTML Preview - scrollable */}
-        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y border rounded-lg">
-          <TrainerStatementHTMLPreview
-            trainerName={trainer.trainerName}
-            trainerEmail={trainer.email || "No email on file"}
-            termInfo={termInfo}
-            dateRange={dateRange}
-            totalCommission={recalculatedTotals.totalEarned}
-            totalPaid={recalculatedTotals.paid}
-            outstanding={recalculatedTotals.pending}
-            classes={classes}
-            branchName={branchName}
-          />
-        </div>
+          {/* HTML Preview - scrollable */}
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y border rounded-lg">
+            <TrainerStatementHTMLPreview
+              trainerName={trainer.trainerName}
+              trainerEmail={trainer.trainerEmail || "No email on file"}
+              termInfo={termInfo}
+              dateRange={dateRange}
+              totalCommission={recalculatedTotals.totalEarned}
+              totalPaid={recalculatedTotals.paid}
+              outstanding={recalculatedTotals.pending}
+              classes={classes}
+              branchName={branchName}
+            />
+          </div>
 
-        {/* Actions */}
-        <div className="flex justify-end gap-2 pt-4 border-t">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Close
-          </Button>
-          <Button onClick={handleDownload} disabled={isDownloading}>
-            {isDownloading ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Generating...
-              </>
-            ) : (
-              <>
-                <Download className="h-4 w-4 mr-2" />
-                Download PDF
-              </>
-            )}
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+          {/* Actions */}
+          <div className="flex justify-end gap-2 pt-4 border-t">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Close
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={handleEmailStatement} 
+              disabled={isGeneratingForEmail || isDownloading}
+            >
+              {isGeneratingForEmail ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Preparing...
+                </>
+              ) : (
+                <>
+                  <Mail className="h-4 w-4 mr-2" />
+                  Email Statement
+                </>
+              )}
+            </Button>
+            <Button onClick={handleDownload} disabled={isDownloading || isGeneratingForEmail}>
+              {isDownloading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4 mr-2" />
+                  Download PDF
+                </>
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Email composition dialog */}
+      <TrainerStatementEmailDialog
+        open={emailDialogOpen}
+        onOpenChange={setEmailDialogOpen}
+        trainerName={trainer.trainerName}
+        trainerEmail={trainer.trainerEmail || ""}
+        termInfo={termInfo}
+        dateRange={dateRange}
+        totalCommission={recalculatedTotals.totalEarned}
+        totalPaid={recalculatedTotals.paid}
+        outstanding={recalculatedTotals.pending}
+        classes={classes}
+        branchName={branchName}
+        pdfBase64={pdfBase64}
+        onSuccess={() => {
+          // Optionally close the main dialog too
+        }}
+      />
+    </>
   );
 }

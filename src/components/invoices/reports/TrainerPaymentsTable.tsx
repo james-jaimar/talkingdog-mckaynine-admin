@@ -16,7 +16,7 @@ interface TrainerPaymentsTableProps {
   trainers: Array<{
     id: string;
     trainerName: string;
-    email?: string;
+    trainerEmail?: string;
     totalEarned: number;
     paid: number;
     pending: number;
