@@ -134,6 +134,6 @@ export function generateTrainerStatementEmailHtml(
   // Wrap in professional email template with signature
   return wrapEmailContent(content, {
     branchName,
-    includeBankingDetails: true,
+    includeBankingDetails: false,
   });
 }
