@@ -99,46 +99,85 @@ async function handleCreateAccount(data: any, supabase: any, requesterId: string
       throw new Error('Assistant already has a login account');
     }
 
-    // SECURITY: Check if email is already used by an admin/trainer
-    const { data: existingRoles } = await supabase
-      .from('profiles')
-      .select('id, role, username')
-      .eq('username', email)
-      .single();
+    // Check if email already exists in auth
+    const { data: existingUserData } = await supabase.auth.admin.getUserByEmail(email);
+    
+    let authUserId: string;
+    let isExistingAccount = false;
 
-    if (existingRoles) {
-      if (existingRoles.role?.includes('admin') || existingRoles.role?.includes('trainer') || existingRoles.role?.includes('platform_admin')) {
-        console.error(`BLOCKED: Attempt to create assistant account with admin/trainer email: ${email} by requester: ${requesterId}`);
-        throw new Error('This email is already associated with an admin or trainer account');
+    if (existingUserData?.user) {
+      // User already exists - check if safe to link
+      const existingUserId = existingUserData.user.id;
+      
+      // SECURITY: Check if existing user has admin/trainer roles
+      const { data: existingRoles } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', existingUserId);
+
+      const hasAdminRole = existingRoles?.some(r => 
+        r.role === 'admin' || r.role === 'trainer' || r.role === 'platform_admin'
+      );
+
+      if (hasAdminRole) {
+        console.error(`BLOCKED: Attempt to link admin/trainer account to assistant: ${email} by requester: ${requesterId}`);
+        throw new Error('This email is associated with an admin or trainer account and cannot be linked');
       }
+
+      // Check if this auth user is already linked to another assistant
+      const { data: linkedAssistant } = await supabase
+        .from('assistants')
+        .select('id, first_name, last_name')
+        .eq('user_id', existingUserId)
+        .single();
+
+      if (linkedAssistant && linkedAssistant.id !== assistantId) {
+        throw new Error(`This account is already linked to assistant: ${linkedAssistant.first_name} ${linkedAssistant.last_name || ''}`);
+      }
+
+      // Safe to link existing account
+      authUserId = existingUserId;
+      isExistingAccount = true;
+      
+      // Update password for the existing user
+      const { error: passwordError } = await supabase.auth.admin.updateUserById(authUserId, {
+        password: password
+      });
+
+      if (passwordError) {
+        console.error('Password update error:', passwordError);
+        throw new Error('Failed to set password for existing account');
+      }
+
+      console.log(`Linked existing account to assistant: ${assistant.first_name} ${assistant.last_name || ''} (${email}) by requester: ${requesterId}`);
+    } else {
+      // Create new auth user
+      const { data: userData, error: createError } = await supabase.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+        user_metadata: { 
+          full_name: `${assistant.first_name} ${assistant.last_name || ''}`.trim(),
+          signup_intent: 'assistant'
+        }
+      });
+
+      if (createError) throw createError;
+      if (!userData.user) throw new Error('User creation failed');
+
+      authUserId = userData.user.id;
+      console.log(`Assistant account created: ${assistant.first_name} ${assistant.last_name || ''} (${email}) by requester: ${requesterId}`);
     }
-
-    // Create auth user
-    const { data: userData, error: createError } = await supabase.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
-      user_metadata: { 
-        full_name: `${assistant.first_name} ${assistant.last_name || ''}`.trim(),
-        signup_intent: 'assistant'
-      }
-    });
-
-    if (createError) throw createError;
-    if (!userData.user) throw new Error('User creation failed');
-
-    const authUserId = userData.user.id;
-    console.log(`Assistant account created: ${assistant.first_name} ${assistant.last_name || ''} (${email}) by requester: ${requesterId}`);
 
     // Update profile with assistant role
     const { error: profileError } = await supabase
       .from('profiles')
-      .update({ 
+      .upsert({ 
+        id: authUserId,
         role: 'assistant',
         full_name: `${assistant.first_name} ${assistant.last_name || ''}`.trim(),
         updated_at: new Date().toISOString()
-      })
-      .eq('id', authUserId);
+      }, { onConflict: 'id' });
 
     if (profileError) {
       console.error('Profile update error:', profileError);
@@ -151,8 +190,10 @@ async function handleCreateAccount(data: any, supabase: any, requesterId: string
       .eq('id', assistantId);
 
     if (linkError) {
-      // Rollback: delete the auth user
-      await supabase.auth.admin.deleteUser(authUserId);
+      // Rollback: delete the auth user only if we created it
+      if (!isExistingAccount) {
+        await supabase.auth.admin.deleteUser(authUserId);
+      }
       throw linkError;
     }
 
@@ -165,7 +206,7 @@ async function handleCreateAccount(data: any, supabase: any, requesterId: string
       }, { onConflict: 'user_id,role' });
 
     return new Response(
-      JSON.stringify({ success: true, authUserId }),
+      JSON.stringify({ success: true, authUserId, linked: isExistingAccount }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
