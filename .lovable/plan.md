@@ -1,94 +1,136 @@
 
 
-# Simplified Fix: Link Existing Accounts Instead of Creating New Ones
+# Selective Class Statement Generation
 
-## The Problem
+## Overview
 
-When you click "Create Login" for Amy:
-- Amy already has an auth account (as a handler with email `ahumphrer@gmail.com`)
-- The edge function tries to create a **new** auth user with that email
-- Supabase rejects it because the email already exists
-- Result: 500 error
+Add checkboxes to the trainer's expanded class list so that when "Generate Statement" is clicked, only the selected classes are included in the statement. This allows Adi to generate a January-only statement for Leanne (selecting just the 2 January classes) without including February classes.
 
-## The Simple Solution
+---
 
-Instead of always trying to create a new user, check if one already exists and link it:
+## How It Will Work
 
 ```text
-User clicks "Create Login"
+Current Flow:
+  Click "Generate Statement" 
         ↓
-Check if email exists in auth.users
+  Statement shows ALL classes for the trainer
+
+New Flow:
+  Expand trainer row to see classes
         ↓
-    ┌───┴───┐
-   YES      NO
-    ↓        ↓
-  Link     Create new
-existing   auth user
- account      ↓
-    ↓      Link to
-Add        assistant
-assistant     ↓
-  role    Add assistant
-    ↓        role
- Reset       ↓
-password   Done
-    ↓
-  Done
+  Check/uncheck specific classes (e.g., only January)
+        ↓
+  Click "Generate Statement" 
+        ↓
+  Statement shows ONLY the selected classes
+        ↓
+  Totals recalculated based on selection
 ```
 
 ---
 
-## Technical Changes
+## User Experience
 
-### 1. Update Edge Function (`supabase/functions/assistant-account/index.ts`)
-
-Modify `handleCreateAccount` to:
-
-1. **First check if email exists** using `auth.admin.getUserByEmail(email)`
-2. **If user exists:**
-   - Verify they're not an admin/trainer (security check)
-   - Link their existing `user_id` to the assistant record
-   - Add `assistant` role to `user_roles`
-   - Reset their password to the provided one
-   - Return success
-3. **If user doesn't exist:**
-   - Create new auth user (current behavior)
-   - Link and add role as before
-
-### 2. Update UI Labels
-
-Since the action now handles both "create" and "link" scenarios:
-- Keep the button label as "Create Account" (it still creates access for the assistant)
-- The dialog description can explain: "This will set up portal access for the assistant"
+1. **When trainer row is expanded**: Each class row gets a checkbox on the left
+2. **Default behavior**: All classes are selected by default (so existing workflow still works)
+3. **Selection controls**: "Select All" / "Deselect All" buttons above the class list
+4. **Visual feedback**: Show count of selected classes and calculated total
+5. **Statement reflects selection**: Only checked classes appear in the statement PDF/preview
 
 ---
 
-## Security Considerations
+## Technical Implementation
 
-Before linking an existing account, verify:
-- The email belongs to a handler or has no conflicting roles
-- Never link to admin/trainer/platform_admin accounts
-- Log all linking operations for audit
+### 1. Update ClassDetailsList Component
+
+**File: `src/components/invoices/reports/class-details/ClassDetailsList.tsx`**
+
+- Add checkboxes to each class row
+- Add "Select All" / "Deselect All" controls
+- Track selected class IDs via new props
+- Show selection summary (count + total)
+
+### 2. Update TrainerPaymentsRow Component
+
+**File: `src/components/invoices/reports/TrainerPaymentsRow.tsx`**
+
+- Maintain state for selected class IDs per trainer
+- Initialize with all classes selected by default
+- Pass selected IDs to ClassDetailsList
+- Pass selected IDs when calling onGenerateStatement
+
+### 3. Update TrainerPaymentsSummary Component
+
+**File: `src/components/invoices/reports/TrainerPaymentsSummary.tsx`**
+
+- Update openStatementDialog to accept selected schedule IDs
+- Pass filtered class details to the statement dialog based on selection
+
+### 4. Update TrainerStatementDialog Component
+
+**File: `src/components/invoices/reports/TrainerStatementDialog.tsx`**
+
+- Accept optional `selectedScheduleIds` prop
+- Filter displayed classes based on selection
+- Recalculate totals based on selected classes only
 
 ---
 
-## Files to Modify
+## Component Changes Summary
 
-| File | Change |
-|------|--------|
-| `supabase/functions/assistant-account/index.ts` | Add email existence check, link existing users, set password |
+| Component | Change |
+|-----------|--------|
+| `ClassDetailsList` | Add checkboxes, selection controls, selection summary |
+| `TrainerPaymentsRow` | Track selected classes state, pass to children |
+| `TrainerPaymentsSummary` | Handle selected IDs in statement dialog flow |
+| `TrainerStatementDialog` | Filter classes by selection, recalculate totals |
+| `TrainerStatementHTMLPreview` | No changes (already receives filtered data) |
+| `TrainerPaymentsTable` | Update callback signature to include selected IDs |
 
 ---
 
-## Result After Fix
+## Visual Design
 
-- Clicking "Create Login" for Amy will:
-  1. Find her existing auth account
-  2. Link it to her assistant record  
-  3. Set the password you specified
-  4. Add the `assistant` role
-  5. Show success message
+When the trainer row is expanded, the classes section will look like:
 
-- No more 500 errors for existing emails
-- Amy can now log in via `/auth` and be redirected to the assistant portal
+```text
+Classes (4)                          [✓ Select All] [Deselect All]
+
+☑  15h00 Yoga January     17/01/2026    5 bookings    R 1 140,00  Unpaid  ⋯
+☑  16h15 Yoga January     17/01/2026    7 bookings    R 1 620,00  Unpaid  ⋯
+☐  Yoga 15h00 February    07/02/2026    6 bookings    R 1 320,00  Unpaid  ⋯
+☐  Yoga 16h15 February    07/02/2026    6 bookings    R 1 440,00  Unpaid  ⋯
+
+─────────────────────────────────────────────────────────────────────────
+2 classes selected • Total: R 2 760,00
+```
+
+---
+
+## Statement Behavior
+
+- **Totals in statement**: Recalculated from selected classes only
+- **Class list in statement**: Shows only selected classes
+- **Outstanding amount**: Reflects selected unpaid classes
+- **Already paid**: Reflects selected paid classes
+
+---
+
+## Files to Create/Modify
+
+1. **`src/components/invoices/reports/class-details/ClassDetailsList.tsx`** - Add checkboxes and selection logic
+2. **`src/components/invoices/reports/TrainerPaymentsRow.tsx`** - Manage selection state, update callback
+3. **`src/components/invoices/reports/TrainerPaymentsTable.tsx`** - Update callback signature
+4. **`src/components/invoices/reports/TrainerPaymentsSummary.tsx`** - Handle selection in statement flow
+5. **`src/components/invoices/reports/TrainerStatementDialog.tsx`** - Filter and recalculate based on selection
+
+---
+
+## Edge Cases Handled
+
+- No classes selected: Disable "Generate Statement" or show warning
+- All classes selected: Behaves same as current (full statement)
+- Mixed paid/unpaid selection: Totals correctly reflect each category
+- Single class selected: Works correctly with proper totals
 
