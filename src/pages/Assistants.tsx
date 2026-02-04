@@ -30,8 +30,16 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Trash2, UserPlus, Users, Calendar, ClipboardList } from "lucide-react";
-import { useAssistants, useCreateAssistant, useUpdateAssistant, useDeleteAssistant } from "@/hooks/useAssistants";
+import { Plus, Edit, Trash2, UserPlus, Users, Calendar, ClipboardList, Key, MoreHorizontal } from "lucide-react";
+import { useAssistants, useCreateAssistant, useUpdateAssistant, useDeleteAssistant, Assistant } from "@/hooks/useAssistants";
+import { AssistantPortalAccess } from "@/components/assistants/AssistantPortalAccess";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useBranches } from "@/hooks/useBranches";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TrainingSessionsContent } from "@/components/assistants/TrainingSessionsContent";
@@ -39,8 +47,9 @@ import { AssistantScheduleContent } from "@/components/assistants/AssistantSched
 
 function AssistantsListContent() {
   const [isAddOpen, setIsAddOpen] = useState(false);
-  const [editingAssistant, setEditingAssistant] = useState<any>(null);
+  const [editingAssistant, setEditingAssistant] = useState<Assistant | null>(null);
   const [selectedBranch, setSelectedBranch] = useState<string>("");
+  const [portalAccessAssistant, setPortalAccessAssistant] = useState<Assistant | null>(null);
   
   const { data: assistants, isLoading } = useAssistants(selectedBranch || undefined);
   const { data: branches } = useBranches();
@@ -287,22 +296,31 @@ function AssistantsListContent() {
                         )}
                       </TableCell>
                       <TableCell>
-                        <div className="flex gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEdit(assistant)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDelete(assistant.id)}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleEdit(assistant)}>
+                              <Edit className="h-4 w-4 mr-2" />
+                              Edit Details
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setPortalAccessAssistant(assistant)}>
+                              <Key className="h-4 w-4 mr-2" />
+                              {assistant.user_id ? "Manage Login" : "Create Login"}
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              onClick={() => handleDelete(assistant.id)}
+                              className="text-destructive focus:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   ))
@@ -312,6 +330,15 @@ function AssistantsListContent() {
           )}
         </CardContent>
       </Card>
+
+      {/* Portal Access Dialog */}
+      {portalAccessAssistant && (
+        <AssistantPortalAccess
+          assistant={portalAccessAssistant}
+          open={!!portalAccessAssistant}
+          onOpenChange={(open) => !open && setPortalAccessAssistant(null)}
+        />
+      )}
     </div>
   );
 }
