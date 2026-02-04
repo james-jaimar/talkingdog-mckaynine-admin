@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   TableCell,
   TableRow,
@@ -33,7 +33,7 @@ interface TrainerPaymentsRowProps {
   onMarkForPayment: (trainerId: string) => void;
   onMarkAsUnpaid?: (trainerId: string) => void;
   onFixZeroAmounts?: (trainerId: string) => void;
-  onGenerateStatement?: (trainerId: string) => void;
+  onGenerateStatement?: (trainerId: string, selectedScheduleIds?: string[]) => void;
   index: number;
 }
 
@@ -46,6 +46,21 @@ export function TrainerPaymentsRow({
   index 
 }: TrainerPaymentsRowProps) {
   const [expanded, setExpanded] = useState(false);
+  
+  // Get selectable classes (exclude zero commission)
+  const selectableClasses = useMemo(() => {
+    return (trainer.classDetails || []).filter(c => !c.hasZeroCommission);
+  }, [trainer.classDetails]);
+  
+  // Initialize with all selectable classes selected
+  const [selectedScheduleIds, setSelectedScheduleIds] = useState<string[]>(() => 
+    selectableClasses.map(c => c.scheduleId)
+  );
+
+  // Update selection when class details change
+  useEffect(() => {
+    setSelectedScheduleIds(selectableClasses.map(c => c.scheduleId));
+  }, [selectableClasses]);
 
   const toggleExpand = () => setExpanded((prev) => !prev);
 
@@ -60,6 +75,15 @@ export function TrainerPaymentsRow({
   // Determine status based on payment amounts
   const hasActualPayments = trainer.paid > 0;
   const hasPendingAmount = trainer.pending > 0;
+
+  // Check if any classes are selected for statement
+  const hasSelectedClasses = selectedScheduleIds.length > 0;
+
+  const handleGenerateStatement = () => {
+    if (onGenerateStatement) {
+      onGenerateStatement(trainer.id, selectedScheduleIds);
+    }
+  };
 
   return (
     <>
@@ -139,12 +163,16 @@ export function TrainerPaymentsRow({
               {/* Statement Actions - always available for trainers with classes */}
               {onGenerateStatement && classesCount > 0 && (
                 <>
-                  <DropdownMenuItem onClick={(e) => {
-                    e.stopPropagation();
-                    onGenerateStatement(trainer.id);
-                  }}>
+                  <DropdownMenuItem 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleGenerateStatement();
+                    }}
+                    disabled={!hasSelectedClasses}
+                  >
                     <FileText className="h-4 w-4 mr-2" />
                     Generate Statement
+                    {!hasSelectedClasses && <span className="ml-1 text-xs">(select classes)</span>}
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                 </>
@@ -203,6 +231,8 @@ export function TrainerPaymentsRow({
                 onMarkForPayment={onMarkForPayment}
                 trainerId={trainer.id}
                 onMarkAsUnpaid={onMarkAsUnpaid}
+                selectedScheduleIds={selectedScheduleIds}
+                onSelectionChange={setSelectedScheduleIds}
               />
             </div>
           </TableCell>

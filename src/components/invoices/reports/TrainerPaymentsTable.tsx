@@ -34,7 +34,7 @@ interface TrainerPaymentsTableProps {
   onMarkForPayment: (trainerId: string) => void;
   onMarkAsUnpaid?: (trainerId: string) => void;
   onFixZeroAmounts?: (trainerId: string) => void;
-  onGenerateStatement?: (trainerId: string) => void;
+  onGenerateStatement?: (trainerId: string, selectedScheduleIds?: string[]) => void;
 }
 
 export function TrainerPaymentsTable({ 

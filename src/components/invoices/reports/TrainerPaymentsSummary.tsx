@@ -58,6 +58,9 @@ export function TrainerPaymentsSummary({
     return branch?.name?.toLowerCase() || "delta";
   }, [branchId, branches]);
   
+  // Track selected schedule IDs for statement generation
+  const [statementSelectedScheduleIds, setStatementSelectedScheduleIds] = useState<string[]>([]);
+
   const openPaymentDialog = (trainerId: string) => {
     const trainer = trainers.find(t => t.id === trainerId);
     setSelectedTrainerId(trainerId);
@@ -66,10 +69,11 @@ export function TrainerPaymentsSummary({
     setDialogOpen(true);
   };
 
-  const openStatementDialog = (trainerId: string) => {
+  const openStatementDialog = (trainerId: string, selectedIds?: string[]) => {
     const trainer = trainers.find(t => t.id === trainerId);
     if (trainer) {
       setStatementTrainer(trainer);
+      setStatementSelectedScheduleIds(selectedIds || []);
       setStatementDialogOpen(true);
     }
   };
@@ -115,6 +119,7 @@ export function TrainerPaymentsSummary({
           dateRange={dateRange}
           termInfo={termInfo}
           branchName={branchName}
+          selectedScheduleIds={statementSelectedScheduleIds}
         />
       )}
     </div>
