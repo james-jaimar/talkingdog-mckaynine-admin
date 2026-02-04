@@ -17,7 +17,7 @@ interface TrainerPaymentsRowProps {
   trainer: {
     id: string;
     trainerName: string;
-    email?: string;
+    trainerEmail?: string;
     totalEarned: number;
     paid: number;
     pending: number;
