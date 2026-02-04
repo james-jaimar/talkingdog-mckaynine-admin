@@ -1,136 +1,168 @@
 
 
-# Selective Class Statement Generation
+# Fix Trainer Email & Add Email Statement Feature
 
-## Overview
+## Issues to Address
 
-Add checkboxes to the trainer's expanded class list so that when "Generate Statement" is clicked, only the selected classes are included in the statement. This allows Adi to generate a January-only statement for Leanne (selecting just the 2 January classes) without including February classes.
+1. **Bug Fix**: Trainer email shows "No email on file" despite email existing in database
+2. **New Feature**: Add ability to email trainer statements via the email queue
 
 ---
 
-## How It Will Work
+## Bug Analysis: Missing Trainer Email
 
-```text
-Current Flow:
-  Click "Generate Statement" 
-        ↓
-  Statement shows ALL classes for the trainer
+The trainer's email is correctly fetched from the database and stored as `trainerEmail` in the `TrainerPaymentData` type, but it gets lost in the data transformation:
 
-New Flow:
-  Expand trainer row to see classes
-        ↓
-  Check/uncheck specific classes (e.g., only January)
-        ↓
-  Click "Generate Statement" 
-        ↓
-  Statement shows ONLY the selected classes
-        ↓
-  Totals recalculated based on selection
+**Location**: `src/components/invoices/reports/TrainerReportsTab.tsx` (lines 116-130)
+
+```typescript
+// Current code - missing trainerEmail!
+const formattedTrainers = trainersData.map(trainer => ({
+  id: trainer.id,
+  trainerName: trainer.trainerName,
+  // trainerEmail: trainer.trainerEmail   <-- MISSING!
+  totalEarned: trainer.totalEarned,
+  ...
+}));
 ```
 
----
-
-## User Experience
-
-1. **When trainer row is expanded**: Each class row gets a checkbox on the left
-2. **Default behavior**: All classes are selected by default (so existing workflow still works)
-3. **Selection controls**: "Select All" / "Deselect All" buttons above the class list
-4. **Visual feedback**: Show count of selected classes and calculated total
-5. **Statement reflects selection**: Only checked classes appear in the statement PDF/preview
+Additionally, in `TrainerStatementDialog.tsx`, the interface uses `email` but should use `trainerEmail` for consistency.
 
 ---
 
-## Technical Implementation
+## Fix: Email Bug
 
-### 1. Update ClassDetailsList Component
+### Files to Modify
 
-**File: `src/components/invoices/reports/class-details/ClassDetailsList.tsx`**
-
-- Add checkboxes to each class row
-- Add "Select All" / "Deselect All" controls
-- Track selected class IDs via new props
-- Show selection summary (count + total)
-
-### 2. Update TrainerPaymentsRow Component
-
-**File: `src/components/invoices/reports/TrainerPaymentsRow.tsx`**
-
-- Maintain state for selected class IDs per trainer
-- Initialize with all classes selected by default
-- Pass selected IDs to ClassDetailsList
-- Pass selected IDs when calling onGenerateStatement
-
-### 3. Update TrainerPaymentsSummary Component
-
-**File: `src/components/invoices/reports/TrainerPaymentsSummary.tsx`**
-
-- Update openStatementDialog to accept selected schedule IDs
-- Pass filtered class details to the statement dialog based on selection
-
-### 4. Update TrainerStatementDialog Component
-
-**File: `src/components/invoices/reports/TrainerStatementDialog.tsx`**
-
-- Accept optional `selectedScheduleIds` prop
-- Filter displayed classes based on selection
-- Recalculate totals based on selected classes only
+| File | Change |
+|------|--------|
+| `TrainerReportsTab.tsx` | Add `trainerEmail` to formatted trainer object |
+| `TrainerPaymentsSummary.tsx` | Update interface to include `trainerEmail` |
+| `TrainerPaymentsTable.tsx` | Update interface to include `trainerEmail` |
+| `TrainerPaymentsRow.tsx` | Update interface to include `trainerEmail` |
+| `TrainerStatementDialog.tsx` | Change `email` to `trainerEmail` in interface and usage |
 
 ---
 
-## Component Changes Summary
+## New Feature: Email Statement to Trainer
 
-| Component | Change |
-|-----------|--------|
-| `ClassDetailsList` | Add checkboxes, selection controls, selection summary |
-| `TrainerPaymentsRow` | Track selected classes state, pass to children |
-| `TrainerPaymentsSummary` | Handle selected IDs in statement dialog flow |
-| `TrainerStatementDialog` | Filter classes by selection, recalculate totals |
-| `TrainerStatementHTMLPreview` | No changes (already receives filtered data) |
-| `TrainerPaymentsTable` | Update callback signature to include selected IDs |
-
----
-
-## Visual Design
-
-When the trainer row is expanded, the classes section will look like:
+### User Flow
 
 ```text
-Classes (4)                          [✓ Select All] [Deselect All]
-
-☑  15h00 Yoga January     17/01/2026    5 bookings    R 1 140,00  Unpaid  ⋯
-☑  16h15 Yoga January     17/01/2026    7 bookings    R 1 620,00  Unpaid  ⋯
-☐  Yoga 15h00 February    07/02/2026    6 bookings    R 1 320,00  Unpaid  ⋯
-☐  Yoga 16h15 February    07/02/2026    6 bookings    R 1 440,00  Unpaid  ⋯
-
-─────────────────────────────────────────────────────────────────────────
-2 classes selected • Total: R 2 760,00
+1. Select classes for statement
+         |
+         v
+2. Click "Generate Statement" 
+         |
+         v
+3. Statement dialog opens with preview
+         |
+         v
+4. Click "Email Statement" button (new)
+         |
+         v
+5. Email composition modal opens
+   - Pre-filled with trainer's email
+   - Beautiful email template with statement summary
+   - PDF attached automatically
+   - Editable subject and body
+         |
+         v
+6. Click "Queue Email"
+         |
+         v
+7. Email added to queue for admin review
 ```
+
+### Implementation Details
+
+#### 1. Create Email Template for Trainer Statements
+
+**File**: `src/lib/email/generateTrainerStatementEmail.ts`
+
+- Professional email template similar to invoice emails
+- Include statement summary (period, total, outstanding)
+- Uses existing template renderer and email wrapper
+- Signature based on branch
+
+#### 2. Create Email Composition Dialog
+
+**File**: `src/components/invoices/reports/TrainerStatementEmailDialog.tsx`
+
+- Modal for composing/previewing the email
+- Pre-filled subject line with trainer name and term
+- HTML content preview
+- PDF attachment indicator
+- "Queue Email" button that adds to email_queue
+
+#### 3. Update Statement Dialog
+
+**File**: `src/components/invoices/reports/TrainerStatementDialog.tsx`
+
+- Add "Email Statement" button next to "Download PDF"
+- Opens the email composition dialog
+- Passes all necessary data (trainer info, PDF, statement details)
 
 ---
 
-## Statement Behavior
+## Email Template Design
 
-- **Totals in statement**: Recalculated from selected classes only
-- **Class list in statement**: Shows only selected classes
-- **Outstanding amount**: Reflects selected unpaid classes
-- **Already paid**: Reflects selected paid classes
+The email will follow the same professional styling as invoice emails:
+
+```text
+[McKaynine Logo]
+
+Hi Leanne,
+
+Please find attached your commission statement for Term 1, 2026.
+
+Statement Summary
+-----------------
+Period: 01 Jan 2026 - 31 Jan 2026
+Total Commission: R 2,760.00
+Already Paid: R 0.00
+Outstanding: R 2,760.00
+
+Classes Included: 2
+- 15h00 Yoga January (17/01/2026)
+- 16h15 Yoga January (17/01/2026)
+
+Please review and let us know if you have any questions.
+
+[Signature]
+[Banking Details]
+```
 
 ---
 
 ## Files to Create/Modify
 
-1. **`src/components/invoices/reports/class-details/ClassDetailsList.tsx`** - Add checkboxes and selection logic
-2. **`src/components/invoices/reports/TrainerPaymentsRow.tsx`** - Manage selection state, update callback
-3. **`src/components/invoices/reports/TrainerPaymentsTable.tsx`** - Update callback signature
-4. **`src/components/invoices/reports/TrainerPaymentsSummary.tsx`** - Handle selection in statement flow
-5. **`src/components/invoices/reports/TrainerStatementDialog.tsx`** - Filter and recalculate based on selection
+| File | Action | Description |
+|------|--------|-------------|
+| `src/lib/email/generateTrainerStatementEmail.ts` | Create | Email template generator |
+| `src/components/invoices/reports/TrainerStatementEmailDialog.tsx` | Create | Email composition dialog |
+| `src/components/invoices/reports/TrainerReportsTab.tsx` | Modify | Fix missing trainerEmail |
+| `src/components/invoices/reports/TrainerPaymentsSummary.tsx` | Modify | Add trainerEmail to interface |
+| `src/components/invoices/reports/TrainerPaymentsTable.tsx` | Modify | Add trainerEmail to interface |
+| `src/components/invoices/reports/TrainerPaymentsRow.tsx` | Modify | Add trainerEmail to interface |
+| `src/components/invoices/reports/TrainerStatementDialog.tsx` | Modify | Fix email field, add Email button |
 
 ---
 
-## Edge Cases Handled
+## Email Queue Integration
 
-- No classes selected: Disable "Generate Statement" or show warning
-- All classes selected: Behaves same as current (full statement)
-- Mixed paid/unpaid selection: Totals correctly reflect each category
-- Single class selected: Works correctly with proper totals
+Uses existing `email_queue` table structure:
+- `to_email`: Trainer's email address
+- `subject`: "Commission Statement - [Trainer Name] - [Term]"
+- `html_content`: Rendered email template
+- `attachments`: PDF statement as base64
+- `branch_id`: Current branch for routing
+
+---
+
+## Edge Cases
+
+- **Trainer has no email**: Show tooltip/message when trying to email
+- **No classes selected**: "Email Statement" button disabled
+- **PDF generation fails**: Show error, prevent email queue
 
