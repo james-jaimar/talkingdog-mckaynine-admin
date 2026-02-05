@@ -59,11 +59,16 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
         .eq('branch_id', branchId) // Filter by invoice's branch_id directly
         .in('status', ['sent', 'paid', 'overdue']);
 
-      // Apply date filters if provided
-      if (fromDate) {
+      // Apply date filters using franchise_report_month for monthly reports
+      // This respects the report_month_override set on classes
+      if (fromDate && toDate) {
+        // Extract YYYY-MM from the date range for franchise_report_month filtering
+        const fromMonth = fromDate.substring(0, 7); // e.g., "2026-02"
+        invoicesQuery = invoicesQuery.eq('franchise_report_month', fromMonth);
+      } else if (fromDate) {
+        // Fallback to issued_date if only partial range
         invoicesQuery = invoicesQuery.gte('issued_date', fromDate);
-      }
-      if (toDate) {
+      } else if (toDate) {
         invoicesQuery = invoicesQuery.lte('issued_date', toDate);
       }
 
