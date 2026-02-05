@@ -292,11 +292,13 @@ export function ReviewPanel({ job, onUpdateData }: ReviewPanelProps) {
                             <SelectValue placeholder="Select source" />
                           </SelectTrigger>
                           <SelectContent>
+                            <SelectItem value="KUSA breeder">KUSA breeder</SelectItem>
                             <SelectItem value="Breeder">Breeder</SelectItem>
                             <SelectItem value="Rescue">Rescue</SelectItem>
                             <SelectItem value="Shelter">Shelter</SelectItem>
-                            <SelectItem value="Pet store">Pet Store</SelectItem>
-                            <SelectItem value="Friend/family">Friend/Family</SelectItem>
+                            <SelectItem value="SPCA/AACL">SPCA/AACL</SelectItem>
+                            <SelectItem value="Rescue org">Rescue org</SelectItem>
+                            <SelectItem value="Family/friends">Family/friends</SelectItem>
                             <SelectItem value="Advert">Advert</SelectItem>
                             <SelectItem value="Born in home">Born in home</SelectItem>
                             <SelectItem value="Stray">Stray</SelectItem>
@@ -388,6 +390,7 @@ export function ReviewPanel({ job, onUpdateData }: ReviewPanelProps) {
                               <SelectItem value="Great">Great</SelectItem>
                               <SelectItem value="OK">OK</SelectItem>
                               <SelectItem value="Not good">Not good</SelectItem>
+                              <SelectItem value="Unknown">Unknown</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -404,6 +407,7 @@ export function ReviewPanel({ job, onUpdateData }: ReviewPanelProps) {
                               <SelectItem value="Great">Great</SelectItem>
                               <SelectItem value="OK">OK</SelectItem>
                               <SelectItem value="Not good">Not good</SelectItem>
+                              <SelectItem value="Unknown">Unknown</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -420,6 +424,7 @@ export function ReviewPanel({ job, onUpdateData }: ReviewPanelProps) {
                               <SelectItem value="Great">Great</SelectItem>
                               <SelectItem value="OK">OK</SelectItem>
                               <SelectItem value="Not good">Not good</SelectItem>
+                              <SelectItem value="Unknown">Unknown</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -565,9 +570,41 @@ export function ReviewPanel({ job, onUpdateData }: ReviewPanelProps) {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="yes">Yes</SelectItem>
+                            <SelectItem value="yes_not_minors">Yes, but not minors</SelectItem>
                             <SelectItem value="no">No</SelectItem>
                           </SelectContent>
                         </Select>
+                      </div>
+                    </div>
+                    
+                    <div className="border-t pt-4 mt-4">
+                      <h4 className="font-medium mb-3">How Did You Hear About Us?</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {['Google', 'Vet', 'Friends/Family', 'Breeder/Shelter', 'Been Before'].map((source) => {
+                          const sourceKey = source.toLowerCase().replace(/[^a-z]/g, '_');
+                          const isSelected = Array.isArray(dog.heard_from) && dog.heard_from.includes(source);
+                          return (
+                            <button
+                              key={source}
+                              type="button"
+                              onClick={() => {
+                                const current = Array.isArray(dog.heard_from) ? dog.heard_from : [];
+                                const updated = isSelected
+                                  ? current.filter(s => s !== source)
+                                  : [...current, source];
+                                updateDogField(dogIndex, 'heard_from', updated);
+                              }}
+                              className={`px-3 py-1.5 rounded-full border text-sm transition-colors ${
+                                isSelected
+                                  ? 'bg-primary text-primary-foreground border-primary'
+                                  : 'bg-background border-input hover:bg-accent'
+                              }`}
+                            >
+                              {isSelected && <span className="mr-1">✓</span>}
+                              {source}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
 

@@ -27,8 +27,15 @@ const heardFromOptions = [
   { id: "beenBefore" as const, label: "Been Before" },
 ];
 
-const permissionOptions = [
+const whatsappPermissionOptions = [
   { value: "yes", label: "Yes", color: "green" },
+  { value: "no", label: "No", color: "red" },
+  { value: "unsure", label: "Unsure", color: "yellow" },
+];
+
+const photoPermissionOptions = [
+  { value: "yes", label: "Yes", color: "green" },
+  { value: "yes_not_minors", label: "Yes, but not minors", color: "blue" },
   { value: "no", label: "No", color: "red" },
   { value: "unsure", label: "Unsure", color: "yellow" },
 ];
@@ -180,7 +187,7 @@ export function Step6Class({ form, branches }: Step6ClassProps) {
             </div>
           </div>
           <div className="flex gap-2 pl-8">
-            {permissionOptions.map((option) => (
+            {whatsappPermissionOptions.map((option) => (
               <button
                 key={option.value}
                 type="button"
@@ -213,17 +220,19 @@ export function Step6Class({ form, branches }: Step6ClassProps) {
               </p>
             </div>
           </div>
-          <div className="flex gap-2 pl-8">
-            {permissionOptions.map((option) => (
+          <div className="flex flex-wrap gap-2 pl-8">
+            {photoPermissionOptions.map((option) => (
               <button
                 key={option.value}
                 type="button"
                 onClick={() => setValue("photoPermission", option.value as any)}
                 className={cn(
-                  "px-4 py-2 rounded-lg border-2 transition-all duration-200 text-sm font-medium flex-1",
+                  "px-4 py-2 rounded-lg border-2 transition-all duration-200 text-sm font-medium",
                   photoPermission === option.value
                     ? option.color === "green"
                       ? "border-emerald-500 bg-emerald-50 text-emerald-700"
+                      : option.color === "blue"
+                      ? "border-sky-500 bg-sky-50 text-sky-700"
                       : option.color === "red"
                       ? "border-rose-500 bg-rose-50 text-rose-700"
                       : "border-amber-500 bg-amber-50 text-amber-700"
