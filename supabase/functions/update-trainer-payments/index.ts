@@ -10,6 +10,7 @@ const corsHeaders = {
 interface PaymentUpdateRequest {
   trainerId: string;
   scheduleIds: string[];
+  classAmounts?: Record<string, number>; // Exact per-class amounts
   paymentMethod?: string;
   transactionId?: string;
   notes?: string;
@@ -47,18 +48,24 @@ serve(async (req: Request) => {
     
     console.log("Processing trainer payment update:", payload);
     console.log("Document details:", { url: payload.documentUrl, name: payload.documentName });
+    console.log("Class amounts:", payload.classAmounts);
 
     // Current timestamp for all updates
     const now = new Date().toISOString();
     
-    // Calculate per-schedule amount if a total amount is provided
+    // Use classAmounts if provided (preferred), otherwise fall back to dividing total
+    const hasClassAmounts = payload.classAmounts && Object.keys(payload.classAmounts).length > 0;
+    
+    // Calculate per-schedule amount as fallback if no classAmounts provided
     const scheduleCount = payload.scheduleIds.length;
-    const perScheduleAmount = payload.amount && scheduleCount > 0 
+    const perScheduleAmount = !hasClassAmounts && payload.amount && scheduleCount > 0 
       ? payload.amount / scheduleCount 
       : null;
 
-    if (perScheduleAmount !== null) {
-      console.log(`Distributing total amount ${payload.amount} across ${scheduleCount} schedules. Per schedule amount: ${perScheduleAmount}`);
+    if (hasClassAmounts) {
+      console.log(`Using exact class amounts for ${Object.keys(payload.classAmounts!).length} schedules`);
+    } else if (perScheduleAmount !== null) {
+      console.log(`Fallback: Distributing total amount ${payload.amount} across ${scheduleCount} schedules. Per schedule amount: ${perScheduleAmount}`);
     }
 
     // Base update data
@@ -78,10 +85,8 @@ serve(async (req: Request) => {
       console.log("Storing document URL:", updateData.document_url);
     }
     
-    // If a per-schedule amount was calculated, include it
-    if (perScheduleAmount !== null) {
-      updateData.amount = perScheduleAmount;
-    }
+    // Note: For existing record updates, we'll set individual amounts per schedule below
+    // Base updateData doesn't include amount - it will be set per-record
 
     // Find existing records to update (avoids duplicates)
     const { data: existingRecords, error: checkError } = await supabaseAdmin
@@ -145,41 +150,63 @@ serve(async (req: Request) => {
       let updatedCount = 0;
       let createdCount = 0;
 
-      // Update existing records
-      if (idsToUpdate.length > 0) {
-        const { data: updateResult, error: updateError } = await supabaseAdmin
-          .from('trainer_payments')
-          .update(updateData)
-          .in('id', idsToUpdate);
-        
-        if (updateError) {
-          console.error("Error updating payment records:", updateError);
-          return new Response(
-            JSON.stringify({ error: updateError.message }),
-            { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
-          );
+      // Update existing records - each with its specific amount
+      if (recordsToUpdate.length > 0) {
+        for (const record of recordsToUpdate) {
+          // Determine the amount for this specific schedule
+          let recordAmount: number | null = null;
+          if (hasClassAmounts && payload.classAmounts![record.class_schedule_id]) {
+            recordAmount = payload.classAmounts![record.class_schedule_id];
+          } else if (perScheduleAmount !== null) {
+            recordAmount = perScheduleAmount;
+          }
+          
+          const recordUpdateData = { ...updateData };
+          if (recordAmount !== null) {
+            recordUpdateData.amount = recordAmount;
+          }
+          
+          const { error: updateError } = await supabaseAdmin
+            .from('trainer_payments')
+            .update(recordUpdateData)
+            .eq('id', record.id);
+          
+          if (updateError) {
+            console.error(`Error updating payment record ${record.id}:`, updateError);
+          } else {
+            updatedCount++;
+            console.log(`Updated record ${record.id} with amount ${recordAmount}`);
+          }
         }
-        
-        updatedCount = idsToUpdate.length;
         console.log(`Successfully updated ${updatedCount} payment records`);
       }
       
       // Insert new records for missing schedule IDs
       if (missingScheduleIds.length > 0) {
-        const newRecords = missingScheduleIds.map(scheduleId => ({
-          trainer_id: payload.trainerId,
-          class_schedule_id: scheduleId,
-          status: 'paid',
-          payment_date: now,
-          payment_method: payload.paymentMethod || null,
-          transaction_id: payload.transactionId || null,
-          notes: payload.notes || null,
-          amount: perScheduleAmount !== null ? perScheduleAmount : 0,
-          document_url: payload.documentUrl || null,
-          document_name: payload.documentName || null,
-          created_at: now,
-          updated_at: now
-        }));
+        const newRecords = missingScheduleIds.map(scheduleId => {
+          // Use exact amount from classAmounts if available, otherwise use perScheduleAmount
+          let scheduleAmount = 0;
+          if (hasClassAmounts && payload.classAmounts![scheduleId]) {
+            scheduleAmount = payload.classAmounts![scheduleId];
+          } else if (perScheduleAmount !== null) {
+            scheduleAmount = perScheduleAmount;
+          }
+          
+          return {
+            trainer_id: payload.trainerId,
+            class_schedule_id: scheduleId,
+            status: 'paid',
+            payment_date: now,
+            payment_method: payload.paymentMethod || null,
+            transaction_id: payload.transactionId || null,
+            notes: payload.notes || null,
+            amount: scheduleAmount,
+            document_url: payload.documentUrl || null,
+            document_name: payload.documentName || null,
+            created_at: now,
+            updated_at: now
+          };
+        });
         
         const { data: insertedData, error: insertError } = await supabaseAdmin
           .from('trainer_payments')
