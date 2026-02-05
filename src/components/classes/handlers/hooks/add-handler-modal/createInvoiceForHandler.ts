@@ -179,19 +179,19 @@ export const createInvoiceForHandler = async ({
       console.log("CREATE-INVOICE: Invoice created successfully");
       
       // After invoice creation, allocate starter kit if enrollment fee was included
-      if (enrollmentFee && enrollmentFee > 0 && result?.id) {
-        // Find the enrollment fee invoice item ID
-        const enrollmentFeeItem = items.find(item => item.item_type === 'enrollment_fee');
-        if (enrollmentFeeItem) {
+      if (enrollmentFee && enrollmentFee > 0 && result?.items) {
+        // Find the enrollment fee invoice item from the returned items (with actual DB IDs)
+        const enrollmentFeeItem = result.items.find(
+          (item: any) => item.item_type === 'enrollment_fee'
+        );
+        
+        if (enrollmentFeeItem?.id) {
           const branchId = classBranchId || currentBranch?.id;
           const dogName = dogNames[0] || 'Unknown';
           
-          // Note: We need the invoice_item_id which is created after invoice creation
-          // The createInvoice utility should return the created items, but for now
-          // we'll call allocation with what we have
           if (branchId) {
             const allocationResult = await allocateStarterKit(
-              result.id, // Using invoice ID as a reference (allocation function will handle)
+              enrollmentFeeItem.id, // Use the actual invoice_item_id from DB
               handlerId,
               dogName,
               branchId

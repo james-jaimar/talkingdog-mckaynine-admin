@@ -134,28 +134,33 @@ export async function createInvoice(invoiceData: any) {
     console.log("Invoice created successfully:", invoice);
     
     // Then insert all the invoice items if provided
+    let insertedItems: any[] = [];
     if (calculatedData.items && calculatedData.items.length > 0) {
-      // Map items to include the invoice_id
+      // Map items to include the invoice_id and item_type
       const itemsWithInvoiceId = calculatedData.items.map((item: any) => ({
         invoice_id: invoice.id,
         description: item.description,
         quantity: item.quantity,
         unit_price: item.unit_price,
         amount: item.quantity * item.unit_price,
-        booking_id: item.booking_id || null
+        booking_id: item.booking_id || null,
+        item_type: item.item_type || 'course_fee'
       }));
       
       console.log("Inserting invoice items:", itemsWithInvoiceId);
       
-      const { error: itemsError } = await supabase
+      const { data: itemsData, error: itemsError } = await supabase
         .from('invoice_items')
-        .insert(itemsWithInvoiceId);
+        .insert(itemsWithInvoiceId)
+        .select();
       
       if (itemsError) {
         console.error("Error creating invoice items:", itemsError);
         // Don't fail the whole operation, but log the error
         console.warn("Invoice created but items failed to insert. Manual cleanup may be needed.");
         toast.warning("Invoice created but some items may be missing.");
+      } else {
+        insertedItems = itemsData || [];
       }
     }
     
@@ -164,7 +169,8 @@ export async function createInvoice(invoiceData: any) {
     // NOTE: IO sync is now triggered when the invoice is emailed (via Email Invoice action)
     // This allows drafts to be edited freely without creating IO records prematurely
     
-    return invoice;
+    // Return invoice with items for downstream processing (e.g., starter kit allocation)
+    return { ...invoice, items: insertedItems };
   } catch (error: any) {
     console.error("Invoice creation failed:", error);
     
