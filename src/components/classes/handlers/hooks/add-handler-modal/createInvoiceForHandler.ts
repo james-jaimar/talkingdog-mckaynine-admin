@@ -18,6 +18,7 @@ export interface CreateInvoiceProps {
   enrollmentFee?: number;
   classDate?: Date;
   classBranchId?: string; // Branch ID from the class for proper invoice attribution
+  classReportMonthOverride?: string | null; // Override for franchise report month (YYYY-MM)
 }
 
 const MULTI_DOG_DISCOUNT_PERCENT = 25; // 25% discount for 2nd dog
@@ -35,10 +36,11 @@ export const createInvoiceForHandler = async ({
   enrollmentFee = 0,
   classDate,
   classBranchId,
+  classReportMonthOverride,
 }: CreateInvoiceProps): Promise<boolean> => {
   try {
     console.log("CREATE-INVOICE: Starting invoice creation with params:", {
-      handlerId, dogIds, bookingIds, className, classPrice, enrollmentFee, dogNames
+      handlerId, dogIds, bookingIds, className, classPrice, enrollmentFee, dogNames, classReportMonthOverride
     });
 
     // Generate invoice number with fallback - use classDate for proper period
@@ -169,6 +171,7 @@ export const createInvoiceForHandler = async ({
       total: subtotal,
       monetary_discount: 0,
       branch_id: classBranchId || currentBranch?.id || null, // Use class branch for proper attribution
+      report_month_override: classReportMonthOverride || null, // Pass override to invoice creation
     };
 
     console.log("CREATE-INVOICE: About to create invoice with data:", invoiceData);

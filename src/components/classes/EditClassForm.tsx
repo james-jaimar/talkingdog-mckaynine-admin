@@ -7,6 +7,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -21,8 +22,9 @@ import { useClassForm } from "./hooks/useClassForm";
 import { Class } from "./types/class";
 import { FeeFields } from "./form-sections/FeeFields";
 import { CLASS_TYPES } from "./schemas/classFormSchema";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { ClassWithSchedules } from "./hooks/types/class-with-schedules";
+import { format, addMonths } from "date-fns";
 
 interface EditClassFormProps {
   // Accept either Class or ClassWithSchedules to make it more flexible
@@ -38,6 +40,23 @@ export function EditClassForm({ classData, currentBranchName, onSuccess, onCance
     onSuccess 
   });
 
+  // Generate month options: "Auto" + next 18 months
+  const monthOptions = useMemo(() => {
+    const options: { value: string; label: string }[] = [
+      { value: "", label: "Auto (use schedule date)" }
+    ];
+    
+    const now = new Date();
+    for (let i = 0; i < 18; i++) {
+      const date = addMonths(now, i);
+      const value = format(date, 'yyyy-MM');
+      const label = format(date, 'MMMM yyyy');
+      options.push({ value, label });
+    }
+    
+    return options;
+  }, []);
+
   // Log the classData and form values to verify they are correct
   useEffect(() => {
     console.log("EditClassForm - Original class data:", classData);
@@ -50,6 +69,7 @@ export function EditClassForm({ classData, currentBranchName, onSuccess, onCance
       admin_fee_value: classData.admin_fee_value,
       trainer_fee_type: classData.trainer_fee_type,
       trainer_fee_value: classData.trainer_fee_value,
+      report_month_override: classData.report_month_override,
     });
     console.log("EditClassForm - Current form values:", form.getValues());
     console.log("EditClassForm - Current branch name:", currentBranchName);
@@ -145,10 +165,41 @@ export function EditClassForm({ classData, currentBranchName, onSuccess, onCance
                   </SelectContent>
                 </Select>
                 <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="report_month_override"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Report Month Override</FormLabel>
+              <Select 
+                onValueChange={(value) => field.onChange(value === "auto" ? null : value)} 
+                value={field.value || "auto"}
+              >
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Auto (use schedule date)" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {monthOptions.map((option) => (
+                    <SelectItem key={option.value || "auto"} value={option.value || "auto"}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormDescription>
+                Override the franchise report month for this class (e.g., a Jan 30th class reported in February)
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField

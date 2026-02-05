@@ -918,6 +918,7 @@ export type Database = {
           mckaynine_commission_type: string
           mckaynine_commission_value: number
           name: string
+          report_month_override: string | null
           status: string
           trainer_fee_type: string
           trainer_fee_value: number
@@ -938,6 +939,7 @@ export type Database = {
           mckaynine_commission_type?: string
           mckaynine_commission_value?: number
           name: string
+          report_month_override?: string | null
           status?: string
           trainer_fee_type?: string
           trainer_fee_value?: number
@@ -958,6 +960,7 @@ export type Database = {
           mckaynine_commission_type?: string
           mckaynine_commission_value?: number
           name?: string
+          report_month_override?: string | null
           status?: string
           trainer_fee_type?: string
           trainer_fee_value?: number
