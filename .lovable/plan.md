@@ -1,63 +1,106 @@
 
+# Fix Starter Kit Allocation Integration
 
-# Fix Trainer Payment Amount Mismatch
+## Problem Summary
 
-## The Problem
+When handlers are enrolled in puppy classes with an enrollment fee, starter kits are not being allocated from inventory. Investigation of invoice INV-McD-2602-0020 (Alex Martin / Toast) revealed two bugs in the invoice creation flow.
 
-When marking trainer payments as paid, two issues are causing data discrepancies:
+## Root Causes
 
-### Issue 1: Wrong Per-Class Amounts Stored
+### Bug 1: `item_type` Field Not Saved to Database
 
-**Current behavior (WRONG):**
-When paying a trainer for 2 classes with a total of R 2,760:
-- System divides total evenly: R 2,760 / 2 = R 1,380 each
-- Both classes stored with R 1,380
+**Location:** `src/lib/invoices/createInvoiceUtils.ts` (lines 139-146)
 
-**Correct behavior:**
-- 15h00 Yoga January: R 1,140 (5 handlers × R 570 × 40%)
-- 16h15 Yoga January: R 1,620 (7 handlers × ~R 579 × 40%)
+When invoice items are inserted, the mapping omits the `item_type` field:
 
-### Issue 2: Recent Trainer Payments Shows Individual Records
+```typescript
+// Current code - MISSING item_type
+const itemsWithInvoiceId = calculatedData.items.map((item: any) => ({
+  invoice_id: invoice.id,
+  description: item.description,
+  quantity: item.quantity,
+  unit_price: item.unit_price,
+  amount: item.quantity * item.unit_price,
+  booking_id: item.booking_id || null
+  // item_type is NOT included!
+}));
+```
 
-The "Recent Trainer Payments" table displays each `trainer_payments` record as a separate row. When a single payment covers multiple classes, it appears as multiple confusing entries (e.g., Leanne shows twice with R 1,380 each instead of once with R 2,760).
+This causes all items to receive the database default value of `'course_fee'`, even enrollment fee items.
+
+### Bug 2: Wrong ID Passed to Allocation Function
+
+**Location:** `src/components/classes/handlers/hooks/add-handler-modal/createInvoiceForHandler.ts` (lines 192-198)
+
+The code passes the invoice ID instead of the invoice_item_id:
+
+```typescript
+const allocationResult = await allocateStarterKit(
+  result.id, // This is the INVOICE ID, not the invoice_item_id!
+  handlerId,
+  dogName,
+  branchId
+);
+```
+
+The `allocate_starter_kit` database function expects an invoice_item_id to link the allocation record properly.
 
 ---
 
-## The Solution
+## Solution
 
-### Fix 1: Store Actual Per-Class Commission Amounts
+### Fix 1: Include `item_type` in Invoice Item Insert
 
-**File:** `src/hooks/useMarkTrainerPaymentsPaid.ts`
+**File:** `src/lib/invoices/createInvoiceUtils.ts`
 
-Instead of passing a total amount and dividing it in the edge function, pass the actual per-class amounts from the classDetails.
+Add `item_type` to the item mapping:
 
-```text
-Current Flow:
-  Client sends: { amount: 2760, scheduleIds: [A, B] }
-  Edge function: 2760 / 2 = 1380 per schedule  ❌
-
-New Flow:
-  Client sends: { classAmounts: { A: 1140, B: 1620 }, scheduleIds: [A, B] }
-  Edge function: Use exact amounts from classAmounts  ✓
+```typescript
+const itemsWithInvoiceId = calculatedData.items.map((item: any) => ({
+  invoice_id: invoice.id,
+  description: item.description,
+  quantity: item.quantity,
+  unit_price: item.unit_price,
+  amount: item.quantity * item.unit_price,
+  booking_id: item.booking_id || null,
+  item_type: item.item_type || 'course_fee'  // ADD THIS
+}));
 ```
 
-**File:** `supabase/functions/update-trainer-payments/index.ts`
+Also modify the insert to return the created items so we can get the actual invoice_item_id:
 
-Update edge function to accept `classAmounts` object and use the exact amount for each schedule.
+```typescript
+const { data: insertedItems, error: itemsError } = await supabase
+  .from('invoice_items')
+  .insert(itemsWithInvoiceId)
+  .select();  // Return created items with their IDs
+```
 
-### Fix 2: Aggregate Payment Transactions in Recent Payments View
+Return both invoice and items from the function.
 
-**File:** `src/components/invoices/reports/payment-history/TrainerPaymentHistory.tsx`
+### Fix 2: Pass Correct Invoice Item ID to Allocation
 
-Group payment records by trainer + payment_date + payment_method to show single rows for multi-class payments.
+**File:** `src/components/classes/handlers/hooks/add-handler-modal/createInvoiceForHandler.ts`
 
-```text
-Current Display:
-  Leanne Williams | 05/02/2026 | R 1,380.00 | Bank Transfer
-  Leanne Williams | 05/02/2026 | R 1,380.00 | Bank Transfer
+Update to use the actual invoice_item_id from the created items:
 
-New Display:
-  Leanne Williams | 05/02/2026 | R 2,760.00 | Bank Transfer | (2 classes)
+```typescript
+// After invoice creation, find the enrollment fee item from returned data
+if (enrollmentFee && enrollmentFee > 0 && result?.items) {
+  const enrollmentFeeItem = result.items.find(
+    (item: any) => item.item_type === 'enrollment_fee'
+  );
+  
+  if (enrollmentFeeItem && branchId) {
+    const allocationResult = await allocateStarterKit(
+      enrollmentFeeItem.id,  // Use the actual invoice_item_id
+      handlerId,
+      dogName,
+      branchId
+    );
+    // ... handle result
+  }
+}
 ```
 
 ---
@@ -66,99 +109,37 @@ New Display:
 
 | File | Change |
 |------|--------|
-| `src/hooks/useMarkTrainerPaymentsPaid.ts` | Build `classAmounts` map from classDetails and pass to edge function |
-| `supabase/functions/update-trainer-payments/index.ts` | Accept `classAmounts` and use exact per-class amounts |
-| `src/components/invoices/reports/payment-history/TrainerPaymentHistory.tsx` | Aggregate payment records by transaction |
+| `src/lib/invoices/createInvoiceUtils.ts` | Add `item_type` to insert mapping; return inserted items with IDs |
+| `src/components/classes/handlers/hooks/add-handler-modal/createInvoiceForHandler.ts` | Use actual invoice_item_id for starter kit allocation |
 
 ---
 
-## Technical Details
+## Data Fix for Existing Record
 
-### useMarkTrainerPaymentsPaid.ts Changes
-
-```typescript
-// Build classAmounts map from class details
-const classAmounts: Record<string, number> = {};
-if (params.classDetails) {
-  params.classDetails.forEach(cls => {
-    classAmounts[cls.scheduleId] = cls.potentialRevenue;
-  });
-}
-
-// Pass to edge function
-const { error, data } = await supabase.functions.invoke('update-trainer-payments', {
-  body: {
-    trainerId: params.trainerId,
-    scheduleIds: params.scheduleIds,
-    classAmounts,  // NEW: exact per-class amounts
-    // ... other fields
-  }
-});
-```
-
-### Edge Function Changes
-
-```typescript
-interface PaymentUpdateRequest {
-  // ... existing fields
-  classAmounts?: Record<string, number>;  // NEW
-}
-
-// When creating/updating records, use exact amounts
-if (payload.classAmounts && payload.classAmounts[scheduleId]) {
-  updateData.amount = payload.classAmounts[scheduleId];
-}
-```
-
-### TrainerPaymentHistory.tsx Changes
-
-```typescript
-// After fetching payments, group by transaction
-const groupedPayments = payments.reduce((groups, payment) => {
-  const key = `${payment.trainer_id}-${payment.payment_date}-${payment.payment_method}`;
-  if (!groups[key]) {
-    groups[key] = {
-      ...payment,
-      amount: 0,
-      classCount: 0
-    };
-  }
-  groups[key].amount += payment.amount;
-  groups[key].classCount += 1;
-  return groups;
-}, {});
-```
-
----
-
-## Data Migration (Optional)
-
-For Leanne's existing incorrect records, a one-time fix query:
+After deployment, run this SQL to fix Alex Martin's invoice:
 
 ```sql
--- Fix 15h00 Yoga January (should be R 1,140)
-UPDATE trainer_payments 
-SET amount = 1140 
-WHERE id = '9a82d42e-87ba-4953-abb4-f86a36d1c1e8';
+-- Fix item_type for enrollment fee
+UPDATE invoice_items 
+SET item_type = 'enrollment_fee' 
+WHERE invoice_id = 'b8fe7f21-844c-45f6-ab36-e2b255eb5cc3'
+  AND description LIKE 'Enrollment fee%';
 
--- Fix 16h15 Yoga January (should be R 1,620)
-UPDATE trainer_payments 
-SET amount = 1620 
-WHERE id = '96524c14-1b6d-4d96-88f5-2c55a2a36bb6';
+-- Manually allocate starter kit for Toast
+SELECT public.allocate_starter_kit(
+  '6ce4cba7-085f-4a32-a776-7e143d54b82a',  -- enrollment fee invoice_item_id
+  '205231cc-3989-4755-a621-885853ddedd9',  -- handler_id (Alex Martin)
+  'Toast',                                   -- dog_name
+  (SELECT branch_id FROM invoices WHERE id = 'b8fe7f21-844c-45f6-ab36-e2b255eb5cc3')
+);
 ```
 
 ---
 
-## Expected Result After Fix
+## Expected Outcome
 
-**Recent Trainer Payments:**
-| Trainer | Date | Amount | Method |
-|---------|------|--------|--------|
-| Leanne Williams | 05/02/2026 | R 2,760.00 | Bank Transfer (2 classes) |
-
-**Database Records:**
-| schedule_id | amount |
-|-------------|--------|
-| 15h00 Yoga January | R 1,140.00 |
-| 16h15 Yoga January | R 1,620.00 |
-
+After fix:
+1. Enrollment fee items will be correctly stored with `item_type = 'enrollment_fee'`
+2. Starter kit allocation will be triggered with the correct invoice_item_id
+3. Stock will decrement properly and allocation records will link to the correct invoice item
+4. Low stock warnings will appear when stock falls below 5
