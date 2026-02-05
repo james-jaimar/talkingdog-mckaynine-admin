@@ -1,30 +1,75 @@
 
-# Fix Report Month Override Not Displaying in Edit Form
+# Fix Financial Report to Use Franchise Report Month
 
 ## Problem
 
-The `report_month_override` field is being saved correctly to the database (confirmed: `"2026-02"` exists for the Puppy Feb class), but when re-opening the Edit Class form, it shows "Auto (use schedule date)" instead of the saved value.
+The Class Financial Report shows blank for February because it filters by `issued_date` instead of `franchise_report_month`.
 
-## Root Cause
+**Current behavior:**
+- Report for February filters: `issued_date >= '2026-02-01'`
+- Puppy Feb invoices have: `issued_date = '2026-01-29'` (excluded!)
+- But they have: `franchise_report_month = '2026-02'` (should be included)
 
-The main class query in `src/components/classes/hooks/class-ordering/useClassQuery.ts` does not include `report_month_override`, `description`, or `branch_id` in its SELECT statement. When the Edit Class modal opens, it uses the cached class data from this query, which is missing these fields.
+**Expected behavior:**
+- Report should filter by `franchise_report_month` to respect the override
 
-**Current query selects:**
-```sql
-id, name, class_type, course_fee, enrollment_fee, 
-mckaynine_commission_type, mckaynine_commission_value,
-admin_fee_type, admin_fee_value, trainer_fee_type, trainer_fee_value,
-duration, capacity, branches(name), status, class_schedules(...)
-```
-
-**Missing fields:**
-- `report_month_override` (the new field)
-- `description`
-- `branch_id`
+---
 
 ## Solution
 
-Add the missing fields to the SELECT statements in `useClassQuery.ts`. There are two query locations that need updating (lines 48-72 and lines 80-103).
+Update the financial query to filter by `franchise_report_month` instead of `issued_date` when date filters are provided.
+
+---
+
+## Technical Changes
+
+### File: `src/hooks/financial/useFinancialQuery.ts`
+
+Change the date filtering logic from:
+
+```typescript
+// Current - filters by issued_date
+if (fromDate) {
+  invoicesQuery = invoicesQuery.gte('issued_date', fromDate);
+}
+if (toDate) {
+  invoicesQuery = invoicesQuery.lte('issued_date', toDate);
+}
+```
+
+To:
+
+```typescript
+// New - filter by franchise_report_month for monthly reports
+if (fromDate && toDate) {
+  // Extract YYYY-MM from the date range for franchise_report_month filtering
+  const fromMonth = fromDate.substring(0, 7); // e.g., "2026-02"
+  invoicesQuery = invoicesQuery.eq('franchise_report_month', fromMonth);
+} else if (fromDate) {
+  // Fallback to issued_date if only partial range
+  invoicesQuery = invoicesQuery.gte('issued_date', fromDate);
+}
+if (toDate && !fromDate) {
+  invoicesQuery = invoicesQuery.lte('issued_date', toDate);
+}
+```
+
+Since the ClassFinancialReport uses month selectors (both from and to are always set for a single month), this will correctly filter by the franchise report month.
+
+---
+
+## Alternative: Dual Filtering Support
+
+If other parts of the app need `issued_date` filtering while financial reports need `franchise_report_month`, we could add a parameter to specify the filter type. However, since the financial report is specifically for franchise reporting periods, using `franchise_report_month` is the correct approach.
+
+---
+
+## Expected Outcome
+
+After this fix:
+1. Selecting "February 2026" in the report will show all invoices with `franchise_report_month = '2026-02'`
+2. The Puppy Feb class invoices (issued Jan 29th but tagged for February) will appear correctly
+3. The class-level `report_month_override` feature will work as intended
 
 ---
 
@@ -32,43 +77,4 @@ Add the missing fields to the SELECT statements in `useClassQuery.ts`. There are
 
 | File | Change |
 |------|--------|
-| `src/components/classes/hooks/class-ordering/useClassQuery.ts` | Add `report_month_override`, `description`, and `branch_id` to both SELECT statements |
-
----
-
-## Implementation
-
-Update both SELECT statements to include:
-
-```typescript
-.select(`
-  id, 
-  name, 
-  description,
-  class_type,
-  course_fee,
-  enrollment_fee,
-  mckaynine_commission_type,
-  mckaynine_commission_value,
-  admin_fee_type,
-  admin_fee_value,
-  trainer_fee_type,
-  trainer_fee_value,
-  duration,
-  capacity,
-  branch_id,
-  report_month_override,
-  branches(name),
-  status,
-  class_schedules(...)
-`)
-```
-
----
-
-## Expected Outcome
-
-After this fix:
-1. The Edit Class form will correctly display the saved `report_month_override` value (e.g., "February 2026")
-2. All class data including description will be properly loaded
-3. The `branch_id` field will also be available for form pre-population
+| `src/hooks/financial/useFinancialQuery.ts` | Filter by `franchise_report_month` instead of `issued_date` |
