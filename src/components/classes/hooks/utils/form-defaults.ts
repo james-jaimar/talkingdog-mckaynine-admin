@@ -22,6 +22,7 @@ export function createDefaultFormValues(classData: ClassData | null): ClassFormV
       duration: 60,
       capacity: 8,
       branchId: "",
+      report_month_override: null,
     };
     return defaultValues;
   }
@@ -43,6 +44,7 @@ export function createDefaultFormValues(classData: ClassData | null): ClassFormV
     duration: Number(classData.duration) || 60,
     capacity: Number(classData.capacity) || 8,
     branchId: classData.branch_id || "",
+    report_month_override: classData.report_month_override || null,
   };
   
   console.log("DEBUG: Form values created from existing class data:", formValues);

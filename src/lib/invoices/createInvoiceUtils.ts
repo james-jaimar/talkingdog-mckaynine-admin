@@ -88,9 +88,10 @@ export async function createInvoice(invoiceData: any) {
     // Only include fields that exist in the database schema
     // Remove admin_fee, trainer_fee, and franchise_fee from the payload
     // Include branch_id for proper branch attribution (supports multi-branch handlers)
-    // Auto-set franchise_report_month based on issued_date for proper reporting
+    // Use report_month_override if provided, otherwise auto-set franchise_report_month based on issued_date
     const issuedDate = new Date(calculatedData.issued_date);
-    const franchiseReportMonth = `${issuedDate.getFullYear()}-${String(issuedDate.getMonth() + 1).padStart(2, '0')}`;
+    const autoReportMonth = `${issuedDate.getFullYear()}-${String(issuedDate.getMonth() + 1).padStart(2, '0')}`;
+    const franchiseReportMonth = calculatedData.report_month_override || autoReportMonth;
 
     const insertData = {
       client_id: calculatedData.client_id,
@@ -109,7 +110,7 @@ export async function createInvoice(invoiceData: any) {
       original_discount_amount,
       original_discount_type,
       branch_id: calculatedData.branch_id || null, // Branch from class for proper attribution
-      franchise_report_month: franchiseReportMonth, // Auto-set for reporting
+      franchise_report_month: franchiseReportMonth, // Use override or auto-set for reporting
     };
 
     console.log("Inserting invoice with sanitized data:", insertData);

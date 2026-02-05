@@ -22,6 +22,8 @@ export const classFormSchema = z.object({
   trainer_fee_type: z.enum(['percentage', 'amount']),
   trainer_fee_value: z.coerce.number().min(0),
   branchId: z.string().min(1, { message: "Branch is required" }),
+  report_month_override: z.string().nullable().optional(),
 });
+
 
 export type ClassFormValues = z.infer<typeof classFormSchema>;

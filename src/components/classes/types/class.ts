@@ -18,6 +18,7 @@ export interface Class {
   trainer_fee_value: number;
   duration: number;
   capacity: number;
+  report_month_override?: string | null;
   branch_id: string;
   branches?: {
     name: string;
@@ -44,6 +45,7 @@ export interface ClassFromDB {
   trainer_fee_value: number;
   duration: number;
   capacity: number;
+  report_month_override?: string | null;
   branch_id: string;
   branches?: {
     name: string;
