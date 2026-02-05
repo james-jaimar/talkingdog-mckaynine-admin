@@ -53,8 +53,7 @@ export function TrainerPaymentHistory({ limit = 10, showViewAll = false }: Train
             )
           `)
           .eq('status', 'paid')
-          .order('payment_date', { ascending: false })
-          .limit(limit * totalPages);
+          .order('payment_date', { ascending: false });
 
         if (error) throw error;
 
@@ -66,8 +65,35 @@ export function TrainerPaymentHistory({ limit = 10, showViewAll = false }: Train
             : 'Unknown'
         }));
         
-        console.log("Trainer payment history data:", formattedPayments);
-        return formattedPayments;
+        // Group payments by trainer + payment_date + payment_method (same transaction)
+        const groupedMap = new Map<string, any>();
+        
+        formattedPayments.forEach(payment => {
+          // Normalize date to just date portion for grouping
+          const paymentDateStr = payment.payment_date 
+            ? new Date(payment.payment_date).toISOString().split('T')[0] 
+            : '';
+          const key = `${payment.trainer_id}-${paymentDateStr}-${payment.payment_method || 'unknown'}`;
+          
+          if (!groupedMap.has(key)) {
+            groupedMap.set(key, {
+              ...payment,
+              amount: payment.amount || 0,
+              classCount: 1,
+              ids: [payment.id]
+            });
+          } else {
+            const existing = groupedMap.get(key);
+            existing.amount += (payment.amount || 0);
+            existing.classCount += 1;
+            existing.ids.push(payment.id);
+          }
+        });
+        
+        const groupedPayments = Array.from(groupedMap.values());
+        
+        console.log("Trainer payment history data (grouped):", groupedPayments);
+        return groupedPayments;
 
       } catch (error) {
         console.error("Error fetching trainer payment history:", error);

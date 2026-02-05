@@ -86,6 +86,14 @@ export function useMarkTrainerPaymentsPaid() {
           amount = params.classDetails.reduce((sum, cls) => sum + cls.potentialRevenue, 0);
         }
 
+        // Build classAmounts map with exact per-class amounts
+        const classAmounts: Record<string, number> = {};
+        if (params.classDetails && params.classDetails.length > 0) {
+          params.classDetails.forEach(cls => {
+            classAmounts[cls.scheduleId] = cls.potentialRevenue;
+          });
+        }
+
         // Generate payment PDF
         let documentUrl = params.documentUrl;
         let documentName = params.documentName;
@@ -174,6 +182,7 @@ export function useMarkTrainerPaymentsPaid() {
           body: {
             trainerId: params.trainerId,
             scheduleIds: params.scheduleIds,
+            classAmounts, // Pass exact per-class amounts
             paymentMethod: validPaymentMethod,
             transactionId: params.transactionId,
             notes: params.notes,
