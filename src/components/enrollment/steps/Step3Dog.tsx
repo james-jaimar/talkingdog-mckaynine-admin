@@ -10,7 +10,7 @@ interface Step3DogProps {
 }
 
 const acquiredFromOptions = [
-  "KUSA", "Breeder", "SPCA/AACL", "Rescue org", "Family/friends", 
+  "KUSA breeder", "Breeder", "SPCA/AACL", "Rescue org", "Family/friends", 
   "Advert", "Born in home", "Stray", "Other"
 ];
 

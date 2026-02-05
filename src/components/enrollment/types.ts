@@ -27,7 +27,7 @@ export const dogSchema = z.object({
     required_error: "Please select spay/neuter status"
   }),
   acquiredFrom: z.enum([
-    "KUSA", "Breeder", "SPCA/AACL", "Rescue org", "Family/friends", 
+    "KUSA breeder", "Breeder", "SPCA/AACL", "Rescue org", "Family/friends", 
     "Advert", "Born in home", "Stray", "Other"
   ], { required_error: "Please select where you acquired your dog" }),
   acquiredFromOther: z.string().optional(),
@@ -49,9 +49,9 @@ export const homeSchema = z.object({
     required_error: "Please select children at home option"
   }),
   socialBehavior: z.object({
-    dogs: z.enum(["Great", "OK", "Not good", ""]).optional(),
-    animals: z.enum(["Great", "OK", "Not good", ""]).optional(),
-    people: z.enum(["Great", "OK", "Not good", ""]).optional(),
+    dogs: z.enum(["Great", "OK", "Not good", "Unknown", ""]).optional(),
+    animals: z.enum(["Great", "OK", "Not good", "Unknown", ""]).optional(),
+    people: z.enum(["Great", "OK", "Not good", "Unknown", ""]).optional(),
   }),
   socialBehaviorDetails: z.string().optional(),
 });
@@ -83,7 +83,7 @@ export const classSchema = z.object({
     beenBefore: z.boolean().default(false),
   }),
   whatsappPermission: z.enum(["yes", "no", "unsure"]),
-  photoPermission: z.enum(["yes", "no", "unsure"]),
+  photoPermission: z.enum(["yes", "yes_not_minors", "no", "unsure"]),
   onleadSocializingAcknowledged: z.boolean().refine(val => val === true, {
     message: "Please acknowledge this requirement"
   }),
