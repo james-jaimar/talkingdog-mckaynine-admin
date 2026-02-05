@@ -48,6 +48,7 @@ export function useClassQuery() {
           .select(`
             id, 
             name, 
+            description,
             class_type,
             course_fee,
             enrollment_fee,
@@ -59,6 +60,8 @@ export function useClassQuery() {
             trainer_fee_value,
             duration,
             capacity,
+            branch_id,
+            report_month_override,
             branches(name),
             status,
             class_schedules(
@@ -80,6 +83,7 @@ export function useClassQuery() {
             .select(`
               id, 
               name, 
+              description,
               class_type,
               course_fee,
               enrollment_fee,
@@ -91,6 +95,8 @@ export function useClassQuery() {
               trainer_fee_value,
               duration,
               capacity,
+              branch_id,
+              report_month_override,
               branches(name),
               status,
               class_schedules(
