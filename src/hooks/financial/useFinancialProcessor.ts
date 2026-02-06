@@ -157,25 +157,25 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
       const adminValue = Number(classData.admin_fee_value ?? 0);
       const trainerValue = Number(classData.trainer_fee_value ?? 0);
 
-      // Franchise/Commission fee
+      // Franchise/Commission fee (round per-item to match Franchise Report)
       if (isFixedAmount(classData.mckaynine_commission_type)) {
-        summary.franchiseFee += commissionValue;
+        summary.franchiseFee += roundToCents(commissionValue);
       } else {
-        summary.franchiseFee += amount * (commissionValue / 100);
+        summary.franchiseFee += roundToCents(amount * (commissionValue / 100));
       }
 
-      // Admin fee
+      // Admin fee (round per-item for consistency)
       if (isFixedAmount(classData.admin_fee_type)) {
-        summary.adminFee += adminValue;
+        summary.adminFee += roundToCents(adminValue);
       } else {
-        summary.adminFee += amount * (adminValue / 100);
+        summary.adminFee += roundToCents(amount * (adminValue / 100));
       }
 
-      // Trainer/Instructor fee
+      // Trainer/Instructor fee (round per-item for consistency)
       if (isFixedAmount(classData.trainer_fee_type)) {
-        summary.instructorFee += trainerValue;
+        summary.instructorFee += roundToCents(trainerValue);
       } else {
-        summary.instructorFee += amount * (trainerValue / 100);
+        summary.instructorFee += roundToCents(amount * (trainerValue / 100));
       }
     });
 
@@ -203,9 +203,9 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
       const avgTrainerPercent = 40;
       const avgFranchisePercent = 15;
 
-      const unallocatedAdminFee = unallocatedCourseFee * (avgAdminPercent / 100);
-      const unallocatedTrainerFee = unallocatedCourseFee * (avgTrainerPercent / 100);
-      const unallocatedFranchiseFee = unallocatedCourseFee * (avgFranchisePercent / 100);
+      const unallocatedAdminFee = roundToCents(unallocatedCourseFee * (avgAdminPercent / 100));
+      const unallocatedTrainerFee = roundToCents(unallocatedCourseFee * (avgTrainerPercent / 100));
+      const unallocatedFranchiseFee = roundToCents(unallocatedCourseFee * (avgFranchisePercent / 100));
 
       const unallocatedSummary: ClassFinance = {
         className: "Unallocated (no booking link)",
