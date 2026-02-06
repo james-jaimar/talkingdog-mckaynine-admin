@@ -61,10 +61,16 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
 
       // Apply date filters using franchise_report_month for monthly reports
       // This respects the report_month_override set on classes
+      // Uses same fallback logic as Franchise Report for consistency:
+      // Include invoices with matching franchise_report_month OR NULL franchise_report_month + issued_date in range
       if (fromDate && toDate) {
         // Extract YYYY-MM from the date range for franchise_report_month filtering
         const fromMonth = fromDate.substring(0, 7); // e.g., "2026-02"
-        invoicesQuery = invoicesQuery.eq('franchise_report_month', fromMonth);
+        // Use .or() to include invoices with matching franchise_report_month 
+        // OR NULL franchise_report_month with issued_date in range (defensive fallback)
+        invoicesQuery = invoicesQuery.or(
+          `franchise_report_month.eq.${fromMonth},and(franchise_report_month.is.null,issued_date.gte.${fromDate},issued_date.lte.${toDate})`
+        );
       } else if (fromDate) {
         // Fallback to issued_date if only partial range
         invoicesQuery = invoicesQuery.gte('issued_date', fromDate);
