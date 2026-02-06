@@ -65,7 +65,8 @@ export function useEmailQueue() {
       return data as QueuedEmail[];
     },
     enabled: !!currentBranch?.id,
-    refetchInterval: 5000, // Refresh every 5 seconds to show live queue status
+    staleTime: 60000, // 1 minute - mutations invalidate the query when data changes
+    refetchOnWindowFocus: false,
   });
 
   // Fetch sent emails

@@ -63,8 +63,8 @@ export function useInvoiceStatus(bookingId: string) {
         return null;
       }
     },
-    staleTime: 10000, // 10 seconds
-    refetchOnWindowFocus: true,
+    staleTime: 60000, // 1 minute
+    refetchOnWindowFocus: false,
     retry: 1, // Limit retries to prevent excessive requests on error
     meta: {
       // Add onSettled to ensure UI is always released, even on error

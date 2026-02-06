@@ -12,8 +12,9 @@ export function useProcessingJobs() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('scan_processing_jobs')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .select('id, filename, file_url, status, created_at, extracted_data, field_confidence, error_message, uploaded_by')
+        .order('created_at', { ascending: false })
+        .limit(50);
       
       if (error) throw error;
       
@@ -25,7 +26,8 @@ export function useProcessingJobs() {
         status: job.status as ScanProcessingJob['status']
       })) as ScanProcessingJob[];
     },
-    refetchInterval: 5000 // Poll for updates every 5 seconds
+    staleTime: 60000, // 1 minute - mutations invalidate when data changes
+    refetchOnWindowFocus: false,
   });
 
   const createJobMutation = useMutation({

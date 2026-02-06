@@ -133,8 +133,8 @@ export function useClassesListData() {
       return classGroups;
     },
     enabled: !!currentBranch?.id,
-    staleTime: 30000, // 30 seconds
-    refetchOnWindowFocus: true,
-    refetchOnReconnect: true
+    staleTime: 5 * 60 * 1000, // 5 minutes - data rarely changes
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false
   });
 }
