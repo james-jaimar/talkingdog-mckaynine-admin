@@ -169,9 +169,8 @@ export function useClassHandlers(classId: string) {
         throw err;
       }
     },
-    refetchInterval: 30000,
-    refetchOnWindowFocus: true,
-    staleTime: 15000,
+    refetchOnWindowFocus: false,
+    staleTime: 60000, // 1 minute - mutations invalidate when data changes
     retry: 3,
     retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
   });

@@ -95,6 +95,6 @@ export function useClientInvoices(clientId?: string) {
     },
     enabled: !!clientId && !!branchId,
     staleTime: 1000 * 60, // 1 minute
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
   });
 }

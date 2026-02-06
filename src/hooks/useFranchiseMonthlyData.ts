@@ -125,7 +125,7 @@ export function useFranchiseMonthlyData({ month, year }: UseFranchiseMonthlyData
         throw classesError;
       }
 
-      // Get invoices - we need to fetch more broadly and then filter
+      // Get invoices filtered by branch at database level
       // An invoice is included if:
       // 1. franchise_report_month matches the target month, OR
       // 2. franchise_report_month is NULL and issued_date falls within the month
@@ -167,20 +167,17 @@ export function useFranchiseMonthlyData({ month, year }: UseFranchiseMonthlyData
               )
             )
           )
-        `);
+        `)
+        .eq('branch_id', currentBranch.id); // Filter at database level
 
       if (invoicesError) {
         console.error("Error fetching invoices:", invoicesError);
         throw invoicesError;
       }
 
-      // Filter invoices:
-      // 1. By invoice's branch_id (not client's branch_id - supports multi-branch handlers)
-      // 2. By franchise month allocation OR issued date
+      // Filter invoices by franchise month allocation OR issued date
+      // Branch filtering is already done at database level
       const branchInvoices = invoicesData?.filter(inv => {
-        // Must belong to current branch - use invoice's branch_id directly
-        if (inv.branch_id !== currentBranch.id) return false;
-
         // If franchise_report_month is set, use that
         if (inv.franchise_report_month) {
           return inv.franchise_report_month === franchiseMonthStr;
@@ -350,9 +347,9 @@ export function useFranchiseMonthlyData({ month, year }: UseFranchiseMonthlyData
       };
     },
     enabled: !!currentBranch?.id && month >= 1 && month <= 12 && year > 2000,
-    staleTime: 30000,
-    refetchOnWindowFocus: true,
-    refetchOnReconnect: true
+    staleTime: 5 * 60 * 1000, // 5 minutes - report data rarely changes
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false
   });
 }
 

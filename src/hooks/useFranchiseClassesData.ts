@@ -310,8 +310,8 @@ export function useFranchiseClassesData(termId?: string) {
       return { classes: franchiseClasses, reportTotals };
     },
     enabled: !!currentBranch?.id && !!selectedTermId,
-    staleTime: 30000, // 30 seconds
-    refetchOnWindowFocus: true,
-    refetchOnReconnect: true
+    staleTime: 5 * 60 * 1000, // 5 minutes - report data rarely changes
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false
   });
 }

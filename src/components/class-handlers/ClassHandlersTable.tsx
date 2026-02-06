@@ -74,15 +74,6 @@ export function ClassHandlersTable({ classId, classType }: ClassHandlersTablePro
     }
   }, [refetch, initialLoadAttempted]);
 
-  // Set up periodic refresh
-  useEffect(() => {
-    console.log("Setting up refresh interval for handlers");
-    const refreshInterval = setInterval(() => {
-      refetch().catch(err => console.error("Error refreshing handlers:", err));
-    }, 10000);
-    
-    return () => clearInterval(refreshInterval);
-  }, [refetch]);
 
   const confirmRemove = async () => {
     if (bookingToRemove) {

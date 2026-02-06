@@ -37,18 +37,21 @@ export interface Dog {
 export function useClientsData() {
   const queryClient = useQueryClient();
 
-  // Fetch all clients
+  // Fetch clients with limit to reduce data transfer
   const { data: clients, isLoading, error, refetch } = useQuery({
     queryKey: ['clients'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('clients')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .select('id, first_name, last_name, email, phone, address, city, postal_code, branch_id, notes, created_at, updated_at')
+        .order('created_at', { ascending: false })
+        .limit(200);
       
       if (error) throw error;
       return data as Client[];
     },
+    staleTime: 60000, // 1 minute
+    refetchOnWindowFocus: false,
   });
 
   // Fetch a single client by ID
