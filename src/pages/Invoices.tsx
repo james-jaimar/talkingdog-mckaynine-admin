@@ -12,6 +12,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { startOfMonth, endOfMonth, subMonths, addMonths, format } from "date-fns";
 import { InvoiceFinancialSummary } from "@/components/invoices/summary/InvoiceFinancialSummary";
 import { InvoiceFilterTabs } from "@/components/invoices/filters/InvoiceFilterTabs";
+import { MissingMonthAllocationWarning } from "@/components/invoices/summary/MissingMonthAllocationWarning";
 import { useTerm } from "@/context/TermContext";
 
 export default function Invoices() {
@@ -111,12 +112,14 @@ export default function Invoices() {
           </Button>
         </div>
 
+        <MissingMonthAllocationWarning invoices={invoices || []} />
+
         <InvoiceFinancialSummary 
           invoices={filteredInvoices} 
           currentMonthLabel={monthRanges[monthFilter as keyof typeof monthRanges].label} 
         />
 
-        <InvoiceFilterTabs 
+        <InvoiceFilterTabs
           onMonthFilterChange={setMonthFilter}
           onStatusFilterChange={setStatusFilter}
           showTermOption={!!termDateRange}
