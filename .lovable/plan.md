@@ -1,106 +1,123 @@
 
-# Fix 1-Cent Franchise Fee Rounding Discrepancy
+# Fix Financial Dashboard Data Source Mismatch
 
-## Problem
+## Problem Summary
 
-The Financial Report (R10,089.75) and Franchise Report (R10,089.76) differ by exactly 1 cent due to inconsistent rounding strategies.
-
----
+The Financial Dashboard shows **Collected Revenue (R85,415) > Total Revenue (R67,265)** which is mathematically impossible. This indicates two different data sources with incompatible date filtering.
 
 ## Root Cause
 
-| Report | Rounding Strategy |
-|--------|-------------------|
-| Franchise Report | Rounds each handler's franchise fee to cents using `roundToCents()` BEFORE summing |
-| Financial Report | Sums raw floating-point values, only rounds at display time |
+The dashboard pulls metrics from **two different hooks with different date filters**:
 
-This is a classic "when to round" problem in financial software.
+| Metric | Hook | Filter | Issue |
+|--------|------|--------|-------|
+| Total Revenue, Fees | `useFinancialQuery` | `franchise_report_month = '2026-01'` | Only filters by FIRST MONTH of term |
+| Collected/Pending/Overdue | `useInvoices` + manual filter | `issued_date` in term range | Correctly filters entire term (Jan-Mar) |
 
----
+### The Bug Location
+
+**File:** `src/hooks/financial/useFinancialQuery.ts` (lines 66-73)
+
+```typescript
+if (fromDate && toDate) {
+  const fromMonth = fromDate.substring(0, 7); // BUG: Only uses first month!
+  invoicesQuery = invoicesQuery.or(
+    `franchise_report_month.eq.${fromMonth},...`
+  );
+}
+```
+
+When Term 1 spans Jan 1 - Mar 31, this only extracts `2026-01` and ignores Feb/Mar entirely.
 
 ## Solution
 
-Update the Financial Report's processor (`useFinancialProcessor.ts`) to match the Franchise Report's rounding strategy - round each fee calculation to cents before accumulating.
+**Option A (Recommended): Use `issued_date` range filter for dashboard**
 
-### File to Modify
+The Financial Dashboard should filter by `issued_date` within the term range (consistent with collected/pending metrics), not by `franchise_report_month` which is designed for monthly franchise reports.
 
-`src/hooks/financial/useFinancialProcessor.ts`
+**Option B: Generate all months in range**
 
-### Changes
+Extract all YYYY-MM values between fromDate and toDate and filter using `.in()`.
 
-Apply `roundToCents()` to each fee calculation (franchise, admin, instructor):
+## Implementation Plan
 
-**Current Code (lines 160-179):**
+### Part 1: Create a unified filtering approach
+
+Update `useFinancialQuery.ts` to properly handle term date ranges:
+
 ```typescript
-// Franchise/Commission fee
-if (isFixedAmount(classData.mckaynine_commission_type)) {
-  summary.franchiseFee += commissionValue;
-} else {
-  summary.franchiseFee += amount * (commissionValue / 100);
-}
-
-// Admin fee
-if (isFixedAmount(classData.admin_fee_type)) {
-  summary.adminFee += adminValue;
-} else {
-  summary.adminFee += amount * (adminValue / 100);
-}
-
-// Trainer/Instructor fee
-if (isFixedAmount(classData.trainer_fee_type)) {
-  summary.instructorFee += trainerValue;
-} else {
-  summary.instructorFee += amount * (trainerValue / 100);
+if (fromDate && toDate) {
+  // For dashboard/term filtering: use issued_date range
+  // This is consistent with how collected/pending revenue is calculated
+  invoicesQuery = invoicesQuery
+    .gte('issued_date', fromDate)
+    .lte('issued_date', toDate);
 }
 ```
 
-**Updated Code:**
+### Part 2: Add a separate parameter for monthly report mode
+
+Add an optional `filterMode` parameter to distinguish between:
+- `'term'` - Uses issued_date range (for dashboard)
+- `'monthly'` - Uses franchise_report_month (for Franchise/Financial Report tabs)
+
 ```typescript
-// Franchise/Commission fee (round per-item to match Franchise Report)
-if (isFixedAmount(classData.mckaynine_commission_type)) {
-  summary.franchiseFee += roundToCents(commissionValue);
-} else {
-  summary.franchiseFee += roundToCents(amount * (commissionValue / 100));
-}
-
-// Admin fee (round per-item for consistency)
-if (isFixedAmount(classData.admin_fee_type)) {
-  summary.adminFee += roundToCents(adminValue);
-} else {
-  summary.adminFee += roundToCents(amount * (adminValue / 100));
-}
-
-// Trainer/Instructor fee (round per-item for consistency)
-if (isFixedAmount(classData.trainer_fee_type)) {
-  summary.instructorFee += roundToCents(trainerValue);
-} else {
-  summary.instructorFee += roundToCents(amount * (trainerValue / 100));
+export function useFinancialQuery(
+  branchId?: string, 
+  fromDate?: string, 
+  toDate?: string,
+  filterMode: 'term' | 'monthly' = 'term'
+) {
+  // ... in query:
+  if (fromDate && toDate) {
+    if (filterMode === 'monthly') {
+      const fromMonth = fromDate.substring(0, 7);
+      invoicesQuery = invoicesQuery.or(
+        `franchise_report_month.eq.${fromMonth},...`
+      );
+    } else {
+      // Default: term mode uses issued_date for consistency
+      invoicesQuery = invoicesQuery
+        .gte('issued_date', fromDate)
+        .lte('issued_date', toDate);
+    }
+  }
 }
 ```
 
-### Also Update Unallocated Fees (lines 206-208)
+### Part 3: Update callers
 
-Apply the same rounding to unallocated fee calculations:
-
+**Dashboard** (`useClassFinancialData.ts`):
 ```typescript
-const unallocatedAdminFee = roundToCents(unallocatedCourseFee * (avgAdminPercent / 100));
-const unallocatedTrainerFee = roundToCents(unallocatedCourseFee * (avgTrainerPercent / 100));
-const unallocatedFranchiseFee = roundToCents(unallocatedCourseFee * (avgFranchisePercent / 100));
+useFinancialQuery(branchId, normalizedFromDate, normalizedToDate, 'term')
 ```
 
----
+**Financial Report** (when using this hook):
+```typescript
+useFinancialQuery(branchId, normalizedFromDate, normalizedToDate, 'monthly')
+```
 
-## Technical Notes
+## Files to Modify
 
-- The `roundToCents` function already exists in `src/lib/invoiceMath.ts` and is the canonical rounding function
-- This function is already imported in `useFinancialProcessor.ts` (line 4)
-- After this change, both reports will use "round-then-sum" strategy, ensuring identical results
+| File | Change |
+|------|--------|
+| `src/hooks/financial/useFinancialQuery.ts` | Add `filterMode` parameter, implement both filtering strategies |
+| `src/hooks/useClassFinancialData.ts` | Pass `'term'` filter mode (or rely on default) |
 
----
-
-## Expected Outcome
+## Expected Results
 
 After implementation:
-1. Financial Report and Franchise Report will show **identical** franchise fee values
-2. All fee calculations (admin, trainer, franchise) will be consistent across reports
-3. The difference between reports will be R0.00 instead of R0.01
+- Total Revenue = R91,400 (entire Term 1)
+- Collected Revenue = R90,350 (paid invoices in Term 1)
+- Pending Revenue = R1,050 (sent invoices in Term 1)
+- Collection Rate = 98.9% (mathematically correct)
+
+## Verification
+
+The following equation should always hold true:
+```
+Total Revenue = Collected + Pending + Overdue
+```
+
+Currently broken: R67,265 != R85,415 + R1,050 + R0
+After fix: R91,400 = R90,350 + R1,050 + R0 (correct)
