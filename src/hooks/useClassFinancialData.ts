@@ -39,12 +39,14 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
   const normalizedFromDate = normalizeToDateString(fromDate);
   const normalizedToDate = normalizeToDateString(toDate);
   
+  // Use 'term' mode for dashboard to filter by issued_date range
+  // This ensures Total Revenue matches Collected + Pending + Overdue
   const { 
     data: financialData, 
     isLoading, 
     refetch,
     error
-  } = useFinancialQuery(branchId, normalizedFromDate, normalizedToDate);
+  } = useFinancialQuery(branchId, normalizedFromDate, normalizedToDate, 'term');
   
   const {
     classFinances,
