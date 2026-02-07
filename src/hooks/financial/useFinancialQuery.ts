@@ -14,10 +14,22 @@ import { getCourseFeeAmount, getEnrollmentFeeAmount, applyInvoiceDiscountToItems
  * 
  * This eliminates nested join filtering issues and ensures data consistency.
  */
-export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?: string) {
+/**
+ * Filter modes for date filtering:
+ * - 'term': Uses issued_date range (for dashboard/term-based views)
+ * - 'monthly': Uses franchise_report_month (for monthly financial/franchise reports)
+ */
+export type FilterMode = 'term' | 'monthly';
+
+export function useFinancialQuery(
+  branchId?: string, 
+  fromDate?: string, 
+  toDate?: string,
+  filterMode: FilterMode = 'term'
+) {
   return useQuery({
-    // Simple, deterministic query key - no cached objects
-    queryKey: ['financial-data', branchId, fromDate, toDate],
+    // Simple, deterministic query key - include filterMode for proper caching
+    queryKey: ['financial-data', branchId, fromDate, toDate, filterMode],
     queryFn: async (): Promise<FinancialData> => {
       if (!branchId) {
         return {
@@ -33,7 +45,7 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
         };
       }
 
-      console.log(`[FinancialQuery] Fetching for branch ${branchId}, dates: ${fromDate} to ${toDate}`);
+      console.log(`[FinancialQuery] Fetching for branch ${branchId}, dates: ${fromDate} to ${toDate}, mode: ${filterMode}`);
 
       // STEP 1: Fetch invoices for this branch with date/status filters
       // Now using invoice.branch_id for proper branch filtering (supports multi-branch handlers)
@@ -59,18 +71,26 @@ export function useFinancialQuery(branchId?: string, fromDate?: string, toDate?:
         .eq('branch_id', branchId) // Filter by invoice's branch_id directly
         .in('status', ['sent', 'paid', 'overdue']);
 
-      // Apply date filters using franchise_report_month for monthly reports
-      // This respects the report_month_override set on classes
-      // Uses same fallback logic as Franchise Report for consistency:
-      // Include invoices with matching franchise_report_month OR NULL franchise_report_month + issued_date in range
+      // Apply date filters based on filterMode
+      // - 'term': Use issued_date range (consistent with collected/pending revenue calculations)
+      // - 'monthly': Use franchise_report_month (for monthly financial/franchise reports)
       if (fromDate && toDate) {
-        // Extract YYYY-MM from the date range for franchise_report_month filtering
-        const fromMonth = fromDate.substring(0, 7); // e.g., "2026-02"
-        // Use .or() to include invoices with matching franchise_report_month 
-        // OR NULL franchise_report_month with issued_date in range (defensive fallback)
-        invoicesQuery = invoicesQuery.or(
-          `franchise_report_month.eq.${fromMonth},and(franchise_report_month.is.null,issued_date.gte.${fromDate},issued_date.lte.${toDate})`
-        );
+        if (filterMode === 'monthly') {
+          // Monthly mode: Use franchise_report_month for precise monthly reporting
+          // This respects the report_month_override set on classes
+          const fromMonth = fromDate.substring(0, 7); // e.g., "2026-02"
+          // Include invoices with matching franchise_report_month 
+          // OR NULL franchise_report_month with issued_date in range (defensive fallback)
+          invoicesQuery = invoicesQuery.or(
+            `franchise_report_month.eq.${fromMonth},and(franchise_report_month.is.null,issued_date.gte.${fromDate},issued_date.lte.${toDate})`
+          );
+        } else {
+          // Term mode (default): Use issued_date range for full term coverage
+          // This is consistent with how collected/pending revenue is calculated
+          invoicesQuery = invoicesQuery
+            .gte('issued_date', fromDate)
+            .lte('issued_date', toDate);
+        }
       } else if (fromDate) {
         // Fallback to issued_date if only partial range
         invoicesQuery = invoicesQuery.gte('issued_date', fromDate);
