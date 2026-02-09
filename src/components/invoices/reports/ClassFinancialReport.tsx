@@ -51,7 +51,8 @@ export function ClassFinancialReport({ onRefreshSuccess }: ClassFinancialReportP
   } = useClassFinancialData(
     currentBranch?.id,
     fromDate,
-    toDate
+    toDate,
+    'monthly'
   );
 
   // Calculate summary statistics
