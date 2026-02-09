@@ -12,7 +12,7 @@ export function useProcessingJobs() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('scan_processing_jobs')
-        .select('id, filename, file_url, status, created_at, extracted_data, field_confidence, error_message, uploaded_by')
+        .select('id, filename, file_url, status, page_count, created_at, updated_at, extracted_data, field_confidence, notes_for_review, matched_client_id, created_dog_ids, enrollment_ids, error_message, uploaded_by')
         .order('created_at', { ascending: false })
         .limit(50);
       

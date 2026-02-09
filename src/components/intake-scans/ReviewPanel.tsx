@@ -16,10 +16,11 @@ import { cn } from "@/lib/utils";
 
 interface ReviewPanelProps {
   job: ScanProcessingJob | null;
+  editedData?: ExtractedData | null;
   onUpdateData: (data: ExtractedData) => void;
 }
 
-export function ReviewPanel({ job, onUpdateData }: ReviewPanelProps) {
+export function ReviewPanel({ job, editedData: editedDataProp, onUpdateData }: ReviewPanelProps) {
   const [viewerOpen, setViewerOpen] = useState(false);
   const [activeDogTab, setActiveDogTab] = useState("0");
 
@@ -65,7 +66,7 @@ export function ReviewPanel({ job, onUpdateData }: ReviewPanelProps) {
     );
   }
 
-  const data = job.extracted_data;
+  const data = editedDataProp || job.extracted_data;
   if (!data) {
     return (
       <Card className="h-full flex items-center justify-center">
