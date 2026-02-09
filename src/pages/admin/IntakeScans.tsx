@@ -100,6 +100,7 @@ export default function IntakeScans() {
           <div className="col-span-6 h-full">
             <ReviewPanel 
               job={selectedJob}
+              editedData={editedData}
               onUpdateData={handleUpdateData}
             />
           </div>
