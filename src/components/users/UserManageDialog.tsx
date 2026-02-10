@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import {
   Dialog,
@@ -23,6 +22,8 @@ import { Badge } from "@/components/ui/badge";
 import { UserProfile } from "./types/userTypes";
 import { useUserRoleManagement } from "./hooks/useUserRoleManagement";
 import { useAuth } from "@/context/auth";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 interface UserManageDialogProps {
   user: UserProfile;
@@ -51,8 +52,17 @@ export function UserManageDialog({
   const { updateUserRole, isUpdating } = useUserRoleManagement();
   const { isPlatformAdmin } = useAuth();
 
-  // Parse current roles from comma-separated string
-  const currentRoles = user.role ? user.role.split(",").map(r => r.trim()).filter(Boolean) : ["user"];
+  const { data: currentRoles = [], refetch: refetchRoles } = useQuery({
+    queryKey: ['user-roles', user.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id);
+      return (data || []).map(r => r.role as string);
+    },
+    enabled: open,
+  });
 
   useEffect(() => {
     if (open) {
@@ -79,8 +89,8 @@ export function UserManageDialog({
     try {
       await updateUserRole({ userId: user.id, role: roleToAdd, operation: "addRole" });
       setRoleToAdd("");
+      await refetchRoles();
       if (onUserUpdated) onUserUpdated();
-      onOpenChange(false);
     } catch (err: any) {
       setError(err.message || "Failed to add role");
     }
@@ -95,8 +105,8 @@ export function UserManageDialog({
 
     try {
       await updateUserRole({ userId: user.id, role: roleToRemove, operation: "removeRole" });
+      await refetchRoles();
       if (onUserUpdated) onUserUpdated();
-      onOpenChange(false);
     } catch (err: any) {
       setError(err.message || "Failed to remove role");
     }
