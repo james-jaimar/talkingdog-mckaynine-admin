@@ -250,7 +250,7 @@ export function useFranchiseMonthlyData({ month, year }: UseFranchiseMonthlyData
             existingHandler.franchiseFee = classData.mckaynine_commission_type === 'percentage'
               ? roundToCents((existingHandler.courseFeeAmount * (classData.mckaynine_commission_value || 0)) / 100)
               : roundToCents(classData.mckaynine_commission_value || 0);
-            existingHandler.totalAmount = roundToCents(existingHandler.enrollmentFeeAmount + existingHandler.franchiseFee);
+            existingHandler.totalAmount = roundToCents(existingHandler.franchiseFee);
           } else {
             // New handler entry (using net amounts after discount)
             const courseFeeAmount = isEnrollmentFee ? 0 : netAmount;
@@ -275,7 +275,7 @@ export function useFranchiseMonthlyData({ month, year }: UseFranchiseMonthlyData
               courseFeeAmount,
               enrollmentFeeAmount,
               franchiseFee,
-              totalAmount: roundToCents(enrollmentFeeAmount + franchiseFee),
+              totalAmount: roundToCents(franchiseFee),
               invoiceDate: invoice.issued_date
             });
           }
