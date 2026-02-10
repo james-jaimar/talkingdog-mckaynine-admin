@@ -5,7 +5,7 @@ import { useBranch } from "@/context/BranchContext";
 import { BranchSelector } from "@/components/branches/BranchSelector";
 import { useAuth } from "@/context/auth";
 import { Button } from "@/components/ui/button";
-import { Menu, X } from "lucide-react";
+import { Menu, X, UserCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { AdminNavigation } from "./header/AdminNavigation";
@@ -17,7 +17,7 @@ import { TermSelectorRow } from "./header/TermSelectorRow";
 import { getBranchLogo, getBranchDisplayName } from "@/lib/branchLogo";
 
 export function Header() {
-  const { user, logout, isAdmin, isTrainer, isHandler, role } = useAuth();
+  const { user, logout, isAdmin, isTrainer, isHandler, isAssistant, role } = useAuth();
   const location = useLocation();
   const isMobile = useIsMobile();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -40,6 +40,7 @@ export function Header() {
   
   const { currentBranch } = branchInfo;
   const showBranchSelector = user && (isAdmin || isTrainer);
+  const isStaffAndHandler = (isTrainer || isAssistant) && isHandler;
   
   // Dynamic logo based on current branch
   const logoSrc = getBranchLogo(currentBranch?.name);
@@ -84,8 +85,17 @@ export function Header() {
                       <AdminNavigation isMobile={false} showPrimaryOnly={true} />
                     ) : isTrainer && !isAdmin ? (
                       <TrainerNavigation isMobile={false} showPrimaryOnly={true} />
-                    ) : isHandler && (
+                    ) : isHandler && !isTrainer && !isAssistant && (
                       <HandlerNavigation isMobile={false} />
+                    )}
+                    {isStaffAndHandler && (
+                      <Link 
+                        to="/customer/dashboard" 
+                        className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-white/80 hover:text-white transition-colors whitespace-nowrap"
+                      >
+                        <UserCircle className="h-4 w-4" />
+                        My Account
+                      </Link>
                     )}
                   </div>
                 )}
@@ -166,8 +176,19 @@ export function Header() {
               <AdminNavigation isMobile={true} onMobileClose={() => setMobileMenuOpen(false)} />
             ) : isTrainer && !isAdmin ? (
               <TrainerNavigation isMobile={true} onMobileClose={() => setMobileMenuOpen(false)} />
-            ) : isHandler && (
+            ) : isHandler && !isTrainer && !isAssistant && (
               <HandlerNavigation isMobile={true} onMobileClose={() => setMobileMenuOpen(false)} />
+            )}
+            
+            {isStaffAndHandler && (
+              <Link 
+                to="/customer/dashboard" 
+                className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-white/80 hover:text-white transition-colors"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <UserCircle className="h-4 w-4" />
+                My Account (Customer Portal)
+              </Link>
             )}
             
             <div className="mt-4 pt-4 border-t border-mckaynine-500">
