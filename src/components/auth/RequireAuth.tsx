@@ -38,11 +38,13 @@ export default function RequireAuth({ children }: RequireAuthProps) {
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
-  // STRICT SECURITY CHECK: Handlers should ONLY access customer routes
-  // If the handler tries to access any non-customer route, redirect them
-  if (role === 'handler' || role === 'user') {
+  // STRICT SECURITY CHECK: Pure handlers/users (no staff roles) should ONLY access customer routes
+  const hasHandlerRole = role?.includes('handler') || role?.includes('user');
+  const hasStaffRole = role?.includes('admin') || role?.includes('platform_admin') || role?.includes('trainer') || role?.includes('assistant');
+  
+  if (hasHandlerRole && !hasStaffRole) {
     if (!location.pathname.startsWith("/customer/")) {
-      console.log("RequireAuth - Handler accessing restricted route, redirecting to /customer/dashboard");
+      console.log("RequireAuth - Pure handler accessing restricted route, redirecting to /customer/dashboard");
       return <Navigate to="/customer/dashboard" replace />;
     }
   }

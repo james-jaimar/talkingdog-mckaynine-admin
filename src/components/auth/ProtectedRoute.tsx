@@ -34,9 +34,12 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
-  // STRICT SECURITY CHECK: Handlers can only access customer routes
-  if ((role === 'handler' || role === 'user') && !location.pathname.startsWith("/customer/")) {
-    console.log("ProtectedRoute - Handler trying to access staff route, redirecting to /customer/dashboard");
+  // STRICT SECURITY CHECK: Pure handlers (no staff roles) can only access customer routes
+  const hasHandlerRole = role?.includes('handler') || role?.includes('user');
+  const hasStaffRole = role?.includes('admin') || role?.includes('platform_admin') || role?.includes('trainer') || role?.includes('assistant');
+  
+  if (hasHandlerRole && !hasStaffRole && !location.pathname.startsWith("/customer/")) {
+    console.log("ProtectedRoute - Pure handler trying to access staff route, redirecting to /customer/dashboard");
     return <Navigate to="/customer/dashboard" replace />;
   }
   
@@ -46,19 +49,17 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       (requiredRole === 'platform_admin' && isPlatformAdmin) ||
       (requiredRole === 'admin' && (isAdmin || isPlatformAdmin)) ||
       (requiredRole === 'trainer' && (isTrainer || isAdmin || isPlatformAdmin)) ||
-      (requiredRole === 'handler' && (role === 'handler' || role === 'user'));
+      (requiredRole === 'handler' && (isHandler || role?.includes('handler') || role?.includes('user')));
       
     if (!hasRequiredRole) {
       console.log(`ProtectedRoute - User doesn't have required role: ${requiredRole}`);
       
       // Role-specific redirection when user doesn't have required role
-      if (role === 'handler' || role === 'user') {
+      if (hasHandlerRole && !hasStaffRole) {
         return <Navigate to="/customer/dashboard" replace />;
-      } else if (role === 'trainer') {
-        // Pure trainers (role is exactly 'trainer') go to trainer dashboard
+      } else if (role?.includes('trainer')) {
         return <Navigate to="/trainer/dashboard" replace />;
       } else {
-        // Admins and platform admins go to main dashboard
         return <Navigate to="/dashboard" replace />;
       }
     }
