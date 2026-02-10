@@ -208,18 +208,11 @@ export function FranchiseClassesReport() {
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                 <div className="bg-blue-50 p-4 rounded-lg">
                   <h3 className="font-semibold text-blue-900">Course Fees</h3>
                   <p className="text-2xl font-bold text-blue-600">
                     {formatCurrency(franchiseData.reportTotals.totalCourseFees)}
-                  </p>
-                </div>
-                <div className="bg-cyan-50 p-4 rounded-lg">
-                  <h3 className="font-semibold text-cyan-900">Enrollment Fees</h3>
-                  <p className="text-xs text-cyan-700 mb-1">Starter Kits</p>
-                  <p className="text-2xl font-bold text-cyan-600">
-                    {formatCurrency(franchiseData.reportTotals.totalEnrollmentFees)}
                   </p>
                 </div>
                 <div className="bg-green-50 p-4 rounded-lg">
@@ -231,7 +224,7 @@ export function FranchiseClassesReport() {
                 </div>
                 <div className="bg-purple-50 p-4 rounded-lg">
                   <h3 className="font-semibold text-purple-900">Total Due</h3>
-                  <p className="text-xs text-purple-700 mb-1">Enrollment + Franchise</p>
+                  <p className="text-xs text-purple-700 mb-1">Franchise Fees</p>
                   <p className="text-2xl font-bold text-purple-600">
                     {formatCurrency(franchiseData.reportTotals.totalAmount)}
                   </p>
@@ -264,7 +257,6 @@ export function FranchiseClassesReport() {
                               <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Dog</th>
                               <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
                               <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Course Fee</th>
-                              <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Enrollment Fee</th>
                               <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Franchise Fee</th>
                               <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Total</th>
                             </tr>
@@ -285,9 +277,6 @@ export function FranchiseClassesReport() {
                                 <td className="px-4 py-3 text-sm text-right">
                                   {formatCurrency(handler.courseFeeAmount)}
                                 </td>
-                                <td className="px-4 py-3 text-sm text-right">
-                                  {handler.enrollmentFeeAmount > 0 ? formatCurrency(handler.enrollmentFeeAmount) : '-'}
-                                </td>
                                 <td className="px-4 py-3 text-sm text-right text-green-600 font-medium">
                                   {formatCurrency(handler.franchiseFee)}
                                 </td>
@@ -303,7 +292,6 @@ export function FranchiseClassesReport() {
                       <div className="bg-gray-50 px-4 py-3 border-t">
                         <div className="flex justify-end text-sm font-medium space-x-6">
                           <span>Course Fees: {formatCurrency(classGroup.classTotals.totalCourseFees)}</span>
-                          <span>Enrollment Fees: {formatCurrency(classGroup.classTotals.totalEnrollmentFees)}</span>
                           <span className="text-green-600">Franchise Fee: {formatCurrency(classGroup.classTotals.totalFranchiseFees)}</span>
                           <span className="text-purple-600">Total Due: {formatCurrency(classGroup.classTotals.totalAmount)}</span>
                         </div>

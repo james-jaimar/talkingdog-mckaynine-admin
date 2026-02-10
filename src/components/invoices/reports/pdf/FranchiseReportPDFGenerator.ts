@@ -92,7 +92,7 @@ export class FranchiseReportPDFGenerator {
   }
 
   private addSummaryCards(reportTotals: any, startY: number): number {
-    const cardWidth = (this.pageWidth - 40) / 4;
+    const cardWidth = (this.pageWidth - 40) / 3;
     const cardHeight = 18;
     let currentY = startY + 6;
 
@@ -105,13 +105,6 @@ export class FranchiseReportPDFGenerator {
         textColor: [59, 130, 246]
       },
       { 
-        title: 'Enrollment Fees', 
-        subtitle: 'Starter Kits',
-        value: this.formatCurrency(reportTotals.totalEnrollmentFees || 0), 
-        bgColor: [236, 254, 255],
-        textColor: [6, 182, 212]
-      },
-      { 
         title: 'Franchise Fees', 
         subtitle: '15% of course fees',
         value: this.formatCurrency(reportTotals.totalFranchiseFees), 
@@ -120,7 +113,7 @@ export class FranchiseReportPDFGenerator {
       },
       { 
         title: 'Total Due', 
-        subtitle: 'Enrollment + Franchise',
+        subtitle: 'Franchise Fees',
         value: this.formatCurrency(reportTotals.totalAmount), 
         bgColor: [250, 245, 255],
         textColor: [168, 85, 247]
@@ -205,7 +198,6 @@ export class FranchiseReportPDFGenerator {
       `${handler.dogName} (${handler.dogBreed})`,
       handler.clientEmail,
       this.formatCurrency(handler.courseFeeAmount),
-      handler.enrollmentFeeAmount > 0 ? this.formatCurrency(handler.enrollmentFeeAmount) : '-',
       this.formatCurrency(handler.franchiseFee),
       this.formatCurrency(handler.totalAmount)
     ]);
@@ -217,7 +209,7 @@ export class FranchiseReportPDFGenerator {
     // Step 5: Add table with new column structure
     this.doc.autoTable({
       startY: currentY,
-      head: [['Handler', 'Dog', 'Email', 'Course Fee', 'Enrollment Fee', 'Franchise Fee', 'Total']],
+      head: [['Handler', 'Dog', 'Email', 'Course Fee', 'Franchise Fee', 'Total']],
       body: tableData,
       margin: { left: cardX + tableMargin, right: this.margin + tableMargin },
       tableWidth: availableTableWidth,
@@ -239,17 +231,16 @@ export class FranchiseReportPDFGenerator {
         0: { cellWidth: 'auto', fontStyle: 'bold', minCellWidth: 35 }, // Handler
         1: { cellWidth: 'auto', minCellWidth: 40 }, // Dog
         2: { cellWidth: 'auto', minCellWidth: 55 }, // Email
-        3: { halign: 'right', cellWidth: 25 }, // Course Fee
-        4: { halign: 'right', cellWidth: 25 }, // Enrollment Fee
-        5: { halign: 'right', cellWidth: 25, textColor: [34, 197, 94] }, // Franchise Fee (green)
-        6: { halign: 'right', cellWidth: 25, fontStyle: 'bold' } // Total
+        3: { halign: 'right', cellWidth: 28 }, // Course Fee
+        4: { halign: 'right', cellWidth: 28, textColor: [34, 197, 94] }, // Franchise Fee (green)
+        5: { halign: 'right', cellWidth: 28, fontStyle: 'bold' } // Total
       },
       alternateRowStyles: { 
         fillColor: [248, 250, 252]
       },
       didParseCell: (data: any) => {
         // Highlight franchise fee column
-        if (data.column.index === 5 && data.section === 'body') {
+        if (data.column.index === 4 && data.section === 'body') {
           data.cell.styles.textColor = [34, 197, 94];
           data.cell.styles.fontStyle = 'bold';
         }
@@ -276,7 +267,6 @@ export class FranchiseReportPDFGenerator {
     // Right-aligned totals
     const totals = [
       { label: 'Course Fees:', value: this.formatCurrency(classGroup.classTotals.totalCourseFees) },
-      { label: 'Enrollment Fees:', value: this.formatCurrency(classGroup.classTotals.totalEnrollmentFees) },
       { label: 'Franchise Fee:', value: this.formatCurrency(classGroup.classTotals.totalFranchiseFees), highlight: true },
       { label: 'Total:', value: this.formatCurrency(classGroup.classTotals.totalAmount) }
     ];
