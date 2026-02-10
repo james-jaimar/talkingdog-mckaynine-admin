@@ -145,7 +145,7 @@ serve(async (req) => {
       }
     }
 
-    // If adding/setting assistant role, try to link assistant record
+    // If adding/setting assistant role, ensure assistant record exists
     if (role === "assistant" && operation !== "removeRole") {
       const { data: existingAssistant } = await supabaseAdmin
         .from("assistants").select("id").eq("user_id", userId).limit(1);
@@ -153,11 +153,34 @@ serve(async (req) => {
       if (!existingAssistant || existingAssistant.length === 0) {
         const { data: { user: targetUser } } = await supabaseAdmin.auth.admin.getUserById(userId);
         if (targetUser?.email) {
+          // Try to link existing assistant record by email
           const { data: assistantByEmail } = await supabaseAdmin
             .from("assistants").select("id").eq("email", targetUser.email).is("user_id", null).limit(1);
 
           if (assistantByEmail && assistantByEmail.length > 0) {
             await supabaseAdmin.from("assistants").update({ user_id: userId }).eq("id", assistantByEmail[0].id);
+          } else {
+            // No existing record - create one
+            const { data: userInfo } = await supabaseAdmin
+              .from("profiles").select("username, full_name").eq("id", userId).single();
+
+            const names = userInfo?.full_name ? userInfo.full_name.split(" ") : ["New", "Assistant"];
+            const firstName = names[0] || "New";
+            const lastName = names.length > 1 ? names.slice(1).join(" ") : "Assistant";
+
+            // Get default branch
+            const { data: branch } = await supabaseAdmin
+              .from("branches").select("id").eq("is_active", true).limit(1).single();
+
+            if (branch) {
+              await supabaseAdmin.from("assistants").insert({
+                user_id: userId,
+                first_name: firstName,
+                last_name: lastName,
+                email: targetUser.email,
+                branch_id: branch.id,
+              });
+            }
           }
         }
       }

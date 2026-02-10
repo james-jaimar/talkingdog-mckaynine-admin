@@ -107,8 +107,9 @@ const AssistantSchedulePage = () => {
   };
 
   const handleLogout = async () => {
-    await logout();
-    navigate("/assistant-login");
+    // Sign out directly to avoid AuthProvider redirecting to /auth
+    await supabase.auth.signOut();
+    window.location.href = "/assistant-login";
   };
 
   const getStatusIcon = (status: AvailabilityStatus) => {
