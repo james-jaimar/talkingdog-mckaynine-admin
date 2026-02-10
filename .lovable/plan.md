@@ -1,46 +1,32 @@
 
-# Fix: Show All Users (Including Handlers) in User Management
 
-## The Problem
-Katherine Sinclaire doesn't appear in User Management because the `useUsers` hook filters profiles by `app_id = 'mckaynine-training'`, and her profile (along with 301 other handler/client profiles) has a `null` app_id. Only 7 profiles have the app_id set -- those are the staff users you see now.
+# Fix: Show All Roles and Use Multi-Role Management
 
-## The Fix
+## Problem
+The User Management UI has two issues:
+1. **Roles not loading from the correct source** - The `useUsers` hook reads the old `profile.role` column instead of fetching roles from the `user_roles` table. Katherine has both `handler` and `trainer` in `user_roles`, but the UI only shows whatever is in `profiles.role`.
+2. **Edit User dialog overwrites roles** - The "Edit User" dialog has a single-role dropdown that replaces all roles with one selection, instead of using the multi-role system.
 
-### Step 1: Update `useUsers` query to include users with roles
-**File: `src/hooks/useUsers.ts`**
+## Fix
 
-Instead of filtering only by `app_id`, also include any user who has an entry in the `user_roles` table. This ensures handlers (who have a `handler` role in `user_roles`) appear in the list even without an `app_id`.
+### 1. Update `useUsers.ts` to fetch roles from `user_roles` table
+- After fetching profiles, also fetch all roles from `user_roles` for those user IDs
+- Group roles by `user_id` and join them as comma-separated strings
+- Use these combined roles instead of `profile.role`
 
-The query will fetch profiles that either:
-- Have `app_id = 'mckaynine-training'`, OR
-- Have at least one entry in `user_roles`
-
-This way Katherine shows up because she has a `handler` role in `user_roles`.
-
-### Step 2: Update the role badge display for multi-role users
-**File: `src/components/users/UserAdmin.tsx`**
-
-Currently the role column shows a single badge. For multi-role users (like Katherine will be after adding trainer), update the display to show multiple badges when the role string contains commas (e.g., "handler,assistant,trainer").
-
-### Step 3: Update "Change Role" to use the multi-role Manage Roles dialog
-**File: `src/components/users/UserAdmin.tsx`**
-
-Replace the old single-role "Change Role" dialog with the `UserManageDialog` component that was already built to support adding/removing individual roles via badges.
-
-### Step 4: Set Katherine's app_id
-As part of the fix, set Katherine's `app_id` so she's properly associated with the app going forward. The `manage-user-role` edge function already does this when adding roles.
+### 2. Remove the role dropdown from the "Edit User" dialog
+- The Edit User dialog should only handle name changes (and email display)
+- Role management should only happen through the "Manage Roles" dialog, which already supports adding/removing individual roles
 
 ## Technical Details
 
-**`useUsers.ts` query change:**
-- Current: `supabase.from('profiles').select('*').eq('app_id', APP_ID)`
-- New: Use an `.or()` filter to include profiles with the correct `app_id` OR profiles that exist in `user_roles`
-- Alternatively, join with `user_roles` to get profiles that have any role assigned
+**`src/hooks/useUsers.ts`** changes:
+- Already fetches `user_roles` for filtering -- extend this to fetch `role` column too (not just `user_id`)
+- Build a `Map<user_id, string>` of comma-joined roles
+- Replace line 67 `role: profile.role || 'user'` with the roles from the map
 
-**`UserAdmin.tsx` role display:**
-- Split `user.role` by comma and render a badge for each role
-- Use the existing color scheme but add colors for `handler` and `assistant` roles
+**`src/components/users/UserAdmin.tsx`** changes:
+- Remove the Role `<Select>` from the Edit User dialog (lines 616-629)
+- Remove `editRole` state and its usage in `handleSaveEditUser`
+- The "Manage Roles" menu item already opens `UserManageDialog` which handles multi-role correctly
 
-**`UserAdmin.tsx` dialog swap:**
-- Import and use `UserManageDialog` instead of the inline single-role dialog
-- This gives Katherine the ability to have trainer added alongside handler
