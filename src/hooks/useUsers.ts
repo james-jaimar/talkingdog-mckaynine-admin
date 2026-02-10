@@ -33,12 +33,28 @@ export function useUsers() {
         // Get current user for marking in UI
         const { data: { user: currentUser } } = await supabase.auth.getUser();
         
-        // Get all profiles for this app
-        const { data: profiles, error } = await supabase
+        // Get user IDs that have roles assigned in user_roles table
+        const { data: userRoles, error: rolesError } = await supabase
+          .from('user_roles')
+          .select('user_id');
+        
+        if (rolesError) throw rolesError;
+        
+        const roleUserIds = [...new Set((userRoles || []).map(r => r.user_id))];
+        
+        // Get profiles matching app_id OR having user_roles entries
+        let query = supabase
           .from('profiles')
           .select('*')
-          .eq('app_id', APP_ID)
           .order('created_at', { ascending: false });
+        
+        if (roleUserIds.length > 0) {
+          query = query.or(`app_id.eq.${APP_ID},id.in.(${roleUserIds.join(',')})`);
+        } else {
+          query = query.eq('app_id', APP_ID);
+        }
+        
+        const { data: profiles, error } = await query;
         
         if (error) throw error;
         
