@@ -1,4 +1,4 @@
-import { TrainerPaymentData, TrainerClassDetail, Schedule, Booking, InvoiceItem } from "../types";
+import { TrainerPaymentData, TrainerClassDetail, Schedule, Booking, InvoiceItem, SubstituteRecord } from "../types";
 import { calculateClassRevenue } from "./calculateTrainerFees";
 import { getCourseFeeAmount, applyInvoiceDiscountToItems } from "@/lib/invoiceItemUtils";
 import { roundToCents } from "@/lib/invoiceMath";
@@ -8,7 +8,8 @@ export function formatTrainerPaymentData(
   allSchedules: Schedule[],
   bookings: Booking[] = [],
   invoiceItems: InvoiceItem[] = [],
-  trainerPayments: any[] = []
+  trainerPayments: any[] = [],
+  substitutes: SubstituteRecord[] = []
 ): TrainerPaymentData {
   // Validate that we're dealing with a single branch's data
   const scheduleBranchIds = new Set(allSchedules.map(s => s.classes?.branch_id).filter(Boolean));
@@ -115,6 +116,27 @@ export function formatTrainerPaymentData(
       hasZeroCommissionClasses = true;
     }
     
+    // === Substitute pro-rating logic ===
+    // Determine what fraction of this schedule's dates this trainer is responsible for
+    const scheduleDates = schedule.selected_dates || [];
+    const totalDates = scheduleDates.length || 1; // fallback to 1 if no selected_dates
+    const scheduleSubs = substitutes.filter(s => s.class_schedule_id === schedule.id);
+    
+    const isOriginalTrainer = schedule.trainer_id === trainer.id;
+    let trainerDateRatio = 1; // default: trainer gets 100%
+    
+    if (scheduleSubs.length > 0 && totalDates > 0) {
+      if (isOriginalTrainer) {
+        // Original trainer: subtract dates where a sub was used
+        const subDates = scheduleSubs.length;
+        trainerDateRatio = Math.max(0, (totalDates - subDates) / totalDates);
+      } else {
+        // This trainer is a substitute: only count dates they subbed
+        const mySubDates = scheduleSubs.filter(s => s.substitute_trainer_id === trainer.id).length;
+        trainerDateRatio = mySubDates / totalDates;
+      }
+    }
+    
     // Get all invoice items for this schedule's bookings
     const scheduleInvoiceItems: InvoiceItem[] = [];
     
@@ -130,15 +152,19 @@ export function formatTrainerPaymentData(
       scheduleInvoiceItems
     );
 
+    // Apply the date ratio to revenue
+    const proRatedRevenue = roundToCents(revenueDetails.revenue * trainerDateRatio);
+    const proRatedPotentialRevenue = roundToCents(revenueDetails.potentialRevenue * trainerDateRatio);
+
     // A class is considered paid if we have it in the paidScheduleIds set from trainer_payments
     const classIsPaid = paidScheduleIds.has(schedule.id);
 
     // Only add to total commission if not a zero-commission class
     if (!hasZeroCommission) {
       if (classIsPaid) {
-        totalCommission += revenueDetails.revenue;
+        totalCommission += proRatedRevenue;
       } else {
-        totalCommission += revenueDetails.potentialRevenue;
+        totalCommission += proRatedPotentialRevenue;
       }
     }
     
@@ -191,11 +217,12 @@ export function formatTrainerPaymentData(
       const courseFee = getCourseFeeAmount(discountedItems, true);
         
       // Calculate individual commission based on THIS booking's course fee (after discount)
+      // Apply the substitute date ratio so per-booking amounts reflect pro-rating
       let perBookingCommission = 0;
       if (trainerFeeType === 'percentage') {
-        perBookingCommission = roundToCents(courseFee * (feeValue / 100));
+        perBookingCommission = roundToCents(courseFee * (feeValue / 100) * trainerDateRatio);
       } else if (trainerFeeType === 'fixed') {
-        perBookingCommission = roundToCents(feeValue);
+        perBookingCommission = roundToCents(feeValue * trainerDateRatio);
       }
         
       return {
@@ -216,13 +243,13 @@ export function formatTrainerPaymentData(
       className: schedule.classes?.name || 'Unknown Class',
       classDate: schedule.start_time,
       scheduleDate,
-      revenue: revenueDetails.revenue,
-      potentialRevenue: revenueDetails.potentialRevenue,
+      revenue: proRatedRevenue,
+      potentialRevenue: proRatedPotentialRevenue,
       bookings: scheduleBookings.length,
       isPaid: classIsPaid,
       hasZeroAmountPayment,
       hasZeroCommission,
-      branchId, // Include branch ID in class details
+      branchId,
       bookingsDetails
     };
   });

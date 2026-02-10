@@ -135,6 +135,15 @@ export interface TrainerClassDetail {
   bookingsDetails: BookingDetail[];
 }
 
+export interface SubstituteRecord {
+  id: string;
+  class_schedule_id: string;
+  class_date: string;
+  substitute_trainer_id: string;
+  original_trainer_id: string;
+  notes?: string;
+}
+
 export interface TrainerPaymentData {
   id: string;
   trainerName: string;

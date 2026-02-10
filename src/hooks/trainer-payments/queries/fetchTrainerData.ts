@@ -246,6 +246,23 @@ export async function fetchAllTrainerPayments(trainerIds: string[], scheduleIds?
   return payments;
 }
 
+// Fetch all substitute records for given schedule IDs
+export async function fetchAllSubstitutes(scheduleIds: string[]) {
+  if (scheduleIds.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from('class_date_substitutes')
+    .select('*')
+    .in('class_schedule_id', scheduleIds);
+
+  if (error) {
+    console.error('Error fetching substitutes:', error);
+    throw error;
+  }
+
+  return data || [];
+}
+
 // Legacy functions kept for backward compatibility with single trainer queries
 export async function fetchSchedules(trainerId: string, termId?: string): Promise<Schedule[]> {
   return fetchAllSchedulesForTrainers([trainerId], termId);

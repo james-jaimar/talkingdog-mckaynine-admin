@@ -5,7 +5,8 @@ import {
   fetchAllSchedulesForTrainers,
   fetchAllBookings,
   fetchAllInvoiceItems,
-  fetchAllTrainerPayments
+  fetchAllTrainerPayments,
+  fetchAllSubstitutes
 } from "./queries/fetchTrainerData";
 import { formatTrainerPaymentData } from "./utils/formatTrainerData";
 import { TrainerPaymentData } from "./types";
@@ -81,12 +82,25 @@ export function useTrainerPaymentData(branchId?: string, dateRange?: { from: Dat
           paymentsByTrainer.set(trainerId, existing);
         });
         
-        // Step 5: Fetch all invoice items for all bookings at once (single query)
+        // Step 5: Fetch all invoice items and substitutes in parallel
         const allBookingIds = allBookings.map(b => b.id);
-        const allInvoiceItems = allBookingIds.length > 0 
-          ? await fetchAllInvoiceItems(allBookingIds, branchId)
-          : [];
-        console.log(`Found ${allInvoiceItems.length} invoice items for all bookings`);
+        const [allInvoiceItems, allSubstitutes] = await Promise.all([
+          allBookingIds.length > 0 
+            ? fetchAllInvoiceItems(allBookingIds, branchId)
+            : Promise.resolve([]),
+          allScheduleIds.length > 0
+            ? fetchAllSubstitutes(allScheduleIds)
+            : Promise.resolve([])
+        ]);
+        console.log(`Found ${allInvoiceItems.length} invoice items, ${allSubstitutes.length} substitutes`);
+        
+        // Create substitute lookup by schedule ID
+        const substitutesBySchedule = new Map<string, typeof allSubstitutes>();
+        allSubstitutes.forEach(sub => {
+          const existing = substitutesBySchedule.get(sub.class_schedule_id) || [];
+          existing.push(sub);
+          substitutesBySchedule.set(sub.class_schedule_id, existing);
+        });
         
         // Create a lookup map by booking ID
         const invoiceItemsByBooking = new Map<string, typeof allInvoiceItems>();
@@ -97,25 +111,59 @@ export function useTrainerPaymentData(branchId?: string, dateRange?: { from: Dat
             invoiceItemsByBooking.set(item.booking_id, existing);
           }
         });
-        
+
         // Step 6: Process each trainer using the pre-fetched data (no additional queries!)
+        // Also collect schedules where the trainer is a substitute
         const trainerPayments = trainers.map(trainer => {
           const trainerSchedules = schedulesByTrainer.get(trainer.id) || [];
           const trainerPaymentsData = paymentsByTrainer.get(trainer.id) || [];
           
-          if (trainerSchedules.length === 0) {
-            return formatTrainerPaymentData(trainer, [], [], [], []);
+          // Collect substitutes for this trainer's schedules
+          const trainerSubstitutes: typeof allSubstitutes = [];
+          trainerSchedules.forEach(schedule => {
+            const subs = substitutesBySchedule.get(schedule.id) || [];
+            trainerSubstitutes.push(...subs);
+          });
+
+          // Also find schedules where this trainer is a SUBSTITUTE (not the original trainer)
+          const subScheduleIds = new Set<string>();
+          allSubstitutes.forEach(sub => {
+            if (sub.substitute_trainer_id === trainer.id) {
+              subScheduleIds.add(sub.class_schedule_id);
+            }
+          });
+
+          // Get any additional schedules where this trainer is a sub but not the original
+          const additionalSubSchedules = allSchedules.filter(s => 
+            subScheduleIds.has(s.id) && s.trainer_id !== trainer.id && s.classes?.branch_id === branchId
+          );
+          
+          // Combine: original schedules + schedules where acting as sub
+          const allTrainerSchedules = [...trainerSchedules, ...additionalSubSchedules];
+          // Deduplicate
+          const uniqueScheduleMap = new Map(allTrainerSchedules.map(s => [s.id, s]));
+          const combinedSchedules = Array.from(uniqueScheduleMap.values());
+
+          // Collect all substitutes for combined schedules
+          const combinedSubstitutes: typeof allSubstitutes = [];
+          combinedSchedules.forEach(schedule => {
+            const subs = substitutesBySchedule.get(schedule.id) || [];
+            combinedSubstitutes.push(...subs);
+          });
+          
+          if (combinedSchedules.length === 0) {
+            return formatTrainerPaymentData(trainer, [], [], [], [], []);
           }
           
           // Collect bookings for this trainer's schedules
           const trainerBookings: typeof allBookings = [];
-          trainerSchedules.forEach(schedule => {
+          combinedSchedules.forEach(schedule => {
             const scheduleBookings = bookingsBySchedule.get(schedule.id) || [];
             trainerBookings.push(...scheduleBookings);
           });
           
           if (trainerBookings.length === 0) {
-            return formatTrainerPaymentData(trainer, trainerSchedules, [], [], trainerPaymentsData);
+            return formatTrainerPaymentData(trainer, combinedSchedules, [], [], trainerPaymentsData, combinedSubstitutes);
           }
           
           // Collect invoice items for this trainer's bookings
@@ -125,7 +173,7 @@ export function useTrainerPaymentData(branchId?: string, dateRange?: { from: Dat
             trainerInvoiceItems.push(...bookingItems);
           });
           
-          return formatTrainerPaymentData(trainer, trainerSchedules, trainerBookings, trainerInvoiceItems, trainerPaymentsData);
+          return formatTrainerPaymentData(trainer, combinedSchedules, trainerBookings, trainerInvoiceItems, trainerPaymentsData, combinedSubstitutes);
         });
 
         // Filter out any null entries and sort alphabetically by name
