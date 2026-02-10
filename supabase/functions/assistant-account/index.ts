@@ -100,14 +100,17 @@ async function handleCreateAccount(data: any, supabase: any, requesterId: string
     }
 
     // Check if email already exists in auth
-    const { data: existingUserData } = await supabase.auth.admin.getUserByEmail(email);
+    const { data: userList } = await supabase.auth.admin.listUsers();
+    const existingUser = userList?.users?.find(
+      (u: any) => u.email?.toLowerCase() === email.toLowerCase()
+    );
     
     let authUserId: string;
     let isExistingAccount = false;
 
-    if (existingUserData?.user) {
+    if (existingUser) {
       // User already exists - check if safe to link
-      const existingUserId = existingUserData.user.id;
+      const existingUserId = existingUser.id;
       
       // SECURITY: Check if existing user has admin/trainer roles
       const { data: existingRoles } = await supabase
