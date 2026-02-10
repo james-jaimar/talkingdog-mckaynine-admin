@@ -1,32 +1,48 @@
 
 
-# Fix: Show All Roles and Use Multi-Role Management
+# Fix: Manage Roles Dialog Should Show All Roles and Stay Open
 
 ## Problem
-The User Management UI has two issues:
-1. **Roles not loading from the correct source** - The `useUsers` hook reads the old `profile.role` column instead of fetching roles from the `user_roles` table. Katherine has both `handler` and `trainer` in `user_roles`, but the UI only shows whatever is in `profiles.role`.
-2. **Edit User dialog overwrites roles** - The "Edit User" dialog has a single-role dropdown that replaces all roles with one selection, instead of using the multi-role system.
+Two issues with the Manage Roles dialog:
+
+1. **Dialog closes after each role add/remove** -- After adding a role, the dialog closes (line 83: `onOpenChange(false)`). When you reopen it, the data may not have refetched yet, so you only see the old role.
+2. **Roles come from a stale prop** -- The dialog reads `user.role` (a comma-separated string passed from the parent), but this only updates after the query refetches. It should fetch roles directly from `user_roles` table.
+
+Katherine actually has all 3 roles in the database (handler, trainer, assistant) -- the UI just isn't showing them.
 
 ## Fix
 
-### 1. Update `useUsers.ts` to fetch roles from `user_roles` table
-- After fetching profiles, also fetch all roles from `user_roles` for those user IDs
-- Group roles by `user_id` and join them as comma-separated strings
-- Use these combined roles instead of `profile.role`
+### 1. Fetch roles directly from `user_roles` table in the dialog
+**File: `src/components/users/UserManageDialog.tsx`**
 
-### 2. Remove the role dropdown from the "Edit User" dialog
-- The Edit User dialog should only handle name changes (and email display)
-- Role management should only happen through the "Manage Roles" dialog, which already supports adding/removing individual roles
+Instead of parsing `user.role` string, the dialog will query `user_roles` for the user's actual roles when it opens. This ensures it always shows the current state.
+
+- Add a small `useQuery` to fetch roles from `user_roles` where `user_id = user.id`
+- Use the fetched roles as the source of truth for "Current Roles"
+- Invalidate/refetch this query after add or remove operations
+
+### 2. Keep dialog open after adding/removing a role
+**File: `src/components/users/UserManageDialog.tsx`**
+
+Remove `onOpenChange(false)` from `handleAddRole` and `handleRemoveRole`. Instead, just refetch the roles query so the badges update in-place. The user can close the dialog manually when done.
 
 ## Technical Details
 
-**`src/hooks/useUsers.ts`** changes:
-- Already fetches `user_roles` for filtering -- extend this to fetch `role` column too (not just `user_id`)
-- Build a `Map<user_id, string>` of comma-joined roles
-- Replace line 67 `role: profile.role || 'user'` with the roles from the map
+**New query in `UserManageDialog.tsx`:**
+```typescript
+const { data: currentRoles = [], refetch: refetchRoles } = useQuery({
+  queryKey: ['user-roles', user.id],
+  queryFn: async () => {
+    const { data } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id);
+    return (data || []).map(r => r.role);
+  },
+  enabled: open,
+});
+```
 
-**`src/components/users/UserAdmin.tsx`** changes:
-- Remove the Role `<Select>` from the Edit User dialog (lines 616-629)
-- Remove `editRole` state and its usage in `handleSaveEditUser`
-- The "Manage Roles" menu item already opens `UserManageDialog` which handles multi-role correctly
+**After add/remove:** call `refetchRoles()` and `onUserUpdated()` but do NOT close the dialog.
 
+**Files to modify:** `src/components/users/UserManageDialog.tsx`
