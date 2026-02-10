@@ -15,6 +15,7 @@ import { HandlersTableContainer } from "./table/HandlersTableContainer";
 import { MobileHandlersList } from "./mobile/MobileHandlersList";
 import { MobileDateSelector } from "./mobile/MobileDateSelector";
 import { MobileAttendanceStats } from "./mobile/MobileAttendanceStats";
+import { SubstituteTrainerDialog } from "./SubstituteTrainerDialog";
 import { Loader2 } from "lucide-react";
 
 interface ClassHandlersTableProps {
@@ -25,6 +26,7 @@ interface ClassHandlersTableProps {
 export function ClassHandlersTable({ classId, classType }: ClassHandlersTableProps) {
   const [initialLoadAttempted, setInitialLoadAttempted] = useState<boolean>(false);
   const [batchAttendanceOpen, setBatchAttendanceOpen] = useState(false);
+  const [substituteDialogOpen, setSubstituteDialogOpen] = useState(false);
   const [mobileSelectedDate, setMobileSelectedDate] = useState<string | null>(null);
   const isMobile = useIsMobile();
   
@@ -149,6 +151,7 @@ export function ClassHandlersTable({ classId, classType }: ClassHandlersTablePro
     <>
       <TableActions 
         onBatchAttendanceOpen={() => setBatchAttendanceOpen(true)}
+        onSubstituteTrainerOpen={() => setSubstituteDialogOpen(true)}
         isMobile={isMobile}
       />
       
@@ -218,6 +221,13 @@ export function ClassHandlersTable({ classId, classType }: ClassHandlersTablePro
         scheduleDates={sortedDates}
         classId={classId}
         onAttendanceUpdated={handleBatchAttendanceUpdated}
+      />
+
+      <SubstituteTrainerDialog
+        open={substituteDialogOpen}
+        onOpenChange={setSubstituteDialogOpen}
+        classId={classId}
+        scheduleDates={sortedDates}
       />
     </>
   );

@@ -586,6 +586,58 @@ export type Database = {
           },
         ]
       }
+      class_date_substitutes: {
+        Row: {
+          class_date: string
+          class_schedule_id: string
+          created_at: string
+          id: string
+          notes: string | null
+          original_trainer_id: string
+          substitute_trainer_id: string
+        }
+        Insert: {
+          class_date: string
+          class_schedule_id: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          original_trainer_id: string
+          substitute_trainer_id: string
+        }
+        Update: {
+          class_date?: string
+          class_schedule_id?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          original_trainer_id?: string
+          substitute_trainer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_date_substitutes_class_schedule_id_fkey"
+            columns: ["class_schedule_id"]
+            isOneToOne: false
+            referencedRelation: "class_schedules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "class_date_substitutes_original_trainer_id_fkey"
+            columns: ["original_trainer_id"]
+            isOneToOne: false
+            referencedRelation: "trainers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "class_date_substitutes_substitute_trainer_id_fkey"
+            columns: ["substitute_trainer_id"]
+            isOneToOne: false
+            referencedRelation: "trainers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       class_enrollments: {
         Row: {
           a_test_class: string | null
