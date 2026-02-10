@@ -1,0 +1,1 @@
+UPDATE profiles SET app_id = 'mckaynine-training' WHERE id = '6b39b7e1-972d-4421-b712-849619f50808';
