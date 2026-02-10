@@ -36,12 +36,19 @@ export function useUsers() {
         // Get user IDs that have roles assigned in user_roles table
         const { data: userRoles, error: rolesError } = await supabase
           .from('user_roles')
-          .select('user_id');
+          .select('user_id, role');
         
         if (rolesError) throw rolesError;
         
-        const roleUserIds = [...new Set((userRoles || []).map(r => r.user_id))];
+        // Build a map of user_id -> comma-separated roles from user_roles table
+        const roleMap = new Map<string, string[]>();
+        (userRoles || []).forEach(r => {
+          const existing = roleMap.get(r.user_id) || [];
+          existing.push(r.role);
+          roleMap.set(r.user_id, existing);
+        });
         
+        const roleUserIds = [...roleMap.keys()];
         // Get profiles matching app_id OR having user_roles entries
         let query = supabase
           .from('profiles')
@@ -64,7 +71,7 @@ export function useUsers() {
           email: profile.username || '', 
           username: profile.username || '',
           full_name: profile.full_name || '',
-          role: profile.role || 'user',
+          role: roleMap.get(profile.id)?.join(', ') || profile.role || 'user',
           avatar_url: profile.avatar_url,
           created_at: profile.created_at,
           app_id: profile.app_id,

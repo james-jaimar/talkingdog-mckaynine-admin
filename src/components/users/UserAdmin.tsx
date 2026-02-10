@@ -116,7 +116,7 @@ export function UserAdminPanel() {
     try {
       setFormError(null);
 
-      // Update profile in database
+      // Update profile in database (name only, roles managed via Manage Roles dialog)
       const { error: profileError } = await supabase
         .from('profiles')
         .update({ 
@@ -127,16 +127,7 @@ export function UserAdminPanel() {
 
       if (profileError) throw profileError;
 
-      // Update role if changed
-      if (editRole !== selectedUser.role) {
-        await updateRole.mutateAsync({
-          userId: selectedUser.id,
-          role: editRole
-        });
-      } else {
-        // Just refetch if only name changed
-        await refetch();
-      }
+      await refetch();
 
       toast({
         title: "User updated",
@@ -613,21 +604,9 @@ export function UserAdminPanel() {
                 </p>
               </div>
               
-              <div className="space-y-2">
-                <Label htmlFor="editRole">Role</Label>
-                <Select value={editRole} onValueChange={setEditRole}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="platform_admin">Platform Admin</SelectItem>
-                    <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="trainer">Trainer</SelectItem>
-                    <SelectItem value="handler">Handler</SelectItem>
-                    <SelectItem value="user">User</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              <p className="text-xs text-muted-foreground">
+                  Use "Manage Roles" from the actions menu to change roles
+                </p>
             </div>
             
             <DialogFooter>
