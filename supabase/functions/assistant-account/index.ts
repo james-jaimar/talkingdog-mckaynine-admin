@@ -99,73 +99,96 @@ async function handleCreateAccount(data: any, supabase: any, requesterId: string
       throw new Error('Assistant already has a login account');
     }
 
-    // Check if email already exists in auth
-    const { data: userList } = await supabase.auth.admin.listUsers();
-    const existingUser = userList?.users?.find(
-      (u: any) => u.email?.toLowerCase() === email.toLowerCase()
-    );
-    
+    // Try to create the auth user first; if it already exists, handle gracefully
     let authUserId: string;
     let isExistingAccount = false;
 
-    if (existingUser) {
-      // User already exists - check if safe to link
-      const existingUserId = existingUser.id;
-      
-      // SECURITY: Check if existing user has admin/trainer roles
-      const { data: existingRoles } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', existingUserId);
-
-      const hasAdminRole = existingRoles?.some(r => 
-        r.role === 'admin' || r.role === 'trainer' || r.role === 'platform_admin'
-      );
-
-      if (hasAdminRole) {
-        console.error(`BLOCKED: Attempt to link admin/trainer account to assistant: ${email} by requester: ${requesterId}`);
-        throw new Error('This email is associated with an admin or trainer account and cannot be linked');
+    const { data: userData, error: createError } = await supabase.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: { 
+        full_name: `${assistant.first_name} ${assistant.last_name || ''}`.trim(),
+        signup_intent: 'assistant'
       }
+    });
 
-      // Check if this auth user is already linked to another assistant
-      const { data: linkedAssistant } = await supabase
-        .from('assistants')
-        .select('id, first_name, last_name')
-        .eq('user_id', existingUserId)
-        .single();
-
-      if (linkedAssistant && linkedAssistant.id !== assistantId) {
-        throw new Error(`This account is already linked to assistant: ${linkedAssistant.first_name} ${linkedAssistant.last_name || ''}`);
-      }
-
-      // Safe to link existing account
-      authUserId = existingUserId;
-      isExistingAccount = true;
-      
-      // Update password for the existing user
-      const { error: passwordError } = await supabase.auth.admin.updateUserById(authUserId, {
-        password: password
-      });
-
-      if (passwordError) {
-        console.error('Password update error:', passwordError);
-        throw new Error('Failed to set password for existing account');
-      }
-
-      console.log(`Linked existing account to assistant: ${assistant.first_name} ${assistant.last_name || ''} (${email}) by requester: ${requesterId}`);
-    } else {
-      // Create new auth user
-      const { data: userData, error: createError } = await supabase.auth.admin.createUser({
-        email,
-        password,
-        email_confirm: true,
-        user_metadata: { 
-          full_name: `${assistant.first_name} ${assistant.last_name || ''}`.trim(),
-          signup_intent: 'assistant'
+    if (createError) {
+      // If user already exists, find them via listUsers with pagination
+      if (createError.message?.includes('already been registered') || createError.status === 422) {
+        console.log(`User already exists for email: ${email}, attempting to link...`);
+        
+        // Find the existing user - paginate through all users if needed
+        let existingUser: any = null;
+        let page = 1;
+        const perPage = 1000;
+        
+        while (!existingUser) {
+          const { data: userList, error: listError } = await supabase.auth.admin.listUsers({ 
+            page, 
+            perPage 
+          });
+          if (listError || !userList?.users?.length) break;
+          
+          existingUser = userList.users.find(
+            (u: any) => u.email?.toLowerCase() === email.toLowerCase()
+          );
+          
+          if (userList.users.length < perPage) break; // last page
+          page++;
         }
-      });
 
-      if (createError) throw createError;
+        if (!existingUser) {
+          throw new Error('User exists but could not be found. Please try again.');
+        }
+
+        const existingUserId = existingUser.id;
+
+        // SECURITY: Check if existing user has admin/trainer roles
+        const { data: existingRoles } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', existingUserId);
+
+        const hasAdminRole = existingRoles?.some((r: any) => 
+          r.role === 'admin' || r.role === 'trainer' || r.role === 'platform_admin'
+        );
+
+        if (hasAdminRole) {
+          console.error(`BLOCKED: Attempt to link admin/trainer account to assistant: ${email} by requester: ${requesterId}`);
+          throw new Error('This email is associated with an admin or trainer account and cannot be linked');
+        }
+
+        // Check if this auth user is already linked to another assistant
+        const { data: linkedAssistant } = await supabase
+          .from('assistants')
+          .select('id, first_name, last_name')
+          .eq('user_id', existingUserId)
+          .single();
+
+        if (linkedAssistant && linkedAssistant.id !== assistantId) {
+          throw new Error(`This account is already linked to assistant: ${linkedAssistant.first_name} ${linkedAssistant.last_name || ''}`);
+        }
+
+        // Safe to link existing account
+        authUserId = existingUserId;
+        isExistingAccount = true;
+        
+        // Update password for the existing user
+        const { error: passwordError } = await supabase.auth.admin.updateUserById(authUserId, {
+          password: password
+        });
+
+        if (passwordError) {
+          console.error('Password update error:', passwordError);
+          throw new Error('Failed to set password for existing account');
+        }
+
+        console.log(`Linked existing account to assistant: ${assistant.first_name} ${assistant.last_name || ''} (${email}) by requester: ${requesterId}`);
+      } else {
+        throw createError;
+      }
+    } else {
       if (!userData.user) throw new Error('User creation failed');
 
       authUserId = userData.user.id;
