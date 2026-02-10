@@ -18,7 +18,8 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, Loader2 } from "lucide-react";
+import { AlertCircle, Loader2, X, Plus } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { UserProfile } from "./types/userTypes";
 import { useUserRoleManagement } from "./hooks/useUserRoleManagement";
 import { useAuth } from "@/context/auth";
@@ -30,54 +31,88 @@ interface UserManageDialogProps {
   onUserUpdated?: () => void;
 }
 
+const ALL_ROLES = [
+  { value: "platform_admin", label: "Platform Admin", description: "Full access to all branches and administrative functions", adminOnly: true },
+  { value: "admin", label: "Admin", description: "Full access to manage trainers, handlers and classes" },
+  { value: "trainer", label: "Trainer", description: "Can manage classes and view assigned handlers" },
+  { value: "assistant", label: "Assistant", description: "Can manage availability and assist with training sessions" },
+  { value: "handler", label: "Handler", description: "Can access customer portal only" },
+  { value: "user", label: "Regular User", description: "Basic user access" },
+];
+
 export function UserManageDialog({
   user,
   open,
   onOpenChange,
   onUserUpdated,
 }: UserManageDialogProps) {
-  const [selectedRole, setSelectedRole] = useState<string>(user.role || "user");
   const [error, setError] = useState<string | null>(null);
+  const [roleToAdd, setRoleToAdd] = useState<string>("");
   const { updateUserRole, isUpdating } = useUserRoleManagement();
   const { isPlatformAdmin } = useAuth();
 
-  // Reset selected role and error when dialog opens with a new user
+  // Parse current roles from comma-separated string
+  const currentRoles = user.role ? user.role.split(",").map(r => r.trim()).filter(Boolean) : ["user"];
+
   useEffect(() => {
-    if (open && user) {
-      setSelectedRole(user.role || "user");
+    if (open) {
       setError(null);
+      setRoleToAdd("");
     }
   }, [open, user]);
 
-  const handleSave = async () => {
-    try {
-      setError(null);
-      
-      // Platform admin can only be set by another platform admin
-      if (selectedRole === "platform_admin" && !isPlatformAdmin) {
-        setError("Only platform admins can assign the platform admin role");
-        return;
-      }
+  // Roles available to add (not already assigned)
+  const availableRoles = ALL_ROLES.filter(r => {
+    if (r.adminOnly && !isPlatformAdmin) return false;
+    return !currentRoles.includes(r.value);
+  });
 
-      await updateUserRole({ userId: user.id, role: selectedRole });
-      
-      if (onUserUpdated) {
-        onUserUpdated();
-      }
-      
+  const handleAddRole = async () => {
+    if (!roleToAdd) return;
+    setError(null);
+
+    if (roleToAdd === "platform_admin" && !isPlatformAdmin) {
+      setError("Only platform admins can assign the platform admin role");
+      return;
+    }
+
+    try {
+      await updateUserRole({ userId: user.id, role: roleToAdd, operation: "addRole" });
+      setRoleToAdd("");
+      if (onUserUpdated) onUserUpdated();
       onOpenChange(false);
     } catch (err: any) {
-      setError(err.message || "Failed to update user role");
+      setError(err.message || "Failed to add role");
     }
+  };
+
+  const handleRemoveRole = async (roleToRemove: string) => {
+    if (currentRoles.length <= 1) {
+      setError("User must have at least one role");
+      return;
+    }
+    setError(null);
+
+    try {
+      await updateUserRole({ userId: user.id, role: roleToRemove, operation: "removeRole" });
+      if (onUserUpdated) onUserUpdated();
+      onOpenChange(false);
+    } catch (err: any) {
+      setError(err.message || "Failed to remove role");
+    }
+  };
+
+  const getRoleLabel = (role: string) => {
+    return ALL_ROLES.find(r => r.value === role)?.label || role;
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Manage User</DialogTitle>
+          <DialogTitle>Manage User Roles</DialogTitle>
           <DialogDescription>
-            Update role for {user.full_name || user.email}
+            Manage roles for {user.full_name || user.email}
           </DialogDescription>
         </DialogHeader>
 
@@ -89,53 +124,59 @@ export function UserManageDialog({
         )}
 
         <div className="grid gap-4 py-4">
+          {/* Current roles */}
           <div className="space-y-2">
-            <Label htmlFor="role">User Role</Label>
-            <Select
-              value={selectedRole}
-              onValueChange={setSelectedRole}
-              disabled={isUpdating}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select role" />
-              </SelectTrigger>
-              <SelectContent>
-                {/* Only platform admins can see the platform_admin role */}
-                {isPlatformAdmin && (
-                  <SelectItem value="platform_admin">Platform Admin</SelectItem>
-                )}
-                <SelectItem value="admin">Admin</SelectItem>
-                <SelectItem value="trainer">Trainer</SelectItem>
-                <SelectItem value="handler">Handler</SelectItem>
-                <SelectItem value="user">Regular User</SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground mt-1">
-              {selectedRole === "platform_admin" && "Full access to all branches and administrative functions"}
-              {selectedRole === "admin" && "Full access to manage trainers, handlers and classes"}
-              {selectedRole === "trainer" && "Can manage classes and view assigned handlers"}
-              {selectedRole === "handler" && "Can access customer portal only"}
-              {selectedRole === "user" && "Basic user access"}
-            </p>
+            <Label>Current Roles</Label>
+            <div className="flex flex-wrap gap-2">
+              {currentRoles.map(role => (
+                <Badge key={role} variant="secondary" className="flex items-center gap-1 text-sm py-1 px-3">
+                  {getRoleLabel(role)}
+                  {currentRoles.length > 1 && (
+                    <button
+                      onClick={() => handleRemoveRole(role)}
+                      disabled={isUpdating}
+                      className="ml-1 hover:text-destructive transition-colors"
+                      aria-label={`Remove ${getRoleLabel(role)} role`}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+                </Badge>
+              ))}
+            </div>
           </div>
+
+          {/* Add role */}
+          {availableRoles.length > 0 && (
+            <div className="space-y-2">
+              <Label>Add Role</Label>
+              <div className="flex gap-2">
+                <Select value={roleToAdd} onValueChange={setRoleToAdd} disabled={isUpdating}>
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Select role to add" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableRoles.map(r => (
+                      <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button onClick={handleAddRole} disabled={isUpdating || !roleToAdd} size="icon">
+                  {isUpdating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                </Button>
+              </div>
+              {roleToAdd && (
+                <p className="text-xs text-muted-foreground">
+                  {ALL_ROLES.find(r => r.value === roleToAdd)?.description}
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isUpdating}>
-            Cancel
-          </Button>
-          <Button 
-            onClick={handleSave} 
-            disabled={isUpdating || selectedRole === user.role}
-          >
-            {isUpdating ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              "Save Changes"
-            )}
+            Close
           </Button>
         </DialogFooter>
       </DialogContent>

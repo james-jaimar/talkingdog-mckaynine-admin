@@ -2,76 +2,52 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
-import { APP_ID } from "@/constants/app";
+
+type RoleOperation = "setRole" | "addRole" | "removeRole";
 
 export function useUserRoleManagement() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { mutate: updateUserRole, isPending: isUpdating } = useMutation({
-    mutationFn: async ({ userId, role }: { userId: string; role: string }) => {
-      console.log(`[useUserRoleManagement] Starting role update for user ${userId} to role: ${role}`);
-      
-      if (!userId || !role) {
-        throw new Error("User ID and role are required");
-      }
+  const invalidateAfterUpdate = (userId: string) => {
+    setTimeout(() => {
+      const queriesToInvalidate = [
+        ['users-admin'], ['admin-users-list'], ['users'],
+        ['trainers-list'], ['trainers-admin'], ['trainers'],
+        ['user', userId], ['trainer', userId]
+      ];
+      queriesToInvalidate.forEach(queryKey => {
+        queryClient.invalidateQueries({ queryKey });
+        queryClient.refetchQueries({ queryKey });
+      });
+    }, 500);
+  };
 
-      try {
-        // Call our edge function to handle the role update
-        const { data, error } = await supabase.functions.invoke("manage-user-role", {
-          method: 'POST',
-          body: { userId, role },
-        });
-        
-        if (error) {
-          console.error("[useUserRoleManagement] Edge function error:", error);
-          throw new Error(`Role update failed: ${error.message}`);
-        }
-        
-        if (!data || !data.success) {
-          console.error("[useUserRoleManagement] Role update unsuccessful:", data);
-          throw new Error(data?.error || "Role update failed");
-        }
-        
-        console.log("[useUserRoleManagement] Role update successful response:", data);
-        return { success: true, role, userId };
-      } catch (error) {
-        console.error("[useUserRoleManagement] Transaction failed:", error);
-        throw error;
-      }
+  const { mutateAsync: updateUserRole, isPending: isUpdating } = useMutation({
+    mutationFn: async ({ userId, role, operation = "setRole" }: { userId: string; role: string; operation?: RoleOperation }) => {
+      console.log(`[useUserRoleManagement] ${operation} for user ${userId}, role: ${role}`);
+      
+      if (!userId || !role) throw new Error("User ID and role are required");
+
+      const { data, error } = await supabase.functions.invoke("manage-user-role", {
+        method: 'POST',
+        body: { userId, role, operation },
+      });
+      
+      if (error) throw new Error(`Role update failed: ${error.message}`);
+      if (!data?.success) throw new Error(data?.error || "Role update failed");
+      
+      return { success: true, role, userId, operation };
     },
     onSuccess: (data) => {
-      console.log("[useUserRoleManagement] Role update successful:", data);
+      const actionLabel = data.operation === "addRole" ? "added" : data.operation === "removeRole" ? "removed" : "updated to";
       toast({
         title: "Role updated",
-        description: `User role has been updated to ${data.role}`,
+        description: `Role ${actionLabel} ${data.role}`,
       });
-
-      // Delay and refetch ALL relevant queries to ensure data is properly updated
-      setTimeout(() => {
-        console.log("[useUserRoleManagement] Invalidating queries after role update");
-        
-        // Invalidate ALL relevant queries
-        const queriesToInvalidate = [
-          ['users-admin'],
-          ['admin-users-list'],
-          ['users'],
-          ['trainers-list'],
-          ['trainers-admin'],
-          ['trainers'],
-          ['user', data.userId],
-          ['trainer', data.userId]
-        ];
-
-        queriesToInvalidate.forEach(queryKey => {
-          queryClient.invalidateQueries({ queryKey });
-          // Force refetch to ensure UI is updated properly
-          queryClient.refetchQueries({ queryKey });
-        });
-      }, 500); // Add delay to ensure edge function completes fully
+      invalidateAfterUpdate(data.userId);
     },
     onError: (error: Error) => {
-      console.error("[useUserRoleManagement] Role update failed:", error);
       toast({
         title: "Update failed",
         description: error.message || "Failed to update user role",
@@ -80,8 +56,5 @@ export function useUserRoleManagement() {
     },
   });
 
-  return {
-    updateUserRole,
-    isUpdating
-  };
+  return { updateUserRole, isUpdating };
 }
