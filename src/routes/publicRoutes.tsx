@@ -40,23 +40,22 @@ export const HandlerRedirect = () => {
     return <Navigate to="/auth" replace />;
   }
   
-  // STRICT SECURITY CHECK for handlers
-  // Any user with 'handler' or 'user' role gets sent to customer dashboard
-  if (role === 'handler' || role === 'user') {
-    console.log("HandlerRedirect - User is a handler, redirecting to /customer/dashboard");
-    return <Navigate to="/customer/dashboard" replace />;
-  } else if (role === 'assistant') {
-    // Assistants go to their schedule page
-    console.log("HandlerRedirect - User is an assistant, redirecting to /assistant/schedule");
-    return <Navigate to="/assistant/schedule" replace />;
-  } else if (role === 'trainer') {
-    // Pure trainers (role is exactly 'trainer', not combined with admin) go to trainer dashboard
-    // Note: Users with 'admin' or 'platform_admin' role will fall through to dashboard even if also trainers
-    console.log("HandlerRedirect - User is a pure trainer, redirecting to /trainer/dashboard");
+  // Priority-based redirect for multi-role users (e.g. "assistant,trainer")
+  // Higher-privilege roles take priority
+  if (role?.includes('platform_admin') || role?.includes('admin')) {
+    console.log("HandlerRedirect - User has admin role, redirecting to /dashboard");
+    return <Navigate to="/dashboard" replace />;
+  } else if (role?.includes('trainer')) {
+    console.log("HandlerRedirect - User has trainer role, redirecting to /trainer/dashboard");
     return <Navigate to="/trainer/dashboard" replace />;
+  } else if (role?.includes('assistant')) {
+    console.log("HandlerRedirect - User has assistant role, redirecting to /assistant/schedule");
+    return <Navigate to="/assistant/schedule" replace />;
+  } else if (role?.includes('handler') || role?.includes('user')) {
+    console.log("HandlerRedirect - User has handler/user role, redirecting to /customer/dashboard");
+    return <Navigate to="/customer/dashboard" replace />;
   } else {
-    // For admin and platform_admin roles, go to staff dashboard
-    console.log("HandlerRedirect - User is staff/admin, redirecting to /dashboard");
+    console.log("HandlerRedirect - Unknown role, redirecting to /dashboard");
     return <Navigate to="/dashboard" replace />;
   }
 };
