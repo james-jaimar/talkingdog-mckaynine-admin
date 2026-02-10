@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useUsers } from "@/hooks/useUsers";
+import { UserManageDialog } from "./UserManageDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -327,16 +328,24 @@ export function UserAdminPanel() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge 
-                      variant="outline"
-                      className={
-                        user.role === 'admin' ? 'bg-blue-100 text-blue-800 border-blue-300' :
-                        user.role === 'trainer' ? 'bg-green-100 text-green-800 border-green-300' : 
-                        'bg-gray-100 text-gray-800 border-gray-300'
-                      }
-                    >
-                      {user.role || 'user'}
-                    </Badge>
+                    <div className="flex flex-wrap gap-1">
+                      {(user.role || 'user').split(',').map(r => r.trim()).filter(Boolean).map(role => (
+                        <Badge 
+                          key={role}
+                          variant="outline"
+                          className={
+                            role === 'platform_admin' ? 'bg-purple-100 text-purple-800 border-purple-300' :
+                            role === 'admin' ? 'bg-blue-100 text-blue-800 border-blue-300' :
+                            role === 'trainer' ? 'bg-green-100 text-green-800 border-green-300' :
+                            role === 'assistant' ? 'bg-amber-100 text-amber-800 border-amber-300' :
+                            role === 'handler' ? 'bg-teal-100 text-teal-800 border-teal-300' :
+                            'bg-gray-100 text-gray-800 border-gray-300'
+                          }
+                        >
+                          {role}
+                        </Badge>
+                      ))}
+                    </div>
                   </TableCell>
                   <TableCell>
                     {format(new Date(user.created_at), 'PP')}
@@ -355,7 +364,7 @@ export function UserAdminPanel() {
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleManageUser(user)}>
                           <User className="h-4 w-4 mr-2" />
-                          Change Role
+                          Manage Roles
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleResetPassword(user)}>
                           <Key className="h-4 w-4 mr-2" />
@@ -462,62 +471,15 @@ export function UserAdminPanel() {
         </DialogContent>
       </Dialog>
       
-      {/* Manage User Dialog */}
-      <Dialog open={manageUserOpen} onOpenChange={setManageUserOpen}>
-        {selectedUser && (
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Manage User</DialogTitle>
-              <DialogDescription>
-                Update role for {selectedUser.full_name || selectedUser.email}
-              </DialogDescription>
-            </DialogHeader>
-            
-            {formError && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{formError}</AlertDescription>
-              </Alert>
-            )}
-            
-            <div className="space-y-4 py-2">
-              <div className="space-y-2">
-                <Label htmlFor="role">Role</Label>
-                <Select value={selectedRole} onValueChange={setSelectedRole}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="trainer">Trainer</SelectItem>
-                    <SelectItem value="handler">Handler</SelectItem>
-                    <SelectItem value="user">User</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setManageUserOpen(false)} disabled={updateRole.isPending}>
-                Cancel
-              </Button>
-              <Button 
-                onClick={handleUpdateRole} 
-                disabled={updateRole.isPending || selectedRole === selectedUser.role}
-              >
-                {updateRole.isPending ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  "Save Changes"
-                )}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        )}
-      </Dialog>
+      {/* Manage Roles Dialog */}
+      {selectedUser && (
+        <UserManageDialog
+          user={selectedUser}
+          open={manageUserOpen}
+          onOpenChange={setManageUserOpen}
+          onUserUpdated={() => refetch()}
+        />
+      )}
       
       {/* Reset Password Dialog */}
       <Dialog open={resetPasswordOpen} onOpenChange={setResetPasswordOpen}>
