@@ -61,7 +61,7 @@ const AssistantLogin = () => {
         <CardHeader className="text-center">
           <div className="mx-auto mb-4">
             <img
-              src="/lovable-uploads/2f69e0f2-9148-4d86-8e59-e9a89e76d520.png"
+              src="/lovable-uploads/mckaynine_delta_long_2025.png"
               alt="McKaynine Logo"
               className="h-16 w-auto"
             />
