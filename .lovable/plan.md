@@ -1,48 +1,50 @@
 
 
-# Fix: Manage Roles Dialog Should Show All Roles and Stay Open
+# Fix: Admins Can't See Other Users' Roles (RLS Policy Issue)
 
-## Problem
-Two issues with the Manage Roles dialog:
+## Root Cause
 
-1. **Dialog closes after each role add/remove** -- After adding a role, the dialog closes (line 83: `onOpenChange(false)`). When you reopen it, the data may not have refetched yet, so you only see the old role.
-2. **Roles come from a stale prop** -- The dialog reads `user.role` (a comma-separated string passed from the parent), but this only updates after the query refetches. It should fetch roles directly from `user_roles` table.
+The `user_roles` table has two RLS policies:
+1. **"Users can read their own roles"** -- SELECT where `auth.uid() = user_id`
+2. **"Platform admins can manage all roles"** -- ALL where `has_role(auth.uid(), 'platform_admin')`
 
-Katherine actually has all 3 roles in the database (handler, trainer, assistant) -- the UI just isn't showing them.
+You're logged in as `ady@talkingdog.co.za` who has the `admin` role, **not** `platform_admin`. So the RLS only returns ady's own roles. When the app queries all user roles (for the user list) or Katherine's roles (for the dialog), the database returns nothing for other users -- that's why roles appear empty or show only what was just added (via the edge function which uses a service key).
 
 ## Fix
 
-### 1. Fetch roles directly from `user_roles` table in the dialog
-**File: `src/components/users/UserManageDialog.tsx`**
+### 1. Add an RLS policy so admins can read all roles
 
-Instead of parsing `user.role` string, the dialog will query `user_roles` for the user's actual roles when it opens. This ensures it always shows the current state.
+Add a new SELECT policy on `user_roles`:
 
-- Add a small `useQuery` to fetch roles from `user_roles` where `user_id = user.id`
-- Use the fetched roles as the source of truth for "Current Roles"
-- Invalidate/refetch this query after add or remove operations
+```sql
+CREATE POLICY "Admins can read all roles"
+ON public.user_roles
+FOR SELECT
+TO authenticated
+USING (has_role(auth.uid(), 'admin'::app_role));
+```
 
-### 2. Keep dialog open after adding/removing a role
-**File: `src/components/users/UserManageDialog.tsx`**
+This allows any user with the `admin` role to read all rows in `user_roles`, which is necessary for the User Management page to display everyone's roles correctly.
 
-Remove `onOpenChange(false)` from `handleAddRole` and `handleRemoveRole`. Instead, just refetch the roles query so the badges update in-place. The user can close the dialog manually when done.
+### 2. No code changes needed
+
+The existing code in `useUsers.ts` and `UserManageDialog.tsx` already fetches roles correctly from the `user_roles` table. The only problem was that the database was blocking the reads due to insufficient RLS permissions.
+
+## What This Fixes
+- The **user list** will show all roles for every user (e.g., Katherine will show "handler, trainer, assistant")
+- The **Manage Roles dialog** will show all current roles when opened
+- Adding/removing roles will immediately reflect in both the dialog and the list
 
 ## Technical Details
 
-**New query in `UserManageDialog.tsx`:**
-```typescript
-const { data: currentRoles = [], refetch: refetchRoles } = useQuery({
-  queryKey: ['user-roles', user.id],
-  queryFn: async () => {
-    const { data } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', user.id);
-    return (data || []).map(r => r.role);
-  },
-  enabled: open,
-});
+**Migration SQL:**
+```sql
+CREATE POLICY "Admins can read all roles"
+ON public.user_roles
+FOR SELECT
+TO authenticated
+USING (public.has_role(auth.uid(), 'admin'::app_role));
 ```
 
-**After add/remove:** call `refetchRoles()` and `onUserUpdated()` but do NOT close the dialog.
+**Files to modify:** None -- only a database migration is needed.
 
-**Files to modify:** `src/components/users/UserManageDialog.tsx`
