@@ -1,45 +1,46 @@
 
-# Supporting Triple-Role Users (Handler + Assistant + Trainer)
+# Fix: Show All Users (Including Handlers) in User Management
 
-## The Situation
-Katherine Sinclaire is a handler (active client with invoice history), an assistant, AND occasionally fills in as a trainer. She needs all three roles to work simultaneously. The multi-role infrastructure we just built handles role storage and assignment, but the route guards and navigation don't yet support a user who is both "staff" and "handler."
+## The Problem
+Katherine Sinclaire doesn't appear in User Management because the `useUsers` hook filters profiles by `app_id = 'mckaynine-training'`, and her profile (along with 301 other handler/client profiles) has a `null` app_id. Only 7 profiles have the app_id set -- those are the staff users you see now.
 
-## What Needs Fixing
+## The Fix
 
-### 1. Route Guards Use Exact Equality (Security Risk)
-Both `RequireAuth.tsx` and `ProtectedRoute.tsx` use `role === 'handler'` to check if someone is a handler. For Katherine with role string `"handler,assistant,trainer"`, these checks silently fail -- meaning she could access staff routes even if she were *only* a handler. We fixed this in `publicRoutes.tsx` already but missed the guards.
+### Step 1: Update `useUsers` query to include users with roles
+**File: `src/hooks/useUsers.ts`**
 
-**Files:** `src/components/auth/RequireAuth.tsx`, `src/components/auth/ProtectedRoute.tsx`
-- Replace `role === 'handler'` and `role === 'user'` with `role?.includes()` checks
-- For multi-role users (handler + staff role), treat them as staff -- they need access to both areas
+Instead of filtering only by `app_id`, also include any user who has an entry in the `user_roles` table. This ensures handlers (who have a `handler` role in `user_roles`) appear in the list even without an `app_id`.
 
-### 2. Navigation Doesn't Show All Relevant Menus
-The `Header.tsx` uses `if/else` logic: Admin navigation OR Trainer navigation OR Handler navigation. Katherine needs trainer navigation AND a way to access her customer portal (invoices, classes).
+The query will fetch profiles that either:
+- Have `app_id = 'mckaynine-training'`, OR
+- Have at least one entry in `user_roles`
 
-**File:** `src/components/layout/Header.tsx`
-- For users who are both trainer/assistant AND handler, add a "My Account" or "Customer Portal" link to the trainer navigation area so they can access `/customer/dashboard`
+This way Katherine shows up because she has a `handler` role in `user_roles`.
 
-### 3. ProtectedRoute Handler Check for Multi-Role
-When Katherine is on a customer route like `/customer/invoices`, `ProtectedRoute` with `requiredRole: 'handler'` checks `role === 'handler'` which fails for her combined role string.
+### Step 2: Update the role badge display for multi-role users
+**File: `src/components/users/UserAdmin.tsx`**
 
-**File:** `src/components/auth/ProtectedRoute.tsx`
-- Update the `hasRequiredRole` check at line 49 to use `role?.includes('handler')` instead of exact equality
+Currently the role column shows a single badge. For multi-role users (like Katherine will be after adding trainer), update the display to show multiple badges when the role string contains commas (e.g., "handler,assistant,trainer").
 
-## Implementation Details
+### Step 3: Update "Change Role" to use the multi-role Manage Roles dialog
+**File: `src/components/users/UserAdmin.tsx`**
 
-| File | Change | Why |
-|------|--------|-----|
-| `RequireAuth.tsx` (line 43) | `role?.includes('handler')` but skip if user also has staff roles | Prevent handler-only redirect for multi-role users |
-| `ProtectedRoute.tsx` (line 38) | Same includes check, skip for multi-role | Allow Katherine to access staff routes |
-| `ProtectedRoute.tsx` (line 49) | `role?.includes('handler')` for handler role check | Let multi-role users access customer routes too |
-| `ProtectedRoute.tsx` (line 55) | Use includes for redirect logic | Correct fallback redirects |
-| `Header.tsx` (lines 83-89, 133-137, 165-171) | Add "My Account" link when user is both staff + handler | Give Katherine access to her customer dashboard |
+Replace the old single-role "Change Role" dialog with the `UserManageDialog` component that was already built to support adding/removing individual roles via badges.
 
-## Key Design Decision
-A user with both staff and handler roles is treated as **staff first** (gets trainer/assistant navigation) but with an additional "My Account" link to reach their customer portal. They are NOT locked to customer-only routes like a pure handler would be.
+### Step 4: Set Katherine's app_id
+As part of the fix, set Katherine's `app_id` so she's properly associated with the app going forward. The `manage-user-role` edge function already does this when adding roles.
 
-## What Stays the Same
-- Role storage in `user_roles` table -- no changes needed
-- The `manage-user-role` edge function -- already supports `addRole` for adding trainer to an existing assistant+handler
-- Auth flags (`isTrainer`, `isHandler`, etc.) -- already use `.includes()` correctly
-- Login redirect priority -- already fixed in previous implementation
+## Technical Details
+
+**`useUsers.ts` query change:**
+- Current: `supabase.from('profiles').select('*').eq('app_id', APP_ID)`
+- New: Use an `.or()` filter to include profiles with the correct `app_id` OR profiles that exist in `user_roles`
+- Alternatively, join with `user_roles` to get profiles that have any role assigned
+
+**`UserAdmin.tsx` role display:**
+- Split `user.role` by comma and render a badge for each role
+- Use the existing color scheme but add colors for `handler` and `assistant` roles
+
+**`UserAdmin.tsx` dialog swap:**
+- Import and use `UserManageDialog` instead of the inline single-role dialog
+- This gives Katherine the ability to have trainer added alongside handler
