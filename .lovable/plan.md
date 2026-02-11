@@ -1,52 +1,48 @@
 
 
-# Remove Enrollment Fees from Franchise Report
+# Fix: Ady Can't See Tasks After Being Marked as Assistant
 
-## Overview
+## Root Cause
 
-Since starter kits are now pre-bought and allocated from stock, enrollment fees no longer belong in the franchise report. The report will be simplified to show only **Course Fees** and **Franchise Fees** (15% of course fees), with **Total Due = Franchise Fees only**.
+When Ady was given the "assistant" role, her `profiles.role` column was overwritten from `admin` to `assistant`. The `handler_tasks` table has an RLS policy that checks `profiles.role` for access:
 
-## What Changes
+```text
+Policy: "Staff can manage handler tasks"
+Condition: profiles.role IN ('admin', 'trainer', 'platform_admin')
+```
 
-### Summary Cards (top of report)
-- **Before**: Course Fees | Enrollment Fees | Franchise Fees | Total Due (Enrollment + Franchise)
-- **After**: Course Fees | Franchise Fees | Total Due (= Franchise Fees only)
-- Goes from 4 cards to 3 cards
+Since her profile now says `assistant` (not `admin`), she's blocked from seeing any tasks.
 
-### Handler Table (per class)
-- Remove the "Enrollment Fee" column
-- "Total" column now equals the Franchise Fee (no enrollment component)
+The `user_roles` table correctly has both `admin` AND `assistant` roles for Ady, but the RLS policy checks the old single-role `profiles` table instead.
 
-### Class Footer Totals
-- Remove "Enrollment Fees: R X" line
+## Fix (Two Parts)
 
-### PDF Report
-- Same changes mirrored in the PDF generator (summary cards, table columns, footer totals)
+### 1. Restore Ady's profile role (immediate data fix)
+Update her `profiles.role` back to `admin` so she regains access right away.
 
-## Technical Details
+### 2. Update the RLS policy to use `user_roles` table (proper fix)
+Replace the `handler_tasks` RLS policy so it checks the `user_roles` table (via the `has_role()` function) instead of the legacy `profiles.role` column. This prevents the issue from recurring if roles are modified in the future.
 
-### Files to modify
+**Current policy:**
+```sql
+-- Checks profiles.role (single value, can be overwritten)
+EXISTS (SELECT 1 FROM profiles WHERE profiles.id = auth.uid() 
+  AND profiles.role IN ('admin','trainer','platform_admin'))
+```
 
-1. **`src/components/invoices/reports/FranchiseClassesReport.tsx`**
-   - Remove the Enrollment Fees summary card (cyan card)
-   - Update Total Due subtitle from "Enrollment + Franchise" to just "Franchise Fees"
-   - Remove Enrollment Fee column from handler table
-   - Remove Enrollment Fees from class footer totals
+**New policy:**
+```sql
+-- Checks user_roles table (supports multiple roles correctly)
+has_role(auth.uid(), 'admin') OR 
+has_role(auth.uid(), 'trainer') OR 
+has_role(auth.uid(), 'platform_admin')
+```
 
-2. **`src/hooks/useFranchiseMonthlyData.ts`**
-   - Update `totalAmount` calculation: change from `enrollmentFeeAmount + franchiseFee` to just `franchiseFee`
-   - Keep `enrollmentFeeAmount` in the data model (no harm, just not used in totals)
-   - Update `reportTotals.totalAmount` to exclude enrollment fees
+### 3. Prevent future overwrites
+Review the `manage-user-role` Edge Function to ensure it does NOT overwrite `profiles.role` when adding a new role -- it should only update `user_roles`. This prevents the same bug from happening to other users.
 
-3. **`src/components/invoices/reports/pdf/FranchiseReportPDFGenerator.ts`**
-   - Remove Enrollment Fees summary card (go from 4 to 3 cards)
-   - Remove Enrollment Fee column from class tables
-   - Remove Enrollment Fees from class footer totals
-   - Update Total Due subtitle
+## Files to Change
 
-4. **`src/hooks/useFranchiseClassesData.ts`** (term-based version)
-   - Same totalAmount calculation change for consistency
-
-5. **`src/hooks/useFranchiseMonthlyData.ts`** (payment mutation)
-   - Keep sending `totalEnrollmentFees` to the `franchise_payments` table for record-keeping (no schema change needed), but `totalDue` will now exclude enrollment fees
+- **Database migration**: Update `profiles.role` for Ady + replace the `handler_tasks` RLS policy
+- **`supabase/functions/manage-user-role/index.ts`**: Audit and fix any code that overwrites `profiles.role` when adding roles
 
