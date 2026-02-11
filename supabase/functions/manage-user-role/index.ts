@@ -111,8 +111,10 @@ serve(async (req) => {
       }
     }
 
-    // Update profiles.role for backwards compatibility (use the new role as primary)
-    if (operation !== "removeRole") {
+    // Update profiles.role for backwards compatibility
+    // Only update when setting the primary role (setRole), NOT when adding supplementary roles
+    // This prevents overwriting a user's primary role (e.g. admin) when adding a secondary role (e.g. assistant)
+    if (operation === "setRole") {
       await supabaseAdmin.from("profiles").update({ role }).eq("id", userId);
     }
 
