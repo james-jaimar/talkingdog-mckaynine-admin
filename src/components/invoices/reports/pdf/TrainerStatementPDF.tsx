@@ -21,6 +21,11 @@ interface ClassDetail {
   commissionAmount: number;
   paymentStatus: "paid" | "unpaid" | "partial";
   handlers?: HandlerDetail[];
+  isSubstitute?: boolean;
+  substituteDates?: number;
+  totalDates?: number;
+  originalTrainerName?: string;
+  substituteTrainerName?: string;
 }
 
 interface TrainerStatementPDFProps {
@@ -206,8 +211,23 @@ export async function generateTrainerStatementPDF({
     const classTotal = handlers.reduce((sum, h) => sum + (h.commissionAmount || 0), 0) || classSchedule.commissionAmount;
     const hasUnpaid = classSchedule.paymentStatus !== "paid";
     
+    // Build substitution label if applicable
+    let subLabel = "";
+    if (classSchedule.isSubstitute && classSchedule.originalTrainerName) {
+      subLabel = `Substitute for ${classSchedule.originalTrainerName}`;
+      if (classSchedule.substituteDates != null && classSchedule.totalDates != null) {
+        subLabel += ` (${classSchedule.substituteDates} of ${classSchedule.totalDates} dates)`;
+      }
+    } else if (!classSchedule.isSubstitute && classSchedule.substituteTrainerName) {
+      subLabel = `Subbed by ${classSchedule.substituteTrainerName}`;
+      if (classSchedule.substituteDates != null && classSchedule.totalDates != null) {
+        subLabel += ` (${classSchedule.substituteDates} of ${classSchedule.totalDates} dates)`;
+      }
+    }
+    const headerHeight = subLabel ? 16 : 10;
+
     // Calculate required space for this class
-    const classHeaderHeight = 12;
+    const classHeaderHeight = headerHeight + 2;
     const tableRowHeight = 6;
     const tableHeaderHeight = 7;
     const totalRowHeight = 7;
@@ -217,7 +237,7 @@ export async function generateTrainerStatementPDF({
 
     // Class header bar
     doc.setFillColor(31, 78, 80); // primary color
-    doc.roundedRect(margin, yPos, pageWidth - margin * 2, 10, 1, 1, "F");
+    doc.roundedRect(margin, yPos, pageWidth - margin * 2, headerHeight, 1, 1, "F");
 
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(9);
@@ -229,9 +249,20 @@ export async function generateTrainerStatementPDF({
     const classNameWidth = doc.getTextWidth(classSchedule.className);
     doc.text(`${classSchedule.classDate} • ${handlerCount} handler${handlerCount !== 1 ? 's' : ''}`, margin + 3 + classNameWidth + 5, yPos + 6.5);
 
+    // Substitution label (second line)
+    if (subLabel) {
+      doc.setFontSize(7);
+      doc.setTextColor(255, 220, 100);
+      setFont(doc, "bold");
+      doc.text(subLabel, margin + 3, yPos + 12.5);
+      setFont(doc, "normal");
+      doc.setTextColor(255, 255, 255);
+    }
+
     // Class total on right
     doc.setFontSize(9);
     setFont(doc, "bold");
+    doc.setTextColor(255, 255, 255);
     doc.text(`R ${classTotal.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}`, pageWidth - margin - 25, yPos + 6.5, { align: "right" });
 
     // Status badge
@@ -243,7 +274,7 @@ export async function generateTrainerStatementPDF({
     doc.setFontSize(6);
     doc.text(statusText, badgeX - 6, yPos + 6, { align: "center" });
 
-    yPos += 12;
+    yPos += headerHeight + 2;
 
     if (handlers.length > 0) {
       // Handler table for this class

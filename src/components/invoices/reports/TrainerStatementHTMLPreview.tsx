@@ -19,6 +19,11 @@ interface ClassDetail {
   commissionAmount: number;
   paymentStatus: "paid" | "unpaid" | "partial";
   handlers?: HandlerDetail[];
+  isSubstitute?: boolean;
+  substituteDates?: number;
+  totalDates?: number;
+  originalTrainerName?: string;
+  substituteTrainerName?: string;
 }
 
 interface TrainerStatementHTMLPreviewProps {
@@ -183,6 +188,22 @@ export function TrainerStatementHTMLPreview({
                         <p className={`text-xs ${isExpanded ? "text-blue-100" : "text-gray-500"}`}>
                           {cls.classDate} • {cls.bookingsCount} handler{cls.bookingsCount !== 1 ? "s" : ""}
                         </p>
+                        {cls.isSubstitute && cls.originalTrainerName && (
+                          <p className={`text-xs font-medium mt-0.5 ${isExpanded ? "text-yellow-200" : "text-amber-600"}`}>
+                            Substitute for {cls.originalTrainerName}
+                            {cls.substituteDates != null && cls.totalDates != null
+                              ? ` (${cls.substituteDates} of ${cls.totalDates} dates)`
+                              : ""}
+                          </p>
+                        )}
+                        {!cls.isSubstitute && cls.substituteTrainerName && (
+                          <p className={`text-xs font-medium mt-0.5 ${isExpanded ? "text-yellow-200" : "text-amber-600"}`}>
+                            Subbed by {cls.substituteTrainerName}
+                            {cls.substituteDates != null && cls.totalDates != null
+                              ? ` (${cls.substituteDates} of ${cls.totalDates} dates)`
+                              : ""}
+                          </p>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-4">
