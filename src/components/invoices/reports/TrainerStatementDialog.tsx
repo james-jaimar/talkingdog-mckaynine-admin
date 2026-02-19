@@ -34,6 +34,11 @@ interface ClassDetail {
   commissionAmount: number;
   paymentStatus: "paid" | "unpaid" | "partial";
   handlers?: HandlerDetail[];
+  isSubstitute?: boolean;
+  substituteDates?: number;
+  totalDates?: number;
+  originalTrainerName?: string;
+  substituteTrainerName?: string;
 }
 
 interface TrainerStatementDialogProps {
@@ -157,6 +162,11 @@ export function TrainerStatementDialog({
         commissionAmount,
         paymentStatus: cls.paymentStatus || (cls.isPaid ? "paid" : "unpaid"),
         handlers,
+        isSubstitute: cls.isSubstitute,
+        substituteDates: cls.substituteDates,
+        totalDates: cls.totalDates,
+        originalTrainerName: cls.originalTrainerName,
+        substituteTrainerName: cls.substituteTrainerName,
       };
     });
   };
