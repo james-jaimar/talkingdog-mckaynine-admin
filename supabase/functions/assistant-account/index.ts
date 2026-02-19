@@ -273,19 +273,20 @@ async function handleResetPassword(data: any, supabase: any, requesterId: string
 
     const authUserId = assistant.user_id;
 
-    // CRITICAL SECURITY CHECK: Verify target user is an assistant, NOT admin/trainer
+    // SECURITY CHECK: Verify target user is actually linked to an assistant record.
+    // We allow password reset even if the user also holds admin/trainer roles,
+    // because admins can legitimately be registered as assistants too.
+    // The assistant record linkage (above) is sufficient proof of intent.
     const { data: targetRoles } = await supabase
       .from('user_roles')
       .select('role')
       .eq('user_id', authUserId);
 
-    const hasAdminRole = targetRoles?.some(r => 
-      r.role === 'admin' || r.role === 'trainer' || r.role === 'platform_admin'
-    );
+    const isAssistant = targetRoles?.some(r => r.role === 'assistant');
 
-    if (hasAdminRole) {
-      console.error(`BLOCKED PASSWORD RESET: Attempt to reset admin/trainer password from assistant interface by requester: ${requesterId}`);
-      throw new Error('Cannot reset password for admin/trainer accounts from assistant interface');
+    if (!isAssistant) {
+      console.error(`BLOCKED PASSWORD RESET: Target user ${authUserId} has no assistant role. Requester: ${requesterId}`);
+      throw new Error('Cannot reset password: target account is not an assistant');
     }
 
     // Safe to reset - target is confirmed as an assistant
