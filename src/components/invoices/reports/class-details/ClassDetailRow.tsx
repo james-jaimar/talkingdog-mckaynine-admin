@@ -45,6 +45,23 @@ export function ClassDetailRow({
           <p className="text-xs text-muted-foreground">
             {format(new Date(classDetail.classDate), 'PPP p')}
           </p>
+          {/* Substitution info */}
+          {classDetail.isSubstitute && (
+            <p className="text-xs text-primary font-medium">
+              Sub for {classDetail.originalTrainerName}
+              {classDetail.substituteDates && classDetail.totalDates && (
+                <span className="text-muted-foreground"> ({classDetail.substituteDates} of {classDetail.totalDates} dates)</span>
+              )}
+            </p>
+          )}
+          {!classDetail.isSubstitute && classDetail.substituteTrainerName && (
+            <p className="text-xs text-muted-foreground">
+              Subbed by {classDetail.substituteTrainerName}
+              {classDetail.substituteDates && classDetail.totalDates && (
+                <span> ({classDetail.substituteDates} of {classDetail.totalDates} dates)</span>
+              )}
+            </p>
+          )}
         </div>
       </div>
       <div className="text-center self-center">

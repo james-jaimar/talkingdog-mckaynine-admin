@@ -3,35 +3,59 @@ import { supabase } from "@/integrations/supabase/client";
 import { Schedule, Booking, InvoiceItem } from "../types";
 
 export async function fetchTrainers(branchId: string) {
-  // First, get all trainers who have class schedules in classes belonging to this branch
-  // This ensures we show trainers who teach at a branch, not just those "registered" to it
-  const { data: scheduleData, error: scheduleError } = await supabase
-    .from('class_schedules')
-    .select(`
-      trainer_id,
-      classes:class_id (
-        branch_id
-      )
-    `);
+  // Fetch trainer IDs from two sources in parallel:
+  // 1. Original trainers assigned to class schedules in this branch
+  // 2. Substitute trainers who covered dates for classes in this branch
+  const [scheduleResult, substituteResult] = await Promise.all([
+    supabase
+      .from('class_schedules')
+      .select(`
+        trainer_id,
+        classes:class_id (
+          branch_id
+        )
+      `),
+    supabase
+      .from('class_date_substitutes')
+      .select(`
+        substitute_trainer_id,
+        class_schedules:class_schedule_id (
+          classes:class_id (
+            branch_id
+          )
+        )
+      `)
+  ]);
 
-  if (scheduleError) {
-    console.error('Error fetching schedules for trainer lookup:', scheduleError);
-    throw scheduleError;
+  if (scheduleResult.error) {
+    console.error('Error fetching schedules for trainer lookup:', scheduleResult.error);
+    throw scheduleResult.error;
+  }
+  if (substituteResult.error) {
+    console.error('Error fetching substitutes for trainer lookup:', substituteResult.error);
+    throw substituteResult.error;
   }
 
-  // Get unique trainer IDs who have schedules in this branch
-  const trainerIdsInBranch = [...new Set(
-    scheduleData
-      ?.filter(s => s.classes?.branch_id === branchId)
-      ?.map(s => s.trainer_id)
-      .filter(Boolean) || []
-  )];
+  // Get unique trainer IDs from original schedules
+  const originalTrainerIds = scheduleResult.data
+    ?.filter(s => s.classes?.branch_id === branchId)
+    ?.map(s => s.trainer_id)
+    .filter(Boolean) || [];
 
-  if (trainerIdsInBranch.length === 0) {
+  // Get unique substitute trainer IDs for this branch
+  const subTrainerIds = substituteResult.data
+    ?.filter(s => (s.class_schedules as any)?.classes?.branch_id === branchId)
+    ?.map(s => s.substitute_trainer_id)
+    .filter(Boolean) || [];
+
+  // Merge and deduplicate
+  const allTrainerIds = [...new Set([...originalTrainerIds, ...subTrainerIds])];
+
+  if (allTrainerIds.length === 0) {
     return [];
   }
 
-  // Now fetch the trainer details for those trainers
+  // Fetch trainer details
   const { data: trainers, error } = await supabase
     .from('trainers')
     .select(`
@@ -40,7 +64,7 @@ export async function fetchTrainers(branchId: string) {
       last_name,
       email
     `)
-    .in('id', trainerIdsInBranch);
+    .in('id', allTrainerIds);
 
   if (error) {
     console.error('Error fetching trainers:', error);

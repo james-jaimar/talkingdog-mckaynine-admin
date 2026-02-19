@@ -9,7 +9,8 @@ export function formatTrainerPaymentData(
   bookings: Booking[] = [],
   invoiceItems: InvoiceItem[] = [],
   trainerPayments: any[] = [],
-  substitutes: SubstituteRecord[] = []
+  substitutes: SubstituteRecord[] = [],
+  trainerNameMap: Map<string, string> = new Map()
 ): TrainerPaymentData {
   // Validate that we're dealing with a single branch's data
   const scheduleBranchIds = new Set(allSchedules.map(s => s.classes?.branch_id).filter(Boolean));
@@ -238,6 +239,30 @@ export function formatTrainerPaymentData(
       };
     });
 
+    // Build substitution metadata for display
+    const isSubstitute = !isOriginalTrainer;
+    const totalDatesCount = totalDates;
+    let substituteDatesCount = 0;
+    let subDatesList: string[] = [];
+    let originalTrainerName: string | undefined;
+    let substituteTrainerName: string | undefined;
+
+    if (isSubstitute) {
+      // This trainer is the sub - show how many dates they covered
+      const mySubRecords = scheduleSubs.filter(s => s.substitute_trainer_id === trainer.id);
+      substituteDatesCount = mySubRecords.length;
+      subDatesList = mySubRecords.map(s => s.class_date);
+      // Resolve original trainer name
+      originalTrainerName = trainerNameMap.get(schedule.trainer_id) || 'Original Trainer';
+    } else if (scheduleSubs.length > 0) {
+      // This trainer is the original but had subs
+      substituteDatesCount = scheduleSubs.length;
+      subDatesList = scheduleSubs.map(s => s.class_date);
+      // Get unique substitute trainer names
+      const subNames = [...new Set(scheduleSubs.map(s => trainerNameMap.get(s.substitute_trainer_id)).filter(Boolean))];
+      substituteTrainerName = subNames.join(', ') || undefined;
+    }
+
     return {
       scheduleId: schedule.id,
       className: schedule.classes?.name || 'Unknown Class',
@@ -250,7 +275,13 @@ export function formatTrainerPaymentData(
       hasZeroAmountPayment,
       hasZeroCommission,
       branchId,
-      bookingsDetails
+      bookingsDetails,
+      isSubstitute,
+      substituteDates: substituteDatesCount > 0 ? substituteDatesCount : undefined,
+      totalDates: totalDatesCount > 1 ? totalDatesCount : undefined,
+      originalTrainerName,
+      substituteTrainerName,
+      substituteDatesList: subDatesList.length > 0 ? subDatesList : undefined,
     };
   });
 

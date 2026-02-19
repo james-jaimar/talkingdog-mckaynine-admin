@@ -112,6 +112,10 @@ export function useTrainerPaymentData(branchId?: string, dateRange?: { from: Dat
           }
         });
 
+        // Build trainer name lookup map for substitution display
+        const trainerNameMap = new Map<string, string>();
+        trainers.forEach(t => trainerNameMap.set(t.id, `${t.first_name} ${t.last_name}`));
+
         // Step 6: Process each trainer using the pre-fetched data (no additional queries!)
         // Also collect schedules where the trainer is a substitute
         const trainerPayments = trainers.map(trainer => {
@@ -152,7 +156,7 @@ export function useTrainerPaymentData(branchId?: string, dateRange?: { from: Dat
           });
           
           if (combinedSchedules.length === 0) {
-            return formatTrainerPaymentData(trainer, [], [], [], [], []);
+            return formatTrainerPaymentData(trainer, [], [], [], [], [], trainerNameMap);
           }
           
           // Collect bookings for this trainer's schedules
@@ -163,7 +167,7 @@ export function useTrainerPaymentData(branchId?: string, dateRange?: { from: Dat
           });
           
           if (trainerBookings.length === 0) {
-            return formatTrainerPaymentData(trainer, combinedSchedules, [], [], trainerPaymentsData, combinedSubstitutes);
+            return formatTrainerPaymentData(trainer, combinedSchedules, [], [], trainerPaymentsData, combinedSubstitutes, trainerNameMap);
           }
           
           // Collect invoice items for this trainer's bookings
@@ -173,7 +177,7 @@ export function useTrainerPaymentData(branchId?: string, dateRange?: { from: Dat
             trainerInvoiceItems.push(...bookingItems);
           });
           
-          return formatTrainerPaymentData(trainer, combinedSchedules, trainerBookings, trainerInvoiceItems, trainerPaymentsData, combinedSubstitutes);
+          return formatTrainerPaymentData(trainer, combinedSchedules, trainerBookings, trainerInvoiceItems, trainerPaymentsData, combinedSubstitutes, trainerNameMap);
         });
 
         // Filter out any null entries and sort alphabetically by name
