@@ -208,28 +208,66 @@ export function FranchiseClassesReport() {
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <div className="bg-blue-50 p-4 rounded-lg">
-                  <h3 className="font-semibold text-blue-900">Course Fees</h3>
-                  <p className="text-2xl font-bold text-blue-600">
-                    {formatCurrency(franchiseData.reportTotals.totalCourseFees)}
-                  </p>
-                </div>
-                <div className="bg-green-50 p-4 rounded-lg">
-                  <h3 className="font-semibold text-green-900">Franchise Fees</h3>
-                  <p className="text-xs text-green-700 mb-1">15% of course fees</p>
-                  <p className="text-2xl font-bold text-green-600">
-                    {formatCurrency(franchiseData.reportTotals.totalFranchiseFees)}
-                  </p>
-                </div>
-                <div className="bg-purple-50 p-4 rounded-lg">
-                  <h3 className="font-semibold text-purple-900">Total Due</h3>
-                  <p className="text-xs text-purple-700 mb-1">Franchise Fees</p>
-                  <p className="text-2xl font-bold text-purple-600">
-                    {formatCurrency(franchiseData.reportTotals.totalAmount)}
-                  </p>
-                </div>
-              </div>
+              {(() => {
+                const totalDue = franchiseData.reportTotals.totalAmount;
+                const amountPaid = franchiseData.paymentStatus?.amountPaid || 0;
+                const balance = Math.max(0, totalDue - amountPaid);
+                const isPaid = franchiseData.paymentStatus?.status === 'paid';
+                const isPartial = franchiseData.paymentStatus?.status === 'partial';
+
+                return (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                    <div className="bg-blue-50 p-4 rounded-lg">
+                      <h3 className="font-semibold text-blue-900">Course Fees</h3>
+                      <p className="text-2xl font-bold text-blue-600">
+                        {formatCurrency(franchiseData.reportTotals.totalCourseFees)}
+                      </p>
+                    </div>
+                    <div className="bg-green-50 p-4 rounded-lg">
+                      <h3 className="font-semibold text-green-900">Franchise Fees</h3>
+                      <p className="text-xs text-green-700 mb-1">15% of course fees</p>
+                      <p className="text-2xl font-bold text-green-600">
+                        {formatCurrency(franchiseData.reportTotals.totalFranchiseFees)}
+                      </p>
+                    </div>
+                    <div className="bg-purple-50 p-4 rounded-lg">
+                      <h3 className="font-semibold text-purple-900">Total Due</h3>
+                      <p className="text-xs text-purple-700 mb-1">Franchise Fees</p>
+                      <p className="text-2xl font-bold text-purple-600">
+                        {formatCurrency(totalDue)}
+                      </p>
+                    </div>
+                    {isPaid ? (
+                      <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                        <div className="flex items-center gap-1 mb-1">
+                          <CheckCircle2 className="h-4 w-4 text-green-600" />
+                          <h3 className="font-semibold text-green-900">Paid in Full</h3>
+                        </div>
+                        <p className="text-2xl font-bold text-green-600">
+                          {formatCurrency(0)}
+                        </p>
+                        <p className="text-xs text-green-700 mt-1">Paid: {formatCurrency(amountPaid)}</p>
+                      </div>
+                    ) : isPartial ? (
+                      <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                        <h3 className="font-semibold text-blue-900">Balance Outstanding</h3>
+                        <p className="text-2xl font-bold text-blue-600">
+                          {formatCurrency(balance)}
+                        </p>
+                        <p className="text-xs text-blue-700 mt-1">Paid: {formatCurrency(amountPaid)}</p>
+                      </div>
+                    ) : (
+                      <div className="bg-amber-50 p-4 rounded-lg border border-amber-200">
+                        <h3 className="font-semibold text-amber-900">Balance Outstanding</h3>
+                        <p className="text-xs text-amber-700 mb-1">No payment recorded</p>
+                        <p className="text-2xl font-bold text-amber-600">
+                          {formatCurrency(totalDue)}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               <div className="space-y-6">
                 {franchiseData.classes.map((classGroup, index) => (
