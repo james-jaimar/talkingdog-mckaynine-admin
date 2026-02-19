@@ -131,8 +131,15 @@ export interface TrainerClassDetail {
   isPaid: boolean;
   hasZeroAmountPayment?: boolean;
   hasZeroCommission?: boolean;
-  branchId?: string; // Add branch_id field
+  branchId?: string;
   bookingsDetails: BookingDetail[];
+  // Substitution metadata
+  isSubstitute?: boolean;
+  substituteDates?: number;
+  totalDates?: number;
+  originalTrainerName?: string;
+  substituteTrainerName?: string;
+  substituteDatesList?: string[];
 }
 
 export interface SubstituteRecord {
