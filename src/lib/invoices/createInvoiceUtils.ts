@@ -145,7 +145,8 @@ export async function createInvoice(invoiceData: any) {
         unit_price: item.unit_price,
         amount: item.quantity * item.unit_price,
         booking_id: item.booking_id || null,
-        item_type: item.item_type || 'course_fee'
+        item_type: item.item_type || 'course_fee',
+        io_inventory_code: item.io_inventory_code || null,
       }));
       
       console.log("Inserting invoice items:", itemsWithInvoiceId);

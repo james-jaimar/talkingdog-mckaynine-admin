@@ -19,7 +19,7 @@ interface AddHandlerToClassProps {
   onSuccess: () => void;
   queryClient: QueryClient;
   toast: any;
-  createInvoiceProps: Omit<CreateInvoiceProps, 'bookingIds' | 'className' | 'classPrice' | 'dogNames' | 'enrollmentFee' | 'classDate' | 'dogIds' | 'classBranchId' | 'classReportMonthOverride'>;
+  createInvoiceProps: Omit<CreateInvoiceProps, 'bookingIds' | 'className' | 'classPrice' | 'dogNames' | 'enrollmentFee' | 'classDate' | 'dogIds' | 'classBranchId' | 'classReportMonthOverride' | 'classIOInventoryCode'>;
 }
 
 export const addHandlerToClass = async ({
@@ -231,8 +231,9 @@ export const addHandlerToClass = async ({
             enrollmentFee,
             dogNames,
             classDate,
-            classBranchId: classDetails.branchId, // Pass class branch for proper invoice attribution
-            classReportMonthOverride: classDetails.reportMonthOverride, // Pass report month override
+            classBranchId: classDetails.branchId,
+            classReportMonthOverride: classDetails.reportMonthOverride,
+            classIOInventoryCode: classDetails.ioInventoryCode,
           });
           
           if (!invoiceCreated) {

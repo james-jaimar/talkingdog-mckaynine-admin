@@ -199,6 +199,23 @@ export function EditClassForm({ classData, currentBranchName, onSuccess, onCance
             </FormItem>
           )}
         />
+
+        <FormField
+          control={form.control}
+          name="io_inventory_code"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>IO Inventory Code</FormLabel>
+              <FormControl>
+                <Input placeholder="e.g., BEG, PU, NOV" {...field} value={field.value || ""} />
+              </FormControl>
+              <FormDescription>
+                SKU code for InvoicesOnline reporting (e.g., BEG, PU, NOV, EO2, EO3)
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
       </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

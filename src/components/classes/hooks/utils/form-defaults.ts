@@ -23,6 +23,7 @@ export function createDefaultFormValues(classData: ClassData | null): ClassFormV
       capacity: 8,
       branchId: "",
       report_month_override: null,
+      io_inventory_code: "",
     };
     return defaultValues;
   }
@@ -45,6 +46,7 @@ export function createDefaultFormValues(classData: ClassData | null): ClassFormV
     capacity: Number(classData.capacity) || 8,
     branchId: classData.branch_id || "",
     report_month_override: classData.report_month_override || null,
+    io_inventory_code: (classData as any).io_inventory_code || "",
   };
   
   console.log("DEBUG: Form values created from existing class data:", formValues);

@@ -17,8 +17,9 @@ export interface CreateInvoiceProps {
   currentBranch?: { id: string; name: string } | null;
   enrollmentFee?: number;
   classDate?: Date;
-  classBranchId?: string; // Branch ID from the class for proper invoice attribution
-  classReportMonthOverride?: string | null; // Override for franchise report month (YYYY-MM)
+  classBranchId?: string;
+  classReportMonthOverride?: string | null;
+  classIOInventoryCode?: string | null;
 }
 
 const MULTI_DOG_DISCOUNT_PERCENT = 25; // 25% discount for 2nd dog
@@ -37,6 +38,7 @@ export const createInvoiceForHandler = async ({
   classDate,
   classBranchId,
   classReportMonthOverride,
+  classIOInventoryCode,
 }: CreateInvoiceProps): Promise<boolean> => {
   try {
     console.log("CREATE-INVOICE: Starting invoice creation with params:", {
@@ -82,6 +84,7 @@ export const createInvoiceForHandler = async ({
       unit_price: number;
       booking_id: string;
       item_type: string;
+      io_inventory_code?: string;
     }> = [];
 
     let subtotal = 0;
@@ -127,6 +130,7 @@ export const createInvoiceForHandler = async ({
         unit_price: dogClassPrice,
         booking_id: bookingId,
         item_type: 'course_fee',
+        io_inventory_code: classIOInventoryCode || undefined,
       });
       
       subtotal += dogClassPrice;
@@ -139,6 +143,7 @@ export const createInvoiceForHandler = async ({
           unit_price: enrollmentFee,
           booking_id: bookingId,
           item_type: 'enrollment_fee',
+          io_inventory_code: 'EN',
         });
         subtotal += enrollmentFee;
       }

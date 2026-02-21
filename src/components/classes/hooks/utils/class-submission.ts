@@ -53,6 +53,7 @@ export function useClassSubmission() {
       capacity: Number(values.capacity),
       branch_id: values.branchId,
       report_month_override: values.report_month_override || null,
+      io_inventory_code: values.io_inventory_code || null,
     };
     
     if (classData) {

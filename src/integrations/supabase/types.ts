@@ -967,6 +967,7 @@ export type Database = {
           duration: number
           enrollment_fee: number
           id: string
+          io_inventory_code: string | null
           mckaynine_commission_type: string
           mckaynine_commission_value: number
           name: string
@@ -988,6 +989,7 @@ export type Database = {
           duration: number
           enrollment_fee?: number
           id?: string
+          io_inventory_code?: string | null
           mckaynine_commission_type?: string
           mckaynine_commission_value?: number
           name: string
@@ -1009,6 +1011,7 @@ export type Database = {
           duration?: number
           enrollment_fee?: number
           id?: string
+          io_inventory_code?: string | null
           mckaynine_commission_type?: string
           mckaynine_commission_value?: number
           name?: string
@@ -1983,6 +1986,7 @@ export type Database = {
           description: string
           id: string
           invoice_id: string
+          io_inventory_code: string | null
           item_type: string | null
           quantity: number
           unit_price: number
@@ -1995,6 +1999,7 @@ export type Database = {
           description: string
           id?: string
           invoice_id: string
+          io_inventory_code?: string | null
           item_type?: string | null
           quantity?: number
           unit_price: number
@@ -2007,6 +2012,7 @@ export type Database = {
           description?: string
           id?: string
           invoice_id?: string
+          io_inventory_code?: string | null
           item_type?: string | null
           quantity?: number
           unit_price?: number
