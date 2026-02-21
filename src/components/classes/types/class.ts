@@ -19,6 +19,7 @@ export interface Class {
   duration: number;
   capacity: number;
   report_month_override?: string | null;
+  io_inventory_code?: string | null;
   branch_id: string;
   branches?: {
     name: string;
@@ -46,6 +47,7 @@ export interface ClassFromDB {
   duration: number;
   capacity: number;
   report_month_override?: string | null;
+  io_inventory_code?: string | null;
   branch_id: string;
   branches?: {
     name: string;

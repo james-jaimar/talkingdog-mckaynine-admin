@@ -51,6 +51,7 @@ interface InvoiceData {
     quantity: number;
     unit_price: number;
     amount: number;
+    io_inventory_code?: string | null;
   }>;
   client: {
     id: string;
@@ -270,8 +271,8 @@ async function createIOInvoice(
   }
 
   // Format items for IO API
-  const data = adjustedItems.map((item) => ({
-    "0": "", // prod_code
+  const data = adjustedItems.map((item: any) => ({
+    "0": item.io_inventory_code || "", // prod_code (IO inventory SKU)
     "1": item.quantity, // qty
     "2": item.description, // description
     "3": item.unit_price, // amount per unit
@@ -742,7 +743,7 @@ Deno.serve(async (req) => {
     // Fetch invoice items
     const { data: items, error: itemsError } = await supabase
       .from("invoice_items")
-      .select("description, quantity, unit_price, amount")
+      .select("description, quantity, unit_price, amount, io_inventory_code")
       .eq("invoice_id", invoice_id);
 
     if (itemsError) {

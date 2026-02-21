@@ -23,6 +23,7 @@ export const classFormSchema = z.object({
   trainer_fee_value: z.coerce.number().min(0),
   branchId: z.string().min(1, { message: "Branch is required" }),
   report_month_override: z.string().nullable().optional(),
+  io_inventory_code: z.string().optional().default(""),
 });
 
 

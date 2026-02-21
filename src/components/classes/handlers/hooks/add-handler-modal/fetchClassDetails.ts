@@ -13,8 +13,9 @@ export const fetchClassDetails = async (classId: string): Promise<{
   trainerFeeValue: number;
   franchiseFeeType: 'percentage' | 'amount';
   franchiseFeeValue: number;
-  branchId: string; // Add branch ID for proper invoice attribution
-  reportMonthOverride: string | null; // Override for franchise report month
+  branchId: string;
+  reportMonthOverride: string | null;
+  ioInventoryCode: string | null;
 } | null> => {
   try {
     console.log(`Fetching class details for class ID: ${classId}`);
@@ -32,7 +33,8 @@ export const fetchClassDetails = async (classId: string): Promise<{
         mckaynine_commission_value, 
         mckaynine_commission_type,
         branch_id,
-        report_month_override
+        report_month_override,
+        io_inventory_code
       `)
       .eq('id', classId)
       .single();
@@ -65,8 +67,9 @@ export const fetchClassDetails = async (classId: string): Promise<{
       trainerFeeValue: data.trainer_fee_value,
       franchiseFeeType,
       franchiseFeeValue: data.mckaynine_commission_value,
-      branchId: data.branch_id, // Include branch for proper invoice attribution
-      reportMonthOverride: data.report_month_override || null, // Include report month override
+      branchId: data.branch_id,
+      reportMonthOverride: data.report_month_override || null,
+      ioInventoryCode: data.io_inventory_code || null,
     };
   } catch (err) {
     console.error("Error fetching class details:", err);

@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import {
+  FormDescription,
   Form,
   FormControl,
   FormField,
@@ -151,6 +152,23 @@ export function AddClassForm({ onSuccess }: AddClassFormProps) {
             )}
           />
         </div>
+
+        <FormField
+          control={form.control}
+          name="io_inventory_code"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>IO Inventory Code</FormLabel>
+              <FormControl>
+                <Input placeholder="e.g., BEG, PU, NOV" {...field} value={field.value || ""} />
+              </FormControl>
+              <FormDescription>
+                SKU code for InvoicesOnline reporting (e.g., BEG, PU, NOV, EO2, EO3)
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <FeeFields control={form.control} />
 
