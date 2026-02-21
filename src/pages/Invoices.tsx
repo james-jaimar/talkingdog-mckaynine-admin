@@ -13,6 +13,7 @@ import { startOfMonth, endOfMonth, subMonths, addMonths, format } from "date-fns
 import { InvoiceFinancialSummary } from "@/components/invoices/summary/InvoiceFinancialSummary";
 import { InvoiceFilterTabs } from "@/components/invoices/filters/InvoiceFilterTabs";
 import { MissingMonthAllocationWarning } from "@/components/invoices/summary/MissingMonthAllocationWarning";
+import { BulkIOSyncBanner } from "@/components/invoices/BulkIOSyncBanner";
 import { useTerm } from "@/context/TermContext";
 
 export default function Invoices() {
@@ -112,6 +113,7 @@ export default function Invoices() {
           </Button>
         </div>
 
+        <BulkIOSyncBanner />
         <MissingMonthAllocationWarning invoices={invoices || []} />
 
         <InvoiceFinancialSummary 
