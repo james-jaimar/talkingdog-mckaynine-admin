@@ -32,6 +32,7 @@ interface InvoiceData {
   id: string;
   invoice_number: string;
   issued_date: string;
+  franchise_report_month: string | null; // e.g. "2026-02"
   client_id: string;
   total: number;
   subtotal: number;
@@ -218,14 +219,24 @@ async function createIOInvoice(
 ): Promise<{ success: boolean; documentId?: string; invoiceNumber?: string; url?: string; error?: string }> {
   console.log(`Creating IO invoice for client ${ioClientId}, invoice ${invoice.invoice_number}`);
 
-  // Generate prefix from branch and invoice date
-  const prefix = getIOInvoicePrefix(invoice.branch_id, invoice.issued_date);
+  // Use franchise_report_month if available, otherwise fall back to issued_date
+  // This ensures IO invoices align with franchise reporting periods
+  let effectiveDate: string;
+  if (invoice.franchise_report_month) {
+    // franchise_report_month is "YYYY-MM", use the 1st of that month
+    effectiveDate = `${invoice.franchise_report_month}-01`;
+    console.log(`Using franchise_report_month for IO date: ${invoice.franchise_report_month} -> ${effectiveDate}`);
+  } else {
+    effectiveDate = invoice.issued_date || new Date().toISOString().split("T")[0];
+    console.log(`No franchise_report_month, using issued_date: ${effectiveDate}`);
+  }
+
+  // Generate prefix from branch and effective date
+  const prefix = getIOInvoicePrefix(invoice.branch_id, effectiveDate);
   console.log(`Using IO invoice prefix: ${prefix}`);
   
   // Format invoice date for IO (YYYY-MM-DD)
-  const invoiceDate = invoice.issued_date 
-    ? new Date(invoice.issued_date).toISOString().split("T")[0]
-    : new Date().toISOString().split("T")[0];
+  const invoiceDate = new Date(effectiveDate).toISOString().split("T")[0];
   console.log(`Using invoice date: ${invoiceDate}`);
 
   // Format items for IO API
@@ -658,6 +669,7 @@ Deno.serve(async (req) => {
         id,
         invoice_number,
         issued_date,
+        franchise_report_month,
         client_id,
         total,
         subtotal,
@@ -712,6 +724,7 @@ Deno.serve(async (req) => {
       id: invoice.id,
       invoice_number: invoice.invoice_number,
       issued_date: invoice.issued_date,
+      franchise_report_month: invoice.franchise_report_month,
       client_id: invoice.client_id,
       total: invoice.total,
       subtotal: invoice.subtotal,
