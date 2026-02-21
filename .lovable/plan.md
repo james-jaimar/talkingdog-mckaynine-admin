@@ -1,50 +1,39 @@
 
 
-# Fix IO Invoice Dating and Add Monthly Bulk Sync Control
+# Pass Discounted Amounts to InvoicesOnline
 
-## Two Issues Being Solved
+## The Problem
 
-### Issue 1: Invoice Date Mismatch with IO
-Classes starting on Jan 29-31 get invoiced with that date, but when marked as "February billing" (via `franchise_report_month`), IO still receives the January date. The IO API has no "update invoice" endpoint, so we must set the correct date at creation time.
+When an invoice has a discount (e.g., subtotal R1,770 with R442.50 discount = R1,327.50 total), the system sends the **original** line item amounts (R1,770) to IO without any discount information. IO then shows the wrong total. The fix: send the **discounted** line item amounts so IO never needs to know about discounts.
 
-**Fix:** When syncing to IO, use the `franchise_report_month` field (e.g., `2026-02`) instead of `issued_date` (e.g., `2026-01-29`) to construct both:
-- The IO invoice date (first of the franchise month)
-- The IO invoice prefix (e.g., `McD-2602-` instead of `McD-2601-`)
+## The Fix (1 file)
 
-This ensures IO invoices align with your franchise reporting periods.
+### `supabase/functions/sync-invoice-to-io/index.ts`
 
-### Issue 2: Bulk Sync Shows All 348 Invoices at Once
-The banner currently lumps everything together, including ~300 invoices from 2025 that should not be synced.
+**1. Fetch `monetary_discount` from the database**
 
-**Fix:** Replace the single banner with a per-month breakdown showing each month's unsynced count with individual "Sync" buttons.
+Add `monetary_discount` to the invoice SELECT query (around line 677) and to the `InvoiceData` interface (around line 40).
 
----
+**2. Apply discount proportionally to items before sending to IO**
 
-## Technical Details
+In `createIOInvoice` (around lines 242-252), before building the IO `data` array:
 
-### File 1: `supabase/functions/sync-invoice-to-io/index.ts`
+- Check if `invoice.monetary_discount > 0`
+- If yes, calculate the discount ratio: `monetary_discount / subtotal`
+- For each item, reduce its `unit_price` by that ratio (rounded to cents)
+- Adjust the last item so the sum of all item amounts equals `invoice.total` exactly (prevents rounding drift)
 
-**Change the date logic in `createIOInvoice`:**
-- Currently uses `invoice.issued_date` for `InvoiceDate` and the prefix
-- Will check for `franchise_report_month` first (e.g., `2026-02`)
-- If present, use the 1st of that month as the IO invoice date (e.g., `2026-02-01`)
-- Fall back to `issued_date` if no franchise month is set
+This reuses the same proportional distribution logic already proven in `invoiceItemUtils.ts`.
 
-**Fetch `franchise_report_month` from the database:**
-- The main handler already fetches the invoice record -- add `franchise_report_month` to that SELECT
-- Pass it through the `InvoiceData` interface and into `createIOInvoice`
+**Example for INV-McD-2601-0043:**
+- Original item: 1 x R1,770.00 = R1,770.00
+- Discount ratio: 442.50 / 1770 = 0.25
+- Adjusted item: 1 x R1,327.50 = R1,327.50
+- IO receives R1,327.50 -- matches the invoice total perfectly
 
-### File 2: `src/components/invoices/BulkIOSyncBanner.tsx`
+**For multi-item invoices:**
+- Each item's unit price is reduced proportionally
+- The last item absorbs any rounding remainder to ensure the total matches exactly
 
-**Replace the single banner with grouped-by-month display:**
-- Query also fetches `issued_date` and `franchise_report_month`
-- Group invoices by their effective month (franchise_report_month or issued_date month)
-- Display each month as a row: "January 2026: 52 invoices [Sync Now]"
-- Each month has its own sync button
-- Progress dialog works per-month when syncing
-- Months are shown in chronological order, most recent first
-
-### File 3: No database changes needed
-
-The `franchise_report_month` field already exists on the invoices table and is already populated for all invoices.
+No frontend changes needed. After deploying, any newly synced invoices will have correct discounted amounts in IO.
 
