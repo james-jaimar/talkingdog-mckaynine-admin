@@ -75,6 +75,7 @@ export function BulkIOSyncBanner() {
         .eq("branch_id", currentBranch.id)
         .is("io_document_id", null)
         .not("status", "in", '("draft","cancelled")')
+        .gte("issued_date", "2026-01-01")
         .order("issued_date", { ascending: true });
 
       if (error) {
