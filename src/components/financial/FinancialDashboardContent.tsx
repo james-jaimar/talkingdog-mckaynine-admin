@@ -273,7 +273,7 @@ export function FinancialDashboardContent() {
 
       {/* Financial metrics cards */}
       <FinancialMetricsCards 
-        totalRevenue={totalRevenue}
+        totalRevenue={revenueMetrics.totalRevenue}
         collectedRevenue={collectedRevenue}
         pendingRevenue={pendingRevenue}
         overdueRevenue={overdueRevenue}
