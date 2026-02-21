@@ -1,97 +1,42 @@
 
 
-# Add IO Inventory Codes to Classes and Invoice Sync
+# Fix Financial Dashboard Revenue Discrepancy
 
-## Summary
+## The Problem
 
-Add an optional `io_inventory_code` field to each class. When syncing invoices to IO, this code is sent as the `prod_code` field. Your custom description (with dog names) is preserved -- IO treats `prod_code` and `description` as independent fields. McKaynine remains the single source of truth for all pricing; the inventory code is purely a reporting label for the franchisor.
+The Financial Dashboard mixes two independent data sources for its metrics cards:
 
-## How It Works
+- **Total Revenue**: Sourced from `useClassFinancialData` (class/booking-based calculations)
+- **Collected / Pending / Overdue**: Sourced from invoice status filtering
 
-- Each class gets a new optional text field: **IO Inventory Code** (e.g., `BEG`, `PU`, `EN`)
-- When creating an invoice, the inventory code from the class is stored on each invoice item
-- When syncing to IO, the code is sent as `prod_code` -- but YOUR description and YOUR price are what IO uses. The inventory code just tags the line for the franchisor's reports
-- Enrollment fee items get a hardcoded code of `EN` (since enrollment is always the same SKU)
-- If no code is set on a class, an empty string is sent (same as today -- nothing breaks)
+Because these pipelines process data differently (one groups by class bookings, the other sums invoice line items by status), they can produce different totals -- even when all invoices are paid. The result is a confusing display where Total Revenue does not equal Collected + Pending + Overdue.
 
-This means:
-- Your prices stay as the single source of truth (IO inventory prices are ignored when a custom price is provided)
-- Your descriptions with dog names are preserved
-- The franchisor gets her inventory reporting codes
-- You only need to set the code once per class, not per invoice
+The Invoices page does not have this problem because it uses a single source (invoices) for all four cards.
+
+## The Fix
+
+Use **one consistent source** for the top-row metrics cards. Specifically, use the invoice-based `revenueMetrics` (which already calculates collected, pending, and overdue correctly) for **Total Revenue** as well. The class-based `totalRevenue` from `classFinances` will continue to be used only for the expense breakdown cards (Admin Fee, Trainer Fee, Franchise Fee, Profit), where class-level granularity is actually needed.
 
 ## Technical Details
 
-### 1. Database Migration
+### File: `src/components/financial/FinancialDashboardContent.tsx`
 
-Add two new columns:
-
-- `classes.io_inventory_code` (text, nullable) -- stores the IO SKU for each class (e.g., `BEG`, `PU`, `EO3`)
-- `invoice_items.io_inventory_code` (text, nullable) -- captures the code at invoice creation time so it's frozen even if the class code changes later
-
-### 2. Class Form Updates
-
-**Files:** `EditClassForm.tsx`, `AddClassForm.tsx`, `classFormSchema.ts`, `class.ts`, `class-types.ts`
-
-- Add `io_inventory_code` to the Zod schema as an optional string
-- Add a text input field in the class forms labeled "IO Inventory Code" with a helper description: "SKU code for InvoicesOnline reporting (e.g., BEG, PU, NOV)"
-- Add the field to the Class type interface
-- The submission handler already saves all form values to the `classes` table, so no special save logic needed
-
-### 3. Invoice Creation
-
-**File:** `createInvoiceForHandler.ts`
-
-- Accept `classIOInventoryCode` as a new optional prop
-- When building invoice items, set `io_inventory_code` on course fee items from the class code
-- Enrollment fee items get hardcoded `EN`
-- The `createInvoiceUtils.ts` passes this through to the `invoice_items` insert
-
-**File:** `createInvoiceUtils.ts`
-
-- Include `io_inventory_code` when inserting invoice items
-
-### 4. Edge Function Sync
-
-**File:** `supabase/functions/sync-invoice-to-io/index.ts`
-
-- Expand the invoice items SELECT query to include `io_inventory_code`
-- Add `io_inventory_code` to the items interface in `InvoiceData`
-- In `createIOInvoice`, use `item.io_inventory_code || ""` for field `"0"` (prod_code) instead of the current empty string
-
-### 5. Caller Updates
-
-**File:** `addHandlerToClass.ts`
-
-- Pass the class's `io_inventory_code` through to `createInvoiceForHandler`
-
-### Data Flow
-
-```text
-Class (io_inventory_code: "BEG")
-  --> Invoice Creation (item.io_inventory_code = "BEG")
-    --> Invoice Item stored in DB (io_inventory_code: "BEG")
-      --> IO Sync reads item.io_inventory_code
-        --> Sends prod_code: "BEG" + your custom description + your price to IO
+**Current code (line 155):**
+```typescript
+const totalRevenue = classFinancesTotalRevenue;
 ```
 
-### Suggested IO Code Mapping (for reference when filling in classes)
+**Change:** Pass the invoice-based `revenueMetrics.totalRevenue` (course fees, excluding enrollment) to `FinancialMetricsCards` instead of the class-based total.
 
-```text
-Class Type     IO Code
-----------     -------
-Puppy          PU
-EO (2-month)   EO2
-EO (3-month)   EO3
-Beginner       BEG
-Novice         NOV
-CGC Bronze     CGCB
-CGC Silver     CGCS
-WT             WTD
-A-Test         ATEST
-Yoga           BNB
-Enrollment     EN (auto-set)
-```
+Specifically:
+1. On line 275, change the `totalRevenue` prop passed to `FinancialMetricsCards` from the class-based `totalRevenue` to `revenueMetrics.totalRevenue`
+2. Keep the class-based `totalRevenue` for `ExpenseBreakdownCards` (line 284) and `RevenueAllocationChart` (line 300) since those need class-level fee breakdowns
 
-You'll set these codes once per class via the edit form. No automatic mapping -- you're in full control of which code goes where, which handles edge cases like EO2 vs EO3 naturally since those are separate classes.
+This is a single-line prop change. The `revenueMetrics` object already computes `totalRevenue` correctly as the sum of all non-enrollment course fee amounts from invoices (line 112), and it already correctly splits that into collected, pending, and overdue by invoice status. Using the same source for all four cards guarantees they always balance: Total = Collected + Pending + Overdue.
+
+### Why This Is Safe
+
+- The Invoices page already uses this same invoice-based approach and shows correct, balanced numbers (100% collection rate when all paid)
+- The expense breakdown cards (Admin Fee, Trainer Fee, etc.) still use class-based data, which is correct for those calculations since fees are defined per-class
+- No other components are affected
 
