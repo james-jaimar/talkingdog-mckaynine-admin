@@ -38,12 +38,11 @@ export default function FinancialDashboard() {
   
   // Get all active invoices - filtering to only show relevant statuses AND current branch
   const activeInvoices = currentBranch?.id ? invoices.filter((inv: Invoice) => {
-    // Check if invoice has client data with branch_id
-    const branchMatch = inv.client?.branch_id === currentBranch?.id;
+    const branchMatch = inv.branch_id === currentBranch?.id;
     const statusMatch = inv.status === 'sent' || inv.status === 'paid' || inv.status === 'overdue';
     
-    if (!branchMatch && statusMatch && inv.client) {
-      console.warn(`Invoice ${inv.invoice_number} has mismatched branch. Invoice client branch: ${inv.client?.branch_id}, Current branch: ${currentBranch?.id}`);
+    if (!branchMatch && statusMatch) {
+      console.warn(`Invoice ${inv.invoice_number} has mismatched branch. Invoice branch: ${inv.branch_id}, Current branch: ${currentBranch?.id}`);
     }
     
     return branchMatch && statusMatch;
