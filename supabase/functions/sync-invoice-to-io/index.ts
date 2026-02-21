@@ -38,6 +38,7 @@ interface InvoiceData {
   subtotal: number;
   tax_amount: number;
   discount_amount: number;
+  monetary_discount: number | null;
   status: string;
   payment_date: string | null;
   branch_id: string | null;
@@ -239,8 +240,37 @@ async function createIOInvoice(
   const invoiceDate = new Date(effectiveDate).toISOString().split("T")[0];
   console.log(`Using invoice date: ${invoiceDate}`);
 
+  // Apply invoice-level discount proportionally to item unit prices
+  // so IO receives the post-discount amounts (IO doesn't handle our discounts)
+  const monetaryDiscount = invoice.monetary_discount || 0;
+  const subtotal = invoice.subtotal || 0;
+  let adjustedItems = invoice.items.map(item => ({ ...item }));
+
+  if (monetaryDiscount > 0 && subtotal > 0) {
+    const discountRatio = monetaryDiscount / subtotal;
+    let accumulatedTotal = 0;
+    const targetTotal = Math.round((subtotal - monetaryDiscount) * 100) / 100;
+
+    adjustedItems = adjustedItems.map((item, index) => {
+      const isLast = index === adjustedItems.length - 1;
+      if (isLast) {
+        // Last item absorbs rounding remainder
+        const remainingTotal = Math.round((targetTotal - accumulatedTotal) * 100) / 100;
+        const adjustedUnitPrice = item.quantity > 0
+          ? Math.round((remainingTotal / item.quantity) * 100) / 100
+          : 0;
+        return { ...item, unit_price: adjustedUnitPrice };
+      } else {
+        const adjustedUnitPrice = Math.round((item.unit_price * (1 - discountRatio)) * 100) / 100;
+        accumulatedTotal += Math.round((adjustedUnitPrice * item.quantity) * 100) / 100;
+        return { ...item, unit_price: adjustedUnitPrice };
+      }
+    });
+    console.log(`Applied discount: ratio=${discountRatio}, targetTotal=${targetTotal}, items adjusted`);
+  }
+
   // Format items for IO API
-  const data = invoice.items.map((item, index) => ({
+  const data = adjustedItems.map((item) => ({
     "0": "", // prod_code
     "1": item.quantity, // qty
     "2": item.description, // description
@@ -675,6 +705,7 @@ Deno.serve(async (req) => {
         subtotal,
         tax_amount,
         discount_amount,
+        monetary_discount,
         status,
         payment_date,
         branch_id,
@@ -730,6 +761,7 @@ Deno.serve(async (req) => {
       subtotal: invoice.subtotal,
       tax_amount: invoice.tax_amount,
       discount_amount: invoice.discount_amount,
+      monetary_discount: invoice.monetary_discount,
       status: invoice.status,
       payment_date: invoice.payment_date,
       branch_id: invoice.branch_id,
