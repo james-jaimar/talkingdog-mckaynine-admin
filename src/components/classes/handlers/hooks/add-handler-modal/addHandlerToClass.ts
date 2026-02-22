@@ -196,6 +196,7 @@ export const addHandlerToClass = async ({
           enrollmentFee,
           existingDogName: existingEnrollment.existingDogName,
           existingClassName: existingEnrollment.existingClassName,
+          classIOInventoryCode: classDetails.ioInventoryCode,
         });
         
         if (updateResult.success) {

@@ -16,6 +16,7 @@ export interface AddToExistingInvoiceProps {
   enrollmentFee: number;
   existingDogName?: string;
   existingClassName?: string;
+  classIOInventoryCode?: string | null;
 }
 
 export interface AddToExistingInvoiceResult {
@@ -41,6 +42,7 @@ export const addToExistingInvoice = async ({
   enrollmentFee,
   existingDogName,
   existingClassName,
+  classIOInventoryCode,
 }: AddToExistingInvoiceProps): Promise<AddToExistingInvoiceResult> => {
   try {
     console.log("ADD-TO-INVOICE: Starting update of existing invoice", {
@@ -92,6 +94,7 @@ export const addToExistingInvoice = async ({
       amount: number;
       booking_id: string;
       item_type: string;
+      io_inventory_code: string | null;
     }> = [];
 
     let additionalSubtotal = 0;
@@ -115,6 +118,7 @@ export const addToExistingInvoice = async ({
         amount: discountedPrice,
         booking_id: bookingId,
         item_type: 'course_fee',
+        io_inventory_code: classIOInventoryCode || null,
       });
 
       additionalSubtotal += discountedPrice;
@@ -129,6 +133,7 @@ export const addToExistingInvoice = async ({
           amount: enrollmentFee,
           booking_id: bookingId,
           item_type: 'enrollment_fee',
+          io_inventory_code: 'EN',
         });
         additionalSubtotal += enrollmentFee;
       }
