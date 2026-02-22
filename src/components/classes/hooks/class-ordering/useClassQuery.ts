@@ -62,6 +62,7 @@ export function useClassQuery() {
             capacity,
             branch_id,
             report_month_override,
+            io_inventory_code,
             branches(name),
             status,
             class_schedules(
@@ -97,6 +98,7 @@ export function useClassQuery() {
               capacity,
               branch_id,
               report_month_override,
+              io_inventory_code,
               branches(name),
               status,
               class_schedules(

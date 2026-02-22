@@ -19,6 +19,7 @@ export interface ClassWithSchedules {
   capacity: number;
   branch_id: string;
   report_month_override?: string | null;
+  io_inventory_code?: string | null;
   status: string; // Closed/Open/other
   branches?: {
     name: string;
