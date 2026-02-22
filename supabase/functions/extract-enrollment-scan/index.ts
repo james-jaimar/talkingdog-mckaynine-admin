@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
-import { PDFDocument } from "https://esm.sh/pdf-lib@1.17.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -8,13 +7,16 @@ const corsHeaders = {
 };
 
 const EXTRACTION_PROMPT = `You are extracting data from a McKaynine dog training enrollment form.
-The document typically has 2 pages:
-- Page 1 is a class information flyer - IGNORE THIS PAGE
-- Page 2 is the actual enrollment form with handler/owner and dog details - EXTRACT DATA FROM THIS PAGE ONLY
+The document may have multiple pages. The pages may be in ANY order.
 
-Focus ONLY on page 2 which contains the handwritten enrollment form data.
+STEP 1 - IDENTIFY THE FORM PAGE:
+Scan through ALL pages and find the one that is the actual enrollment form.
+The enrollment form contains handwritten fields for owner/handler details (name, email, phone),
+dog details (name, breed, date of birth), and sections about social behavior, training goals, etc.
+IGNORE any class information flyers, schedules, or other non-form pages.
 
-Extract these fields exactly:
+STEP 2 - EXTRACT DATA:
+From the identified enrollment form page, extract these fields exactly:
 - Owner section: name (split into first_name and last_name), account holder name, email, phone, occupation, vet name
 - Dog section: name, birth date (format as YYYY-MM-DD if possible), gender (male/female), breed
 - Spay/neuter status: MUST be one of these exact values: "When old enough", "Already done", "Not planning to"
@@ -147,9 +149,6 @@ serve(async (req) => {
 
     console.log("File path:", file_url);
 
-    // For multi-page PDFs, we want ONLY page 2.
-    // To avoid Edge Function memory blow-ups from base64 encoding full PDFs,
-    // we extract page 2 into a new single-page PDF, upload it, then give the model a signed URL.
     const fileName = file_url.toLowerCase();
     const isPDF = fileName.endsWith('.pdf');
     const isImage = fileName.endsWith('.jpg') || fileName.endsWith('.jpeg') || fileName.endsWith('.png');
@@ -157,8 +156,7 @@ serve(async (req) => {
     let modelFileUrl = "";
 
     if (isPDF) {
-      // Download original PDF (binary) so we can extract page 2 and send ONLY that page.
-      // NOTE: Gemini vision does NOT support PDF via remote URL; it requires a data:application/pdf;base64,... URL.
+      // Download full PDF and send all pages to the AI model for form detection
       const { data: fileData, error: downloadError } = await supabase.storage
         .from('scanned-forms')
         .download(file_url);
@@ -169,26 +167,10 @@ serve(async (req) => {
       }
 
       const originalBytes = new Uint8Array(await fileData.arrayBuffer());
-      const originalPdf = await PDFDocument.load(originalBytes);
-      const pageCount = originalPdf.getPageCount();
-      console.log("PDF page count:", pageCount);
+      console.log("PDF size:", originalBytes.byteLength);
 
-      // If there is a page 2, extract it. Otherwise fall back to page 1.
-      let pdfBytesToSend: Uint8Array;
-      if (pageCount >= 2) {
-        const page2Pdf = await PDFDocument.create();
-        const [page2] = await page2Pdf.copyPages(originalPdf, [1]);
-        page2Pdf.addPage(page2);
-        pdfBytesToSend = new Uint8Array(await page2Pdf.save());
-        console.log("Extracted page 2 PDF size:", pdfBytesToSend.byteLength);
-      } else {
-        pdfBytesToSend = originalBytes;
-        console.log("No page 2 found; using original PDF");
-      }
-
-      // Convert ONLY the selected page PDF to base64 data URL
       const pdfBase64 = btoa(
-        Array.from(pdfBytesToSend)
+        Array.from(originalBytes)
           .map((b) => String.fromCharCode(b))
           .join("")
       );
