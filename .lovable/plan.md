@@ -1,58 +1,38 @@
 
 
-# Fix: Send All Pages to AI for Enrollment Form Detection
+# Fix: Memory Limit Exceeded When Processing Full PDF
 
-## Problem
+## Root Cause
 
-The current code hardcodes extracting only page 2 from PDFs, assuming the enrollment form is always on page 2. In practice, people rearrange the pages, so the form could be on any page.
+The PDF is 12.5 MB. Base64 encoding inflates this to ~16.6 MB. Combined with the edge function's own runtime overhead, this exceeds the memory limit. The logs confirm:
 
-## Solution
+```
+PDF size: 12487184
+Memory limit exceeded
+```
 
-Instead of extracting only page 2 server-side, send the **entire PDF** to the AI model and update the prompt to instruct it to first scan all pages to identify which one is the enrollment form, then extract from that page.
+## Solution: Use Signed URL Instead of Base64
+
+Instead of downloading the PDF, converting to base64, and embedding it in the request body, we should pass a **signed URL** to the AI model. The Lovable AI Gateway (backed by Gemini) can fetch the PDF directly from the URL, keeping edge function memory usage minimal.
 
 ### Changes (1 file)
 
-#### `supabase/functions/extract-enrollment-scan/index.ts`
+**`supabase/functions/extract-enrollment-scan/index.ts`**
 
-**1. Update the prompt** (lines 10-15) to replace the rigid "Page 1 is flyer, Page 2 is form" instruction with:
+Replace the PDF handling block. Instead of downloading the file and base64-encoding it, generate a signed URL (same approach already used for images) and pass that as the `image_url`:
 
-```
-You are extracting data from a McKaynine dog training enrollment form.
-The document may have multiple pages. The pages may be in ANY order.
+- Remove the PDF download + base64 conversion block
+- For PDFs, create a signed URL (e.g., 5 minutes expiry) just like the image path already does
+- Pass the signed URL in the `image_url` content block
 
-STEP 1 - IDENTIFY THE FORM PAGE:
-Scan through ALL pages and find the one that is the actual enrollment form.
-The enrollment form contains handwritten fields for owner/handler details (name, email, phone),
-dog details (name, breed, date of birth), and sections about social behavior, training goals, etc.
-IGNORE any class information flyers, schedules, or other non-form pages.
+This unifies the PDF and image paths into a single approach: signed URL for both.
 
-STEP 2 - EXTRACT DATA:
-From the identified enrollment form page, extract the following fields...
-```
+### Fallback
 
-**2. Remove the page-2-only PDF extraction logic** (lines 150-196). Instead of creating a single-page PDF from page 2, send the full PDF as a base64 data URL. This simplifies the code:
+If the signed URL approach does not work for PDFs through the gateway (some models require base64 for PDFs), we will fall back to re-introducing `pdf-lib` to split the PDF into individual pages and send each page as a separate, smaller base64 content block. This keeps each chunk well within memory limits while still letting the AI see all pages.
 
-- Remove the `PDFDocument` page extraction block (lines 176-187)
-- Always convert the full `originalBytes` to base64
-- The `pdf-lib` import can be removed entirely since we no longer manipulate pages
+### No Other Changes Needed
 
-### Technical Detail
-
-The simplified PDF handling becomes:
-```typescript
-const originalBytes = new Uint8Array(await fileData.arrayBuffer());
-console.log("PDF size:", originalBytes.byteLength);
-
-const pdfBase64 = btoa(
-  Array.from(originalBytes)
-    .map((b) => String.fromCharCode(b))
-    .join("")
-);
-modelFileUrl = `data:application/pdf;base64,${pdfBase64}`;
-```
-
-### Considerations
-
-- Sending the full PDF (typically 2 pages) is well within Gemini's capabilities and the base64 size should remain manageable for typical scanned forms.
-- The AI model (gemini-2.5-flash) handles multi-page PDFs natively and can identify the correct page regardless of order.
+- The prompt already instructs the AI to scan all pages and find the form -- no prompt changes required.
 - No frontend changes needed.
+
