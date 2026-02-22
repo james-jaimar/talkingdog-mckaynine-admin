@@ -1,77 +1,26 @@
 
 
-# Fix: Migrate All RLS Policies from `profiles.role` to `has_role()`
+# Fix: Intake Scans Page Not Using Full Width in Large Viewports
 
 ## Problem
 
-Since adding the Assistant role to AD, there have been permission errors across the system. The root cause is that **many RLS policies still use exact string matching on `profiles.role`** (e.g., `profiles.role = 'admin'`) instead of the modern `has_role()` function that checks the `user_roles` table.
-
-This is fragile because:
-- When a user has multiple roles, the `profiles.role` column may not reflect all their roles accurately
-- Any role change can break previously working policies
-- The `profiles.role` column is a legacy field -- `user_roles` is the authoritative source
-
-There are **~25 RLS policies** across the following tables that still use the old pattern:
-- `enrollment_registrations` (4 policies) -- this is why the intake form save fails
-- `invoice_items` (6 policies)
-- `invoices` (4 policies)
-- `client_messages` (4 policies)
-- `scan_processing_jobs` (1 policy, partially migrated)
-- `branch_branding` (1 policy)
-- `branch_notifications` (1 policy)
-- Storage objects for `vet-clearance-docs`, `message-attachments`, `scanned-forms` buckets
+The `DashboardLayout` wraps all content in a `container mx-auto` div, which applies Tailwind's default max-width breakpoints (e.g., max-width: 1280px at xl). In the smaller Lovable preview window, the viewport is narrower than this max-width, so the 3-column grid fits fine. But in a full browser window (1920px+), the container constrains the grid, squeezing the columns.
 
 ## Solution
 
-Replace every `profiles.role` check with the equivalent `has_role(auth.uid(), 'role')` call. No code changes needed -- this is purely a database migration.
+Add a `fullWidth` prop to `DashboardLayout` that skips the `container` class, allowing pages like Intake Scans to use the full viewport width.
 
-### Example transformation
+### Changes
 
-**Before:**
-```sql
-CREATE POLICY "Staff can insert enrollment registrations"
-ON enrollment_registrations FOR INSERT
-WITH CHECK (
-  EXISTS (SELECT 1 FROM profiles 
-    WHERE profiles.id = auth.uid() 
-    AND (profiles.role = 'admin' OR profiles.role = 'trainer'))
-);
-```
+**1. `src/components/layout/DashboardLayout.tsx`**
+- Add an optional `fullWidth` boolean prop
+- When `fullWidth` is true, use `w-full px-3 sm:px-4 md:px-6` instead of `container mx-auto px-3...`
 
-**After:**
-```sql
-CREATE POLICY "Staff can insert enrollment registrations"
-ON enrollment_registrations FOR INSERT
-WITH CHECK (
-  has_role(auth.uid(), 'admin') OR has_role(auth.uid(), 'trainer')
-);
-```
+**2. `src/pages/admin/IntakeScans.tsx`**
+- Pass `fullWidth` to `DashboardLayout`:
+  ```
+  <DashboardLayout fullWidth>
+  ```
 
-### Tables and Policies to Migrate
-
-| Table | Policy | Current Check | New Check |
-|-------|--------|--------------|-----------|
-| enrollment_registrations | Staff can insert | profiles.role = admin/trainer | has_role admin/trainer |
-| enrollment_registrations | Staff can update | profiles.role = admin/trainer | has_role admin/trainer |
-| enrollment_registrations | Staff can view all | profiles.role = admin/trainer | has_role admin/trainer |
-| enrollment_registrations | Staff can delete | profiles.role = admin | has_role admin |
-| invoice_items | All 6 policies | profiles.role checks | has_role equivalents |
-| invoices | All 4 policies | profiles.role checks | has_role equivalents |
-| client_messages | Staff can view/insert | profiles.role = admin/trainer | has_role admin/trainer |
-| scan_processing_jobs | Admins can manage | Mixed (partially done) | Clean up to has_role only |
-| branch_branding | Platform admins | profiles.role = platform_admin | has_role platform_admin |
-| branch_notifications | Platform admins | profiles.role = platform_admin | has_role platform_admin |
-| storage objects | Multiple policies | profiles.role checks | has_role equivalents |
-
-### Implementation
-
-This will be done via SQL statements that:
-1. DROP each old policy
-2. CREATE the replacement policy with `has_role()` checks
-
-All changes are atomic -- each policy replacement is independent so if one fails, the others still work.
-
-### No Code Changes Needed
-
-The `has_role()` security definer function already exists and is used by newer policies. This migration simply brings older policies in line with the established pattern.
+This is a minimal, targeted fix -- no other pages are affected.
 
