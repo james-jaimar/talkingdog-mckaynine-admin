@@ -102,7 +102,7 @@ function IntakeScansTab() {
       </div>
 
       <div className="grid grid-cols-12 gap-4 h-[calc(100%-2rem)]">
-        <div className="col-span-4 h-full">
+        <div className="col-span-4 h-full min-w-0 overflow-hidden">
           <UploadPanel 
             onSelectJob={handleSelectJob}
             selectedJobId={selectedJob?.id || null}
