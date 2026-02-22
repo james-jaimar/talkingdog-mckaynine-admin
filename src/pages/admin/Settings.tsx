@@ -195,12 +195,12 @@ export default function Settings() {
 
   return (
     <RequireAdmin>
-      <DashboardLayout>
+      <DashboardLayout fullWidth>
         <Helmet>
           <title>Admin - McKaynine Training Centre</title>
         </Helmet>
         
-        <div className="container mx-auto py-6">
+        <div className="py-6">
           <div className="mb-6">
             <h1 className="text-3xl font-bold">Admin</h1>
             <p className="text-muted-foreground">
