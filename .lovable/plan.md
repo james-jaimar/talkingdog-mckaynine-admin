@@ -1,70 +1,77 @@
 
 
-# Fix: PDF Extraction - Use Base64 Data URL for PDFs, Signed URL for Images
+# Fix: Migrate All RLS Policies from `profiles.role` to `has_role()`
 
 ## Problem
 
-The AI gateway (Google AI Studio) only accepts image URLs (PNG, JPEG, WebP, GIF). PDFs must be sent as **base64 data URLs** with the MIME type specified. The signed URL approach works for images but fails for PDFs with error: "Unsupported image format for URL."
+Since adding the Assistant role to AD, there have been permission errors across the system. The root cause is that **many RLS policies still use exact string matching on `profiles.role`** (e.g., `profiles.role = 'admin'`) instead of the modern `has_role()` function that checks the `user_roles` table.
+
+This is fragile because:
+- When a user has multiple roles, the `profiles.role` column may not reflect all their roles accurately
+- Any role change can break previously working policies
+- The `profiles.role` column is a legacy field -- `user_roles` is the authoritative source
+
+There are **~25 RLS policies** across the following tables that still use the old pattern:
+- `enrollment_registrations` (4 policies) -- this is why the intake form save fails
+- `invoice_items` (6 policies)
+- `invoices` (4 policies)
+- `client_messages` (4 policies)
+- `scan_processing_jobs` (1 policy, partially migrated)
+- `branch_branding` (1 policy)
+- `branch_notifications` (1 policy)
+- Storage objects for `vet-clearance-docs`, `message-attachments`, `scanned-forms` buckets
 
 ## Solution
 
-Split the handling back into two paths:
-- **Images**: Keep using signed URLs (works fine)
-- **PDFs**: Download the file and encode as a `data:application/pdf;base64,...` data URL
+Replace every `profiles.role` check with the equivalent `has_role(auth.uid(), 'role')` call. No code changes needed -- this is purely a database migration.
 
-To address the previous memory issue (12.5 MB PDF), we will use a more efficient base64 encoding method that avoids creating massive intermediate strings.
+### Example transformation
 
-### Changes (1 file)
-
-**`supabase/functions/extract-enrollment-scan/index.ts`** (lines 158-173)
-
-Replace the unified signed-URL block with:
-
-```typescript
-if (isPDF) {
-  // PDFs must be sent as base64 data URLs - gateway doesn't support PDF via URL
-  const { data: fileData, error: downloadError } = await supabase.storage
-    .from('scanned-forms')
-    .download(file_url);
-
-  if (downloadError || !fileData) {
-    throw new Error(`Failed to download: ${downloadError?.message}`);
-  }
-
-  // Convert to base64 using ArrayBuffer (more memory-efficient)
-  const bytes = new Uint8Array(await fileData.arrayBuffer());
-  const chunkSize = 8192;
-  let binary = '';
-  for (let i = 0; i < bytes.length; i += chunkSize) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
-  }
-  modelFileUrl = `data:application/pdf;base64,${btoa(binary)}`;
-  console.log("PDF converted to base64 data URL, size:", bytes.length);
-
-} else if (isImage) {
-  // Images work fine via signed URL
-  const { data: signed, error: signedError } = await supabase.storage
-    .from('scanned-forms')
-    .createSignedUrl(file_url, 300);
-
-  if (signedError || !signed?.signedUrl) {
-    throw new Error(`Failed to create signed URL: ${signedError?.message}`);
-  }
-  modelFileUrl = signed.signedUrl;
-  console.log("Signed URL created for image");
-
-} else {
-  throw new Error(`Unsupported file type: ${file_url}`);
-}
+**Before:**
+```sql
+CREATE POLICY "Staff can insert enrollment registrations"
+ON enrollment_registrations FOR INSERT
+WITH CHECK (
+  EXISTS (SELECT 1 FROM profiles 
+    WHERE profiles.id = auth.uid() 
+    AND (profiles.role = 'admin' OR profiles.role = 'trainer'))
+);
 ```
 
-### Why This Should Work Now
+**After:**
+```sql
+CREATE POLICY "Staff can insert enrollment registrations"
+ON enrollment_registrations FOR INSERT
+WITH CHECK (
+  has_role(auth.uid(), 'admin') OR has_role(auth.uid(), 'trainer')
+);
+```
 
-The previous memory crash used `Array.from(bytes).map(b => String.fromCharCode(b)).join("")` which creates an array of 12.5 million single-character strings then joins them -- very memory-intensive. The chunked approach processes 8KB at a time using `subarray` views, dramatically reducing peak memory usage.
+### Tables and Policies to Migrate
 
-### No Other Changes Needed
+| Table | Policy | Current Check | New Check |
+|-------|--------|--------------|-----------|
+| enrollment_registrations | Staff can insert | profiles.role = admin/trainer | has_role admin/trainer |
+| enrollment_registrations | Staff can update | profiles.role = admin/trainer | has_role admin/trainer |
+| enrollment_registrations | Staff can view all | profiles.role = admin/trainer | has_role admin/trainer |
+| enrollment_registrations | Staff can delete | profiles.role = admin | has_role admin |
+| invoice_items | All 6 policies | profiles.role checks | has_role equivalents |
+| invoices | All 4 policies | profiles.role checks | has_role equivalents |
+| client_messages | Staff can view/insert | profiles.role = admin/trainer | has_role admin/trainer |
+| scan_processing_jobs | Admins can manage | Mixed (partially done) | Clean up to has_role only |
+| branch_branding | Platform admins | profiles.role = platform_admin | has_role platform_admin |
+| branch_notifications | Platform admins | profiles.role = platform_admin | has_role platform_admin |
+| storage objects | Multiple policies | profiles.role checks | has_role equivalents |
 
-- The prompt already handles multi-page scanning
-- Frontend is unchanged
-- Image handling continues to work via signed URLs
+### Implementation
+
+This will be done via SQL statements that:
+1. DROP each old policy
+2. CREATE the replacement policy with `has_role()` checks
+
+All changes are atomic -- each policy replacement is independent so if one fails, the others still work.
+
+### No Code Changes Needed
+
+The `has_role()` security definer function already exists and is used by newer policies. This migration simply brings older policies in line with the established pattern.
 
