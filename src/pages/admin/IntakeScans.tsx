@@ -89,15 +89,15 @@ export default function IntakeScans() {
 
         <div className="grid grid-cols-12 gap-4 h-[calc(100%-4rem)]">
           {/* Left Panel - Upload & Queue */}
-          <div className="col-span-3 h-full">
-            <UploadPanel 
+          <div className="col-span-4 h-full">
+            <UploadPanel
               onSelectJob={handleSelectJob}
               selectedJobId={selectedJob?.id || null}
             />
           </div>
 
           {/* Center Panel - Review & Edit */}
-          <div className="col-span-6 h-full">
+          <div className="col-span-5 h-full">
             <ReviewPanel 
               job={selectedJob}
               editedData={editedData}
