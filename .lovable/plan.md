@@ -1,38 +1,70 @@
 
 
-# Fix: Memory Limit Exceeded When Processing Full PDF
+# Fix: PDF Extraction - Use Base64 Data URL for PDFs, Signed URL for Images
 
-## Root Cause
+## Problem
 
-The PDF is 12.5 MB. Base64 encoding inflates this to ~16.6 MB. Combined with the edge function's own runtime overhead, this exceeds the memory limit. The logs confirm:
+The AI gateway (Google AI Studio) only accepts image URLs (PNG, JPEG, WebP, GIF). PDFs must be sent as **base64 data URLs** with the MIME type specified. The signed URL approach works for images but fails for PDFs with error: "Unsupported image format for URL."
 
-```
-PDF size: 12487184
-Memory limit exceeded
-```
+## Solution
 
-## Solution: Use Signed URL Instead of Base64
+Split the handling back into two paths:
+- **Images**: Keep using signed URLs (works fine)
+- **PDFs**: Download the file and encode as a `data:application/pdf;base64,...` data URL
 
-Instead of downloading the PDF, converting to base64, and embedding it in the request body, we should pass a **signed URL** to the AI model. The Lovable AI Gateway (backed by Gemini) can fetch the PDF directly from the URL, keeping edge function memory usage minimal.
+To address the previous memory issue (12.5 MB PDF), we will use a more efficient base64 encoding method that avoids creating massive intermediate strings.
 
 ### Changes (1 file)
 
-**`supabase/functions/extract-enrollment-scan/index.ts`**
+**`supabase/functions/extract-enrollment-scan/index.ts`** (lines 158-173)
 
-Replace the PDF handling block. Instead of downloading the file and base64-encoding it, generate a signed URL (same approach already used for images) and pass that as the `image_url`:
+Replace the unified signed-URL block with:
 
-- Remove the PDF download + base64 conversion block
-- For PDFs, create a signed URL (e.g., 5 minutes expiry) just like the image path already does
-- Pass the signed URL in the `image_url` content block
+```typescript
+if (isPDF) {
+  // PDFs must be sent as base64 data URLs - gateway doesn't support PDF via URL
+  const { data: fileData, error: downloadError } = await supabase.storage
+    .from('scanned-forms')
+    .download(file_url);
 
-This unifies the PDF and image paths into a single approach: signed URL for both.
+  if (downloadError || !fileData) {
+    throw new Error(`Failed to download: ${downloadError?.message}`);
+  }
 
-### Fallback
+  // Convert to base64 using ArrayBuffer (more memory-efficient)
+  const bytes = new Uint8Array(await fileData.arrayBuffer());
+  const chunkSize = 8192;
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+  }
+  modelFileUrl = `data:application/pdf;base64,${btoa(binary)}`;
+  console.log("PDF converted to base64 data URL, size:", bytes.length);
 
-If the signed URL approach does not work for PDFs through the gateway (some models require base64 for PDFs), we will fall back to re-introducing `pdf-lib` to split the PDF into individual pages and send each page as a separate, smaller base64 content block. This keeps each chunk well within memory limits while still letting the AI see all pages.
+} else if (isImage) {
+  // Images work fine via signed URL
+  const { data: signed, error: signedError } = await supabase.storage
+    .from('scanned-forms')
+    .createSignedUrl(file_url, 300);
+
+  if (signedError || !signed?.signedUrl) {
+    throw new Error(`Failed to create signed URL: ${signedError?.message}`);
+  }
+  modelFileUrl = signed.signedUrl;
+  console.log("Signed URL created for image");
+
+} else {
+  throw new Error(`Unsupported file type: ${file_url}`);
+}
+```
+
+### Why This Should Work Now
+
+The previous memory crash used `Array.from(bytes).map(b => String.fromCharCode(b)).join("")` which creates an array of 12.5 million single-character strings then joins them -- very memory-intensive. The chunked approach processes 8KB at a time using `subarray` views, dramatically reducing peak memory usage.
 
 ### No Other Changes Needed
 
-- The prompt already instructs the AI to scan all pages and find the form -- no prompt changes required.
-- No frontend changes needed.
+- The prompt already handles multi-page scanning
+- Frontend is unchanged
+- Image handling continues to work via signed URLs
 
