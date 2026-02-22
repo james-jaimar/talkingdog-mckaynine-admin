@@ -155,21 +155,41 @@ serve(async (req) => {
 
     let modelFileUrl = "";
 
-    if (isPDF || isImage) {
-      // Use signed URL for both PDFs and images - avoids memory issues with large files
-      const { data: signed, error: signedError } = await supabase.storage
+    if (isPDF) {
+      // PDFs must be sent as base64 data URLs - gateway doesn't support PDF via URL
+      const { data: fileData, error: downloadError } = await supabase.storage
         .from('scanned-forms')
-        .createSignedUrl(file_url, 300); // 5 min expiry
+        .download(file_url);
 
-      if (signedError || !signed?.signedUrl) {
-        console.error("Signed URL error:", signedError);
-        throw new Error(`Failed to create signed URL: ${signedError?.message || 'Unknown error'}`);
+      if (downloadError || !fileData) {
+        throw new Error(`Failed to download PDF: ${downloadError?.message}`);
       }
 
+      // Convert to base64 using chunked approach to avoid memory spikes
+      const bytes = new Uint8Array(await fileData.arrayBuffer());
+      console.log("PDF downloaded, size:", bytes.length);
+      const chunkSize = 8192;
+      let binary = '';
+      for (let i = 0; i < bytes.length; i += chunkSize) {
+        binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+      }
+      modelFileUrl = `data:application/pdf;base64,${btoa(binary)}`;
+      console.log("PDF converted to base64 data URL");
+
+    } else if (isImage) {
+      // Images work fine via signed URL
+      const { data: signed, error: signedError } = await supabase.storage
+        .from('scanned-forms')
+        .createSignedUrl(file_url, 300);
+
+      if (signedError || !signed?.signedUrl) {
+        throw new Error(`Failed to create signed URL: ${signedError?.message}`);
+      }
       modelFileUrl = signed.signedUrl;
-      console.log("Signed URL created for", isPDF ? "PDF" : "image");
+      console.log("Signed URL created for image");
+
     } else {
-      throw new Error(`Unsupported file type for extraction: ${file_url}`);
+      throw new Error(`Unsupported file type: ${file_url}`);
     }
 
     console.log("Model file URL prepared");
