@@ -1,32 +1,27 @@
 
 
-# Fix: Dashboard Revenue Discrepancy (R1,490 Missing)
+# Fix: IO Inventory Code Not Showing in Edit Modal
 
-## Root Cause Found
+## Root Cause
 
-The discrepancy is exactly R1,490.00 -- caused by invoice **INV-McD-2601-0055** (Jane & Richard, R1,490.00). This invoice belongs to the **Delta branch** (`invoice.branch_id = Delta`), but the client's `branch_id` is set to **Randburg**.
+The `io_inventory_code` is saved to the database correctly when you update a class, but it is **not fetched back** when classes are loaded. The Supabase `.select()` queries in `useClassQuery.ts` list every column explicitly but omit `io_inventory_code`. So when you reopen the edit modal, the field is always blank.
 
-The Dashboard filters invoices using `inv.client?.branch_id === currentBranch?.id` (the **client's** branch), while the Financial Report filters using `invoice.branch_id` (the **invoice's** branch). Since this client is registered under Randburg but trained at Delta, their invoice gets dropped from the Dashboard but correctly appears in the Financial Report.
+Additionally, the `ClassWithSchedules` TypeScript interface is missing the `io_inventory_code` property, which means even if the data were fetched, TypeScript would not recognize it (the form-defaults file works around this with `(classData as any).io_inventory_code`).
 
-There is also a second invoice going the other direction: **INV-McR-2601-0012** (Simone Dias, R1,755.00) belongs to Randburg but the client is registered under Delta. This would cause the same discrepancy on the Randburg dashboard.
+## Changes
 
-## The Fix
+### 1. Add `io_inventory_code` to the `ClassWithSchedules` interface
+**File:** `src/components/classes/hooks/types/class-with-schedules.ts`
+- Add `io_inventory_code?: string | null;` (matching the `Class` interface)
 
-Change the branch filter in the Dashboard from `inv.client?.branch_id` to `inv.branch_id` -- matching how the Financial Report and the RPC already work. The invoice's own `branch_id` field is the authoritative record of which branch the revenue belongs to.
+### 2. Add `io_inventory_code` to both SELECT queries
+**File:** `src/components/classes/hooks/class-ordering/useClassQuery.ts`
+- Add `io_inventory_code` to the first select list (around line 64, after `report_month_override`)
+- Add `io_inventory_code` to the second select list (around line 99, after `report_month_override`)
 
-## Technical Details
+### 3. Remove the `as any` cast in form-defaults
+**File:** `src/components/classes/hooks/utils/form-defaults.ts`
+- Change `(classData as any).io_inventory_code` to `classData.io_inventory_code` since the type will now include the property
 
-### Files to edit:
-
-1. **`src/components/financial/FinancialDashboardContent.tsx`** (line 38)
-   - Change: `inv.client?.branch_id === currentBranch?.id`
-   - To: `inv.branch_id === currentBranch?.id`
-   - Update the warning log accordingly
-
-2. **`src/pages/FinancialDashboard.tsx`** (line 42)
-   - Same change -- this standalone dashboard page has the identical bug
-
-Both files use the same pattern. The `branch_id` field is already available on the Invoice type (defined in `src/hooks/invoices/types.ts` line 56) and is returned by the `get_invoices_with_items` RPC.
-
-No database changes needed. No other files affected.
+That is the complete fix -- three small, targeted changes. The submission/save side is already working correctly.
 
