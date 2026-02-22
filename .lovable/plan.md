@@ -1,27 +1,26 @@
 
 
-# Fix: IO Inventory Code Not Showing in Edit Modal
+# Fix: IO Inventory Code Missing on 2nd Dog Line Item
 
-## Root Cause
+## Problem
 
-The `io_inventory_code` is saved to the database correctly when you update a class, but it is **not fetched back** when classes are loaded. The Supabase `.select()` queries in `useClassQuery.ts` list every column explicitly but omit `io_inventory_code`. So when you reopen the edit modal, the field is always blank.
+When a second dog is added to an existing invoice via the multi-dog discount flow (`addToExistingInvoice`), the `io_inventory_code` is not included on the new line items. The database confirms this: Molly's item has `BNB` but Fagin's item has `null`.
 
-Additionally, the `ClassWithSchedules` TypeScript interface is missing the `io_inventory_code` property, which means even if the data were fetched, TypeScript would not recognize it (the form-defaults file works around this with `(classData as any).io_inventory_code`).
+The root cause is that `addToExistingInvoice` was written before IO inventory codes were introduced, so it neither accepts nor uses the code.
 
-## Changes
+## Fix (2 files)
 
-### 1. Add `io_inventory_code` to the `ClassWithSchedules` interface
-**File:** `src/components/classes/hooks/types/class-with-schedules.ts`
-- Add `io_inventory_code?: string | null;` (matching the `Class` interface)
+### 1. `src/components/classes/handlers/hooks/add-handler-modal/addToExistingInvoice.ts`
 
-### 2. Add `io_inventory_code` to both SELECT queries
-**File:** `src/components/classes/hooks/class-ordering/useClassQuery.ts`
-- Add `io_inventory_code` to the first select list (around line 64, after `report_month_override`)
-- Add `io_inventory_code` to the second select list (around line 99, after `report_month_override`)
+- Add `classIOInventoryCode?: string | null` to the `AddToExistingInvoiceProps` interface (line 8-19)
+- Add `io_inventory_code` to the item type definition (lines 87-95)
+- Set `io_inventory_code: classIOInventoryCode || null` on course fee items (line 110-118)
+- Set `io_inventory_code: 'EN'` on enrollment fee items (line 124-132), matching the pattern in `createInvoiceForHandler.ts`
 
-### 3. Remove the `as any` cast in form-defaults
-**File:** `src/components/classes/hooks/utils/form-defaults.ts`
-- Change `(classData as any).io_inventory_code` to `classData.io_inventory_code` since the type will now include the property
+### 2. `src/components/classes/handlers/hooks/add-handler-modal/addHandlerToClass.ts`
 
-That is the complete fix -- three small, targeted changes. The submission/save side is already working correctly.
+- Pass the existing `classDetails.ioInventoryCode` to the `addToExistingInvoice` call (around line 188-199), adding:
+  `classIOInventoryCode: classDetails.ioInventoryCode`
+
+No database migration needed. The `io_inventory_code` column already exists on `invoice_items`.
 
