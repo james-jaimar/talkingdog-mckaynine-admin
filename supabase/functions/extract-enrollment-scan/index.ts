@@ -155,32 +155,11 @@ serve(async (req) => {
 
     let modelFileUrl = "";
 
-    if (isPDF) {
-      // Download full PDF and send all pages to the AI model for form detection
-      const { data: fileData, error: downloadError } = await supabase.storage
-        .from('scanned-forms')
-        .download(file_url);
-
-      if (downloadError || !fileData) {
-        console.error("Storage download error:", downloadError);
-        throw new Error(`Failed to download file from storage: ${downloadError?.message || 'Unknown error'}`);
-      }
-
-      const originalBytes = new Uint8Array(await fileData.arrayBuffer());
-      console.log("PDF size:", originalBytes.byteLength);
-
-      const pdfBase64 = btoa(
-        Array.from(originalBytes)
-          .map((b) => String.fromCharCode(b))
-          .join("")
-      );
-
-      modelFileUrl = `data:application/pdf;base64,${pdfBase64}`;
-    } else if (isImage) {
-      // For images, signed URL is fine (Gemini supports PNG/JPEG/WebP/GIF via URL).
+    if (isPDF || isImage) {
+      // Use signed URL for both PDFs and images - avoids memory issues with large files
       const { data: signed, error: signedError } = await supabase.storage
         .from('scanned-forms')
-        .createSignedUrl(file_url, 60);
+        .createSignedUrl(file_url, 300); // 5 min expiry
 
       if (signedError || !signed?.signedUrl) {
         console.error("Signed URL error:", signedError);
@@ -188,6 +167,7 @@ serve(async (req) => {
       }
 
       modelFileUrl = signed.signedUrl;
+      console.log("Signed URL created for", isPDF ? "PDF" : "image");
     } else {
       throw new Error(`Unsupported file type for extraction: ${file_url}`);
     }
