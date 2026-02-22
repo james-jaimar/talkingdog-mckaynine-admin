@@ -74,7 +74,7 @@ export default function IntakeScans() {
   };
 
   return (
-    <DashboardLayout>
+    <DashboardLayout fullWidth>
       <Helmet>
         <title>Intake Scans - McKaynine</title>
       </Helmet>
