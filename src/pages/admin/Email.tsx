@@ -273,6 +273,7 @@ export default function EmailPage() {
     isLoadingOutbox,
     isLoadingSent,
     processQueue,
+    approveEmail,
     retryEmail,
     deleteFromQueue,
     resendEmail,
@@ -320,6 +321,8 @@ export default function EmailPage() {
 
   const getStatusBadge = (status: string, retryCount?: number) => {
     switch (status) {
+      case "review":
+        return <Badge variant="outline" className="gap-1 border-amber-500 text-amber-600"><AlertCircle className="h-3 w-3" /> Review</Badge>;
       case "pending":
         return <Badge variant="secondary" className="gap-1"><Clock className="h-3 w-3" /> Pending</Badge>;
       case "sending":
@@ -333,6 +336,7 @@ export default function EmailPage() {
     }
   };
 
+  const reviewCount = outbox.filter(e => e.status === "review").length;
   const pendingCount = outbox.filter(e => e.status === "pending").length;
   const failedCount = outbox.filter(e => e.status === "failed").length;
   const sendingCount = outbox.filter(e => e.status === "sending").length;
@@ -389,7 +393,13 @@ export default function EmailPage() {
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-4 gap-4">
+            <div className="grid grid-cols-5 gap-4">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardDescription>Needs Review</CardDescription>
+                  <CardTitle className="text-2xl text-amber-600">{reviewCount}</CardTitle>
+                </CardHeader>
+              </Card>
               <Card>
                 <CardHeader className="pb-2">
                   <CardDescription>Pending</CardDescription>
@@ -483,6 +493,21 @@ export default function EmailPage() {
                                 )}
                               </div>
                               <div className="flex items-center gap-2 ml-4">
+                                {email.status === "review" && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="text-green-600 hover:text-green-700 border-green-500"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      approveEmail.mutate(email.id);
+                                    }}
+                                    disabled={approveEmail.isPending}
+                                  >
+                                    <CheckCircle2 className="h-4 w-4 mr-1" />
+                                    Approve
+                                  </Button>
+                                )}
                                 {email.status === "failed" && (
                                   <Button
                                     size="sm"

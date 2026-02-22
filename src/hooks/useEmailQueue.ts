@@ -12,7 +12,7 @@ export interface QueuedEmail {
   from_email: string | null;
   from_name: string | null;
   attachments: any[];
-  status: "pending" | "sending" | "sent" | "failed";
+  status: "pending" | "sending" | "sent" | "failed" | "review";
   retry_count: number;
   max_retries: number;
   error_message: string | null;
@@ -58,7 +58,7 @@ export function useEmailQueue() {
           handler:clients!email_queue_handler_id_fkey(first_name, last_name, email)
         `)
         .eq("branch_id", currentBranch.id)
-        .in("status", ["pending", "sending", "failed"])
+        .in("status", ["pending", "sending", "failed", "review"])
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -174,6 +174,29 @@ export function useEmailQueue() {
     },
   });
 
+  // Approve a review email (move to pending for processing)
+  const approveEmail = useMutation({
+    mutationFn: async (emailId: string) => {
+      const { error } = await supabase
+        .from("email_queue")
+        .update({
+          status: "pending",
+          scheduled_for: new Date().toISOString(),
+        })
+        .eq("id", emailId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["email-queue"] });
+      toast.success("Email approved for sending");
+    },
+    onError: (error) => {
+      console.error("Error approving email:", error);
+      toast.error("Failed to approve email");
+    },
+  });
+
   // Process queue (trigger edge function)
   const processQueue = useMutation({
     mutationFn: async () => {
@@ -249,6 +272,7 @@ export function useEmailQueue() {
     isLoadingOutbox: outboxQuery.isLoading,
     isLoadingSent: sentQuery.isLoading,
     addToQueue,
+    approveEmail,
     retryEmail,
     deleteFromQueue,
     processQueue,

@@ -91,7 +91,7 @@ export function useEmailInvoice() {
             subject: subject,
             html_content: htmlContent,
             handler_id: invoiceDetails.client_id,
-            status: "pending",
+            status: "review",
             attachments: attachments.length > 0 ? attachments : null,
           });
 
