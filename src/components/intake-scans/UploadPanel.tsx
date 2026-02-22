@@ -166,20 +166,22 @@ export function UploadPanel({ onSelectJob, selectedJobId }: UploadPanelProps) {
                   )}
                   onClick={() => onSelectJob(job)}
                 >
-                  <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{job.filename}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {job.extracted_data?.owner?.first_name 
-                        ? `${job.extracted_data.owner.first_name} ${job.extracted_data.owner.last_name || ''}`
-                        : 'Not extracted'}
-                      {job.extracted_data?.dogs?.length 
-                        ? ` · ${job.extracted_data.dogs.length} dog(s)`
-                        : ''}
-                    </p>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <p className="text-xs text-muted-foreground">
+                        {job.extracted_data?.owner?.first_name 
+                          ? `${job.extracted_data.owner.first_name} ${job.extracted_data.owner.last_name || ''}`
+                          : 'Not extracted'}
+                        {job.extracted_data?.dogs?.length 
+                          ? ` · ${job.extracted_data.dogs.length} dog(s)`
+                          : ''}
+                      </p>
+                      {getStatusBadge(job.status)}
+                    </div>
                   </div>
-                  {getStatusBadge(job.status)}
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1 flex-shrink-0">
                     {job.status === 'queued' && (
                       <Button
                         variant="ghost"
