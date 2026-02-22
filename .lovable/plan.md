@@ -1,26 +1,34 @@
 
 
-# Fix: IO Inventory Code Missing on 2nd Dog Line Item
+# Fix: Intake Scans Upload Queue Column Too Narrow
 
 ## Problem
 
-When a second dog is added to an existing invoice via the multi-dog discount flow (`addToExistingInvoice`), the `io_inventory_code` is not included on the new line items. The database confirms this: Molly's item has `BNB` but Fagin's item has `null`.
+The Upload & Queue panel uses `col-span-3` (25% width) in a 12-column grid. The job list items contain a filename, subtitle, status badge, action buttons (Play/Retry + Delete), which together overflow the available width, hiding the delete button.
 
-The root cause is that `addToExistingInvoice` was written before IO inventory codes were introduced, so it neither accepts nor uses the code.
+## Solution
 
-## Fix (2 files)
+Two complementary changes to make everything fit:
 
-### 1. `src/components/classes/handlers/hooks/add-handler-modal/addToExistingInvoice.ts`
+### 1. Widen the left column, narrow the center column
 
-- Add `classIOInventoryCode?: string | null` to the `AddToExistingInvoiceProps` interface (line 8-19)
-- Add `io_inventory_code` to the item type definition (lines 87-95)
-- Set `io_inventory_code: classIOInventoryCode || null` on course fee items (line 110-118)
-- Set `io_inventory_code: 'EN'` on enrollment fee items (line 124-132), matching the pattern in `createInvoiceForHandler.ts`
+**File: `src/pages/admin/Settings.tsx`** (line 104-125)
+- Change left panel from `col-span-3` to `col-span-4`
+- Change center panel from `col-span-6` to `col-span-5`
+- Right panel stays `col-span-3`
+- Total remains 12
 
-### 2. `src/components/classes/handlers/hooks/add-handler-modal/addHandlerToClass.ts`
+**File: `src/pages/admin/IntakeScans.tsx`** (same grid, standalone page)
+- Apply the same column width change: 4 / 5 / 3
 
-- Pass the existing `classDetails.ioInventoryCode` to the `addToExistingInvoice` call (around line 188-199), adding:
-  `classIOInventoryCode: classDetails.ioInventoryCode`
+### 2. Compact the job list items in UploadPanel
 
-No database migration needed. The `io_inventory_code` column already exists on `invoice_items`.
+**File: `src/components/intake-scans/UploadPanel.tsx`**
+
+- Move the status badge below the filename (on the same line as the subtitle) instead of inline with the action buttons, freeing horizontal space
+- This keeps all information visible without needing an even wider column
+
+### Technical Detail
+
+In `UploadPanel.tsx`, restructure the job list item layout so the badge sits under the filename alongside the extracted-name subtitle, and only the action icon buttons remain on the right side. This is a layout-only change within the existing `jobs.map()` render block.
 
