@@ -161,14 +161,14 @@ export function UploadPanel({ onSelectJob, selectedJobId }: UploadPanelProps) {
                 <div
                   key={job.id}
                   className={cn(
-                    "flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors",
+                    "flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors overflow-hidden",
                     selectedJobId === job.id ? "bg-accent border-primary" : "hover:bg-accent/50"
                   )}
                   onClick={() => onSelectJob(job)}
                 >
                   <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{job.filename}</p>
+                    <p className="text-sm font-medium truncate max-w-full">{job.filename}</p>
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <p className="text-xs text-muted-foreground">
                         {job.extracted_data?.owner?.first_name 
