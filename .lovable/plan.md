@@ -1,48 +1,40 @@
 
 
-# Fix: Replace ScrollArea with Plain Overflow Container
+# Show Only Latest Yoga Entry Per Dog
 
-## Why Previous Fixes Failed
+## What Changes
 
-Every fix so far has tried to constrain children inside the Radix `ScrollArea` viewport. But the viewport's internal structure uses `display: table; min-width: 100%` on a generated child div. This means:
-- `w-full` resolves to 100% of the table, which grows with content -- no constraint
-- `overflow-hidden` on children cannot work because the parent never stops growing
-- `truncate`, `min-w-0`, `max-w-full` -- all defeated by the same root cause
+In the handlers table, the Yoga column currently shows every completed month for each dog. Since Yoga is a recurring monthly class, this list grows indefinitely. We will filter Yoga entries so only the most recent one per dog is shown.
 
-No combination of child styles can fix a parent that expands infinitely.
+## How It Works
 
-## The Fix
+In `src/components/handlers/hooks/useHandlersData.ts`, where class statuses are mapped (around line 241-260), after collecting all statuses for a class type, we add a filter specifically for "Yoga":
 
-Replace `<ScrollArea>` with a plain `<div className="flex-1 overflow-y-auto">` in `UploadPanel.tsx`. This gives us a normal block layout where `w-full`, `truncate`, and `overflow-hidden` work as expected.
+- Group Yoga entries by `dog_id`
+- For each dog, keep only the entry with the latest `period` (e.g., "Feb 26" > "Jan 26")
+- All other class types remain unchanged -- every entry is shown as before
 
-### Changes in `src/components/intake-scans/UploadPanel.tsx`
+## Technical Detail
 
-**Before (lines 148-234):**
-```tsx
-<ScrollArea className="flex-1">
-  <div className="w-full overflow-hidden">
-  <div className="space-y-2">
-    {/* ...job cards... */}
-  </div>
-  </div>
-</ScrollArea>
+**File: `src/components/handlers/hooks/useHandlersData.ts`** (lines ~242-259)
+
+After the line `const foundAll = allStatuses.filter(...)`, add logic:
+
+```typescript
+// For Yoga, only keep the latest entry per dog
+let statusesToUse = foundAll;
+if (classType === 'Yoga' && foundAll.length > 1) {
+  const latestByDog = new Map<string, typeof foundAll[0]>();
+  for (const entry of foundAll) {
+    const dogKey = entry.dog_id || 'unknown';
+    const existing = latestByDog.get(dogKey);
+    if (!existing || (entry.period && (!existing.period || entry.period > existing.period))) {
+      latestByDog.set(dogKey, entry);
+    }
+  }
+  statusesToUse = Array.from(latestByDog.values());
+}
 ```
 
-**After:**
-```tsx
-<div className="flex-1 overflow-y-auto">
-  <div className="space-y-2">
-    {/* ...job cards... (unchanged) */}
-  </div>
-</div>
-```
+Then map `statusesToUse` instead of `foundAll`. This is a single, contained change -- no other files are affected.
 
-That's it. Remove the `ScrollArea` wrapper and its unnecessary inner `w-full overflow-hidden` div, replace with a simple scrollable div. All existing card-level classes (`truncate`, `min-w-0`, `overflow-hidden`, `flex-shrink-0`) will finally work because the parent uses normal block/flex layout.
-
-The `ScrollArea` import can also be removed from the file since it's no longer used.
-
-## Why This is Safe
-
-- `ScrollArea` was only providing a styled scrollbar. `overflow-y-auto` provides native scrollbar behavior -- functionally identical
-- No other component depends on this specific `ScrollArea` usage
-- All job card markup stays exactly the same
