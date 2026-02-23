@@ -241,7 +241,20 @@ export function useHandlersData() {
         const class_statuses = CLASS_TYPES.flatMap((classType) => {
             const foundAll = allStatuses.filter(s => s.class_type === classType);
             if (foundAll.length === 0) return [{ class_type: classType, status: undefined, period: undefined }];
-            return foundAll.map(found => ({
+            // For Yoga, only keep the latest entry per dog
+            let statusesToUse = foundAll;
+            if (classType === 'Yoga' && foundAll.length > 1) {
+              const latestByDog = new Map<string, typeof foundAll[0]>();
+              for (const entry of foundAll) {
+                const dogKey = entry.dog_id || 'unknown';
+                const existing = latestByDog.get(dogKey);
+                if (!existing || (entry.period && (!existing.period || entry.period > existing.period))) {
+                  latestByDog.set(dogKey, entry);
+                }
+              }
+              statusesToUse = Array.from(latestByDog.values());
+            }
+            return statusesToUse.map(found => ({
               id: found.id,
               class_type: classType,
               status: found.result_status || (found.completed ? "completed" : found.status),
