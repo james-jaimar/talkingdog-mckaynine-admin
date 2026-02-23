@@ -146,6 +146,7 @@ export function UploadPanel({ onSelectJob, selectedJobId }: UploadPanelProps) {
 
         {/* Queue list */}
         <ScrollArea className="flex-1">
+          <div className="w-full overflow-hidden">
           <div className="space-y-2">
             {isLoading ? (
               <div className="text-center py-4 text-muted-foreground">
@@ -229,6 +230,7 @@ export function UploadPanel({ onSelectJob, selectedJobId }: UploadPanelProps) {
                 </div>
               ))
             )}
+          </div>
           </div>
         </ScrollArea>
       </CardContent>
