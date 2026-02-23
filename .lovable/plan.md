@@ -1,43 +1,48 @@
 
 
-# Fix: Force Width Constraint Inside ScrollArea
+# Fix: Replace ScrollArea with Plain Overflow Container
 
-## Root Cause (for real this time)
+## Why Previous Fixes Failed
 
-The Radix `ScrollArea` viewport renders an inner div with `display: table; min-width: 100%`. This means:
-- The inner div expands to fit its content's natural width
-- Any `overflow-hidden`, `truncate`, or `min-w-0` on children is meaningless because the parent has no fixed width -- it just grows
-- The fixes we've been applying to the card rows are correct in isolation but are defeated by this parent behavior
+Every fix so far has tried to constrain children inside the Radix `ScrollArea` viewport. But the viewport's internal structure uses `display: table; min-width: 100%` on a generated child div. This means:
+- `w-full` resolves to 100% of the table, which grows with content -- no constraint
+- `overflow-hidden` on children cannot work because the parent never stops growing
+- `truncate`, `min-w-0`, `max-w-full` -- all defeated by the same root cause
 
-## The Actual Fix
+No combination of child styles can fix a parent that expands infinitely.
 
-Wrap the job list content inside the `ScrollArea` with a div that has `overflow-hidden` and a hard width constraint (`w-full`). This creates a fixed-width boundary that the `display: table` parent cannot override.
+## The Fix
 
-### `src/components/intake-scans/UploadPanel.tsx`
+Replace `<ScrollArea>` with a plain `<div className="flex-1 overflow-y-auto">` in `UploadPanel.tsx`. This gives us a normal block layout where `w-full`, `truncate`, and `overflow-hidden` work as expected.
 
-Change the ScrollArea section (around line 148):
+### Changes in `src/components/intake-scans/UploadPanel.tsx`
 
-**Before:**
+**Before (lines 148-234):**
 ```tsx
 <ScrollArea className="flex-1">
+  <div className="w-full overflow-hidden">
   <div className="space-y-2">
-    ...jobs.map(...)
+    {/* ...job cards... */}
+  </div>
   </div>
 </ScrollArea>
 ```
 
 **After:**
 ```tsx
-<ScrollArea className="flex-1">
-  <div className="w-full overflow-hidden">
-    <div className="space-y-2">
-      ...jobs.map(...)
-    </div>
+<div className="flex-1 overflow-y-auto">
+  <div className="space-y-2">
+    {/* ...job cards... (unchanged) */}
   </div>
-</ScrollArea>
+</div>
 ```
 
-That's it. One wrapper div. The `w-full` resolves to the ScrollArea viewport's width (100%), and `overflow-hidden` prevents the table layout from expanding beyond that. All existing card-level fixes (`truncate`, `min-w-0`, `flex-shrink-0`) then work as intended.
+That's it. Remove the `ScrollArea` wrapper and its unnecessary inner `w-full overflow-hidden` div, replace with a simple scrollable div. All existing card-level classes (`truncate`, `min-w-0`, `overflow-hidden`, `flex-shrink-0`) will finally work because the parent uses normal block/flex layout.
 
-No other files need changes.
+The `ScrollArea` import can also be removed from the file since it's no longer used.
 
+## Why This is Safe
+
+- `ScrollArea` was only providing a styled scrollbar. `overflow-y-auto` provides native scrollbar behavior -- functionally identical
+- No other component depends on this specific `ScrollArea` usage
+- All job card markup stays exactly the same
