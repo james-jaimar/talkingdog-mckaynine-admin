@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
+
 import { Upload, FileText, Loader2, Trash2, Eye, Play, RefreshCw } from "lucide-react";
 import { ScanProcessingJob } from "./types";
 import { useProcessingJobs } from "./hooks/useProcessingJobs";
@@ -145,8 +145,7 @@ export function UploadPanel({ onSelectJob, selectedJobId }: UploadPanelProps) {
         </div>
 
         {/* Queue list */}
-        <ScrollArea className="flex-1">
-          <div className="w-full overflow-hidden">
+        <div className="flex-1 overflow-y-auto min-h-0">
           <div className="space-y-2">
             {isLoading ? (
               <div className="text-center py-4 text-muted-foreground">
@@ -231,8 +230,7 @@ export function UploadPanel({ onSelectJob, selectedJobId }: UploadPanelProps) {
               ))
             )}
           </div>
-          </div>
-        </ScrollArea>
+        </div>
       </CardContent>
     </Card>
   );
