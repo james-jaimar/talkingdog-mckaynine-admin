@@ -1,66 +1,80 @@
 
 
-# Make Tasks Branch-Specific
+# Admin Fee Payments Tracking
 
-## Problem
-The `handler_tasks` table has no `branch_id` column. All task queries (`useAllTasks`, `usePendingTaskCount`, `useHandlerTasks`) fetch tasks across all branches. When switching branches, admins see tasks from every branch mixed together.
+## Overview
 
-## Solution
+Ady currently pays herself the admin fee as a separate income line item each month. The system already calculates admin fees per class but has no way to record when those fees have actually been "paid out" (withdrawn). We'll add this capability following the same pattern as the existing franchise payment tracking.
 
-### 1. Add `branch_id` column to `handler_tasks` table
-Add a nullable `branch_id` (uuid) column with a foreign key to `branches`. Nullable so existing tasks aren't broken.
+## Where It Lives
 
-### 2. Backfill existing tasks
-Update existing tasks to inherit `branch_id` from their linked handler (client):
+A new **"Admin Payments"** tab in the Financial Reports page, sitting alongside the existing Franchise Report and Trainers tabs. This keeps all payment tracking in one place and follows the same month/year selector pattern Ady is already familiar with.
+
+## How It Works
+
+1. Ady selects a month and year (same selector pattern as Franchise Report)
+2. The system shows the calculated admin fees for that month, broken down by class
+3. A summary card shows: Total Admin Fees Due, Amount Paid, Status (Pending/Partial/Paid)
+4. Ady can click "Record Payment" to mark the admin fees as paid, with fields for:
+   - Amount paid
+   - Payment date
+   - Payment method (EFT, Cash, etc.)
+   - Reference number
+   - Notes
+
+## Technical Detail
+
+### Database: New `admin_payments` table
+
+Mirrors the `franchise_payments` pattern:
+
 ```text
-UPDATE handler_tasks
-SET branch_id = clients.branch_id
-FROM clients
-WHERE handler_tasks.handler_id = clients.id
-  AND handler_tasks.branch_id IS NULL;
+admin_payments
+  id              uuid (PK, default gen_random_uuid())
+  branch_id       uuid (FK -> branches, NOT NULL)
+  month           integer (NOT NULL, 1-12)
+  year            integer (NOT NULL)
+  total_admin_fees numeric (NOT NULL, default 0)
+  amount_paid     numeric (NOT NULL, default 0)
+  status          text (NOT NULL, default 'pending')  -- pending/partial/paid
+  payment_date    timestamptz
+  payment_method  text
+  payment_reference text
+  notes           text
+  created_at      timestamptz (default now())
+  updated_at      timestamptz (default now())
+  UNIQUE(branch_id, month, year)
 ```
 
-### 3. Filter queries by current branch
+RLS: Admin-only full access (same as `franchise_payments`).
 
-**`src/hooks/useAllTasks.ts`** -- Both `useAllTasks` and `usePendingTaskCount`:
-- Accept `branchId` parameter
-- Add `.eq("branch_id", branchId)` filter to the Supabase query
+### New Files
 
-**`src/hooks/useHandlerTasks.ts`** -- `pendingCountQuery`:
-- Not used on the Tasks page directly, but the pending count in the nav badge should also be branch-filtered
+| File | Purpose |
+|------|---------|
+| `src/hooks/useAdminPayments.ts` | Hook to fetch admin fee data for a month + upsert payment records (mirrors `useFranchiseMonthlyData` pattern) |
+| `src/components/invoices/reports/AdminPaymentsTab.tsx` | Main tab component with month/year selector and class breakdown table |
+| `src/components/invoices/reports/AdminPaymentDialog.tsx` | Dialog to record/edit payment (amount, date, method, reference, notes) |
 
-### 4. Pass branch context into queries
+### Modified Files
 
-**`src/pages/admin/Tasks.tsx`**:
-- Import `useBranch` and pass `currentBranch?.id` to `useAllTasks`
-
-**`src/components/layout/header/AdminNavigation.tsx`**:
-- Pass current branch ID to the pending task count hook
-
-### 5. Set `branch_id` on task creation (7 locations)
-
-Every place that inserts into `handler_tasks` needs to include `branch_id`. The branch comes from either:
-- The handler's `branch_id` (looked up from `clients`)
-- The current branch context
-- The class's `branch_id`
-
-Files to update:
-- `src/components/tasks/CreateTaskModal.tsx` -- use current branch from context
-- `src/components/handlers/table/CreateTaskFromNotesModal.tsx` -- use current branch
-- `src/components/trainer/TrainerNoteModal.tsx` -- use current branch
-- `src/components/classes/closure/ClassClosureModal.tsx` -- use class branch
-- `src/components/handlers/table/ClassStatusCell.tsx` -- use current branch
-- `src/components/classes/handlers/hooks/add-handler-modal/rebalanceHouseholdInvoices.ts` -- use branch from invoice/class context
-- `src/hooks/useHandlerTasks.ts` (createTask) -- caller must provide branch_id
-
-## Summary of Changes
-
-| Area | Change |
+| File | Change |
 |------|--------|
-| Database | Add `branch_id` column + backfill from handler's branch |
-| `useAllTasks` | Filter by `branch_id` |
-| `usePendingTaskCount` | Filter by `branch_id` |
-| Tasks page | Pass current branch to hook |
-| Admin nav badge | Pass current branch to count hook |
-| 7 insert locations | Include `branch_id` on every new task |
+| `src/pages/FinancialReports.tsx` | Add "Admin Payments" tab trigger + content |
+
+### Data Source
+
+The admin fee amounts come from the same `useClassFinancialData` / financial query pipeline already used by the Financial Dashboard. The hook will:
+1. Fetch invoices for the selected month (using `franchise_report_month` with `issued_date` fallback -- same as franchise report)
+2. Calculate admin fees per class using the class's `admin_fee_type` and `admin_fee_value`
+3. Look up the `admin_payments` record for that branch/month/year to show payment status
+
+### UI Layout
+
+The tab will show:
+- Month/year selector (top, same pattern as Franchise Report)
+- Summary card: Total Admin Fees | Amount Paid | Balance | Status badge
+- Table: Class Name | Revenue | Admin Fee % or Amount | Admin Fee Total
+- Footer row with totals
+- "Record Payment" button that opens the payment dialog
 
