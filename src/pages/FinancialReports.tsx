@@ -17,6 +17,7 @@ import { useTerm } from "@/context/TermContext";
 import { FinancialDashboardContent } from "@/components/financial/FinancialDashboardContent";
 import { UnpaidHandlersContent } from "@/components/handlers/UnpaidHandlersContent";
 import { AdminPaymentsTab } from "@/components/invoices/reports/AdminPaymentsTab";
+import { BookkeepingTab } from "@/components/financial/BookkeepingTab";
 
 export default function FinancialReports() {
   const queryClient = useQueryClient();
@@ -107,6 +108,7 @@ export default function FinancialReports() {
               <TabsTrigger value="trainers">Trainers</TabsTrigger>
               <TabsTrigger value="starter-kits">Starter Kits</TabsTrigger>
               <TabsTrigger value="admin-payments">Admin Payments</TabsTrigger>
+              <TabsTrigger value="bookkeeping">Bookkeeping</TabsTrigger>
               <TabsTrigger value="unpaid">Unpaid Handlers</TabsTrigger>
             </TabsList>
 
@@ -146,6 +148,10 @@ export default function FinancialReports() {
 
             <TabsContent value="admin-payments">
               <AdminPaymentsTab />
+            </TabsContent>
+
+            <TabsContent value="bookkeeping">
+              <BookkeepingTab />
             </TabsContent>
 
             <TabsContent value="unpaid">

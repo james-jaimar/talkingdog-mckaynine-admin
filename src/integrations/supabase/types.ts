@@ -504,6 +504,95 @@ export type Database = {
         }
         Relationships: []
       }
+      business_transaction_categories: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          sort_order: number
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          sort_order?: number
+          type: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          sort_order?: number
+          type?: string
+        }
+        Relationships: []
+      }
+      business_transactions: {
+        Row: {
+          amount: number
+          branch_id: string
+          category: string
+          created_at: string
+          created_by: string | null
+          date: string
+          description: string
+          id: string
+          notes: string | null
+          payment_method: string | null
+          receipt_url: string | null
+          reference: string | null
+          type: string
+          updated_at: string
+          vendor_or_source: string | null
+        }
+        Insert: {
+          amount: number
+          branch_id: string
+          category: string
+          created_at?: string
+          created_by?: string | null
+          date: string
+          description: string
+          id?: string
+          notes?: string | null
+          payment_method?: string | null
+          receipt_url?: string | null
+          reference?: string | null
+          type: string
+          updated_at?: string
+          vendor_or_source?: string | null
+        }
+        Update: {
+          amount?: number
+          branch_id?: string
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          date?: string
+          description?: string
+          id?: string
+          notes?: string | null
+          payment_method?: string | null
+          receipt_url?: string | null
+          reference?: string | null
+          type?: string
+          updated_at?: string
+          vendor_or_source?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_transactions_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cars: {
         Row: {
           color: string
