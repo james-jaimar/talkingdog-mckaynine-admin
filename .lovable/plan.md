@@ -1,80 +1,133 @@
 
 
-# Admin Fee Payments Tracking
+# Business Bookkeeping: Expenses and Other Income Tracking
 
 ## Overview
 
-Ady currently pays herself the admin fee as a separate income line item each month. The system already calculates admin fees per class but has no way to record when those fees have actually been "paid out" (withdrawn). We'll add this capability following the same pattern as the existing franchise payment tracking.
+Ady wants to track all business expenses (supplies, maintenance, gifts, charges) and non-class income (liver bread sales, chew sales, etc.) alongside the existing class revenue. This turns the Financial hub into a full bookkeeping system.
 
 ## Where It Lives
 
-A new **"Admin Payments"** tab in the Financial Reports page, sitting alongside the existing Franchise Report and Trainers tabs. This keeps all payment tracking in one place and follows the same month/year selector pattern Ady is already familiar with.
+A new **"Bookkeeping"** tab in the Financial Reports page (`/financial-reports`). This keeps everything consolidated in the existing Financial hub that Ady already knows. The tab will have two sub-views: **Expenses** and **Other Income**, toggled via a simple inner tab strip.
 
-## How It Works
+## Data Model
 
-1. Ady selects a month and year (same selector pattern as Franchise Report)
-2. The system shows the calculated admin fees for that month, broken down by class
-3. A summary card shows: Total Admin Fees Due, Amount Paid, Status (Pending/Partial/Paid)
-4. Ady can click "Record Payment" to mark the admin fees as paid, with fields for:
-   - Amount paid
-   - Payment date
-   - Payment method (EFT, Cash, etc.)
-   - Reference number
-   - Notes
+### New Table: `business_transactions`
 
-## Technical Detail
-
-### Database: New `admin_payments` table
-
-Mirrors the `franchise_payments` pattern:
+A single table for both expenses and income, distinguished by a `type` column. This is cleaner than two separate tables and allows unified reporting.
 
 ```text
-admin_payments
-  id              uuid (PK, default gen_random_uuid())
-  branch_id       uuid (FK -> branches, NOT NULL)
-  month           integer (NOT NULL, 1-12)
-  year            integer (NOT NULL)
-  total_admin_fees numeric (NOT NULL, default 0)
-  amount_paid     numeric (NOT NULL, default 0)
-  status          text (NOT NULL, default 'pending')  -- pending/partial/paid
-  payment_date    timestamptz
-  payment_method  text
-  payment_reference text
-  notes           text
-  created_at      timestamptz (default now())
-  updated_at      timestamptz (default now())
-  UNIQUE(branch_id, month, year)
+business_transactions
+  id                  uuid (PK, default gen_random_uuid())
+  branch_id           uuid (FK -> branches, NOT NULL)
+  type                text (NOT NULL) -- 'expense' or 'income'
+  date                date (NOT NULL)
+  description         text (NOT NULL)
+  amount              numeric (NOT NULL)
+  category            text (NOT NULL) -- e.g. 'Supplies', 'Maintenance', 'Yoco Charges', 'Sales', 'Gifts'
+  vendor_or_source    text -- e.g. 'Checkers', 'Woolworths', 'Sasol'
+  payment_method      text -- 'Cash', 'Card', 'EFT'
+  reference           text -- receipt number, etc.
+  notes               text
+  receipt_url         text -- optional uploaded receipt image
+  created_by          uuid (FK -> auth.users)
+  created_at          timestamptz (default now())
+  updated_at          timestamptz (default now())
 ```
 
-RLS: Admin-only full access (same as `franchise_payments`).
+RLS: Admin-only full access, matching the existing pattern.
 
-### New Files
+### New Table: `business_transaction_categories`
+
+Pre-populated categories that Ady can manage. Seeds from the data provided.
+
+```text
+business_transaction_categories
+  id          uuid (PK, default gen_random_uuid())
+  name        text (NOT NULL, UNIQUE)
+  type        text (NOT NULL) -- 'expense', 'income', or 'both'
+  is_active   boolean (default true)
+  sort_order  integer (default 0)
+  created_at  timestamptz (default now())
+```
+
+Seeded categories from Ady's data:
+- **Expense**: Supplies (liver bread ingredients, bags), Equipment, Maintenance (gardener, fuel, creosote), Medical, Processing Fees (Yoco), Gifts, Meals/Entertainment
+- **Income**: Product Sales (liver bread, chews), Other Income
+
+## UI Design
+
+### Bookkeeping Tab Layout
+
+```text
++------------------------------------------------------------------+
+| [Expenses]  [Other Income]  [Summary]                            |
+|                                                                  |
+| Date Range: [Month/Year selector]    [+ Add Expense]  [Export]   |
+|                                                                  |
+| Category Filters: [All] [Supplies] [Equipment] [Maintenance]... |
+|                                                                  |
+| +------+-------------+-------------------+----------+---------+  |
+| | Date | Vendor      | Description       | Category | Amount  |  |
+| +------+-------------+-------------------+----------+---------+  |
+| | ...  | ...         | ...               | ...      | ...     |  |
+| +------+-------------+-------------------+----------+---------+  |
+|                                          Total:      | R X,XXX |  |
++------------------------------------------------------------------+
+```
+
+### Add/Edit Transaction Dialog
+
+A clean form matching the app's existing dialog patterns:
+- Date (date picker)
+- Description (text, required)
+- Amount (number, required)
+- Category (select from pre-defined list)
+- Vendor/Source (text with autocomplete from previous entries)
+- Payment Method (select: Cash, Card, EFT)
+- Reference (text, optional)
+- Notes (textarea, optional)
+- Receipt Upload (optional file upload to `payment-documents` bucket)
+
+### Summary Sub-Tab
+
+Monthly totals by category, with a simple bar chart showing expense breakdown. Shows:
+- Total Expenses for the period
+- Total Other Income for the period
+- Net (Other Income minus Expenses)
+- Category-by-category breakdown
+
+### Branch Filtering
+
+All transactions are branch-specific. The existing branch selector in the header controls which branch's data is shown, consistent with the rest of the app.
+
+## New Files
 
 | File | Purpose |
 |------|---------|
-| `src/hooks/useAdminPayments.ts` | Hook to fetch admin fee data for a month + upsert payment records (mirrors `useFranchiseMonthlyData` pattern) |
-| `src/components/invoices/reports/AdminPaymentsTab.tsx` | Main tab component with month/year selector and class breakdown table |
-| `src/components/invoices/reports/AdminPaymentDialog.tsx` | Dialog to record/edit payment (amount, date, method, reference, notes) |
+| `src/hooks/useBusinessTransactions.ts` | Hook to fetch, create, update, delete transactions with branch + date filtering |
+| `src/components/financial/BookkeepingTab.tsx` | Main tab component with inner Expenses/Income/Summary tabs |
+| `src/components/financial/TransactionTable.tsx` | Sortable, filterable table of transactions |
+| `src/components/financial/TransactionDialog.tsx` | Add/edit transaction dialog |
+| `src/components/financial/BookkeepingSummary.tsx` | Monthly summary with category breakdown and chart |
 
-### Modified Files
+## Modified Files
 
 | File | Change |
 |------|--------|
-| `src/pages/FinancialReports.tsx` | Add "Admin Payments" tab trigger + content |
+| `src/pages/FinancialReports.tsx` | Add "Bookkeeping" tab trigger and content |
 
-### Data Source
+## CSV Import (Bonus)
 
-The admin fee amounts come from the same `useClassFinancialData` / financial query pipeline already used by the Financial Dashboard. The hook will:
-1. Fetch invoices for the selected month (using `franchise_report_month` with `issued_date` fallback -- same as franchise report)
-2. Calculate admin fees per class using the class's `admin_fee_type` and `admin_fee_value`
-3. Look up the `admin_payments` record for that branch/month/year to show payment status
+Since Ady has historical data in spreadsheets, the TransactionDialog will include a "Bulk Import" option that accepts a simple CSV (Date, Description, Amount, Category) using the existing `papaparse` dependency already installed. This lets her bring in her historical records without manual entry.
 
-### UI Layout
+## Implementation Steps
 
-The tab will show:
-- Month/year selector (top, same pattern as Franchise Report)
-- Summary card: Total Admin Fees | Amount Paid | Balance | Status badge
-- Table: Class Name | Revenue | Admin Fee % or Amount | Admin Fee Total
-- Footer row with totals
-- "Record Payment" button that opens the payment dialog
+1. Create `business_transactions` and `business_transaction_categories` tables with RLS and seed data
+2. Build the `useBusinessTransactions` hook (CRUD + filtering)
+3. Build `TransactionDialog` (add/edit form)
+4. Build `TransactionTable` (list view with sorting and category filters)
+5. Build `BookkeepingSummary` (aggregated view with chart)
+6. Build `BookkeepingTab` (container with inner tabs)
+7. Wire into `FinancialReports.tsx`
 
