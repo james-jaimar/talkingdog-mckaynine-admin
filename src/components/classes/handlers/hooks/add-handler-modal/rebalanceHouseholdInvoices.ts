@@ -103,6 +103,7 @@ export async function rebalanceHouseholdInvoices(params: RebalanceParams): Promi
         title: 'Household discount needs manual adjustment',
         description: `Handler was added to ${newClassName}, but the existing household invoice (${existingInvoice.invoice_number}) is already paid. Manual credit/adjustment may be needed to apply the household discount fairly.`,
         status: 'pending',
+        branch_id: newClassBranchId,
       });
 
       return { 
@@ -285,6 +286,7 @@ export async function rebalanceHouseholdInvoices(params: RebalanceParams): Promi
       title: 'Household invoices rebalanced',
       description: `Household member enrolled in ${newClassName}. Invoice ${existingInvoice.invoice_number} was adjusted from R${existingCourseFeeTotal} to R${sharePerHandler}. New invoice ${newInvoiceNumber} created for R${sharePerHandler + newEnrollmentFee}. Total household discount: R${householdDiscount.toFixed(2)} (25%).`,
       status: 'pending',
+      branch_id: newClassBranchId,
     });
 
     console.log("HOUSEHOLD-REBALANCE: Success", {

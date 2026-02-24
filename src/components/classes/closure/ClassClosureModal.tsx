@@ -133,6 +133,14 @@ export function ClassClosureModal({
       let completedCount = 0;
       let tasksCreated = 0;
 
+      // Get class branch_id for task creation (once, outside loop)
+      const { data: classData } = await supabase
+        .from("classes")
+        .select("branch_id")
+        .eq("id", classId)
+        .single();
+      const classBranchId = classData?.branch_id || null;
+
       for (const handler of completionData) {
         // YOGA SPECIAL CASE: Delete previous yoga entries for this handler/dog
         // Yoga classes are monthly - we only want to show the latest entry
@@ -183,6 +191,7 @@ export function ClassClosureModal({
         if (!statusError) completedCount++;
 
         // 3. Create tasks based on next_action
+
         if (handler.next_action === "wants_info") {
           const nextClass = NEXT_CLASS_MAP[classType] || "next class";
           await supabase.from("handler_tasks").insert({
@@ -192,6 +201,7 @@ export function ClassClosureModal({
             title: `Send ${nextClass} info pack`,
             description: `Handler completed ${classType}. Send information about ${nextClass} class.`,
             status: "pending",
+            branch_id: classBranchId,
           });
           tasksCreated++;
         } else if (handler.next_action === "continuing") {
@@ -208,6 +218,7 @@ export function ClassClosureModal({
             title: `Enroll in ${nextClass} - ${termInfo}`,
             description: `Handler completed ${classType}. Follow up on enrollment for ${nextClass} in ${termInfo}.`,
             status: "pending",
+            branch_id: classBranchId,
           });
           tasksCreated++;
         }

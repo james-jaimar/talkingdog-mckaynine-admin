@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTrainerNotes, usePendingTrainerNoteCount } from "@/hooks/useTrainerNotes";
+import { useBranch } from "@/context/BranchContext";
 
 const STATUS_OPTIONS = [
   { value: "all", label: "All Notes" },
@@ -43,6 +44,7 @@ const STATUS_OPTIONS = [
 type SortDirection = "asc" | "desc" | null;
 
 export default function TrainerNotes() {
+  const { currentBranch } = useBranch();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("pending");
   const [handlerSort, setHandlerSort] = useState<SortDirection>(null);
@@ -50,9 +52,9 @@ export default function TrainerNotes() {
   const { notes, isLoading, refetch, acknowledgeNote } = useTrainerNotes({
     status: statusFilter,
     search,
-  });
+  }, currentBranch?.id);
 
-  const { count: pendingCount } = usePendingTrainerNoteCount();
+  const { count: pendingCount } = usePendingTrainerNoteCount(currentBranch?.id);
 
   // Sort notes by handler name
   const sortedNotes = useMemo(() => {

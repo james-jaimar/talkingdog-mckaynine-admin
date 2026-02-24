@@ -11,6 +11,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
+import { useBranch } from "@/context/BranchContext";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Loader2, MessageSquarePlus } from "lucide-react";
@@ -37,6 +38,7 @@ export function TrainerNoteModal({
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const queryClient = useQueryClient();
+  const { currentBranch } = useBranch();
 
   const handleSubmit = async () => {
     if (!notes.trim()) {
@@ -77,6 +79,7 @@ export function TrainerNoteModal({
         title: taskTitle,
         description: taskDescription,
         status: "pending",
+        branch_id: currentBranch?.id || null,
       });
 
       if (taskError) throw taskError;

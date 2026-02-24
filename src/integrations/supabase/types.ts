@@ -1915,6 +1915,7 @@ export type Database = {
       handler_tasks: {
         Row: {
           assigned_to: string | null
+          branch_id: string | null
           class_status_id: string | null
           class_type: string | null
           completed_at: string | null
@@ -1931,6 +1932,7 @@ export type Database = {
         }
         Insert: {
           assigned_to?: string | null
+          branch_id?: string | null
           class_status_id?: string | null
           class_type?: string | null
           completed_at?: string | null
@@ -1947,6 +1949,7 @@ export type Database = {
         }
         Update: {
           assigned_to?: string | null
+          branch_id?: string | null
           class_status_id?: string | null
           class_type?: string | null
           completed_at?: string | null
@@ -1962,6 +1965,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "handler_tasks_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "handler_tasks_class_status_id_fkey"
             columns: ["class_status_id"]

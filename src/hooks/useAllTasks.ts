@@ -34,11 +34,11 @@ interface TaskFilters {
   search?: string;
 }
 
-export function useAllTasks(filters: TaskFilters = {}) {
+export function useAllTasks(filters: TaskFilters = {}, branchId?: string) {
   const queryClient = useQueryClient();
 
   const tasksQuery = useQuery({
-    queryKey: ["all-tasks", filters],
+    queryKey: ["all-tasks", filters, branchId],
     queryFn: async () => {
       let query = supabase
         .from("handler_tasks")
@@ -53,6 +53,11 @@ export function useAllTasks(filters: TaskFilters = {}) {
         `)
         .neq("task_type", "trainer_note") // Exclude trainer notes - they have their own page
         .order("created_at", { ascending: false });
+
+      // Filter by branch
+      if (branchId) {
+        query = query.eq("branch_id", branchId);
+      }
 
       // Apply filters
       if (filters.status && filters.status !== "all") {
@@ -149,16 +154,21 @@ export function useAllTasks(filters: TaskFilters = {}) {
 }
 
 // Hook to get pending task count
-export function usePendingTaskCount() {
+export function usePendingTaskCount(branchId?: string) {
   const countQuery = useQuery({
-    queryKey: ["pending-task-count"],
+    queryKey: ["pending-task-count", branchId],
     queryFn: async () => {
-      const { count, error } = await supabase
+      let query = supabase
         .from("handler_tasks")
         .select("*", { count: "exact", head: true })
         .eq("status", "pending")
         .neq("task_type", "trainer_note"); // Exclude trainer notes from task count
 
+      if (branchId) {
+        query = query.eq("branch_id", branchId);
+      }
+
+      const { count, error } = await query;
       if (error) throw error;
       return count || 0;
     },

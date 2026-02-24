@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useBranch } from "@/context/BranchContext";
 import {
   Dialog,
   DialogContent,
@@ -57,6 +58,7 @@ const CLASS_TYPES = [
 
 export function CreateTaskModal({ open, onOpenChange }: CreateTaskModalProps) {
   const queryClient = useQueryClient();
+  const { currentBranch } = useBranch();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [handlerSearch, setHandlerSearch] = useState("");
   const [handlers, setHandlers] = useState<Handler[]>([]);
@@ -114,6 +116,7 @@ export function CreateTaskModal({ open, onOpenChange }: CreateTaskModalProps) {
         description: description.trim() || null,
         due_date: dueDate || null,
         status: "pending",
+        branch_id: currentBranch?.id || null,
       });
 
       if (error) throw error;

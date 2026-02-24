@@ -14,6 +14,7 @@ import { Search, CheckCircle, XCircle, Send, ClipboardList, Mail, UserPlus, Refr
 import { SendInfoPackModal } from "@/components/tasks/SendInfoPackModal";
 import { CreateTaskModal } from "@/components/tasks/CreateTaskModal";
 import { Link as RouterLink } from "react-router-dom";
+import { useBranch } from "@/context/BranchContext";
 
 type SortDirection = "asc" | "desc" | null;
 
@@ -74,6 +75,7 @@ function getStatusBadgeVariant(status: string | null) {
 }
 
 export default function Tasks() {
+  const { currentBranch } = useBranch();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("pending");
   const [taskTypeFilter, setTaskTypeFilter] = useState("all");
@@ -88,7 +90,7 @@ export default function Tasks() {
     taskType: taskTypeFilter,
     classType: classTypeFilter,
     search,
-  });
+  }, currentBranch?.id);
 
   // Sort tasks by handler name
   const sortedTasks = useMemo(() => {
