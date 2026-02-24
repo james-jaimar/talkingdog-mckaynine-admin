@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useBranch } from "@/context/BranchContext";
 import { Mail, ArrowRight, StopCircle, Trash2 } from "lucide-react";
 import {
   AlertDialog,
@@ -126,6 +127,7 @@ function StatusBox({
 }) {
   const { terms } = useTermOptions();
   const queryClient = useQueryClient();
+  const { currentBranch } = useBranch();
   
   const [status, setStatus] = useState<string | null>(initialStatus);
   const [period, setPeriod] = useState<string>(initialPeriod);
@@ -235,6 +237,7 @@ function StatusBox({
           title: `Send ${classesLabel} info pack`,
           description: `Handler completed ${classType}. Send information about ${classesLabel} class${classesForInfo.length > 1 ? 'es' : ''}.`,
           status: "pending",
+          branch_id: currentBranch?.id || null,
         });
       } else if (nextAction === 'continuing' && actionChanged) {
         const nextClass = nextClassType || NEXT_CLASS_MAP[classType] || "next class";
@@ -250,6 +253,7 @@ function StatusBox({
           title: `Enroll in ${nextClass} - ${termInfo}`,
           description: `Handler completed ${classType}. Follow up on enrollment for ${nextClass} in ${termInfo}.`,
           status: "pending",
+          branch_id: currentBranch?.id || null,
         });
       }
       

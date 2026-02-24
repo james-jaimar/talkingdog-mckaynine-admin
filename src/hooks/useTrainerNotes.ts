@@ -24,11 +24,11 @@ interface TrainerNotesFilters {
   search?: string;
 }
 
-export function useTrainerNotes(filters: TrainerNotesFilters = {}) {
+export function useTrainerNotes(filters: TrainerNotesFilters = {}, branchId?: string) {
   const queryClient = useQueryClient();
 
   const notesQuery = useQuery({
-    queryKey: ["trainer-notes", filters],
+    queryKey: ["trainer-notes", filters, branchId],
     queryFn: async () => {
       let query = supabase
         .from("handler_tasks")
@@ -43,6 +43,11 @@ export function useTrainerNotes(filters: TrainerNotesFilters = {}) {
         `)
         .eq("task_type", "trainer_note")
         .order("created_at", { ascending: false });
+
+      // Filter by branch
+      if (branchId) {
+        query = query.eq("branch_id", branchId);
+      }
 
       // Apply status filter
       if (filters.status && filters.status !== "all") {
@@ -107,16 +112,21 @@ export function useTrainerNotes(filters: TrainerNotesFilters = {}) {
 }
 
 // Hook to get pending trainer note count
-export function usePendingTrainerNoteCount() {
+export function usePendingTrainerNoteCount(branchId?: string) {
   const countQuery = useQuery({
-    queryKey: ["pending-trainer-note-count"],
+    queryKey: ["pending-trainer-note-count", branchId],
     queryFn: async () => {
-      const { count, error } = await supabase
+      let query = supabase
         .from("handler_tasks")
         .select("*", { count: "exact", head: true })
         .eq("task_type", "trainer_note")
         .eq("status", "pending");
 
+      if (branchId) {
+        query = query.eq("branch_id", branchId);
+      }
+
+      const { count, error } = await query;
       if (error) throw error;
       return count || 0;
     },

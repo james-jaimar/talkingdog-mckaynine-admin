@@ -4,6 +4,7 @@ import { useAuth } from "@/context/auth";
 import { Badge } from "@/components/ui/badge";
 import { usePendingTaskCount } from "@/hooks/useAllTasks";
 import { usePendingTrainerNoteCount } from "@/hooks/useTrainerNotes";
+import { useBranch } from "@/context/BranchContext";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useState } from "react";
 
@@ -15,8 +16,9 @@ interface AdminNavigationProps {
 
 export const AdminNavigation = ({ isMobile, onMobileClose, showPrimaryOnly = true }: AdminNavigationProps) => {
   const { isPlatformAdmin } = useAuth();
-  const { count: pendingTaskCount } = usePendingTaskCount();
-  const { count: pendingTrainerNoteCount } = usePendingTrainerNoteCount();
+  const { currentBranch } = useBranch();
+  const { count: pendingTaskCount } = usePendingTaskCount(currentBranch?.id);
+  const { count: pendingTrainerNoteCount } = usePendingTrainerNoteCount(currentBranch?.id);
   const [showMoreMobile, setShowMoreMobile] = useState(false);
   const items = showPrimaryOnly ? adminPrimaryNavItems : adminSecondaryNavItems;
   

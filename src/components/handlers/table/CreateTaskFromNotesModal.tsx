@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useBranch } from "@/context/BranchContext";
 import {
   Dialog,
   DialogContent,
@@ -60,6 +61,7 @@ export function CreateTaskFromNotesModal({
   handler 
 }: CreateTaskFromNotesModalProps) {
   const queryClient = useQueryClient();
+  const { currentBranch } = useBranch();
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Form state
@@ -88,6 +90,7 @@ export function CreateTaskFromNotesModal({
         description: description.trim() || null,
         due_date: dueDate || null,
         status: "pending",
+        branch_id: currentBranch?.id || null,
       });
 
       if (error) throw error;
