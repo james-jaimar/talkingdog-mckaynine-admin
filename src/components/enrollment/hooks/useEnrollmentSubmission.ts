@@ -47,6 +47,16 @@ export function useEnrollmentSubmission() {
     const { data: authData } = await supabase.auth.getUser();
     const authUserId = authData?.user?.id;
     
+    // Check if current user is a handler (only handlers should link auth_user_id)
+    let isHandler = false;
+    if (authUserId) {
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", authUserId);
+      isHandler = (roles || []).some(r => r.role === "handler");
+    }
+    
     // Check if client with email already exists
     const { data: existingClient, error: checkError } = await supabase
       .from("clients")
@@ -70,7 +80,7 @@ export function useEnrollmentSubmission() {
           occupation: data.occupation || null,
           vet_name: data.vetName,
           account_holder_name: data.accountHolderName || null,
-          auth_user_id: authUserId || undefined,
+          ...(isHandler && authUserId ? { auth_user_id: authUserId } : {}),
           onboarding_status: 'completed',
         })
         .eq("id", existingClient.id);
@@ -94,7 +104,7 @@ export function useEnrollmentSubmission() {
       vet_name: data.vetName,
       account_holder_name: data.accountHolderName || null,
       branch_id: branchId,
-      auth_user_id: authUserId || undefined,
+      ...(isHandler && authUserId ? { auth_user_id: authUserId } : {}),
       onboarding_status: 'completed',
     };
 
