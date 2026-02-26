@@ -3051,6 +3051,14 @@ export type Database = {
         Args: { p_client_id: string; p_message_ids: string[] }
         Returns: undefined
       }
+      return_starter_kit: {
+        Args: { p_allocation_id: string }
+        Returns: {
+          message: string
+          remaining_total: number
+          success: boolean
+        }[]
+      }
     }
     Enums: {
       app_role:
