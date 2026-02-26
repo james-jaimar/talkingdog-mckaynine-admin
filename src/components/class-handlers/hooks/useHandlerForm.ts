@@ -146,6 +146,34 @@ export function useHandlerForm() {
         throw invoiceItemsError;
       }
       
+      // Return any allocated starter kits back to inventory
+      if (invoiceItems && invoiceItems.length > 0) {
+        const itemIds = invoiceItems.map(item => item.id);
+        
+        const { data: allocations, error: allocError } = await supabase
+          .from('starter_kit_allocations')
+          .select('id, inventory_batch_id')
+          .in('invoice_item_id', itemIds);
+        
+        if (allocError) {
+          console.warn('Error checking starter kit allocations:', allocError);
+        } else if (allocations && allocations.length > 0) {
+          for (const alloc of allocations) {
+            // Increment stock back
+            await supabase
+              .from('starter_kit_inventory')
+              .update({ quantity_remaining: supabase.rpc ? undefined : undefined })
+              .eq('id', alloc.inventory_batch_id);
+          }
+          // Use RPC or raw update - simpler: increment via individual updates
+          for (const alloc of allocations) {
+            await supabase.rpc('return_starter_kit', {
+              p_allocation_id: alloc.id
+            });
+          }
+        }
+      }
+
       // If invoice items exist, just nullify the booking_id reference instead of deleting them
       if (invoiceItems && invoiceItems.length > 0) {
         const { error: updateError } = await supabase
