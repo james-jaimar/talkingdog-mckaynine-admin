@@ -159,18 +159,20 @@ export function useHandlerForm() {
           console.warn('Error checking starter kit allocations:', allocError);
         } else if (allocations && allocations.length > 0) {
           for (const alloc of allocations) {
-            // Increment stock back
-            await supabase
-              .from('starter_kit_inventory')
-              .update({ quantity_remaining: supabase.rpc ? undefined : undefined })
-              .eq('id', alloc.inventory_batch_id);
+            // Use the return_starter_kit RPC to atomically return kit to stock
+            const { error: returnError } = await supabase.rpc(
+              'return_starter_kit' as any,
+              { p_allocation_id: alloc.id }
+            );
+            if (returnError) {
+              console.warn('Error returning starter kit:', returnError);
+            } else {
+              console.log('Starter kit returned to stock for allocation:', alloc.id);
+            }
           }
-          // Use RPC or raw update - simpler: increment via individual updates
-          for (const alloc of allocations) {
-            await supabase.rpc('return_starter_kit', {
-              p_allocation_id: alloc.id
-            });
-          }
+          // Invalidate starter kit queries so UI updates
+          queryClient.invalidateQueries({ queryKey: ['starter-kit-inventory'] });
+          queryClient.invalidateQueries({ queryKey: ['starter-kit-allocations'] });
         }
       }
 
