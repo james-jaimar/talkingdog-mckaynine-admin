@@ -1,39 +1,47 @@
 
 
-# Fix: Enrollment Form Setting Wrong auth_user_id
+# Fix: Starter Kit Allocation Foreign Key Blocking Invoice Updates/Deletes
 
 ## Problem
 
-When an admin submits the enrollment/puppy form on behalf of a handler, the code sets `auth_user_id` to the admin's own auth ID. Since the admin's ID is already linked to another client record, the unique constraint `clients_auth_user_id_key` is violated.
+The `starter_kit_allocations` table has a foreign key (`invoice_item_id`) pointing to `invoice_items.id` with the default `ON DELETE RESTRICT` behavior. This means:
 
-**File**: `src/components/enrollment/hooks/useEnrollmentSubmission.ts`
-- Line 73: `auth_user_id: authUserId || undefined` (update path)
-- Line 97: `auth_user_id: authUserId || undefined` (insert path)
+1. **Editing an invoice** fails because `useUpdateInvoice.ts` deletes all invoice_items then re-inserts them
+2. **Deleting an invoice** fails because the cascade tries to remove invoice_items that are referenced by allocations
 
-## Fix
+## Solution
 
-Only set `auth_user_id` when the logged-in user is a handler filling out their own form. When an admin is submitting on behalf of someone else, skip setting `auth_user_id` entirely.
+Two changes:
 
-### Changes to `useEnrollmentSubmission.ts`
+### 1. Database: Change the foreign key to ON DELETE SET NULL
 
-1. In `findOrCreateClient`, check the user's role before setting `auth_user_id`.
-2. Use a simple check: query `user_roles` for the current user to see if they have the `handler` role. If not (i.e., they're an admin), don't set `auth_user_id`.
-3. Also skip the `completeOnboarding` call when the submitter is an admin (since it's not their onboarding).
-
-### Technical Detail
+Drop and recreate the FK so that when an invoice_item is deleted, the allocation record is kept (for historical tracking) but its `invoice_item_id` is set to `NULL`.
 
 ```text
-findOrCreateClient():
-  - Fetch current user's roles from user_roles table
-  - isHandler = roles include 'handler'
-  - Only include auth_user_id in insert/update when isHandler is true
-  - For the update path (existing client): skip auth_user_id entirely if admin
-  - For the insert path (new client): skip auth_user_id entirely if admin
+ALTER TABLE starter_kit_allocations
+  DROP CONSTRAINT starter_kit_allocations_invoice_item_id_fkey;
 
-completeOnboarding():
-  - Already handles missing user gracefully
-  - No change needed (it will just update nothing if admin has no onboarding record)
+ALTER TABLE starter_kit_allocations
+  ADD CONSTRAINT starter_kit_allocations_invoice_item_id_fkey
+  FOREIGN KEY (invoice_item_id)
+  REFERENCES invoice_items(id)
+  ON DELETE SET NULL;
 ```
 
-This is a one-file fix. No database changes required.
+This preserves the allocation history (who got a kit, when, which branch) even if the invoice is later edited or deleted.
 
+### 2. Code: Smarter item update in useUpdateInvoice.ts
+
+Instead of blindly deleting all items, delete only the items that do NOT have a starter kit allocation linked. For items with allocations (enrollment fees), update them in place rather than delete+recreate.
+
+Alternatively, since the DB fix (SET NULL) handles the constraint, the existing delete-all approach will work fine after the migration. The allocation record simply loses its `invoice_item_id` link, which is acceptable since the allocation already stores `handler_id`, `dog_name`, and `branch_id` independently.
+
+## Files
+
+| File | Change |
+|------|--------|
+| New migration SQL | Alter FK to ON DELETE SET NULL |
+| `src/hooks/invoices/mutations/useUpdateInvoice.ts` | No code change needed once FK is fixed |
+| `src/hooks/invoices/mutations/useDeleteInvoice.ts` | No code change needed once FK is fixed |
+
+This is a single database migration fix.
