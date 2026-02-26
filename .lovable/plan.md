@@ -1,133 +1,39 @@
 
 
-# Business Bookkeeping: Expenses and Other Income Tracking
+# Fix: Enrollment Form Setting Wrong auth_user_id
 
-## Overview
+## Problem
 
-Ady wants to track all business expenses (supplies, maintenance, gifts, charges) and non-class income (liver bread sales, chew sales, etc.) alongside the existing class revenue. This turns the Financial hub into a full bookkeeping system.
+When an admin submits the enrollment/puppy form on behalf of a handler, the code sets `auth_user_id` to the admin's own auth ID. Since the admin's ID is already linked to another client record, the unique constraint `clients_auth_user_id_key` is violated.
 
-## Where It Lives
+**File**: `src/components/enrollment/hooks/useEnrollmentSubmission.ts`
+- Line 73: `auth_user_id: authUserId || undefined` (update path)
+- Line 97: `auth_user_id: authUserId || undefined` (insert path)
 
-A new **"Bookkeeping"** tab in the Financial Reports page (`/financial-reports`). This keeps everything consolidated in the existing Financial hub that Ady already knows. The tab will have two sub-views: **Expenses** and **Other Income**, toggled via a simple inner tab strip.
+## Fix
 
-## Data Model
+Only set `auth_user_id` when the logged-in user is a handler filling out their own form. When an admin is submitting on behalf of someone else, skip setting `auth_user_id` entirely.
 
-### New Table: `business_transactions`
+### Changes to `useEnrollmentSubmission.ts`
 
-A single table for both expenses and income, distinguished by a `type` column. This is cleaner than two separate tables and allows unified reporting.
+1. In `findOrCreateClient`, check the user's role before setting `auth_user_id`.
+2. Use a simple check: query `user_roles` for the current user to see if they have the `handler` role. If not (i.e., they're an admin), don't set `auth_user_id`.
+3. Also skip the `completeOnboarding` call when the submitter is an admin (since it's not their onboarding).
 
-```text
-business_transactions
-  id                  uuid (PK, default gen_random_uuid())
-  branch_id           uuid (FK -> branches, NOT NULL)
-  type                text (NOT NULL) -- 'expense' or 'income'
-  date                date (NOT NULL)
-  description         text (NOT NULL)
-  amount              numeric (NOT NULL)
-  category            text (NOT NULL) -- e.g. 'Supplies', 'Maintenance', 'Yoco Charges', 'Sales', 'Gifts'
-  vendor_or_source    text -- e.g. 'Checkers', 'Woolworths', 'Sasol'
-  payment_method      text -- 'Cash', 'Card', 'EFT'
-  reference           text -- receipt number, etc.
-  notes               text
-  receipt_url         text -- optional uploaded receipt image
-  created_by          uuid (FK -> auth.users)
-  created_at          timestamptz (default now())
-  updated_at          timestamptz (default now())
-```
-
-RLS: Admin-only full access, matching the existing pattern.
-
-### New Table: `business_transaction_categories`
-
-Pre-populated categories that Ady can manage. Seeds from the data provided.
+### Technical Detail
 
 ```text
-business_transaction_categories
-  id          uuid (PK, default gen_random_uuid())
-  name        text (NOT NULL, UNIQUE)
-  type        text (NOT NULL) -- 'expense', 'income', or 'both'
-  is_active   boolean (default true)
-  sort_order  integer (default 0)
-  created_at  timestamptz (default now())
+findOrCreateClient():
+  - Fetch current user's roles from user_roles table
+  - isHandler = roles include 'handler'
+  - Only include auth_user_id in insert/update when isHandler is true
+  - For the update path (existing client): skip auth_user_id entirely if admin
+  - For the insert path (new client): skip auth_user_id entirely if admin
+
+completeOnboarding():
+  - Already handles missing user gracefully
+  - No change needed (it will just update nothing if admin has no onboarding record)
 ```
 
-Seeded categories from Ady's data:
-- **Expense**: Supplies (liver bread ingredients, bags), Equipment, Maintenance (gardener, fuel, creosote), Medical, Processing Fees (Yoco), Gifts, Meals/Entertainment
-- **Income**: Product Sales (liver bread, chews), Other Income
-
-## UI Design
-
-### Bookkeeping Tab Layout
-
-```text
-+------------------------------------------------------------------+
-| [Expenses]  [Other Income]  [Summary]                            |
-|                                                                  |
-| Date Range: [Month/Year selector]    [+ Add Expense]  [Export]   |
-|                                                                  |
-| Category Filters: [All] [Supplies] [Equipment] [Maintenance]... |
-|                                                                  |
-| +------+-------------+-------------------+----------+---------+  |
-| | Date | Vendor      | Description       | Category | Amount  |  |
-| +------+-------------+-------------------+----------+---------+  |
-| | ...  | ...         | ...               | ...      | ...     |  |
-| +------+-------------+-------------------+----------+---------+  |
-|                                          Total:      | R X,XXX |  |
-+------------------------------------------------------------------+
-```
-
-### Add/Edit Transaction Dialog
-
-A clean form matching the app's existing dialog patterns:
-- Date (date picker)
-- Description (text, required)
-- Amount (number, required)
-- Category (select from pre-defined list)
-- Vendor/Source (text with autocomplete from previous entries)
-- Payment Method (select: Cash, Card, EFT)
-- Reference (text, optional)
-- Notes (textarea, optional)
-- Receipt Upload (optional file upload to `payment-documents` bucket)
-
-### Summary Sub-Tab
-
-Monthly totals by category, with a simple bar chart showing expense breakdown. Shows:
-- Total Expenses for the period
-- Total Other Income for the period
-- Net (Other Income minus Expenses)
-- Category-by-category breakdown
-
-### Branch Filtering
-
-All transactions are branch-specific. The existing branch selector in the header controls which branch's data is shown, consistent with the rest of the app.
-
-## New Files
-
-| File | Purpose |
-|------|---------|
-| `src/hooks/useBusinessTransactions.ts` | Hook to fetch, create, update, delete transactions with branch + date filtering |
-| `src/components/financial/BookkeepingTab.tsx` | Main tab component with inner Expenses/Income/Summary tabs |
-| `src/components/financial/TransactionTable.tsx` | Sortable, filterable table of transactions |
-| `src/components/financial/TransactionDialog.tsx` | Add/edit transaction dialog |
-| `src/components/financial/BookkeepingSummary.tsx` | Monthly summary with category breakdown and chart |
-
-## Modified Files
-
-| File | Change |
-|------|--------|
-| `src/pages/FinancialReports.tsx` | Add "Bookkeeping" tab trigger and content |
-
-## CSV Import (Bonus)
-
-Since Ady has historical data in spreadsheets, the TransactionDialog will include a "Bulk Import" option that accepts a simple CSV (Date, Description, Amount, Category) using the existing `papaparse` dependency already installed. This lets her bring in her historical records without manual entry.
-
-## Implementation Steps
-
-1. Create `business_transactions` and `business_transaction_categories` tables with RLS and seed data
-2. Build the `useBusinessTransactions` hook (CRUD + filtering)
-3. Build `TransactionDialog` (add/edit form)
-4. Build `TransactionTable` (list view with sorting and category filters)
-5. Build `BookkeepingSummary` (aggregated view with chart)
-6. Build `BookkeepingTab` (container with inner tabs)
-7. Wire into `FinancialReports.tsx`
+This is a one-file fix. No database changes required.
 
