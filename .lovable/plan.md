@@ -1,47 +1,46 @@
 
 
-# Fix: Starter Kit Allocation Foreign Key Blocking Invoice Updates/Deletes
+## Numbered Attendance for Randburg Branch
 
-## Problem
+### What changes
+For the Randburg branch only, the attendance "present" status will be replaced with numbers 1 through 6, representing which class session the handler is attending. The trainer clicks to cycle through: **not marked -> 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> absent -> excused -> not marked**.
 
-The `starter_kit_allocations` table has a foreign key (`invoice_item_id`) pointing to `invoice_items.id` with the default `ON DELETE RESTRICT` behavior. This means:
+Other branches (e.g., Delta) keep the current green tick behavior unchanged.
 
-1. **Editing an invoice** fails because `useUpdateInvoice.ts` deletes all invoice_items then re-inserts them
-2. **Deleting an invoice** fails because the cascade tries to remove invoice_items that are referenced by allocations
+### How it works
+- A number (e.g., "3") in a green circle means the handler is **present** and it's their 3rd class
+- The number is stored in the existing `performance_grade` column on the `class_attendance` table (no database changes needed)
+- The `attendance_status` is set to `"present"` whenever a number is selected
 
-## Solution
+### Technical Details
 
-Two changes:
+**1. Update `useAttendance.ts` hook**
+- Add optional `performanceGrade` parameter to `UpdateAttendanceParams`
+- Include `performance_grade` in both insert and update operations to Supabase
 
-### 1. Database: Change the foreign key to ON DELETE SET NULL
+**2. Update `AttendanceStatusCell.tsx` (desktop)**
+- Import `useBranch` to detect if current branch is Randburg
+- For Randburg: change the status cycle to `not_marked -> 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> absent -> excused -> not_marked`
+- When cycling to a number, set `attendance_status = "present"` and `performance_grade = "1"` (or 2, 3, etc.)
+- When cycling to absent/excused/not_marked, clear `performance_grade`
+- Display the number inside the green circle instead of the checkmark
+- For non-Randburg branches: no change to existing behavior
 
-Drop and recreate the FK so that when an invoice_item is deleted, the allocation record is kept (for historical tracking) but its `invoice_item_id` is set to `NULL`.
+**3. Update `MobileHandlerCard.tsx` (mobile)**
+- Import `useBranch` to detect Randburg
+- For Randburg: replace the single "Present" (checkmark) button with 6 numbered buttons (1-6), each in a green style
+- Keep absent and excused buttons as-is
+- When a number is tapped, mark as present with that number as `performance_grade`
 
-```text
-ALTER TABLE starter_kit_allocations
-  DROP CONSTRAINT starter_kit_allocations_invoice_item_id_fkey;
+**4. Update `BatchAttendanceModal.tsx`**
+- For Randburg: replace the single "Present" button with a number selector (1-6)
+- Same storage logic: status = "present", grade = number
 
-ALTER TABLE starter_kit_allocations
-  ADD CONSTRAINT starter_kit_allocations_invoice_item_id_fkey
-  FOREIGN KEY (invoice_item_id)
-  REFERENCES invoice_items(id)
-  ON DELETE SET NULL;
-```
+### Files to modify
+- `src/components/class-handlers/attendance/useAttendance.ts` - add performanceGrade param
+- `src/components/class-handlers/attendance/AttendanceStatusCell.tsx` - Randburg numbered cycle
+- `src/components/class-handlers/mobile/MobileHandlerCard.tsx` - Randburg numbered buttons
+- `src/components/class-handlers/attendance/BatchAttendanceModal.tsx` - Randburg number picker
 
-This preserves the allocation history (who got a kit, when, which branch) even if the invoice is later edited or deleted.
+No database migration needed -- uses the existing `performance_grade` column.
 
-### 2. Code: Smarter item update in useUpdateInvoice.ts
-
-Instead of blindly deleting all items, delete only the items that do NOT have a starter kit allocation linked. For items with allocations (enrollment fees), update them in place rather than delete+recreate.
-
-Alternatively, since the DB fix (SET NULL) handles the constraint, the existing delete-all approach will work fine after the migration. The allocation record simply loses its `invoice_item_id` link, which is acceptable since the allocation already stores `handler_id`, `dog_name`, and `branch_id` independently.
-
-## Files
-
-| File | Change |
-|------|--------|
-| New migration SQL | Alter FK to ON DELETE SET NULL |
-| `src/hooks/invoices/mutations/useUpdateInvoice.ts` | No code change needed once FK is fixed |
-| `src/hooks/invoices/mutations/useDeleteInvoice.ts` | No code change needed once FK is fixed |
-
-This is a single database migration fix.
