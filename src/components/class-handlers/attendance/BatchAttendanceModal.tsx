@@ -2,14 +2,15 @@
 import { useState, useEffect } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Loader2, Check, X, AlertTriangle, CalendarIcon, Calendar } from "lucide-react";
-import { format, parseISO } from "date-fns";
+import { Loader2, Check, X, AlertTriangle, Calendar } from "lucide-react";
+import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { useAttendance } from "./useAttendance";
 import { useQueryClient } from "@tanstack/react-query";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { useBranch } from "@/context/BranchContext";
 
 interface BatchAttendanceModalProps {
   open: boolean;
@@ -26,6 +27,7 @@ interface AttendanceRecord {
   bookingId: string;
   status: AttendanceStatus;
   existingAttendanceId?: string;
+  performanceGrade?: string | null;
 }
 
 export function BatchAttendanceModal({
@@ -43,18 +45,11 @@ export function BatchAttendanceModal({
   const { updateAttendance } = useAttendance(classId);
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
+  const { currentBranch } = useBranch();
+  
+  const isRandburg = currentBranch?.name?.toLowerCase().includes('randburg') ?? false;
   
   // Format date for display
-  const formatDate = (dateString: string) => {
-    try {
-      return format(new Date(dateString), "EEE, MMM d");
-    } catch (e) {
-      console.error("Error formatting date:", e);
-      return dateString;
-    }
-  };
-  
-  // Format date for select options
   const formatDateOption = (dateString: string) => {
     try {
       return format(new Date(dateString), "EEEE, MMMM d, yyyy");
@@ -106,7 +101,8 @@ export function BatchAttendanceModal({
       newRecords[booking.id] = {
         bookingId: booking.id,
         status: existingAttendance?.attendance_status || 'not_marked',
-        existingAttendanceId: existingAttendance?.id
+        existingAttendanceId: existingAttendance?.id,
+        performanceGrade: existingAttendance?.performance_grade || null
       };
     });
     
@@ -114,12 +110,13 @@ export function BatchAttendanceModal({
   };
   
   // Update status for a booking
-  const updateStatus = (bookingId: string, status: AttendanceStatus) => {
+  const updateStatus = (bookingId: string, status: AttendanceStatus, grade?: string | null) => {
     setAttendanceRecords(prev => ({
       ...prev,
       [bookingId]: {
         ...prev[bookingId],
-        status
+        status,
+        performanceGrade: grade !== undefined ? grade : null
       }
     }));
   };
@@ -138,21 +135,18 @@ export function BatchAttendanceModal({
     setIsSubmitting(true);
     
     try {
-      // Convert object to array for processing
       const recordsToSave = Object.values(attendanceRecords);
       
-      // Process records sequentially to avoid overwhelming the database
       for (const record of recordsToSave) {
         await updateAttendance({
           bookingId: record.bookingId,
           classDate: selectedDate,
           status: record.status,
-          notes: "", // We're not using notes in the batch interface
-          attendanceId: record.existingAttendanceId
+          attendanceId: record.existingAttendanceId,
+          performanceGrade: record.performanceGrade
         });
       }
       
-      // Invalidate queries to refresh data
       queryClient.invalidateQueries({ queryKey: ['class-handlers', classId] });
       
       toast({
@@ -175,7 +169,7 @@ export function BatchAttendanceModal({
     }
   };
   
-  // Get icon color based on status for better visibility
+  // Get icon color based on status
   const getIconColor = (status: AttendanceStatus) => {
     switch (status) {
       case 'present': return 'text-green-600';
@@ -186,9 +180,17 @@ export function BatchAttendanceModal({
   };
   
   // Get background color for status buttons
-  const getButtonBgColor = (bookingId: string, buttonStatus: AttendanceStatus) => {
-    const currentStatus = attendanceRecords[bookingId]?.status;
-    if (currentStatus === buttonStatus) {
+  const getButtonBgColor = (bookingId: string, buttonStatus: AttendanceStatus, grade?: string) => {
+    const record = attendanceRecords[bookingId];
+    if (!record) return 'bg-white';
+    
+    // For Randburg numbered buttons
+    if (grade && record.status === 'present' && record.performanceGrade === grade) {
+      return 'bg-green-100 border-green-600';
+    }
+    
+    // For standard buttons (non-grade)
+    if (!grade && record.status === buttonStatus) {
       switch (buttonStatus) {
         case 'present': return 'bg-green-100 border-green-600';
         case 'absent': return 'bg-red-100 border-red-600';
@@ -238,7 +240,6 @@ export function BatchAttendanceModal({
           {bookings.map(booking => {
             const handler = booking.clients;
             const dog = booking.dogs;
-            const record = attendanceRecords[booking.id];
             
             return (
               <div 
@@ -255,24 +256,41 @@ export function BatchAttendanceModal({
                     </div>
                   </div>
                   
-                  <div className="flex space-x-1 md:space-x-2">
-                    <Button
-                      type="button"
-                      size={isMobile ? "sm" : "default"}
-                      variant="outline"
-                      className={`${getButtonBgColor(booking.id, 'present')} h-10 w-10 p-0 rounded-full`}
-                      onClick={() => updateStatus(booking.id, 'present')}
-                    >
-                      <Check className={`h-5 w-5 ${getIconColor('present')}`} />
-                      <span className="sr-only">Mark as present</span>
-                    </Button>
+                  <div className="flex space-x-1 md:space-x-2 flex-wrap justify-end gap-y-1">
+                    {isRandburg ? (
+                      <>
+                        {['1', '2', '3', '4', '5', '6'].map(num => (
+                          <Button
+                            key={num}
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className={`${getButtonBgColor(booking.id, 'present', num)} h-9 w-9 p-0 rounded-full text-sm font-bold`}
+                            onClick={() => updateStatus(booking.id, 'present', num)}
+                          >
+                            <span className={attendanceRecords[booking.id]?.status === 'present' && attendanceRecords[booking.id]?.performanceGrade === num ? 'text-green-700' : 'text-green-600'}>{num}</span>
+                          </Button>
+                        ))}
+                      </>
+                    ) : (
+                      <Button
+                        type="button"
+                        size={isMobile ? "sm" : "default"}
+                        variant="outline"
+                        className={`${getButtonBgColor(booking.id, 'present')} h-10 w-10 p-0 rounded-full`}
+                        onClick={() => updateStatus(booking.id, 'present')}
+                      >
+                        <Check className={`h-5 w-5 ${getIconColor('present')}`} />
+                        <span className="sr-only">Mark as present</span>
+                      </Button>
+                    )}
                     
                     <Button
                       type="button"
                       size={isMobile ? "sm" : "default"}
                       variant="outline"
                       className={`${getButtonBgColor(booking.id, 'absent')} h-10 w-10 p-0 rounded-full`}
-                      onClick={() => updateStatus(booking.id, 'absent')}
+                      onClick={() => updateStatus(booking.id, 'absent', null)}
                     >
                       <X className={`h-5 w-5 ${getIconColor('absent')}`} />
                       <span className="sr-only">Mark as absent</span>
@@ -283,7 +301,7 @@ export function BatchAttendanceModal({
                       size={isMobile ? "sm" : "default"}
                       variant="outline"
                       className={`${getButtonBgColor(booking.id, 'excused')} h-10 w-10 p-0 rounded-full`}
-                      onClick={() => updateStatus(booking.id, 'excused')}
+                      onClick={() => updateStatus(booking.id, 'excused', null)}
                     >
                       <AlertTriangle className={`h-5 w-5 ${getIconColor('excused')}`} />
                       <span className="sr-only">Mark as excused</span>

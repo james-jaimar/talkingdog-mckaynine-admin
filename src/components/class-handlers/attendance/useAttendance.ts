@@ -9,6 +9,7 @@ interface UpdateAttendanceParams {
   status: string;
   notes?: string; // Keep this for backward compatibility with UI
   attendanceId?: string;
+  performanceGrade?: string | null;
 }
 
 export function useAttendance(classId: string) {
@@ -19,8 +20,9 @@ export function useAttendance(classId: string) {
     bookingId,
     classDate,
     status,
-    notes, // Accept notes but don't use it since the column doesn't exist
-    attendanceId
+    notes,
+    attendanceId,
+    performanceGrade
   }: UpdateAttendanceParams) => {
     setIsSubmitting(true);
     
@@ -83,6 +85,7 @@ export function useAttendance(classId: string) {
           .from('class_attendance')
           .update({
             attendance_status: status,
+            performance_grade: performanceGrade !== undefined ? performanceGrade : null,
             updated_at: new Date().toISOString()
           })
           .eq('id', attendanceId);
@@ -96,7 +99,8 @@ export function useAttendance(classId: string) {
             booking_id: bookingId,
             class_schedule_id: classScheduleId,
             class_date: formattedDate,
-            attendance_status: status
+            attendance_status: status,
+            performance_grade: performanceGrade || null
           });
       }
       
