@@ -1,4 +1,4 @@
-import { Phone, Edit2, Check, X, AlertTriangle, CalendarDays, CheckCircle, Loader2, Clock, FileText } from "lucide-react";
+import { Phone, Edit2, Check, X, AlertTriangle, CalendarDays, CheckCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Booking } from "../types/booking";
@@ -8,6 +8,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useInvoiceStatus } from "../booking-row/useInvoiceStatus";
 import { useMemo } from "react";
+import { useBranch } from "@/context/BranchContext";
+
 interface MobileHandlerCardProps {
   booking: Booking;
   selectedDate: string | null;
@@ -28,6 +30,9 @@ export function MobileHandlerCard({
   const { updateAttendance, isSubmitting } = useAttendance(classId);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { currentBranch } = useBranch();
+  
+  const isRandburg = currentBranch?.name?.toLowerCase().includes('randburg') ?? false;
   
   // Use same invoice status hook as desktop for accurate payment status
   const { data: invoiceData, isLoading: isLoadingInvoice } = useInvoiceStatus(booking.id);
@@ -54,43 +59,54 @@ export function MobileHandlerCard({
 
   const dogAge = getDogAge();
 
-  // Get current attendance status for selected date
-  const getAttendanceStatus = (): AttendanceStatus => {
-    if (!selectedDate || !booking.attendances) return 'not_marked';
-    
-    const dateToCheck = new Date(selectedDate).toDateString();
-    const attendance = booking.attendances.find(
-      (a: any) => new Date(a.class_date).toDateString() === dateToCheck
-    );
-    
-    return (attendance?.attendance_status as AttendanceStatus) || 'not_marked';
-  };
-
+  // Get current attendance for selected date
   const getAttendanceRecord = () => {
     if (!selectedDate || !booking.attendances) return null;
-    
     const dateToCheck = new Date(selectedDate).toDateString();
     return booking.attendances.find(
       (a: any) => new Date(a.class_date).toDateString() === dateToCheck
     );
   };
 
-  const currentStatus = getAttendanceStatus();
   const attendanceRecord = getAttendanceRecord();
+  const currentStatus: AttendanceStatus = (attendanceRecord?.attendance_status as AttendanceStatus) || 'not_marked';
+  const currentGrade = attendanceRecord?.performance_grade || null;
 
-  // Handle attendance button click
-  const handleAttendanceClick = async (newStatus: AttendanceStatus) => {
+  // Handle attendance button click (for non-Randburg present, and absent/excused)
+  const handleAttendanceClick = async (newStatus: AttendanceStatus, grade?: string | null) => {
     if (!selectedDate || isSubmitting) return;
 
-    // Toggle off if already selected
-    const statusToSet = currentStatus === newStatus ? 'not_marked' : newStatus;
+    // For Randburg numbered buttons, toggle off if same grade clicked
+    if (isRandburg && grade && currentStatus === 'present' && currentGrade === grade) {
+      // Toggle off
+      try {
+        await updateAttendance({
+          bookingId: booking.id,
+          classDate: selectedDate,
+          status: 'not_marked',
+          attendanceId: attendanceRecord?.id,
+          performanceGrade: null
+        });
+        queryClient.invalidateQueries({ queryKey: ['class-handlers', classId] });
+        toast({ title: 'Cleared', duration: 1500 });
+      } catch (error) {
+        console.error("Error updating attendance:", error);
+        toast({ title: "Error updating attendance", variant: "destructive" });
+      }
+      return;
+    }
+
+    // Toggle off if already selected (non-Randburg or absent/excused)
+    const statusToSet = (!grade && currentStatus === newStatus) ? 'not_marked' : newStatus;
+    const gradeToSet = statusToSet === 'not_marked' ? null : (grade || null);
 
     try {
       await updateAttendance({
         bookingId: booking.id,
         classDate: selectedDate,
         status: statusToSet,
-        attendanceId: attendanceRecord?.id
+        attendanceId: attendanceRecord?.id,
+        performanceGrade: gradeToSet
       });
       
       queryClient.invalidateQueries({ queryKey: ['class-handlers', classId] });
@@ -103,19 +119,16 @@ export function MobileHandlerCard({
       };
       
       toast({
-        title: `Marked as ${statusLabels[statusToSet]}`,
+        title: grade ? `Marked as Class ${grade}` : `Marked as ${statusLabels[statusToSet]}`,
         duration: 1500,
       });
     } catch (error) {
       console.error("Error updating attendance:", error);
-      toast({
-        title: "Error updating attendance",
-        variant: "destructive",
-      });
+      toast({ title: "Error updating attendance", variant: "destructive" });
     }
   };
 
-  // Attendance button styles
+  // Attendance button styles for absent/excused
   const getButtonStyle = (status: AttendanceStatus) => {
     const isActive = currentStatus === status;
     const baseClasses = "h-12 w-12 rounded-full flex items-center justify-center transition-all active:scale-95";
@@ -130,6 +143,13 @@ export function MobileHandlerCard({
       default:
         return `${baseClasses} bg-gray-100 text-gray-600`;
     }
+  };
+
+  // Randburg numbered button style
+  const getNumberButtonStyle = (num: string) => {
+    const isActive = currentStatus === 'present' && currentGrade === num;
+    const baseClasses = "h-10 w-10 rounded-full flex items-center justify-center transition-all active:scale-95 text-sm font-bold";
+    return `${baseClasses} ${isActive ? 'bg-green-600 text-white shadow-lg' : 'bg-green-100 text-green-700 hover:bg-green-200'}`;
   };
 
   return (
@@ -157,7 +177,7 @@ export function MobileHandlerCard({
           </div>
         </div>
         
-        {/* Payment Status Badge - using invoice data like desktop */}
+        {/* Payment Status Badge */}
         {isLoadingInvoice ? (
           <Badge variant="outline" className="shrink-0 ml-2 bg-gray-100">
             <Loader2 className="h-3 w-3 animate-spin" />
@@ -193,15 +213,32 @@ export function MobileHandlerCard({
       {/* Attendance Buttons - Only show if date is selected */}
       {selectedDate ? (
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => handleAttendanceClick('present')}
-              disabled={isSubmitting}
-              className={getButtonStyle('present')}
-              aria-label="Mark present"
-            >
-              <Check className="h-6 w-6" />
-            </button>
+          <div className="flex items-center gap-2 flex-wrap">
+            {isRandburg ? (
+              <>
+                {/* Numbered buttons 1-6 for Randburg */}
+                {['1', '2', '3', '4', '5', '6'].map(num => (
+                  <button
+                    key={num}
+                    onClick={() => handleAttendanceClick('present', num)}
+                    disabled={isSubmitting}
+                    className={getNumberButtonStyle(num)}
+                    aria-label={`Mark class ${num}`}
+                  >
+                    {num}
+                  </button>
+                ))}
+              </>
+            ) : (
+              <button
+                onClick={() => handleAttendanceClick('present')}
+                disabled={isSubmitting}
+                className={getButtonStyle('present')}
+                aria-label="Mark present"
+              >
+                <Check className="h-6 w-6" />
+              </button>
+            )}
             <button
               onClick={() => handleAttendanceClick('absent')}
               disabled={isSubmitting}
@@ -223,7 +260,7 @@ export function MobileHandlerCard({
           <Button
             variant="outline"
             size="sm"
-            className="h-10"
+            className="h-10 shrink-0"
             onClick={() => onEdit(booking)}
           >
             <Edit2 className="h-4 w-4 mr-1" />
