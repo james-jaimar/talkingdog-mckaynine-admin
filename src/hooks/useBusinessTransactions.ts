@@ -102,6 +102,71 @@ export function useTransactionCategories(type?: 'expense' | 'income') {
   });
 }
 
+export function useAllTransactionCategories() {
+  return useQuery({
+    queryKey: ['business-transaction-categories-all'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('business_transaction_categories')
+        .select('*')
+        .order('sort_order');
+
+      if (error) throw error;
+      return (data || []) as TransactionCategory[];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useCategoryMutations() {
+  const queryClient = useQueryClient();
+
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ['business-transaction-categories'] });
+    queryClient.invalidateQueries({ queryKey: ['business-transaction-categories-all'] });
+  };
+
+  const createCategory = useMutation({
+    mutationFn: async (data: { name: string; type: string; sort_order: number }) => {
+      const { data: result, error } = await supabase
+        .from('business_transaction_categories')
+        .insert(data)
+        .select()
+        .single();
+      if (error) throw error;
+      return result;
+    },
+    onSuccess: invalidate,
+  });
+
+  const updateCategory = useMutation({
+    mutationFn: async ({ id, ...data }: { id: string; name?: string; type?: string; sort_order?: number; is_active?: boolean }) => {
+      const { data: result, error } = await supabase
+        .from('business_transaction_categories')
+        .update(data)
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      return result;
+    },
+    onSuccess: invalidate,
+  });
+
+  const deleteCategory = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('business_transaction_categories')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: invalidate,
+  });
+
+  return { createCategory, updateCategory, deleteCategory };
+}
+
 export function useVendorSuggestions() {
   const { currentBranch } = useBranch();
 
