@@ -18,6 +18,7 @@ interface BatchAttendanceModalProps {
   bookings: any[];
   scheduleDates: string[];
   classId: string;
+  classType?: string;
   onAttendanceUpdated: () => void;
 }
 
@@ -36,6 +37,7 @@ export function BatchAttendanceModal({
   bookings,
   scheduleDates,
   classId,
+  classType,
   onAttendanceUpdated
 }: BatchAttendanceModalProps) {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -47,7 +49,7 @@ export function BatchAttendanceModal({
   const isMobile = useIsMobile();
   const { currentBranch } = useBranch();
   
-  const isRandburg = currentBranch?.name?.toLowerCase().includes('randburg') ?? false;
+  const isRandburgPuppy = (currentBranch?.name?.toLowerCase().includes('randburg') ?? false) && classType?.toLowerCase() === 'puppy';
   
   // Format date for display
   const formatDateOption = (dateString: string) => {
@@ -257,7 +259,7 @@ export function BatchAttendanceModal({
                   </div>
                   
                   <div className="flex space-x-1 md:space-x-2 flex-wrap justify-end gap-y-1">
-                    {isRandburg ? (
+                    {isRandburgPuppy ? (
                       <>
                         {['1', '2', '3', '4', '5', '6'].map(num => (
                           <Button

@@ -101,6 +101,7 @@ export function ClassHandlersTable({ classId, classType }: ClassHandlersTablePro
       booking={booking}
       date={date}
       classId={classId}
+      classType={classType}
     />
   );
 
@@ -190,6 +191,7 @@ export function ClassHandlersTable({ classId, classType }: ClassHandlersTablePro
             handlers={handlers}
             selectedDate={mobileSelectedDate}
             classId={classId}
+            classType={classType}
             startEditing={startEditing}
           />
         </div>
@@ -220,6 +222,7 @@ export function ClassHandlersTable({ classId, classType }: ClassHandlersTablePro
         bookings={handlers}
         scheduleDates={sortedDates}
         classId={classId}
+        classType={classType}
         onAttendanceUpdated={handleBatchAttendanceUpdated}
       />
 

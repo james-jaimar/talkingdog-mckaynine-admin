@@ -14,6 +14,7 @@ interface MobileHandlerCardProps {
   booking: Booking;
   selectedDate: string | null;
   classId: string;
+  classType?: string;
   onEdit: (booking: Booking) => void;
 }
 
@@ -23,6 +24,7 @@ export function MobileHandlerCard({
   booking, 
   selectedDate, 
   classId,
+  classType,
   onEdit 
 }: MobileHandlerCardProps) {
   const handler = booking.clients;
@@ -32,7 +34,7 @@ export function MobileHandlerCard({
   const { toast } = useToast();
   const { currentBranch } = useBranch();
   
-  const isRandburg = currentBranch?.name?.toLowerCase().includes('randburg') ?? false;
+  const isRandburgPuppy = (currentBranch?.name?.toLowerCase().includes('randburg') ?? false) && classType?.toLowerCase() === 'puppy';
   
   // Use same invoice status hook as desktop for accurate payment status
   const { data: invoiceData, isLoading: isLoadingInvoice } = useInvoiceStatus(booking.id);
@@ -77,7 +79,7 @@ export function MobileHandlerCard({
     if (!selectedDate || isSubmitting) return;
 
     // For Randburg numbered buttons, toggle off if same grade clicked
-    if (isRandburg && grade && currentStatus === 'present' && currentGrade === grade) {
+    if (isRandburgPuppy && grade && currentStatus === 'present' && currentGrade === grade) {
       // Toggle off
       try {
         await updateAttendance({
@@ -214,7 +216,7 @@ export function MobileHandlerCard({
       {selectedDate ? (
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 flex-wrap">
-            {isRandburg ? (
+            {isRandburgPuppy ? (
               <>
                 {/* Numbered buttons 1-6 for Randburg */}
                 {['1', '2', '3', '4', '5', '6'].map(num => (

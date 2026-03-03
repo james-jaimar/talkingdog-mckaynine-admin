@@ -16,6 +16,7 @@ interface AttendanceStatusCellProps {
   booking: any;
   date: string;
   classId: string;
+  classType?: string;
   onOpenAttendanceModal?: (booking: any, date: string) => void;
 }
 
@@ -25,14 +26,14 @@ const DEFAULT_STATUS_CYCLE: Array<string> = ['not_marked', 'present', 'absent', 
 // Randburg status cycle: not_marked -> 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> absent -> excused -> not_marked
 const RANDBURG_STATUS_CYCLE: Array<string> = ['not_marked', '1', '2', '3', '4', '5', '6', 'absent', 'excused'];
 
-export function AttendanceStatusCell({ booking, date, classId, onOpenAttendanceModal }: AttendanceStatusCellProps) {
+export function AttendanceStatusCell({ booking, date, classId, classType, onOpenAttendanceModal }: AttendanceStatusCellProps) {
   const { updateAttendance, isSubmitting } = useAttendance(classId);
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { currentBranch } = useBranch();
   
-  const isRandburg = currentBranch?.name?.toLowerCase().includes('randburg') ?? false;
-  const statusCycle = isRandburg ? RANDBURG_STATUS_CYCLE : DEFAULT_STATUS_CYCLE;
+  const isRandburgPuppy = (currentBranch?.name?.toLowerCase().includes('randburg') ?? false) && classType?.toLowerCase() === 'puppy';
+  const statusCycle = isRandburgPuppy ? RANDBURG_STATUS_CYCLE : DEFAULT_STATUS_CYCLE;
 
   // Function to get the attendance record for a booking and date
   const getAttendanceRecord = () => {
@@ -61,7 +62,7 @@ export function AttendanceStatusCell({ booking, date, classId, onOpenAttendanceM
     return 'not_marked';
   };
 
-  const displayStatus = isRandburg 
+  const displayStatus = isRandburgPuppy 
     ? getRandburgDisplayStatus()
     : (attendanceRecord?.attendance_status || 'not_marked');
   
@@ -84,7 +85,7 @@ export function AttendanceStatusCell({ booking, date, classId, onOpenAttendanceM
     let attendanceStatus: string;
     let grade: string | null = null;
     
-    if (isRandburg) {
+    if (isRandburgPuppy) {
       const numVal = parseInt(nextStatus);
       if (!isNaN(numVal) && numVal >= 1 && numVal <= 6) {
         attendanceStatus = 'present';
