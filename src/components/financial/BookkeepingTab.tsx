@@ -8,6 +8,7 @@ import { useBusinessTransactions, useTransactionCategories, useTransactionMutati
 import { TransactionTable } from "./TransactionTable";
 import { TransactionDialog } from "./TransactionDialog";
 import { BookkeepingSummary } from "./BookkeepingSummary";
+import { CategoryManager } from "./CategoryManager";
 import { toast } from "sonner";
 import { format, startOfMonth } from "date-fns";
 import { Badge } from "@/components/ui/badge";
@@ -19,7 +20,7 @@ export function BookkeepingTab() {
   const currentDate = new Date();
   const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
-  const [innerTab, setInnerTab] = useState<'expenses' | 'income' | 'summary'>('expenses');
+  const [innerTab, setInnerTab] = useState<'expenses' | 'income' | 'summary' | 'categories'>('expenses');
   const [showDialog, setShowDialog] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<BusinessTransaction | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string>('');
@@ -27,7 +28,7 @@ export function BookkeepingTab() {
 
   const { currentBranch } = useBranch();
 
-  const transactionType = innerTab === 'summary' ? undefined : innerTab === 'expenses' ? 'expense' : 'income';
+  const transactionType = (innerTab === 'summary' || innerTab === 'categories') ? undefined : innerTab === 'expenses' ? 'expense' : 'income';
 
   const { data: transactions = [], isLoading } = useBusinessTransactions({
     month: selectedMonth,
@@ -183,9 +184,10 @@ export function BookkeepingTab() {
                 <TabsTrigger value="expenses">Expenses</TabsTrigger>
                 <TabsTrigger value="income">Other Income</TabsTrigger>
                 <TabsTrigger value="summary">Summary</TabsTrigger>
+                <TabsTrigger value="categories">Categories</TabsTrigger>
               </TabsList>
 
-              {innerTab !== 'summary' && (
+              {innerTab !== 'summary' && innerTab !== 'categories' && (
                 <div className="flex flex-wrap gap-2">
                   <Button size="sm" onClick={handleAddNew}>
                     <Plus className="h-4 w-4 mr-1" />
@@ -204,7 +206,7 @@ export function BookkeepingTab() {
             </div>
 
             {/* Category filters */}
-            {innerTab !== 'summary' && activeCategories.length > 0 && (
+            {innerTab !== 'summary' && innerTab !== 'categories' && activeCategories.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mb-4">
                 <Badge
                   variant={categoryFilter === '' ? 'default' : 'outline'}
@@ -256,6 +258,10 @@ export function BookkeepingTab() {
 
             <TabsContent value="summary" className="mt-0">
               <BookkeepingSummary month={selectedMonth} year={selectedYear} monthLabel={monthLabel} />
+            </TabsContent>
+
+            <TabsContent value="categories" className="mt-0">
+              <CategoryManager />
             </TabsContent>
           </Tabs>
         </CardContent>
