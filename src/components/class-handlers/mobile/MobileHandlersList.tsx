@@ -5,6 +5,7 @@ interface MobileHandlersListProps {
   handlers: Booking[];
   selectedDate: string | null;
   classId: string;
+  classType?: string;
   startEditing: (booking: Booking) => void;
 }
 
@@ -12,6 +13,7 @@ export function MobileHandlersList({
   handlers, 
   selectedDate, 
   classId,
+  classType,
   startEditing 
 }: MobileHandlersListProps) {
   if (!handlers || handlers.length === 0) {
@@ -30,6 +32,7 @@ export function MobileHandlersList({
           booking={booking}
           selectedDate={selectedDate}
           classId={classId}
+          classType={classType}
           onEdit={startEditing}
         />
       ))}
