@@ -40,6 +40,12 @@ const GRADE_INFO: Record<string, { label: string; color: string; bgColor: string
   'D': { label: 'Not coping but committed, trying hard', color: 'text-amber-700', bgColor: 'bg-amber-100 hover:bg-amber-200 border-amber-300' },
   'E': { label: 'Disinterested, poor results', color: 'text-orange-700', bgColor: 'bg-orange-100 hover:bg-orange-200 border-orange-300' },
   'F': { label: 'No comprehension or commitment', color: 'text-red-700', bgColor: 'bg-red-100 hover:bg-red-200 border-red-300' },
+  '1': { label: 'Class 1', color: 'text-green-700', bgColor: 'bg-green-100 hover:bg-green-200 border-green-300' },
+  '2': { label: 'Class 2', color: 'text-green-700', bgColor: 'bg-green-100 hover:bg-green-200 border-green-300' },
+  '3': { label: 'Class 3', color: 'text-green-700', bgColor: 'bg-green-100 hover:bg-green-200 border-green-300' },
+  '4': { label: 'Class 4', color: 'text-green-700', bgColor: 'bg-green-100 hover:bg-green-200 border-green-300' },
+  '5': { label: 'Class 5', color: 'text-green-700', bgColor: 'bg-green-100 hover:bg-green-200 border-green-300' },
+  '6': { label: 'Class 6', color: 'text-green-700', bgColor: 'bg-green-100 hover:bg-green-200 border-green-300' },
 };
 
 export default function TrainerClassDetail() {
@@ -305,7 +311,7 @@ export default function TrainerClassDetail() {
     const currentGrade = getPerformanceGrade(booking);
     const isActive = currentGrade === grade;
     const isLoading = isUpdatingGrade === booking.id;
-    const gradeInfo = GRADE_INFO[grade];
+    const gradeInfo = GRADE_INFO[grade] || { label: grade, color: 'text-gray-700', bgColor: 'bg-gray-100 hover:bg-gray-200 border-gray-300' };
 
     return (
       <TooltipProvider>
@@ -316,7 +322,7 @@ export default function TrainerClassDetail() {
               size="sm"
               className={`h-10 w-10 sm:h-9 sm:w-9 p-0 text-base sm:text-sm font-bold border-2 transition-all ${
                 isActive 
-                  ? `${gradeInfo.bgColor} ${gradeInfo.color} ring-2 ring-offset-1 ring-${grade === 'A' ? 'emerald' : grade === 'B' ? 'blue' : grade === 'C' ? 'cyan' : grade === 'D' ? 'amber' : grade === 'E' ? 'orange' : 'red'}-400` 
+                  ? `${gradeInfo.bgColor} ${gradeInfo.color} ring-2 ring-offset-1 ring-${grade === 'A' ? 'emerald' : grade === 'B' ? 'blue' : grade === 'C' ? 'cyan' : grade === 'D' ? 'amber' : grade === 'E' ? 'orange' : 'red'}-400`
                   : 'bg-background hover:bg-muted border-muted-foreground/20'
               }`}
               onClick={() => updateGrade(booking.id, isActive ? null : grade as PerformanceGrade)}
@@ -616,7 +622,7 @@ export default function TrainerClassDetail() {
                                   {status}
                                 </Badge>
                               )}
-                              {grade && (
+                              {grade && GRADE_INFO[grade] && (
                                 <Badge className={`${GRADE_INFO[grade].bgColor} ${GRADE_INFO[grade].color} border`}>
                                   Grade: {grade}
                                 </Badge>
