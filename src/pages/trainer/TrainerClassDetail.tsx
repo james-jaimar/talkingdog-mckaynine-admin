@@ -351,6 +351,135 @@ export default function TrainerClassDetail() {
     );
   };
 
+  // Randburg Puppy: single-step cycle matching admin AttendanceStatusCell
+  const RANDBURG_STATUS_CYCLE: string[] = ['not_marked', '1', '2', '3', '4', '5', '6', 'absent', 'excused'];
+
+  const getRandburgDisplayStatus = (booking: any): string => {
+    const status = getAttendanceStatus(booking);
+    const grade = getPerformanceGrade(booking);
+    if (status === 'present' && grade) return grade; // "1", "2", etc.
+    if (status === 'absent') return 'absent';
+    if (status === 'excused') return 'excused';
+    if (status === 'present') return '1'; // Default to 1 if present but no grade
+    return 'not_marked';
+  };
+
+  const handleRandburgCycle = async (booking: any) => {
+    if (!selectedDate || !schedule) return;
+    
+    const currentDisplay = getRandburgDisplayStatus(booking);
+    const currentIndex = RANDBURG_STATUS_CYCLE.indexOf(currentDisplay);
+    const nextIndex = (currentIndex + 1) % RANDBURG_STATUS_CYCLE.length;
+    const nextStatus = RANDBURG_STATUS_CYCLE[nextIndex];
+
+    // Determine attendance_status and performance_grade
+    const numVal = parseInt(nextStatus);
+    let attendanceStatus: AttendanceStatus;
+    let grade: string | null = null;
+
+    if (!isNaN(numVal) && numVal >= 1 && numVal <= 6) {
+      attendanceStatus = 'present';
+      grade = nextStatus;
+    } else if (nextStatus === 'absent') {
+      attendanceStatus = 'absent';
+    } else if (nextStatus === 'excused') {
+      attendanceStatus = 'excused';
+    } else {
+      attendanceStatus = 'not_marked';
+    }
+
+    setIsUpdating(booking.id);
+    try {
+      const existingAttendance = booking?.attendances?.find(
+        (a: any) => new Date(a.class_date).toDateString() === new Date(selectedDate).toDateString()
+      );
+
+      if (existingAttendance) {
+        const { error } = await supabase
+          .from('class_attendance')
+          .update({
+            attendance_status: attendanceStatus,
+            performance_grade: grade,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existingAttendance.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('class_attendance')
+          .insert({
+            booking_id: booking.id,
+            class_schedule_id: scheduleId,
+            class_date: new Date(selectedDate).toISOString(),
+            attendance_status: attendanceStatus,
+            performance_grade: grade,
+          });
+        if (error) throw error;
+      }
+
+      const statusLabels: Record<string, string> = {
+        present: 'Present', absent: 'Absent', excused: 'Excused', not_marked: 'Cleared',
+        '1': 'Week 1', '2': 'Week 2', '3': 'Week 3', '4': 'Week 4', '5': 'Week 5', '6': 'Week 6',
+      };
+
+      toast({
+        title: `Marked as ${statusLabels[nextStatus] || nextStatus}`,
+        duration: 1500,
+      });
+
+      refetch();
+    } catch (error) {
+      console.error("Error updating attendance:", error);
+      toast({ title: "Error updating attendance", variant: "destructive" });
+    } finally {
+      setIsUpdating(null);
+    }
+  };
+
+  const RandburgStatusCircle = ({ booking }: { booking: any }) => {
+    const displayStatus = getRandburgDisplayStatus(booking);
+    const isLoading = isUpdating === booking.id;
+    
+    const numVal = parseInt(displayStatus);
+    let icon: React.ReactNode;
+    let bgColor: string;
+
+    if (!isNaN(numVal) && numVal >= 1 && numVal <= 6) {
+      icon = <span className="text-sm font-bold text-white">{numVal}</span>;
+      bgColor = "bg-green-600 hover:bg-green-700";
+    } else if (displayStatus === 'absent') {
+      icon = <X className="h-4 w-4 text-white" />;
+      bgColor = "bg-red-600 hover:bg-red-700";
+    } else if (displayStatus === 'excused') {
+      icon = <AlertTriangle className="h-4 w-4 text-white" />;
+      bgColor = "bg-amber-500 hover:bg-amber-600";
+    } else {
+      icon = <CalendarRange className="h-4 w-4 text-muted-foreground" />;
+      bgColor = "bg-muted hover:bg-muted/80";
+    }
+
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div
+              className={`h-9 w-9 rounded-full flex items-center justify-center cursor-pointer transition-colors ${bgColor} ${isLoading ? 'opacity-50 pointer-events-none' : ''}`}
+              onClick={() => handleRandburgCycle(booking)}
+            >
+              {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : icon}
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="top">
+            <p>{displayStatus === 'not_marked' ? 'Click to mark attendance' : 
+               !isNaN(parseInt(displayStatus)) ? `Week ${displayStatus}` :
+               displayStatus.charAt(0).toUpperCase() + displayStatus.slice(1)}</p>
+            <p className="text-xs text-muted-foreground">Click to cycle status</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  };
+
   if (!isTrainer) {
     return (
       <DashboardLayout>
@@ -415,24 +544,45 @@ export default function TrainerClassDetail() {
           </div>
         </div>
 
-        {/* Grade Key - Collapsible on mobile */}
-        <Card className="bg-muted/30">
-          <CardContent className="p-3 sm:p-4">
-            <p className="text-xs font-medium text-muted-foreground mb-2">Performance Grade Key:</p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 text-xs">
-              {(isRandburgPuppy ? ['1','2','3','4','5','6'] : ['A','B','C','D','E','F']).map((grade) => {
-                const info = GRADE_INFO[grade];
-                return (
-                  <div key={grade} className={`px-2 py-1.5 rounded border ${info.bgColor}`}>
-                    <span className={`font-bold ${info.color}`}>{grade}</span>
-                    <span className="text-muted-foreground ml-1 hidden sm:inline">- {info.label}</span>
-                    <span className="text-muted-foreground ml-1 sm:hidden">- {info.label.split(',')[0]}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
+        {/* Grade Key - Only show for non-Randburg classes */}
+        {!isRandburgPuppy && (
+          <Card className="bg-muted/30">
+            <CardContent className="p-3 sm:p-4">
+              <p className="text-xs font-medium text-muted-foreground mb-2">Performance Grade Key:</p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 text-xs">
+                {['A','B','C','D','E','F'].map((grade) => {
+                  const info = GRADE_INFO[grade];
+                  return (
+                    <div key={grade} className={`px-2 py-1.5 rounded border ${info.bgColor}`}>
+                      <span className={`font-bold ${info.color}`}>{grade}</span>
+                      <span className="text-muted-foreground ml-1 hidden sm:inline">- {info.label}</span>
+                      <span className="text-muted-foreground ml-1 sm:hidden">- {info.label.split(',')[0]}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Randburg Puppy: Session week key */}
+        {isRandburgPuppy && (
+          <Card className="bg-muted/30">
+            <CardContent className="p-3 sm:p-4">
+              <p className="text-xs font-medium text-muted-foreground mb-2">Session Week Key (click to cycle):</p>
+              <div className="flex flex-wrap gap-2 text-xs">
+                <span className="px-2 py-1.5 rounded border bg-muted">⚪ Not marked</span>
+                {['1','2','3','4','5','6'].map(n => (
+                  <span key={n} className="px-2 py-1.5 rounded border bg-green-100 text-green-700 border-green-300 font-bold">
+                    {n} - Week {n}
+                  </span>
+                ))}
+                <span className="px-2 py-1.5 rounded border bg-red-100 text-red-700 border-red-300">✕ Absent</span>
+                <span className="px-2 py-1.5 rounded border bg-amber-100 text-amber-700 border-amber-300">⚠ Excused</span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Class Info */}
         <Card>
@@ -473,7 +623,7 @@ export default function TrainerClassDetail() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <CardTitle className="text-base sm:text-lg flex items-center gap-2">
                 <CalendarRange className="h-5 w-5" />
-                Mark Attendance & Grade
+                {isRandburgPuppy ? 'Mark Attendance' : 'Mark Attendance & Grade'}
               </CardTitle>
               
               {sortedDates.length > 1 && (
@@ -514,8 +664,12 @@ export default function TrainerClassDetail() {
                         <TableHead>Handler</TableHead>
                         <TableHead>Dog</TableHead>
                         <TableHead>Phone</TableHead>
-                        <TableHead className="text-center">Attendance</TableHead>
-                        <TableHead className="text-center">Performance Grade</TableHead>
+                        <TableHead className="text-center">
+                          {isRandburgPuppy ? 'Attendance (Week)' : 'Attendance'}
+                        </TableHead>
+                        {!isRandburgPuppy && (
+                          <TableHead className="text-center">Performance Grade</TableHead>
+                        )}
                         <TableHead className="text-center w-[80px]">Note</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -540,43 +694,51 @@ export default function TrainerClassDetail() {
                               {booking.clients?.phone || '-'}
                             </TableCell>
                             <TableCell>
-                              <div className="flex items-center justify-center gap-2">
-                                <AttendanceButton
-                                  booking={booking}
-                                  targetStatus="present"
-                                  icon={Check}
-                                  label="Present"
-                                  activeClass="bg-green-600 hover:bg-green-700"
-                                />
-                                <AttendanceButton
-                                  booking={booking}
-                                  targetStatus="absent"
-                                  icon={X}
-                                  label="Absent"
-                                  activeClass="bg-red-600 hover:bg-red-700"
-                                />
-                                <AttendanceButton
-                                  booking={booking}
-                                  targetStatus="excused"
-                                  icon={AlertTriangle}
-                                  label="Excused"
-                                  activeClass="bg-amber-500 hover:bg-amber-600"
-                                />
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              {status === 'present' ? (
-                                <div className="flex items-center justify-center gap-1">
-                                  {(isRandburgPuppy ? ['1','2','3','4','5','6'] : ['A','B','C','D','E','F']).map((g) => (
-                                    <GradeButton key={g} booking={booking} grade={g} />
-                                  ))}
+                              {isRandburgPuppy ? (
+                                <div className="flex items-center justify-center">
+                                  <RandburgStatusCircle booking={booking} />
                                 </div>
                               ) : (
-                                <p className="text-center text-xs text-muted-foreground">
-                                  Mark present to grade
-                                </p>
+                                <div className="flex items-center justify-center gap-2">
+                                  <AttendanceButton
+                                    booking={booking}
+                                    targetStatus="present"
+                                    icon={Check}
+                                    label="Present"
+                                    activeClass="bg-green-600 hover:bg-green-700"
+                                  />
+                                  <AttendanceButton
+                                    booking={booking}
+                                    targetStatus="absent"
+                                    icon={X}
+                                    label="Absent"
+                                    activeClass="bg-red-600 hover:bg-red-700"
+                                  />
+                                  <AttendanceButton
+                                    booking={booking}
+                                    targetStatus="excused"
+                                    icon={AlertTriangle}
+                                    label="Excused"
+                                    activeClass="bg-amber-500 hover:bg-amber-600"
+                                  />
+                                </div>
                               )}
                             </TableCell>
+                            {!isRandburgPuppy && (
+                              <TableCell>
+                                {status === 'present' ? (
+                                  <div className="flex items-center justify-center gap-1">
+                                    {['A','B','C','D','E','F'].map((g) => (
+                                      <GradeButton key={g} booking={booking} grade={g} />
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <p className="text-center text-xs text-muted-foreground">
+                                    Mark present to grade
+                                  </p>
+                                )}
+                              </TableCell>
+                            )}
                             <TableCell className="text-center">
                               <TooltipProvider>
                                 <Tooltip>
@@ -611,6 +773,7 @@ export default function TrainerClassDetail() {
                   {schedule.bookings.map((booking: any) => {
                     const status = getAttendanceStatus(booking);
                     const grade = getPerformanceGrade(booking);
+                    const randburgDisplay = isRandburgPuppy ? getRandburgDisplayStatus(booking) : null;
                     return (
                       <div key={booking.id} className="p-4 space-y-3">
                         {/* Handler Info Row */}
@@ -620,22 +783,41 @@ export default function TrainerClassDetail() {
                               <span className="font-medium text-sm">
                                 {booking.clients?.first_name} {booking.clients?.last_name}
                               </span>
-                              {status !== 'not_marked' && (
-                                <Badge 
-                                  variant="outline"
-                                  className={
-                                    status === 'present' ? 'bg-green-100 text-green-800 border-green-300' :
-                                    status === 'absent' ? 'bg-red-100 text-red-800 border-red-300' :
-                                    'bg-amber-100 text-amber-800 border-amber-300'
-                                  }
-                                >
-                                  {status}
-                                </Badge>
-                              )}
-                              {grade && GRADE_INFO[grade] && (
-                                <Badge className={`${GRADE_INFO[grade].bgColor} ${GRADE_INFO[grade].color} border`}>
-                                  Grade: {grade}
-                                </Badge>
+                              {isRandburgPuppy ? (
+                                <>
+                                  {randburgDisplay && randburgDisplay !== 'not_marked' && (
+                                    <Badge 
+                                      variant="outline"
+                                      className={
+                                        !isNaN(parseInt(randburgDisplay)) ? 'bg-green-100 text-green-800 border-green-300' :
+                                        randburgDisplay === 'absent' ? 'bg-red-100 text-red-800 border-red-300' :
+                                        'bg-amber-100 text-amber-800 border-amber-300'
+                                      }
+                                    >
+                                      {!isNaN(parseInt(randburgDisplay)) ? `Week ${randburgDisplay}` : randburgDisplay}
+                                    </Badge>
+                                  )}
+                                </>
+                              ) : (
+                                <>
+                                  {status !== 'not_marked' && (
+                                    <Badge 
+                                      variant="outline"
+                                      className={
+                                        status === 'present' ? 'bg-green-100 text-green-800 border-green-300' :
+                                        status === 'absent' ? 'bg-red-100 text-red-800 border-red-300' :
+                                        'bg-amber-100 text-amber-800 border-amber-300'
+                                      }
+                                    >
+                                      {status}
+                                    </Badge>
+                                  )}
+                                  {grade && GRADE_INFO[grade] && (
+                                    <Badge className={`${GRADE_INFO[grade].bgColor} ${GRADE_INFO[grade].color} border`}>
+                                      Grade: {grade}
+                                    </Badge>
+                                  )}
+                                </>
                               )}
                             </div>
                             <p className="text-xs text-muted-foreground mt-0.5">
@@ -667,38 +849,44 @@ export default function TrainerClassDetail() {
                         
                         {/* Attendance Buttons */}
                         <div className="flex items-center gap-2">
-                          <span className="text-xs text-muted-foreground w-16 shrink-0">Attendance:</span>
-                          <div className="flex items-center gap-2">
-                            <AttendanceButton
-                              booking={booking}
-                              targetStatus="present"
-                              icon={Check}
-                              label="Present"
-                              activeClass="bg-green-600 hover:bg-green-700"
-                            />
-                            <AttendanceButton
-                              booking={booking}
-                              targetStatus="absent"
-                              icon={X}
-                              label="Absent"
-                              activeClass="bg-red-600 hover:bg-red-700"
-                            />
-                            <AttendanceButton
-                              booking={booking}
-                              targetStatus="excused"
-                              icon={AlertTriangle}
-                              label="Excused"
-                              activeClass="bg-amber-500 hover:bg-amber-600"
-                            />
-                          </div>
+                          <span className="text-xs text-muted-foreground w-16 shrink-0">
+                            {isRandburgPuppy ? 'Week:' : 'Attendance:'}
+                          </span>
+                          {isRandburgPuppy ? (
+                            <RandburgStatusCircle booking={booking} />
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <AttendanceButton
+                                booking={booking}
+                                targetStatus="present"
+                                icon={Check}
+                                label="Present"
+                                activeClass="bg-green-600 hover:bg-green-700"
+                              />
+                              <AttendanceButton
+                                booking={booking}
+                                targetStatus="absent"
+                                icon={X}
+                                label="Absent"
+                                activeClass="bg-red-600 hover:bg-red-700"
+                              />
+                              <AttendanceButton
+                                booking={booking}
+                                targetStatus="excused"
+                                icon={AlertTriangle}
+                                label="Excused"
+                                activeClass="bg-amber-500 hover:bg-amber-600"
+                              />
+                            </div>
+                          )}
                         </div>
 
-                        {/* Grade Buttons - Only show when present */}
-                        {status === 'present' && (
+                        {/* Grade Buttons - Only show when present and NOT Randburg Puppy */}
+                        {!isRandburgPuppy && status === 'present' && (
                           <div className="flex items-center gap-2">
                             <span className="text-xs text-muted-foreground w-16 shrink-0">Grade:</span>
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              {(isRandburgPuppy ? ['1','2','3','4','5','6'] : ['A','B','C','D','E','F']).map((g) => (
+                              {['A','B','C','D','E','F'].map((g) => (
                                 <GradeButton key={g} booking={booking} grade={g} />
                               ))}
                             </div>
