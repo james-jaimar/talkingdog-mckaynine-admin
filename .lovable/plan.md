@@ -1,42 +1,45 @@
 
 
-## Fix: Trainer view needs Randburg Puppy numbered sessions (1-6)
+## Fix: Trainer Randburg Puppy view must match admin attendance UI exactly
 
-### Problem
-The trainer's `TrainerClassDetail.tsx` always shows grade buttons A-F and displays all 12 grade key entries. It has no detection for Randburg Puppy classes because:
-1. The query fetches `branch_id` but never resolves the branch **name**
-2. Grade button arrays are hardcoded to `['A','B','C','D','E','F']`
-3. The grade key card shows ALL `GRADE_INFO` entries (both A-F and 1-6)
+### The Problem
+The trainer view (`TrainerClassDetail.tsx`) currently has a **two-step** process: first mark present/absent/excused, then pick a "grade" (1-6). This is wrong. The admin view (`AttendanceStatusCell.tsx`) uses a **single-step** cycle: click once to cycle through `not_marked → 1 → 2 → 3 → 4 → 5 → 6 → absent → excused → not_marked`. Each number is shown as a green circle. There is no separate "grade" concept for Randburg Puppy -- the number IS the attendance mark.
 
-The admin view works because `ClassHandlersTable` receives `branchName` as a prop and passes it through to `AttendanceStatusCell`.
+### What the admin does (working correctly)
+- Single circular button per date cell
+- Click cycles through the statuses
+- Numbers 1-6 store as `attendance_status = 'present'` + `performance_grade = '1'` through `'6'`
+- Absent/excused are standard statuses
+- No separate grade row
 
-### Changes in `src/pages/trainer/TrainerClassDetail.tsx`
+### Changes to `src/pages/trainer/TrainerClassDetail.tsx`
 
-1. **Expand the Supabase query** (line 78-85) to join the `branches` table:
-   ```
-   classes:class_id (
-     id, name, class_type, capacity, description, branch_id,
-     branches:branch_id (id, name)
-   )
-   ```
+**1. Randburg Puppy attendance: replace two-step with single-step numbered buttons**
 
-2. **Derive `isRandburgPuppy`** after the query resolves:
-   ```typescript
-   const isRandburgPuppy = schedule?.classes?.branches?.name?.toLowerCase().includes('randburg') 
-     && schedule?.classes?.class_type?.toLowerCase() === 'puppy';
-   ```
+For Randburg Puppy classes, instead of showing 3 attendance buttons + 6 grade buttons:
+- Show 6 numbered buttons (1-6) + absent + excused buttons in a single row
+- Clicking a number sets `attendance_status = 'present'` and `performance_grade = that number` in one call
+- Clicking the same number again clears it (sets to `not_marked`)
+- Remove the separate "Grade" row entirely for Randburg Puppy
+- Remove the "Mark present to grade" message for Randburg Puppy
 
-3. **Update the `PerformanceGrade` type** (line 34) to include numeric grades:
-   ```typescript
-   type PerformanceGrade = 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | '1' | '2' | '3' | '4' | '5' | '6' | null;
-   ```
+**2. Update labels**
+- Change "Performance Grade Key" → "Session Week Key" for Randburg Puppy
+- Change "Mark Attendance & Grade" → "Mark Attendance" for Randburg Puppy
+- The badge should show "Week: 3" not "Grade: 3"
 
-4. **Conditionally render grade buttons** on lines 560 and 691:
-   - Use `['1','2','3','4','5','6']` when `isRandburgPuppy`, otherwise `['A','B','C','D','E','F']`
+**3. Desktop table (line ~508-606)**
+- When `isRandburgPuppy`: merge the Attendance + Grade columns into one
+- Show numbered circle buttons 1-6 + absent + excused in a single cell
+- Hide the separate "Performance Grade" column
 
-5. **Filter the grade key card** (line 416) to only show relevant grades based on `isRandburgPuppy`
+**4. Mobile view (line ~610-709)**
+- When `isRandburgPuppy`: show numbered buttons 1-6 + absent + excused in the attendance row
+- Remove the separate "Grade" row
 
-6. **Remove the branch check** on lines 112-116 that returns `null` when the class doesn't match `currentBranch` — trainers may not have the correct branch selected, and this check is what causes the "class not found" issue for trainer Therese
+**5. Update `updateAttendance` function for Randburg**
+- When a numbered button is clicked: set both `attendance_status = 'present'` and `performance_grade` in one update
+- When clicked again (toggle off): set `attendance_status = 'not_marked'` and clear grade
 
 ### File to modify
 - `src/pages/trainer/TrainerClassDetail.tsx`
