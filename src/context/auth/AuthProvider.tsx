@@ -53,23 +53,18 @@ export const AuthProvider: React.FC<PropsWithChildren> = ({ children }) => {
         login: loginWithEmailAndPassword,
         signup: signupWithEmailAndPassword,
         logout: async () => {
-          // Clear state immediately for the best user experience
           setUser(null);
           setSession(null);
           setRole(null);
           setTrainerProfile(null);
           
           try {
-            // Force a navigation to the auth page immediately
-            // This ensures the user sees the login screen right away
-            window.location.href = '/auth';
-            
-            // The actual logout operation happens in the background
-            // Even if it fails, the user is already redirected to the login page
             const result = await logout();
+            window.location.href = '/auth';
             return result;
           } catch (error) {
             console.error("Error during logout:", error);
+            window.location.href = '/auth';
             return { success: false, error: "Failed to logout" };
           }
         }

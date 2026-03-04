@@ -58,35 +58,21 @@ export const signupWithEmailAndPassword = async (email: string, password: string
  */
 export const logout = async () => {
   try {
-    console.log("Performing complete logout with session cleanup");
-    
-    // Clear local storage first to ensure immediate UI feedback
-    localStorage.removeItem('supabase.auth.token');
-    
-    // Also clear any other auth-related items that might be in localStorage
+    // Collect keys first, then remove (avoids skipping during iteration)
+    const keysToRemove = [];
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
       if (key && key.includes('supabase.auth')) {
-        localStorage.removeItem(key);
+        keysToRemove.push(key);
       }
     }
+    keysToRemove.forEach(key => localStorage.removeItem(key));
     
-    // Force session expiry on the server side
-    const { error } = await supabase.auth.signOut({
-      scope: 'global' // Sign out from all tabs/windows
-    });
+    const { error } = await supabase.auth.signOut({ scope: 'local' });
     
     if (error) {
       console.error("Error during signout API call:", error);
-      // Even if there's an API error, continue with client-side cleanup
     }
-    
-    // Add some delay to ensure the signOut operation completes
-    await new Promise(resolve => setTimeout(resolve, 150));
-    
-    // Verify the session is gone
-    const { data } = await supabase.auth.getSession();
-    console.log("Session after logout:", data.session ? "Still present" : "Successfully cleared");
     
     return { success: true, error: null };
   } catch (error) {
