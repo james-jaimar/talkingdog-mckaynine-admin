@@ -1,47 +1,21 @@
 
 
-## Fix: Mobile Logout Not Working
+## Fix: TrainerClassDetail crashes on Randburg Puppy numeric grades
 
 ### Root Cause
-
-The logout function in `AuthProvider.tsx` redirects (`window.location.href = '/auth'`) **before** the actual `supabase.auth.signOut()` completes. The redirect triggers a full page reload, which re-initializes auth via `getSession()` — but since `signOut()` hasn't finished yet, the session token is still in storage, so the user gets logged right back in.
-
-On desktop this race condition may resolve due to timing differences, but on mobile (slower network/CPU) the redirect consistently wins.
+Line 620 in `TrainerClassDetail.tsx` does `GRADE_INFO[grade].bgColor` where `grade` can be "1"-"6" for Randburg Puppy classes. `GRADE_INFO` only contains keys A-F, so the lookup returns `undefined` and accessing `.bgColor` crashes.
 
 ### Fix
+In `TrainerClassDetail.tsx`:
 
-In `AuthProvider.tsx`, reverse the order: call `signOut()` first, **then** redirect. Also simplify the `authOperations.ts` logout to avoid the localStorage iteration bug (removing items while iterating shifts indices and skips items).
+1. **Add numeric grades to `GRADE_INFO`** (or a separate map) so "1"-"6" have display info
+2. **Add a safety check** on line 620 before accessing `GRADE_INFO[grade]` — use optional chaining or a fallback
 
-### Changes
+Specifically:
+- Expand `GRADE_INFO` to include entries for "1" through "6" with appropriate labels (e.g., "Class 1", "Class 2", etc.) and green-toned styling
+- Guard the mobile badge on line 620: `GRADE_INFO[grade]?.bgColor` with a fallback
+- The `GradeButton` on line 308 has the same issue — guard `gradeInfo` there too
 
-**`src/context/auth/AuthProvider.tsx`** (logout handler, ~lines 55-74):
-```typescript
-logout: async () => {
-  setUser(null);
-  setSession(null);
-  setRole(null);
-  setTrainerProfile(null);
-  
-  try {
-    // Sign out FIRST, then redirect
-    const result = await logout();
-    window.location.href = '/auth';
-    return result;
-  } catch (error) {
-    console.error("Error during logout:", error);
-    // Redirect even on error
-    window.location.href = '/auth';
-    return { success: false, error: "Failed to logout" };
-  }
-}
-```
-
-**`src/context/auth/authOperations.ts`** (logout function, ~lines 59-98):
-- Fix the localStorage cleanup to collect keys first, then remove (avoids skipping items during iteration)
-- Use `scope: 'local'` instead of `'global'` to avoid unnecessary server-side revocation failures on poor connections
-- Remove the post-signout `getSession()` check and artificial delay (unnecessary)
-
-### Files to modify
-- `src/context/auth/AuthProvider.tsx`
-- `src/context/auth/authOperations.ts`
+### File to modify
+- `src/pages/trainer/TrainerClassDetail.tsx`
 
