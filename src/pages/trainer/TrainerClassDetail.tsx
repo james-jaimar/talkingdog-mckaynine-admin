@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/context/auth";
 import { useBranch } from "@/context/BranchContext";
 import { useQuery } from "@tanstack/react-query";
@@ -8,8 +8,9 @@ import { Helmet } from "react-helmet";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { format } from "date-fns";
-import { Calendar, Users, Clock, ArrowLeft, Loader2, Check, X, AlertTriangle, CalendarRange, MessageSquarePlus } from "lucide-react";
+import { format, isToday, parseISO } from "date-fns";
+import { Calendar, Users, Clock, ArrowLeft, Loader2, Check, X, AlertTriangle, CalendarRange, MessageSquarePlus, ChevronLeft, ChevronRight, HelpCircle, Phone } from "lucide-react";
+import { useIsMobile } from "@/hooks/useIsMobile";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   Table,
@@ -59,6 +60,8 @@ export default function TrainerClassDetail() {
   const [isUpdatingGrade, setIsUpdatingGrade] = useState<string | null>(null);
   const [noteModalOpen, setNoteModalOpen] = useState(false);
   const [selectedBookingForNote, setSelectedBookingForNote] = useState<any>(null);
+  const isMobile = useIsMobile();
+  const dateScrollRef = useRef<HTMLDivElement>(null);
 
   const { data: schedule, isLoading, refetch } = useQuery({
     queryKey: ['trainer-class-detail-full', scheduleId, trainerProfile?.id, currentBranch?.id],
@@ -436,6 +439,72 @@ export default function TrainerClassDetail() {
     }
   };
 
+  // Direct-tap handler for mobile Randburg Puppy (matches admin MobileHandlerCard)
+  const handleRandburgDirectTap = async (booking: any, weekNumOrStatus: string) => {
+    if (!selectedDate || !schedule) return;
+
+    const currentDisplay = getRandburgDisplayStatus(booking);
+    
+    let attendanceStatus: AttendanceStatus;
+    let grade: string | null = null;
+
+    if (currentDisplay === weekNumOrStatus) {
+      attendanceStatus = 'not_marked';
+      grade = null;
+    } else if (weekNumOrStatus === 'absent') {
+      attendanceStatus = 'absent';
+    } else if (weekNumOrStatus === 'excused') {
+      attendanceStatus = 'excused';
+    } else {
+      attendanceStatus = 'present';
+      grade = weekNumOrStatus;
+    }
+
+    setIsUpdating(booking.id);
+    try {
+      const existingAttendance = booking?.attendances?.find(
+        (a: any) => new Date(a.class_date).toDateString() === new Date(selectedDate).toDateString()
+      );
+
+      if (existingAttendance) {
+        const { error } = await supabase
+          .from('class_attendance')
+          .update({
+            attendance_status: attendanceStatus,
+            performance_grade: grade,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existingAttendance.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('class_attendance')
+          .insert({
+            booking_id: booking.id,
+            class_schedule_id: scheduleId,
+            class_date: new Date(selectedDate).toISOString(),
+            attendance_status: attendanceStatus,
+            performance_grade: grade,
+          });
+        if (error) throw error;
+      }
+
+      const statusLabels: Record<string, string> = {
+        not_marked: 'Cleared', '1': 'Week 1', '2': 'Week 2', '3': 'Week 3',
+        '4': 'Week 4', '5': 'Week 5', '6': 'Week 6', absent: 'Absent', excused: 'Excused',
+      };
+      const labelKey = attendanceStatus === 'not_marked' ? 'not_marked' : (grade || attendanceStatus);
+
+      toast({ title: `Marked as ${statusLabels[labelKey] || labelKey}`, duration: 1500 });
+      refetch();
+    } catch (error) {
+      console.error("Error updating attendance:", error);
+      toast({ title: "Error updating attendance", variant: "destructive" });
+    } finally {
+      setIsUpdating(null);
+    }
+  };
+
   const RandburgStatusCircle = ({ booking }: { booking: any }) => {
     const displayStatus = getRandburgDisplayStatus(booking);
     const isLoading = isUpdating === booking.id;
@@ -626,7 +695,8 @@ export default function TrainerClassDetail() {
                 {isRandburgPuppy ? 'Mark Attendance' : 'Mark Attendance & Grade'}
               </CardTitle>
               
-              {sortedDates.length > 1 && (
+              {/* Desktop: dropdown date selector */}
+              {sortedDates.length > 1 && !isMobile && (
                 <Select value={selectedDate || ''} onValueChange={setSelectedDate}>
                   <SelectTrigger className="w-full sm:w-[200px]">
                     <SelectValue placeholder="Select date" />
@@ -642,7 +712,70 @@ export default function TrainerClassDetail() {
               )}
             </div>
             
-            {selectedDate && (
+            {/* Mobile: scrollable date pill picker */}
+            {isMobile && sortedDates.length > 1 && (
+              <div className="bg-card border rounded-lg p-3 mt-3">
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-10 w-10 shrink-0"
+                    onClick={() => {
+                      const idx = selectedDate ? sortedDates.indexOf(selectedDate) : -1;
+                      if (idx > 0) setSelectedDate(sortedDates[idx - 1]);
+                    }}
+                    disabled={!selectedDate || sortedDates.indexOf(selectedDate) <= 0}
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </Button>
+                  <div 
+                    ref={dateScrollRef}
+                    className="flex-1 overflow-x-auto scrollbar-hide flex gap-2 py-1"
+                  >
+                    {sortedDates.map((date) => {
+                      const dateObj = new Date(date);
+                      const isSelected = date === selectedDate;
+                      const isTodayDate = isToday(dateObj);
+                      return (
+                        <button
+                          key={date}
+                          data-date={date}
+                          onClick={() => setSelectedDate(date)}
+                          className={`
+                            shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all active:scale-95
+                            ${isSelected 
+                              ? 'bg-primary text-primary-foreground shadow-md' 
+                              : 'bg-muted hover:bg-muted/80 text-foreground'
+                            }
+                            ${isTodayDate && !isSelected ? 'ring-2 ring-primary ring-offset-1' : ''}
+                          `}
+                        >
+                          <div className="flex flex-col items-center">
+                            <span className="text-xs opacity-70">{format(dateObj, 'EEE')}</span>
+                            <span className="font-semibold">{format(dateObj, 'd MMM')}</span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-10 w-10 shrink-0"
+                    onClick={() => {
+                      const idx = selectedDate ? sortedDates.indexOf(selectedDate) : -1;
+                      if (idx < sortedDates.length - 1) setSelectedDate(sortedDates[idx + 1]);
+                    }}
+                    disabled={!selectedDate || sortedDates.indexOf(selectedDate) >= sortedDates.length - 1}
+                  >
+                    <ChevronRight className="h-5 w-5" />
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Desktop: show selected date text */}
+            {!isMobile && selectedDate && (
               <p className="text-sm text-muted-foreground mt-2">
                 Marking for: <strong>{format(new Date(selectedDate), "EEEE, MMMM d, yyyy")}</strong>
               </p>
@@ -768,12 +901,174 @@ export default function TrainerClassDetail() {
                   </Table>
                 </div>
 
+                {/* Mobile/Tablet: Inline attendance stats for Randburg Puppy */}
+                {isMobile && isRandburgPuppy && selectedDate && schedule.bookings && (
+                  <div className="grid grid-cols-4 gap-2 p-4 pb-0">
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-2 text-center">
+                      <div className="flex justify-center mb-1">
+                        <div className="h-7 w-7 rounded-full bg-green-600 flex items-center justify-center">
+                          <Check className="h-4 w-4 text-white" />
+                        </div>
+                      </div>
+                      <div className="text-lg font-bold text-green-700">
+                        {schedule.bookings.filter((b: any) => getAttendanceStatus(b) === 'present').length}
+                      </div>
+                      <div className="text-xs text-green-600">Present</div>
+                    </div>
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-2 text-center">
+                      <div className="flex justify-center mb-1">
+                        <div className="h-7 w-7 rounded-full bg-red-600 flex items-center justify-center">
+                          <X className="h-4 w-4 text-white" />
+                        </div>
+                      </div>
+                      <div className="text-lg font-bold text-red-700">
+                        {schedule.bookings.filter((b: any) => getAttendanceStatus(b) === 'absent').length}
+                      </div>
+                      <div className="text-xs text-red-600">Absent</div>
+                    </div>
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 text-center">
+                      <div className="flex justify-center mb-1">
+                        <div className="h-7 w-7 rounded-full bg-amber-500 flex items-center justify-center">
+                          <AlertTriangle className="h-4 w-4 text-white" />
+                        </div>
+                      </div>
+                      <div className="text-lg font-bold text-amber-700">
+                        {schedule.bookings.filter((b: any) => getAttendanceStatus(b) === 'excused').length}
+                      </div>
+                      <div className="text-xs text-amber-600">Excused</div>
+                    </div>
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-2 text-center">
+                      <div className="flex justify-center mb-1">
+                        <div className="h-7 w-7 rounded-full bg-gray-400 flex items-center justify-center">
+                          <HelpCircle className="h-4 w-4 text-white" />
+                        </div>
+                      </div>
+                      <div className="text-lg font-bold text-gray-700">
+                        {schedule.bookings.filter((b: any) => getAttendanceStatus(b) === 'not_marked').length}
+                      </div>
+                      <div className="text-xs text-gray-600">Unmarked</div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Mobile/Tablet List - Optimized for touch */}
                 <div className="lg:hidden divide-y">
                   {schedule.bookings.map((booking: any) => {
                     const status = getAttendanceStatus(booking);
                     const grade = getPerformanceGrade(booking);
                     const randburgDisplay = isRandburgPuppy ? getRandburgDisplayStatus(booking) : null;
+                    const bookingIsLoading = isUpdating === booking.id;
+
+                    // Randburg Puppy mobile: match admin MobileHandlerCard layout
+                    if (isRandburgPuppy) {
+                      return (
+                        <div key={booking.id} className="bg-card border rounded-lg p-4 mb-3 mx-4 shadow-sm">
+                          {/* Handler & Dog Info */}
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-semibold text-base truncate">
+                                {booking.clients?.first_name} {booking.clients?.last_name}
+                              </h3>
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <span className="truncate">{booking.dogs?.name}</span>
+                                {booking.dogs?.breed && (
+                                  <>
+                                    <span>•</span>
+                                    <span className="truncate">{booking.dogs.breed}</span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                            {/* Week badge */}
+                            {randburgDisplay && randburgDisplay !== 'not_marked' && (
+                              <Badge 
+                                variant="outline"
+                                className={`shrink-0 ml-2 ${
+                                  !isNaN(parseInt(randburgDisplay)) ? 'bg-green-100 text-green-800 border-green-200' :
+                                  randburgDisplay === 'absent' ? 'bg-red-100 text-red-800 border-red-200' :
+                                  'bg-amber-100 text-amber-800 border-amber-200'
+                                }`}
+                              >
+                                {!isNaN(parseInt(randburgDisplay)) ? `Week ${randburgDisplay}` : randburgDisplay}
+                              </Badge>
+                            )}
+                          </div>
+
+                          {/* Phone Number - Tappable */}
+                          {booking.clients?.phone && (
+                            <a 
+                              href={`tel:${booking.clients.phone}`}
+                              className="flex items-center gap-2 text-sm text-primary mb-3 active:opacity-70"
+                            >
+                              <Phone className="h-4 w-4" />
+                              <span>{booking.clients.phone}</span>
+                            </a>
+                          )}
+
+                          {/* Attendance: 6 numbered buttons + absent + excused */}
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {['1', '2', '3', '4', '5', '6'].map(num => {
+                                const isActive = randburgDisplay === num;
+                                return (
+                                  <button
+                                    key={num}
+                                    onClick={() => handleRandburgDirectTap(booking, num)}
+                                    disabled={bookingIsLoading}
+                                    className={`h-10 w-10 rounded-full flex items-center justify-center transition-all active:scale-95 text-sm font-bold ${
+                                      isActive 
+                                        ? 'bg-green-600 text-white shadow-lg' 
+                                        : 'bg-green-100 text-green-700 hover:bg-green-200'
+                                    } ${bookingIsLoading ? 'opacity-50' : ''}`}
+                                    aria-label={`Mark week ${num}`}
+                                  >
+                                    {bookingIsLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : num}
+                                  </button>
+                                );
+                              })}
+                              <button
+                                onClick={() => handleRandburgDirectTap(booking, 'absent')}
+                                disabled={bookingIsLoading}
+                                className={`h-12 w-12 rounded-full flex items-center justify-center transition-all active:scale-95 ${
+                                  randburgDisplay === 'absent'
+                                    ? 'bg-red-600 text-white shadow-lg'
+                                    : 'bg-red-100 text-red-700 hover:bg-red-200'
+                                } ${bookingIsLoading ? 'opacity-50' : ''}`}
+                                aria-label="Mark absent"
+                              >
+                                <X className="h-6 w-6" />
+                              </button>
+                              <button
+                                onClick={() => handleRandburgDirectTap(booking, 'excused')}
+                                disabled={bookingIsLoading}
+                                className={`h-12 w-12 rounded-full flex items-center justify-center transition-all active:scale-95 ${
+                                  randburgDisplay === 'excused'
+                                    ? 'bg-amber-500 text-white shadow-lg'
+                                    : 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+                                } ${bookingIsLoading ? 'opacity-50' : ''}`}
+                                aria-label="Mark excused"
+                              >
+                                <AlertTriangle className="h-5 w-5" />
+                              </button>
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-10 shrink-0"
+                              onClick={() => {
+                                setSelectedBookingForNote(booking);
+                                setNoteModalOpen(true);
+                              }}
+                            >
+                              <MessageSquarePlus className="h-4 w-4 mr-1" />
+                              Note
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    // Non-Randburg: standard mobile layout
                     return (
                       <div key={booking.id} className="p-4 space-y-3">
                         {/* Handler Info Row */}
@@ -783,41 +1078,22 @@ export default function TrainerClassDetail() {
                               <span className="font-medium text-sm">
                                 {booking.clients?.first_name} {booking.clients?.last_name}
                               </span>
-                              {isRandburgPuppy ? (
-                                <>
-                                  {randburgDisplay && randburgDisplay !== 'not_marked' && (
-                                    <Badge 
-                                      variant="outline"
-                                      className={
-                                        !isNaN(parseInt(randburgDisplay)) ? 'bg-green-100 text-green-800 border-green-300' :
-                                        randburgDisplay === 'absent' ? 'bg-red-100 text-red-800 border-red-300' :
-                                        'bg-amber-100 text-amber-800 border-amber-300'
-                                      }
-                                    >
-                                      {!isNaN(parseInt(randburgDisplay)) ? `Week ${randburgDisplay}` : randburgDisplay}
-                                    </Badge>
-                                  )}
-                                </>
-                              ) : (
-                                <>
-                                  {status !== 'not_marked' && (
-                                    <Badge 
-                                      variant="outline"
-                                      className={
-                                        status === 'present' ? 'bg-green-100 text-green-800 border-green-300' :
-                                        status === 'absent' ? 'bg-red-100 text-red-800 border-red-300' :
-                                        'bg-amber-100 text-amber-800 border-amber-300'
-                                      }
-                                    >
-                                      {status}
-                                    </Badge>
-                                  )}
-                                  {grade && GRADE_INFO[grade] && (
-                                    <Badge className={`${GRADE_INFO[grade].bgColor} ${GRADE_INFO[grade].color} border`}>
-                                      Grade: {grade}
-                                    </Badge>
-                                  )}
-                                </>
+                              {status !== 'not_marked' && (
+                                <Badge 
+                                  variant="outline"
+                                  className={
+                                    status === 'present' ? 'bg-green-100 text-green-800 border-green-300' :
+                                    status === 'absent' ? 'bg-red-100 text-red-800 border-red-300' :
+                                    'bg-amber-100 text-amber-800 border-amber-300'
+                                  }
+                                >
+                                  {status}
+                                </Badge>
+                              )}
+                              {grade && GRADE_INFO[grade] && (
+                                <Badge className={`${GRADE_INFO[grade].bgColor} ${GRADE_INFO[grade].color} border`}>
+                                  Grade: {grade}
+                                </Badge>
                               )}
                             </div>
                             <p className="text-xs text-muted-foreground mt-0.5">
@@ -832,7 +1108,6 @@ export default function TrainerClassDetail() {
                               </a>
                             )}
                           </div>
-                          {/* Note button for mobile */}
                           <Button
                             variant="outline"
                             size="sm"
@@ -849,40 +1124,34 @@ export default function TrainerClassDetail() {
                         
                         {/* Attendance Buttons */}
                         <div className="flex items-center gap-2">
-                          <span className="text-xs text-muted-foreground w-16 shrink-0">
-                            {isRandburgPuppy ? 'Week:' : 'Attendance:'}
-                          </span>
-                          {isRandburgPuppy ? (
-                            <RandburgStatusCircle booking={booking} />
-                          ) : (
-                            <div className="flex items-center gap-2">
-                              <AttendanceButton
-                                booking={booking}
-                                targetStatus="present"
-                                icon={Check}
-                                label="Present"
-                                activeClass="bg-green-600 hover:bg-green-700"
-                              />
-                              <AttendanceButton
-                                booking={booking}
-                                targetStatus="absent"
-                                icon={X}
-                                label="Absent"
-                                activeClass="bg-red-600 hover:bg-red-700"
-                              />
-                              <AttendanceButton
-                                booking={booking}
-                                targetStatus="excused"
-                                icon={AlertTriangle}
-                                label="Excused"
-                                activeClass="bg-amber-500 hover:bg-amber-600"
-                              />
-                            </div>
-                          )}
+                          <span className="text-xs text-muted-foreground w-16 shrink-0">Attendance:</span>
+                          <div className="flex items-center gap-2">
+                            <AttendanceButton
+                              booking={booking}
+                              targetStatus="present"
+                              icon={Check}
+                              label="Present"
+                              activeClass="bg-green-600 hover:bg-green-700"
+                            />
+                            <AttendanceButton
+                              booking={booking}
+                              targetStatus="absent"
+                              icon={X}
+                              label="Absent"
+                              activeClass="bg-red-600 hover:bg-red-700"
+                            />
+                            <AttendanceButton
+                              booking={booking}
+                              targetStatus="excused"
+                              icon={AlertTriangle}
+                              label="Excused"
+                              activeClass="bg-amber-500 hover:bg-amber-600"
+                            />
+                          </div>
                         </div>
 
                         {/* Grade Buttons - Only show when present and NOT Randburg Puppy */}
-                        {!isRandburgPuppy && status === 'present' && (
+                        {status === 'present' && (
                           <div className="flex items-center gap-2">
                             <span className="text-xs text-muted-foreground w-16 shrink-0">Grade:</span>
                             <div className="flex items-center gap-1.5 flex-wrap">
