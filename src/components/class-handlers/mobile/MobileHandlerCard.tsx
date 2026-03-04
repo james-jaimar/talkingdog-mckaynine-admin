@@ -8,13 +8,13 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useInvoiceStatus } from "../booking-row/useInvoiceStatus";
 import { useMemo } from "react";
-import { useBranch } from "@/context/BranchContext";
 
 interface MobileHandlerCardProps {
   booking: Booking;
   selectedDate: string | null;
   classId: string;
   classType?: string;
+  branchName?: string;
   onEdit: (booking: Booking) => void;
 }
 
@@ -25,6 +25,7 @@ export function MobileHandlerCard({
   selectedDate, 
   classId,
   classType,
+  branchName,
   onEdit 
 }: MobileHandlerCardProps) {
   const handler = booking.clients;
@@ -32,9 +33,8 @@ export function MobileHandlerCard({
   const { updateAttendance, isSubmitting } = useAttendance(classId);
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { currentBranch } = useBranch();
   
-  const isRandburgPuppy = (currentBranch?.name?.toLowerCase().includes('randburg') ?? false) && classType?.toLowerCase() === 'puppy';
+  const isRandburgPuppy = (branchName?.toLowerCase().includes('randburg') ?? false) && classType?.toLowerCase() === 'puppy';
   
   // Use same invoice status hook as desktop for accurate payment status
   const { data: invoiceData, isLoading: isLoadingInvoice } = useInvoiceStatus(booking.id);

@@ -21,9 +21,10 @@ import { Loader2 } from "lucide-react";
 interface ClassHandlersTableProps {
   classId: string;
   classType?: string;
+  branchName?: string;
 }
 
-export function ClassHandlersTable({ classId, classType }: ClassHandlersTableProps) {
+export function ClassHandlersTable({ classId, classType, branchName }: ClassHandlersTableProps) {
   const [initialLoadAttempted, setInitialLoadAttempted] = useState<boolean>(false);
   const [batchAttendanceOpen, setBatchAttendanceOpen] = useState(false);
   const [substituteDialogOpen, setSubstituteDialogOpen] = useState(false);
@@ -102,6 +103,7 @@ export function ClassHandlersTable({ classId, classType }: ClassHandlersTablePro
       date={date}
       classId={classId}
       classType={classType}
+      branchName={branchName}
     />
   );
 
@@ -192,6 +194,7 @@ export function ClassHandlersTable({ classId, classType }: ClassHandlersTablePro
             selectedDate={mobileSelectedDate}
             classId={classId}
             classType={classType}
+            branchName={branchName}
             startEditing={startEditing}
           />
         </div>
@@ -223,6 +226,7 @@ export function ClassHandlersTable({ classId, classType }: ClassHandlersTablePro
         scheduleDates={sortedDates}
         classId={classId}
         classType={classType}
+        branchName={branchName}
         onAttendanceUpdated={handleBatchAttendanceUpdated}
       />
 

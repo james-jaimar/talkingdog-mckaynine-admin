@@ -10,7 +10,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { useBranch } from "@/context/BranchContext";
 
 interface BatchAttendanceModalProps {
   open: boolean;
@@ -19,6 +18,7 @@ interface BatchAttendanceModalProps {
   scheduleDates: string[];
   classId: string;
   classType?: string;
+  branchName?: string;
   onAttendanceUpdated: () => void;
 }
 
@@ -38,6 +38,7 @@ export function BatchAttendanceModal({
   scheduleDates,
   classId,
   classType,
+  branchName,
   onAttendanceUpdated
 }: BatchAttendanceModalProps) {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -47,9 +48,8 @@ export function BatchAttendanceModal({
   const { updateAttendance } = useAttendance(classId);
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
-  const { currentBranch } = useBranch();
   
-  const isRandburgPuppy = (currentBranch?.name?.toLowerCase().includes('randburg') ?? false) && classType?.toLowerCase() === 'puppy';
+  const isRandburgPuppy = (branchName?.toLowerCase().includes('randburg') ?? false) && classType?.toLowerCase() === 'puppy';
   
   // Format date for display
   const formatDateOption = (dateString: string) => {

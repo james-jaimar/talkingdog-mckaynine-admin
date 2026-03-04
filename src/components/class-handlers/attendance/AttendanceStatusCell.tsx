@@ -10,13 +10,14 @@ import {
 import { useAttendance } from "./useAttendance";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { useBranch } from "@/context/BranchContext";
+
 
 interface AttendanceStatusCellProps {
   booking: any;
   date: string;
   classId: string;
   classType?: string;
+  branchName?: string;
   onOpenAttendanceModal?: (booking: any, date: string) => void;
 }
 
@@ -26,13 +27,12 @@ const DEFAULT_STATUS_CYCLE: Array<string> = ['not_marked', 'present', 'absent', 
 // Randburg status cycle: not_marked -> 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> absent -> excused -> not_marked
 const RANDBURG_STATUS_CYCLE: Array<string> = ['not_marked', '1', '2', '3', '4', '5', '6', 'absent', 'excused'];
 
-export function AttendanceStatusCell({ booking, date, classId, classType, onOpenAttendanceModal }: AttendanceStatusCellProps) {
+export function AttendanceStatusCell({ booking, date, classId, classType, branchName, onOpenAttendanceModal }: AttendanceStatusCellProps) {
   const { updateAttendance, isSubmitting } = useAttendance(classId);
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { currentBranch } = useBranch();
   
-  const isRandburgPuppy = (currentBranch?.name?.toLowerCase().includes('randburg') ?? false) && classType?.toLowerCase() === 'puppy';
+  const isRandburgPuppy = (branchName?.toLowerCase().includes('randburg') ?? false) && classType?.toLowerCase() === 'puppy';
   const statusCycle = isRandburgPuppy ? RANDBURG_STATUS_CYCLE : DEFAULT_STATUS_CYCLE;
 
   // Function to get the attendance record for a booking and date
