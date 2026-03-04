@@ -2067,6 +2067,8 @@ export type Database = {
           completed_by: string | null
           created_at: string | null
           description: string | null
+          dog_id: string | null
+          dog_name: string | null
           due_date: string | null
           handler_id: string | null
           id: string
@@ -2084,6 +2086,8 @@ export type Database = {
           completed_by?: string | null
           created_at?: string | null
           description?: string | null
+          dog_id?: string | null
+          dog_name?: string | null
           due_date?: string | null
           handler_id?: string | null
           id?: string
@@ -2101,6 +2105,8 @@ export type Database = {
           completed_by?: string | null
           created_at?: string | null
           description?: string | null
+          dog_id?: string | null
+          dog_name?: string | null
           due_date?: string | null
           handler_id?: string | null
           id?: string
@@ -2122,6 +2128,13 @@ export type Database = {
             columns: ["class_status_id"]
             isOneToOne: false
             referencedRelation: "handler_class_status"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "handler_tasks_dog_id_fkey"
+            columns: ["dog_id"]
+            isOneToOne: false
+            referencedRelation: "dogs"
             referencedColumns: ["id"]
           },
           {

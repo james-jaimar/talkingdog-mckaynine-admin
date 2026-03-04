@@ -110,6 +110,11 @@ export function HandlerTasks({ handlerId }: HandlerTasksProps) {
                 <span className="font-medium">{task.title}</span>
                 {getTaskTypeBadge(task.task_type)}
               </div>
+              {task.dog_name && (
+                <p className="text-xs text-muted-foreground">
+                  🐕 {task.dog_name}
+                </p>
+              )}
               {task.description && (
                 <p className="text-sm text-muted-foreground">
                   {task.description}

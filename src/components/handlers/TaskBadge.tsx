@@ -82,6 +82,9 @@ export function TaskBadge({ handlerId }: TaskBadgeProps) {
                 <span className="text-base">{getTaskTypeIcon(task.task_type)}</span>
                 <div className="flex-1 min-w-0">
                   <div className="font-medium">{task.title}</div>
+                  {task.dog_name && (
+                    <div className="text-xs text-muted-foreground">🐕 {task.dog_name}</div>
+                  )}
                   {task.description && (
                     <div className="text-xs text-muted-foreground line-clamp-2">
                       {task.description}

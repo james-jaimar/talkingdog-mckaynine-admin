@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useBranch } from "@/context/BranchContext";
-import { Mail, ArrowRight, StopCircle, Trash2 } from "lucide-react";
+import { Mail, MailCheck, ArrowRight, StopCircle, Trash2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,6 +42,7 @@ interface ClassStatusItem {
   period?: string;
   pass_percentage?: number | null;
   next_action?: 'continuing' | 'wants_info' | 'stopping' | 'none' | null;
+  action_completed?: boolean | null;
   result_notes?: string;
   next_class_type?: string | null;
   next_term_number?: string | null;
@@ -105,6 +106,7 @@ function StatusBox({
   bookingId,
   statusId,
   initialDogId,
+  initialActionCompleted,
   dogs,
   isAddNew = false,
 }: {
@@ -122,6 +124,7 @@ function StatusBox({
   bookingId: string | null;
   statusId: string | null;
   initialDogId: string | null;
+  initialActionCompleted?: boolean | null;
   dogs: DogInfo[];
   isAddNew?: boolean;
 }) {
@@ -226,6 +229,10 @@ function StatusBox({
       // Create task if next_action changed
       const actionChanged = nextAction !== initialNextAction;
       
+      // Get dog context for task
+      const taskDogId = selectedDogId || initialDogId;
+      const taskDogName = selectedDogName;
+
       if (nextAction === 'wants_info' && actionChanged) {
         const classesForInfo = wantsInfoClasses.length > 0 ? wantsInfoClasses : [NEXT_CLASS_MAP[classType] || "next class"];
         const classesLabel = classesForInfo.join(", ");
@@ -234,10 +241,12 @@ function StatusBox({
           class_type: classType,
           class_status_id: upsertedStatus?.id,
           task_type: "send_info_pack",
-          title: `Send ${classesLabel} info pack`,
+          title: `Send ${classesLabel} info pack${taskDogName ? ` (${taskDogName})` : ''}`,
           description: `Handler completed ${classType}. Send information about ${classesLabel} class${classesForInfo.length > 1 ? 'es' : ''}.`,
           status: "pending",
           branch_id: currentBranch?.id || null,
+          dog_id: taskDogId,
+          dog_name: taskDogName,
         });
       } else if (nextAction === 'continuing' && actionChanged) {
         const nextClass = nextClassType || NEXT_CLASS_MAP[classType] || "next class";
@@ -250,10 +259,12 @@ function StatusBox({
           class_type: classType,
           class_status_id: upsertedStatus?.id,
           task_type: "enrollment",
-          title: `Enroll in ${nextClass} - ${termInfo}`,
+          title: `Enroll in ${nextClass} - ${termInfo}${taskDogName ? ` (${taskDogName})` : ''}`,
           description: `Handler completed ${classType}. Follow up on enrollment for ${nextClass} in ${termInfo}.`,
           status: "pending",
           branch_id: currentBranch?.id || null,
+          dog_id: taskDogId,
+          dog_name: taskDogName,
         });
       }
       
@@ -275,10 +286,30 @@ function StatusBox({
   };
 
   // Render action indicator
+  const isActionCompleted = initialActionCompleted === true;
+
   const renderActionIndicator = () => {
     if (!nextAction || nextAction === 'none') return null;
     const actionInfo = nextActionIcons[nextAction];
     if (!actionInfo) return null;
+
+    // If action is completed, show a green MailCheck icon
+    if (isActionCompleted) {
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="ml-1 text-green-600">
+                <MailCheck className="h-3 w-3" />
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>✅ Info Sent</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    }
 
     return (
       <TooltipProvider>
@@ -612,6 +643,7 @@ export function ClassStatusCell({
           bookingId={null}
           statusId={null}
           initialDogId={null}
+          initialActionCompleted={false}
           dogs={dogs}
           isAddNew={true}
         />
@@ -640,6 +672,7 @@ export function ClassStatusCell({
             bookingId={s.booking_id || null}
             statusId={s.id || null}
             initialDogId={s.dog_id || null}
+            initialActionCompleted={s.action_completed}
             dogs={dogs}
           />
         ))}
@@ -660,6 +693,7 @@ export function ClassStatusCell({
             bookingId={null}
             statusId={null}
             initialDogId={null}
+            initialActionCompleted={false}
             dogs={dogs}
             isAddNew={true}
           />

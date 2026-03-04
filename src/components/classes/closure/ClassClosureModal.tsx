@@ -192,20 +192,30 @@ export function ClassClosureModal({
 
         // 3. Create tasks based on next_action
 
+        // Get dog info from the booking for task context
+        const { data: bookingForTask } = await supabase
+          .from("bookings")
+          .select("dog_id, dogs:dog_id(name)")
+          .eq("id", handler.booking_id)
+          .single();
+        const taskDogId = bookingForTask?.dog_id || null;
+        const taskDogName = (bookingForTask?.dogs as any)?.name || handler.dog_name || null;
+
         if (handler.next_action === "wants_info") {
           const nextClass = NEXT_CLASS_MAP[classType] || "next class";
           await supabase.from("handler_tasks").insert({
             handler_id: handler.handler_id,
             class_type: classType,
             task_type: "send_info_pack",
-            title: `Send ${nextClass} info pack`,
+            title: `Send ${nextClass} info pack${taskDogName ? ` (${taskDogName})` : ''}`,
             description: `Handler completed ${classType}. Send information about ${nextClass} class.`,
             status: "pending",
             branch_id: classBranchId,
+            dog_id: taskDogId,
+            dog_name: taskDogName,
           });
           tasksCreated++;
         } else if (handler.next_action === "continuing") {
-          // Use selected class/term or fallback to defaults
           const nextClass = handler.next_class_type || NEXT_CLASS_MAP[classType] || "next class";
           const termInfo = handler.next_term_number && handler.next_term_year 
             ? `Term ${handler.next_term_number} ${handler.next_term_year}`
@@ -215,10 +225,12 @@ export function ClassClosureModal({
             handler_id: handler.handler_id,
             class_type: classType,
             task_type: "enrollment",
-            title: `Enroll in ${nextClass} - ${termInfo}`,
+            title: `Enroll in ${nextClass} - ${termInfo}${taskDogName ? ` (${taskDogName})` : ''}`,
             description: `Handler completed ${classType}. Follow up on enrollment for ${nextClass} in ${termInfo}.`,
             status: "pending",
             branch_id: classBranchId,
+            dog_id: taskDogId,
+            dog_name: taskDogName,
           });
           tasksCreated++;
         }

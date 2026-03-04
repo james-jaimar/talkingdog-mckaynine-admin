@@ -50,6 +50,13 @@ export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModa
     async function fetchDogInfo() {
       if (!task?.handler_id) return;
       
+      // Use dog_name from task if available (new tasks have it)
+      if (task.dog_name) {
+        setDogName(task.dog_name);
+        return;
+      }
+      
+      // Fallback: fetch first dog for handler
       const { data: dogs } = await supabase
         .from("dogs")
         .select("id, name")

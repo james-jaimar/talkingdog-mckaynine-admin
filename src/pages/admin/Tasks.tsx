@@ -284,6 +284,11 @@ export default function Tasks() {
                             <span className="text-sm text-muted-foreground">
                               {task.handler.email}
                             </span>
+                            {task.dog_name && (
+                              <span className="text-xs text-muted-foreground block">
+                                🐕 {task.dog_name}
+                              </span>
+                            )}
                           </div>
                         ) : (
                           <span className="text-muted-foreground">Unknown</span>
