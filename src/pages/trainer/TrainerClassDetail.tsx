@@ -31,7 +31,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { TrainerNoteModal } from "@/components/trainer/TrainerNoteModal";
 
 type AttendanceStatus = 'present' | 'absent' | 'excused' | 'not_marked';
-type PerformanceGrade = 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | null;
+type PerformanceGrade = 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | '1' | '2' | '3' | '4' | '5' | '6' | null;
 
 const GRADE_INFO: Record<string, { label: string; color: string; bgColor: string }> = {
   'A': { label: '100% comprehension, excellent results', color: 'text-emerald-700', bgColor: 'bg-emerald-100 hover:bg-emerald-200 border-emerald-300' },
@@ -81,7 +81,11 @@ export default function TrainerClassDetail() {
             class_type,
             capacity,
             description,
-            branch_id
+            branch_id,
+            branches:branch_id (
+              id,
+              name
+            )
           ),
           bookings (
             id,
@@ -109,11 +113,8 @@ export default function TrainerClassDetail() {
         return null;
       }
 
-      // Verify this class belongs to the current branch
-      if (currentBranch?.id && data?.classes?.branch_id !== currentBranch.id) {
-        console.warn("Class does not belong to selected branch");
-        return null;
-      }
+      // Note: We no longer block trainers from viewing classes in other branches
+      // Trainers may be assigned to classes across multiple branches
 
       // Fetch attendance records for this class
       if (data) {
@@ -138,6 +139,12 @@ export default function TrainerClassDetail() {
     },
     enabled: !!trainerProfile?.id && !!scheduleId,
   });
+
+  // Detect Randburg Puppy class
+  const isRandburgPuppy = !!(
+    (schedule?.classes as any)?.branches?.name?.toLowerCase().includes('randburg') &&
+    schedule?.classes?.class_type?.toLowerCase() === 'puppy'
+  );
 
   // Get available dates for this class
   const scheduleDates = schedule?.selected_dates || [schedule?.start_time].filter(Boolean);
@@ -413,13 +420,16 @@ export default function TrainerClassDetail() {
           <CardContent className="p-3 sm:p-4">
             <p className="text-xs font-medium text-muted-foreground mb-2">Performance Grade Key:</p>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 text-xs">
-              {Object.entries(GRADE_INFO).map(([grade, info]) => (
-                <div key={grade} className={`px-2 py-1.5 rounded border ${info.bgColor}`}>
-                  <span className={`font-bold ${info.color}`}>{grade}</span>
-                  <span className="text-muted-foreground ml-1 hidden sm:inline">- {info.label}</span>
-                  <span className="text-muted-foreground ml-1 sm:hidden">- {info.label.split(',')[0]}</span>
-                </div>
-              ))}
+              {(isRandburgPuppy ? ['1','2','3','4','5','6'] : ['A','B','C','D','E','F']).map((grade) => {
+                const info = GRADE_INFO[grade];
+                return (
+                  <div key={grade} className={`px-2 py-1.5 rounded border ${info.bgColor}`}>
+                    <span className={`font-bold ${info.color}`}>{grade}</span>
+                    <span className="text-muted-foreground ml-1 hidden sm:inline">- {info.label}</span>
+                    <span className="text-muted-foreground ml-1 sm:hidden">- {info.label.split(',')[0]}</span>
+                  </div>
+                );
+              })}
             </div>
           </CardContent>
         </Card>
@@ -557,7 +567,7 @@ export default function TrainerClassDetail() {
                             <TableCell>
                               {status === 'present' ? (
                                 <div className="flex items-center justify-center gap-1">
-                                  {['A', 'B', 'C', 'D', 'E', 'F'].map((g) => (
+                                  {(isRandburgPuppy ? ['1','2','3','4','5','6'] : ['A','B','C','D','E','F']).map((g) => (
                                     <GradeButton key={g} booking={booking} grade={g} />
                                   ))}
                                 </div>
@@ -688,7 +698,7 @@ export default function TrainerClassDetail() {
                           <div className="flex items-center gap-2">
                             <span className="text-xs text-muted-foreground w-16 shrink-0">Grade:</span>
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              {['A', 'B', 'C', 'D', 'E', 'F'].map((g) => (
+                              {(isRandburgPuppy ? ['1','2','3','4','5','6'] : ['A','B','C','D','E','F']).map((g) => (
                                 <GradeButton key={g} booking={booking} grade={g} />
                               ))}
                             </div>
