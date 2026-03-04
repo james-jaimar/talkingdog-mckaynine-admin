@@ -16,6 +16,8 @@ export interface HandlerTask {
   completed_by: string | null;
   created_at: string;
   updated_at: string;
+  dog_id: string | null;
+  dog_name: string | null;
 }
 
 export function useHandlerTasks(handlerId?: string) {

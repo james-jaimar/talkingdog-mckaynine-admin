@@ -15,15 +15,13 @@ export interface TaskWithHandler {
   class_status_id: string | null;
   created_at: string | null;
   completed_at: string | null;
+  dog_id: string | null;
+  dog_name: string | null;
   handler?: {
     id: string;
     first_name: string;
     last_name: string;
     email: string;
-  };
-  dog?: {
-    id: string;
-    name: string;
   };
 }
 
