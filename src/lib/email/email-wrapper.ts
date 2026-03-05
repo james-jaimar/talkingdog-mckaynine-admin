@@ -57,20 +57,11 @@ export const BRANCH_SIGNATURES: Record<string, BranchSignature> = {
 
 /**
  * Get signature HTML for a branch
- * Uses branch name to determine which signature to use
+ * Accepts an optional override (from DB) — falls back to hardcoded if not provided
  */
-export function getEmailSignature(branchName?: string): string {
-  // Determine which branch signature to use
-  let signature: BranchSignature;
+export function getEmailSignature(branchName?: string, override?: BranchSignature): string {
+  const signature = override || getEmailSignatureText(branchName);
   
-  if (branchName?.toLowerCase().includes("randburg")) {
-    signature = BRANCH_SIGNATURES["Randburg"];
-  } else {
-    // Default to Delta for all other branches
-    signature = BRANCH_SIGNATURES["Delta"];
-  }
-  
-  // Build signature HTML, omitting company line if empty
   const companyLine = signature.company ? `${signature.company}<br>` : '';
   
   return `<p style="margin: 20px 0 0 0; font-size: 14px; color: #333333; line-height: 1.6;">
@@ -90,6 +81,23 @@ export function getEmailSignatureText(branchName?: string): BranchSignature {
     return BRANCH_SIGNATURES["Randburg"];
   }
   return BRANCH_SIGNATURES["Delta"];
+}
+
+/**
+ * Fetch the default signature for a branch from the database
+ * Returns null if no DB signature exists (caller should fall back to hardcoded)
+ */
+export async function getEmailSignatureFromDb(branchId: string): Promise<BranchSignature | null> {
+  const { supabase } = await import("@/integrations/supabase/client");
+  const { data, error } = await supabase
+    .from("branch_email_signatures")
+    .select("name, title, phone, company, email, website")
+    .eq("branch_id", branchId)
+    .eq("is_default", true)
+    .maybeSingle();
+  
+  if (error || !data) return null;
+  return data as BranchSignature;
 }
 
 /**

@@ -312,6 +312,56 @@ export type Database = {
           },
         ]
       }
+      branch_email_signatures: {
+        Row: {
+          branch_id: string
+          company: string | null
+          created_at: string
+          email: string
+          id: string
+          is_default: boolean
+          name: string
+          phone: string
+          title: string
+          updated_at: string
+          website: string
+        }
+        Insert: {
+          branch_id: string
+          company?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          is_default?: boolean
+          name: string
+          phone?: string
+          title: string
+          updated_at?: string
+          website?: string
+        }
+        Update: {
+          branch_id?: string
+          company?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          is_default?: boolean
+          name?: string
+          phone?: string
+          title?: string
+          updated_at?: string
+          website?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "branch_email_signatures_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       branch_email_templates: {
         Row: {
           branch_id: string
