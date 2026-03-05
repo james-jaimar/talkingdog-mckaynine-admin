@@ -15,6 +15,7 @@ import { CONGRATS_TEMPLATES } from "@/lib/email/templates/congrats-templates";
 import { Eye, FileDown, Edit3, FileUp } from "lucide-react";
 import { RichTextEditor } from "@/components/platform-templates/RichTextEditor";
 import { WordUploadModal } from "@/components/platform-templates/WordUploadModal";
+import { useBranch } from "@/context/BranchContext";
 
 interface TemplateEditorModalProps {
   open: boolean;
@@ -45,6 +46,7 @@ const CLASS_TYPES = [
 
 export function TemplateEditorModal({ open, onOpenChange, template }: TemplateEditorModalProps) {
   const { createTemplate, updateTemplate } = useEmailTemplates();
+  const { currentBranch } = useBranch();
   const [activeTab, setActiveTab] = useState<"edit" | "preview">("edit");
   const [showWordUpload, setShowWordUpload] = useState(false);
   
@@ -126,7 +128,7 @@ export function TemplateEditorModal({ open, onOpenChange, template }: TemplateEd
   };
 
   const isValid = name.trim() && subject.trim() && content.trim();
-  const previewHtml = wrapWithPreviewStyles(renderTemplate(content, getSampleVariables()));
+  const previewHtml = wrapWithPreviewStyles(renderTemplate(content, getSampleVariables(currentBranch?.name)));
 
   const handleWordConversion = (convertedHtml: string, suggestedName: string) => {
     setContent(convertedHtml);
@@ -282,7 +284,7 @@ export function TemplateEditorModal({ open, onOpenChange, template }: TemplateEd
           <TabsContent value="preview" className="flex-1 overflow-auto mt-4">
             <div className="border rounded-lg overflow-hidden">
               <div className="bg-muted p-3 border-b">
-                <strong>Subject:</strong> {renderTemplate(subject, getSampleVariables())}
+                <strong>Subject:</strong> {renderTemplate(subject, getSampleVariables(currentBranch?.name))}
               </div>
               <iframe
                 srcDoc={previewHtml}

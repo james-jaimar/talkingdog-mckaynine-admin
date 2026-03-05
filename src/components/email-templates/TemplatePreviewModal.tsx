@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { EmailTemplate } from "@/hooks/useEmailTemplates";
 import { renderTemplate, getSampleVariables } from "@/lib/email/template-renderer";
 import { wrapWithPreviewStyles } from "@/lib/email/preview-styles";
+import { useBranch } from "@/context/BranchContext";
 
 interface TemplatePreviewModalProps {
   open: boolean;
@@ -11,9 +12,10 @@ interface TemplatePreviewModalProps {
 }
 
 export function TemplatePreviewModal({ open, onOpenChange, template }: TemplatePreviewModalProps) {
+  const { currentBranch } = useBranch();
   if (!template) return null;
 
-  const sampleVariables = getSampleVariables();
+  const sampleVariables = getSampleVariables(currentBranch?.name);
   const previewHtml = wrapWithPreviewStyles(renderTemplate(template.content, sampleVariables));
   const previewSubject = renderTemplate(template.subject, sampleVariables);
 
