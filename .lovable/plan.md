@@ -1,76 +1,35 @@
 
 
-## Email Signatures CRUD System
+## Fix: Randburg Templates Showing Delta Signature
 
-### What
-Add a "Signatures" tab to the Email page (`/admin/email`) with full CRUD for managing email signatures per branch. Replace the current hardcoded signatures in `email-wrapper.ts` with database-driven signatures.
+### Root Cause
 
-### Database
+Two issues are causing Randburg templates to show the Delta signature:
 
-**New table: `branch_email_signatures`**
-- `id` (uuid, PK)
-- `branch_id` (uuid, FK → branches, not null)
-- `name` (text) — signer's name (e.g. "Ady Hawkins")
-- `title` (text) — role/branch title (e.g. "McKaynine - Delta")
-- `phone` (text)
-- `company` (text, nullable) — optional company line
-- `email` (text) — contact email
-- `website` (text) — website URL
-- `is_default` (boolean, default false) — the default signature for this branch
-- `created_at` / `updated_at` (timestamptz)
-- Unique constraint on `(branch_id, is_default)` where `is_default = true` (or handled in app logic)
-- RLS: authenticated users with admin role can CRUD
+1. **`getSampleVariables()` in `template-renderer.ts` (line 196)** hardcodes `branchName = "McKaynine Delta"`. Every preview modal uses this function, so all previews show the Delta signature regardless of which branch is active.
 
-### Files to Create
+2. **`getVariablesWithSignature()` (line 52-57)** generates the `{{signature}}` merge field using the hardcoded `BRANCH_SIGNATURES` map and never checks the database for a saved signature.
 
-1. **`src/hooks/useEmailSignatures.ts`** — React Query hook with:
-   - `useEmailSignatures()` — fetch all signatures for current branch
-   - `createSignature` mutation
-   - `updateSignature` mutation
-   - `deleteSignature` mutation
-   - `setDefault` mutation (unsets previous default, sets new one)
+### Plan
 
-2. **`src/components/email-signatures/SignatureEditorModal.tsx`** — Dialog with form fields for all signature properties (name, title, phone, company, email, website). Used for both create and edit.
+**File: `src/lib/email/template-renderer.ts`**
 
-3. **`src/components/email-signatures/SignaturePreview.tsx`** — Renders a preview of the signature HTML as it would appear in an email.
+1. Update `getSampleVariables()` to accept an optional `branchName` parameter instead of hardcoding "McKaynine Delta". Default to "McKaynine Delta" for backward compatibility.
+2. Use the passed `branchName` for both the `branch_name` variable and the `signature` generation.
 
-### Files to Modify
+**Files using `getSampleVariables()` — pass current branch name:**
 
-4. **`src/pages/admin/Email.tsx`**:
-   - Add a third tab: `Signatures` (with `PenLine` icon from lucide)
-   - New `EmailSignaturesTab` component inside the file (same pattern as `EmailTemplatesTab`)
-   - Shows signature cards with name, title, email, default badge
-   - Actions: Edit, Delete, Set as Default, Preview
+3. `src/components/email-templates/TemplatePreviewModal.tsx` — use `useBranch()` to get `currentBranch.name`, pass to `getSampleVariables(currentBranch?.name)`.
+4. `src/components/email-templates/TemplateEditorModal.tsx` — same pattern.
+5. `src/components/email-templates/TemplateConfigureModal.tsx` — same pattern.
+6. `src/pages/admin/Email.tsx` — if it has inline preview calls, same fix.
 
-5. **`src/lib/email/email-wrapper.ts`**:
-   - Keep `getEmailSignature()` and `BRANCH_SIGNATURES` as **fallbacks**
-   - Add a new `getEmailSignatureFromDb()` async function that fetches the default signature for a branch from the database
-   - Update `getEmailSignature()` to accept an optional `BranchSignature` override parameter so callers can pass the DB signature
+**File: `src/lib/email/template-renderer.ts` — DB-aware signature**
 
-6. **`src/lib/email/template-renderer.ts`** and sending modals:
-   - Where `getEmailSignature(branchName)` is called, update to first try fetching from the DB, falling back to the hardcoded values
+7. Make `getVariablesWithSignature()` work with an async DB lookup: add an async variant `getVariablesWithSignatureAsync(variables, branchId)` that tries `getEmailSignatureFromDb(branchId)` first, falling back to the hardcoded signature. The sync version remains as a fallback.
 
-### UI Layout (Signatures Tab)
-
-- Top-right: "+ New Signature" button
-- Grid of signature cards, each showing:
-  - Name (bold), Title, Phone, Email, Website
-  - "Default" badge if `is_default`
-  - Footer actions: Edit (pencil), Delete (trash), Set Default (star/check)
-- Editor modal with form fields matching the `BranchSignature` interface
-- Inline preview of the rendered HTML signature
-
-### How Signatures Connect to Email Sending
-
-Currently `getEmailSignature(branchName)` is called in:
-- `wrapEmailContent()` (auto-appends signature)
-- `getVariablesWithSignature()` (template variable `{{signature}}`)
-- `SendQuickEmailModal` and `SendInfoPackModal`
-
-The update will make these look up the branch's default signature from the DB first, with the hardcoded `BRANCH_SIGNATURES` as fallback if no DB record exists. This ensures zero disruption — existing emails keep working even before any signatures are saved to the DB.
-
-### Migration Path
-- Hardcoded signatures remain as fallbacks
-- Once Ady saves signatures via the UI, those take priority
-- No breaking changes to existing email sending flows
+This ensures:
+- Previews show the correct branch signature based on the active branch
+- Sending uses DB signatures when available
+- Zero breaking changes — all callers that don't pass a branch name get the existing Delta default
 
