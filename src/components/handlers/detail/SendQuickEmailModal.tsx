@@ -234,12 +234,17 @@ export function SendQuickEmailModal({ open, onOpenChange, handler }: SendQuickEm
         throw new Error("No valid template selected");
       }
 
+      const fromEmail = currentBranch?.name?.toLowerCase().includes("randburg")
+        ? "randburg@mckaynine.co.za"
+        : "delta@mckaynine.co.za";
+
       // Add to email queue instead of sending directly
       await addToQueue.mutateAsync({
         to_email: handler.email,
         subject,
         html_content: html,
         from_name: currentBranch?.name ? `${currentBranch.name} McKaynine` : "McKaynine",
+        from_email: fromEmail,
         attachments: attachmentUrls.length > 0 ? attachmentUrls : undefined,
         handler_id: handler.id,
         template_id: templateId,
@@ -252,6 +257,7 @@ export function SendQuickEmailModal({ open, onOpenChange, handler }: SendQuickEm
           subject,
           html_content: html,
           from_name: currentBranch?.name ? `${currentBranch.name} McKaynine` : "McKaynine",
+          from_email: fromEmail,
           attachments: attachmentUrls.length > 0 ? attachmentUrls : undefined,
           handler_id: handler.id,
           template_id: templateId,
