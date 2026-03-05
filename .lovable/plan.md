@@ -1,18 +1,41 @@
 
 
-## Fix: Add Copy-to-Branch Button to the Email Page
+## Analysis: Template Copy Branch Safety
 
-### Problem
-The Copy-to-Branch feature was added to `src/pages/admin/EmailTemplates.tsx` (route `/admin/email-templates`), but the user is on `/admin/email` which has its own duplicate `EmailTemplatesTab` component inside `src/pages/admin/Email.tsx` — and that component is missing the Copy button.
+### What's Already Safe (No Changes Needed)
+
+1. **Template data itself** — The copy only duplicates `content`, `subject`, `name`, `class_type`, and `variables`. The `branch_id` is set to the target branch. No Delta-specific data leaks.
+
+2. **Logo** — Determined at send time from `currentBranch.name` via `wrapEmailContent` → `getEmailLogoUrl()`. Correct logo will be used.
+
+3. **Signature** — Determined at send time from `currentBranch.name` via `getEmailSignature()`. Correct branch signature will appear.
+
+4. **SMTP credentials** — The edge function already switches SMTP password based on `from_email` address (Delta vs Randburg).
+
+5. **Queue branch attribution** — `addToQueue` uses `currentBranch.id`, so the email record is attributed to the correct branch.
+
+### What Needs Fixing
+
+**`from_email` is not set per-branch in the Quick Email and Info Pack modals.** When Ady sends from Randburg, the `from_email` field is left blank. The edge function then defaults to `FROM_EMAIL` (Delta's address). The email would come from `delta@mckaynine.co.za` even when sent from the Randburg branch.
+
+The invoice email dialog already does this correctly (line 143 of `EmailInvoicePreviewDialog.tsx`), but it's missing from:
+- `SendQuickEmailModal.tsx` (line 238-245)
+- `SendInfoPackModal.tsx` (similar pattern)
 
 ### Plan
 
-**File: `src/pages/admin/Email.tsx`**
+**Files to modify:**
+- `src/components/handlers/detail/SendQuickEmailModal.tsx` — Add `from_email` to `addToQueue` calls, derived from `currentBranch.name` (randburg → `randburg@mckaynine.co.za`, else `delta@mckaynine.co.za`)
+- `src/components/tasks/SendInfoPackModal.tsx` — Same fix
 
-1. Add missing imports: `Copy` icon from lucide-react, `CopyTemplateToBranchDialog` component
-2. Add `templateToCopy` state to the `EmailTemplatesTab` component
-3. Add the Copy button between the Edit and Delete buttons in the template card footer (around line 193)
-4. Render the `CopyTemplateToBranchDialog` alongside the other modals
+**Logic (same pattern already used in `EmailInvoicePreviewDialog.tsx`):**
+```typescript
+const fromEmail = currentBranch?.name?.toLowerCase().includes("randburg")
+  ? "randburg@mckaynine.co.za"
+  : "delta@mckaynine.co.za";
+```
 
-This mirrors exactly what's already in `EmailTemplates.tsx` — just needs to be replicated in the `EmailTemplatesTab` component within `Email.tsx`.
+Then pass `from_email: fromEmail` in each `addToQueue.mutateAsync()` call.
+
+This is a small but important fix — two files, a few lines each. No template content changes needed since the wrapper handles logo/signature dynamically.
 
