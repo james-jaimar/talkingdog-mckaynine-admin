@@ -192,8 +192,8 @@ function getSampleItemsBreakdownHtml(): string {
 /**
  * Generate sample variables for preview
  */
-export function getSampleVariables(): TemplateVariables {
-  const branchName = "McKaynine Delta";
+export function getSampleVariables(branchName?: string): TemplateVariables {
+  const effectiveBranchName = branchName || "McKaynine Delta";
   return {
     handler_name: "John",
     handler_full_name: "John Smith",
@@ -201,7 +201,7 @@ export function getSampleVariables(): TemplateVariables {
     dog_name: "Buddy",
     completed_class: "Puppy",
     next_class: "EO",
-    branch_name: branchName,
+    branch_name: effectiveBranchName,
     branch_email: "info@mckaynine.co.za",
     branch_phone: "082 123 4567",
     class_day_time: "Saturdays 09h00 - 10h00",
@@ -209,7 +209,7 @@ export function getSampleVariables(): TemplateVariables {
     banking_details: "McKaynine (Pty) Ltd, FNB, Acc: 12345678, Branch: 250655",
     base_url: window.location.origin,
     custom_message: "We hope you and Buddy are doing well!",
-    signature: getEmailSignature(branchName),
+    signature: getEmailSignature(effectiveBranchName),
     // Payment receipt fields
     invoice_number: "INV-2026-001",
     payment_summary: getSamplePaymentSummaryHtml(),

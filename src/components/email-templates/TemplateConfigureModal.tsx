@@ -11,6 +11,7 @@ import { PrebuiltTemplate } from "@/lib/email/templates";
 import { useTemplateConfigurations, TemplateConfiguration } from "@/hooks/useTemplateConfigurations";
 import { renderTemplate, TemplateVariables, getSampleVariables } from "@/lib/email/template-renderer";
 import { Save, Eye, Settings } from "lucide-react";
+import { useBranch } from "@/context/BranchContext";
 
 interface TemplateConfigureModalProps {
   open: boolean;
@@ -26,6 +27,7 @@ export function TemplateConfigureModal({
   existingConfig 
 }: TemplateConfigureModalProps) {
   const { saveConfiguration } = useTemplateConfigurations();
+  const { currentBranch } = useBranch();
   const [variables, setVariables] = useState<Record<string, string>>({});
   const [isActive, setIsActive] = useState(true);
   const [activeTab, setActiveTab] = useState("configure");
@@ -67,7 +69,7 @@ export function TemplateConfigureModal({
 
   // Generate preview HTML
   const getPreviewHtml = () => {
-    const sampleVars = getSampleVariables();
+    const sampleVars = getSampleVariables(currentBranch?.name);
     // Merge configured variables with sample data
     const mergedVars: TemplateVariables = {
       ...sampleVars,
@@ -81,7 +83,7 @@ export function TemplateConfigureModal({
   };
 
   const getPreviewSubject = () => {
-    const sampleVars = getSampleVariables();
+    const sampleVars = getSampleVariables(currentBranch?.name);
     const mergedVars = { ...sampleVars, ...variables };
     return renderTemplate(template.subject, mergedVars);
   };
