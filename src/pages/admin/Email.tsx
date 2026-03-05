@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
-import { Inbox, Send, RefreshCw, Play, Trash2, RotateCcw, Mail, Clock, AlertCircle, CheckCircle2, Search, X, Download, Paperclip, FileText } from "lucide-react";
+import { Inbox, Send, RefreshCw, Play, Trash2, RotateCcw, Mail, Clock, AlertCircle, CheckCircle2, Search, X, Download, Paperclip, FileText, PenLine, Star } from "lucide-react";
 import { useEmailQueue, QueuedEmail } from "@/hooks/useEmailQueue";
 import { format, parseISO, isWithinInterval, startOfDay, endOfDay } from "date-fns";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -37,6 +37,9 @@ import { CopyTemplateToBranchDialog } from "@/components/email-templates/CopyTem
 import { TemplatePreviewModal } from "@/components/email-templates/TemplatePreviewModal";
 import { TemplateEditorModal } from "@/components/email-templates/TemplateEditorModal";
 import { AttachmentLibrary } from "@/components/email-templates/AttachmentLibrary";
+import { useEmailSignatures, EmailSignature } from "@/hooks/useEmailSignatures";
+import { SignatureEditorModal } from "@/components/email-signatures/SignatureEditorModal";
+import { SignaturePreview } from "@/components/email-signatures/SignaturePreview";
 
 function EmailTemplatesTab() {
   const { templates, isLoading, deleteTemplate, updateTemplate } = useEmailTemplates();
@@ -282,6 +285,159 @@ function EmailTemplatesTab() {
   );
 }
 
+function EmailSignaturesTab() {
+  const { signatures, isLoading, createSignature, updateSignature, deleteSignature, setDefault } = useEmailSignatures();
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [selectedSignature, setSelectedSignature] = useState<EmailSignature | null>(null);
+  const [signatureToDelete, setSignatureToDelete] = useState<EmailSignature | null>(null);
+  const [previewSignature, setPreviewSignature] = useState<EmailSignature | null>(null);
+
+  const handleCreate = () => {
+    setSelectedSignature(null);
+    setIsEditorOpen(true);
+  };
+
+  const handleEdit = (sig: EmailSignature) => {
+    setSelectedSignature(sig);
+    setIsEditorOpen(true);
+  };
+
+  const handleSave = async (data: Parameters<typeof createSignature.mutateAsync>[0]) => {
+    if (selectedSignature) {
+      await updateSignature.mutateAsync({ id: selectedSignature.id, ...data });
+    } else {
+      await createSignature.mutateAsync(data);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (signatureToDelete) {
+      await deleteSignature.mutateAsync(signatureToDelete.id);
+      setSignatureToDelete(null);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-end">
+        <Button onClick={handleCreate}>
+          <Plus className="h-4 w-4 mr-2" />
+          New Signature
+        </Button>
+      </div>
+
+      {isLoading ? (
+        <div className="flex justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+        </div>
+      ) : signatures.length === 0 ? (
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <div className="p-3 rounded-full bg-muted mb-4">
+              <PenLine className="h-8 w-8 text-muted-foreground" />
+            </div>
+            <h3 className="text-lg font-medium mb-2">No email signatures yet</h3>
+            <p className="text-muted-foreground text-center max-w-sm mb-4">
+              Create signatures that will be automatically appended to outgoing emails for each branch.
+            </p>
+            <Button onClick={handleCreate}>
+              <Plus className="h-4 w-4 mr-2" />
+              Create Your First Signature
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {signatures.map((sig) => (
+            <Card key={sig.id} className={sig.is_default ? "border-primary/50 shadow-md" : ""}>
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <CardTitle className="text-lg">{sig.name}</CardTitle>
+                    <CardDescription>{sig.title}</CardDescription>
+                  </div>
+                  {sig.is_default && (
+                    <Badge className="bg-green-500/10 text-green-600 border-green-500/20">
+                      <Star className="mr-1 h-3 w-3" />
+                      Default
+                    </Badge>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent className="pb-3 text-sm text-muted-foreground space-y-1">
+                <p>📞 {sig.phone}</p>
+                <p>✉️ {sig.email}</p>
+                <p>🌐 {sig.website}</p>
+                {sig.company && <p>🏢 {sig.company}</p>}
+              </CardContent>
+              <div className="flex justify-between items-center pt-3 border-t px-6 pb-4">
+                <div className="flex gap-1">
+                  <Button variant="ghost" size="sm" onClick={() => setPreviewSignature(sig)}>
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => handleEdit(sig)}>
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  {!sig.is_default && (
+                    <Button variant="ghost" size="sm" onClick={() => setDefault.mutate(sig.id)} title="Set as default">
+                      <Star className="h-4 w-4" />
+                    </Button>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                    onClick={() => setSignatureToDelete(sig)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      <SignatureEditorModal
+        open={isEditorOpen}
+        onOpenChange={setIsEditorOpen}
+        signature={selectedSignature}
+        onSave={handleSave}
+        isSaving={createSignature.isPending || updateSignature.isPending}
+      />
+
+      <Dialog open={!!previewSignature} onOpenChange={(open) => !open && setPreviewSignature(null)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Signature Preview</DialogTitle>
+          </DialogHeader>
+          {previewSignature && <SignaturePreview signature={previewSignature} />}
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={!!signatureToDelete} onOpenChange={(open) => !open && setSignatureToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Signature</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{signatureToDelete?.name}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
+
 export default function EmailPage() {
   const {
     outbox,
@@ -384,6 +540,10 @@ export default function EmailPage() {
             <TabsTrigger value="templates" className="gap-2">
               <FileText className="h-4 w-4" />
               Templates
+            </TabsTrigger>
+            <TabsTrigger value="signatures" className="gap-2">
+              <PenLine className="h-4 w-4" />
+              Signatures
             </TabsTrigger>
           </TabsList>
 
@@ -674,6 +834,10 @@ export default function EmailPage() {
 
           <TabsContent value="templates">
             <EmailTemplatesTab />
+          </TabsContent>
+
+          <TabsContent value="signatures">
+            <EmailSignaturesTab />
           </TabsContent>
         </Tabs>
 
