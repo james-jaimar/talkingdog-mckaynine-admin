@@ -1,29 +1,18 @@
 
 
-## Copy Email Template to Another Branch
+## Fix: Add Copy-to-Branch Button to the Email Page
 
-### What
-Add a "Copy to Branch" button on each email template card that opens a dialog letting Ady select a target branch, then duplicates the template to that branch.
+### Problem
+The Copy-to-Branch feature was added to `src/pages/admin/EmailTemplates.tsx` (route `/admin/email-templates`), but the user is on `/admin/email` which has its own duplicate `EmailTemplatesTab` component inside `src/pages/admin/Email.tsx` — and that component is missing the Copy button.
 
-### How
+### Plan
 
-**1. Add `copyToBranch` mutation to `useEmailTemplates` hook**
-- New mutation that takes a template ID and target branch ID
-- Fetches the source template, inserts a copy with the new `branch_id` and a unique `type` suffix
-- Shows success toast with the target branch name
+**File: `src/pages/admin/Email.tsx`**
 
-**2. Add a "Copy to Branch" dialog component** (`src/components/email-templates/CopyTemplateToBranchDialog.tsx`)
-- Simple dialog with a branch selector dropdown (using `useBranchOptions` from `branch-fetcher.ts`)
-- Filters out the current branch from the list
-- Confirm button triggers the copy mutation
+1. Add missing imports: `Copy` icon from lucide-react, `CopyTemplateToBranchDialog` component
+2. Add `templateToCopy` state to the `EmailTemplatesTab` component
+3. Add the Copy button between the Edit and Delete buttons in the template card footer (around line 193)
+4. Render the `CopyTemplateToBranchDialog` alongside the other modals
 
-**3. Update `EmailTemplates.tsx` page**
-- Add a `Copy` icon button (lucide `Copy` icon) to each template card's footer actions
-- Clicking opens the `CopyTemplateToBranchDialog` with the selected template
-- On success, show toast confirming the copy
-
-### Files to modify
-- `src/hooks/useEmailTemplates.ts` — add `copyToBranch` mutation
-- `src/components/email-templates/CopyTemplateToBranchDialog.tsx` — new component
-- `src/pages/admin/EmailTemplates.tsx` — add copy button + dialog state
+This mirrors exactly what's already in `EmailTemplates.tsx` — just needs to be replicated in the `EmailTemplatesTab` component within `Email.tsx`.
 
