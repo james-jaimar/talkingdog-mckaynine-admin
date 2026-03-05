@@ -157,6 +157,43 @@ export function useEmailTemplates() {
     },
   });
 
+  const copyToBranch = useMutation({
+    mutationFn: async ({ templateId, targetBranchId }: { templateId: string; targetBranchId: string }) => {
+      const { data: source, error: fetchError } = await supabase
+        .from("branch_email_templates")
+        .select("*")
+        .eq("id", templateId)
+        .single();
+
+      if (fetchError || !source) throw fetchError || new Error("Template not found");
+
+      const uniqueType = `${source.type}_copy_${Date.now()}`;
+
+      const { data, error } = await supabase
+        .from("branch_email_templates")
+        .insert({
+          branch_id: targetBranchId,
+          name: source.name,
+          type: uniqueType,
+          subject: source.subject,
+          content: source.content,
+          class_type: source.class_type,
+          variables: source.variables || [],
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["email-templates"] });
+    },
+    onError: (error: any) => {
+      toast.error(`Failed to copy template: ${error.message}`);
+    },
+  });
+
   return {
     templates: templatesQuery.data || [],
     isLoading: templatesQuery.isLoading,
@@ -164,6 +201,7 @@ export function useEmailTemplates() {
     createTemplate,
     updateTemplate,
     deleteTemplate,
+    copyToBranch,
     refetch: templatesQuery.refetch,
   };
 }
