@@ -145,12 +145,17 @@ export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModa
         url: getAttachmentUrl(a),
       }));
 
+      const fromEmail = currentBranch?.name?.toLowerCase().includes("randburg")
+        ? "randburg@mckaynine.co.za"
+        : "delta@mckaynine.co.za";
+
       // Add to email queue instead of sending directly
       await addToQueue.mutateAsync({
         to_email: task.handler.email,
         subject: renderedSubject,
         html_content: wrappedHtml,
         from_name: currentBranch?.name ? `${currentBranch.name} McKaynine` : "McKaynine",
+        from_email: fromEmail,
         attachments: attachmentUrls.length > 0 ? attachmentUrls : undefined,
         handler_id: task.handler_id,
         template_id: selectedTemplate.id,
