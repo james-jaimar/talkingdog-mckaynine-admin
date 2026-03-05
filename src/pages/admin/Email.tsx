@@ -32,7 +32,8 @@ import {
 
 // Email Templates imports
 import { useEmailTemplates, EmailTemplate } from "@/hooks/useEmailTemplates";
-import { Eye, Check, Plus, Edit } from "lucide-react";
+import { Eye, Check, Plus, Edit, Copy } from "lucide-react";
+import { CopyTemplateToBranchDialog } from "@/components/email-templates/CopyTemplateToBranchDialog";
 import { TemplatePreviewModal } from "@/components/email-templates/TemplatePreviewModal";
 import { TemplateEditorModal } from "@/components/email-templates/TemplateEditorModal";
 import { AttachmentLibrary } from "@/components/email-templates/AttachmentLibrary";
@@ -44,6 +45,7 @@ function EmailTemplatesTab() {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<EmailTemplate | null>(null);
   const [templateToDelete, setTemplateToDelete] = useState<EmailTemplate | null>(null);
+  const [templateToCopy, setTemplateToCopy] = useState<EmailTemplate | null>(null);
 
   const handleCreate = () => {
     setSelectedTemplate(null);
@@ -194,6 +196,14 @@ function EmailTemplatesTab() {
                       <Button
                         variant="ghost"
                         size="sm"
+                        onClick={() => setTemplateToCopy(template)}
+                        title="Copy to another branch"
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         className="text-destructive hover:text-destructive hover:bg-destructive/10"
                         onClick={() => setTemplateToDelete(template)}
                       >
@@ -235,6 +245,12 @@ function EmailTemplatesTab() {
         open={isEditorOpen}
         onOpenChange={setIsEditorOpen}
         template={selectedTemplate}
+      />
+
+      <CopyTemplateToBranchDialog
+        open={!!templateToCopy}
+        onOpenChange={(open) => !open && setTemplateToCopy(null)}
+        template={templateToCopy}
       />
 
       <TemplatePreviewModal
