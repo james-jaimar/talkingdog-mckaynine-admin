@@ -1,34 +1,35 @@
 
 
-## Fix: Show Historical Class Status Data Even for Inactive Class Types
+## Fix: Randburg Templates Showing Delta Signature
 
 ### Root Cause
-The data is intact in `handler_class_status`. The problem is the Handlers table only renders columns for **active** class types. When a class type is toggled inactive for a branch (e.g., Beginner is inactive for Randburg), the column disappears — and with it, all historical completion records.
 
-### Solution
-In `useHandlersData.ts`, use **all** class types (including inactive) for rendering the class status columns — not just the active ones. The active/inactive distinction should only control:
-- Whether the class type appears in **forms** (Add Class, enrollment dropdowns) — active only
-- Whether new classes can be created for that type — active only
+Two issues are causing Randburg templates to show the Delta signature:
 
-The Handlers table should always show columns for any class type that exists, so historical data remains visible.
+1. **`getSampleVariables()` in `template-renderer.ts` (line 196)** hardcodes `branchName = "McKaynine Delta"`. Every preview modal uses this function, so all previews show the Delta signature regardless of which branch is active.
 
-### Changes
+2. **`getVariablesWithSignature()` (line 52-57)** generates the `{{signature}}` merge field using the hardcoded `BRANCH_SIGNATURES` map and never checks the database for a saved signature.
 
-**`src/components/handlers/hooks/useHandlersData.ts`**
-- Change `useClassTypes()` call to `useClassTypes(true)` (include inactive) so all class type columns render in the Handlers table
+### Plan
 
-**`src/components/handlers/table/TableHeader.tsx`**
-- Already receives `classTypes` as prop — no change needed, just receives the full list now
+**File: `src/lib/email/template-renderer.ts`**
 
-**`src/components/handlers/table/HandlerTableRow.tsx`**
-- Already receives `classTypes` as prop — no change needed
+1. Update `getSampleVariables()` to accept an optional `branchName` parameter instead of hardcoding "McKaynine Delta". Default to "McKaynine Delta" for backward compatibility.
+2. Use the passed `branchName` for both the `branch_name` variable and the `signature` generation.
 
-### What Stays Active-Only
-- `AddClassForm.tsx` — keep `useClassTypes()` (active only) for class creation dropdown
-- `EditClassForm.tsx` — keep active only
-- `ClassAndPreferencesFields.tsx` — keep active only for enrollment forms
-- `ClassInvitationSelector.tsx` — keep active only
+**Files using `getSampleVariables()` — pass current branch name:**
 
-### Impact
-One line change: `useClassTypes()` → `useClassTypes(true)` in `useHandlersData.ts`. All historical data becomes visible again across both branches.
+3. `src/components/email-templates/TemplatePreviewModal.tsx` — use `useBranch()` to get `currentBranch.name`, pass to `getSampleVariables(currentBranch?.name)`.
+4. `src/components/email-templates/TemplateEditorModal.tsx` — same pattern.
+5. `src/components/email-templates/TemplateConfigureModal.tsx` — same pattern.
+6. `src/pages/admin/Email.tsx` — if it has inline preview calls, same fix.
+
+**File: `src/lib/email/template-renderer.ts` — DB-aware signature**
+
+7. Make `getVariablesWithSignature()` work with an async DB lookup: add an async variant `getVariablesWithSignatureAsync(variables, branchId)` that tries `getEmailSignatureFromDb(branchId)` first, falling back to the hardcoded signature. The sync version remains as a fallback.
+
+This ensures:
+- Previews show the correct branch signature based on the active branch
+- Sending uses DB signatures when available
+- Zero breaking changes — all callers that don't pass a branch name get the existing Delta default
 
