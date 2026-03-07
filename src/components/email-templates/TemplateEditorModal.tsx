@@ -31,18 +31,7 @@ const TEMPLATE_TYPES = [
   { value: "custom", label: "Custom" },
 ];
 
-const CLASS_TYPES = [
-  { value: "all", label: "All Classes" },
-  { value: "Puppy", label: "Puppy" },
-  { value: "EO", label: "EO" },
-  { value: "CGC Bronze", label: "CGC Bronze" },
-  { value: "CGC Silver", label: "CGC Silver" },
-  { value: "Beginner", label: "Beginner" },
-  { value: "Novice", label: "Novice" },
-  { value: "WT", label: "WT" },
-  { value: "A-Test", label: "A-Test" },
-  { value: "Yoga", label: "Yoga" },
-];
+// CLASS_TYPES now loaded dynamically via useClassTypes hook
 
 export function TemplateEditorModal({ open, onOpenChange, template }: TemplateEditorModalProps) {
   const { createTemplate, updateTemplate } = useEmailTemplates();
