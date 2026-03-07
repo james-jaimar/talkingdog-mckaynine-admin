@@ -123,7 +123,11 @@ function StatusBox({
   isAddNew?: boolean;
 }) {
   const { terms } = useTermOptions();
-  const { classTypeNames } = useClassTypes();
+  const { classTypes: allClassTypes, classTypeNames } = useClassTypes(true);
+  const nextClassMap: Record<string, string> = {};
+  allClassTypes.forEach(ct => {
+    if (ct.next_class_type) nextClassMap[ct.name] = ct.next_class_type;
+  });
   const queryClient = useQueryClient();
   const { currentBranch } = useBranch();
   
@@ -138,10 +142,14 @@ function StatusBox({
   const [selectedDogId, setSelectedDogId] = useState<string | null>(initialDogId);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isOpen, setIsOpen] = useState(false);
-  const [wantsInfoClasses, setWantsInfoClasses] = useState<string[]>(() => {
-    // Default to next logical class if available
-    const defaultNext = NEXT_CLASS_MAP[classType];
-    return defaultNext ? [defaultNext] : [];
+  const [wantsInfoClasses, setWantsInfoClasses] = useState<string[]>([]);
+  
+  // Update wantsInfoClasses default when nextClassMap loads
+  useState(() => {
+    const defaultNext = nextClassMap[classType];
+    if (defaultNext && wantsInfoClasses.length === 0) {
+      setWantsInfoClasses([defaultNext]);
+    }
   });
 
   const selectedTermValue = nextTermNumber && nextTermYear 
