@@ -52,11 +52,10 @@ export function useDeleteInvoice() {
         }
       }
 
-      // Step 3: Proceed with local deletion
-      const { error } = await supabase
-        .from('invoices')
-        .delete()
-        .eq('id', invoiceId);
+      // Step 3: Proceed with local deletion (also returns any starter kits to inventory)
+      const { error } = await supabase.rpc('delete_invoice_cascade', {
+        p_invoice_id: invoiceId,
+      });
 
       if (error) throw error;
 
