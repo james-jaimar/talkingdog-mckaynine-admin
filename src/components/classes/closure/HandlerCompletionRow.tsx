@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { HandlerCompletionData } from "./types";
-import { CLASS_TYPES } from "../types/class-types";
+import { useClassTypes } from "@/hooks/useClassTypes";
 import { useTermOptions } from "@/hooks/useTermOptions";
 
 interface HandlerCompletionRowProps {
@@ -15,6 +15,7 @@ interface HandlerCompletionRowProps {
 
 export function HandlerCompletionRow({ data, onChange, index, showContinuingColumns = false }: HandlerCompletionRowProps) {
   const { terms } = useTermOptions();
+  const { classTypeNames } = useClassTypes();
   
   const handleChange = (field: keyof HandlerCompletionData, value: any) => {
     onChange({ ...data, [field]: value });
@@ -163,7 +164,7 @@ export function HandlerCompletionRow({ data, onChange, index, showContinuingColu
                   <SelectValue placeholder="Select class" />
                 </SelectTrigger>
                 <SelectContent>
-                  {CLASS_TYPES.map((type) => (
+                  {classTypeNames.map((type) => (
                     <SelectItem key={type} value={type}>
                       {type}
                     </SelectItem>

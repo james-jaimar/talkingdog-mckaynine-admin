@@ -16,6 +16,7 @@ import { Eye, FileDown, Edit3, FileUp } from "lucide-react";
 import { RichTextEditor } from "@/components/platform-templates/RichTextEditor";
 import { WordUploadModal } from "@/components/platform-templates/WordUploadModal";
 import { useBranch } from "@/context/BranchContext";
+import { useClassTypes } from "@/hooks/useClassTypes";
 
 interface TemplateEditorModalProps {
   open: boolean;
@@ -31,22 +32,12 @@ const TEMPLATE_TYPES = [
   { value: "custom", label: "Custom" },
 ];
 
-const CLASS_TYPES = [
-  { value: "all", label: "All Classes" },
-  { value: "Puppy", label: "Puppy" },
-  { value: "EO", label: "EO" },
-  { value: "CGC Bronze", label: "CGC Bronze" },
-  { value: "CGC Silver", label: "CGC Silver" },
-  { value: "Beginner", label: "Beginner" },
-  { value: "Novice", label: "Novice" },
-  { value: "WT", label: "WT" },
-  { value: "A-Test", label: "A-Test" },
-  { value: "Yoga", label: "Yoga" },
-];
+// CLASS_TYPES now loaded dynamically via useClassTypes hook
 
 export function TemplateEditorModal({ open, onOpenChange, template }: TemplateEditorModalProps) {
   const { createTemplate, updateTemplate } = useEmailTemplates();
   const { currentBranch } = useBranch();
+  const { classTypeNames } = useClassTypes();
   const [activeTab, setActiveTab] = useState<"edit" | "preview">("edit");
   const [showWordUpload, setShowWordUpload] = useState(false);
   
@@ -235,9 +226,10 @@ export function TemplateEditorModal({ open, onOpenChange, template }: TemplateEd
                     <SelectValue placeholder="Select class type" />
                   </SelectTrigger>
                   <SelectContent>
-                    {CLASS_TYPES.map((c) => (
-                      <SelectItem key={c.value} value={c.value}>
-                        {c.label}
+                    <SelectItem value="all">All Classes</SelectItem>
+                    {classTypeNames.map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {type}
                       </SelectItem>
                     ))}
                   </SelectContent>

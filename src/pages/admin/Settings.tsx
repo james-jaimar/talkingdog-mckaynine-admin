@@ -4,7 +4,7 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Helmet } from "react-helmet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Map, UserCog, ScanLine, Settings as SettingsIcon, AlertTriangle } from "lucide-react";
+import { Users, Map, UserCog, ScanLine, Settings as SettingsIcon, AlertTriangle, Layers } from "lucide-react";
 import RequireAdmin from "@/components/auth/RequireAdmin";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -24,6 +24,9 @@ import { AddTrainerModal } from "@/components/trainers/AddTrainerModal";
 
 // System Settings
 import { useSystemSettings } from "@/hooks/useSystemSettings";
+
+// Class Types
+import { ClassTypesManager } from "@/components/admin/ClassTypesManager";
 
 // Intake Scans imports
 import { useState as useIntakeState, useEffect } from "react";
@@ -230,6 +233,10 @@ export default function Settings() {
                 <SettingsIcon className="h-4 w-4" />
                 Settings
               </TabsTrigger>
+              <TabsTrigger value="class-types" className="gap-2">
+                <Layers className="h-4 w-4" />
+                Class Types
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="users">
@@ -328,6 +335,18 @@ export default function Settings() {
                   </p>
                 </div>
                 <SystemSettingsTab />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="class-types">
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-xl font-semibold">Class Types</h2>
+                  <p className="text-muted-foreground">
+                    Add, edit, reorder, or deactivate class types used across all branches
+                  </p>
+                </div>
+                <ClassTypesManager />
               </div>
             </TabsContent>
           </Tabs>

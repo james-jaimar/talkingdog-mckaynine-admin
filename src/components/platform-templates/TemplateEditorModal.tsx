@@ -21,7 +21,8 @@ interface TemplateEditorModalProps {
   templateId?: string;
 }
 
-const CLASS_TYPES = ["Puppy", "EO", "CGC Bronze", "CGC Silver", "Beginner", "Novice", "WT", "A-Test", "Yoga"];
+// CLASS_TYPES now loaded dynamically via useClassTypes hook
+import { useClassTypes } from "@/hooks/useClassTypes";
 
 const DEFAULT_HTML = `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
   <h2 style="color: #333;">Hello {{handler_name}},</h2>
@@ -42,6 +43,7 @@ const DEFAULT_HTML = `<div style="font-family: Arial, sans-serif; max-width: 600
 export function TemplateEditorModal({ open, onOpenChange, templateId }: TemplateEditorModalProps) {
   const { createTemplate, updateTemplate } = usePlatformTemplates();
   const { data: existingTemplate, isLoading } = usePlatformTemplate(templateId);
+  const { classTypeNames } = useClassTypes();
   
   const [activeTab, setActiveTab] = useState("editor");
   const [showWordUpload, setShowWordUpload] = useState(false);
@@ -206,7 +208,7 @@ export function TemplateEditorModal({ open, onOpenChange, templateId }: Template
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All Classes</SelectItem>
-                        {CLASS_TYPES.map(type => (
+                        {classTypeNames.map(type => (
                           <SelectItem key={type} value={type}>{type}</SelectItem>
                         ))}
                       </SelectContent>

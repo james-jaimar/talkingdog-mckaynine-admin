@@ -1,15 +1,17 @@
 
 import { TableHead, TableRow } from "@/components/ui/table";
-import { CLASS_TYPES } from "@/components/classes/types/class-types";
+import { useClassTypes } from "@/hooks/useClassTypes";
 
 export function HandlerTableHeader() {
+  const { classTypeNames } = useClassTypes();
+  
   return (
     <TableRow>
       <TableHead className="w-[180px]">Name</TableHead>
       <TableHead className="text-center w-[60px]">Dogs</TableHead>
       
-      {/* Class Type Columns - Fixed widths */}
-      {CLASS_TYPES.map((classType) => (
+      {/* Class Type Columns - Dynamic from DB */}
+      {classTypeNames.map((classType) => (
         <TableHead key={classType} className="text-center w-[90px] px-1">
           {classType}
         </TableHead>

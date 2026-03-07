@@ -11,21 +11,12 @@ import { useEmailAttachments, EmailAttachment } from "@/hooks/useEmailAttachment
 import { Upload, Trash2, FileText, Download, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 
-const CLASS_TYPES = [
-  { value: "all", label: "All Classes" },
-  { value: "Puppy", label: "Puppy" },
-  { value: "EO", label: "EO" },
-  { value: "CGC Bronze", label: "CGC Bronze" },
-  { value: "CGC Silver", label: "CGC Silver" },
-  { value: "Beginner", label: "Beginner" },
-  { value: "Novice", label: "Novice" },
-  { value: "WT", label: "WT" },
-  { value: "A-Test", label: "A-Test" },
-  { value: "Yoga", label: "Yoga" },
-];
+// CLASS_TYPES now loaded dynamically via useClassTypes hook
+import { useClassTypes } from "@/hooks/useClassTypes";
 
 export function AttachmentLibrary() {
   const { attachments, isLoading, uploadAttachment, deleteAttachment, getAttachmentUrl } = useEmailAttachments();
+  const { classTypeNames } = useClassTypes();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [isUploadOpen, setIsUploadOpen] = useState(false);
@@ -199,9 +190,10 @@ export function AttachmentLibrary() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {CLASS_TYPES.map((c) => (
-                    <SelectItem key={c.value} value={c.value}>
-                      {c.label}
+                  <SelectItem value="all">All Classes</SelectItem>
+                  {classTypeNames.map((type) => (
+                    <SelectItem key={type} value={type}>
+                      {type}
                     </SelectItem>
                   ))}
                 </SelectContent>

@@ -1149,13 +1149,40 @@ export type Database = {
           },
         ]
       }
+      class_types: {
+        Row: {
+          created_at: string
+          display_order: number
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       classes: {
         Row: {
           admin_fee_type: string
           admin_fee_value: number
           branch_id: string
           capacity: number
-          class_type: Database["public"]["Enums"]["class_type"]
+          class_type: string
           course_fee: number
           created_at: string
           description: string
@@ -1177,7 +1204,7 @@ export type Database = {
           admin_fee_value?: number
           branch_id: string
           capacity?: number
-          class_type: Database["public"]["Enums"]["class_type"]
+          class_type: string
           course_fee?: number
           created_at?: string
           description: string
@@ -1199,7 +1226,7 @@ export type Database = {
           admin_fee_value?: number
           branch_id?: string
           capacity?: number
-          class_type?: Database["public"]["Enums"]["class_type"]
+          class_type?: string
           course_fee?: number
           created_at?: string
           description?: string
@@ -3131,16 +3158,6 @@ export type Database = {
         | "handler"
         | "user"
         | "assistant"
-      class_type:
-        | "Puppy"
-        | "EO"
-        | "CGC Bronze"
-        | "CGC Silver"
-        | "Beginner"
-        | "Novice"
-        | "WT"
-        | "A-Test"
-        | "Yoga"
       term_number: "1" | "2" | "3" | "4"
     }
     CompositeTypes: {
@@ -3276,17 +3293,6 @@ export const Constants = {
         "handler",
         "user",
         "assistant",
-      ],
-      class_type: [
-        "Puppy",
-        "EO",
-        "CGC Bronze",
-        "CGC Silver",
-        "Beginner",
-        "Novice",
-        "WT",
-        "A-Test",
-        "Yoga",
       ],
       term_number: ["1", "2", "3", "4"],
     },

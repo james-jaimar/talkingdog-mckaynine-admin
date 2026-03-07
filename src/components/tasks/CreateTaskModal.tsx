@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
+import { useClassTypes } from "@/hooks/useClassTypes";
 import { toast } from "sonner";
 import { Loader2, Search } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -43,22 +44,12 @@ const TASK_TYPES = [
   { value: "other", label: "Other" },
 ];
 
-const CLASS_TYPES = [
-  { value: "none", label: "None" },
-  { value: "Puppy", label: "Puppy" },
-  { value: "EO", label: "EO" },
-  { value: "CGC Bronze", label: "CGC Bronze" },
-  { value: "CGC Silver", label: "CGC Silver" },
-  { value: "Beginner", label: "Beginner" },
-  { value: "Novice", label: "Novice" },
-  { value: "WT", label: "WT" },
-  { value: "A-Test", label: "A-Test" },
-  { value: "Yoga", label: "Yoga" },
-];
+// CLASS_TYPES now loaded dynamically via useClassTypes hook
 
 export function CreateTaskModal({ open, onOpenChange }: CreateTaskModalProps) {
   const queryClient = useQueryClient();
   const { currentBranch } = useBranch();
+  const { classTypeNames } = useClassTypes();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [handlerSearch, setHandlerSearch] = useState("");
   const [handlers, setHandlers] = useState<Handler[]>([]);
@@ -245,9 +236,10 @@ export function CreateTaskModal({ open, onOpenChange }: CreateTaskModalProps) {
                 <SelectValue placeholder="Select class type" />
               </SelectTrigger>
               <SelectContent>
-                {CLASS_TYPES.map((type) => (
-                  <SelectItem key={type.value || "none"} value={type.value}>
-                    {type.label}
+                <SelectItem value="none">None</SelectItem>
+                {classTypeNames.map((type) => (
+                  <SelectItem key={type} value={type}>
+                    {type}
                   </SelectItem>
                 ))}
               </SelectContent>

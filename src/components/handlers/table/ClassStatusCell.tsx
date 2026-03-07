@@ -33,7 +33,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useTermOptions } from "@/hooks/useTermOptions";
-import { CLASS_TYPES } from "@/components/classes/types/class-types";
+import { useClassTypes } from "@/hooks/useClassTypes";
 
 interface ClassStatusItem {
   id?: string;
@@ -129,6 +129,7 @@ function StatusBox({
   isAddNew?: boolean;
 }) {
   const { terms } = useTermOptions();
+  const { classTypeNames } = useClassTypes();
   const queryClient = useQueryClient();
   const { currentBranch } = useBranch();
   
@@ -471,7 +472,7 @@ function StatusBox({
         <div className="space-y-1 p-2 bg-blue-50 rounded-md">
           <label className="text-xs text-muted-foreground">Info for which class(es)?</label>
           <div className="flex flex-wrap gap-1">
-            {CLASS_TYPES.map((type) => (
+            {classTypeNames.map((type) => (
               <Button
                 key={type}
                 type="button"
@@ -525,7 +526,7 @@ function StatusBox({
                 <SelectValue placeholder="Select class" />
               </SelectTrigger>
               <SelectContent>
-                {CLASS_TYPES.map((type) => (
+                {classTypeNames.map((type) => (
                   <SelectItem key={type} value={type}>
                     {type}
                   </SelectItem>
