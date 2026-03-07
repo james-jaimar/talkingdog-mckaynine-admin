@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
@@ -137,6 +138,7 @@ export function ClassTypesManager() {
               <TableHead className="w-[50px]">Order</TableHead>
               <TableHead>Name</TableHead>
               <TableHead className="w-[80px] text-center">Active</TableHead>
+              <TableHead className="w-[160px]">Next Class</TableHead>
               <TableHead className="w-[120px] text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -147,6 +149,22 @@ export function ClassTypesManager() {
                 <TableCell className="font-medium">{ct.name}</TableCell>
                 <TableCell className="text-center">
                   <Switch checked={ct.is_active} onCheckedChange={() => handleToggleActive(ct)} />
+                </TableCell>
+                <TableCell>
+                  <Select
+                    value={ct.next_class_type || "__none__"}
+                    onValueChange={(val) => handleNextClassChange(ct, val === "__none__" ? null : val)}
+                  >
+                    <SelectTrigger className="h-8 w-[140px]">
+                      <SelectValue placeholder="None" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">None</SelectItem>
+                      {sorted.filter(other => other.id !== ct.id).map(other => (
+                        <SelectItem key={other.id} value={other.name}>{other.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-1">
