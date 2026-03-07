@@ -64,6 +64,8 @@ export function useDeleteInvoice() {
     onSuccess: (result, invoiceId) => {
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       queryClient.invalidateQueries({ queryKey: ['invoice', invoiceId] });
+      queryClient.invalidateQueries({ queryKey: ['starter-kit-inventory'] });
+      queryClient.invalidateQueries({ queryKey: ['starter-kit-allocations'] });
       
       // Only mention IO action for credit notes (unpaid invoices)
       const description = result.ioActionTaken === 'credit_note'
