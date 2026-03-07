@@ -142,14 +142,8 @@ function StatusBox({
   const [selectedDogId, setSelectedDogId] = useState<string | null>(initialDogId);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isOpen, setIsOpen] = useState(false);
-  const [wantsInfoClasses, setWantsInfoClasses] = useState<string[]>([]);
-  
-  // Update wantsInfoClasses default when nextClassMap loads
-  useState(() => {
-    const defaultNext = nextClassMap[classType];
-    if (defaultNext && wantsInfoClasses.length === 0) {
-      setWantsInfoClasses([defaultNext]);
-    }
+  const [wantsInfoClasses, setWantsInfoClasses] = useState<string[]>(() => {
+    return [];
   });
 
   const selectedTermValue = nextTermNumber && nextTermYear 
