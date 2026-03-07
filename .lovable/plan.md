@@ -1,3 +1,10 @@
+## IMPORTANT: Lateral Thinking Reminder
+
+When making architectural changes (e.g., moving from hardcoded to configurable systems), always proactively audit ALL downstream consumers and related flows. Don't just change the source — trace the data through creation, storage, display, and closure/completion paths. Ask: "What else touches this data? What will break or become stale if we change this?"
+
+Examples: When class types became dynamic, we needed to also update the class closure modal's hardcoded progression map, the handlers table status cell task creation, and backfill legacy data. These weren't requested but were necessary consequences.
+
+---
 
 
 ## Fix: Randburg Templates Showing Delta Signature
