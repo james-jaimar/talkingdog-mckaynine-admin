@@ -1,35 +1,59 @@
 
 
-## Fix: Randburg Templates Showing Delta Signature
+## Audit: Class Closure Writing to Handler Class Status
 
-### Root Cause
+### Finding: The core data flow is already compatible
 
-Two issues are causing Randburg templates to show the Delta signature:
+The class closure modal writes `classType` (from `classes.class_type`, e.g., "Puppy", "EO") directly into `handler_class_status.class_type`. The Handlers table reads `handler_class_status.class_type` and matches it against `class_types.name`. Since these are all the same strings, the data flows correctly end-to-end. No migration or linking to UUIDs is needed.
 
-1. **`getSampleVariables()` in `template-renderer.ts` (line 196)** hardcodes `branchName = "McKaynine Delta"`. Every preview modal uses this function, so all previews show the Delta signature regardless of which branch is active.
+Similarly, `useMarkHandlersCompleted` (the auto-complete path) reads `class_type` from the `classes` table and writes it as-is to `handler_class_status`. This also works.
 
-2. **`getVariablesWithSignature()` (line 52-57)** generates the `{{signature}}` merge field using the hardcoded `BRANCH_SIGNATURES` map and never checks the database for a saved signature.
+### One issue found: Hardcoded `NEXT_CLASS_MAP`
+
+In `ClassClosureModal.tsx` (line 21-26), there is a hardcoded progression map used for auto-generating task titles:
+
+```typescript
+const NEXT_CLASS_MAP = {
+  "Puppy": "EO",
+  "EO": "CGC Bronze",
+  "CGC Bronze": "CGC Silver",
+  "Beginner": "Novice",
+};
+```
+
+This is used when creating follow-up tasks (lines 207, 218) to generate descriptions like "Send EO info pack" when the handler's `next_class_type` isn't explicitly set. If Ady adds or renames class types via the admin UI, this map won't reflect those changes.
 
 ### Plan
 
-**File: `src/lib/email/template-renderer.ts`**
+1. **Add a `next_class_type` column to the `class_types` table** -- a self-referencing text field (stores the name of the suggested next class type). This makes class progression configurable from the Admin Settings alongside the existing class type management.
 
-1. Update `getSampleVariables()` to accept an optional `branchName` parameter instead of hardcoding "McKaynine Delta". Default to "McKaynine Delta" for backward compatibility.
-2. Use the passed `branchName` for both the `branch_name` variable and the `signature` generation.
+2. **Update `ClassClosureModal.tsx`** -- Replace the hardcoded `NEXT_CLASS_MAP` with a lookup from the dynamic class types data. Fetch the `next_class_type` for the current class type from the database. Fall back gracefully if not set.
 
-**Files using `getSampleVariables()` — pass current branch name:**
+3. **Update `ClassTypesManager.tsx`** -- Add an optional "Next Class" dropdown to each class type row so Ady can configure progressions (e.g., Puppy -> EO) from the admin UI.
 
-3. `src/components/email-templates/TemplatePreviewModal.tsx` — use `useBranch()` to get `currentBranch.name`, pass to `getSampleVariables(currentBranch?.name)`.
-4. `src/components/email-templates/TemplateEditorModal.tsx` — same pattern.
-5. `src/components/email-templates/TemplateConfigureModal.tsx` — same pattern.
-6. `src/pages/admin/Email.tsx` — if it has inline preview calls, same fix.
+4. **Seed the new column** with the current hardcoded values during migration so nothing breaks.
 
-**File: `src/lib/email/template-renderer.ts` — DB-aware signature**
+### What does NOT need changing
+- The `handler_class_status.class_type` write path -- already uses the correct string names
+- The `useMarkHandlersCompleted` hook -- same, already compatible
+- The `HandlerCompletionRow` "Next Class" dropdown -- already uses `useClassTypes()` dynamically (line 167)
 
-7. Make `getVariablesWithSignature()` work with an async DB lookup: add an async variant `getVariablesWithSignatureAsync(variables, branchId)` that tries `getEmailSignatureFromDb(branchId)` first, falling back to the hardcoded signature. The sync version remains as a fallback.
+### Technical Detail
 
-This ensures:
-- Previews show the correct branch signature based on the active branch
-- Sending uses DB signatures when available
-- Zero breaking changes — all callers that don't pass a branch name get the existing Delta default
+Migration SQL:
+```sql
+ALTER TABLE class_types ADD COLUMN next_class_type text;
+
+-- Seed existing progressions
+UPDATE class_types SET next_class_type = 'EO' WHERE name = 'Puppy';
+UPDATE class_types SET next_class_type = 'CGC Bronze' WHERE name = 'EO';
+UPDATE class_types SET next_class_type = 'CGC Silver' WHERE name = 'CGC Bronze';
+UPDATE class_types SET next_class_type = 'Novice' WHERE name = 'Beginner';
+```
+
+In the closure modal, replace:
+```typescript
+const nextClass = NEXT_CLASS_MAP[classType] || "next class";
+```
+with a lookup from the fetched class types data.
 
