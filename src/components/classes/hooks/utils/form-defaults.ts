@@ -1,5 +1,5 @@
 
-import { ClassFormValues, CLASS_TYPES } from "../../schemas/classFormSchema";
+import { ClassFormValues } from "../../schemas/classFormSchema";
 import { Class } from "../../types/class";
 import { ClassWithSchedules } from "../types/class-with-schedules";
 
@@ -10,7 +10,7 @@ export function createDefaultFormValues(classData: ClassData | null): ClassFormV
     const defaultValues = {
       name: "",
       description: "",
-      class_type: "Puppy" as const,
+      class_type: "",
       course_fee: 0,
       enrollment_fee: 0,
       mckaynine_commission_type: "percentage" as const,
@@ -31,9 +31,7 @@ export function createDefaultFormValues(classData: ClassData | null): ClassFormV
   const formValues = {
     name: classData.name || "",
     description: classData.description || "", // Always empty string, never null/undefined
-    class_type: (classData.class_type && CLASS_TYPES.includes(classData.class_type as any)) 
-      ? classData.class_type as typeof CLASS_TYPES[number]
-      : "Puppy" as const,
+    class_type: classData.class_type || "",
     course_fee: Number(classData.course_fee) || 0,
     enrollment_fee: Number(classData.enrollment_fee) || 0,
     mckaynine_commission_type: classData.mckaynine_commission_type || "percentage",

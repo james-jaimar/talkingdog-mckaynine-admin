@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useState, useMemo } from "react";
 import { alphabetGroups } from "../HandlerAlphabetPagination";
 import { useBranch } from "@/context/BranchContext";
-import { CLASS_TYPES } from "@/components/classes/types/class-types";
+import { useClassTypes } from "@/hooks/useClassTypes";
 
 // Define explicit types for handlers and dogs
 interface Dog {
@@ -69,6 +69,7 @@ export function useHandlersData() {
   const [actionFilter, setActionFilter] = useState<ActionFilter>('all');
   const itemsPerPage = 50;
   const { currentBranch } = useBranch();
+  const { classTypeNames } = useClassTypes();
 
   // Fetch pending tasks to get handler IDs with pending tasks
   const { data: pendingTasks = [] } = useQuery({
@@ -238,7 +239,7 @@ export function useHandlersData() {
         const handlersWithClassStatus = (clientsData || []).map(client => {
           const allStatuses = classStatusesMap[client.id] || [];
           // For each possible type, find ALL matching statuses (multiple dogs)
-        const class_statuses = CLASS_TYPES.flatMap((classType) => {
+        const class_statuses = classTypeNames.flatMap((classType) => {
             const foundAll = allStatuses.filter(s => s.class_type === classType);
             if (foundAll.length === 0) return [{ class_type: classType, status: undefined, period: undefined }];
             // For Yoga, only keep the latest entry per dog

@@ -21,7 +21,7 @@ import {
 import { useClassForm } from "./hooks/useClassForm";
 import { Class } from "./types/class";
 import { FeeFields } from "./form-sections/FeeFields";
-import { CLASS_TYPES } from "./schemas/classFormSchema";
+import { useClassTypes } from "@/hooks/useClassTypes";
 import { useEffect, useMemo } from "react";
 import { ClassWithSchedules } from "./hooks/types/class-with-schedules";
 import { format, addMonths } from "date-fns";
@@ -39,6 +39,7 @@ export function EditClassForm({ classData, currentBranchName, onSuccess, onCance
     classData, 
     onSuccess 
   });
+  const { classTypeNames } = useClassTypes();
 
   // Generate month options: "Auto" + next 18 months
   const monthOptions = useMemo(() => {
@@ -128,7 +129,7 @@ export function EditClassForm({ classData, currentBranchName, onSuccess, onCance
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {CLASS_TYPES.map((type) => (
+                    {classTypeNames.map((type) => (
                       <SelectItem key={type} value={type}>
                         {type}
                       </SelectItem>

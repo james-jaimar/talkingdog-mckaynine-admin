@@ -33,7 +33,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useTermOptions } from "@/hooks/useTermOptions";
-import { CLASS_TYPES } from "@/components/classes/types/class-types";
+import { useClassTypes } from "@/hooks/useClassTypes";
 
 interface ClassStatusItem {
   id?: string;

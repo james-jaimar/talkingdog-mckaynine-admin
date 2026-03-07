@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/select";
 import { useClassForm } from "./hooks/useClassForm";
 import { FeeFields } from "./form-sections/FeeFields";
-import { CLASS_TYPES } from "./schemas/classFormSchema";
+import { useClassTypes } from "@/hooks/useClassTypes";
 
 interface AddClassFormProps {
   onSuccess: () => void;
@@ -30,6 +30,7 @@ export function AddClassForm({ onSuccess }: AddClassFormProps) {
     classData: null, 
     onSuccess 
   });
+  const { classTypeNames, isLoading: isLoadingTypes } = useClassTypes();
 
   return (
     <Form {...form}>
@@ -81,7 +82,7 @@ export function AddClassForm({ onSuccess }: AddClassFormProps) {
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {CLASS_TYPES.map((type) => (
+                    {classTypeNames.map((type) => (
                       <SelectItem key={type} value={type}>
                         {type}
                       </SelectItem>

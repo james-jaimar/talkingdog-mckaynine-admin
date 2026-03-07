@@ -3,7 +3,7 @@ import { TableCell, TableRow } from "@/components/ui/table";
 import { Link } from "react-router-dom";
 import { ActionMenu } from "./ActionMenu";
 import { ClickableConsentBadge } from "../status/ClickableConsentBadge";
-import { CLASS_TYPES } from "@/components/classes/types/class-types";
+import { useClassTypes } from "@/hooks/useClassTypes";
 import { ClassStatusCell } from "./ClassStatusCell";
 import { TaskBadge } from "../TaskBadge";
 import { StickyNote } from "lucide-react";
@@ -42,6 +42,7 @@ interface HandlerTableRowProps {
 
 export function HandlerTableRow({ handler, index = 0 }: HandlerTableRowProps) {
   const [showNotesSheet, setShowNotesSheet] = useState(false);
+  const { classTypeNames } = useClassTypes();
   const fullName = `${handler.first_name} ${handler.last_name || ''}`.trim();
   const isEven = index % 2 === 0;
 
@@ -87,7 +88,7 @@ export function HandlerTableRow({ handler, index = 0 }: HandlerTableRowProps) {
       </TableCell>
       
       {/* Class Type Columns */}
-      {CLASS_TYPES.map((classType) => {
+      {classTypeNames.map((classType) => {
         const classStatuses = getClassStatuses(classType);
         return (
           <ClassStatusCell
