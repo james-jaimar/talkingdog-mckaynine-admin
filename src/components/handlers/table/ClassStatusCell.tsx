@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useBranch } from "@/context/BranchContext";
+import { useClassTypes } from "@/hooks/useClassTypes";
 import { Mail, MailCheck, ArrowRight, StopCircle, Trash2 } from "lucide-react";
 import {
   AlertDialog,
@@ -82,13 +83,7 @@ const nextActionIcons: Record<string, { icon: React.ReactNode; label: string; co
   'stopping': { icon: <StopCircle className="h-3 w-3" />, label: 'Stopping', color: 'text-red-600' },
 };
 
-// Next class mapping for auto-task creation
-const NEXT_CLASS_MAP: Record<string, string> = {
-  "Puppy": "EO",
-  "EO": "CGC Bronze",
-  "CGC Bronze": "CGC Silver",
-  "Beginner": "Novice",
-};
+// Next class map is now built dynamically from useClassTypes inside StatusBox
 
 // Single status box component
 function StatusBox({
