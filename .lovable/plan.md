@@ -1,35 +1,78 @@
 
 
-## Fix: Randburg Templates Showing Delta Signature
+## Make Class Types Database-Driven (CRUD Admin)
 
-### Root Cause
+### Problem
+Class types are hardcoded as a Postgres enum (`class_type`) and as `const` arrays in ~16 files across the app. Adding or removing a class type requires a database migration and code changes — Ady should be able to manage this herself.
 
-Two issues are causing Randburg templates to show the Delta signature:
+### Approach
 
-1. **`getSampleVariables()` in `template-renderer.ts` (line 196)** hardcodes `branchName = "McKaynine Delta"`. Every preview modal uses this function, so all previews show the Delta signature regardless of which branch is active.
+**Phase 1: New `class_types` table + Admin CRUD**
 
-2. **`getVariablesWithSignature()` (line 52-57)** generates the `{{signature}}` merge field using the hardcoded `BRANCH_SIGNATURES` map and never checks the database for a saved signature.
+Create a `class_types` table to replace the Postgres enum as the source of truth. Add a "Class Types" tab to the Admin Settings page (`/admin/settings`) with full CRUD (add, edit, reorder, deactivate).
 
-### Plan
+**Table: `class_types`**
+- `id` uuid PK
+- `name` text (unique, not null) — e.g. "Puppy", "EO", "CGC Bronze"
+- `display_order` integer — controls column order in the Handlers table, dropdown order everywhere
+- `is_active` boolean default true — soft-delete; inactive types hidden from forms but preserved in historical data
+- `created_at` / `updated_at`
+- RLS: admin can CRUD, authenticated can SELECT
 
-**File: `src/lib/email/template-renderer.ts`**
+**Phase 2: Migrate the `classes.class_type` column**
 
-1. Update `getSampleVariables()` to accept an optional `branchName` parameter instead of hardcoding "McKaynine Delta". Default to "McKaynine Delta" for backward compatibility.
-2. Use the passed `branchName` for both the `branch_name` variable and the `signature` generation.
+- Alter `classes.class_type` from the `class_type` enum to plain `text`
+- Add a FK reference to `class_types.name` (or validate in app code)
+- Seed `class_types` with the existing 9 enum values in the migration
+- Drop the old `class_type` enum after migration
 
-**Files using `getSampleVariables()` — pass current branch name:**
+This is necessary because Postgres enums can't have values removed, and adding values requires migrations. A lookup table is the right pattern.
 
-3. `src/components/email-templates/TemplatePreviewModal.tsx` — use `useBranch()` to get `currentBranch.name`, pass to `getSampleVariables(currentBranch?.name)`.
-4. `src/components/email-templates/TemplateEditorModal.tsx` — same pattern.
-5. `src/components/email-templates/TemplateConfigureModal.tsx` — same pattern.
-6. `src/pages/admin/Email.tsx` — if it has inline preview calls, same fix.
+**Phase 3: Replace all hardcoded references**
 
-**File: `src/lib/email/template-renderer.ts` — DB-aware signature**
+1. **New hook: `src/hooks/useClassTypes.ts`**
+   - Fetches from `class_types` table, ordered by `display_order`
+   - Filters by `is_active` (with option to include inactive)
+   - Long `staleTime` (30 min) — these rarely change
+   - Returns `classTypes: { id, name, display_order, is_active }[]`
 
-7. Make `getVariablesWithSignature()` work with an async DB lookup: add an async variant `getVariablesWithSignatureAsync(variables, branchId)` that tries `getEmailSignatureFromDb(branchId)` first, falling back to the hardcoded signature. The sync version remains as a fallback.
+2. **Files to update** (replace hardcoded `CLASS_TYPES` with the hook or a prop):
+   - `src/components/classes/schemas/classFormSchema.ts` — change `class_type` from `z.enum()` to `z.string().min(1)`
+   - `src/components/classes/types/class-types.ts` — remove or keep as fallback only
+   - `src/components/classes/AddClassForm.tsx` — use hook for dropdown
+   - `src/components/classes/EditClassForm.tsx` — use hook for dropdown
+   - `src/components/classes/closure/HandlerCompletionRow.tsx` — use hook for "next class" dropdown
+   - `src/components/handlers/table/TableHeader.tsx` — receive dynamic list via props
+   - `src/components/handlers/table/HandlerTableRow.tsx` — receive dynamic list via props
+   - `src/components/handlers/hooks/useHandlersData.ts` — use hook, pass through
+   - `src/components/handlers/HandlerTable.tsx` — pass through
+   - `src/pages/Handlers.tsx` — pass through
+   - `src/components/handlers/form/ClassAndPreferencesFields.tsx` — use hook for enrollment dropdowns
+   - `src/components/email-templates/TemplateEditorModal.tsx` — use hook
+   - `src/components/email-templates/AttachmentLibrary.tsx` — use hook
+   - `src/components/handlers/table/CreateTaskFromNotesModal.tsx` — use hook
+   - `src/components/tasks/CreateTaskModal.tsx` — use hook
+   - `src/components/tasks/ClassInvitationSelector.tsx` — use hook
+   - `src/components/enrollment/steps/Step6Class.tsx` — use hook (public-facing, needs unauthenticated access or pre-loaded data)
 
-This ensures:
-- Previews show the correct branch signature based on the active branch
-- Sending uses DB signatures when available
-- Zero breaking changes — all callers that don't pass a branch name get the existing Delta default
+3. **Admin UI: `src/components/admin/ClassTypesManager.tsx`**
+   - Table listing all class types with name, order, active status
+   - Add/Edit modal (name + display order)
+   - Toggle active/inactive
+   - Drag-to-reorder or up/down arrows
+   - Added as a new tab in `/admin/settings`
+
+### Why This Order Matters
+The database enum change and table creation must happen first. Then the hook. Then the UI updates can happen in parallel. The Admin CRUD is independent of the consumer updates.
+
+### Migration Safety
+- Seed the new table with existing enum values, preserving exact names
+- Convert `classes.class_type` from enum to text in the same migration
+- All existing data remains valid — the 9 values are preserved
+- `handler_class_status.class_type` is already plain text, no change needed
+- The old `class_type` enum is dropped after conversion
+
+### What Stays the Same
+- The `classTypeMap` in `ClassAndPreferencesFields.tsx` maps form field names to class type names — this pattern stays, but the mapping values come from the DB
+- The "canonical order" concept is replaced by `display_order` from the DB
 
