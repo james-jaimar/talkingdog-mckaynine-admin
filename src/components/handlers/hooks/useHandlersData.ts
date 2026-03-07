@@ -69,7 +69,7 @@ export function useHandlersData() {
   const [actionFilter, setActionFilter] = useState<ActionFilter>('all');
   const itemsPerPage = 50;
   const { currentBranch } = useBranch();
-  const { classTypeNames } = useClassTypes();
+  const { classTypeNames } = useClassTypes(true);
 
   // Fetch pending tasks to get handler IDs with pending tasks
   const { data: pendingTasks = [] } = useQuery({
