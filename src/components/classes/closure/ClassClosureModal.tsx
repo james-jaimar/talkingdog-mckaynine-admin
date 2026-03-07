@@ -204,7 +204,7 @@ export function ClassClosureModal({
         const taskDogName = (bookingForTask?.dogs as any)?.name || handler.dog_name || null;
 
         if (handler.next_action === "wants_info") {
-          const nextClass = NEXT_CLASS_MAP[classType] || "next class";
+          const nextClass = nextClassMap[classType] || "next class";
           await supabase.from("handler_tasks").insert({
             handler_id: handler.handler_id,
             class_type: classType,
@@ -218,7 +218,7 @@ export function ClassClosureModal({
           });
           tasksCreated++;
         } else if (handler.next_action === "continuing") {
-          const nextClass = handler.next_class_type || NEXT_CLASS_MAP[classType] || "next class";
+          const nextClass = handler.next_class_type || nextClassMap[classType] || "next class";
           const termInfo = handler.next_term_number && handler.next_term_year 
             ? `Term ${handler.next_term_number} ${handler.next_term_year}`
             : "upcoming term";
