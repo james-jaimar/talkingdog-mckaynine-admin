@@ -7,6 +7,7 @@ export interface ClassType {
   name: string;
   display_order: number;
   is_active: boolean;
+  next_class_type?: string | null;
 }
 
 export function useClassTypes(includeInactive = false) {
@@ -19,7 +20,7 @@ export function useClassTypes(includeInactive = false) {
       // Fetch all class types
       const { data: types, error: typesError } = await supabase
         .from('class_types')
-        .select('id, name, display_order')
+        .select('id, name, display_order, next_class_type')
         .order('display_order', { ascending: true });
 
       if (typesError) throw typesError;
