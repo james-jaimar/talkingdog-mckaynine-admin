@@ -16,6 +16,7 @@ import { useClassTypes } from "@/hooks/useClassTypes";
 
 export function AttachmentLibrary() {
   const { attachments, isLoading, uploadAttachment, deleteAttachment, getAttachmentUrl } = useEmailAttachments();
+  const { classTypeNames } = useClassTypes();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [isUploadOpen, setIsUploadOpen] = useState(false);
@@ -189,9 +190,10 @@ export function AttachmentLibrary() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {CLASS_TYPES.map((c) => (
-                    <SelectItem key={c.value} value={c.value}>
-                      {c.label}
+                  <SelectItem value="all">All Classes</SelectItem>
+                  {classTypeNames.map((type) => (
+                    <SelectItem key={type} value={type}>
+                      {type}
                     </SelectItem>
                   ))}
                 </SelectContent>

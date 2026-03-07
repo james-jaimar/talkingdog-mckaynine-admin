@@ -21,7 +21,8 @@ interface TemplateEditorModalProps {
   templateId?: string;
 }
 
-const CLASS_TYPES = ["Puppy", "EO", "CGC Bronze", "CGC Silver", "Beginner", "Novice", "WT", "A-Test", "Yoga"];
+// CLASS_TYPES now loaded dynamically via useClassTypes hook
+import { useClassTypes } from "@/hooks/useClassTypes";
 
 const DEFAULT_HTML = `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
   <h2 style="color: #333;">Hello {{handler_name}},</h2>
