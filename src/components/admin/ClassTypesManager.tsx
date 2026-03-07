@@ -101,6 +101,16 @@ export function ClassTypesManager() {
     invalidate();
   };
 
+  const handleNextClassChange = async (ct: ClassType, nextClassType: string | null) => {
+    const { error } = await supabase
+      .from('class_types')
+      .update({ next_class_type: nextClassType })
+      .eq('id', ct.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success(`Updated progression for "${ct.name}"`);
+    invalidate();
+  };
+
   if (isLoading) return <div className="flex items-center gap-2 p-4"><Loader2 className="h-4 w-4 animate-spin" /> Loading...</div>;
 
   const sorted = [...classTypes].sort((a, b) => a.display_order - b.display_order);
