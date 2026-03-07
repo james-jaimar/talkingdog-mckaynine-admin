@@ -95,7 +95,7 @@ export function useHandlersData() {
   }, [pendingTasks]);
 
   const { data: handlers = [], isLoading, refetch } = useQuery({
-    queryKey: ['handlers', currentBranch?.id],
+    queryKey: ['handlers', currentBranch?.id, classTypeNames],
     queryFn: async () => {
       try {
         console.log(`Fetching handlers for branch: ${currentBranch?.id || 'all'}`);
