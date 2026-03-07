@@ -14,7 +14,6 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useBranch } from "@/context/BranchContext";
-import { useClassTypes } from "@/hooks/useClassTypes";
 import { Mail, MailCheck, ArrowRight, StopCircle, Trash2 } from "lucide-react";
 import {
   AlertDialog,
