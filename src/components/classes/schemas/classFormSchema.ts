@@ -1,9 +1,6 @@
 
 import * as z from "zod";
 
-// Legacy fallback - prefer useClassTypes() hook for dynamic values
-export const CLASS_TYPES = ['Puppy', 'EO', 'CGC Bronze', 'CGC Silver', 'Beginner', 'Novice', 'WT', 'A-Test', 'Yoga'] as const;
-
 export const classFormSchema = z.object({
   name: z.string().min(1, { message: "Name is required" }),
   description: z.string().default(""), // Always a string, defaults to empty string
