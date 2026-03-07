@@ -237,7 +237,7 @@ function StatusBox({
       const taskDogName = selectedDogName;
 
       if (nextAction === 'wants_info' && actionChanged) {
-        const classesForInfo = wantsInfoClasses.length > 0 ? wantsInfoClasses : [NEXT_CLASS_MAP[classType] || "next class"];
+        const classesForInfo = wantsInfoClasses.length > 0 ? wantsInfoClasses : [nextClassMap[classType] || "next class"];
         const classesLabel = classesForInfo.join(", ");
         await supabase.from("handler_tasks").insert({
           handler_id: clientId,
@@ -252,7 +252,7 @@ function StatusBox({
           dog_name: taskDogName,
         });
       } else if (nextAction === 'continuing' && actionChanged) {
-        const nextClass = nextClassType || NEXT_CLASS_MAP[classType] || "next class";
+        const nextClass = nextClassType || nextClassMap[classType] || "next class";
         const termInfo = nextTermNumber && nextTermYear 
           ? `Term ${nextTermNumber} ${nextTermYear}`
           : "upcoming term";
