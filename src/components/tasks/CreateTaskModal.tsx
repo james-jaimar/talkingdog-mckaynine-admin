@@ -48,6 +48,7 @@ const TASK_TYPES = [
 export function CreateTaskModal({ open, onOpenChange }: CreateTaskModalProps) {
   const queryClient = useQueryClient();
   const { currentBranch } = useBranch();
+  const { classTypeNames } = useClassTypes();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [handlerSearch, setHandlerSearch] = useState("");
   const [handlers, setHandlers] = useState<Handler[]>([]);
@@ -234,9 +235,10 @@ export function CreateTaskModal({ open, onOpenChange }: CreateTaskModalProps) {
                 <SelectValue placeholder="Select class type" />
               </SelectTrigger>
               <SelectContent>
-                {CLASS_TYPES.map((type) => (
-                  <SelectItem key={type.value || "none"} value={type.value}>
-                    {type.label}
+                <SelectItem value="none">None</SelectItem>
+                {classTypeNames.map((type) => (
+                  <SelectItem key={type} value={type}>
+                    {type}
                   </SelectItem>
                 ))}
               </SelectContent>
