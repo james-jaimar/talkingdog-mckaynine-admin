@@ -43,6 +43,7 @@ const DEFAULT_HTML = `<div style="font-family: Arial, sans-serif; max-width: 600
 export function TemplateEditorModal({ open, onOpenChange, templateId }: TemplateEditorModalProps) {
   const { createTemplate, updateTemplate } = usePlatformTemplates();
   const { data: existingTemplate, isLoading } = usePlatformTemplate(templateId);
+  const { classTypeNames } = useClassTypes();
   
   const [activeTab, setActiveTab] = useState("editor");
   const [showWordUpload, setShowWordUpload] = useState(false);
@@ -207,7 +208,7 @@ export function TemplateEditorModal({ open, onOpenChange, templateId }: Template
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All Classes</SelectItem>
-                        {CLASS_TYPES.map(type => (
+                        {classTypeNames.map(type => (
                           <SelectItem key={type} value={type}>{type}</SelectItem>
                         ))}
                       </SelectContent>
