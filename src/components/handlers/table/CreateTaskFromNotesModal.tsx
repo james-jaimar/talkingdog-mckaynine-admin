@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { useClassTypes } from "@/hooks/useClassTypes";
 import {
   Select,
   SelectContent,
@@ -51,6 +52,7 @@ export function CreateTaskFromNotesModal({
 }: CreateTaskFromNotesModalProps) {
   const queryClient = useQueryClient();
   const { currentBranch } = useBranch();
+  const { classTypeNames } = useClassTypes();
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Form state
@@ -144,9 +146,10 @@ export function CreateTaskFromNotesModal({
                 <SelectValue placeholder="Select class type" />
               </SelectTrigger>
               <SelectContent>
-                {CLASS_TYPES.map((type) => (
-                  <SelectItem key={type.value || "none"} value={type.value}>
-                    {type.label}
+                <SelectItem value="none">None</SelectItem>
+                {classTypeNames.map((type) => (
+                  <SelectItem key={type} value={type}>
+                    {type}
                   </SelectItem>
                 ))}
               </SelectContent>
