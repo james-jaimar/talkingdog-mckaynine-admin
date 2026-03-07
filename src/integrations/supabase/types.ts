@@ -312,6 +312,45 @@ export type Database = {
           },
         ]
       }
+      branch_class_types: {
+        Row: {
+          branch_id: string
+          class_type_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+        }
+        Insert: {
+          branch_id: string
+          class_type_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+        }
+        Update: {
+          branch_id?: string
+          class_type_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "branch_class_types_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "branch_class_types_class_type_id_fkey"
+            columns: ["class_type_id"]
+            isOneToOne: false
+            referencedRelation: "class_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       branch_email_signatures: {
         Row: {
           branch_id: string
@@ -1154,7 +1193,6 @@ export type Database = {
           created_at: string
           display_order: number
           id: string
-          is_active: boolean
           name: string
           updated_at: string
         }
@@ -1162,7 +1200,6 @@ export type Database = {
           created_at?: string
           display_order?: number
           id?: string
-          is_active?: boolean
           name: string
           updated_at?: string
         }
@@ -1170,7 +1207,6 @@ export type Database = {
           created_at?: string
           display_order?: number
           id?: string
-          is_active?: boolean
           name?: string
           updated_at?: string
         }
