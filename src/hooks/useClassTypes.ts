@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useBranch } from "@/context/BranchContext";
 
 export interface ClassType {
   id: string;
@@ -9,27 +10,50 @@ export interface ClassType {
 }
 
 export function useClassTypes(includeInactive = false) {
+  const { currentBranch } = useBranch();
+  const branchId = currentBranch?.id;
+
   const { data: classTypes = [], isLoading, error } = useQuery({
-    queryKey: ['class-types', includeInactive],
+    queryKey: ['class-types', branchId, includeInactive],
     queryFn: async () => {
-      let query = supabase
+      // Fetch all class types
+      const { data: types, error: typesError } = await supabase
         .from('class_types')
-        .select('id, name, display_order, is_active')
+        .select('id, name, display_order')
         .order('display_order', { ascending: true });
 
-      if (!includeInactive) {
-        query = query.eq('is_active', true);
+      if (typesError) throw typesError;
+      if (!types) return [];
+
+      // Fetch branch-specific active status
+      let branchActiveMap: Record<string, boolean> = {};
+      if (branchId) {
+        const { data: branchTypes, error: btError } = await supabase
+          .from('branch_class_types')
+          .select('class_type_id, is_active')
+          .eq('branch_id', branchId);
+
+        if (btError) throw btError;
+        branchActiveMap = Object.fromEntries(
+          (branchTypes || []).map(bt => [bt.class_type_id, bt.is_active])
+        );
       }
 
-      const { data, error } = await query;
-      if (error) throw error;
-      return (data || []) as ClassType[];
+      // Merge: if no junction row exists, treat as inactive
+      const merged: ClassType[] = types.map(ct => ({
+        ...ct,
+        is_active: branchActiveMap[ct.id] ?? false,
+      }));
+
+      if (!includeInactive) {
+        return merged.filter(ct => ct.is_active);
+      }
+      return merged;
     },
-    staleTime: 30 * 60 * 1000, // 30 minutes
+    staleTime: 30 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
 
-  // Convenience: just the names in order
   const classTypeNames = classTypes.map(ct => ct.name);
 
   return { classTypes, classTypeNames, isLoading, error };

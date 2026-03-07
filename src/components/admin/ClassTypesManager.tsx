@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useClassTypes, ClassType } from "@/hooks/useClassTypes";
+import { useBranch } from "@/context/BranchContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +15,7 @@ import { Plus, ArrowUp, ArrowDown, Edit, Loader2 } from "lucide-react";
 
 export function ClassTypesManager() {
   const { classTypes, isLoading } = useClassTypes(true); // include inactive
+  const { currentBranch } = useBranch();
   const queryClient = useQueryClient();
   const [editingType, setEditingType] = useState<ClassType | null>(null);
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -27,15 +29,26 @@ export function ClassTypesManager() {
     if (!newName.trim()) return;
     setSaving(true);
     const maxOrder = classTypes.length > 0 ? Math.max(...classTypes.map(ct => ct.display_order)) : 0;
-    const { error } = await supabase.from('class_types').insert({
+    const { data: inserted, error } = await supabase.from('class_types').insert({
       name: newName.trim(),
       display_order: maxOrder + 1,
-    });
-    setSaving(false);
+    }).select('id').single();
     if (error) {
+      setSaving(false);
       toast.error(error.message.includes('duplicate') ? "A class type with that name already exists" : error.message);
       return;
     }
+    // Seed branch_class_types for ALL branches
+    const { data: branches } = await supabase.from('branches').select('id');
+    if (branches && inserted) {
+      const rows = branches.map(b => ({
+        branch_id: b.id,
+        class_type_id: inserted.id,
+        is_active: false,
+      }));
+      await supabase.from('branch_class_types').insert(rows);
+    }
+    setSaving(false);
     toast.success(`"${newName.trim()}" added`);
     setNewName("");
     setShowAddDialog(false);
@@ -43,12 +56,17 @@ export function ClassTypesManager() {
   };
 
   const handleToggleActive = async (ct: ClassType) => {
+    if (!currentBranch) return;
+    // Upsert into branch_class_types
     const { error } = await supabase
-      .from('class_types')
-      .update({ is_active: !ct.is_active })
-      .eq('id', ct.id);
+      .from('branch_class_types')
+      .upsert({
+        branch_id: currentBranch.id,
+        class_type_id: ct.id,
+        is_active: !ct.is_active,
+      }, { onConflict: 'branch_id,class_type_id' });
     if (error) { toast.error(error.message); return; }
-    toast.success(`"${ct.name}" ${ct.is_active ? 'deactivated' : 'activated'}`);
+    toast.success(`"${ct.name}" ${ct.is_active ? 'deactivated' : 'activated'} for ${currentBranch.name}`);
     invalidate();
   };
 
@@ -92,7 +110,11 @@ export function ClassTypesManager() {
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
           <CardTitle>Class Types</CardTitle>
-          <CardDescription>Manage the types of classes available across all branches</CardDescription>
+          <CardDescription>
+            {currentBranch 
+              ? `Toggle active class types for ${currentBranch.name}. Names and order are shared across all branches.`
+              : 'Manage the types of classes available across all branches'}
+          </CardDescription>
         </div>
         <Button size="sm" onClick={() => setShowAddDialog(true)}>
           <Plus className="h-4 w-4 mr-1" /> Add Type
