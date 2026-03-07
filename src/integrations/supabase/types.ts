@@ -3119,6 +3119,10 @@ export type Database = {
       }
       check_user_role: { Args: { required_role: string }; Returns: boolean }
       count_invoices_with_prefix: { Args: { prefix: string }; Returns: number }
+      delete_invoice_cascade: {
+        Args: { p_invoice_id: string }
+        Returns: undefined
+      }
       determine_term_from_date: {
         Args: { date_to_check: string }
         Returns: {
