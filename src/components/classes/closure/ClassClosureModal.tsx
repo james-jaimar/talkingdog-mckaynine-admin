@@ -16,14 +16,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEnrolledHandlers } from "./useEnrolledHandlers";
 import { HandlerCompletionRow } from "./HandlerCompletionRow";
 import { ClassClosureModalProps, HandlerCompletionData } from "./types";
-
-// Next class mapping for auto-task creation
-const NEXT_CLASS_MAP: Record<string, string> = {
-  "Puppy": "EO",
-  "EO": "CGC Bronze",
-  "CGC Bronze": "CGC Silver",
-  "Beginner": "Novice",
-};
+import { useClassTypes } from "@/hooks/useClassTypes";
 
 // Format date as "Mon YY" (e.g., "May 25")
 function formatCompletionPeriod(date: Date): string {
@@ -42,6 +35,15 @@ export function ClassClosureModal({
 }: ClassClosureModalProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { classTypes: allClassTypes } = useClassTypes(true);
+  
+  // Build dynamic next class map from DB
+  const nextClassMap: Record<string, string> = {};
+  allClassTypes.forEach(ct => {
+    if (ct.next_class_type) {
+      nextClassMap[ct.name] = ct.next_class_type;
+    }
+  });
   
   // Fetch class schedule to get the last date
   const { data: lastClassDate } = useQuery({
@@ -202,7 +204,7 @@ export function ClassClosureModal({
         const taskDogName = (bookingForTask?.dogs as any)?.name || handler.dog_name || null;
 
         if (handler.next_action === "wants_info") {
-          const nextClass = NEXT_CLASS_MAP[classType] || "next class";
+          const nextClass = nextClassMap[classType] || "next class";
           await supabase.from("handler_tasks").insert({
             handler_id: handler.handler_id,
             class_type: classType,
@@ -216,7 +218,7 @@ export function ClassClosureModal({
           });
           tasksCreated++;
         } else if (handler.next_action === "continuing") {
-          const nextClass = handler.next_class_type || NEXT_CLASS_MAP[classType] || "next class";
+          const nextClass = handler.next_class_type || nextClassMap[classType] || "next class";
           const termInfo = handler.next_term_number && handler.next_term_year 
             ? `Term ${handler.next_term_number} ${handler.next_term_year}`
             : "upcoming term";

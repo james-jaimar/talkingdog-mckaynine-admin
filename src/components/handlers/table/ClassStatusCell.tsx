@@ -82,13 +82,7 @@ const nextActionIcons: Record<string, { icon: React.ReactNode; label: string; co
   'stopping': { icon: <StopCircle className="h-3 w-3" />, label: 'Stopping', color: 'text-red-600' },
 };
 
-// Next class mapping for auto-task creation
-const NEXT_CLASS_MAP: Record<string, string> = {
-  "Puppy": "EO",
-  "EO": "CGC Bronze",
-  "CGC Bronze": "CGC Silver",
-  "Beginner": "Novice",
-};
+// Next class map is now built dynamically from useClassTypes inside StatusBox
 
 // Single status box component
 function StatusBox({
@@ -129,7 +123,11 @@ function StatusBox({
   isAddNew?: boolean;
 }) {
   const { terms } = useTermOptions();
-  const { classTypeNames } = useClassTypes();
+  const { classTypes: allClassTypes, classTypeNames } = useClassTypes(true);
+  const nextClassMap: Record<string, string> = {};
+  allClassTypes.forEach(ct => {
+    if (ct.next_class_type) nextClassMap[ct.name] = ct.next_class_type;
+  });
   const queryClient = useQueryClient();
   const { currentBranch } = useBranch();
   
@@ -145,9 +143,7 @@ function StatusBox({
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isOpen, setIsOpen] = useState(false);
   const [wantsInfoClasses, setWantsInfoClasses] = useState<string[]>(() => {
-    // Default to next logical class if available
-    const defaultNext = NEXT_CLASS_MAP[classType];
-    return defaultNext ? [defaultNext] : [];
+    return [];
   });
 
   const selectedTermValue = nextTermNumber && nextTermYear 
@@ -235,7 +231,7 @@ function StatusBox({
       const taskDogName = selectedDogName;
 
       if (nextAction === 'wants_info' && actionChanged) {
-        const classesForInfo = wantsInfoClasses.length > 0 ? wantsInfoClasses : [NEXT_CLASS_MAP[classType] || "next class"];
+        const classesForInfo = wantsInfoClasses.length > 0 ? wantsInfoClasses : [nextClassMap[classType] || "next class"];
         const classesLabel = classesForInfo.join(", ");
         await supabase.from("handler_tasks").insert({
           handler_id: clientId,
@@ -250,7 +246,7 @@ function StatusBox({
           dog_name: taskDogName,
         });
       } else if (nextAction === 'continuing' && actionChanged) {
-        const nextClass = nextClassType || NEXT_CLASS_MAP[classType] || "next class";
+        const nextClass = nextClassType || nextClassMap[classType] || "next class";
         const termInfo = nextTermNumber && nextTermYear 
           ? `Term ${nextTermNumber} ${nextTermYear}`
           : "upcoming term";
