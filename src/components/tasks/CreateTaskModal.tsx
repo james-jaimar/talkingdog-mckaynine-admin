@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
+import { useClassTypes } from "@/hooks/useClassTypes";
 import { toast } from "sonner";
 import { Loader2, Search } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
