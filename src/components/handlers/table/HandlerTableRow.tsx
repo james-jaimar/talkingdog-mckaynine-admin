@@ -42,7 +42,7 @@ interface HandlerTableRowProps {
 
 export function HandlerTableRow({ handler, index = 0 }: HandlerTableRowProps) {
   const [showNotesSheet, setShowNotesSheet] = useState(false);
-  const { classTypeNames } = useClassTypes();
+  const { classTypeNames } = useClassTypes(true);
   const fullName = `${handler.first_name} ${handler.last_name || ''}`.trim();
   const isEven = index % 2 === 0;
 

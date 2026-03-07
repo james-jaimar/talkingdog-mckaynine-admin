@@ -1,53 +1,35 @@
 
 
-## Two Issues Found
+## Fix: Randburg Templates Showing Delta Signature
 
-### Issue 1: Race Condition (Primary Bug)
-The Handlers table shows `class_statuses: []` for ALL handlers, including those with data in `handler_class_status` (e.g., Amanda Steyn has 2 Puppy records).
+### Root Cause
 
-**Root cause**: In `useHandlersData.ts`, the handlers query uses `classTypeNames` (from `useClassTypes(true)`) to map class statuses at line 242. But `classTypeNames` is a separate async query that may still be loading (empty array `[]`) when the handlers query runs. Since `classTypeNames` is not in the handlers query key, the query never re-runs when class types finish loading.
+Two issues are causing Randburg templates to show the Delta signature:
 
-**Fix**: Add `classTypeNames` to the handlers query key so it re-triggers when class types load:
-```
-queryKey: ['handlers', currentBranch?.id, classTypeNames]
-```
+1. **`getSampleVariables()` in `template-renderer.ts` (line 196)** hardcodes `branchName = "McKaynine Delta"`. Every preview modal uses this function, so all previews show the Delta signature regardless of which branch is active.
 
-Additionally, `HandlerTableRow` and `TableHeader` call `useClassTypes()` (active only), but `useHandlersData` maps with `useClassTypes(true)` (all types). Need to make the row/header also use `includeInactive = true` so historical columns appear.
+2. **`getVariablesWithSignature()` (line 52-57)** generates the `{{signature}}` merge field using the hardcoded `BRANCH_SIGNATURES` map and never checks the database for a saved signature.
 
-### Issue 2: Legacy Data Backfill
-There are 581 records in `class_enrollments` with free-text values like `"93,5% Mar 24"`, `"Did not grade Mar 24"`, `"Current 25"`, `"55% March 25, repeat"`. This legacy data has never been migrated to `handler_class_status`.
+### Plan
 
-**Approach**: Write a one-time SQL migration that:
-1. Reads each `class_enrollments` row and its 7 class columns (`puppy_class`, `eo_class`, etc.)
-2. For each non-null value, extracts recognizable patterns:
-   - **Percentage**: regex for `\d+[,.]?\d*%` → `pass_percentage`
-   - **Period**: regex for month/year patterns like `Mar 24`, `Sep 2025` → `period`
-   - **Status mapping**:
-     - Contains "did not grade" → `did_not_grade`
-     - Contains "incomplete" → `incomplete`
-     - Contains "did not attend" → `did_not_attend`
-     - Contains percentage ≥ 60% → `passed`
-     - Contains percentage < 60% → `no_pass`
-     - Contains "pass" (not "no pass"/"not pass") → `passed`
-     - Contains "no pass"/"fail" → `no_pass`
-     - Contains "current"/"enrolled" → `completed` (they were in a class)
-     - Otherwise → store as notes only, no status
-3. Stores the full original text in `result_notes` for reference
-4. Links via `dog_id` from `class_enrollments.dog_id` and looks up `client_id` from `dogs.client_id`
-5. Skips rows where a matching `handler_class_status` record already exists (same handler + class_type + dog_id)
+**File: `src/lib/email/template-renderer.ts`**
 
-**Column mapping**:
-- `puppy_class` → class_type "Puppy"
-- `eo_class` → "EO"
-- `bronze_cgc_class` → "CGC Bronze"
-- `silver_cgc_class` → "CGC Silver"
-- `beginner_novice_class` → "Beginner"
-- `wt_class` → "WT"
-- `yoga_class` → "Yoga"
+1. Update `getSampleVariables()` to accept an optional `branchName` parameter instead of hardcoding "McKaynine Delta". Default to "McKaynine Delta" for backward compatibility.
+2. Use the passed `branchName` for both the `branch_name` variable and the `signature` generation.
 
-### Implementation Order
-1. Fix the race condition in `useHandlersData.ts` (adds classTypeNames to queryKey)
-2. Fix `HandlerTableRow` and `TableHeader` to use `useClassTypes(true)` for historical visibility
-3. Run the backfill migration SQL
-4. Verify data appears correctly
+**Files using `getSampleVariables()` — pass current branch name:**
+
+3. `src/components/email-templates/TemplatePreviewModal.tsx` — use `useBranch()` to get `currentBranch.name`, pass to `getSampleVariables(currentBranch?.name)`.
+4. `src/components/email-templates/TemplateEditorModal.tsx` — same pattern.
+5. `src/components/email-templates/TemplateConfigureModal.tsx` — same pattern.
+6. `src/pages/admin/Email.tsx` — if it has inline preview calls, same fix.
+
+**File: `src/lib/email/template-renderer.ts` — DB-aware signature**
+
+7. Make `getVariablesWithSignature()` work with an async DB lookup: add an async variant `getVariablesWithSignatureAsync(variables, branchId)` that tries `getEmailSignatureFromDb(branchId)` first, falling back to the hardcoded signature. The sync version remains as a fallback.
+
+This ensures:
+- Previews show the correct branch signature based on the active branch
+- Sending uses DB signatures when available
+- Zero breaking changes — all callers that don't pass a branch name get the existing Delta default
 

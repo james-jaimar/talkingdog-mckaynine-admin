@@ -3,7 +3,7 @@ import { TableHead, TableRow } from "@/components/ui/table";
 import { useClassTypes } from "@/hooks/useClassTypes";
 
 export function HandlerTableHeader() {
-  const { classTypeNames } = useClassTypes();
+  const { classTypeNames } = useClassTypes(true);
   
   return (
     <TableRow>
