@@ -19,7 +19,7 @@ interface AddHandlerToClassProps {
   onSuccess: () => void;
   queryClient: QueryClient;
   toast: any;
-  createInvoiceProps: Omit<CreateInvoiceProps, 'bookingIds' | 'className' | 'classPrice' | 'dogNames' | 'enrollmentFee' | 'classDate' | 'dogIds' | 'classBranchId' | 'classReportMonthOverride' | 'classIOInventoryCode'>;
+  createInvoiceProps: Omit<CreateInvoiceProps, 'bookingIds' | 'className' | 'classPrice' | 'dogNames' | 'enrollmentFee' | 'classDate' | 'dogIds' | 'classBranchId' | 'classReportMonthOverride' | 'classIOInventoryCode' | 'classTermId'>;
 }
 
 export const addHandlerToClass = async ({
