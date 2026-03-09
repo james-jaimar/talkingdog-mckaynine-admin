@@ -126,4 +126,5 @@ export interface InvoiceFormValues {
   discount_type: 'fixed' | 'percentage';
   discount_amount: number;
   discount_reason?: string;
+  term_id?: string | null;
 }

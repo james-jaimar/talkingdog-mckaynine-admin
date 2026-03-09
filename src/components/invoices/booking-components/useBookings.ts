@@ -70,6 +70,7 @@ export function useBookings(clientId: string, enabled: boolean) {
           class_schedules:class_schedule_id (
             id,
             start_time,
+            term_id,
             class_id,
             classes:class_id (id, name, price, description)
           )
