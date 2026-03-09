@@ -40,6 +40,7 @@ export const createInvoiceForHandler = async ({
   classBranchId,
   classReportMonthOverride,
   classIOInventoryCode,
+  classTermId,
 }: CreateInvoiceProps): Promise<boolean> => {
   try {
     console.log("CREATE-INVOICE: Starting invoice creation with params:", {
