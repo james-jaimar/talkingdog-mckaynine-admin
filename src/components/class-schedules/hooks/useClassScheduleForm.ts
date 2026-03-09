@@ -1,5 +1,4 @@
 
-import { useState, useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { format } from "date-fns";
@@ -17,29 +16,23 @@ export function useClassScheduleForm(
 ) {
   const { formatTimeFromDate } = useClassScheduleDateUtils();
   const { trainers, isLoadingTrainers } = useTrainerOptions();
-  const { termData, selectedYear, selectedTermNumber } = useTerm();
+  const { termData } = useTerm();
   const { isSubmitting, onSubmit } = useScheduleSubmit({ 
     classId, 
     schedule, 
     onSuccess, 
-    currentTermId: termData?.id,
-    selectedYear,
-    selectedTermNumber
   });
   
-  // Parse existing schedule data if editing
   let defaultValues: ClassScheduleFormValues;
   
   if (schedule) {
     const startDate = new Date(schedule.start_time);
     const endDate = new Date(schedule.end_time);
     
-    // Convert stored string dates to Date objects if they exist
     const selectedDates = schedule.selected_dates 
       ? schedule.selected_dates.map(dateStr => new Date(dateStr))
       : [];
     
-    // Fix: Handle trainer ID more carefully to avoid potential undefined issues
     const trainerIdValue = schedule.trainer_id 
       ? (schedule.trainer_id === 'ba95153f-699c-4cc1-afe5-762bf30033d4' ? 'none' : schedule.trainer_id)
       : 'none';
@@ -51,15 +44,14 @@ export function useClassScheduleForm(
       isRecurring: schedule.recurring || false,
       referenceTitle: schedule.recurrence_pattern || "Class " + format(startDate, "MMMM/yyyy"),
       selectedDates: selectedDates.length > 0 ? selectedDates : [startDate],
+      termId: schedule.term_id || termData?.id || "",
     };
   } else {
     const now = new Date();
-    // Set default to next hour
     const nextHour = new Date(now);
     nextHour.setHours(nextHour.getHours() + 1);
     nextHour.setMinutes(0);
     
-    // End time 1 hour after start
     const endTime = new Date(nextHour);
     endTime.setHours(endTime.getHours() + 1);
     
@@ -70,6 +62,7 @@ export function useClassScheduleForm(
       isRecurring: false,
       referenceTitle: "Class " + format(nextHour, "MMMM/yyyy"),
       selectedDates: [],
+      termId: termData?.id || "",
     };
   }
   
