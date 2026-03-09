@@ -11,7 +11,8 @@ import { UseScheduleSubmitProps } from "./schedule-submission/types";
 export function useScheduleSubmit({ 
   classId, 
   schedule, 
-  onSuccess 
+  onSuccess,
+  currentTermId 
 }: UseScheduleSubmitProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
