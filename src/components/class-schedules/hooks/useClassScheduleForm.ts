@@ -17,8 +17,15 @@ export function useClassScheduleForm(
 ) {
   const { formatTimeFromDate } = useClassScheduleDateUtils();
   const { trainers, isLoadingTrainers } = useTrainerOptions();
-  const { termData } = useTerm();
-  const { isSubmitting, onSubmit } = useScheduleSubmit({ classId, schedule, onSuccess, currentTermId: termData?.id });
+  const { termData, selectedYear, selectedTermNumber } = useTerm();
+  const { isSubmitting, onSubmit } = useScheduleSubmit({ 
+    classId, 
+    schedule, 
+    onSuccess, 
+    currentTermId: termData?.id,
+    selectedYear,
+    selectedTermNumber
+  });
   
   // Parse existing schedule data if editing
   let defaultValues: ClassScheduleFormValues;
