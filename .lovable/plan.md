@@ -1,42 +1,60 @@
-## IMPORTANT: Lateral Thinking Reminder
-
-When making architectural changes (e.g., moving from hardcoded to configurable systems), always proactively audit ALL downstream consumers and related flows. Don't just change the source — trace the data through creation, storage, display, and closure/completion paths. Ask: "What else touches this data? What will break or become stale if we change this?"
-
-Examples: When class types became dynamic, we needed to also update the class closure modal's hardcoded progression map, the handlers table status cell task creation, and backfill legacy data. These weren't requested but were necessary consequences.
-
----
 
 
-## Fix: Randburg Templates Showing Delta Signature
+## Problem
 
-### Root Cause
+Invoices for Term 2 classes are showing under Term 1 because the Invoices page filters by `issued_date` within the term's calendar quarter (Term 1 = Jan-Mar, Term 2 = Apr-Jun). A Term 2 class that starts in March will have an invoice with a March `issued_date`, placing it in Term 1's view.
 
-Two issues are causing Randburg templates to show the Delta signature:
+## Solution
 
-1. **`getSampleVariables()` in `template-renderer.ts` (line 196)** hardcodes `branchName = "McKaynine Delta"`. Every preview modal uses this function, so all previews show the Delta signature regardless of which branch is active.
+Add a `term_id` column to the `invoices` table so invoices are explicitly linked to their class's term. When filtering by term, use `term_id` instead of date range.
 
-2. **`getVariablesWithSignature()` (line 52-57)** generates the `{{signature}}` merge field using the hardcoded `BRANCH_SIGNATURES` map and never checks the database for a saved signature.
+### Database Change
 
-### Plan
+Add `term_id` (nullable UUID, FK to `terms`) to the `invoices` table. Nullable because custom invoices may not be class-linked.
 
-**File: `src/lib/email/template-renderer.ts`**
+### Invoice Creation — Pass `term_id` Through
 
-1. Update `getSampleVariables()` to accept an optional `branchName` parameter instead of hardcoding "McKaynine Delta". Default to "McKaynine Delta" for backward compatibility.
-2. Use the passed `branchName` for both the `branch_name` variable and the `signature` generation.
+The invoice creation chain already passes `classBranchId` and `classReportMonthOverride` from the class schedule. We add `classTermId` the same way:
 
-**Files using `getSampleVariables()` — pass current branch name:**
+| File | Change |
+|---|---|
+| `createInvoiceForHandler.ts` | Add `classTermId?: string` to `CreateInvoiceProps`. Pass it into invoice data as `term_id` |
+| `createInvoiceUtils.ts` | Include `term_id` in `insertData` |
+| `addHandlerToClass.ts` | Already extracts `termId` from schedule info — pass it as `classTermId` |
+| `BookingToInvoiceProvider.tsx` | Look up booking's class_schedule term_id, pass to invoice creation |
 
-3. `src/components/email-templates/TemplatePreviewModal.tsx` — use `useBranch()` to get `currentBranch.name`, pass to `getSampleVariables(currentBranch?.name)`.
-4. `src/components/email-templates/TemplateEditorModal.tsx` — same pattern.
-5. `src/components/email-templates/TemplateConfigureModal.tsx` — same pattern.
-6. `src/pages/admin/Email.tsx` — if it has inline preview calls, same fix.
+### Invoice Types
 
-**File: `src/lib/email/template-renderer.ts` — DB-aware signature**
+Add `term_id?: string | null` to the `Invoice` interface in `src/hooks/invoices/types.ts`.
 
-7. Make `getVariablesWithSignature()` work with an async DB lookup: add an async variant `getVariablesWithSignatureAsync(variables, branchId)` that tries `getEmailSignatureFromDb(branchId)` first, falling back to the hardcoded signature. The sync version remains as a fallback.
+### Invoices Page Filtering
 
-This ensures:
-- Previews show the correct branch signature based on the active branch
-- Sending uses DB signatures when available
-- Zero breaking changes — all callers that don't pass a branch name get the existing Delta default
+In `src/pages/Invoices.tsx`, when `monthFilter === "term"`, filter by `invoice.term_id === termData.id` instead of date range. Fall back to date range for invoices without a `term_id`.
+
+### Backfill Existing Invoices
+
+Run a one-time SQL update to set `term_id` on existing invoices by joining through `invoice_items` → `bookings` → `class_schedules`:
+
+```sql
+UPDATE invoices i
+SET term_id = cs.term_id
+FROM invoice_items ii
+JOIN bookings b ON b.id = ii.booking_id
+JOIN class_schedules cs ON cs.id = b.class_schedule_id
+WHERE ii.invoice_id = i.id
+  AND i.term_id IS NULL
+  AND cs.term_id IS NOT NULL;
+```
+
+### Files to modify
+
+1. **Migration SQL** — add `term_id` column + backfill
+2. `src/hooks/invoices/types.ts` — add `term_id` to Invoice interface
+3. `src/components/classes/handlers/hooks/add-handler-modal/createInvoiceForHandler.ts` — accept and pass `classTermId`
+4. `src/lib/invoices/createInvoiceUtils.ts` — include `term_id` in insert
+5. `src/components/classes/handlers/hooks/add-handler-modal/addHandlerToClass.ts` — pass `termId` as `classTermId`
+6. `src/pages/Invoices.tsx` — filter by `term_id` when term filter active
+7. `src/components/invoices/booking-components/BookingToInvoiceProvider.tsx` — look up term_id from booking's schedule
+8. `src/components/financial/FinancialDashboardContent.tsx` — use `term_id` for term filtering
+9. `src/pages/FinancialDashboard.tsx` — use `term_id` for term filtering
 
