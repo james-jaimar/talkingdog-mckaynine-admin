@@ -11,7 +11,8 @@ import { UseScheduleSubmitProps } from "./schedule-submission/types";
 export function useScheduleSubmit({ 
   classId, 
   schedule, 
-  onSuccess 
+  onSuccess,
+  currentTermId 
 }: UseScheduleSubmitProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
@@ -28,7 +29,7 @@ export function useScheduleSubmit({
       console.log("For class ID:", classId);
       
       // Prepare the base schedule data (now async to auto-determine term_id)
-      const baseScheduleData = await prepareScheduleData(data, classId);
+      const baseScheduleData = await prepareScheduleData(data, classId, currentTermId);
       console.log("Prepared schedule data with term_id:", baseScheduleData.term_id);
       
       // Handle multi-term schedules

@@ -23,7 +23,7 @@ async function findTermForDate(date: Date): Promise<string | null> {
   return term?.id || null;
 }
 
-export async function prepareScheduleData(data: ClassScheduleFormValues, classId: string): Promise<ScheduleData> {
+export async function prepareScheduleData(data: ClassScheduleFormValues, classId: string, currentTermId?: string | null): Promise<ScheduleData> {
   // Check if we have selected dates
   if (!data.selectedDates || data.selectedDates.length === 0) {
     throw new Error("Please select at least one date");
@@ -45,9 +45,14 @@ export async function prepareScheduleData(data: ClassScheduleFormValues, classId
   // Use the No Trainer ID constant for 'none' trainer selection
   const NO_TRAINER_ID = 'ba95153f-699c-4cc1-afe5-762bf30033d4';
   
-  // Auto-determine the term_id based on the first selected date
-  const termId = await findTermForDate(firstDate);
-  console.log("Auto-determined term_id:", termId, "for date:", firstDate);
+  // Use the currently selected term if provided, otherwise auto-determine from the first date
+  let termId: string | null = currentTermId || null;
+  if (!termId) {
+    termId = await findTermForDate(firstDate);
+    console.log("Auto-determined term_id:", termId, "for date:", firstDate);
+  } else {
+    console.log("Using current term context term_id:", termId);
+  }
   
   // Return the base schedule data
   return {

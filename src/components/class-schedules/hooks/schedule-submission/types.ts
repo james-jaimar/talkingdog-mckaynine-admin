@@ -5,6 +5,7 @@ export interface UseScheduleSubmitProps {
   classId: string;
   schedule: ClassSchedule | null;
   onSuccess: () => void;
+  currentTermId?: string | null;
 }
 
 export interface ClassSchedule {
