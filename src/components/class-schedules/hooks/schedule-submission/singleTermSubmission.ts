@@ -9,42 +9,58 @@ export async function handleSingleTermSubmission(
   toast: ReturnType<typeof useToast>["toast"]
 ): Promise<void> {
   console.log("Processing single-term schedule");
-  let result;
-  
+
   if (existingScheduleId) {
-    // Update existing schedule
-    result = await supabase
+    const { data, error } = await supabase
       .from("class_schedules")
       .update(scheduleData)
-      .eq("id", existingScheduleId);
-      
-    if (result.error) {
-      console.error("Supabase update error:", result.error);
-      throw result.error;
+      .eq("id", existingScheduleId)
+      .select("id, term_id")
+      .single();
+
+    if (error) {
+      console.error("Supabase update error:", error);
+      throw error;
     }
-    
-    console.log("Schedule updated successfully:", result);
-    
+
+    console.log("Schedule updated successfully:", data);
+    if (data.term_id !== scheduleData.term_id) {
+      console.warn("Term mismatch after update", {
+        requestedTermId: scheduleData.term_id,
+        persistedTermId: data.term_id,
+        scheduleId: data.id,
+      });
+    }
+
     toast({
       title: "Schedule updated",
       description: "The class schedule has been successfully updated.",
     });
-  } else {
-    // Create new schedule
-    result = await supabase
-      .from("class_schedules")
-      .insert(scheduleData);
-      
-    if (result.error) {
-      console.error("Supabase insert error:", result.error);
-      throw result.error;
-    }
-    
-    console.log("Schedule created successfully:", result);
-    
-    toast({
-      title: "Schedule created",
-      description: "The class schedule has been successfully created.",
+    return;
+  }
+
+  const { data, error } = await supabase
+    .from("class_schedules")
+    .insert(scheduleData)
+    .select("id, term_id")
+    .single();
+
+  if (error) {
+    console.error("Supabase insert error:", error);
+    throw error;
+  }
+
+  console.log("Schedule created successfully:", data);
+  if (data.term_id !== scheduleData.term_id) {
+    console.warn("Term mismatch after create", {
+      requestedTermId: scheduleData.term_id,
+      persistedTermId: data.term_id,
+      scheduleId: data.id,
     });
   }
+
+  toast({
+    title: "Schedule created",
+    description: "The class schedule has been successfully created.",
+  });
 }
