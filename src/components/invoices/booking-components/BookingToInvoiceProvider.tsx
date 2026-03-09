@@ -90,6 +90,9 @@ export function BookingToInvoiceProvider({
       // Log selected booking data for debugging
       console.log("Creating invoice with selected bookings:", selectedBookingData);
       
+      // Extract term_id from the first booking's class schedule
+      const firstBookingTermId = selectedBookingData[0]?.class_schedules?.term_id || null;
+      
       if (selectedBookingData.length === 0) {
         throw new Error("Failed to find selected bookings data");
       }
