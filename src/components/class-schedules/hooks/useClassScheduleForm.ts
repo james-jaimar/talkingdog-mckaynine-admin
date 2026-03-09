@@ -8,6 +8,7 @@ import { classScheduleFormSchema, ClassScheduleFormValues } from "../schemas/cla
 import { useTrainerOptions } from "./useTrainerOptions";
 import { useScheduleSubmit } from "./useScheduleSubmit";
 import { useClassScheduleDateUtils } from "./useClassScheduleDateUtils";
+import { useTerm } from "@/context/TermContext";
 
 export function useClassScheduleForm(
   classId: string, 
@@ -16,7 +17,8 @@ export function useClassScheduleForm(
 ) {
   const { formatTimeFromDate } = useClassScheduleDateUtils();
   const { trainers, isLoadingTrainers } = useTrainerOptions();
-  const { isSubmitting, onSubmit } = useScheduleSubmit({ classId, schedule, onSuccess });
+  const { termData } = useTerm();
+  const { isSubmitting, onSubmit } = useScheduleSubmit({ classId, schedule, onSuccess, currentTermId: termData?.id });
   
   // Parse existing schedule data if editing
   let defaultValues: ClassScheduleFormValues;
