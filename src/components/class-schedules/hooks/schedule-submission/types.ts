@@ -6,6 +6,8 @@ export interface UseScheduleSubmitProps {
   schedule: ClassSchedule | null;
   onSuccess: () => void;
   currentTermId?: string | null;
+  selectedYear?: number | null;
+  selectedTermNumber?: '1' | '2' | '3' | '4' | null;
 }
 
 export interface ClassSchedule {

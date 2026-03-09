@@ -12,7 +12,9 @@ export function useScheduleSubmit({
   classId, 
   schedule, 
   onSuccess,
-  currentTermId 
+  currentTermId,
+  selectedYear,
+  selectedTermNumber
 }: UseScheduleSubmitProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
@@ -28,9 +30,14 @@ export function useScheduleSubmit({
       console.log("Starting schedule submission with data:", data);
       console.log("For class ID:", classId);
       
-      // Prepare the base schedule data (now async to auto-determine term_id)
-      const baseScheduleData = await prepareScheduleData(data, classId, currentTermId);
-      console.log("Prepared schedule data with term_id:", baseScheduleData.term_id);
+      // Prepare the base schedule data (resolve term from active selection first)
+      const baseScheduleData = await prepareScheduleData(
+        data,
+        classId,
+        currentTermId,
+        selectedYear,
+        selectedTermNumber
+      );
       
       // Handle multi-term schedules
       if (data.spansMultipleTerms && data.relatedTermIds && data.relatedTermIds.length > 0) {
