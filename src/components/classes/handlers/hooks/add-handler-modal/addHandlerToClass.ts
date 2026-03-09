@@ -235,6 +235,7 @@ export const addHandlerToClass = async ({
             classBranchId: classDetails.branchId,
             classReportMonthOverride: classDetails.reportMonthOverride,
             classIOInventoryCode: classDetails.ioInventoryCode,
+            classTermId: termId,
           });
           
           if (!invoiceCreated) {

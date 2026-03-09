@@ -45,14 +45,9 @@ export function FinancialDashboardContent() {
     return branchMatch && statusMatch;
   }) : [];
   
-  // Filter invoices by term date range if available
-  const termFilteredInvoices = termDateRange 
-    ? activeInvoices.filter(inv => {
-        const invDate = new Date(inv.issued_date);
-        const startDate = new Date(termDateRange.startDate);
-        const endDate = new Date(termDateRange.endDate);
-        return invDate >= startDate && invDate <= endDate;
-      })
+  // Filter invoices by term_id for accurate term attribution
+  const termFilteredInvoices = termData?.id 
+    ? activeInvoices.filter(inv => inv.term_id === termData.id)
     : activeInvoices;
   
   // Log branch filtering information

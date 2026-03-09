@@ -179,6 +179,7 @@ export const createInvoiceForHandler = async ({
       monetary_discount: 0,
       branch_id: classBranchId || currentBranch?.id || null, // Use class branch for proper attribution
       report_month_override: classReportMonthOverride || null, // Pass override to invoice creation
+      term_id: classTermId || null, // Link invoice to the class's term
     };
 
     console.log("CREATE-INVOICE: About to create invoice with data:", invoiceData);

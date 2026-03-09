@@ -91,6 +91,12 @@ export default function Invoices() {
       return statusMatch;
     }
     
+    // When filtering by term, use term_id for accurate attribution
+    if (monthFilter === "term" && termData?.id) {
+      const termMatch = invoice.term_id === termData.id;
+      return statusMatch && termMatch;
+    }
+    
     const invoiceDate = new Date(invoice.issued_date);
     const range = monthRanges[monthFilter as keyof typeof monthRanges];
     const dateMatch = invoiceDate >= range.start && invoiceDate <= range.end;
