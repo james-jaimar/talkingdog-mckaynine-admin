@@ -153,7 +153,8 @@ export function BookingToInvoiceProvider({
         items,
         discount_amount: 0,
         discount_type: 'fixed',
-        discount_reason: ''
+        discount_reason: '',
+        term_id: firstBookingTermId,
       };
       
       // Log complete invoice data before submission
