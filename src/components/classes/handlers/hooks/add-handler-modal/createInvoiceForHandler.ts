@@ -20,6 +20,7 @@ export interface CreateInvoiceProps {
   classBranchId?: string;
   classReportMonthOverride?: string | null;
   classIOInventoryCode?: string | null;
+  classTermId?: string | null;
 }
 
 const MULTI_DOG_DISCOUNT_PERCENT = 25; // 25% discount for 2nd dog
@@ -39,6 +40,7 @@ export const createInvoiceForHandler = async ({
   classBranchId,
   classReportMonthOverride,
   classIOInventoryCode,
+  classTermId,
 }: CreateInvoiceProps): Promise<boolean> => {
   try {
     console.log("CREATE-INVOICE: Starting invoice creation with params:", {
@@ -177,6 +179,7 @@ export const createInvoiceForHandler = async ({
       monetary_discount: 0,
       branch_id: classBranchId || currentBranch?.id || null, // Use class branch for proper attribution
       report_month_override: classReportMonthOverride || null, // Pass override to invoice creation
+      term_id: classTermId || null, // Link invoice to the class's term
     };
 
     console.log("CREATE-INVOICE: About to create invoice with data:", invoiceData);

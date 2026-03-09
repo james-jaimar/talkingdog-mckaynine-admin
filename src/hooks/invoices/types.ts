@@ -55,6 +55,9 @@ export interface Invoice {
   // Branch attribution for multi-branch handlers
   branch_id?: string | null; // Branch where the class took place
   
+  // Term attribution for proper term filtering
+  term_id?: string | null; // Term the invoice's class belongs to
+  
   // InvoicesOnline (IO) sync fields
   io_sync_status?: IOSyncStatus;
   io_sync_error?: string | null;
@@ -123,4 +126,5 @@ export interface InvoiceFormValues {
   discount_type: 'fixed' | 'percentage';
   discount_amount: number;
   discount_reason?: string;
+  term_id?: string | null;
 }

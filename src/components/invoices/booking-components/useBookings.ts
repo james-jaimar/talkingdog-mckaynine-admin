@@ -31,6 +31,7 @@ export interface BookingWithClass {
   };
   class_schedules?: {
     start_time: string;
+    term_id?: string | null;
     classes?: {
       id: string;
       name: string;
@@ -69,6 +70,7 @@ export function useBookings(clientId: string, enabled: boolean) {
           class_schedules:class_schedule_id (
             id,
             start_time,
+            term_id,
             class_id,
             classes:class_id (id, name, price, description)
           )

@@ -111,6 +111,7 @@ export async function createInvoice(invoiceData: any) {
       original_discount_type,
       branch_id: calculatedData.branch_id || null, // Branch from class for proper attribution
       franchise_report_month: franchiseReportMonth, // Use override or auto-set for reporting
+      term_id: calculatedData.term_id || null, // Term from class for proper term filtering
     };
 
     console.log("Inserting invoice with sanitized data:", insertData);

@@ -22,7 +22,7 @@ export default function Invoices() {
   const [monthFilter, setMonthFilter] = useState<string>("current");
   const { invoices, isLoading, refreshAllInvoiceQueries } = useInvoices();
   const queryClient = useQueryClient();
-  const { termDateRange } = useTerm();
+  const { termDateRange, termData } = useTerm();
 
   // Set the month filter to "term" if a term is selected
   useEffect(() => {
@@ -89,6 +89,12 @@ export default function Invoices() {
     
     if (monthFilter === "all") {
       return statusMatch;
+    }
+    
+    // When filtering by term, use term_id for accurate attribution
+    if (monthFilter === "term" && termData?.id) {
+      const termMatch = invoice.term_id === termData.id;
+      return statusMatch && termMatch;
     }
     
     const invoiceDate = new Date(invoice.issued_date);
