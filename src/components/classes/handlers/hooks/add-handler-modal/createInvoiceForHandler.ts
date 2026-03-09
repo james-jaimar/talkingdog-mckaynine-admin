@@ -20,6 +20,7 @@ export interface CreateInvoiceProps {
   classBranchId?: string;
   classReportMonthOverride?: string | null;
   classIOInventoryCode?: string | null;
+  classTermId?: string | null;
 }
 
 const MULTI_DOG_DISCOUNT_PERCENT = 25; // 25% discount for 2nd dog
