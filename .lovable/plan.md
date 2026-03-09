@@ -1,61 +1,42 @@
+## IMPORTANT: Lateral Thinking Reminder
+
+When making architectural changes (e.g., moving from hardcoded to configurable systems), always proactively audit ALL downstream consumers and related flows. Don't just change the source — trace the data through creation, storage, display, and closure/completion paths. Ask: "What else touches this data? What will break or become stale if we change this?"
+
+Examples: When class types became dynamic, we needed to also update the class closure modal's hardcoded progression map, the handlers table status cell task creation, and backfill legacy data. These weren't requested but were necessary consequences.
+
+---
 
 
-## Problem
+## Fix: Randburg Templates Showing Delta Signature
 
-The auto-detection logic in `prepareScheduleData.ts` keeps assigning schedules to Term 1 regardless of what term the user is viewing. Three attempts to fix this with progressively complex fallback chains (`findTermForDate` → `currentTermId` → `findTermForSelection`) have all failed due to race conditions and stale context data.
+### Root Cause
 
-## Solution
+Two issues are causing Randburg templates to show the Delta signature:
 
-Rip out all automatic term detection. Instead, add a **mandatory term selector** (radio group) directly in the schedule form. When selected dates span multiple terms, the user must pick exactly one term. No guessing, no fallbacks.
+1. **`getSampleVariables()` in `template-renderer.ts` (line 196)** hardcodes `branchName = "McKaynine Delta"`. Every preview modal uses this function, so all previews show the Delta signature regardless of which branch is active.
 
-### What gets removed
-- `findTermForDate()` function in `prepareScheduleData.ts`
-- `findTermForSelection()` function in `prepareScheduleData.ts`
-- All term resolution logic (the 3-step fallback chain) in `prepareScheduleData.ts`
-- `currentTermId`, `selectedYear`, `selectedTermNumber` params from `prepareScheduleData`, `useScheduleSubmit`, and `useClassScheduleForm`
-- `spansMultipleTerms` and `relatedTermIds` from the form schema
-- The entire `MultiTermOptions.tsx` component
-- The `multiTermSubmission.ts` file (no longer needed)
-- `spans_multiple_terms` and `multi_term_relation_id` from `ScheduleData` type
+2. **`getVariablesWithSignature()` (line 52-57)** generates the `{{signature}}` merge field using the hardcoded `BRANCH_SIGNATURES` map and never checks the database for a saved signature.
 
-### What gets added
+### Plan
 
-**1. New form field: `termId` (required string)**
-- Added to `classScheduleFormSchema.ts`
-- Pre-populated with the current term from TermContext
+**File: `src/lib/email/template-renderer.ts`**
 
-**2. New component: `TermSelector.tsx`**
-- Replaces `MultiTermOptions.tsx` in `ClassScheduleFormFields.tsx`
-- Fetches terms from DB (reuses existing query)
-- Shows as a radio group with term labels (e.g. "Term 1 2026", "Term 2 2026")
-- When dates span multiple terms, highlights a warning: "Your dates span multiple terms — please select which term this schedule belongs to"
-- Always visible, always required
-- Default-selected to match the active term in TermContext
+1. Update `getSampleVariables()` to accept an optional `branchName` parameter instead of hardcoding "McKaynine Delta". Default to "McKaynine Delta" for backward compatibility.
+2. Use the passed `branchName` for both the `branch_name` variable and the `signature` generation.
 
-**3. Simplified `prepareScheduleData.ts`**
-- Accepts `termId: string` directly — no detection, no fallbacks
-- Just uses the value from the form
+**Files using `getSampleVariables()` — pass current branch name:**
 
-### Files to modify
+3. `src/components/email-templates/TemplatePreviewModal.tsx` — use `useBranch()` to get `currentBranch.name`, pass to `getSampleVariables(currentBranch?.name)`.
+4. `src/components/email-templates/TemplateEditorModal.tsx` — same pattern.
+5. `src/components/email-templates/TemplateConfigureModal.tsx` — same pattern.
+6. `src/pages/admin/Email.tsx` — if it has inline preview calls, same fix.
 
-| File | Change |
-|---|---|
-| `schemas/classScheduleFormSchema.ts` | Remove `spansMultipleTerms`, `relatedTermIds`. Add required `termId` |
-| `form-fields/MultiTermOptions.tsx` | Delete entirely |
-| **New** `form-fields/TermSelector.tsx` | Radio group for term selection |
-| `ClassScheduleFormFields.tsx` | Replace `MultiTermOptions` with `TermSelector` |
-| `hooks/schedule-submission/prepareScheduleData.ts` | Strip all term detection. Accept `termId` param directly |
-| `hooks/schedule-submission/types.ts` | Remove `currentTermId`, `selectedYear`, `selectedTermNumber` from props. Remove `multi_term_relation_id`, `spans_multiple_terms` from `ScheduleData` |
-| `hooks/schedule-submission/multiTermSubmission.ts` | Delete entirely |
-| `hooks/useScheduleSubmit.ts` | Remove term-related props, pass `data.termId` to `prepareScheduleData`. Remove multi-term branch |
-| `hooks/useClassScheduleForm.ts` | Remove term context usage for submission. Set default `termId` from `termData?.id` |
+**File: `src/lib/email/template-renderer.ts` — DB-aware signature**
 
-### Data fix SQL
+7. Make `getVariablesWithSignature()` work with an async DB lookup: add an async variant `getVariablesWithSignatureAsync(variables, branchId)` that tries `getEmailSignatureFromDb(branchId)` first, falling back to the hardcoded signature. The sync version remains as a fallback.
 
-```sql
-UPDATE class_schedules 
-SET term_id = 'c7951cbb-de96-47b1-bf05-69b512b7f5da'
-WHERE class_id = '6d0f3704-2bfe-4352-8163-d95a03b5b857'
-  AND term_id = 'af8f86a4-6a26-4415-be4d-b388d7e942c1';
-```
+This ensures:
+- Previews show the correct branch signature based on the active branch
+- Sending uses DB signatures when available
+- Zero breaking changes — all callers that don't pass a branch name get the existing Delta default
 
