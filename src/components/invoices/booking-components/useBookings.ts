@@ -31,6 +31,7 @@ export interface BookingWithClass {
   };
   class_schedules?: {
     start_time: string;
+    term_id?: string | null;
     classes?: {
       id: string;
       name: string;
