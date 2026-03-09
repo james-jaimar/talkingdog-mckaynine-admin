@@ -22,7 +22,7 @@ export default function Invoices() {
   const [monthFilter, setMonthFilter] = useState<string>("current");
   const { invoices, isLoading, refreshAllInvoiceQueries } = useInvoices();
   const queryClient = useQueryClient();
-  const { termDateRange } = useTerm();
+  const { termDateRange, termData } = useTerm();
 
   // Set the month filter to "term" if a term is selected
   useEffect(() => {
