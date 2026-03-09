@@ -12,7 +12,9 @@ export function useScheduleSubmit({
   classId, 
   schedule, 
   onSuccess,
-  currentTermId 
+  currentTermId,
+  selectedYear,
+  selectedTermNumber
 }: UseScheduleSubmitProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
