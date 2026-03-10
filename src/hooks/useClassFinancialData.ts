@@ -31,7 +31,7 @@ function normalizeToDateString(dateStr?: string): string | undefined {
   }
 }
 
-export function useClassFinancialData(branchId?: string, fromDate?: string, toDate?: string, filterMode: 'term' | 'monthly' = 'term') {
+export function useClassFinancialData(branchId?: string, fromDate?: string, toDate?: string, filterMode: 'term' | 'monthly' = 'term', termId?: string) {
   const queryClient = useQueryClient();
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   
@@ -46,7 +46,7 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
     isLoading, 
     refetch,
     error
-  } = useFinancialQuery(branchId, normalizedFromDate, normalizedToDate, filterMode);
+  } = useFinancialQuery(branchId, normalizedFromDate, normalizedToDate, filterMode, termId);
   
   const {
     classFinances,

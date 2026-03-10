@@ -25,11 +25,12 @@ export function useFinancialQuery(
   branchId?: string, 
   fromDate?: string, 
   toDate?: string,
-  filterMode: FilterMode = 'term'
+  filterMode: FilterMode = 'term',
+  termId?: string
 ) {
   return useQuery({
-    // Simple, deterministic query key - include filterMode for proper caching
-    queryKey: ['financial-data', branchId, fromDate, toDate, filterMode],
+    // Simple, deterministic query key - include filterMode and termId for proper caching
+    queryKey: ['financial-data', branchId, fromDate, toDate, filterMode, termId],
     queryFn: async (): Promise<FinancialData> => {
       if (!branchId) {
         return {
@@ -71,28 +72,25 @@ export function useFinancialQuery(
         .eq('branch_id', branchId) // Filter by invoice's branch_id directly
         .in('status', ['sent', 'paid', 'overdue']);
 
-      // Apply date filters based on filterMode
-      // - 'term': Use issued_date range (consistent with collected/pending revenue calculations)
-      // - 'monthly': Use franchise_report_month (for monthly financial/franchise reports)
-      if (fromDate && toDate) {
+      // Apply date/term filters based on filterMode
+      if (filterMode === 'term' && termId) {
+        // Term mode with termId: filter by term_id directly (most accurate)
+        invoicesQuery = invoicesQuery.eq('term_id', termId);
+        console.log(`[FinancialQuery] Using term_id filter: ${termId}`);
+      } else if (fromDate && toDate) {
         if (filterMode === 'monthly') {
           // Monthly mode: Use franchise_report_month for precise monthly reporting
-          // This respects the report_month_override set on classes
-          const fromMonth = fromDate.substring(0, 7); // e.g., "2026-02"
-          // Include invoices with matching franchise_report_month 
-          // OR NULL franchise_report_month with issued_date in range (defensive fallback)
+          const fromMonth = fromDate.substring(0, 7);
           invoicesQuery = invoicesQuery.or(
             `franchise_report_month.eq.${fromMonth},and(franchise_report_month.is.null,issued_date.gte.${fromDate},issued_date.lte.${toDate})`
           );
         } else {
-          // Term mode (default): Use issued_date range for full term coverage
-          // This is consistent with how collected/pending revenue is calculated
+          // Term mode fallback (no termId): Use issued_date range
           invoicesQuery = invoicesQuery
             .gte('issued_date', fromDate)
             .lte('issued_date', toDate);
         }
       } else if (fromDate) {
-        // Fallback to issued_date if only partial range
         invoicesQuery = invoicesQuery.gte('issued_date', fromDate);
       } else if (toDate) {
         invoicesQuery = invoicesQuery.lte('issued_date', toDate);

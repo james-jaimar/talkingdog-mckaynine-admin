@@ -131,7 +131,7 @@ export default function FinancialDashboard() {
     classFinances, 
     isLoading,
     error
-  } = useClassFinancialData(currentBranch?.id, fromDate, toDate);
+  } = useClassFinancialData(currentBranch?.id, fromDate, toDate, 'term', termData?.id);
   
   // Verify that all class finances are from the correct branch
   useEffect(() => {

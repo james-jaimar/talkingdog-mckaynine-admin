@@ -1,41 +1,42 @@
+## IMPORTANT: Lateral Thinking Reminder
+
+When making architectural changes (e.g., moving from hardcoded to configurable systems), always proactively audit ALL downstream consumers and related flows. Don't just change the source — trace the data through creation, storage, display, and closure/completion paths. Ask: "What else touches this data? What will break or become stale if we change this?"
+
+Examples: When class types became dynamic, we needed to also update the class closure modal's hardcoded progression map, the handlers table status cell task creation, and backfill legacy data. These weren't requested but were necessary consequences.
+
+---
 
 
-## Problem
+## Fix: Randburg Templates Showing Delta Signature
 
-The Financial Dashboard has two different data pipelines that are now inconsistent:
+### Root Cause
 
-1. **Revenue metrics cards** (top row) — filter invoices by `term_id` → correctly shows R 3370
-2. **Expense breakdown + Revenue Allocation** — use `useClassFinancialData` → `useFinancialQuery`, which filters by `issued_date` within the term's calendar date range (Apr 1 - Jun 30 for Term 2) → finds zero invoices because they were issued in March
+Two issues are causing Randburg templates to show the Delta signature:
 
-After adding `term_id` to invoices, the financial query pipeline was not updated to use it.
+1. **`getSampleVariables()` in `template-renderer.ts` (line 196)** hardcodes `branchName = "McKaynine Delta"`. Every preview modal uses this function, so all previews show the Delta signature regardless of which branch is active.
 
-## Solution
+2. **`getVariablesWithSignature()` (line 52-57)** generates the `{{signature}}` merge field using the hardcoded `BRANCH_SIGNATURES` map and never checks the database for a saved signature.
 
-Update `useFinancialQuery` to accept an optional `termId` parameter. When provided (in term mode), filter invoices by `term_id` instead of `issued_date` range. This aligns both data pipelines.
+### Plan
 
-### Files to modify
+**File: `src/lib/email/template-renderer.ts`**
 
-| File | Change |
-|---|---|
-| `src/hooks/financial/useFinancialQuery.ts` | Add `termId?: string` parameter. When `filterMode === 'term'` and `termId` is provided, filter by `.eq('term_id', termId)` instead of date range. Keep date range as fallback for invoices without `term_id`. |
-| `src/hooks/useClassFinancialData.ts` | Accept and pass `termId` to `useFinancialQuery` |
-| `src/components/financial/FinancialDashboardContent.tsx` | Pass `termData?.id` as `termId` to `useClassFinancialData` |
-| `src/pages/FinancialDashboard.tsx` | Pass `termData?.id` as `termId` to `useClassFinancialData` |
+1. Update `getSampleVariables()` to accept an optional `branchName` parameter instead of hardcoding "McKaynine Delta". Default to "McKaynine Delta" for backward compatibility.
+2. Use the passed `branchName` for both the `branch_name` variable and the `signature` generation.
 
-### Key change in `useFinancialQuery`
+**Files using `getSampleVariables()` — pass current branch name:**
 
-```text
-Current (term mode):
-  .gte('issued_date', fromDate)
-  .lte('issued_date', toDate)
+3. `src/components/email-templates/TemplatePreviewModal.tsx` — use `useBranch()` to get `currentBranch.name`, pass to `getSampleVariables(currentBranch?.name)`.
+4. `src/components/email-templates/TemplateEditorModal.tsx` — same pattern.
+5. `src/components/email-templates/TemplateConfigureModal.tsx` — same pattern.
+6. `src/pages/admin/Email.tsx` — if it has inline preview calls, same fix.
 
-New (term mode with termId):
-  .eq('term_id', termId)
-  
-Fallback (term mode without termId):
-  .gte('issued_date', fromDate)  // backward compat
-  .lte('issued_date', toDate)
-```
+**File: `src/lib/email/template-renderer.ts` — DB-aware signature**
 
-This is a small, surgical change that aligns the expense/fee calculations with the already-working revenue metrics.
+7. Make `getVariablesWithSignature()` work with an async DB lookup: add an async variant `getVariablesWithSignatureAsync(variables, branchId)` that tries `getEmailSignatureFromDb(branchId)` first, falling back to the hardcoded signature. The sync version remains as a fallback.
+
+This ensures:
+- Previews show the correct branch signature based on the active branch
+- Sending uses DB signatures when available
+- Zero breaking changes — all callers that don't pass a branch name get the existing Delta default
 
