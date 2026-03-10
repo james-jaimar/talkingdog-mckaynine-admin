@@ -25,11 +25,12 @@ export function useFinancialQuery(
   branchId?: string, 
   fromDate?: string, 
   toDate?: string,
-  filterMode: FilterMode = 'term'
+  filterMode: FilterMode = 'term',
+  termId?: string
 ) {
   return useQuery({
-    // Simple, deterministic query key - include filterMode for proper caching
-    queryKey: ['financial-data', branchId, fromDate, toDate, filterMode],
+    // Simple, deterministic query key - include filterMode and termId for proper caching
+    queryKey: ['financial-data', branchId, fromDate, toDate, filterMode, termId],
     queryFn: async (): Promise<FinancialData> => {
       if (!branchId) {
         return {
