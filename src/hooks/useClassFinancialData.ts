@@ -46,7 +46,7 @@ export function useClassFinancialData(branchId?: string, fromDate?: string, toDa
     isLoading, 
     refetch,
     error
-  } = useFinancialQuery(branchId, normalizedFromDate, normalizedToDate, filterMode);
+  } = useFinancialQuery(branchId, normalizedFromDate, normalizedToDate, filterMode, termId);
   
   const {
     classFinances,
