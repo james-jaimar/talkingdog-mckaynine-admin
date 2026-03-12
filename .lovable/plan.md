@@ -1,27 +1,42 @@
+## IMPORTANT: Lateral Thinking Reminder
+
+When making architectural changes (e.g., moving from hardcoded to configurable systems), always proactively audit ALL downstream consumers and related flows. Don't just change the source — trace the data through creation, storage, display, and closure/completion paths. Ask: "What else touches this data? What will break or become stale if we change this?"
+
+Examples: When class types became dynamic, we needed to also update the class closure modal's hardcoded progression map, the handlers table status cell task creation, and backfill legacy data. These weren't requested but were necessary consequences.
+
+---
 
 
-## Problem
+## Fix: Randburg Templates Showing Delta Signature
 
-Deleting a handler fails because the `deleteHandler` function tries to delete dogs before deleting `handler_class_status` records. The `handler_class_status` table has a foreign key on `dog_id` referencing `dogs`, so the dogs can't be deleted first.
+### Root Cause
 
-The error: `"update or delete on table \"dogs\" violates foreign key constraint \"handler_class_status_d..."`
+Two issues are causing Randburg templates to show the Delta signature:
 
-## Solution
+1. **`getSampleVariables()` in `template-renderer.ts` (line 196)** hardcodes `branchName = "McKaynine Delta"`. Every preview modal uses this function, so all previews show the Delta signature regardless of which branch is active.
 
-Update `deleteHandler` in `src/lib/api/handlers.ts` to delete related records in the correct order:
+2. **`getVariablesWithSignature()` (line 52-57)** generates the `{{signature}}` merge field using the hardcoded `BRANCH_SIGNATURES` map and never checks the database for a saved signature.
 
-1. Delete `handler_class_status` records (references both `handler_id` → clients and `dog_id` → dogs)
-2. Delete `handler_tasks` records (references `class_status_id` → handler_class_status, and `handler_id` → clients)
-3. Delete `class_attendance` records (via bookings)
-4. Delete `invoice_items` (via bookings)
-5. Delete `bookings` for this handler
-6. Delete `dogs` for this handler
-7. Delete `client_branches` for this handler
-8. Delete the `clients` record
+### Plan
 
-The key fix is adding the `handler_class_status` deletion **before** deleting dogs. We should also defensively delete other FK-dependent records (bookings, attendance, etc.) to prevent similar cascading failures.
+**File: `src/lib/email/template-renderer.ts`**
 
-### File to modify
+1. Update `getSampleVariables()` to accept an optional `branchName` parameter instead of hardcoding "McKaynine Delta". Default to "McKaynine Delta" for backward compatibility.
+2. Use the passed `branchName` for both the `branch_name` variable and the `signature` generation.
 
-`src/lib/api/handlers.ts` — add deletion of `handler_class_status` (by `handler_id`) before deleting dogs, and add deletions for other dependent tables (handler_tasks, bookings, class_attendance, invoice_items, client_branches) to make the function robust against future FK issues.
+**Files using `getSampleVariables()` — pass current branch name:**
+
+3. `src/components/email-templates/TemplatePreviewModal.tsx` — use `useBranch()` to get `currentBranch.name`, pass to `getSampleVariables(currentBranch?.name)`.
+4. `src/components/email-templates/TemplateEditorModal.tsx` — same pattern.
+5. `src/components/email-templates/TemplateConfigureModal.tsx` — same pattern.
+6. `src/pages/admin/Email.tsx` — if it has inline preview calls, same fix.
+
+**File: `src/lib/email/template-renderer.ts` — DB-aware signature**
+
+7. Make `getVariablesWithSignature()` work with an async DB lookup: add an async variant `getVariablesWithSignatureAsync(variables, branchId)` that tries `getEmailSignatureFromDb(branchId)` first, falling back to the hardcoded signature. The sync version remains as a fallback.
+
+This ensures:
+- Previews show the correct branch signature based on the active branch
+- Sending uses DB signatures when available
+- Zero breaking changes — all callers that don't pass a branch name get the existing Delta default
 
