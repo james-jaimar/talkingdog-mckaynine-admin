@@ -1,42 +1,42 @@
-## IMPORTANT: Lateral Thinking Reminder
-
-When making architectural changes (e.g., moving from hardcoded to configurable systems), always proactively audit ALL downstream consumers and related flows. Don't just change the source — trace the data through creation, storage, display, and closure/completion paths. Ask: "What else touches this data? What will break or become stale if we change this?"
-
-Examples: When class types became dynamic, we needed to also update the class closure modal's hardcoded progression map, the handlers table status cell task creation, and backfill legacy data. These weren't requested but were necessary consequences.
-
----
 
 
-## Fix: Randburg Templates Showing Delta Signature
+## Duplicate Cleanup Plan
 
-### Root Cause
+### What I Found
 
-Two issues are causing Randburg templates to show the Delta signature:
+Three categories of duplicates in `handler_class_status`:
 
-1. **`getSampleVariables()` in `template-renderer.ts` (line 196)** hardcodes `branchName = "McKaynine Delta"`. Every preview modal uses this function, so all previews show the Delta signature regardless of which branch is active.
+**Category 1: Dog-ID vs NULL duplicates (5 records to remove)**
+Records where Ady manually re-entered data without a dog_id, duplicating an existing record that already has a dog_id. Same handler, class_type, percentage, and period.
 
-2. **`getVariablesWithSignature()` (line 52-57)** generates the `{{signature}}` merge field using the hardcoded `BRANCH_SIGNATURES` map and never checks the database for a saved signature.
+| Handler | Class | % | Remove (no dog_id) |
+|---|---|---|---|
+| Angela Glover | EO | 81.5% | `82711e3d` (manual, no dog) |
+| Angela Glover | EO | 61% | `588225b8` (manual, no dog) |
+| Duncan Miller | Beginner | 64.5% | `76361e7c` (manual, no dog) |
+| Jackie Dickson | Novice | 70.5% | `452116e5` (manual, no dog) |
+| Michael Rogans | EO | 91.5% | `785ca41a` (manual, no dog) |
 
-### Plan
+Action: Delete the 5 NULL-dog records. The ones with dog_id are more complete.
 
-**File: `src/lib/email/template-renderer.ts`**
+**Category 2: Pure NULL-NULL duplicates (6 records to remove)**
+Yoga entries where Ady double-clicked, creating two identical records within 1-2 seconds. Both have NULL dog_id, same period, same everything.
 
-1. Update `getSampleVariables()` to accept an optional `branchName` parameter instead of hardcoding "McKaynine Delta". Default to "McKaynine Delta" for backward compatibility.
-2. Use the passed `branchName` for both the `branch_name` variable and the `signature` generation.
+| Handler | Periods | Dupes |
+|---|---|---|
+| Allison Gilbert | Jan 26, Feb 26, Mar 26 | 3 pairs |
+| Joy Tupholme / Sharise Smith | Jan 26, Feb 26, Mar 26 | 3 pairs |
 
-**Files using `getSampleVariables()` — pass current branch name:**
+Action: Delete the later-created record from each pair (6 records).
 
-3. `src/components/email-templates/TemplatePreviewModal.tsx` — use `useBranch()` to get `currentBranch.name`, pass to `getSampleVariables(currentBranch?.name)`.
-4. `src/components/email-templates/TemplateEditorModal.tsx` — same pattern.
-5. `src/components/email-templates/TemplateConfigureModal.tsx` — same pattern.
-6. `src/pages/admin/Email.tsx` — if it has inline preview calls, same fix.
+**Category 3: Multi-dog backfill_v2 records (9 records -- keep as-is)**
+These are `legacy_backfill_v2` records for a *different dog* than the existing record. These represent legitimate separate completions for handlers with multiple dogs (e.g., Peter and Kathy Solomon have two dogs that each completed classes). These are NOT duplicates -- they are distinct dog records.
 
-**File: `src/lib/email/template-renderer.ts` — DB-aware signature**
+### Implementation
 
-7. Make `getVariablesWithSignature()` work with an async DB lookup: add an async variant `getVariablesWithSignatureAsync(variables, branchId)` that tries `getEmailSignatureFromDb(branchId)` first, falling back to the hardcoded signature. The sync version remains as a fallback.
+Single data cleanup deleting **11 specific records** by ID:
+- 5 NULL-dog duplicates (Category 1)
+- 6 double-click Yoga duplicates (Category 2)
 
-This ensures:
-- Previews show the correct branch signature based on the active branch
-- Sending uses DB signatures when available
-- Zero breaking changes — all callers that don't pass a branch name get the existing Delta default
+No code changes needed. No schema changes. Just targeted DELETE by ID.
 
