@@ -1,42 +1,50 @@
-## IMPORTANT: Lateral Thinking Reminder
-
-When making architectural changes (e.g., moving from hardcoded to configurable systems), always proactively audit ALL downstream consumers and related flows. Don't just change the source — trace the data through creation, storage, display, and closure/completion paths. Ask: "What else touches this data? What will break or become stale if we change this?"
-
-Examples: When class types became dynamic, we needed to also update the class closure modal's hardcoded progression map, the handlers table status cell task creation, and backfill legacy data. These weren't requested but were necessary consequences.
-
----
 
 
-## Fix: Randburg Templates Showing Delta Signature
+## Investigation Results: Incorrect Handler Class Completion Data
 
-### Root Cause
+### What Happened
 
-Two issues are causing Randburg templates to show the Delta signature:
+On **March 7**, a migration (`20260307135341`) ran a "legacy backfill" that converted free-text data from the old `class_enrollments` table into structured records in `handler_class_status`. This was part of moving from hardcoded class types to the dynamic system.
 
-1. **`getSampleVariables()` in `template-renderer.ts` (line 196)** hardcodes `branchName = "McKaynine Delta"`. Every preview modal uses this function, so all previews show the Delta signature regardless of which branch is active.
+**The migration created 450 records**, and this is the root cause of the incorrect data.
 
-2. **`getVariablesWithSignature()` (line 52-57)** generates the `{{signature}}` merge field using the hardcoded `BRANCH_SIGNATURES` map and never checks the database for a saved signature.
+### Why It's Wrong
 
-### Plan
+The `class_enrollments` table columns (`puppy_class`, `eo_class`, `bronze_cgc_class`, etc.) were **free-text fields used as admin notes** — not structured completion records. They contained all sorts of values:
 
-**File: `src/lib/email/template-renderer.ts`**
+- **Admin scheduling notes**: `"15h00 info sent Jan 11th 25"`, `"14h00 EO April 25"`, `"Enrolled April 25"`
+- **Gibberish/shorthand**: `"a"`, `"HD"`, `"HD Puppy"`, `"McRandburg"`, `"????"`
+- **Excel date serial numbers**: `"45739"`, `"45830"`, `"45952"`, `"46014"`
+- **Personal notes**: `"did not want to continue"`, `"Cash flow issues, next time"`, `"Doing Chemo, might look at Sep 25"`
+- **Status notes that aren't completions**: `"info sent"`, `"Bronze info sent"`, `"Join again??"`, `"Break Apr May 25"`
 
-1. Update `getSampleVariables()` to accept an optional `branchName` parameter instead of hardcoding "McKaynine Delta". Default to "McKaynine Delta" for backward compatibility.
-2. Use the passed `branchName` for both the `branch_name` variable and the `signature` generation.
+The migration's fallback logic (lines 110-111) treated **any unrecognized value as `"completed"`** status. So 348 out of 450 backfilled records got marked as "completed" — including all the admin notes above.
 
-**Files using `getSampleVariables()` — pass current branch name:**
+**This means handlers are showing as having completed classes they never took.**
 
-3. `src/components/email-templates/TemplatePreviewModal.tsx` — use `useBranch()` to get `currentBranch.name`, pass to `getSampleVariables(currentBranch?.name)`.
-4. `src/components/email-templates/TemplateEditorModal.tsx` — same pattern.
-5. `src/components/email-templates/TemplateConfigureModal.tsx` — same pattern.
-6. `src/pages/admin/Email.tsx` — if it has inline preview calls, same fix.
+### What Ady Has Done Since
 
-**File: `src/lib/email/template-renderer.ts` — DB-aware signature**
+Ady has been manually adding correct records (completion_method = `"manual"`) since March 7, including today (March 17). She's added ~271 manual records. Some of these may now **duplicate** or **conflict** with the incorrect backfill records.
 
-7. Make `getVariablesWithSignature()` work with an async DB lookup: add an async variant `getVariablesWithSignatureAsync(variables, branchId)` that tries `getEmailSignatureFromDb(branchId)` first, falling back to the hardcoded signature. The sync version remains as a fallback.
+### The Fix
 
-This ensures:
-- Previews show the correct branch signature based on the active branch
-- Sending uses DB signatures when available
-- Zero breaking changes — all callers that don't pass a branch name get the existing Delta default
+The backfill data is identifiable: all 450 records have `completion_method = 'legacy_backfill'`. The safest approach:
+
+1. **Delete all `legacy_backfill` records** from `handler_class_status` — they are unreliable and the source data (admin free-text notes) was never meant to represent structured completion data
+2. **Preserve all manual and other records** — these are the ones Ady and the system have correctly created
+3. **Verify no orphaned `handler_tasks`** reference deleted status records
+
+### Implementation
+
+| Step | Action |
+|---|---|
+| 1 | Run SQL migration: `DELETE FROM handler_class_status WHERE completion_method = 'legacy_backfill'` (450 records) |
+| 2 | Clean up any `handler_tasks` that reference deleted `handler_class_status` IDs via `class_status_id` |
+| 3 | No code changes needed — the display code (`useHandlersData.ts`) already works correctly with the dynamic class types |
+
+### Risk Assessment
+
+- **Low risk**: The backfill records are clearly identifiable and separable from real data
+- **Ady's manual corrections are safe**: They use `completion_method = 'manual'` and won't be touched
+- **Some handlers may lose legitimate historical data**: A few backfill records (like those with real percentages: `"81% Dec 24"`, `"88,5% Sep 24"`) were correctly parsed. But since Ady has been re-entering correct data manually, and the source data was unreliable, it's safer to remove all backfill and let Ady verify
 
