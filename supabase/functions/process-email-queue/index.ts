@@ -46,6 +46,43 @@ async function fetchFileAsBase64(url: string): Promise<{ content: string; conten
   return { content, contentType };
 }
 
+async function resolveBranchEmail(branchId: string): Promise<string | null> {
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    
+    const { data } = await supabase
+      .from("branch_notifications")
+      .select("from_email")
+      .eq("branch_id", branchId)
+      .maybeSingle();
+    
+    if (data?.from_email) return data.from_email;
+    
+    // Fallback: lookup branch email directly
+    const { data: branch } = await supabase
+      .from("branches")
+      .select("email")
+      .eq("id", branchId)
+      .maybeSingle();
+    
+    return branch?.email || null;
+  } catch (err) {
+    console.error("Error resolving branch email:", err);
+    return null;
+  }
+}
+
+// Known SMTP-correct email addresses per branch (handles DB typos)
+const SMTP_EMAIL_MAP: Record<string, string> = {
+  "randburg@mackaynine.co.za": "randburg@mckaynine.co.za",
+};
+
+function normalizeSMTPEmail(email: string): string {
+  return SMTP_EMAIL_MAP[email.toLowerCase()] || email;
+}
+
 async function sendEmail(email: QueuedEmail): Promise<{ success: boolean; error?: string; messageId?: string }> {
   const smtpHost = Deno.env.get("SMTP_HOST");
   const smtpPort = Deno.env.get("SMTP_PORT") || "465";
@@ -54,7 +91,16 @@ async function sendEmail(email: QueuedEmail): Promise<{ success: boolean; error?
   const smtpPasswordRandburg = Deno.env.get("SMTP_PASSWORD_RANDBURG");
   const defaultFromEmail = Deno.env.get("FROM_EMAIL") || smtpUsername;
 
-  const fromEmail = email.from_email || defaultFromEmail;
+  // Resolve from_email: explicit > branch lookup > default
+  let resolvedFromEmail = email.from_email;
+  if (!resolvedFromEmail && email.branch_id) {
+    resolvedFromEmail = await resolveBranchEmail(email.branch_id);
+    if (resolvedFromEmail) {
+      resolvedFromEmail = normalizeSMTPEmail(resolvedFromEmail);
+      console.log(`Resolved from_email from branch: ${resolvedFromEmail}`);
+    }
+  }
+  const fromEmail = resolvedFromEmail || defaultFromEmail;
   const fromAddress = email.from_name ? `${email.from_name} <${fromEmail}>` : fromEmail;
 
   const isRandburgEmail = fromEmail?.toLowerCase() === "randburg@mckaynine.co.za";
