@@ -1,45 +1,42 @@
+## IMPORTANT: Lateral Thinking Reminder
+
+When making architectural changes (e.g., moving from hardcoded to configurable systems), always proactively audit ALL downstream consumers and related flows. Don't just change the source — trace the data through creation, storage, display, and closure/completion paths. Ask: "What else touches this data? What will break or become stale if we change this?"
+
+Examples: When class types became dynamic, we needed to also update the class closure modal's hardcoded progression map, the handlers table status cell task creation, and backfill legacy data. These weren't requested but were necessary consequences.
+
+---
 
 
-## The Full Picture
+## Fix: Randburg Templates Showing Delta Signature
 
-### Timeline
+### Root Cause
 
-| When | What happened |
-|---|---|
-| Jan 3 – Mar 2 | Ady manually created 314 records in `handler_class_status` (the correct ones) |
-| Before Mar 7 | Legacy data lived as free-text in `class_enrollments` (e.g., "91,5% Feb 2025", "Puppy Grad 23") |
-| Mar 7 | Migration copied `class_enrollments` → `handler_class_status` as 450 `legacy_backfill` records. Many were wrongly marked "completed" |
-| Today | We deleted all 450 `legacy_backfill` records. The 314 original records are untouched |
+Two issues are causing Randburg templates to show the Delta signature:
 
-### The problem now
+1. **`getSampleVariables()` in `template-renderer.ts` (line 196)** hardcodes `branchName = "McKaynine Delta"`. Every preview modal uses this function, so all previews show the Delta signature regardless of which branch is active.
 
-Handlers like Adam Sargent, Aileen Rodel, and Alexander Russell had their class history **only** in `class_enrollments` free-text. Ady never manually entered them into `handler_class_status`. The backfill was the only thing making their data show up — and now it's gone.
+2. **`getVariablesWithSignature()` (line 52-57)** generates the `{{signature}}` merge field using the hardcoded `BRANCH_SIGNATURES` map and never checks the database for a saved signature.
 
-The `class_enrollments` source data still exists and is untouched. Examples:
-- **Adam Sargent** (dog Fuji): Puppy = "DecJan 25", EO = "EO2 Feb 2025 91,5%"
-- **Aileen Rodel** (dog Leia): Puppy = "Puppy Grad Mar 24", Yoga = "Jan 11th"
-- **Alexander Russell** (dog Luna): Puppy = "Puppy Grad 23", EO = "Ages ago", Bronze = "Passed Dec 24", Beginner = "96,5% Jan 25"
+### Plan
 
-### Proposed fix: Smarter re-import
+**File: `src/lib/email/template-renderer.ts`**
 
-Re-run the backfill but **only** for records where the free-text clearly indicates a real completion (has a percentage, "passed", "grad", or a clear date-based period). Skip vague notes like "info sent", "????", "join again??", scheduling notes, etc.
+1. Update `getSampleVariables()` to accept an optional `branchName` parameter instead of hardcoding "McKaynine Delta". Default to "McKaynine Delta" for backward compatibility.
+2. Use the passed `branchName` for both the `branch_name` variable and the `signature` generation.
 
-**Rules for the smarter import:**
-1. Import if text contains a **percentage** (e.g., "91,5%") → status = passed/no_pass based on ≥60%
-2. Import if text contains **"passed"** or **"grad"** → status = passed
-3. Import if text contains **"did not grade"/"dng"** → status = did_not_grade
-4. Import if text contains **"did not attend"/"dna"** → status = did_not_attend
-5. Import if text contains **"no pass"/"fail"** → status = no_pass
-6. **Skip everything else** — no more defaulting to "completed"
-7. **Skip** if a `handler_class_status` record already exists for that handler + class_type + dog (don't overwrite Ady's manual work)
+**Files using `getSampleVariables()` — pass current branch name:**
 
-### Implementation
+3. `src/components/email-templates/TemplatePreviewModal.tsx` — use `useBranch()` to get `currentBranch.name`, pass to `getSampleVariables(currentBranch?.name)`.
+4. `src/components/email-templates/TemplateEditorModal.tsx` — same pattern.
+5. `src/components/email-templates/TemplateConfigureModal.tsx` — same pattern.
+6. `src/pages/admin/Email.tsx` — if it has inline preview calls, same fix.
 
-Single SQL migration that:
-1. Re-reads `class_enrollments` source data
-2. Applies the stricter parsing rules above
-3. Only inserts where no existing record exists for that handler/class_type/dog
-4. Tags new records as `completion_method = 'legacy_backfill_v2'` for traceability
+**File: `src/lib/email/template-renderer.ts` — DB-aware signature**
 
-This preserves all of Ady's manual work while restoring the clearly legitimate historical records.
+7. Make `getVariablesWithSignature()` work with an async DB lookup: add an async variant `getVariablesWithSignatureAsync(variables, branchId)` that tries `getEmailSignatureFromDb(branchId)` first, falling back to the hardcoded signature. The sync version remains as a fallback.
+
+This ensures:
+- Previews show the correct branch signature based on the active branch
+- Sending uses DB signatures when available
+- Zero breaking changes — all callers that don't pass a branch name get the existing Delta default
 
