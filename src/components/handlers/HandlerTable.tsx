@@ -39,11 +39,11 @@ export function HandlerTable({
         <TableBody>
           {loading ? (
             <tr>
-              <td colSpan={9} className="p-4 text-center">Loading handlers...</td>
+              <td colSpan={10} className="p-4 text-center">Loading handlers...</td>
             </tr>
           ) : currentHandlers.length === 0 ? (
             <tr>
-              <td colSpan={9} className="p-4 text-center">
+              <td colSpan={10} className="p-4 text-center">
                 {searchQuery ? `No handlers found matching "${searchQuery}"` : "No handlers found"}
               </td>
             </tr>

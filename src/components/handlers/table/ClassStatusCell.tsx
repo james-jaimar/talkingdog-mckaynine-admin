@@ -589,7 +589,6 @@ function StatusBox({
         >
           <div className="flex items-center gap-1">
             <span className="truncate max-w-[60px]">{displayText}</span>
-            {renderActionIndicator()}
           </div>
           {passPercentage !== null && passPercentage !== undefined && (
             <span className="text-[10px] opacity-75">{passPercentage}%</span>

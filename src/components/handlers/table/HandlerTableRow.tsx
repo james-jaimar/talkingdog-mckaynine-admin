@@ -9,6 +9,7 @@ import { TaskBadge } from "../TaskBadge";
 import { StickyNote } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { HandlerNotesSheet } from "./HandlerNotesSheet";
+import { HandlerStatusCell } from "./HandlerStatusCell";
 
 interface HandlerTableRowProps {
   handler: {
@@ -81,6 +82,7 @@ export function HandlerTableRow({ handler, index = 0 }: HandlerTableRowProps) {
           </div>
         </TableCell>
       
+      <HandlerStatusCell classStatuses={handler.class_statuses} />
       <TableCell className="text-center w-[60px]">
         <span className="inline-flex items-center justify-center h-6 min-w-6 bg-gray-100 text-gray-700 text-xs font-medium rounded-full px-1.5">
           {handler.dogs?.length || 0}
