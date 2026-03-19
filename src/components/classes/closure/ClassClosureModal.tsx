@@ -203,6 +203,24 @@ export function ClassClosureModal({
         const taskDogId = bookingForTask?.dog_id || null;
         const taskDogName = (bookingForTask?.dogs as any)?.name || handler.dog_name || null;
 
+        // Look up target_term_id if handler has term info
+        let targetTermId: string | null = null;
+        if (handler.next_term_number && handler.next_term_year) {
+          const { data: termData } = await supabase
+            .from("terms")
+            .select("id")
+            .eq("term_number", handler.next_term_number)
+            .eq("academic_year_id", (
+              await supabase
+                .from("academic_years")
+                .select("id")
+                .eq("year", handler.next_term_year)
+                .maybeSingle()
+            ).data?.id || '')
+            .maybeSingle();
+          targetTermId = termData?.id || null;
+        }
+
         if (handler.next_action === "wants_info") {
           const nextClass = nextClassMap[classType] || "next class";
           await supabase.from("handler_tasks").insert({
@@ -215,6 +233,7 @@ export function ClassClosureModal({
             branch_id: classBranchId,
             dog_id: taskDogId,
             dog_name: taskDogName,
+            target_term_id: targetTermId,
           });
           tasksCreated++;
         } else if (handler.next_action === "continuing") {
@@ -233,6 +252,7 @@ export function ClassClosureModal({
             branch_id: classBranchId,
             dog_id: taskDogId,
             dog_name: taskDogName,
+            target_term_id: targetTermId,
           });
           tasksCreated++;
         }
