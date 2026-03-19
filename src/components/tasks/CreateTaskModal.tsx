@@ -138,6 +138,7 @@ export function CreateTaskModal({ open, onOpenChange }: CreateTaskModalProps) {
     setTitle("");
     setDescription("");
     setDueDate("");
+    setTargetTermId("none");
     setSelectedHandler(null);
     setHandlerSearch("");
     setHandlers([]);
