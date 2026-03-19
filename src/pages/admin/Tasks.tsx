@@ -335,6 +335,15 @@ export default function Tasks() {
                         )}
                       </TableCell>
                       <TableCell>
+                        {task.target_term ? (
+                          <Badge variant="outline" className="flex items-center gap-1 w-fit">
+                            <Calendar className="h-3 w-3" />
+                            Term {task.target_term.term_number} {task.target_term.academic_years?.year || ""}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      <TableCell>
                         <Badge variant={getStatusBadgeVariant(task.status)}>
                           {task.status}
                         </Badge>
