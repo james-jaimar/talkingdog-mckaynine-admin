@@ -129,6 +129,15 @@ export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModa
         custom_message: customMessage.replace(/\n/g, '<br>'),
       });
       
+      // Inject structured course data if template uses placeholders
+      const tVars = selectedTemplate.variables as any;
+      if (tVars?.course_data && selectedTemplate.content.includes("{{course_table}}")) {
+        variables.course_table = generateCourseTableHtml(tVars.course_data, tVars.course_footnote);
+      }
+      if (tVars?.course_descriptions && selectedTemplate.content.includes("{{course_description}}")) {
+        variables.course_description = generateCourseDescriptionHtml(tVars.course_descriptions);
+      }
+      
       // Render the user-created template content
       const renderedContent = renderTemplate(selectedTemplate.content, variables);
       const renderedSubject = renderTemplate(selectedTemplate.subject, variables);
