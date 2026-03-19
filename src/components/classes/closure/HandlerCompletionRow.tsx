@@ -15,7 +15,7 @@ interface HandlerCompletionRowProps {
   showMonthColumn?: boolean;
 }
 
-export function HandlerCompletionRow({ data, onChange, index, showContinuingColumns = false }: HandlerCompletionRowProps) {
+export function HandlerCompletionRow({ data, onChange, index, showContinuingColumns = false, showMonthColumn = false }: HandlerCompletionRowProps) {
   const { terms } = useTermOptions();
   const { classTypeNames } = useClassTypes();
   const { months } = useMonthOptions();
