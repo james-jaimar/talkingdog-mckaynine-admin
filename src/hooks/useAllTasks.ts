@@ -163,6 +163,52 @@ export function useAllTasks(filters: TaskFilters = {}, branchId?: string) {
     },
   });
 
+  const updateTask = useMutation({
+    mutationFn: async ({ taskId, updates }: { taskId: string; updates: Record<string, any> }) => {
+      // Remove undefined values
+      const cleanUpdates = Object.fromEntries(
+        Object.entries(updates).filter(([_, v]) => v !== undefined)
+      );
+      const { error } = await supabase
+        .from("handler_tasks")
+        .update(cleanUpdates)
+        .eq("id", taskId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["all-tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["handler-tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["handler-tasks-pending-count"] });
+      queryClient.invalidateQueries({ queryKey: ["pending-task-count"] });
+      toast.success("Task updated");
+    },
+    onError: (error: any) => {
+      toast.error(`Failed to update task: ${error.message}`);
+    },
+  });
+
+  const deleteTask = useMutation({
+    mutationFn: async (taskId: string) => {
+      const { error } = await supabase
+        .from("handler_tasks")
+        .delete()
+        .eq("id", taskId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["all-tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["handler-tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["handler-tasks-pending-count"] });
+      queryClient.invalidateQueries({ queryKey: ["pending-task-count"] });
+      toast.success("Task deleted");
+    },
+    onError: (error: any) => {
+      toast.error(`Failed to delete task: ${error.message}`);
+    },
+  });
+
   return {
     tasks: tasksQuery.data || [],
     isLoading: tasksQuery.isLoading,
@@ -170,6 +216,8 @@ export function useAllTasks(filters: TaskFilters = {}, branchId?: string) {
     refetch: tasksQuery.refetch,
     completeTask,
     cancelTask,
+    updateTask,
+    deleteTask,
   };
 }
 

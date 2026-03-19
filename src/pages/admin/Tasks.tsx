@@ -11,9 +11,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAllTasks, TaskWithHandler } from "@/hooks/useAllTasks";
 import { useAvailableTerms } from "@/hooks/useAvailableTerms";
 import { format } from "date-fns";
-import { Search, CheckCircle, XCircle, Send, ClipboardList, Mail, UserPlus, RefreshCw, Link, Plus, ArrowUpDown, ArrowUp, ArrowDown, MessageSquare, Calendar } from "lucide-react";
+import { Search, CheckCircle, XCircle, Send, ClipboardList, Mail, UserPlus, RefreshCw, Link, Plus, ArrowUpDown, ArrowUp, ArrowDown, MessageSquare, Calendar, Pencil, Trash2 } from "lucide-react";
 import { SendInfoPackModal } from "@/components/tasks/SendInfoPackModal";
 import { CreateTaskModal } from "@/components/tasks/CreateTaskModal";
+import { EditTaskModal } from "@/components/tasks/EditTaskModal";
 import { Link as RouterLink } from "react-router-dom";
 import { useBranch } from "@/context/BranchContext";
 import { useTerm } from "@/context/TermContext";
@@ -97,9 +98,11 @@ export default function Tasks() {
   const [selectedTask, setSelectedTask] = useState<TaskWithHandler | null>(null);
   const [isInfoPackModalOpen, setIsInfoPackModalOpen] = useState(false);
   const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<TaskWithHandler | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [handlerSort, setHandlerSort] = useState<SortDirection>(null);
 
-  const { tasks, isLoading, completeTask, cancelTask, refetch } = useAllTasks({
+  const { tasks, isLoading, completeTask, cancelTask, updateTask, deleteTask, refetch } = useAllTasks({
     status: statusFilter,
     taskType: taskTypeFilter,
     classType: classTypeFilter,
@@ -146,6 +149,21 @@ export default function Tasks() {
 
   const handleCancel = async (taskId: string) => {
     await cancelTask.mutateAsync(taskId);
+  };
+
+  const handleEdit = (task: TaskWithHandler) => {
+    setEditingTask(task);
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveEdit = async (taskId: string, updates: Record<string, any>) => {
+    await updateTask.mutateAsync({ taskId, updates });
+  };
+
+  const handleDelete = async (taskId: string) => {
+    if (window.confirm("Are you sure you want to delete this task? This cannot be undone.")) {
+      await deleteTask.mutateAsync(taskId);
+    }
   };
 
   const pendingCount = sortedTasks.filter(t => t.status === "pending").length;
@@ -366,7 +384,7 @@ export default function Tasks() {
                           : "—"}
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
+                        <div className="flex justify-end gap-1">
                           {task.task_type === "send_info_pack" && (
                             <Button
                               size="sm"
@@ -377,6 +395,14 @@ export default function Tasks() {
                               {task.status === "completed" ? "Resend" : "Send"}
                             </Button>
                           )}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEdit(task)}
+                            title="Edit task"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
                           {task.status === "pending" && (
                             <>
                               <Button
@@ -397,6 +423,14 @@ export default function Tasks() {
                               </Button>
                             </>
                           )}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(task.id)}
+                            title="Delete task"
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -417,6 +451,13 @@ export default function Tasks() {
       <CreateTaskModal
         open={isCreateTaskModalOpen}
         onOpenChange={setIsCreateTaskModalOpen}
+      />
+
+      <EditTaskModal
+        open={isEditModalOpen}
+        onOpenChange={setIsEditModalOpen}
+        task={editingTask}
+        onSave={handleSaveEdit}
       />
     </DashboardLayout>
   );
