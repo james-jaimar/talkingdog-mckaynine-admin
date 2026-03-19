@@ -12,6 +12,8 @@ import { useEmailTemplates } from "@/hooks/useEmailTemplates";
 import { useEmailAttachments, EmailAttachment } from "@/hooks/useEmailAttachments";
 import { useEmailQueue } from "@/hooks/useEmailQueue";
 import { renderTemplate, TemplateVariables, getVariablesWithSignature } from "@/lib/email/template-renderer";
+import { generateCourseTableHtml } from "@/components/email-templates/CourseTableEditor";
+import { generateCourseDescriptionHtml } from "@/components/email-templates/CourseDescriptionEditor";
 import { wrapEmailContent, getEmailSignature } from "@/lib/email/email-wrapper";
 import { useBranch } from "@/context/BranchContext";
 import { supabase } from "@/integrations/supabase/client";
