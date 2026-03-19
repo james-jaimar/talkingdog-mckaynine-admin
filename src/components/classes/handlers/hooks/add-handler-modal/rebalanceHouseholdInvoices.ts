@@ -235,6 +235,7 @@ export async function rebalanceHouseholdInvoices(params: RebalanceParams): Promi
         discount_reason: `Household discount applied (50/50 split - original: R${newClassPrice})`,
         tax_rate: 0,
         tax_amount: 0,
+        franchise_report_month: (existingInvoice as any).franchise_report_month || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`,
       })
       .select()
       .single();
