@@ -32,7 +32,7 @@ import {
 
 // Email Templates imports
 import { useEmailTemplates, EmailTemplate } from "@/hooks/useEmailTemplates";
-import { Eye, Check, Plus, Edit, Copy } from "lucide-react";
+import { Eye, Check, Plus, Edit, Copy, CopyPlus } from "lucide-react";
 import { CopyTemplateToBranchDialog } from "@/components/email-templates/CopyTemplateToBranchDialog";
 import { TemplatePreviewModal } from "@/components/email-templates/TemplatePreviewModal";
 import { TemplateEditorModal } from "@/components/email-templates/TemplateEditorModal";
@@ -42,7 +42,7 @@ import { SignatureEditorModal } from "@/components/email-signatures/SignatureEdi
 import { SignaturePreview } from "@/components/email-signatures/SignaturePreview";
 
 function EmailTemplatesTab() {
-  const { templates, isLoading, deleteTemplate, updateTemplate } = useEmailTemplates();
+  const { templates, isLoading, deleteTemplate, updateTemplate, duplicateTemplate } = useEmailTemplates();
   
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
@@ -195,6 +195,14 @@ function EmailTemplatesTab() {
                         onClick={() => handleEdit(template)}
                       >
                         <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => duplicateTemplate.mutate(template.id)}
+                        title="Duplicate template"
+                      >
+                        <CopyPlus className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="ghost"
