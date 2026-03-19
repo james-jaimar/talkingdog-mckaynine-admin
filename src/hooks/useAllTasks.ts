@@ -38,6 +38,7 @@ interface TaskFilters {
   taskType?: string;
   classType?: string;
   search?: string;
+  targetTermId?: string;
 }
 
 export function useAllTasks(filters: TaskFilters = {}, branchId?: string) {
