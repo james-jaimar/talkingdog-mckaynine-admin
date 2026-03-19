@@ -452,6 +452,13 @@ export default function Tasks() {
         open={isCreateTaskModalOpen}
         onOpenChange={setIsCreateTaskModalOpen}
       />
+
+      <EditTaskModal
+        open={isEditModalOpen}
+        onOpenChange={setIsEditModalOpen}
+        task={editingTask}
+        onSave={handleSaveEdit}
+      />
     </DashboardLayout>
   );
 }
