@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAllTasks, TaskWithHandler } from "@/hooks/useAllTasks";
 import { useAvailableTerms } from "@/hooks/useAvailableTerms";
 import { format } from "date-fns";
-import { Search, CheckCircle, XCircle, Send, ClipboardList, Mail, UserPlus, RefreshCw, Link, Plus, ArrowUpDown, ArrowUp, ArrowDown, MessageSquare, Calendar } from "lucide-react";
+import { Search, CheckCircle, XCircle, Send, ClipboardList, Mail, UserPlus, RefreshCw, Link, Plus, ArrowUpDown, ArrowUp, ArrowDown, MessageSquare, Calendar, Pencil, Trash2 } from "lucide-react";
 import { SendInfoPackModal } from "@/components/tasks/SendInfoPackModal";
 import { CreateTaskModal } from "@/components/tasks/CreateTaskModal";
 import { Link as RouterLink } from "react-router-dom";
