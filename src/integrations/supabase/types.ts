@@ -2189,6 +2189,7 @@ export type Database = {
           handler_id: string | null
           id: string
           status: string | null
+          target_term_id: string | null
           task_type: string
           title: string
           updated_at: string | null
@@ -2208,6 +2209,7 @@ export type Database = {
           handler_id?: string | null
           id?: string
           status?: string | null
+          target_term_id?: string | null
           task_type: string
           title: string
           updated_at?: string | null
@@ -2227,6 +2229,7 @@ export type Database = {
           handler_id?: string | null
           id?: string
           status?: string | null
+          target_term_id?: string | null
           task_type?: string
           title?: string
           updated_at?: string | null
@@ -2258,6 +2261,13 @@ export type Database = {
             columns: ["handler_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "handler_tasks_target_term_id_fkey"
+            columns: ["target_term_id"]
+            isOneToOne: false
+            referencedRelation: "terms"
             referencedColumns: ["id"]
           },
         ]
