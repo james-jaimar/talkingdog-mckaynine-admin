@@ -98,6 +98,8 @@ export default function Tasks() {
   const [selectedTask, setSelectedTask] = useState<TaskWithHandler | null>(null);
   const [isInfoPackModalOpen, setIsInfoPackModalOpen] = useState(false);
   const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<TaskWithHandler | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [handlerSort, setHandlerSort] = useState<SortDirection>(null);
 
   const { tasks, isLoading, completeTask, cancelTask, refetch } = useAllTasks({
