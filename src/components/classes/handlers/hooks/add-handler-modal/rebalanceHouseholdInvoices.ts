@@ -75,6 +75,7 @@ export async function rebalanceHouseholdInvoices(params: RebalanceParams): Promi
         total,
         status,
         branch_id,
+        franchise_report_month,
         invoice_items (
           id,
           description,
