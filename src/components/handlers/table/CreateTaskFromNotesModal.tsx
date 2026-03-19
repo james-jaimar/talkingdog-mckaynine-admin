@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useClassTypes } from "@/hooks/useClassTypes";
-import { useAvailableTerms } from "@/hooks/useAvailableTerms";
+import { useMonthOptions } from "@/hooks/useMonthOptions";
 import {
   Select,
   SelectContent,
@@ -44,8 +44,6 @@ const TASK_TYPES = [
   { value: "other", label: "Other" },
 ];
 
-// CLASS_TYPES now loaded dynamically via useClassTypes hook
-
 export function CreateTaskFromNotesModal({ 
   open, 
   onOpenChange, 
@@ -54,16 +52,15 @@ export function CreateTaskFromNotesModal({
   const queryClient = useQueryClient();
   const { currentBranch } = useBranch();
   const { classTypeNames } = useClassTypes();
-  const { terms: availableTerms } = useAvailableTerms();
+  const { months } = useMonthOptions();
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Form state
   const [taskType, setTaskType] = useState("other");
   const [classType, setClassType] = useState("none");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [dueDate, setDueDate] = useState("");
-  const [targetTermId, setTargetTermId] = useState("none");
+  const [targetMonth, setTargetMonth] = useState("none");
 
   const fullName = `${handler.first_name} ${handler.last_name || ''}`.trim();
 
@@ -72,9 +69,7 @@ export function CreateTaskFromNotesModal({
       toast.error("Please enter a task title");
       return;
     }
-
     setIsSubmitting(true);
-
     try {
       const { error } = await supabase.from("handler_tasks").insert({
         handler_id: handler.id,
@@ -85,18 +80,14 @@ export function CreateTaskFromNotesModal({
         due_date: dueDate || null,
         status: "pending",
         branch_id: currentBranch?.id || null,
-        target_term_id: targetTermId === "none" ? null : targetTermId,
+        target_month: targetMonth === "none" ? null : targetMonth,
       });
-
       if (error) throw error;
-
       toast.success("Task created successfully");
       queryClient.invalidateQueries({ queryKey: ["all-tasks"] });
       queryClient.invalidateQueries({ queryKey: ["handler-tasks"] });
       queryClient.invalidateQueries({ queryKey: ["handler-tasks-pending-count"] });
       queryClient.invalidateQueries({ queryKey: ["pending-task-count"] });
-      
-      // Reset form and close modal
       resetForm();
       onOpenChange(false);
     } catch (error: any) {
@@ -112,7 +103,7 @@ export function CreateTaskFromNotesModal({
     setTitle("");
     setDescription("");
     setDueDate("");
-    setTargetTermId("none");
+    setTargetMonth("none");
   };
 
   return (
@@ -120,104 +111,66 @@ export function CreateTaskFromNotesModal({
       <DialogContent className="sm:max-w-[450px]">
         <DialogHeader>
           <DialogTitle>Create Task for {fullName}</DialogTitle>
-          <DialogDescription>
-            Create a task linked to this handler.
-          </DialogDescription>
+          <DialogDescription>Create a task linked to this handler.</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          {/* Task Type */}
           <div className="space-y-2">
-            <Label htmlFor="taskType">Task Type</Label>
+            <Label>Task Type</Label>
             <Select value={taskType} onValueChange={setTaskType}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
+              <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 {TASK_TYPES.map((type) => (
-                  <SelectItem key={type.value} value={type.value}>
-                    {type.label}
-                  </SelectItem>
+                  <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
 
-          {/* Class Type */}
           <div className="space-y-2">
-            <Label htmlFor="classType">Class Type (Optional)</Label>
+            <Label>Class Type (Optional)</Label>
             <Select value={classType} onValueChange={setClassType}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select class type" />
-              </SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="Select class type" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">None</SelectItem>
                 {classTypeNames.map((type) => (
-                  <SelectItem key={type} value={type}>
-                    {type}
-                  </SelectItem>
+                  <SelectItem key={type} value={type}>{type}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
 
-          {/* Target Term */}
           <div className="space-y-2">
-            <Label htmlFor="targetTerm">Target Term (Optional)</Label>
-            <Select value={targetTermId} onValueChange={setTargetTermId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select target term" />
-              </SelectTrigger>
-              <SelectContent>
+            <Label>Target Month (Optional)</Label>
+            <Select value={targetMonth} onValueChange={setTargetMonth}>
+              <SelectTrigger><SelectValue placeholder="Select target month" /></SelectTrigger>
+              <SelectContent className="max-h-60">
                 <SelectItem value="none">None</SelectItem>
-                {availableTerms.map((term) => (
-                  <SelectItem key={term.id} value={term.id}>
-                    {term.label}
-                  </SelectItem>
+                {months.map((m) => (
+                  <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
 
-          {/* Title */}
           <div className="space-y-2">
-            <Label htmlFor="title">Task Title *</Label>
-            <Input
-              id="title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g., Follow up on enrollment inquiry"
-            />
+            <Label>Task Title *</Label>
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g., Follow up on enrollment inquiry" />
           </div>
 
-          {/* Description */}
           <div className="space-y-2">
-            <Label htmlFor="description">Description (Optional)</Label>
-            <Textarea
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Add any additional notes or context..."
-              rows={3}
-            />
+            <Label>Description (Optional)</Label>
+            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Add any additional notes or context..." rows={3} />
           </div>
 
-          {/* Due Date */}
           <div className="space-y-2">
-            <Label htmlFor="dueDate">Due Date (Optional)</Label>
-            <Input
-              id="dueDate"
-              type="date"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-            />
+            <Label>Due Date (Optional)</Label>
+            <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
           </div>
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button onClick={handleSubmit} disabled={isSubmitting}>
             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Create Task

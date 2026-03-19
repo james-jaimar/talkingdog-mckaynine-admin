@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useClassTypes } from "@/hooks/useClassTypes";
-import { useAvailableTerms } from "@/hooks/useAvailableTerms";
+import { useMonthOptions } from "@/hooks/useMonthOptions";
 import { toast } from "sonner";
 import { Loader2, Search } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -45,50 +45,39 @@ const TASK_TYPES = [
   { value: "other", label: "Other" },
 ];
 
-// CLASS_TYPES now loaded dynamically via useClassTypes hook
-
 export function CreateTaskModal({ open, onOpenChange }: CreateTaskModalProps) {
   const queryClient = useQueryClient();
   const { currentBranch } = useBranch();
   const { classTypeNames } = useClassTypes();
-  const { terms: availableTerms } = useAvailableTerms();
+  const { months } = useMonthOptions();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [handlerSearch, setHandlerSearch] = useState("");
   const [handlers, setHandlers] = useState<Handler[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [selectedHandler, setSelectedHandler] = useState<Handler | null>(null);
 
-  // Form state
   const [taskType, setTaskType] = useState("other");
   const [classType, setClassType] = useState("none");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [dueDate, setDueDate] = useState("");
-  const [targetTermId, setTargetTermId] = useState("none");
+  const [targetMonth, setTargetMonth] = useState("none");
 
-  // Search handlers when search term changes
   useEffect(() => {
     const searchHandlers = async () => {
       if (handlerSearch.length < 2) {
         setHandlers([]);
         return;
       }
-
       setIsSearching(true);
       const { data, error } = await supabase
         .from("clients")
         .select("id, first_name, last_name, email")
-        .or(
-          `first_name.ilike.%${handlerSearch}%,last_name.ilike.%${handlerSearch}%,email.ilike.%${handlerSearch}%`
-        )
+        .or(`first_name.ilike.%${handlerSearch}%,last_name.ilike.%${handlerSearch}%,email.ilike.%${handlerSearch}%`)
         .limit(10);
-
-      if (!error && data) {
-        setHandlers(data);
-      }
+      if (!error && data) setHandlers(data);
       setIsSearching(false);
     };
-
     const debounce = setTimeout(searchHandlers, 300);
     return () => clearTimeout(debounce);
   }, [handlerSearch]);
@@ -98,9 +87,7 @@ export function CreateTaskModal({ open, onOpenChange }: CreateTaskModalProps) {
       toast.error("Please enter a task title");
       return;
     }
-
     setIsSubmitting(true);
-
     try {
       const { error } = await supabase.from("handler_tasks").insert({
         handler_id: selectedHandler?.id || null,
@@ -111,18 +98,14 @@ export function CreateTaskModal({ open, onOpenChange }: CreateTaskModalProps) {
         due_date: dueDate || null,
         status: "pending",
         branch_id: currentBranch?.id || null,
-        target_term_id: targetTermId === "none" ? null : targetTermId,
+        target_month: targetMonth === "none" ? null : targetMonth,
       });
-
       if (error) throw error;
-
       toast.success("Task created successfully");
       queryClient.invalidateQueries({ queryKey: ["all-tasks"] });
       queryClient.invalidateQueries({ queryKey: ["handler-tasks"] });
       queryClient.invalidateQueries({ queryKey: ["handler-tasks-pending-count"] });
       queryClient.invalidateQueries({ queryKey: ["pending-task-count"] });
-      
-      // Reset form and close modal
       resetForm();
       onOpenChange(false);
     } catch (error: any) {
@@ -138,7 +121,7 @@ export function CreateTaskModal({ open, onOpenChange }: CreateTaskModalProps) {
     setTitle("");
     setDescription("");
     setDueDate("");
-    setTargetTermId("none");
+    setTargetMonth("none");
     setSelectedHandler(null);
     setHandlerSearch("");
     setHandlers([]);
@@ -167,20 +150,10 @@ export function CreateTaskModal({ open, onOpenChange }: CreateTaskModalProps) {
             {selectedHandler ? (
               <div className="flex items-center justify-between p-3 border rounded-md bg-muted/50">
                 <div>
-                  <p className="font-medium">
-                    {selectedHandler.first_name} {selectedHandler.last_name}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {selectedHandler.email}
-                  </p>
+                  <p className="font-medium">{selectedHandler.first_name} {selectedHandler.last_name}</p>
+                  <p className="text-sm text-muted-foreground">{selectedHandler.email}</p>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setSelectedHandler(null)}
-                >
-                  Change
-                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setSelectedHandler(null)}>Change</Button>
               </div>
             ) : (
               <div className="relative">
@@ -191,9 +164,7 @@ export function CreateTaskModal({ open, onOpenChange }: CreateTaskModalProps) {
                   onChange={(e) => setHandlerSearch(e.target.value)}
                   className="pl-10"
                 />
-                {isSearching && (
-                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin" />
-                )}
+                {isSearching && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin" />}
                 {handlers.length > 0 && (
                   <div className="absolute z-10 w-full mt-1 bg-background border rounded-md shadow-lg max-h-48 overflow-auto">
                     {handlers.map((handler) => (
@@ -202,12 +173,8 @@ export function CreateTaskModal({ open, onOpenChange }: CreateTaskModalProps) {
                         className="w-full text-left px-3 py-2 hover:bg-muted transition-colors"
                         onClick={() => selectHandler(handler)}
                       >
-                        <p className="font-medium">
-                          {handler.first_name} {handler.last_name}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {handler.email}
-                        </p>
+                        <p className="font-medium">{handler.first_name} {handler.last_name}</p>
+                        <p className="text-sm text-muted-foreground">{handler.email}</p>
                       </button>
                     ))}
                   </div>
@@ -218,16 +185,12 @@ export function CreateTaskModal({ open, onOpenChange }: CreateTaskModalProps) {
 
           {/* Task Type */}
           <div className="space-y-2">
-            <Label htmlFor="taskType">Task Type</Label>
+            <Label>Task Type</Label>
             <Select value={taskType} onValueChange={setTaskType}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
+              <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 {TASK_TYPES.map((type) => (
-                  <SelectItem key={type.value} value={type.value}>
-                    {type.label}
-                  </SelectItem>
+                  <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -235,35 +198,27 @@ export function CreateTaskModal({ open, onOpenChange }: CreateTaskModalProps) {
 
           {/* Class Type */}
           <div className="space-y-2">
-            <Label htmlFor="classType">Class Type (Optional)</Label>
+            <Label>Class Type (Optional)</Label>
             <Select value={classType} onValueChange={setClassType}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select class type" />
-              </SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="Select class type" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">None</SelectItem>
                 {classTypeNames.map((type) => (
-                  <SelectItem key={type} value={type}>
-                    {type}
-                  </SelectItem>
+                  <SelectItem key={type} value={type}>{type}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
 
-          {/* Target Term */}
+          {/* Target Month */}
           <div className="space-y-2">
-            <Label htmlFor="targetTerm">Target Term (Optional)</Label>
-            <Select value={targetTermId} onValueChange={setTargetTermId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select target term" />
-              </SelectTrigger>
-              <SelectContent>
+            <Label>Target Month (Optional)</Label>
+            <Select value={targetMonth} onValueChange={setTargetMonth}>
+              <SelectTrigger><SelectValue placeholder="Select target month" /></SelectTrigger>
+              <SelectContent className="max-h-60">
                 <SelectItem value="none">None</SelectItem>
-                {availableTerms.map((term) => (
-                  <SelectItem key={term.id} value={term.id}>
-                    {term.label}
-                  </SelectItem>
+                {months.map((m) => (
+                  <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -271,43 +226,25 @@ export function CreateTaskModal({ open, onOpenChange }: CreateTaskModalProps) {
 
           {/* Title */}
           <div className="space-y-2">
-            <Label htmlFor="title">Task Title *</Label>
-            <Input
-              id="title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g., Follow up on enrollment inquiry"
-            />
+            <Label>Task Title *</Label>
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g., Follow up on enrollment inquiry" />
           </div>
 
           {/* Description */}
           <div className="space-y-2">
-            <Label htmlFor="description">Description (Optional)</Label>
-            <Textarea
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Add any additional notes or context..."
-              rows={3}
-            />
+            <Label>Description (Optional)</Label>
+            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Add any additional notes or context..." rows={3} />
           </div>
 
           {/* Due Date */}
           <div className="space-y-2">
-            <Label htmlFor="dueDate">Due Date (Optional)</Label>
-            <Input
-              id="dueDate"
-              type="date"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-            />
+            <Label>Due Date (Optional)</Label>
+            <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
           </div>
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button onClick={handleSubmit} disabled={isSubmitting}>
             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Create Task

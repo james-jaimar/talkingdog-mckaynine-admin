@@ -2189,6 +2189,7 @@ export type Database = {
           handler_id: string | null
           id: string
           status: string | null
+          target_month: string | null
           target_term_id: string | null
           task_type: string
           title: string
@@ -2209,6 +2210,7 @@ export type Database = {
           handler_id?: string | null
           id?: string
           status?: string | null
+          target_month?: string | null
           target_term_id?: string | null
           task_type: string
           title: string
@@ -2229,6 +2231,7 @@ export type Database = {
           handler_id?: string | null
           id?: string
           status?: string | null
+          target_month?: string | null
           target_term_id?: string | null
           task_type?: string
           title?: string
