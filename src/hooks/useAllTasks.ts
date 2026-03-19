@@ -17,12 +17,20 @@ export interface TaskWithHandler {
   completed_at: string | null;
   dog_id: string | null;
   dog_name: string | null;
+  target_term_id: string | null;
   handler?: {
     id: string;
     first_name: string;
     last_name: string;
     email: string;
   };
+  target_term?: {
+    id: string;
+    term_number: string;
+    academic_years: {
+      year: number;
+    } | null;
+  } | null;
 }
 
 interface TaskFilters {
