@@ -92,7 +92,7 @@ export function HandlerStatusCell({ classStatuses, handlerId }: HandlerStatusCel
   const hasTasks = pendingTasks.length > 0;
 
   return (
-    <TableCell className="text-center w-[70px]">
+    <TableCell className="text-center w-[70px] bg-blue-50/50 border-l border-r border-blue-100">
       <div className="flex items-center justify-center gap-1 flex-wrap">
         {hasTasks ? (
           <Popover>
