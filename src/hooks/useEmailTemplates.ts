@@ -52,7 +52,7 @@ export function useEmailTemplates() {
       return (data || []).map(template => ({
         ...template,
         name: template.name || template.type,
-        variables: Array.isArray(template.variables) ? template.variables : [],
+        variables: template.variables || {},
         is_active: template.is_active ?? true,
       })) as EmailTemplate[];
     },
