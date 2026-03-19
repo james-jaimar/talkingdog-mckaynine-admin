@@ -56,6 +56,11 @@ export function useAllTasks(filters: TaskFilters = {}, branchId?: string) {
             first_name,
             last_name,
             email
+          ),
+          target_term:terms!handler_tasks_target_term_id_fkey(
+            id,
+            term_number,
+            academic_years(year)
           )
         `)
         .neq("task_type", "trainer_note") // Exclude trainer notes - they have their own page
