@@ -14,6 +14,7 @@ import { format } from "date-fns";
 import { Search, CheckCircle, XCircle, Send, ClipboardList, Mail, UserPlus, RefreshCw, Link, Plus, ArrowUpDown, ArrowUp, ArrowDown, MessageSquare, Calendar, Pencil, Trash2 } from "lucide-react";
 import { SendInfoPackModal } from "@/components/tasks/SendInfoPackModal";
 import { CreateTaskModal } from "@/components/tasks/CreateTaskModal";
+import { EditTaskModal } from "@/components/tasks/EditTaskModal";
 import { Link as RouterLink } from "react-router-dom";
 import { useBranch } from "@/context/BranchContext";
 import { useTerm } from "@/context/TermContext";
