@@ -164,6 +164,7 @@ export const addHandlerToClass = async ({
           newClassDate: classDate instanceof Date ? classDate.toISOString() : classDate,
           newClassBranchId: classDetails.branchId,
           existingHandlerId: existingEnrollment.existingHandlerId || '',
+          termId,
         });
         
         if (rebalanceResult.success) {

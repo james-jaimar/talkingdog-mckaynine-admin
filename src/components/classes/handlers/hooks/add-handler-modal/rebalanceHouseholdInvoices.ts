@@ -225,6 +225,7 @@ export async function rebalanceHouseholdInvoices(params: RebalanceParams): Promi
         issued_date: now.toISOString(),
         due_date: dueDate.toISOString(),
         status: 'draft',
+        term_id: params.termId || null,
         subtotal: sharePerHandler + newEnrollmentFee,
         total: sharePerHandler + newEnrollmentFee,
         branch_id: newClassBranchId,
