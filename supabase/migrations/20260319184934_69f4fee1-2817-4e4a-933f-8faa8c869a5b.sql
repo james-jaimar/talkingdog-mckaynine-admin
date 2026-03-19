@@ -1,0 +1,1 @@
+ALTER TABLE public.handler_tasks ADD COLUMN target_month text;
