@@ -224,6 +224,15 @@ export function SendQuickEmailModal({ open, onOpenChange, handler }: SendQuickEm
         templateId = selectedCustomTemplate.id;
         const variables = getTemplateVariables();
         
+        // Inject structured course data if template uses placeholders
+        const templateVars = selectedCustomTemplate.variables as any;
+        if (templateVars?.course_data && selectedCustomTemplate.content.includes("{{course_table}}")) {
+          variables.course_table = generateCourseTableHtml(templateVars.course_data, templateVars.course_footnote);
+        }
+        if (templateVars?.course_descriptions && selectedCustomTemplate.content.includes("{{course_description}}")) {
+          variables.course_description = generateCourseDescriptionHtml(templateVars.course_descriptions);
+        }
+        
         subject = renderTemplate(selectedCustomTemplate.subject, variables);
         const renderedContent = renderTemplate(selectedCustomTemplate.content, variables);
         html = wrapEmailContent(renderedContent, {
