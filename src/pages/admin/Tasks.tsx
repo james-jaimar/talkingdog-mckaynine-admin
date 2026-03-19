@@ -233,11 +233,11 @@ export default function Tasks() {
                   ))}
                 </SelectContent>
               </Select>
-              <Select value={termFilter} onValueChange={setTermFilter}>
+              <Select value={termFilter || "all"} onValueChange={setTermFilter}>
                 <SelectTrigger>
                   <SelectValue placeholder="Term" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="max-h-60">
                   <SelectItem value="all">All Terms</SelectItem>
                   <SelectItem value="unassigned">Unassigned</SelectItem>
                   {availableTerms.map((term) => (
