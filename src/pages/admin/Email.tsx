@@ -199,6 +199,14 @@ function EmailTemplatesTab() {
                       <Button
                         variant="ghost"
                         size="sm"
+                        onClick={() => duplicateTemplate.mutate(template.id)}
+                        title="Duplicate template"
+                      >
+                        <CopyPlus className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => setTemplateToCopy(template)}
                         title="Copy to another branch"
                       >
