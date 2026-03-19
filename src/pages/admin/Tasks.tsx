@@ -384,7 +384,7 @@ export default function Tasks() {
                           : "—"}
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
+                        <div className="flex justify-end gap-1">
                           {task.task_type === "send_info_pack" && (
                             <Button
                               size="sm"
@@ -395,6 +395,14 @@ export default function Tasks() {
                               {task.status === "completed" ? "Resend" : "Send"}
                             </Button>
                           )}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEdit(task)}
+                            title="Edit task"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
                           {task.status === "pending" && (
                             <>
                               <Button
@@ -415,6 +423,14 @@ export default function Tasks() {
                               </Button>
                             </>
                           )}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(task.id)}
+                            title="Delete task"
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
