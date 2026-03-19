@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -18,19 +17,13 @@ export interface TaskWithHandler {
   dog_id: string | null;
   dog_name: string | null;
   target_term_id: string | null;
+  target_month: string | null;
   handler?: {
     id: string;
     first_name: string;
     last_name: string;
     email: string;
   };
-  target_term?: {
-    id: string;
-    term_number: string;
-    academic_years: {
-      year: number;
-    } | null;
-  } | null;
 }
 
 interface TaskFilters {
@@ -38,7 +31,7 @@ interface TaskFilters {
   taskType?: string;
   classType?: string;
   search?: string;
-  targetTermId?: string;
+  targetMonth?: string;
 }
 
 export function useAllTasks(filters: TaskFilters = {}, branchId?: string) {
@@ -56,22 +49,15 @@ export function useAllTasks(filters: TaskFilters = {}, branchId?: string) {
             first_name,
             last_name,
             email
-          ),
-          target_term:terms!handler_tasks_target_term_id_fkey(
-            id,
-            term_number,
-            academic_years(year)
           )
         `)
-        .neq("task_type", "trainer_note") // Exclude trainer notes - they have their own page
+        .neq("task_type", "trainer_note")
         .order("created_at", { ascending: false });
 
-      // Filter by branch
       if (branchId) {
         query = query.eq("branch_id", branchId);
       }
 
-      // Apply filters
       if (filters.status && filters.status !== "all") {
         query = query.eq("status", filters.status);
       }
@@ -81,11 +67,11 @@ export function useAllTasks(filters: TaskFilters = {}, branchId?: string) {
       if (filters.classType && filters.classType !== "all") {
         query = query.eq("class_type", filters.classType);
       }
-      if (filters.targetTermId && filters.targetTermId !== "all") {
-        if (filters.targetTermId === "unassigned") {
-          query = query.is("target_term_id", null);
+      if (filters.targetMonth && filters.targetMonth !== "all") {
+        if (filters.targetMonth === "unassigned") {
+          query = query.is("target_month", null);
         } else {
-          query = query.eq("target_term_id", filters.targetTermId);
+          query = query.eq("target_month", filters.targetMonth);
         }
       }
 
@@ -93,14 +79,11 @@ export function useAllTasks(filters: TaskFilters = {}, branchId?: string) {
       
       if (error) throw error;
 
-      // Transform the data to match our interface
       let tasks = (data || []).map(task => ({
         ...task,
         handler: Array.isArray(task.handler) ? task.handler[0] : task.handler,
-        target_term: Array.isArray(task.target_term) ? task.target_term[0] : task.target_term,
       })) as TaskWithHandler[];
 
-      // Apply client-side search filter
       if (filters.search) {
         const searchLower = filters.search.toLowerCase();
         tasks = tasks.filter(task => 
@@ -165,7 +148,6 @@ export function useAllTasks(filters: TaskFilters = {}, branchId?: string) {
 
   const updateTask = useMutation({
     mutationFn: async ({ taskId, updates }: { taskId: string; updates: Record<string, any> }) => {
-      // Remove undefined values
       const cleanUpdates = Object.fromEntries(
         Object.entries(updates).filter(([_, v]) => v !== undefined)
       );
@@ -230,7 +212,7 @@ export function usePendingTaskCount(branchId?: string) {
         .from("handler_tasks")
         .select("*", { count: "exact", head: true })
         .eq("status", "pending")
-        .neq("task_type", "trainer_note"); // Exclude trainer notes from task count
+        .neq("task_type", "trainer_note");
 
       if (branchId) {
         query = query.eq("branch_id", branchId);

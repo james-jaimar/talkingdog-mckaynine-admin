@@ -1,5 +1,5 @@
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { Helmet } from "react-helmet";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAllTasks, TaskWithHandler } from "@/hooks/useAllTasks";
-import { useAvailableTerms } from "@/hooks/useAvailableTerms";
+import { useMonthOptions, formatTargetMonth } from "@/hooks/useMonthOptions";
 import { format } from "date-fns";
 import { Search, CheckCircle, XCircle, Send, ClipboardList, Mail, UserPlus, RefreshCw, Link, Plus, ArrowUpDown, ArrowUp, ArrowDown, MessageSquare, Calendar, Pencil, Trash2 } from "lucide-react";
 import { SendInfoPackModal } from "@/components/tasks/SendInfoPackModal";
@@ -17,7 +17,6 @@ import { CreateTaskModal } from "@/components/tasks/CreateTaskModal";
 import { EditTaskModal } from "@/components/tasks/EditTaskModal";
 import { Link as RouterLink } from "react-router-dom";
 import { useBranch } from "@/context/BranchContext";
-import { useTerm } from "@/context/TermContext";
 
 type SortDirection = "asc" | "desc" | null;
 
@@ -79,22 +78,13 @@ function getStatusBadgeVariant(status: string | null) {
 
 export default function Tasks() {
   const { currentBranch } = useBranch();
-  const { termData } = useTerm();
-  const { terms: availableTerms } = useAvailableTerms();
+  const { months } = useMonthOptions();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("pending");
   const [taskTypeFilter, setTaskTypeFilter] = useState("all");
   const [classTypeFilter, setClassTypeFilter] = useState("all");
-  const [termFilter, setTermFilter] = useState<string | undefined>(undefined);
+  const [monthFilter, setMonthFilter] = useState("all");
 
-  // Default term filter to current term once data is loaded
-  useEffect(() => {
-    if (termFilter === undefined && termData?.id) {
-      setTermFilter(termData.id);
-    } else if (termFilter === undefined && !termData) {
-      setTermFilter("all");
-    }
-  }, [termData, termFilter]);
   const [selectedTask, setSelectedTask] = useState<TaskWithHandler | null>(null);
   const [isInfoPackModalOpen, setIsInfoPackModalOpen] = useState(false);
   const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
@@ -107,17 +97,16 @@ export default function Tasks() {
     taskType: taskTypeFilter,
     classType: classTypeFilter,
     search,
-    targetTermId: termFilter,
+    targetMonth: monthFilter,
   }, currentBranch?.id);
 
-  // Sort tasks by handler name
   const sortedTasks = useMemo(() => {
     if (!handlerSort) return tasks;
     
     return [...tasks].sort((a, b) => {
       const nameA = a.handler 
         ? `${a.handler.first_name} ${a.handler.last_name}`.toLowerCase() 
-        : "zzz"; // Push unknown handlers to end
+        : "zzz";
       const nameB = b.handler 
         ? `${b.handler.first_name} ${b.handler.last_name}`.toLowerCase() 
         : "zzz";
@@ -251,16 +240,16 @@ export default function Tasks() {
                   ))}
                 </SelectContent>
               </Select>
-              <Select value={termFilter || "all"} onValueChange={setTermFilter}>
+              <Select value={monthFilter} onValueChange={setMonthFilter}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Term" />
+                  <SelectValue placeholder="Month" />
                 </SelectTrigger>
                 <SelectContent className="max-h-60">
-                  <SelectItem value="all">All Terms</SelectItem>
+                  <SelectItem value="all">All Months</SelectItem>
                   <SelectItem value="unassigned">Unassigned</SelectItem>
-                  {availableTerms.map((term) => (
-                    <SelectItem key={term.id} value={term.id}>
-                      {term.label}
+                  {months.map((m) => (
+                    <SelectItem key={m.value} value={m.value}>
+                      {m.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -310,7 +299,7 @@ export default function Tasks() {
                     <TableHead>Task</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead>Class</TableHead>
-                    <TableHead>Term</TableHead>
+                    <TableHead>Month</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Created</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
@@ -364,10 +353,10 @@ export default function Tasks() {
                         )}
                       </TableCell>
                       <TableCell>
-                        {task.target_term ? (
+                        {task.target_month ? (
                           <Badge variant="outline" className="flex items-center gap-1 w-fit">
                             <Calendar className="h-3 w-3" />
-                            Term {task.target_term.term_number} {task.target_term.academic_years?.year || ""}
+                            {formatTargetMonth(task.target_month)}
                           </Badge>
                         ) : (
                           <span className="text-muted-foreground">—</span>
@@ -442,17 +431,18 @@ export default function Tasks() {
         </Card>
       </div>
 
-      <SendInfoPackModal
-        open={isInfoPackModalOpen}
-        onOpenChange={setIsInfoPackModalOpen}
-        task={selectedTask}
-      />
-
+      {/* Modals */}
+      {selectedTask && (
+        <SendInfoPackModal
+          open={isInfoPackModalOpen}
+          onOpenChange={setIsInfoPackModalOpen}
+          task={selectedTask}
+        />
+      )}
       <CreateTaskModal
         open={isCreateTaskModalOpen}
         onOpenChange={setIsCreateTaskModalOpen}
       />
-
       <EditTaskModal
         open={isEditModalOpen}
         onOpenChange={setIsEditModalOpen}
