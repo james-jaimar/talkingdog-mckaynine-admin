@@ -67,7 +67,7 @@ export function HandlerStatusCell({ classStatuses, handlerId }: HandlerStatusCel
   }
 
   if (groups.size === 0) {
-    return <TableCell className="text-center w-[70px]" />;
+    return <TableCell className="text-center w-[70px] bg-blue-50/50 border-l border-r border-blue-100" />;
   }
 
   const handleComplete = async (taskId: string) => {
