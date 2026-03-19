@@ -180,6 +180,30 @@ export function HandlerCompletionRow({ data, onChange, index, showContinuingColu
           </TableCell>
         </>
       )}
+
+      {/* Target Month - shown when any handler has wants_info or continuing */}
+      {completionData_showMonth && (
+        <TableCell>
+          {showMonthPicker ? (
+            <Select
+              value={data.target_month || "none"}
+              onValueChange={(value) => handleChange('target_month', value === "none" ? undefined : value)}
+            >
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="Select month" />
+              </SelectTrigger>
+              <SelectContent className="max-h-60">
+                <SelectItem value="none">None</SelectItem>
+                {months.map((m) => (
+                  <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <span className="text-muted-foreground text-sm">—</span>
+          )}
+        </TableCell>
+      )}
       
       <TableCell>
         <Textarea

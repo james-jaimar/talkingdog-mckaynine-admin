@@ -10,6 +10,7 @@ export interface HandlerCompletionData {
   next_class_type?: string;
   next_term_number?: string;
   next_term_year?: number;
+  target_month?: string;
 }
 
 export interface ClassClosureModalProps {
