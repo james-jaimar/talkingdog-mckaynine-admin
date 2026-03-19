@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useEmailTemplates, EmailTemplate } from "@/hooks/useEmailTemplates";
-import { Eye, Mail, Check, Clock, Plus, Edit, Trash2, FileText, Paperclip, Copy } from "lucide-react";
+import { Eye, Mail, Check, Clock, Plus, Edit, Trash2, FileText, Paperclip, Copy, CopyPlus } from "lucide-react";
 import { TemplatePreviewModal } from "@/components/email-templates/TemplatePreviewModal";
 import { TemplateEditorModal } from "@/components/email-templates/TemplateEditorModal";
 import { AttachmentLibrary } from "@/components/email-templates/AttachmentLibrary";
