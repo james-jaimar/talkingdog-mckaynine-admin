@@ -12,7 +12,7 @@ export interface EmailTemplate {
   subject: string;
   content: string;
   class_type: string | null;
-  variables: string[];
+  variables: any;
   is_active: boolean;
   created_at: string;
   updated_at: string;
