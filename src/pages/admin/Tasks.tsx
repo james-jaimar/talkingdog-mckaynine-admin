@@ -102,7 +102,7 @@ export default function Tasks() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [handlerSort, setHandlerSort] = useState<SortDirection>(null);
 
-  const { tasks, isLoading, completeTask, cancelTask, refetch } = useAllTasks({
+  const { tasks, isLoading, completeTask, cancelTask, updateTask, deleteTask, refetch } = useAllTasks({
     status: statusFilter,
     taskType: taskTypeFilter,
     classType: classTypeFilter,
