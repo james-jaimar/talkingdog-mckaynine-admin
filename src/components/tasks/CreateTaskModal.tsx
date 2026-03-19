@@ -51,6 +51,7 @@ export function CreateTaskModal({ open, onOpenChange }: CreateTaskModalProps) {
   const queryClient = useQueryClient();
   const { currentBranch } = useBranch();
   const { classTypeNames } = useClassTypes();
+  const { terms: availableTerms } = useAvailableTerms();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [handlerSearch, setHandlerSearch] = useState("");
   const [handlers, setHandlers] = useState<Handler[]>([]);
