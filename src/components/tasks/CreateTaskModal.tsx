@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useClassTypes } from "@/hooks/useClassTypes";
+import { useAvailableTerms } from "@/hooks/useAvailableTerms";
 import { toast } from "sonner";
 import { Loader2, Search } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -50,6 +51,7 @@ export function CreateTaskModal({ open, onOpenChange }: CreateTaskModalProps) {
   const queryClient = useQueryClient();
   const { currentBranch } = useBranch();
   const { classTypeNames } = useClassTypes();
+  const { terms: availableTerms } = useAvailableTerms();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [handlerSearch, setHandlerSearch] = useState("");
   const [handlers, setHandlers] = useState<Handler[]>([]);
@@ -62,6 +64,7 @@ export function CreateTaskModal({ open, onOpenChange }: CreateTaskModalProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [dueDate, setDueDate] = useState("");
+  const [targetTermId, setTargetTermId] = useState("none");
 
   // Search handlers when search term changes
   useEffect(() => {
@@ -108,6 +111,7 @@ export function CreateTaskModal({ open, onOpenChange }: CreateTaskModalProps) {
         due_date: dueDate || null,
         status: "pending",
         branch_id: currentBranch?.id || null,
+        target_term_id: targetTermId === "none" ? null : targetTermId,
       });
 
       if (error) throw error;
@@ -134,6 +138,7 @@ export function CreateTaskModal({ open, onOpenChange }: CreateTaskModalProps) {
     setTitle("");
     setDescription("");
     setDueDate("");
+    setTargetTermId("none");
     setSelectedHandler(null);
     setHandlerSearch("");
     setHandlers([]);
@@ -240,6 +245,24 @@ export function CreateTaskModal({ open, onOpenChange }: CreateTaskModalProps) {
                 {classTypeNames.map((type) => (
                   <SelectItem key={type} value={type}>
                     {type}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Target Term */}
+          <div className="space-y-2">
+            <Label htmlFor="targetTerm">Target Term (Optional)</Label>
+            <Select value={targetTermId} onValueChange={setTargetTermId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select target term" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">None</SelectItem>
+                {availableTerms.map((term) => (
+                  <SelectItem key={term.id} value={term.id}>
+                    {term.label}
                   </SelectItem>
                 ))}
               </SelectContent>

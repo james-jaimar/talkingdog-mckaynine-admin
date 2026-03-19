@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useClassTypes } from "@/hooks/useClassTypes";
+import { useAvailableTerms } from "@/hooks/useAvailableTerms";
 import {
   Select,
   SelectContent,
@@ -53,6 +54,7 @@ export function CreateTaskFromNotesModal({
   const queryClient = useQueryClient();
   const { currentBranch } = useBranch();
   const { classTypeNames } = useClassTypes();
+  const { terms: availableTerms } = useAvailableTerms();
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Form state
@@ -61,6 +63,7 @@ export function CreateTaskFromNotesModal({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [dueDate, setDueDate] = useState("");
+  const [targetTermId, setTargetTermId] = useState("none");
 
   const fullName = `${handler.first_name} ${handler.last_name || ''}`.trim();
 
@@ -82,6 +85,7 @@ export function CreateTaskFromNotesModal({
         due_date: dueDate || null,
         status: "pending",
         branch_id: currentBranch?.id || null,
+        target_term_id: targetTermId === "none" ? null : targetTermId,
       });
 
       if (error) throw error;
@@ -108,6 +112,7 @@ export function CreateTaskFromNotesModal({
     setTitle("");
     setDescription("");
     setDueDate("");
+    setTargetTermId("none");
   };
 
   return (
@@ -150,6 +155,24 @@ export function CreateTaskFromNotesModal({
                 {classTypeNames.map((type) => (
                   <SelectItem key={type} value={type}>
                     {type}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Target Term */}
+          <div className="space-y-2">
+            <Label htmlFor="targetTerm">Target Term (Optional)</Label>
+            <Select value={targetTermId} onValueChange={setTargetTermId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select target term" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">None</SelectItem>
+                {availableTerms.map((term) => (
+                  <SelectItem key={term.id} value={term.id}>
+                    {term.label}
                   </SelectItem>
                 ))}
               </SelectContent>

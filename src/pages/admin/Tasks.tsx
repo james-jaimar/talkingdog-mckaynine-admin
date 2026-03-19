@@ -9,8 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAllTasks, TaskWithHandler } from "@/hooks/useAllTasks";
+import { useAvailableTerms } from "@/hooks/useAvailableTerms";
 import { format } from "date-fns";
-import { Search, CheckCircle, XCircle, Send, ClipboardList, Mail, UserPlus, RefreshCw, Link, Plus, ArrowUpDown, ArrowUp, ArrowDown, MessageSquare } from "lucide-react";
+import { Search, CheckCircle, XCircle, Send, ClipboardList, Mail, UserPlus, RefreshCw, Link, Plus, ArrowUpDown, ArrowUp, ArrowDown, MessageSquare, Calendar } from "lucide-react";
 import { SendInfoPackModal } from "@/components/tasks/SendInfoPackModal";
 import { CreateTaskModal } from "@/components/tasks/CreateTaskModal";
 import { Link as RouterLink } from "react-router-dom";
@@ -76,10 +77,12 @@ function getStatusBadgeVariant(status: string | null) {
 
 export default function Tasks() {
   const { currentBranch } = useBranch();
+  const { terms: availableTerms } = useAvailableTerms();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("pending");
   const [taskTypeFilter, setTaskTypeFilter] = useState("all");
   const [classTypeFilter, setClassTypeFilter] = useState("all");
+  const [termFilter, setTermFilter] = useState("all");
   const [selectedTask, setSelectedTask] = useState<TaskWithHandler | null>(null);
   const [isInfoPackModalOpen, setIsInfoPackModalOpen] = useState(false);
   const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
@@ -90,6 +93,7 @@ export default function Tasks() {
     taskType: taskTypeFilter,
     classType: classTypeFilter,
     search,
+    targetTermId: termFilter,
   }, currentBranch?.id);
 
   // Sort tasks by handler name
@@ -172,7 +176,7 @@ export default function Tasks() {
         {/* Filters */}
         <Card>
           <CardContent className="pt-6">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -214,6 +218,20 @@ export default function Tasks() {
                   {CLASS_TYPE_OPTIONS.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={termFilter} onValueChange={setTermFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Term" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Terms</SelectItem>
+                  <SelectItem value="unassigned">Unassigned</SelectItem>
+                  {availableTerms.map((term) => (
+                    <SelectItem key={term.id} value={term.id}>
+                      {term.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -263,6 +281,7 @@ export default function Tasks() {
                     <TableHead>Task</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead>Class</TableHead>
+                    <TableHead>Term</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Created</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
@@ -311,6 +330,16 @@ export default function Tasks() {
                       <TableCell>
                         {task.class_type ? (
                           <Badge variant="secondary">{task.class_type}</Badge>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {task.target_term ? (
+                          <Badge variant="outline" className="flex items-center gap-1 w-fit">
+                            <Calendar className="h-3 w-3" />
+                            Term {task.target_term.term_number} {task.target_term.academic_years?.year || ""}
+                          </Badge>
                         ) : (
                           <span className="text-muted-foreground">—</span>
                         )}

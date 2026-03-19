@@ -17,12 +17,20 @@ export interface TaskWithHandler {
   completed_at: string | null;
   dog_id: string | null;
   dog_name: string | null;
+  target_term_id: string | null;
   handler?: {
     id: string;
     first_name: string;
     last_name: string;
     email: string;
   };
+  target_term?: {
+    id: string;
+    term_number: string;
+    academic_years: {
+      year: number;
+    } | null;
+  } | null;
 }
 
 interface TaskFilters {
@@ -30,6 +38,7 @@ interface TaskFilters {
   taskType?: string;
   classType?: string;
   search?: string;
+  targetTermId?: string;
 }
 
 export function useAllTasks(filters: TaskFilters = {}, branchId?: string) {
@@ -47,6 +56,11 @@ export function useAllTasks(filters: TaskFilters = {}, branchId?: string) {
             first_name,
             last_name,
             email
+          ),
+          target_term:terms!handler_tasks_target_term_id_fkey(
+            id,
+            term_number,
+            academic_years(year)
           )
         `)
         .neq("task_type", "trainer_note") // Exclude trainer notes - they have their own page
@@ -67,6 +81,13 @@ export function useAllTasks(filters: TaskFilters = {}, branchId?: string) {
       if (filters.classType && filters.classType !== "all") {
         query = query.eq("class_type", filters.classType);
       }
+      if (filters.targetTermId && filters.targetTermId !== "all") {
+        if (filters.targetTermId === "unassigned") {
+          query = query.is("target_term_id", null);
+        } else {
+          query = query.eq("target_term_id", filters.targetTermId);
+        }
+      }
 
       const { data, error } = await query;
       
@@ -76,6 +97,7 @@ export function useAllTasks(filters: TaskFilters = {}, branchId?: string) {
       let tasks = (data || []).map(task => ({
         ...task,
         handler: Array.isArray(task.handler) ? task.handler[0] : task.handler,
+        target_term: Array.isArray(task.target_term) ? task.target_term[0] : task.target_term,
       })) as TaskWithHandler[];
 
       // Apply client-side search filter
