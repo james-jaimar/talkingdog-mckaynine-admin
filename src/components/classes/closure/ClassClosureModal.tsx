@@ -208,15 +208,9 @@ export function ClassClosureModal({
         if (handler.next_term_number && handler.next_term_year) {
           const { data: termData } = await supabase
             .from("terms")
-            .select("id")
-            .eq("term_number", handler.next_term_number)
-            .eq("academic_year_id", (
-              await supabase
-                .from("academic_years")
-                .select("id")
-                .eq("year", handler.next_term_year)
-                .maybeSingle()
-            ).data?.id || '')
+            .select("id, academic_years!inner(year)")
+            .eq("term_number", handler.next_term_number as any)
+            .eq("academic_years.year", handler.next_term_year)
             .maybeSingle();
           targetTermId = termData?.id || null;
         }
