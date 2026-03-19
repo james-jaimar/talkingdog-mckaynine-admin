@@ -9,6 +9,7 @@ import { TaskBadge } from "../TaskBadge";
 import { StickyNote } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { HandlerNotesSheet } from "./HandlerNotesSheet";
+import { HandlerStatusCell } from "./HandlerStatusCell";
 
 interface HandlerTableRowProps {
   handler: {
