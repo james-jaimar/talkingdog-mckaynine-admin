@@ -343,6 +343,7 @@ export default function Tasks() {
                         ) : (
                           <span className="text-muted-foreground">—</span>
                         )}
+                      </TableCell>
                       <TableCell>
                         <Badge variant={getStatusBadgeVariant(task.status)}>
                           {task.status}
