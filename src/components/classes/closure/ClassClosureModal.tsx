@@ -353,6 +353,7 @@ export function ClassClosureModal({
                       onChange={(data) => handleUpdateHandler(index, data)}
                       index={index}
                       showContinuingColumns={completionData.some(h => h.next_action === "continuing")}
+                      showMonthColumn={completionData.some(h => h.next_action === "continuing" || h.next_action === "wants_info")}
                     />
                   ))}
                 </TableBody>
