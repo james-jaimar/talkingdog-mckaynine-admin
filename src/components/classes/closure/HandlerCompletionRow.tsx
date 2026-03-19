@@ -183,7 +183,7 @@ export function HandlerCompletionRow({ data, onChange, index, showContinuingColu
       )}
 
       {/* Target Month - shown when any handler has wants_info or continuing */}
-      {completionData_showMonth && (
+      {showMonthColumn && (
         <TableCell>
           {showMonthPicker ? (
             <Select
