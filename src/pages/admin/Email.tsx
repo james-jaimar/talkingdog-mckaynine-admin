@@ -42,7 +42,7 @@ import { SignatureEditorModal } from "@/components/email-signatures/SignatureEdi
 import { SignaturePreview } from "@/components/email-signatures/SignaturePreview";
 
 function EmailTemplatesTab() {
-  const { templates, isLoading, deleteTemplate, updateTemplate } = useEmailTemplates();
+  const { templates, isLoading, deleteTemplate, updateTemplate, duplicateTemplate } = useEmailTemplates();
   
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
