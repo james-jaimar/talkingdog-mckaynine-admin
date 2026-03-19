@@ -143,6 +143,10 @@ function StatusBox({
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isOpen, setIsOpen] = useState(false);
   const [wantsInfoClasses, setWantsInfoClasses] = useState<string[]>(() => {
+    // Initialize from saved next_class_type if action is wants_info
+    if (initialNextAction === 'wants_info' && initialNextClassType) {
+      return initialNextClassType.split(',').map(s => s.trim()).filter(Boolean);
+    }
     return [];
   });
 
