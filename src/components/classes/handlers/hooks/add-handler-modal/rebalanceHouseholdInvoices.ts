@@ -124,20 +124,20 @@ export async function rebalanceHouseholdInvoices(params: RebalanceParams): Promi
       (sum: number, item: any) => sum + item.amount, 0
     );
 
-    // 3. Calculate combined total and apply 25% discount
-    const combinedCourseFees = existingCourseFeeTotal + newClassPrice;
-    const householdDiscount = combinedCourseFees * 0.25;
-    const discountedTotal = combinedCourseFees - householdDiscount;
+    // 3. Apply 25% discount ONLY to the new (second) handler's course fee
+    const householdDiscount = newClassPrice * 0.25;
+    const discountedNewClassPrice = newClassPrice - householdDiscount;
+    const combinedAfterDiscount = existingCourseFeeTotal + discountedNewClassPrice;
     
     // 4. Split 50/50
-    const sharePerHandler = Math.round((discountedTotal / 2) * 100) / 100; // Round to 2 decimal places
+    const sharePerHandler = Math.round((combinedAfterDiscount / 2) * 100) / 100; // Round to 2 decimal places
 
     console.log("HOUSEHOLD-REBALANCE: Calculation", {
       existingCourseFeeTotal,
       newClassPrice,
-      combinedCourseFees,
       householdDiscount,
-      discountedTotal,
+      discountedNewClassPrice,
+      combinedAfterDiscount,
       sharePerHandler,
     });
 
