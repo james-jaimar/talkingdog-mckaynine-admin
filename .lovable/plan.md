@@ -1,21 +1,23 @@
 
 
-# Visually Distinguish the Status Column
+# Fix: Make All Status Icons Consistently Clickable
 
-## What
-Add a subtle background colour and left/right borders to the Status column (header + all body cells) so it stands out as a distinct visual block within the busy table.
+## Problem
+In `HandlerStatusCell.tsx`, status icons are only wrapped in a clickable `Popover` when there are pending tasks (`hasTasks`). Otherwise they render as hover-only `Tooltip`s. This means if a task was never created, or was already completed/cancelled, the icon appears but can't be clicked — confusing when some handlers' icons are clickable and others aren't.
 
-## How
+A secondary issue: the "Wants Info" class selections (`wantsInfoClasses` in `ClassStatusCell.tsx`) are stored only in component state and never persisted to the database, so if a save partially fails or the user doesn't select classes, context is lost.
 
-### `src/components/handlers/table/TableHeader.tsx`
-- Add a light background and border classes to the Status `<TableHead>`:
-  `bg-blue-50 border-l border-r border-blue-200`
+## Changes
 
-### `src/components/handlers/table/HandlerStatusCell.tsx`
-- Add matching background and border classes to all returned `<TableCell>` elements (both the empty and populated variants):
-  `bg-blue-50/50 border-l border-r border-blue-100`
+### 1. `src/components/handlers/table/HandlerStatusCell.tsx`
+- Remove the `hasTasks` conditional branching
+- Always use the `Popover` wrapper for status icons
+- Show a status summary section (action type, class, dog) inside the popover regardless of tasks
+- Below the summary, show pending tasks if any, or a "No pending tasks" note
 
-This creates a subtle coloured "lane" down the table that's immediately scannable without being too heavy. The blue tint ties to the existing blue used for status icons.
+### 2. `src/components/handlers/table/ClassStatusCell.tsx`
+- Store the selected `wantsInfoClasses` in the `handler_class_status` record (using the existing `result_notes` or a dedicated field) so the info isn't lost on save
+- Initialise `wantsInfoClasses` from the saved data when the popover opens
 
-**2 files changed, ~4 lines each.**
+**2 files, ~30 lines changed.**
 
