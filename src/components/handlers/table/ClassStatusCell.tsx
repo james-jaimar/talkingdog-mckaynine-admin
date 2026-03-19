@@ -143,6 +143,10 @@ function StatusBox({
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isOpen, setIsOpen] = useState(false);
   const [wantsInfoClasses, setWantsInfoClasses] = useState<string[]>(() => {
+    // Initialize from saved next_class_type if action is wants_info
+    if (initialNextAction === 'wants_info' && initialNextClassType) {
+      return initialNextClassType.split(',').map(s => s.trim()).filter(Boolean);
+    }
     return [];
   });
 
@@ -186,7 +190,9 @@ function StatusBox({
         pass_percentage: passPercentage,
         next_action: nextAction || 'none',
         result_notes: notes,
-        next_class_type: nextAction === 'continuing' ? nextClassType : null,
+        next_class_type: nextAction === 'continuing' ? nextClassType 
+          : nextAction === 'wants_info' && wantsInfoClasses.length > 0 ? wantsInfoClasses.join(', ')
+          : null,
         next_term_number: nextAction === 'continuing' ? nextTermNumber : null,
         next_term_year: nextAction === 'continuing' ? nextTermYear : null,
         completed: status === 'passed' || status === 'completed',

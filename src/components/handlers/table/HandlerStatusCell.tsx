@@ -1,12 +1,6 @@
 import { TableCell } from "@/components/ui/table";
 import { Mail, MailCheck, ArrowRight, StopCircle, Check, X } from "lucide-react";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -14,6 +8,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { useHandlerTasks } from "@/hooks/useHandlerTasks";
 import { toast } from "sonner";
+
+
 
 interface ClassStatusItem {
   class_type: string;
@@ -88,100 +84,84 @@ export function HandlerStatusCell({ classStatuses, handlerId }: HandlerStatusCel
     }
   };
 
-  // If there are pending tasks, show popover on click; otherwise just tooltip
-  const hasTasks = pendingTasks.length > 0;
-
   return (
     <TableCell className="text-center w-[70px] bg-blue-50/50 border-l border-r border-blue-100">
       <div className="flex items-center justify-center gap-1 flex-wrap">
-        {hasTasks ? (
-          <Popover>
-            <PopoverTrigger asChild>
-              <button className="flex items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity rounded p-0.5 hover:bg-muted">
-                <TooltipProvider>
-                  {Array.from(groups.values()).map((group) => (
-                    <Tooltip key={group.type}>
-                      <TooltipTrigger asChild>
-                        <span>{group.icon}</span>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p className="font-medium">{group.label}</p>
-                        {group.entries.map((e, i) => (
-                          <p key={i} className="text-xs">
-                            {e.classType}{e.dogName ? ` (${e.dogName})` : ''}
-                          </p>
-                        ))}
-                      </TooltipContent>
-                    </Tooltip>
-                  ))}
-                </TooltipProvider>
-              </button>
-            </PopoverTrigger>
-            <PopoverContent className="w-80" align="start">
-              <div className="space-y-2">
-                <h4 className="font-medium text-sm">Related Tasks</h4>
-                <div className="space-y-2 max-h-[250px] overflow-y-auto">
-                  {pendingTasks.map((task) => (
-                    <div
-                      key={task.id}
-                      className="flex items-start gap-2 p-2 rounded-md bg-muted/50 text-sm"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium">{task.title}</div>
-                        {task.dog_name && (
-                          <div className="text-xs text-muted-foreground">🐕 {task.dog_name}</div>
-                        )}
-                        {task.description && (
-                          <div className="text-xs text-muted-foreground line-clamp-2">
-                            {task.description}
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex gap-1 shrink-0">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 text-green-600 hover:text-green-700 hover:bg-green-50"
-                          onClick={() => handleComplete(task.id)}
-                          disabled={completeTask.isPending}
-                        >
-                          <Check className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 text-red-600 hover:text-red-700 hover:bg-red-50"
-                          onClick={() => handleCancel(task.id)}
-                          disabled={cancelTask.isPending}
-                        >
-                          <X className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+        <Popover>
+          <PopoverTrigger asChild>
+            <button className="flex items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity rounded p-0.5 hover:bg-muted">
+              {Array.from(groups.values()).map((group) => (
+                <span key={group.type} title={group.label}>{group.icon}</span>
+              ))}
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-80" align="start">
+            <div className="space-y-3">
+              {/* Status summary */}
+              <div className="space-y-1">
+                <h4 className="font-medium text-sm">Status Summary</h4>
+                {Array.from(groups.values()).map((group) => (
+                  <div key={group.type} className="flex items-center gap-2 text-sm">
+                    {group.icon}
+                    <span className="font-medium">{group.label}:</span>
+                    <span className="text-muted-foreground">
+                      {group.entries.map(e => `${e.classType}${e.dogName ? ` (${e.dogName})` : ''}`).join(', ')}
+                    </span>
+                  </div>
+                ))}
               </div>
-            </PopoverContent>
-          </Popover>
-        ) : (
-          <TooltipProvider>
-            {Array.from(groups.values()).map((group) => (
-              <Tooltip key={group.type}>
-                <TooltipTrigger asChild>
-                  <span className="cursor-default">{group.icon}</span>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p className="font-medium">{group.label}</p>
-                  {group.entries.map((e, i) => (
-                    <p key={i} className="text-xs">
-                      {e.classType}{e.dogName ? ` (${e.dogName})` : ''}
-                    </p>
-                  ))}
-                </TooltipContent>
-              </Tooltip>
-            ))}
-          </TooltipProvider>
-        )}
+
+              {/* Pending tasks */}
+              {pendingTasks.length > 0 ? (
+                <div className="space-y-2 border-t pt-2">
+                  <h4 className="font-medium text-sm">Pending Tasks</h4>
+                  <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                    {pendingTasks.map((task) => (
+                      <div
+                        key={task.id}
+                        className="flex items-start gap-2 p-2 rounded-md bg-muted/50 text-sm"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium">{task.title}</div>
+                          {task.dog_name && (
+                            <div className="text-xs text-muted-foreground">🐕 {task.dog_name}</div>
+                          )}
+                          {task.description && (
+                            <div className="text-xs text-muted-foreground line-clamp-2">
+                              {task.description}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex gap-1 shrink-0">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 text-green-600 hover:text-green-700 hover:bg-green-50"
+                            onClick={() => handleComplete(task.id)}
+                            disabled={completeTask.isPending}
+                          >
+                            <Check className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 text-red-600 hover:text-red-700 hover:bg-red-50"
+                            onClick={() => handleCancel(task.id)}
+                            disabled={cancelTask.isPending}
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground border-t pt-2">No pending tasks</p>
+              )}
+            </div>
+          </PopoverContent>
+        </Popover>
       </div>
     </TableCell>
   );
