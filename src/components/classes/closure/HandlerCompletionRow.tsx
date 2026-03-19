@@ -5,6 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { HandlerCompletionData } from "./types";
 import { useClassTypes } from "@/hooks/useClassTypes";
 import { useTermOptions } from "@/hooks/useTermOptions";
+import { useMonthOptions } from "@/hooks/useMonthOptions";
 
 interface HandlerCompletionRowProps {
   data: HandlerCompletionData;
