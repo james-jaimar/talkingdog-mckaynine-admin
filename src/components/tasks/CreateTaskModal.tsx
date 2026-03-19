@@ -251,6 +251,24 @@ export function CreateTaskModal({ open, onOpenChange }: CreateTaskModalProps) {
             </Select>
           </div>
 
+          {/* Target Term */}
+          <div className="space-y-2">
+            <Label htmlFor="targetTerm">Target Term (Optional)</Label>
+            <Select value={targetTermId} onValueChange={setTargetTermId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select target term" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">None</SelectItem>
+                {availableTerms.map((term) => (
+                  <SelectItem key={term.id} value={term.id}>
+                    {term.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           {/* Title */}
           <div className="space-y-2">
             <Label htmlFor="title">Task Title *</Label>
