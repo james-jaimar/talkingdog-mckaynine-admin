@@ -331,14 +331,17 @@ export function ClassClosureModal({
                     <TableHead className="w-[180px]">Handler / Dog</TableHead>
                     <TableHead className="w-[140px]">Result</TableHead>
                     <TableHead className="w-[80px]">%</TableHead>
-                    <TableHead className="w-[150px]">Next Action</TableHead>
-                    {/* Dynamic columns shown when any handler has "continuing" */}
-                    {completionData.some(h => h.next_action === "continuing") && (
-                      <>
-                        <TableHead className="w-[140px]">Next Term</TableHead>
-                        <TableHead className="w-[140px]">Next Class</TableHead>
-                      </>
-                    )}
+                     <TableHead className="w-[150px]">Next Action</TableHead>
+                     {/* Dynamic columns shown when any handler has "continuing" */}
+                     {completionData.some(h => h.next_action === "continuing") && (
+                       <>
+                         <TableHead className="w-[140px]">Next Term</TableHead>
+                         <TableHead className="w-[140px]">Next Class</TableHead>
+                       </>
+                     )}
+                     {completionData.some(h => h.next_action === "continuing" || h.next_action === "wants_info") && (
+                       <TableHead className="w-[150px]">Target Month</TableHead>
+                     )}
                     <TableHead>Notes</TableHead>
                   </TableRow>
                 </TableHeader>
