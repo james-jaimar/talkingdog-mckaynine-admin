@@ -8,7 +8,7 @@ export function HandlerTableHeader() {
   return (
     <TableRow>
       <TableHead className="w-[180px]">Name</TableHead>
-      <TableHead className="text-center w-[70px]">Status</TableHead>
+      <TableHead className="text-center w-[70px] bg-blue-50 border-l border-r border-blue-200">Status</TableHead>
       <TableHead className="text-center w-[60px]">Dogs</TableHead>
       
       {/* Class Type Columns - Dynamic from DB */}
