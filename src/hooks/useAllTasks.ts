@@ -216,6 +216,8 @@ export function useAllTasks(filters: TaskFilters = {}, branchId?: string) {
     refetch: tasksQuery.refetch,
     completeTask,
     cancelTask,
+    updateTask,
+    deleteTask,
   };
 }
 
