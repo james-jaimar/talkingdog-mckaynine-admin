@@ -281,6 +281,7 @@ export default function Tasks() {
                     <TableHead>Task</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead>Class</TableHead>
+                    <TableHead>Term</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Created</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
