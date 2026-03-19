@@ -64,6 +64,7 @@ export function CreateTaskModal({ open, onOpenChange }: CreateTaskModalProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [dueDate, setDueDate] = useState("");
+  const [targetTermId, setTargetTermId] = useState("none");
 
   // Search handlers when search term changes
   useEffect(() => {
