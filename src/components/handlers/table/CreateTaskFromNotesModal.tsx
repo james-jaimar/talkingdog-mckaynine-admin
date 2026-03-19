@@ -112,6 +112,7 @@ export function CreateTaskFromNotesModal({
     setTitle("");
     setDescription("");
     setDueDate("");
+    setTargetTermId("none");
   };
 
   return (
