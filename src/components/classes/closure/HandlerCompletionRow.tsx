@@ -17,6 +17,7 @@ interface HandlerCompletionRowProps {
 export function HandlerCompletionRow({ data, onChange, index, showContinuingColumns = false }: HandlerCompletionRowProps) {
   const { terms } = useTermOptions();
   const { classTypeNames } = useClassTypes();
+  const { months } = useMonthOptions();
   
   const handleChange = (field: keyof HandlerCompletionData, value: any) => {
     onChange({ ...data, [field]: value });
