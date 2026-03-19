@@ -97,6 +97,7 @@ export function useAllTasks(filters: TaskFilters = {}, branchId?: string) {
       let tasks = (data || []).map(task => ({
         ...task,
         handler: Array.isArray(task.handler) ? task.handler[0] : task.handler,
+        target_term: Array.isArray(task.target_term) ? task.target_term[0] : task.target_term,
       })) as TaskWithHandler[];
 
       // Apply client-side search filter
