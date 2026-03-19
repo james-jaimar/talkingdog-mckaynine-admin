@@ -151,6 +151,21 @@ export default function Tasks() {
     await cancelTask.mutateAsync(taskId);
   };
 
+  const handleEdit = (task: TaskWithHandler) => {
+    setEditingTask(task);
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveEdit = async (taskId: string, updates: Record<string, any>) => {
+    await updateTask.mutateAsync({ taskId, updates });
+  };
+
+  const handleDelete = async (taskId: string) => {
+    if (window.confirm("Are you sure you want to delete this task? This cannot be undone.")) {
+      await deleteTask.mutateAsync(taskId);
+    }
+  };
+
   const pendingCount = sortedTasks.filter(t => t.status === "pending").length;
 
   return (
