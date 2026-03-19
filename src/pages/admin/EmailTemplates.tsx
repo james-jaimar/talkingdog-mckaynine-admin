@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export default function EmailTemplates() {
-  const { templates, isLoading, deleteTemplate, updateTemplate } = useEmailTemplates();
+  const { templates, isLoading, deleteTemplate, updateTemplate, duplicateTemplate } = useEmailTemplates();
   
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
