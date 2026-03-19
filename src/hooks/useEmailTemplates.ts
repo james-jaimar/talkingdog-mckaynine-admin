@@ -24,7 +24,7 @@ export interface CreateTemplateInput {
   subject: string;
   content: string;
   class_type?: string;
-  variables?: string[];
+  variables?: any;
 }
 
 export interface UpdateTemplateInput extends Partial<CreateTemplateInput> {
