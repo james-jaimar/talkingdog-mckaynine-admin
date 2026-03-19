@@ -78,12 +78,22 @@ function getStatusBadgeVariant(status: string | null) {
 
 export default function Tasks() {
   const { currentBranch } = useBranch();
+  const { termData } = useTerm();
   const { terms: availableTerms } = useAvailableTerms();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("pending");
   const [taskTypeFilter, setTaskTypeFilter] = useState("all");
   const [classTypeFilter, setClassTypeFilter] = useState("all");
-  const [termFilter, setTermFilter] = useState("all");
+  const [termFilter, setTermFilter] = useState<string | undefined>(undefined);
+
+  // Default term filter to current term once data is loaded
+  useEffect(() => {
+    if (termFilter === undefined && termData?.id) {
+      setTermFilter(termData.id);
+    } else if (termFilter === undefined && !termData) {
+      setTermFilter("all");
+    }
+  }, [termData, termFilter]);
   const [selectedTask, setSelectedTask] = useState<TaskWithHandler | null>(null);
   const [isInfoPackModalOpen, setIsInfoPackModalOpen] = useState(false);
   const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
