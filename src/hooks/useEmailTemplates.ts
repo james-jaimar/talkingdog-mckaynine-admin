@@ -194,6 +194,46 @@ export function useEmailTemplates() {
     },
   });
 
+  const duplicateTemplate = useMutation({
+    mutationFn: async (templateId: string) => {
+      if (!currentBranch?.id) throw new Error("No branch selected");
+
+      const { data: source, error: fetchError } = await supabase
+        .from("branch_email_templates")
+        .select("*")
+        .eq("id", templateId)
+        .single();
+
+      if (fetchError || !source) throw fetchError || new Error("Template not found");
+
+      const uniqueType = `${source.type}_dup_${Date.now()}`;
+
+      const { data, error } = await supabase
+        .from("branch_email_templates")
+        .insert({
+          branch_id: currentBranch.id,
+          name: `${source.name || source.type} (Copy)`,
+          type: uniqueType,
+          subject: source.subject,
+          content: source.content,
+          class_type: source.class_type,
+          variables: source.variables || [],
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["email-templates"] });
+      toast.success("Template duplicated successfully");
+    },
+    onError: (error: any) => {
+      toast.error(`Failed to duplicate template: ${error.message}`);
+    },
+  });
+
   return {
     templates: templatesQuery.data || [],
     isLoading: templatesQuery.isLoading,
@@ -202,6 +242,7 @@ export function useEmailTemplates() {
     updateTemplate,
     deleteTemplate,
     copyToBranch,
+    duplicateTemplate,
     refetch: templatesQuery.refetch,
   };
 }
