@@ -12,6 +12,7 @@ interface HandlerCompletionRowProps {
   onChange: (data: HandlerCompletionData) => void;
   index: number;
   showContinuingColumns?: boolean;
+  showMonthColumn?: boolean;
 }
 
 export function HandlerCompletionRow({ data, onChange, index, showContinuingColumns = false }: HandlerCompletionRowProps) {
