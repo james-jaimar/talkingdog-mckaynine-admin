@@ -915,22 +915,26 @@ Deno.serve(async (req) => {
 
       // SERVER-SIDE LOCK: Atomically claim the sync to prevent race conditions.
       // Only proceed if io_sync_status is NOT already 'syncing', 'synced', or 'payment_synced'.
-      // If another call is already syncing, we poll briefly then return its result.
-      const { data: lockResult, error: lockError } = await supabase
+      // Uses count:'exact' instead of select() to avoid PostgREST bug with UPDATE+OR+representation.
+      const { count: lockCount, error: lockError } = await supabase
         .from("invoices")
-        .update({ io_sync_status: "syncing" })
+        .update({ io_sync_status: "syncing" }, { count: 'exact' })
         .eq("id", invoice_id)
-        .or("io_sync_status.is.null,io_sync_status.eq.failed,io_sync_status.eq.pending")
-        .select("id")
-        .maybeSingle();
+        .or("io_sync_status.is.null,io_sync_status.eq.failed,io_sync_status.eq.pending");
+
+      console.log(`[IO Sync] Lock attempt for ${invoice_id}: count=${lockCount}, error=${lockError?.code || 'none'}`);
 
       if (lockError) {
-        console.error("[IO Sync] Lock update error:", lockError);
+        console.error("[IO Sync] Lock query failed:", { code: lockError.code, message: lockError.message, invoice_id });
+        return new Response(
+          JSON.stringify({ error: `Lock acquisition failed: ${lockError.message}` }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       }
 
-      if (!lockResult) {
+      if (lockCount === 0) {
         // Another call is already syncing or has synced. Poll for up to 15 seconds.
-        console.log("[IO Sync] Another sync is in progress, polling for result...");
+        console.log("[IO Sync] Another sync is in progress (lockCount=0), polling for result...");
         for (let i = 0; i < 15; i++) {
           await new Promise(r => setTimeout(r, 1000));
           const { data: polled } = await supabase
@@ -953,7 +957,6 @@ Deno.serve(async (req) => {
               { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
             );
           }
-          // If the other call failed, we could retry but for safety just wait
           if (polled?.io_sync_status === "failed") {
             console.log("[IO Sync] Other sync failed, but not retrying in this call");
             return new Response(
