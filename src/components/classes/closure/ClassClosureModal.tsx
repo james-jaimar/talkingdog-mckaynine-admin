@@ -203,10 +203,9 @@ export function ClassClosureModal({
         const taskDogId = bookingForTask?.dog_id || null;
         const taskDogName = (bookingForTask?.dogs as any)?.name || handler.dog_name || null;
 
-        // Compute target_month from next term info
-        let targetMonth: string | null = null;
-        if (handler.next_term_number && handler.next_term_year) {
-          // Map term numbers to approximate start months
+        // Use user-selected target_month, or compute from next term info as fallback
+        let targetMonth: string | null = handler.target_month || null;
+        if (!targetMonth && handler.next_term_number && handler.next_term_year) {
           const termToMonth: Record<string, string> = { '1': '01', '2': '04', '3': '07', '4': '10' };
           const monthStr = termToMonth[String(handler.next_term_number)] || '01';
           targetMonth = `${handler.next_term_year}-${monthStr}`;
