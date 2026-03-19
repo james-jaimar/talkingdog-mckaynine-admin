@@ -27,11 +27,40 @@ export async function getIOOfflineModeFromDB(): Promise<boolean> {
 }
 
 /**
+ * Client-side deduplication map: prevents the same browser tab from firing
+ * multiple concurrent sync calls for the same invoice+action.
+ */
+const inFlightSyncs = new Map<string, Promise<{ success: boolean; error?: string; skipped?: boolean; io_invoice_url?: string }>>();
+
+/**
  * Sync invoice to InvoicesOnline (IO)
  * This is a background operation that doesn't block the UI
  * Returns result object for callers that need to check success
+ * Deduplicates concurrent calls for the same invoice+action within the same tab.
  */
 export async function syncInvoiceToIO(
+  invoiceId: string,
+  action: 'invoice' | 'payment'
+): Promise<{ success: boolean; error?: string; skipped?: boolean; io_invoice_url?: string }> {
+  const dedupKey = `${invoiceId}:${action}`;
+  
+  // If an identical call is already in-flight, return the same promise
+  const existing = inFlightSyncs.get(dedupKey);
+  if (existing) {
+    console.log(`[IO Sync] Dedup: reusing in-flight ${action} sync for ${invoiceId}`);
+    return existing;
+  }
+
+  const promise = _doSyncInvoiceToIO(invoiceId, action);
+  inFlightSyncs.set(dedupKey, promise);
+  
+  // Clean up after completion
+  promise.finally(() => inFlightSyncs.delete(dedupKey));
+  
+  return promise;
+}
+
+async function _doSyncInvoiceToIO(
   invoiceId: string,
   action: 'invoice' | 'payment'
 ): Promise<{ success: boolean; error?: string; skipped?: boolean; io_invoice_url?: string }> {

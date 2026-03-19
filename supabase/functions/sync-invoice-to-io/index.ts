@@ -913,6 +913,64 @@ Deno.serve(async (req) => {
         );
       }
 
+      // SERVER-SIDE LOCK: Atomically claim the sync to prevent race conditions.
+      // Only proceed if io_sync_status is NOT already 'syncing', 'synced', or 'payment_synced'.
+      // If another call is already syncing, we poll briefly then return its result.
+      const { data: lockResult, error: lockError } = await supabase
+        .from("invoices")
+        .update({ io_sync_status: "syncing" })
+        .eq("id", invoice_id)
+        .or("io_sync_status.is.null,io_sync_status.eq.failed,io_sync_status.eq.pending")
+        .select("id")
+        .maybeSingle();
+
+      if (lockError) {
+        console.error("[IO Sync] Lock update error:", lockError);
+      }
+
+      if (!lockResult) {
+        // Another call is already syncing or has synced. Poll for up to 15 seconds.
+        console.log("[IO Sync] Another sync is in progress, polling for result...");
+        for (let i = 0; i < 15; i++) {
+          await new Promise(r => setTimeout(r, 1000));
+          const { data: polled } = await supabase
+            .from("invoices")
+            .select("io_document_id, io_invoice_number, io_invoice_url, io_sync_status")
+            .eq("id", invoice_id)
+            .single();
+
+          if (polled?.io_document_id && polled?.io_invoice_url) {
+            console.log(`[IO Sync] Poll success: synced by another call, doc=${polled.io_document_id}`);
+            return new Response(
+              JSON.stringify({
+                success: true,
+                action: "invoice",
+                already_synced: true,
+                io_document_id: polled.io_document_id,
+                io_invoice_number: polled.io_invoice_number,
+                io_invoice_url: polled.io_invoice_url,
+              }),
+              { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+          // If the other call failed, we could retry but for safety just wait
+          if (polled?.io_sync_status === "failed") {
+            console.log("[IO Sync] Other sync failed, but not retrying in this call");
+            return new Response(
+              JSON.stringify({ error: "Concurrent sync failed. Please retry." }),
+              { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+        }
+        // Timed out waiting
+        console.warn("[IO Sync] Timed out waiting for concurrent sync");
+        return new Response(
+          JSON.stringify({ error: "Sync in progress by another request. Please retry shortly." }),
+          { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      console.log("[IO Sync] Lock acquired, proceeding with IO API call");
       const result = await createIOInvoice(credentials, ioClientId, invoiceData);
       
       if (result.success) {
