@@ -81,6 +81,13 @@ export function useAllTasks(filters: TaskFilters = {}, branchId?: string) {
       if (filters.classType && filters.classType !== "all") {
         query = query.eq("class_type", filters.classType);
       }
+      if (filters.targetTermId && filters.targetTermId !== "all") {
+        if (filters.targetTermId === "unassigned") {
+          query = query.is("target_term_id", null);
+        } else {
+          query = query.eq("target_term_id", filters.targetTermId);
+        }
+      }
 
       const { data, error } = await query;
       
