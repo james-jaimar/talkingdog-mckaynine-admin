@@ -77,10 +77,12 @@ function getStatusBadgeVariant(status: string | null) {
 
 export default function Tasks() {
   const { currentBranch } = useBranch();
+  const { terms: availableTerms } = useAvailableTerms();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("pending");
   const [taskTypeFilter, setTaskTypeFilter] = useState("all");
   const [classTypeFilter, setClassTypeFilter] = useState("all");
+  const [termFilter, setTermFilter] = useState("all");
   const [selectedTask, setSelectedTask] = useState<TaskWithHandler | null>(null);
   const [isInfoPackModalOpen, setIsInfoPackModalOpen] = useState(false);
   const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
@@ -91,6 +93,7 @@ export default function Tasks() {
     taskType: taskTypeFilter,
     classType: classTypeFilter,
     search,
+    targetTermId: termFilter,
   }, currentBranch?.id);
 
   // Sort tasks by handler name
