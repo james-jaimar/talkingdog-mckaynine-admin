@@ -1,52 +1,69 @@
 
 
-# Add Term-Based Task Grouping
+# Make Email Template Course Tables Robust
 
 ## Problem
-When Ady views tasks, they're all lumped together regardless of which term they relate to. Some handlers want info for the current term (April), others for future terms (July, October). There's no way to see at a glance which tasks belong to which term.
+The "congrats" email templates contain course info tables (Course, Price, Entry Criteria, Dates, Day & Time) with inline styles. When Ady edits text near these tables in the TipTap rich text editor, the table styling breaks — header colors disappear, borders vanish, and the layout falls apart. The tables are also hardcoded with old dates and prices from previous terms.
 
-## Solution
-Add a `target_term_id` column to `handler_tasks`, populate it during class closure, and group/filter tasks by term on the Tasks page.
+## Root Cause
+TipTap's table editing with inline styles is inherently fragile. When the cursor enters a styled table cell and content changes, ProseMirror can strip or corrupt inline `style` attributes. The current approach — storing the entire styled table as raw HTML in the editor — means any accidental edit destroys the formatting.
 
-## Changes
+## Solution: Structured Course Info Block
+Instead of making Ady edit a fragile HTML table inside the WYSIWYG editor, treat the course info table as a **structured data block** with dedicated input fields. The table HTML is generated automatically from those fields and is never directly editable in the rich text area.
 
-### 1. Database: Add `target_term_id` to `handler_tasks`
-- Add `target_term_id uuid REFERENCES terms(id)` column
-- This represents which term the task is *for* (e.g. "send info pack for Term 3")
+### How it works
 
-### 2. Class Closure: Set `target_term_id` when creating tasks
-In `ClassClosureModal.tsx`, when tasks are created for "wants_info" or "continuing" handlers:
-- Look up the `terms` table using the handler's `next_term_number` and `next_term_year` to find the matching `term_id`
-- Pass it as `target_term_id` on the inserted task
-- If no specific term selected, leave null (current term implied)
+1. **New "Course Info Table" component** — a toolbar button in the RichTextEditor that inserts a placeholder `{{course_table}}` merge field (just like `{{handler_name}}`).
 
-### 3. Tasks Page: Add term grouping/filtering
-On `src/pages/admin/Tasks.tsx`:
-- Add a term filter dropdown (similar to existing class type filter) fetching available terms
-- Default view: group tasks by term with section headers like "Term 2, 2026 (Apr–Jun)" and "Term 3, 2026 (Jul–Sep)"
-- Tasks with no `target_term_id` shown under "Current Term" or "Unassigned"
-- Add a "Term" column to the table showing the target term
+2. **Course Table Data Editor** — when creating/editing a template, a dedicated section appears where Ady fills in structured fields:
+   - Course Name (e.g. "Novice Obedience")
+   - Price (e.g. "R1,770.00")
+   - Entry Criteria (e.g. "Beginner Obedience")
+   - Dates (multi-line text, e.g. "March 28th\nApril 11th 18th\nMay 9th 16th 23rd")
+   - Day & Time (e.g. "Saturdays 14:00 – 15:00")
+   - She can add multiple course rows (for templates offering 2 options like "Silver OR Novice")
 
-### 4. Update hooks and types
-- Add `target_term_id` to `TaskWithHandler` and `HandlerTask` interfaces
-- Join `terms` table in `useAllTasks` query to get term display name
-- Add term filter option to `useAllTasks`
+3. **At render time**, `{{course_table}}` is replaced with a perfectly styled HTML table matching the current blue-header design — generated from the structured data. Ady never touches the table HTML.
 
-### 5. Create Task Modal: Add optional term selector
-- Allow manually setting a target term when creating tasks manually
+4. **Course Description section** — similar approach: a `{{course_description}}` merge field with a structured editor for bullet points. Ady types each point as a line item; HTML is generated automatically.
 
-## Technical Details
+5. **Existing templates migrated** — the hardcoded congrats templates will have their table HTML extracted into the structured format, so old templates get the same benefit.
 
-**Migration:**
-```sql
-ALTER TABLE public.handler_tasks 
-  ADD COLUMN target_term_id uuid REFERENCES public.terms(id) ON DELETE SET NULL;
-```
+### Changes
 
-**Task query join** (in `useAllTasks`):
-```
-handler_tasks(*, handler:clients(...), target_term:terms(id, term_number, academic_year:academic_years(year)))
-```
+**File: `src/components/email-templates/CourseTableEditor.tsx`** (new)
+- UI component with fields for course name, price, entry criteria, dates, day/time
+- "Add another course" button for multi-course templates
+- Generates the `course_table` variable value (styled HTML)
 
-**Grouped view:** Tasks sorted into term buckets using `target_term_id`, displayed as collapsible sections with counts, so Ady can immediately see "5 tasks for Term 2, 3 tasks for Term 3".
+**File: `src/components/email-templates/CourseDescriptionEditor.tsx`** (new)
+- UI for entering course description bullet points as a simple list
+- Generates `course_description` variable value (styled HTML)
+
+**File: `src/components/email-templates/TemplateEditorModal.tsx`**
+- Add CourseTableEditor and CourseDescriptionEditor sections below the rich text editor
+- Store course table data as JSON in a new `variables` field on the template (or in the existing content as structured merge fields)
+- Pass generated HTML into the template renderer for preview
+
+**File: `src/lib/email/template-renderer.ts`**
+- Add `course_table` and `course_description` to available merge fields
+- Add `generateCourseTableHtml(courses)` function that produces the styled table
+
+**File: `src/components/platform-templates/RichTextEditor.tsx`**
+- Add "Insert Course Table" and "Insert Course Description" to the merge fields dropdown
+- Add TipTap CSS to protect table rendering in the editor (borders, header colors)
+
+**File: `src/lib/email/templates/congrats-templates.ts`**
+- Replace hardcoded table HTML with `{{course_table}}` and `{{course_description}}` placeholders
+- Move the old data into default structured values
+
+**File: `src/index.css`**
+- Add ProseMirror table styles to prevent table styling from breaking during editing (borders, header background colors preserved via CSS rather than relying solely on inline styles)
+
+### Result
+- Ady sees input fields for course info — no more fighting with table formatting
+- The blue-header table is always perfectly rendered
+- She can update dates, prices, and descriptions each term without touching HTML
+- Multiple course options (Silver + Novice) are supported via "Add Course" button
+- The rest of the email body remains fully editable in the rich text editor
 
