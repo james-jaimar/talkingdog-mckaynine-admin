@@ -190,7 +190,9 @@ function StatusBox({
         pass_percentage: passPercentage,
         next_action: nextAction || 'none',
         result_notes: notes,
-        next_class_type: nextAction === 'continuing' ? nextClassType : null,
+        next_class_type: nextAction === 'continuing' ? nextClassType 
+          : nextAction === 'wants_info' && wantsInfoClasses.length > 0 ? wantsInfoClasses.join(', ')
+          : null,
         next_term_number: nextAction === 'continuing' ? nextTermNumber : null,
         next_term_year: nextAction === 'continuing' ? nextTermYear : null,
         completed: status === 'passed' || status === 'completed',
