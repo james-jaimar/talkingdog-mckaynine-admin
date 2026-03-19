@@ -1,5 +1,5 @@
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Helmet } from "react-helmet";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,6 +16,7 @@ import { SendInfoPackModal } from "@/components/tasks/SendInfoPackModal";
 import { CreateTaskModal } from "@/components/tasks/CreateTaskModal";
 import { Link as RouterLink } from "react-router-dom";
 import { useBranch } from "@/context/BranchContext";
+import { useTerm } from "@/context/TermContext";
 
 type SortDirection = "asc" | "desc" | null;
 
@@ -77,12 +78,22 @@ function getStatusBadgeVariant(status: string | null) {
 
 export default function Tasks() {
   const { currentBranch } = useBranch();
+  const { termData } = useTerm();
   const { terms: availableTerms } = useAvailableTerms();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("pending");
   const [taskTypeFilter, setTaskTypeFilter] = useState("all");
   const [classTypeFilter, setClassTypeFilter] = useState("all");
-  const [termFilter, setTermFilter] = useState("all");
+  const [termFilter, setTermFilter] = useState<string | undefined>(undefined);
+
+  // Default term filter to current term once data is loaded
+  useEffect(() => {
+    if (termFilter === undefined && termData?.id) {
+      setTermFilter(termData.id);
+    } else if (termFilter === undefined && !termData) {
+      setTermFilter("all");
+    }
+  }, [termData, termFilter]);
   const [selectedTask, setSelectedTask] = useState<TaskWithHandler | null>(null);
   const [isInfoPackModalOpen, setIsInfoPackModalOpen] = useState(false);
   const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
@@ -222,11 +233,11 @@ export default function Tasks() {
                   ))}
                 </SelectContent>
               </Select>
-              <Select value={termFilter} onValueChange={setTermFilter}>
+              <Select value={termFilter || "all"} onValueChange={setTermFilter}>
                 <SelectTrigger>
                   <SelectValue placeholder="Term" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="max-h-60">
                   <SelectItem value="all">All Terms</SelectItem>
                   <SelectItem value="unassigned">Unassigned</SelectItem>
                   {availableTerms.map((term) => (
