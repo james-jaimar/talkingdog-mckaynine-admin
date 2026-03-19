@@ -19,6 +19,8 @@ export const AVAILABLE_MERGE_FIELDS = [
   { key: "base_url", label: "Base URL (for images)", example: "https://mckaynine.talkingdog.co.za" },
   { key: "custom_message", label: "Custom Message", example: "Your personalized message here" },
   { key: "signature", label: "Email Signature", example: "Ady Hawkins, Branch Manager..." },
+  { key: "course_table", label: "Course Info Table", example: "[Styled course table]" },
+  { key: "course_description", label: "Course Descriptions", example: "[Course bullet points]" },
   // Payment receipt fields
   { key: "invoice_number", label: "Invoice Number", example: "INV-2026-001" },
   { key: "payment_summary", label: "Payment Summary Box", example: "[Payment summary with dates and amounts]" },
