@@ -203,10 +203,9 @@ export function ClassClosureModal({
         const taskDogId = bookingForTask?.dog_id || null;
         const taskDogName = (bookingForTask?.dogs as any)?.name || handler.dog_name || null;
 
-        // Compute target_month from next term info
-        let targetMonth: string | null = null;
-        if (handler.next_term_number && handler.next_term_year) {
-          // Map term numbers to approximate start months
+        // Use user-selected target_month, or compute from next term info as fallback
+        let targetMonth: string | null = handler.target_month || null;
+        if (!targetMonth && handler.next_term_number && handler.next_term_year) {
           const termToMonth: Record<string, string> = { '1': '01', '2': '04', '3': '07', '4': '10' };
           const monthStr = termToMonth[String(handler.next_term_number)] || '01';
           targetMonth = `${handler.next_term_year}-${monthStr}`;
@@ -331,14 +330,17 @@ export function ClassClosureModal({
                     <TableHead className="w-[180px]">Handler / Dog</TableHead>
                     <TableHead className="w-[140px]">Result</TableHead>
                     <TableHead className="w-[80px]">%</TableHead>
-                    <TableHead className="w-[150px]">Next Action</TableHead>
-                    {/* Dynamic columns shown when any handler has "continuing" */}
-                    {completionData.some(h => h.next_action === "continuing") && (
-                      <>
-                        <TableHead className="w-[140px]">Next Term</TableHead>
-                        <TableHead className="w-[140px]">Next Class</TableHead>
-                      </>
-                    )}
+                     <TableHead className="w-[150px]">Next Action</TableHead>
+                     {/* Dynamic columns shown when any handler has "continuing" */}
+                     {completionData.some(h => h.next_action === "continuing") && (
+                       <>
+                         <TableHead className="w-[140px]">Next Term</TableHead>
+                         <TableHead className="w-[140px]">Next Class</TableHead>
+                       </>
+                     )}
+                     {completionData.some(h => h.next_action === "continuing" || h.next_action === "wants_info") && (
+                       <TableHead className="w-[150px]">Target Month</TableHead>
+                     )}
                     <TableHead>Notes</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -350,6 +352,7 @@ export function ClassClosureModal({
                       onChange={(data) => handleUpdateHandler(index, data)}
                       index={index}
                       showContinuingColumns={completionData.some(h => h.next_action === "continuing")}
+                      showMonthColumn={completionData.some(h => h.next_action === "continuing" || h.next_action === "wants_info")}
                     />
                   ))}
                 </TableBody>

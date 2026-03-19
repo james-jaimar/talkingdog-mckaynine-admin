@@ -5,17 +5,20 @@ import { Textarea } from "@/components/ui/textarea";
 import { HandlerCompletionData } from "./types";
 import { useClassTypes } from "@/hooks/useClassTypes";
 import { useTermOptions } from "@/hooks/useTermOptions";
+import { useMonthOptions } from "@/hooks/useMonthOptions";
 
 interface HandlerCompletionRowProps {
   data: HandlerCompletionData;
   onChange: (data: HandlerCompletionData) => void;
   index: number;
   showContinuingColumns?: boolean;
+  showMonthColumn?: boolean;
 }
 
-export function HandlerCompletionRow({ data, onChange, index, showContinuingColumns = false }: HandlerCompletionRowProps) {
+export function HandlerCompletionRow({ data, onChange, index, showContinuingColumns = false, showMonthColumn = false }: HandlerCompletionRowProps) {
   const { terms } = useTermOptions();
   const { classTypeNames } = useClassTypes();
+  const { months } = useMonthOptions();
   
   const handleChange = (field: keyof HandlerCompletionData, value: any) => {
     onChange({ ...data, [field]: value });
@@ -35,6 +38,7 @@ export function HandlerCompletionRow({ data, onChange, index, showContinuingColu
     : "";
 
   const isContinuing = data.next_action === "continuing";
+  const showMonthPicker = data.next_action === "continuing" || data.next_action === "wants_info";
 
   return (
     <TableRow className={index % 2 === 0 ? "bg-muted/30" : ""}>
@@ -176,6 +180,30 @@ export function HandlerCompletionRow({ data, onChange, index, showContinuingColu
             )}
           </TableCell>
         </>
+      )}
+
+      {/* Target Month - shown when any handler has wants_info or continuing */}
+      {showMonthColumn && (
+        <TableCell>
+          {showMonthPicker ? (
+            <Select
+              value={data.target_month || "none"}
+              onValueChange={(value) => handleChange('target_month', value === "none" ? undefined : value)}
+            >
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="Select month" />
+              </SelectTrigger>
+              <SelectContent className="max-h-60">
+                <SelectItem value="none">None</SelectItem>
+                {months.map((m) => (
+                  <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <span className="text-muted-foreground text-sm">—</span>
+          )}
+        </TableCell>
       )}
       
       <TableCell>
