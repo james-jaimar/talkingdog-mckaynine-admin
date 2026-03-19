@@ -1,60 +1,51 @@
-## IMPORTANT: Lateral Thinking Reminder
 
-When making architectural changes (e.g., moving from hardcoded to configurable systems), always proactively audit ALL downstream consumers and related flows. Don't just change the source — trace the data through creation, storage, display, and closure/completion paths. Ask: "What else touches this data? What will break or become stale if we change this?"
+Fix plan: Delta paid invoice sync still failing (our side, not IO)
 
-Examples: When class types became dynamic, we needed to also update the class closure modal's hardcoded progression map, the handlers table status cell task creation, and backfill legacy data. These weren't requested but were necessary consequences.
+1) Confirmed failure mode (runtime)
+- The function is returning HTTP 409 to the frontend (`Edge Function returned a non-2xx`).
+- Edge logs show repeated lock failures before any IO create call:
+  - `code: 42703`
+  - `message: column invoices.io_sync_status does not exist`
+- This happens in the server-side lock step, so the request never reaches the actual IO invoice/payment write path.
 
----
+2) Root cause (why this persists after schema reload + redeploy)
+- In `supabase/functions/sync-invoice-to-io/index.ts`, lock acquisition uses:
+  - `update(...)`
+  - `.or("io_sync_status.is.null,io_sync_status.eq.failed,io_sync_status.eq.pending")`
+  - `.select("id").maybeSingle()`
+- This matches a known PostgREST query-builder bug on `UPDATE + OR + return representation`, which can throw a misleading `column <table>.<col> does not exist` even when the column exists.
+- That’s why cache reload/redeploy didn’t solve it: it’s query shape, not actual schema absence.
 
-## COMPLETED: IO Sync Race Condition Fix
+3) Code changes to implement
+File: `supabase/functions/sync-invoice-to-io/index.ts` (lock section around current lines ~916-971)
 
-### Problem
-Multiple concurrent sync calls for the same invoice created duplicate entries in InvoicesOnline. Three code paths (`useMarkInvoiceAsSent`, `useEmailInvoice`, `EmailInvoiceProgressDialog`) could independently trigger `syncInvoiceToIO()` before any had written `io_document_id` back to the database.
+- Replace the current lock query from “`update + or + select(id)`” to “`update + or` with `count: 'exact'` and no representation select”.
+- Determine lock acquisition by affected row count (`count === 1`), not returned row object.
+- Add explicit branch handling:
+  - If `lockError` exists: return `500` immediately (do not continue into polling).
+  - If `count === 0`: treat as true contention and run the existing poll loop.
+  - If `count === 1`: proceed with sync.
 
-### Fix (Dual-Layer Protection)
+Why this fix:
+- Avoids the PostgREST representation path causing the false 42703.
+- Preserves atomic lock semantics and current idempotency design.
+- Prevents masking true DB errors as fake “concurrent sync” 409s.
 
-**Layer 1 — Client-side dedup (`useIOSync.ts`):**  
-Added an `inFlightSyncs` Map that tracks in-flight promises by `invoiceId:action`. If a second call arrives for the same key, it returns the existing promise instead of firing a new API call.
+4) Optional hardening (same file, same block)
+- Add structured log fields for `lock_count`, `lock_error_code`, and invoice id.
+- Keep 409 only for genuine contention/timeouts; use 500 for lock query failures.
 
-**Layer 2 — Server-side lock (`sync-invoice-to-io/index.ts`):**  
-Before calling the IO API, atomically sets `io_sync_status = 'syncing'` with a conditional WHERE clause that only matches null/failed/pending statuses. If 0 rows match (another call already claimed it), the function polls for up to 15 seconds until the first call completes, then returns its result.
+5) Validation plan
+- Re-run sync on failed invoices:
+  - `INV-McD-2603-0020`
+  - `INV-McD-2603-0025`
+- Expected:
+  - No new `42703` lock errors in edge logs.
+  - At least one “lock acquired/proceeding” log.
+  - Successful IO document/payment fields populated on invoice rows.
+  - Frontend modal should show success instead of “0 succeeded, 2 failed”.
 
-### Files Changed
-- `src/hooks/invoices/useIOSync.ts` — client-side in-flight promise dedup
-- `supabase/functions/sync-invoice-to-io/index.ts` — server-side atomic lock + polling
-
----
-
-## Fix: Randburg Templates Showing Delta Signature
-
-### Root Cause
-
-Two issues are causing Randburg templates to show the Delta signature:
-
-1. **`getSampleVariables()` in `template-renderer.ts` (line 196)** hardcodes `branchName = "McKaynine Delta"`. Every preview modal uses this function, so all previews show the Delta signature regardless of which branch is active.
-
-2. **`getVariablesWithSignature()` (line 52-57)** generates the `{{signature}}` merge field using the hardcoded `BRANCH_SIGNATURES` map and never checks the database for a saved signature.
-
-### Plan
-
-**File: `src/lib/email/template-renderer.ts`**
-
-1. Update `getSampleVariables()` to accept an optional `branchName` parameter instead of hardcoding "McKaynine Delta". Default to "McKaynine Delta" for backward compatibility.
-2. Use the passed `branchName` for both the `branch_name` variable and the `signature` generation.
-
-**Files using `getSampleVariables()` — pass current branch name:**
-
-3. `src/components/email-templates/TemplatePreviewModal.tsx` — use `useBranch()` to get `currentBranch.name`, pass to `getSampleVariables(currentBranch?.name)`.
-4. `src/components/email-templates/TemplateEditorModal.tsx` — same pattern.
-5. `src/components/email-templates/TemplateConfigureModal.tsx` — same pattern.
-6. `src/pages/admin/Email.tsx` — if it has inline preview calls, same fix.
-
-**File: `src/lib/email/template-renderer.ts` — DB-aware signature**
-
-7. Make `getVariablesWithSignature()` work with an async DB lookup: add an async variant `getVariablesWithSignatureAsync(variables, branchId)` that tries `getEmailSignatureFromDb(branchId)` first, falling back to the hardcoded signature. The sync version remains as a fallback.
-
-This ensures:
-- Previews show the correct branch signature based on the active branch
-- Sending uses DB signatures when available
-- Zero breaking changes — all callers that don't pass a branch name get the existing Delta default
-
+Technical details
+- This is not an IO-side outage.
+- It is a backend lock-query bug in our edge function caused by a PostgREST edge case with OR-filtered updates returning representation.
+- No database schema migration is required for this specific fix.
