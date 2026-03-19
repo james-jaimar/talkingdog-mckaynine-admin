@@ -176,7 +176,7 @@ export default function Tasks() {
         {/* Filters */}
         <Card>
           <CardContent className="pt-6">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -218,6 +218,20 @@ export default function Tasks() {
                   {CLASS_TYPE_OPTIONS.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={termFilter} onValueChange={setTermFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Term" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Terms</SelectItem>
+                  <SelectItem value="unassigned">Unassigned</SelectItem>
+                  {availableTerms.map((term) => (
+                    <SelectItem key={term.id} value={term.id}>
+                      {term.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
