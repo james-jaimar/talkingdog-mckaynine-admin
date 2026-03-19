@@ -3,6 +3,8 @@ import { Badge } from "@/components/ui/badge";
 import { EmailTemplate } from "@/hooks/useEmailTemplates";
 import { renderTemplate, getSampleVariables } from "@/lib/email/template-renderer";
 import { wrapWithPreviewStyles } from "@/lib/email/preview-styles";
+import { generateCourseTableHtml } from "@/components/email-templates/CourseTableEditor";
+import { generateCourseDescriptionHtml } from "@/components/email-templates/CourseDescriptionEditor";
 import { useBranch } from "@/context/BranchContext";
 
 interface TemplatePreviewModalProps {
@@ -16,6 +18,16 @@ export function TemplatePreviewModal({ open, onOpenChange, template }: TemplateP
   if (!template) return null;
 
   const sampleVariables = getSampleVariables(currentBranch?.name);
+  
+  // Inject structured course data if available
+  const templateVars = template.variables as any;
+  if (templateVars?.course_data && template.content.includes("{{course_table}}")) {
+    sampleVariables.course_table = generateCourseTableHtml(templateVars.course_data, templateVars.course_footnote);
+  }
+  if (templateVars?.course_descriptions && template.content.includes("{{course_description}}")) {
+    sampleVariables.course_description = generateCourseDescriptionHtml(templateVars.course_descriptions);
+  }
+  
   const previewHtml = wrapWithPreviewStyles(renderTemplate(template.content, sampleVariables));
   const previewSubject = renderTemplate(template.subject, sampleVariables);
 

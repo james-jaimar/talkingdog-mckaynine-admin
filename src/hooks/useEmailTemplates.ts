@@ -12,7 +12,7 @@ export interface EmailTemplate {
   subject: string;
   content: string;
   class_type: string | null;
-  variables: string[];
+  variables: any;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -24,7 +24,7 @@ export interface CreateTemplateInput {
   subject: string;
   content: string;
   class_type?: string;
-  variables?: string[];
+  variables?: any;
 }
 
 export interface UpdateTemplateInput extends Partial<CreateTemplateInput> {
@@ -52,7 +52,7 @@ export function useEmailTemplates() {
       return (data || []).map(template => ({
         ...template,
         name: template.name || template.type,
-        variables: Array.isArray(template.variables) ? template.variables : [],
+        variables: template.variables || {},
         is_active: template.is_active ?? true,
       })) as EmailTemplate[];
     },

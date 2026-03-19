@@ -13,6 +13,8 @@ import { useEmailTemplates, EmailTemplate } from "@/hooks/useEmailTemplates";
 import { useEmailAttachments, EmailAttachment } from "@/hooks/useEmailAttachments";
 import { useEmailQueue } from "@/hooks/useEmailQueue";
 import { renderTemplate, TemplateVariables, getVariablesWithSignature } from "@/lib/email/template-renderer";
+import { generateCourseTableHtml } from "@/components/email-templates/CourseTableEditor";
+import { generateCourseDescriptionHtml } from "@/components/email-templates/CourseDescriptionEditor";
 import { wrapEmailContent, getEmailSignature } from "@/lib/email/email-wrapper";
 import { useBranch } from "@/context/BranchContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -222,6 +224,15 @@ export function SendQuickEmailModal({ open, onOpenChange, handler }: SendQuickEm
         templateId = selectedCustomTemplate.id;
         const variables = getTemplateVariables();
         
+        // Inject structured course data if template uses placeholders
+        const templateVars = selectedCustomTemplate.variables as any;
+        if (templateVars?.course_data && selectedCustomTemplate.content.includes("{{course_table}}")) {
+          variables.course_table = generateCourseTableHtml(templateVars.course_data, templateVars.course_footnote);
+        }
+        if (templateVars?.course_descriptions && selectedCustomTemplate.content.includes("{{course_description}}")) {
+          variables.course_description = generateCourseDescriptionHtml(templateVars.course_descriptions);
+        }
+        
         subject = renderTemplate(selectedCustomTemplate.subject, variables);
         const renderedContent = renderTemplate(selectedCustomTemplate.content, variables);
         html = wrapEmailContent(renderedContent, {
@@ -316,6 +327,14 @@ export function SendQuickEmailModal({ open, onOpenChange, handler }: SendQuickEm
     // Handle custom templates
     if (templateType === "custom" && selectedCustomTemplate) {
       const variables = getTemplateVariables();
+      // Inject structured course data if template uses placeholders
+      const tVars = selectedCustomTemplate.variables as any;
+      if (tVars?.course_data && selectedCustomTemplate.content.includes("{{course_table}}")) {
+        variables.course_table = generateCourseTableHtml(tVars.course_data, tVars.course_footnote);
+      }
+      if (tVars?.course_descriptions && selectedCustomTemplate.content.includes("{{course_description}}")) {
+        variables.course_description = generateCourseDescriptionHtml(tVars.course_descriptions);
+      }
       const renderedSubject = renderTemplate(selectedCustomTemplate.subject, variables);
       const renderedContent = renderTemplate(selectedCustomTemplate.content, variables);
       const html = wrapEmailContent(renderedContent, {

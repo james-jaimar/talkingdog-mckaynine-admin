@@ -12,6 +12,8 @@ import { useEmailTemplates } from "@/hooks/useEmailTemplates";
 import { useEmailAttachments, EmailAttachment } from "@/hooks/useEmailAttachments";
 import { useEmailQueue } from "@/hooks/useEmailQueue";
 import { renderTemplate, TemplateVariables, getVariablesWithSignature } from "@/lib/email/template-renderer";
+import { generateCourseTableHtml } from "@/components/email-templates/CourseTableEditor";
+import { generateCourseDescriptionHtml } from "@/components/email-templates/CourseDescriptionEditor";
 import { wrapEmailContent, getEmailSignature } from "@/lib/email/email-wrapper";
 import { useBranch } from "@/context/BranchContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -127,6 +129,15 @@ export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModa
         custom_message: customMessage.replace(/\n/g, '<br>'),
       });
       
+      // Inject structured course data if template uses placeholders
+      const tVars = selectedTemplate.variables as any;
+      if (tVars?.course_data && selectedTemplate.content.includes("{{course_table}}")) {
+        variables.course_table = generateCourseTableHtml(tVars.course_data, tVars.course_footnote);
+      }
+      if (tVars?.course_descriptions && selectedTemplate.content.includes("{{course_description}}")) {
+        variables.course_description = generateCourseDescriptionHtml(tVars.course_descriptions);
+      }
+      
       // Render the user-created template content
       const renderedContent = renderTemplate(selectedTemplate.content, variables);
       const renderedSubject = renderTemplate(selectedTemplate.subject, variables);
@@ -203,6 +214,14 @@ export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModa
     if (!selectedTemplate) return { html: "", subject: "" };
     
     const variables = getTemplateVariables();
+    // Inject structured course data
+    const tVars = selectedTemplate.variables as any;
+    if (tVars?.course_data && selectedTemplate.content.includes("{{course_table}}")) {
+      variables.course_table = generateCourseTableHtml(tVars.course_data, tVars.course_footnote);
+    }
+    if (tVars?.course_descriptions && selectedTemplate.content.includes("{{course_description}}")) {
+      variables.course_description = generateCourseDescriptionHtml(tVars.course_descriptions);
+    }
     const renderedHtml = renderTemplate(selectedTemplate.content, variables);
     const renderedSubject = renderTemplate(selectedTemplate.subject, variables);
     

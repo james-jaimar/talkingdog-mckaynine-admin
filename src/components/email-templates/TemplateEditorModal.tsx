@@ -8,13 +8,15 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useEmailTemplates, EmailTemplate } from "@/hooks/useEmailTemplates";
-import { AVAILABLE_MERGE_FIELDS, getSampleTemplate, renderTemplate, getSampleVariables } from "@/lib/email/template-renderer";
+import { getSampleTemplate, renderTemplate, getSampleVariables } from "@/lib/email/template-renderer";
 import { wrapWithPreviewStyles } from "@/lib/email/preview-styles";
 import { EO3_JAN_2026_TEMPLATE, EO3_JAN_2026_SUBJECT } from "@/lib/email/templates/eo3-jan-2026";
 import { CONGRATS_TEMPLATES } from "@/lib/email/templates/congrats-templates";
 import { Eye, FileDown, Edit3, FileUp } from "lucide-react";
 import { RichTextEditor } from "@/components/platform-templates/RichTextEditor";
 import { WordUploadModal } from "@/components/platform-templates/WordUploadModal";
+import { CourseTableEditor, CourseRow, generateCourseTableHtml } from "@/components/email-templates/CourseTableEditor";
+import { CourseDescriptionEditor, CourseDescription, generateCourseDescriptionHtml } from "@/components/email-templates/CourseDescriptionEditor";
 import { useBranch } from "@/context/BranchContext";
 import { useClassTypes } from "@/hooks/useClassTypes";
 
@@ -32,7 +34,8 @@ const TEMPLATE_TYPES = [
   { value: "custom", label: "Custom" },
 ];
 
-// CLASS_TYPES now loaded dynamically via useClassTypes hook
+const DEFAULT_COURSE: CourseRow = { name: "", price: "", entry_criteria: "", dates: "", day_time: "" };
+const DEFAULT_DESCRIPTION: CourseDescription = { title: "", items: "" };
 
 export function TemplateEditorModal({ open, onOpenChange, template }: TemplateEditorModalProps) {
   const { createTemplate, updateTemplate } = useEmailTemplates();
@@ -49,6 +52,16 @@ export function TemplateEditorModal({ open, onOpenChange, template }: TemplateEd
   const [classType, setClassType] = useState("all");
   const [isActive, setIsActive] = useState(true);
 
+  // Structured course data
+  const [courses, setCourses] = useState<CourseRow[]>([{ ...DEFAULT_COURSE }]);
+  const [courseFootnote, setCourseFootnote] = useState("");
+  const [courseDescriptions, setCourseDescriptions] = useState<CourseDescription[]>([{ ...DEFAULT_DESCRIPTION }]);
+
+  // Check if content uses structured course placeholders
+  const hasCourseTable = content.includes("{{course_table}}");
+  const hasCourseDescription = content.includes("{{course_description}}");
+  const showCourseEditors = hasCourseTable || hasCourseDescription;
+
   // Reset form when modal opens/closes or template changes
   useEffect(() => {
     if (open) {
@@ -59,20 +72,38 @@ export function TemplateEditorModal({ open, onOpenChange, template }: TemplateEd
         setContent(template.content);
         setClassType(template.class_type || "all");
         setIsActive(template.is_active);
+        
+        // Load structured data from template variables
+        const vars = template.variables as any;
+        if (vars?.course_data) {
+          setCourses(vars.course_data);
+        } else {
+          setCourses([{ ...DEFAULT_COURSE }]);
+        }
+        if (vars?.course_footnote) {
+          setCourseFootnote(vars.course_footnote);
+        } else {
+          setCourseFootnote("");
+        }
+        if (vars?.course_descriptions) {
+          setCourseDescriptions(vars.course_descriptions);
+        } else {
+          setCourseDescriptions([{ ...DEFAULT_DESCRIPTION }]);
+        }
       } else {
-        // New template - use sample as starting point
         setName("");
         setType("info_pack");
         setSubject("Information about {{next_class}} Class");
         setContent(getSampleTemplate());
         setClassType("all");
         setIsActive(true);
+        setCourses([{ ...DEFAULT_COURSE }]);
+        setCourseFootnote("");
+        setCourseDescriptions([{ ...DEFAULT_DESCRIPTION }]);
       }
       setActiveTab("edit");
     }
   }, [open, template]);
-
-  // Merge field insertion is now handled by the RichTextEditor component
 
   const loadPresetTemplate = (preset: string) => {
     if (preset === "eo3-jan-2026") {
@@ -81,12 +112,18 @@ export function TemplateEditorModal({ open, onOpenChange, template }: TemplateEd
       setContent(EO3_JAN_2026_TEMPLATE);
       setClassType("EO");
       setType("info_pack");
+      setCourses([{ ...DEFAULT_COURSE }]);
+      setCourseFootnote("");
+      setCourseDescriptions([{ ...DEFAULT_DESCRIPTION }]);
     } else if (preset === "basic") {
       setName("");
       setSubject("Information about {{next_class}} Class");
       setContent(getSampleTemplate());
       setClassType("all");
       setType("info_pack");
+      setCourses([{ ...DEFAULT_COURSE }]);
+      setCourseFootnote("");
+      setCourseDescriptions([{ ...DEFAULT_DESCRIPTION }]);
     } else {
       // Check if it's a congrats template
       const congratsTemplate = CONGRATS_TEMPLATES.find(t => t.name === preset);
@@ -96,11 +133,33 @@ export function TemplateEditorModal({ open, onOpenChange, template }: TemplateEd
         setContent(congratsTemplate.content);
         setClassType(congratsTemplate.classType || "all");
         setType("custom");
+        // Load default structured data from the template
+        if (congratsTemplate.defaultCourses) {
+          setCourses(congratsTemplate.defaultCourses);
+        } else {
+          setCourses([{ ...DEFAULT_COURSE }]);
+        }
+        setCourseFootnote(congratsTemplate.defaultFootnote || "");
+        if (congratsTemplate.defaultDescriptions) {
+          setCourseDescriptions(congratsTemplate.defaultDescriptions);
+        } else {
+          setCourseDescriptions([{ ...DEFAULT_DESCRIPTION }]);
+        }
       }
     }
   };
 
   const handleSubmit = async () => {
+    // Store structured course data in the variables field
+    const variables: any = {};
+    if (hasCourseTable) {
+      variables.course_data = courses;
+      if (courseFootnote) variables.course_footnote = courseFootnote;
+    }
+    if (hasCourseDescription) {
+      variables.course_descriptions = courseDescriptions;
+    }
+
     const data = {
       name,
       type,
@@ -108,6 +167,7 @@ export function TemplateEditorModal({ open, onOpenChange, template }: TemplateEd
       content,
       class_type: classType === "all" ? undefined : classType,
       is_active: isActive,
+      variables: Object.keys(variables).length > 0 ? variables : [],
     };
 
     if (template) {
@@ -118,8 +178,20 @@ export function TemplateEditorModal({ open, onOpenChange, template }: TemplateEd
     onOpenChange(false);
   };
 
+  // Build preview variables with generated course HTML
+  const getPreviewVariables = () => {
+    const vars = getSampleVariables(currentBranch?.name);
+    if (hasCourseTable) {
+      vars.course_table = generateCourseTableHtml(courses, courseFootnote);
+    }
+    if (hasCourseDescription) {
+      vars.course_description = generateCourseDescriptionHtml(courseDescriptions);
+    }
+    return vars;
+  };
+
   const isValid = name.trim() && subject.trim() && content.trim();
-  const previewHtml = wrapWithPreviewStyles(renderTemplate(content, getSampleVariables(currentBranch?.name)));
+  const previewHtml = wrapWithPreviewStyles(renderTemplate(content, getPreviewVariables()));
 
   const handleWordConversion = (convertedHtml: string, suggestedName: string) => {
     setContent(convertedHtml);
@@ -264,19 +336,44 @@ export function TemplateEditorModal({ open, onOpenChange, template }: TemplateEd
             <div className="space-y-2">
               <Label>Email Content</Label>
               <p className="text-xs text-muted-foreground">
-                Write your email just like you would in any email app. Use the toolbar to format text and insert merge fields (like handler name, dog name, etc.).
+                Write your email just like you would in any email app. Use "Insert Field" to add merge fields. Use <code className="bg-muted px-1 rounded">{'{{course_table}}'}</code> and <code className="bg-muted px-1 rounded">{'{{course_description}}'}</code> to insert structured course info blocks.
               </p>
               <RichTextEditor
                 content={content}
                 onChange={setContent}
               />
             </div>
+
+            {/* Structured Course Editors - only show when placeholders are in content */}
+            {showCourseEditors && (
+              <div className="space-y-4">
+                <div className="border-t pt-4">
+                  <h3 className="text-sm font-semibold mb-3">📋 Course Data (fills the placeholders above)</h3>
+                </div>
+                
+                {hasCourseTable && (
+                  <CourseTableEditor
+                    courses={courses}
+                    onChange={setCourses}
+                    footnote={courseFootnote}
+                    onFootnoteChange={setCourseFootnote}
+                  />
+                )}
+
+                {hasCourseDescription && (
+                  <CourseDescriptionEditor
+                    descriptions={courseDescriptions}
+                    onChange={setCourseDescriptions}
+                  />
+                )}
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="preview" className="flex-1 overflow-auto mt-4">
             <div className="border rounded-lg overflow-hidden">
               <div className="bg-muted p-3 border-b">
-                <strong>Subject:</strong> {renderTemplate(subject, getSampleVariables(currentBranch?.name))}
+                <strong>Subject:</strong> {renderTemplate(subject, getPreviewVariables())}
               </div>
               <iframe
                 srcDoc={previewHtml}
