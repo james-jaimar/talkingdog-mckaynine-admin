@@ -203,16 +203,13 @@ export function ClassClosureModal({
         const taskDogId = bookingForTask?.dog_id || null;
         const taskDogName = (bookingForTask?.dogs as any)?.name || handler.dog_name || null;
 
-        // Look up target_term_id if handler has term info
-        let targetTermId: string | null = null;
+        // Compute target_month from next term info
+        let targetMonth: string | null = null;
         if (handler.next_term_number && handler.next_term_year) {
-          const { data: termData } = await supabase
-            .from("terms")
-            .select("id, academic_years!inner(year)")
-            .eq("term_number", handler.next_term_number as any)
-            .eq("academic_years.year", handler.next_term_year)
-            .maybeSingle();
-          targetTermId = termData?.id || null;
+          // Map term numbers to approximate start months
+          const termToMonth: Record<string, string> = { '1': '01', '2': '04', '3': '07', '4': '10' };
+          const monthStr = termToMonth[String(handler.next_term_number)] || '01';
+          targetMonth = `${handler.next_term_year}-${monthStr}`;
         }
 
         if (handler.next_action === "wants_info") {
@@ -227,7 +224,7 @@ export function ClassClosureModal({
             branch_id: classBranchId,
             dog_id: taskDogId,
             dog_name: taskDogName,
-            target_term_id: targetTermId,
+            target_month: targetMonth,
           });
           tasksCreated++;
         } else if (handler.next_action === "continuing") {
@@ -246,7 +243,7 @@ export function ClassClosureModal({
             branch_id: classBranchId,
             dog_id: taskDogId,
             dog_name: taskDogName,
-            target_term_id: targetTermId,
+            target_month: targetMonth,
           });
           tasksCreated++;
         }
