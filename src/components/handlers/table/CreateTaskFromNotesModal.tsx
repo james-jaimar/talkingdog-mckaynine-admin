@@ -54,6 +54,7 @@ export function CreateTaskFromNotesModal({
   const queryClient = useQueryClient();
   const { currentBranch } = useBranch();
   const { classTypeNames } = useClassTypes();
+  const { terms: availableTerms } = useAvailableTerms();
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Form state
@@ -62,6 +63,7 @@ export function CreateTaskFromNotesModal({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [dueDate, setDueDate] = useState("");
+  const [targetTermId, setTargetTermId] = useState("none");
 
   const fullName = `${handler.first_name} ${handler.last_name || ''}`.trim();
 
