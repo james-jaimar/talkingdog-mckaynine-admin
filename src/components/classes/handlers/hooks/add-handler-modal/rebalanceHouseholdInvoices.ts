@@ -21,6 +21,7 @@ interface RebalanceParams {
   newClassDate: string;
   newClassBranchId: string;
   existingHandlerId: string;
+  termId?: string | null;
   adminFeeType?: string;
   adminFeeValue?: number;
   trainerFeeType?: string;
