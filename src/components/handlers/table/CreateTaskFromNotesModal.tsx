@@ -85,6 +85,7 @@ export function CreateTaskFromNotesModal({
         due_date: dueDate || null,
         status: "pending",
         branch_id: currentBranch?.id || null,
+        target_term_id: targetTermId === "none" ? null : targetTermId,
       });
 
       if (error) throw error;
