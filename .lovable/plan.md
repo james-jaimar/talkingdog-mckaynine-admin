@@ -6,6 +6,24 @@ Examples: When class types became dynamic, we needed to also update the class cl
 
 ---
 
+## COMPLETED: IO Sync Race Condition Fix
+
+### Problem
+Multiple concurrent sync calls for the same invoice created duplicate entries in InvoicesOnline. Three code paths (`useMarkInvoiceAsSent`, `useEmailInvoice`, `EmailInvoiceProgressDialog`) could independently trigger `syncInvoiceToIO()` before any had written `io_document_id` back to the database.
+
+### Fix (Dual-Layer Protection)
+
+**Layer 1 — Client-side dedup (`useIOSync.ts`):**  
+Added an `inFlightSyncs` Map that tracks in-flight promises by `invoiceId:action`. If a second call arrives for the same key, it returns the existing promise instead of firing a new API call.
+
+**Layer 2 — Server-side lock (`sync-invoice-to-io/index.ts`):**  
+Before calling the IO API, atomically sets `io_sync_status = 'syncing'` with a conditional WHERE clause that only matches null/failed/pending statuses. If 0 rows match (another call already claimed it), the function polls for up to 15 seconds until the first call completes, then returns its result.
+
+### Files Changed
+- `src/hooks/invoices/useIOSync.ts` — client-side in-flight promise dedup
+- `supabase/functions/sync-invoice-to-io/index.ts` — server-side atomic lock + polling
+
+---
 
 ## Fix: Randburg Templates Showing Delta Signature
 
