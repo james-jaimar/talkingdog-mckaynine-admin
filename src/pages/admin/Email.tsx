@@ -32,7 +32,7 @@ import {
 
 // Email Templates imports
 import { useEmailTemplates, EmailTemplate } from "@/hooks/useEmailTemplates";
-import { Eye, Check, Plus, Edit, Copy } from "lucide-react";
+import { Eye, Check, Plus, Edit, Copy, CopyPlus } from "lucide-react";
 import { CopyTemplateToBranchDialog } from "@/components/email-templates/CopyTemplateToBranchDialog";
 import { TemplatePreviewModal } from "@/components/email-templates/TemplatePreviewModal";
 import { TemplateEditorModal } from "@/components/email-templates/TemplateEditorModal";
