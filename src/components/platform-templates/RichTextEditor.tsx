@@ -62,6 +62,8 @@ const MERGE_FIELDS = [
   { key: "branch_email", label: "Branch Email" },
   { key: "branch_phone", label: "Branch Phone" },
   { key: "custom_message", label: "Personal Note" },
+  { key: "course_table", label: "📊 Course Info Table" },
+  { key: "course_description", label: "📋 Course Descriptions" },
 ];
 
 const TEXT_COLORS = [
