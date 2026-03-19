@@ -37,6 +37,7 @@ export function HandlerCompletionRow({ data, onChange, index, showContinuingColu
     : "";
 
   const isContinuing = data.next_action === "continuing";
+  const showMonthPicker = data.next_action === "continuing" || data.next_action === "wants_info";
 
   return (
     <TableRow className={index % 2 === 0 ? "bg-muted/30" : ""}>
