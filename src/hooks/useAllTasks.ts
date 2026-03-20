@@ -100,6 +100,13 @@ export function useAllTasks(filters: TaskFilters = {}, branchId?: string) {
 
   const completeTask = useMutation({
     mutationFn: async (taskId: string) => {
+      // Get task details before completing for status linkage
+      const { data: task } = await supabase
+        .from("handler_tasks")
+        .select("class_status_id, handler_id, dog_id, class_type")
+        .eq("id", taskId)
+        .single();
+
       const { error } = await supabase
         .from("handler_tasks")
         .update({
@@ -109,6 +116,24 @@ export function useAllTasks(filters: TaskFilters = {}, branchId?: string) {
         .eq("id", taskId);
 
       if (error) throw error;
+
+      // Also mark associated handler_class_status action as completed
+      if (task?.class_status_id) {
+        await supabase
+          .from("handler_class_status")
+          .update({ action_completed: true, action_completed_at: new Date().toISOString() })
+          .eq("id", task.class_status_id);
+      } else if (task?.handler_id && task?.dog_id && task?.class_type) {
+        // Fallback match for legacy unlinked tasks
+        await supabase
+          .from("handler_class_status")
+          .update({ action_completed: true, action_completed_at: new Date().toISOString() })
+          .eq("handler_id", task.handler_id)
+          .eq("dog_id", task.dog_id)
+          .eq("class_type", task.class_type)
+          .eq("action_completed", false)
+          .neq("next_action", "none");
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["all-tasks"] });

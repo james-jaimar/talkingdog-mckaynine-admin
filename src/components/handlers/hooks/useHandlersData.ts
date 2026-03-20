@@ -260,14 +260,20 @@ export function useHandlersData() {
               // is already completed for this handler+dog (catches historical stale data)
               let effectiveNextAction = found.next_action;
               let effectiveActionCompleted = found.action_completed;
-              if (effectiveNextAction && effectiveNextAction !== 'none' && !effectiveActionCompleted && found.next_class_type) {
-                const nextClasses = found.next_class_type.split(',').map((s: string) => s.trim());
-                const dogId = found.dog_id;
-                const allCompletedForDog = nextClasses.every((nc: string) =>
-                  allStatuses.some(s => s.class_type === nc && s.dog_id === dogId && s.completed)
-                );
-                if (allCompletedForDog) {
-                  effectiveActionCompleted = true;
+              if (effectiveNextAction && effectiveNextAction !== 'none' && !effectiveActionCompleted) {
+                // Determine target classes: from next_class_type or fallback progression map
+                const nextClassTypeStr = found.next_class_type;
+                const fallbackNext = allClassTypes?.find(ct => ct.name === classType)?.next_class_type;
+                const targetStr = nextClassTypeStr || fallbackNext;
+                if (targetStr) {
+                  const nextClasses = targetStr.split(',').map((s: string) => s.trim());
+                  const dogId = found.dog_id;
+                  const allCompletedForDog = nextClasses.every((nc: string) =>
+                    allStatuses.some(s => s.class_type === nc && s.dog_id === dogId && s.completed)
+                  );
+                  if (allCompletedForDog) {
+                    effectiveActionCompleted = true;
+                  }
                 }
               }
               return {

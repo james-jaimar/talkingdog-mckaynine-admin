@@ -144,57 +144,7 @@ export function ClassClosureModal({
       const classBranchId = classData?.branch_id || null;
 
       for (const handler of completionData) {
-        // YOGA SPECIAL CASE: Delete previous yoga entries for this handler/dog
-        // Yoga classes are monthly - we only want to show the latest entry
-        if (classType === 'Yoga') {
-          // Get the dog_id from the booking
-          const { data: bookingData } = await supabase
-            .from("bookings")
-            .select("dog_id")
-            .eq("id", handler.booking_id)
-            .single();
-          
-          if (bookingData?.dog_id) {
-            // Delete all previous yoga entries for this handler + dog combination
-            await supabase
-              .from("handler_class_status")
-              .delete()
-              .eq("handler_id", handler.handler_id)
-              .eq("dog_id", bookingData.dog_id)
-              .eq("class_type", "Yoga");
-          }
-        }
-
-        // Upsert handler class status
-        const { error: statusError } = await supabase
-          .from("handler_class_status")
-          .upsert({
-            booking_id: handler.booking_id,
-            class_id: classId,
-            handler_id: handler.handler_id,
-            class_type: classType,
-            completed: true,
-            completed_at: new Date().toISOString(),
-            completion_method: "manual",
-            period: lastClassDate ? formatCompletionPeriod(lastClassDate) : new Date().toLocaleDateString('en-US', { month: 'short' }) + ' ' + new Date().getFullYear().toString().slice(-2),
-            pass_percentage: handler.pass_percentage,
-            result_status: handler.result_status,
-            result_notes: handler.result_notes,
-            next_action: handler.next_action,
-            next_class_type: handler.next_class_type || null,
-            next_term_number: handler.next_term_number || null,
-            next_term_year: handler.next_term_year || null,
-            action_completed: false,
-            is_currently_enrolled: false,
-          }, {
-            onConflict: 'id'
-          });
-
-        if (!statusError) completedCount++;
-
-        // 3. Create tasks based on next_action
-
-        // Get dog info from the booking for task context
+        // Get dog info from the booking
         const { data: bookingForTask } = await supabase
           .from("bookings")
           .select("dog_id, dogs:dog_id(name)")
@@ -202,6 +152,19 @@ export function ClassClosureModal({
           .single();
         const taskDogId = bookingForTask?.dog_id || null;
         const taskDogName = (bookingForTask?.dogs as any)?.name || handler.dog_name || null;
+
+        // YOGA SPECIAL CASE: Delete previous yoga entries for this handler/dog
+        if (classType === 'Yoga' && taskDogId) {
+          await supabase
+            .from("handler_class_status")
+            .delete()
+            .eq("handler_id", handler.handler_id)
+            .eq("dog_id", taskDogId)
+            .eq("class_type", "Yoga");
+        }
+
+        // Compute effective next_class_type — always persist for wants_info
+        const nextClass = handler.next_class_type || nextClassMap[classType] || null;
 
         // Use user-selected target_month, or compute from next term info as fallback
         let targetMonth: string | null = handler.target_month || null;
@@ -211,14 +174,67 @@ export function ClassClosureModal({
           targetMonth = `${handler.next_term_year}-${monthStr}`;
         }
 
-        if (handler.next_action === "wants_info") {
-          const nextClass = nextClassMap[classType] || "next class";
+        // Insert handler class status and get the ID back
+        const { data: statusRow, error: statusError } = await supabase
+          .from("handler_class_status")
+          .insert({
+            booking_id: handler.booking_id,
+            class_id: classId,
+            handler_id: handler.handler_id,
+            dog_id: taskDogId,
+            class_type: classType,
+            completed: true,
+            completed_at: new Date().toISOString(),
+            completion_method: "manual",
+            period: lastClassDate ? formatCompletionPeriod(lastClassDate) : new Date().toLocaleDateString('en-US', { month: 'short' }) + ' ' + new Date().getFullYear().toString().slice(-2),
+            pass_percentage: handler.pass_percentage,
+            result_status: handler.result_status,
+            result_notes: handler.result_notes,
+            next_action: handler.next_action,
+            next_class_type: nextClass,
+            next_term_number: handler.next_term_number || null,
+            next_term_year: handler.next_term_year || null,
+            action_completed: false,
+            is_currently_enrolled: false,
+          })
+          .select("id")
+          .single();
+
+        if (!statusError) completedCount++;
+        const statusId = statusRow?.id || null;
+
+        // Auto-resolve stale actions from previous classes that pointed to this class type
+        if (taskDogId) {
+          await supabase
+            .from("handler_class_status")
+            .update({ action_completed: true, action_completed_at: new Date().toISOString() })
+            .eq("handler_id", handler.handler_id)
+            .eq("dog_id", taskDogId)
+            .eq("action_completed", false)
+            .neq("next_action", "none")
+            .ilike("next_class_type", `%${classType}%`)
+            .neq("id", statusId || '');
+
+          // Also complete associated pending tasks for this handler+dog that reference this class
+          await supabase
+            .from("handler_tasks")
+            .update({ status: "completed", completed_at: new Date().toISOString() })
+            .eq("handler_id", handler.handler_id)
+            .eq("dog_id", taskDogId)
+            .eq("status", "pending")
+            .ilike("title", `%${classType}%`);
+        }
+
+        // Create tasks based on next_action, linked to the status row
+        if (handler.next_action === "wants_info" && statusId) {
+          const infoClass = nextClass || "next class";
           await supabase.from("handler_tasks").insert({
             handler_id: handler.handler_id,
+            class_status_id: statusId,
             class_type: classType,
             task_type: "send_info_pack",
-            title: `Send ${nextClass} info pack${taskDogName ? ` (${taskDogName})` : ''}`,
-            description: `Handler completed ${classType}. Send information about ${nextClass} class.`,
+            title: `Send ${infoClass} info pack${taskDogName ? ` (${taskDogName})` : ''}`,
+            description: `Handler completed ${classType}. Send information about ${infoClass} class.`,
             status: "pending",
             branch_id: classBranchId,
             dog_id: taskDogId,
@@ -226,18 +242,19 @@ export function ClassClosureModal({
             target_month: targetMonth,
           });
           tasksCreated++;
-        } else if (handler.next_action === "continuing") {
-          const nextClass = handler.next_class_type || nextClassMap[classType] || "next class";
+        } else if (handler.next_action === "continuing" && statusId) {
+          const contClass = nextClass || "next class";
           const termInfo = handler.next_term_number && handler.next_term_year 
             ? `Term ${handler.next_term_number} ${handler.next_term_year}`
             : "upcoming term";
           
           await supabase.from("handler_tasks").insert({
             handler_id: handler.handler_id,
+            class_status_id: statusId,
             class_type: classType,
             task_type: "enrollment",
-            title: `Enroll in ${nextClass} - ${termInfo}${taskDogName ? ` (${taskDogName})` : ''}`,
-            description: `Handler completed ${classType}. Follow up on enrollment for ${nextClass} in ${termInfo}.`,
+            title: `Enroll in ${contClass} - ${termInfo}${taskDogName ? ` (${taskDogName})` : ''}`,
+            description: `Handler completed ${classType}. Follow up on enrollment for ${contClass} in ${termInfo}.`,
             status: "pending",
             branch_id: classBranchId,
             dog_id: taskDogId,
