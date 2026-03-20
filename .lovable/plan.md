@@ -1,59 +1,35 @@
 
 
-# Unified Household Invoice: One Invoice, Both Handlers See It, Email Goes to Both
+# Fix: Task Badge Not Showing in Handlers + Missing Query Invalidation
 
-## Current Behavior
-- Household enrollment creates **two separate invoices** (50/50 rebalance via `rebalanceHouseholdInvoices`)
-- Each handler only sees invoices where `client_id = their ID`
-- Email is sent to one recipient only
+## Issues Found
 
-## Desired Behavior
-- Household enrollment adds items to the **existing** invoice (same as multi-dog same-handler path)
-- Both household handlers can **see** that single invoice
-- When emailing, the invoice is sent to **both** handlers' email addresses
+### Issue 1: Icon not showing in Handlers table
+The `handlers-pending-tasks` query key (used in `useHandlersData.ts` line 76) is **never invalidated** by any task mutation — not in `CreateTaskModal`, `useAllTasks`, `useHandlerTasks`, or `CreateTaskFromNotesModal`. This means:
+- After creating/completing/cancelling tasks, navigating back to the Handlers page shows stale badge data
+- The `has_tasks` filter count is also stale
+- `refetchOnWindowFocus: false` makes it worse — even tabbing away and back won't refresh
 
-## Implementation
+### Issue 2: Only seeing 1 task for Angela Glover
+The database confirms only **1 pending task** exists for Angela Glover (handler_id `c424f5e3-...`). The second task the user created either failed silently or wasn't submitted. This appears to be a data issue rather than a code bug — the `CreateTaskModal` insert logic looks correct and shows error toasts on failure.
 
-### 1. New DB table: `invoice_additional_recipients`
-Create a junction table to link additional handlers to an invoice:
+## Fix
 
-```sql
-CREATE TABLE invoice_additional_recipients (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  invoice_id uuid NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
-  client_id uuid NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
-  created_at timestamptz DEFAULT now(),
-  UNIQUE(invoice_id, client_id)
-);
+Add `handlers-pending-tasks` to all query invalidation lists across **4 files**:
 
-ALTER TABLE invoice_additional_recipients ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Allow all access for now" ON invoice_additional_recipients FOR ALL USING (true);
+1. **`src/components/tasks/CreateTaskModal.tsx`** — add `queryClient.invalidateQueries({ queryKey: ["handlers-pending-tasks"] })` after task creation
+2. **`src/hooks/useAllTasks.ts`** — add to `completeTask`, `cancelTask`, `updateTask`, and `deleteTask` onSuccess handlers
+3. **`src/hooks/useHandlerTasks.ts`** — add to `completeTask`, `createTask`, and `cancelTask` onSuccess handlers
+4. **`src/components/handlers/table/CreateTaskFromNotesModal.tsx`** — add after task creation invalidation
+
+This ensures the Handlers table TaskBadge and filter counts stay in sync after any task mutation.
+
+## Technical Details
+
+Each file's mutation `onSuccess` blocks need one additional line:
+```typescript
+queryClient.invalidateQueries({ queryKey: ["handlers-pending-tasks"] });
 ```
 
-### 2. Change household enrollment path (`addHandlerToClass.ts`)
-Replace the `rebalanceHouseholdInvoices` call (lines 146–177) with `addToExistingInvoice` — identical to the same-handler multi-dog path. Then insert a row into `invoice_additional_recipients` linking the second handler to the existing invoice.
-
-### 3. Show shared invoices to both handlers (`useClientInvoices.ts`)
-Change the query from `eq('client_id', clientId)` to an `or` filter:
-- `client_id = handlerId` OR `id IN (SELECT invoice_id FROM invoice_additional_recipients WHERE client_id = handlerId)`
-
-This makes the single invoice visible on both handlers' detail pages.
-
-### 4. Email to both handlers (`useEmailInvoice.ts`)
-When queueing an invoice email:
-- Query `invoice_additional_recipients` for the invoice
-- If additional recipients exist, fetch their email from `clients`
-- Queue one email per recipient (same PDF, same content)
-
-### 5. Update success message (`addHandlerToClass.ts`)
-Change the household success message to reflect consolidation rather than rebalancing.
-
-## Files Changed
-- **New migration**: `invoice_additional_recipients` table
-- `src/components/classes/handlers/hooks/add-handler-modal/addHandlerToClass.ts` — use `addToExistingInvoice` + insert recipient link
-- `src/hooks/invoices/queries/useClientInvoices.ts` — include shared invoices in results
-- `src/hooks/invoices/useEmailInvoice.ts` — queue emails for additional recipients
-- `src/components/invoices/dialogs/EmailInvoiceDialog.tsx` — send to all recipients
-
-~5 files, ~60 lines changed.
+~8 lines added across 4 files.
 
