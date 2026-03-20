@@ -43,8 +43,17 @@ export function useClientInvoices(clientId?: string) {
           }
         }
         
-        // Fetch invoices for this client with detailed information
-        const { data, error } = await supabase
+        // Fetch invoices where client is primary OR additional recipient
+        // First get invoice IDs where this client is an additional recipient
+        const { data: additionalRecipientData } = await supabase
+          .from('invoice_additional_recipients')
+          .select('invoice_id')
+          .eq('client_id', clientId);
+        
+        const additionalInvoiceIds = (additionalRecipientData || []).map(r => r.invoice_id);
+        
+        // Build query for invoices owned by or shared with this client
+        let query = supabase
           .from('invoices')
           .select(`
             *,
@@ -57,9 +66,17 @@ export function useClientInvoices(clientId?: string) {
               booking_id
             )
           `)
-          .eq('client_id', clientId)
           .eq('branch_id', branchId)
           .order('created_at', { ascending: false });
+        
+        // Use OR filter: client_id matches OR id is in additional recipient list
+        if (additionalInvoiceIds.length > 0) {
+          query = query.or(`client_id.eq.${clientId},id.in.(${additionalInvoiceIds.join(',')})`);
+        } else {
+          query = query.eq('client_id', clientId);
+        }
+        
+        const { data, error } = await query;
 
         if (error) {
           console.error("Error fetching client invoices:", error);

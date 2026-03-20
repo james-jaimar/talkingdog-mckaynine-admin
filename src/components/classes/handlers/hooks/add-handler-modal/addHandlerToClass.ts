@@ -260,7 +260,7 @@ export const addHandlerToClass = async ({
     // Build success message based on what happened
     let successMessage: string;
     if (householdRebalanceApplied) {
-      successMessage = `${dogCountText} added to class. Household invoices rebalanced 50/50 with 25% discount. Admin task created for review.`;
+      successMessage = `${dogCountText} added to class. Household consolidated into invoice ${updatedInvoiceNumber} with 25% multi-dog discount. Admin task created for review.`;
     } else if (multiDogDiscountApplied) {
       successMessage = `${dogCountText} added to class. Multi-dog discount (25%) applied - invoice ${updatedInvoiceNumber} updated. Admin tasks created for review.`;
     } else if (dogIds.length === 2) {

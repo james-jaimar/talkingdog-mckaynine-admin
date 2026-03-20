@@ -82,25 +82,47 @@ export function useEmailInvoice() {
           contentType: "application/pdf"
         }] : [];
         
-        // Add to email queue instead of sending directly
-        const { error: queueError } = await supabase
-          .from("email_queue")
-          .insert({
-            branch_id: invoiceDetails.branch_id,
-            to_email: email,
-            subject: subject,
-            html_content: htmlContent,
-            handler_id: invoiceDetails.client_id,
-            status: "review",
-            attachments: attachments.length > 0 ? attachments : null,
-          });
-
-        if (queueError) {
-          console.error("Error queueing invoice email:", queueError);
-          throw new Error(`Failed to queue email: ${queueError.message}`);
+        // Collect all recipients: the primary email + any additional household recipients
+        const allRecipients: Array<{ email: string; handlerId: string | null }> = [
+          { email, handlerId: invoiceDetails.client_id }
+        ];
+        
+        // Check for additional recipients (household members)
+        const { data: additionalRecipients } = await supabase
+          .from('invoice_additional_recipients')
+          .select('client_id, clients:client_id(email)')
+          .eq('invoice_id', invoice.id);
+        
+        if (additionalRecipients) {
+          for (const recipient of additionalRecipients) {
+            const recipientEmail = (recipient as any).clients?.email;
+            if (recipientEmail && recipientEmail !== email) {
+              allRecipients.push({ email: recipientEmail, handlerId: recipient.client_id });
+            }
+          }
         }
         
-        console.log(`Invoice email queued for: ${email}`);
+        // Queue an email for each recipient
+        for (const recipient of allRecipients) {
+          const { error: queueError } = await supabase
+            .from("email_queue")
+            .insert({
+              branch_id: invoiceDetails.branch_id,
+              to_email: recipient.email,
+              subject: subject,
+              html_content: htmlContent,
+              handler_id: recipient.handlerId,
+              status: "review",
+              attachments: attachments.length > 0 ? attachments : null,
+            });
+
+          if (queueError) {
+            console.error(`Error queueing invoice email for ${recipient.email}:`, queueError);
+            throw new Error(`Failed to queue email for ${recipient.email}: ${queueError.message}`);
+          }
+          
+          console.log(`Invoice email queued for: ${recipient.email}`);
+        }
         
         return { success: true, queued: true };
       } catch (error) {
