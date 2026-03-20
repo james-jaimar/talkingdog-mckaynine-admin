@@ -142,42 +142,8 @@ export const addHandlerToClass = async ({
     let updatedInvoiceNumber: string | undefined;
     
     if (totalInvoiceAmount > 0) {
-      // Check if this is a HOUSEHOLD enrollment (different handler in the same household)
+      // Check if this is a HOUSEHOLD or MULTI-DOG enrollment with existing invoice
       if (existingEnrollment.hasExistingEnrollment && 
-          existingEnrollment.isHouseholdEnrollment &&
-          existingEnrollment.existingInvoiceId && 
-          existingEnrollment.existingInvoiceStatus !== 'paid' &&
-          existingEnrollment.existingInvoiceStatus !== 'cancelled') {
-        
-        console.log("HOUSEHOLD-DISCOUNT: Detected household member enrollment, rebalancing invoices", existingEnrollment);
-        
-        // Rebalance both invoices for 50/50 split
-        const rebalanceResult = await rebalanceHouseholdInvoices({
-          existingInvoiceId: existingEnrollment.existingInvoiceId,
-          newHandlerId: handlerId,
-          newDogIds: dogIds,
-          newDogNames: dogNames,
-          newBookingIds: bookingIds,
-          newClassName: classDetails.name,
-          newClassPrice: classPrice,
-          newEnrollmentFee: enrollmentFee,
-          newClassDate: classDate instanceof Date ? classDate.toISOString() : classDate,
-          newClassBranchId: classDetails.branchId,
-          existingHandlerId: existingEnrollment.existingHandlerId || '',
-          termId,
-        });
-        
-        if (rebalanceResult.success) {
-          invoiceCreated = true;
-          householdRebalanceApplied = true;
-          updatedInvoiceNumber = rebalanceResult.firstInvoiceNumber;
-        } else {
-          console.warn("Failed to rebalance household invoices, will create standard invoice:", rebalanceResult.error);
-          // Fall through to standard invoice creation
-        }
-      }
-      // Check if we should update an existing invoice (same handler, multi-dog across classes)
-      else if (existingEnrollment.hasExistingEnrollment && 
           !existingEnrollment.isHouseholdEnrollment &&
           existingEnrollment.existingInvoiceId && 
           existingEnrollment.existingInvoiceStatus !== 'paid' &&
