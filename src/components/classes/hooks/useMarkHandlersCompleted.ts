@@ -98,6 +98,7 @@ export async function useMarkHandlersCompleted(classId: string, currentTerm: str
         .eq("dog_id", bookingData.dog_id)
         .eq("action_completed", false)
         .neq("next_action", "none")
+        .neq("next_action", "stopping")
         .ilike("next_class_type", `%${classTypeToUse}%`);
 
       // Also complete associated pending tasks for this handler+dog+class

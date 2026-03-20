@@ -102,7 +102,8 @@ export function useHandlerTasks(handlerId?: string) {
           .eq("dog_id", task.dog_id)
           .eq("class_type", task.class_type)
           .eq("action_completed", false)
-          .neq("next_action", "none");
+          .neq("next_action", "none")
+          .neq("next_action", "stopping");
       }
     },
     onSuccess: () => {

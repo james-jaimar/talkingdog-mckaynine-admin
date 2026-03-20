@@ -133,6 +133,7 @@ export function useAllTasks(filters: TaskFilters = {}, branchId?: string) {
           .eq("class_type", task.class_type)
           .eq("action_completed", false)
           .neq("next_action", "none");
+          // Note: stopping actions should never be auto-resolved
       }
     },
     onSuccess: () => {
