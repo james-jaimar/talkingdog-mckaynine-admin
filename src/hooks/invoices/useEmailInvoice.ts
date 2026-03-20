@@ -130,9 +130,11 @@ export function useEmailInvoice() {
         throw error;
       }
     },
-    onSuccess: (_, variables) => {
-      console.log(`Invoice email queued for ${variables.email}`);
-      toast.success(`Invoice ${variables.invoice.invoice_number} queued for ${variables.email}`);
+    onSuccess: (result, variables) => {
+      const count = result?.recipientCount || 1;
+      const recipientText = count > 1 ? ` (${count} recipients)` : '';
+      console.log(`Invoice email queued for ${variables.email}${recipientText}`);
+      toast.success(`Invoice ${variables.invoice.invoice_number} queued for ${variables.email}${recipientText}`);
       
       // Invalidate relevant queries to refresh UI
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
