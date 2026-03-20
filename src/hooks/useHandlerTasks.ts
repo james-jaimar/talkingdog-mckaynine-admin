@@ -76,7 +76,7 @@ export function useHandlerTasks(handlerId?: string) {
       // Also mark the handler_class_status action as completed
       const { data: task } = await supabase
         .from("handler_tasks")
-        .select("class_status_id")
+        .select("class_status_id, handler_id, dog_id, class_type")
         .eq("id", taskId)
         .single();
 
@@ -89,6 +89,20 @@ export function useHandlerTasks(handlerId?: string) {
             action_notes: notes,
           })
           .eq("id", task.class_status_id);
+      } else if (task?.handler_id && task?.dog_id && task?.class_type) {
+        // Fallback: match by handler + dog + class_type for legacy unlinked tasks
+        await supabase
+          .from("handler_class_status")
+          .update({
+            action_completed: true,
+            action_completed_at: new Date().toISOString(),
+            action_notes: notes,
+          })
+          .eq("handler_id", task.handler_id)
+          .eq("dog_id", task.dog_id)
+          .eq("class_type", task.class_type)
+          .eq("action_completed", false)
+          .neq("next_action", "none");
       }
     },
     onSuccess: () => {
