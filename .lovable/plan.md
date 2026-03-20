@@ -1,35 +1,24 @@
 
 
-# Fix: Task Badge Not Showing in Handlers + Missing Query Invalidation
+# Fix: "Stopping" Filter Count Dropped from 6 to 3
 
-## Issues Found
+## Root Cause
 
-### Issue 1: Icon not showing in Handlers table
-The `handlers-pending-tasks` query key (used in `useHandlersData.ts` line 76) is **never invalidated** by any task mutation — not in `CreateTaskModal`, `useAllTasks`, `useHandlerTasks`, or `CreateTaskFromNotesModal`. This means:
-- After creating/completing/cancelling tasks, navigating back to the Handlers page shows stale badge data
-- The `has_tasks` filter count is also stale
-- `refetchOnWindowFocus: false` makes it worse — even tabbing away and back won't refresh
+The display-side safety net added in the recent stale-icon fix (lines 263-277 of `useHandlersData.ts`) applies to **all** `next_action` types — including `'stopping'`. It checks whether the "next class" in the progression has been completed for that dog, and if so, marks the action as completed (hidden).
 
-### Issue 2: Only seeing 1 task for Angela Glover
-The database confirms only **1 pending task** exists for Angela Glover (handler_id `c424f5e3-...`). The second task the user created either failed silently or wasn't submitted. This appears to be a data issue rather than a code bug — the `CreateTaskModal` insert logic looks correct and shows error toasts on failure.
+But "stopping" means the handler is **done** — there is no meaningful next class. When the fallback progression map resolves a target class (e.g., Puppy → EO), and the dog happens to have completed EO already, the safety net incorrectly suppresses the "stopping" icon. This hides ~3 legitimate "stopping" handlers.
 
 ## Fix
 
-Add `handlers-pending-tasks` to all query invalidation lists across **4 files**:
+**File: `src/components/handlers/hooks/useHandlersData.ts`** (line 263)
 
-1. **`src/components/tasks/CreateTaskModal.tsx`** — add `queryClient.invalidateQueries({ queryKey: ["handlers-pending-tasks"] })` after task creation
-2. **`src/hooks/useAllTasks.ts`** — add to `completeTask`, `cancelTask`, `updateTask`, and `deleteTask` onSuccess handlers
-3. **`src/hooks/useHandlerTasks.ts`** — add to `completeTask`, `createTask`, and `cancelTask` onSuccess handlers
-4. **`src/components/handlers/table/CreateTaskFromNotesModal.tsx`** — add after task creation invalidation
+Add `'stopping'` to the exclusion check. The safety net should only apply to forward-looking actions (`wants_info`, `continuing`), not terminal actions like `stopping`:
 
-This ensures the Handlers table TaskBadge and filter counts stay in sync after any task mutation.
-
-## Technical Details
-
-Each file's mutation `onSuccess` blocks need one additional line:
 ```typescript
-queryClient.invalidateQueries({ queryKey: ["handlers-pending-tasks"] });
+if (effectiveNextAction && effectiveNextAction !== 'none' 
+    && effectiveNextAction !== 'stopping'    // ← add this
+    && !effectiveActionCompleted) {
 ```
 
-~8 lines added across 4 files.
+**1 file, 1 line changed.**
 
