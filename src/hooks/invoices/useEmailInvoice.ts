@@ -124,7 +124,7 @@ export function useEmailInvoice() {
           console.log(`Invoice email queued for: ${recipient.email}`);
         }
         
-        return { success: true, queued: true };
+        return { success: true, queued: true, recipientCount: allRecipients.length };
       } catch (error) {
         console.error("Error in useEmailInvoice:", error);
         throw error;
