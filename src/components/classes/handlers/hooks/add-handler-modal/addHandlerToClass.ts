@@ -142,16 +142,16 @@ export const addHandlerToClass = async ({
     let updatedInvoiceNumber: string | undefined;
     
     if (totalInvoiceAmount > 0) {
-      // Check if this is a HOUSEHOLD or MULTI-DOG enrollment with existing invoice
+      // Check if there's an existing invoice to add to (same handler OR household member)
       if (existingEnrollment.hasExistingEnrollment && 
-          !existingEnrollment.isHouseholdEnrollment &&
           existingEnrollment.existingInvoiceId && 
           existingEnrollment.existingInvoiceStatus !== 'paid' &&
           existingEnrollment.existingInvoiceStatus !== 'cancelled') {
         
-        console.log("MULTI-DOG-DISCOUNT: Handler has existing enrollment, updating invoice", existingEnrollment);
+        const isHousehold = existingEnrollment.isHouseholdEnrollment;
+        console.log(`${isHousehold ? 'HOUSEHOLD' : 'MULTI-DOG'}-DISCOUNT: Adding to existing invoice`, existingEnrollment);
         
-        // Add to existing invoice with discount
+        // Add to existing invoice with discount (same path for both household and same-handler)
         const updateResult = await addToExistingInvoice({
           existingInvoiceId: existingEnrollment.existingInvoiceId,
           handlerId,
@@ -169,7 +169,24 @@ export const addHandlerToClass = async ({
         if (updateResult.success) {
           invoiceCreated = true;
           multiDogDiscountApplied = true;
+          householdRebalanceApplied = isHousehold;
           updatedInvoiceNumber = updateResult.invoiceNumber;
+          
+          // If household enrollment, link the second handler as additional recipient
+          if (isHousehold) {
+            const { error: recipientError } = await supabase
+              .from('invoice_additional_recipients')
+              .upsert({
+                invoice_id: existingEnrollment.existingInvoiceId,
+                client_id: handlerId,
+              }, { onConflict: 'invoice_id,client_id' });
+            
+            if (recipientError) {
+              console.warn("Failed to add household member as invoice recipient:", recipientError);
+            } else {
+              console.log("Added household member as additional invoice recipient");
+            }
+          }
           
           // Create admin notification tasks
           await createMultiDogDiscountTasks(
