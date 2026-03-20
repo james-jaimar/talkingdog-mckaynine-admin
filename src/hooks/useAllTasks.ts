@@ -212,6 +212,7 @@ export function useAllTasks(filters: TaskFilters = {}, branchId?: string) {
       queryClient.invalidateQueries({ queryKey: ["handler-tasks"] });
       queryClient.invalidateQueries({ queryKey: ["handler-tasks-pending-count"] });
       queryClient.invalidateQueries({ queryKey: ["pending-task-count"] });
+      queryClient.invalidateQueries({ queryKey: ["handlers-pending-tasks"] });
       toast.success("Task deleted");
     },
     onError: (error: any) => {
