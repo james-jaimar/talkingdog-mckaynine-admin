@@ -212,6 +212,7 @@ export function ClassClosureModal({
             .eq("dog_id", taskDogId)
             .eq("action_completed", false)
             .neq("next_action", "none")
+            .neq("next_action", "stopping")
             .ilike("next_class_type", `%${classType}%`)
             .neq("id", statusId || '');
 
