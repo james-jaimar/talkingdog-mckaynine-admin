@@ -106,6 +106,7 @@ export function CreateTaskModal({ open, onOpenChange }: CreateTaskModalProps) {
       queryClient.invalidateQueries({ queryKey: ["handler-tasks"] });
       queryClient.invalidateQueries({ queryKey: ["handler-tasks-pending-count"] });
       queryClient.invalidateQueries({ queryKey: ["pending-task-count"] });
+      queryClient.invalidateQueries({ queryKey: ["handlers-pending-tasks"] });
       resetForm();
       onOpenChange(false);
     } catch (error: any) {

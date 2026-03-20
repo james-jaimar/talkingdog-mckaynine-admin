@@ -108,6 +108,7 @@ export function useHandlerTasks(handlerId?: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["handler-tasks"] });
       queryClient.invalidateQueries({ queryKey: ["handler-tasks-pending-count"] });
+      queryClient.invalidateQueries({ queryKey: ["handlers-pending-tasks"] });
     },
   });
 
@@ -120,6 +121,7 @@ export function useHandlerTasks(handlerId?: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["handler-tasks"] });
       queryClient.invalidateQueries({ queryKey: ["handler-tasks-pending-count"] });
+      queryClient.invalidateQueries({ queryKey: ["handlers-pending-tasks"] });
     },
   });
 
@@ -136,6 +138,7 @@ export function useHandlerTasks(handlerId?: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["handler-tasks"] });
       queryClient.invalidateQueries({ queryKey: ["handler-tasks-pending-count"] });
+      queryClient.invalidateQueries({ queryKey: ["handlers-pending-tasks"] });
     },
   });
 
