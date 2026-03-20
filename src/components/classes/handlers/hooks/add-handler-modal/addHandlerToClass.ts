@@ -7,7 +7,7 @@ import { fetchDogName } from "./fetchDogName";
 import { createInvoiceForHandler, CreateInvoiceProps } from "./createInvoiceForHandler";
 import { checkExistingTermEnrollment } from "./checkExistingTermEnrollment";
 import { addToExistingInvoice, createMultiDogDiscountTasks } from "./addToExistingInvoice";
-import { rebalanceHouseholdInvoices } from "./rebalanceHouseholdInvoices";
+// rebalanceHouseholdInvoices is no longer used — household enrollments now consolidate into one invoice
 
 interface AddHandlerToClassProps {
   handlerId: string;
