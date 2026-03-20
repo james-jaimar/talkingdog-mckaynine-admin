@@ -7,7 +7,7 @@ import { fetchDogName } from "./fetchDogName";
 import { createInvoiceForHandler, CreateInvoiceProps } from "./createInvoiceForHandler";
 import { checkExistingTermEnrollment } from "./checkExistingTermEnrollment";
 import { addToExistingInvoice, createMultiDogDiscountTasks } from "./addToExistingInvoice";
-import { rebalanceHouseholdInvoices } from "./rebalanceHouseholdInvoices";
+// rebalanceHouseholdInvoices is no longer used — household enrollments now consolidate into one invoice
 
 interface AddHandlerToClassProps {
   handlerId: string;
@@ -142,50 +142,16 @@ export const addHandlerToClass = async ({
     let updatedInvoiceNumber: string | undefined;
     
     if (totalInvoiceAmount > 0) {
-      // Check if this is a HOUSEHOLD enrollment (different handler in the same household)
+      // Check if there's an existing invoice to add to (same handler OR household member)
       if (existingEnrollment.hasExistingEnrollment && 
-          existingEnrollment.isHouseholdEnrollment &&
           existingEnrollment.existingInvoiceId && 
           existingEnrollment.existingInvoiceStatus !== 'paid' &&
           existingEnrollment.existingInvoiceStatus !== 'cancelled') {
         
-        console.log("HOUSEHOLD-DISCOUNT: Detected household member enrollment, rebalancing invoices", existingEnrollment);
+        const isHousehold = existingEnrollment.isHouseholdEnrollment;
+        console.log(`${isHousehold ? 'HOUSEHOLD' : 'MULTI-DOG'}-DISCOUNT: Adding to existing invoice`, existingEnrollment);
         
-        // Rebalance both invoices for 50/50 split
-        const rebalanceResult = await rebalanceHouseholdInvoices({
-          existingInvoiceId: existingEnrollment.existingInvoiceId,
-          newHandlerId: handlerId,
-          newDogIds: dogIds,
-          newDogNames: dogNames,
-          newBookingIds: bookingIds,
-          newClassName: classDetails.name,
-          newClassPrice: classPrice,
-          newEnrollmentFee: enrollmentFee,
-          newClassDate: classDate instanceof Date ? classDate.toISOString() : classDate,
-          newClassBranchId: classDetails.branchId,
-          existingHandlerId: existingEnrollment.existingHandlerId || '',
-          termId,
-        });
-        
-        if (rebalanceResult.success) {
-          invoiceCreated = true;
-          householdRebalanceApplied = true;
-          updatedInvoiceNumber = rebalanceResult.firstInvoiceNumber;
-        } else {
-          console.warn("Failed to rebalance household invoices, will create standard invoice:", rebalanceResult.error);
-          // Fall through to standard invoice creation
-        }
-      }
-      // Check if we should update an existing invoice (same handler, multi-dog across classes)
-      else if (existingEnrollment.hasExistingEnrollment && 
-          !existingEnrollment.isHouseholdEnrollment &&
-          existingEnrollment.existingInvoiceId && 
-          existingEnrollment.existingInvoiceStatus !== 'paid' &&
-          existingEnrollment.existingInvoiceStatus !== 'cancelled') {
-        
-        console.log("MULTI-DOG-DISCOUNT: Handler has existing enrollment, updating invoice", existingEnrollment);
-        
-        // Add to existing invoice with discount
+        // Add to existing invoice with discount (same path for both household and same-handler)
         const updateResult = await addToExistingInvoice({
           existingInvoiceId: existingEnrollment.existingInvoiceId,
           handlerId,
@@ -203,7 +169,24 @@ export const addHandlerToClass = async ({
         if (updateResult.success) {
           invoiceCreated = true;
           multiDogDiscountApplied = true;
+          householdRebalanceApplied = isHousehold;
           updatedInvoiceNumber = updateResult.invoiceNumber;
+          
+          // If household enrollment, link the second handler as additional recipient
+          if (isHousehold) {
+            const { error: recipientError } = await supabase
+              .from('invoice_additional_recipients')
+              .upsert({
+                invoice_id: existingEnrollment.existingInvoiceId,
+                client_id: handlerId,
+              }, { onConflict: 'invoice_id,client_id' });
+            
+            if (recipientError) {
+              console.warn("Failed to add household member as invoice recipient:", recipientError);
+            } else {
+              console.log("Added household member as additional invoice recipient");
+            }
+          }
           
           // Create admin notification tasks
           await createMultiDogDiscountTasks(
@@ -277,7 +260,7 @@ export const addHandlerToClass = async ({
     // Build success message based on what happened
     let successMessage: string;
     if (householdRebalanceApplied) {
-      successMessage = `${dogCountText} added to class. Household invoices rebalanced 50/50 with 25% discount. Admin task created for review.`;
+      successMessage = `${dogCountText} added to class. Household consolidated into invoice ${updatedInvoiceNumber} with 25% multi-dog discount. Admin task created for review.`;
     } else if (multiDogDiscountApplied) {
       successMessage = `${dogCountText} added to class. Multi-dog discount (25%) applied - invoice ${updatedInvoiceNumber} updated. Admin tasks created for review.`;
     } else if (dogIds.length === 2) {
