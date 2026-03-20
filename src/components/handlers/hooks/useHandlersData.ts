@@ -255,22 +255,38 @@ export function useHandlersData() {
               }
               statusesToUse = Array.from(latestByDog.values());
             }
-            return statusesToUse.map(found => ({
-              id: found.id,
-              class_type: classType,
-              status: found.result_status || (found.completed ? "completed" : found.status),
-              period: found.period,
-              pass_percentage: found.pass_percentage,
-              next_action: found.next_action,
-              action_completed: found.action_completed,
-              result_notes: found.result_notes,
-              next_class_type: found.next_class_type,
-              next_term_number: found.next_term_number,
-              next_term_year: found.next_term_year,
-              dog_name: found.dog_name,
-              dog_id: found.dog_id,
-              booking_id: found.booking_id,
-            }));
+            return statusesToUse.map(found => {
+              // Display-side safety net: suppress next_action if the referenced class
+              // is already completed for this handler+dog (catches historical stale data)
+              let effectiveNextAction = found.next_action;
+              let effectiveActionCompleted = found.action_completed;
+              if (effectiveNextAction && effectiveNextAction !== 'none' && !effectiveActionCompleted && found.next_class_type) {
+                const nextClasses = found.next_class_type.split(',').map((s: string) => s.trim());
+                const dogId = found.dog_id;
+                const allCompletedForDog = nextClasses.every((nc: string) =>
+                  allStatuses.some(s => s.class_type === nc && s.dog_id === dogId && s.completed)
+                );
+                if (allCompletedForDog) {
+                  effectiveActionCompleted = true;
+                }
+              }
+              return {
+                id: found.id,
+                class_type: classType,
+                status: found.result_status || (found.completed ? "completed" : found.status),
+                period: found.period,
+                pass_percentage: found.pass_percentage,
+                next_action: effectiveNextAction,
+                action_completed: effectiveActionCompleted,
+                result_notes: found.result_notes,
+                next_class_type: found.next_class_type,
+                next_term_number: found.next_term_number,
+                next_term_year: found.next_term_year,
+                dog_name: found.dog_name,
+                dog_id: found.dog_id,
+                booking_id: found.booking_id,
+              };
+            });
           });
           
           // Get consent statuses from enrollment_registrations (priority) or fallback to client fields

@@ -87,6 +87,28 @@ export async function useMarkHandlersCompleted(classId: string, currentTerm: str
       period: currentTerm,
     });
     completedCount++;
+
+    // Auto-resolve stale next_actions from previous classes that pointed to this class
+    // e.g. Puppy had next_action='wants_info' with next_class_type='EO' — now EO is done
+    if (bookingData?.dog_id) {
+      await supabase
+        .from("handler_class_status")
+        .update({ action_completed: true, action_completed_at: new Date().toISOString() })
+        .eq("handler_id", b.client_id)
+        .eq("dog_id", bookingData.dog_id)
+        .eq("action_completed", false)
+        .neq("next_action", "none")
+        .ilike("next_class_type", `%${classTypeToUse}%`);
+
+      // Also complete associated pending tasks for this handler+dog+class
+      await supabase
+        .from("handler_tasks")
+        .update({ status: "completed", completed_at: new Date().toISOString() })
+        .eq("handler_id", b.client_id)
+        .eq("dog_id", bookingData.dog_id)
+        .eq("status", "pending")
+        .eq("class_type", classTypeToUse);
+    }
   }
   return completedCount;
 }
