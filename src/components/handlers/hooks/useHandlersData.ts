@@ -260,7 +260,7 @@ export function useHandlersData() {
               // is already completed for this handler+dog (catches historical stale data)
               let effectiveNextAction = found.next_action;
               let effectiveActionCompleted = found.action_completed;
-              if (effectiveNextAction && effectiveNextAction !== 'none' && !effectiveActionCompleted) {
+              if (effectiveNextAction && effectiveNextAction !== 'none' && effectiveNextAction !== 'stopping' && !effectiveActionCompleted) {
                 // Determine target classes: from next_class_type or fallback progression map
                 const nextClassTypeStr = found.next_class_type;
                 const fallbackNext = allClassTypes?.find(ct => ct.name === classType)?.next_class_type;
