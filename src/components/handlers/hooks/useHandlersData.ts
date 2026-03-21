@@ -303,11 +303,19 @@ export function useHandlersData() {
                   const allCompletedForDog = nextClasses.every((nc: string) =>
                     allStatuses.some(s => s.class_type === nc && s.dog_id === dogId && s.completed)
                   );
-                  if (allCompletedForDog) {
+                   if (allCompletedForDog) {
                     effectiveActionCompleted = true;
                   }
+                  // Also check if already enrolled in a target class
+                  if (!effectiveActionCompleted) {
+                    const isEnrolledInTarget = nextClasses.some((nc: string) =>
+                      handlerEnrollments.some(e => e.dog_id === dogId && e.class_type === nc)
+                    );
+                    if (isEnrolledInTarget) {
+                      effectiveActionCompleted = true;
+                    }
+                  }
                 }
-              }
               return {
                 id: found.id,
                 class_type: classType,

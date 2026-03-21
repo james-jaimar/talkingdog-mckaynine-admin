@@ -83,6 +83,47 @@ export const addHandlerToClass = async ({
       }
     }
     
+    // Auto-resolve any stale handler_class_status records for these dogs
+    // where the next_action points to the class type being enrolled into
+    const enrolledClassType = classDetails.classType;
+    if (enrolledClassType) {
+      for (const dogId of dogIds) {
+        // Find status records where next_class_type contains this class type
+        const { data: staleStatuses } = await supabase
+          .from('handler_class_status')
+          .select('id, next_class_type')
+          .eq('handler_id', handlerId)
+          .eq('dog_id', dogId)
+          .eq('action_completed', false)
+          .in('next_action', ['wants_info', 'continuing']);
+        
+        if (staleStatuses && staleStatuses.length > 0) {
+          const matchingIds = staleStatuses
+            .filter(s => {
+              if (!s.next_class_type) return false;
+              const targets = s.next_class_type.split(',').map((t: string) => t.trim());
+              return targets.includes(enrolledClassType);
+            })
+            .map(s => s.id);
+          
+          if (matchingIds.length > 0) {
+            console.log(`Auto-resolving ${matchingIds.length} stale status records for dog ${dogId} → ${enrolledClassType}`);
+            await supabase
+              .from('handler_class_status')
+              .update({ action_completed: true, action_completed_at: new Date().toISOString() })
+              .in('id', matchingIds);
+            
+            // Also complete any linked pending tasks
+            await supabase
+              .from('handler_tasks')
+              .update({ status: 'completed', completed_at: new Date().toISOString() })
+              .in('class_status_id', matchingIds)
+              .eq('status', 'pending');
+          }
+        }
+      }
+    }
+    
     // Check for existing enrollments in this term (for multi-dog discount across classes)
     // Pass the class branch ID to ensure discounts only apply within same branch
     const existingEnrollment = await checkExistingTermEnrollment(handlerId, termId, dogIds, classDetails.branchId);
