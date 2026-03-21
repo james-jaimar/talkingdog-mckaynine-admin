@@ -113,7 +113,7 @@ export function useMarkInvoiceAsPaid() {
               subject: receiptData.subject,
               html_content: receiptData.html_content,
               handler_id: receiptData.handler_id,
-              status: "pending",
+              status: "review",
               attachments: receiptData.attachments || null,
             });
 
