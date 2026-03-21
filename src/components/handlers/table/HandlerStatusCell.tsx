@@ -16,6 +16,7 @@ interface ClassStatusItem {
   next_action?: 'continuing' | 'wants_info' | 'stopping' | 'none' | null;
   action_completed?: boolean | null;
   dog_name?: string | null;
+  next_class_type?: string | null;
 }
 
 interface HandlerStatusCellProps {
