@@ -1,24 +1,24 @@
 
 
-# Fix: "Stopping" Filter Count Dropped from 6 to 3
+# Fix: Target Month Dropdown — Default to Current Month & Scrollable
 
-## Root Cause
-
-The display-side safety net added in the recent stale-icon fix (lines 263-277 of `useHandlersData.ts`) applies to **all** `next_action` types — including `'stopping'`. It checks whether the "next class" in the progression has been completed for that dog, and if so, marks the action as completed (hidden).
-
-But "stopping" means the handler is **done** — there is no meaningful next class. When the fallback progression map resolves a target class (e.g., Puppy → EO), and the dog happens to have completed EO already, the safety net incorrectly suppresses the "stopping" icon. This hides ~3 legitimate "stopping" handlers.
+## Problems
+1. The month list starts at September 2025 (6 months back), so the current month (March 2026) is off-screen when the dropdown opens
+2. The dropdown in `EditTaskModal` doesn't have `max-h` set on `SelectContent`, so long lists aren't scrollable (the `CreateTaskFromNotesModal` already has `className="max-h-60"` but `EditTaskModal` does too — the real issue is the list starting at the wrong position)
 
 ## Fix
 
-**File: `src/components/handlers/hooks/useHandlersData.ts`** (line 263)
+### `src/hooks/useMonthOptions.ts`
+- Reduce backward range from 6 months to 2 months (rarely need to assign tasks to months that far back)
+- Keep 12 months forward
+- Total: 14 months instead of 18
 
-Add `'stopping'` to the exclusion check. The safety net should only apply to forward-looking actions (`wants_info`, `continuing`), not terminal actions like `stopping`:
+### `src/components/tasks/EditTaskModal.tsx`
+- Already has `max-h-60` on the month SelectContent — confirmed working
+- No change needed here
 
-```typescript
-if (effectiveNextAction && effectiveNextAction !== 'none' 
-    && effectiveNextAction !== 'stopping'    // ← add this
-    && !effectiveActionCompleted) {
-```
+### `src/components/tasks/CreateTaskModal.tsx`
+- Check and ensure `max-h-60` is on the month SelectContent (consistency)
 
-**1 file, 1 line changed.**
+**1 file changed, ~2 lines.**
 
