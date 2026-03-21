@@ -16,6 +16,7 @@ interface ClassStatusItem {
   next_action?: 'continuing' | 'wants_info' | 'stopping' | 'none' | null;
   action_completed?: boolean | null;
   dog_name?: string | null;
+  next_class_type?: string | null;
 }
 
 interface HandlerStatusCellProps {
@@ -57,7 +58,7 @@ export function HandlerStatusCell({ classStatuses, handlerId }: HandlerStatusCel
     }
 
     groups.get(effectiveType)!.entries.push({
-      classType: s.class_type,
+      classType: s.next_class_type || s.class_type,
       dogName: s.dog_name || null,
     });
   }

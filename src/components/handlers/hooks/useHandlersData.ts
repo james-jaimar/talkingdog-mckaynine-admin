@@ -300,8 +300,11 @@ export function useHandlersData() {
                 if (targetStr) {
                   const nextClasses = targetStr.split(',').map((s: string) => s.trim());
                   const dogId = found.dog_id;
+                  // When dog_id is null, check ANY dog of this handler
                   const allCompletedForDog = nextClasses.every((nc: string) =>
-                    allStatuses.some(s => s.class_type === nc && s.dog_id === dogId && s.completed)
+                    dogId
+                      ? allStatuses.some(s => s.class_type === nc && s.dog_id === dogId && s.completed)
+                      : allStatuses.some(s => s.class_type === nc && s.completed)
                   );
                    if (allCompletedForDog) {
                     effectiveActionCompleted = true;
@@ -309,7 +312,9 @@ export function useHandlersData() {
                   // Also check if already enrolled in a target class
                   if (!effectiveActionCompleted) {
                     const isEnrolledInTarget = nextClasses.some((nc: string) =>
-                      handlerEnrollments.some(e => e.dog_id === dogId && e.class_type === nc)
+                      dogId
+                        ? handlerEnrollments.some(e => e.dog_id === dogId && e.class_type === nc)
+                        : handlerEnrollments.some(e => e.class_type === nc)
                     );
                     if (isEnrolledInTarget) {
                       effectiveActionCompleted = true;
