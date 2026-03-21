@@ -269,6 +269,7 @@ export function useHandlersData() {
         // Map class statuses using exact CLASS_TYPES matching
         const handlersWithClassStatus = (clientsData || []).map(client => {
           const allStatuses = classStatusesMap[client.id] || [];
+          const handlerEnrollments = activeEnrollmentsMap[client.id] || [];
           // For each possible type, find ALL matching statuses (multiple dogs)
         const class_statuses = classTypeNames.flatMap((classType) => {
             const foundAll = allStatuses.filter(s => s.class_type === classType);
