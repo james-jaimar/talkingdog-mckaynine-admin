@@ -25,6 +25,7 @@ export const fetchClassDetails = async (classId: string): Promise<{
       .from('classes')
       .select(`
         name, 
+        class_type,
         course_fee, 
         enrollment_fee,
         admin_fee_value, 
