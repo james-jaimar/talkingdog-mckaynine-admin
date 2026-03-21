@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -47,6 +47,7 @@ export function EditTaskModal({ open, onOpenChange, task, onSave }: EditTaskModa
   const { classTypeNames } = useClassTypes();
   const { months } = useMonthOptions();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const dialogContentRef = useRef<HTMLDivElement | null>(null);
 
   const [taskType, setTaskType] = useState("other");
   const [classType, setClassType] = useState("none");
@@ -94,7 +95,7 @@ export function EditTaskModal({ open, onOpenChange, task, onSave }: EditTaskModa
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+      <DialogContent ref={dialogContentRef} className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Task</DialogTitle>
           <DialogDescription>
@@ -144,7 +145,7 @@ export function EditTaskModal({ open, onOpenChange, task, onSave }: EditTaskModa
             <Label>Target Month (Optional)</Label>
             <Select value={targetMonth} onValueChange={setTargetMonth}>
               <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent className="max-h-60">
+              <SelectContent className="max-h-60" portalContainer={dialogContentRef.current}>
                 <SelectItem value="none">None</SelectItem>
                 {months.map((m) => (
                   <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
