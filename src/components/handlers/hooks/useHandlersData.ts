@@ -316,6 +316,7 @@ export function useHandlersData() {
                     }
                   }
                 }
+              }
               return {
                 id: found.id,
                 class_type: classType,
