@@ -72,6 +72,7 @@ export const fetchClassDetails = async (classId: string): Promise<{
       branchId: data.branch_id,
       reportMonthOverride: data.report_month_override || null,
       ioInventoryCode: data.io_inventory_code || null,
+      classType: data.class_type,
     };
   } catch (err) {
     console.error("Error fetching class details:", err);
