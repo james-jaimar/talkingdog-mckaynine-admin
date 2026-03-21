@@ -160,8 +160,7 @@ export function EmailInvoicePreviewDialog({
         }],
       });
       
-      // Trigger queue processing immediately
-      processQueue.mutate();
+      // Email stays in queue for admin review — do not auto-process
       
       // Mark the invoice as sent after successful queue addition
       if (selectedInvoice.status === 'draft') {
