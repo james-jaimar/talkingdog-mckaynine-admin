@@ -177,6 +177,37 @@ export function useHandlersData() {
         // Fetch class statuses for all handlers in a single query
         const clientIds = (clientsData || []).map(client => client.id);
         let classStatusesMap: Record<string, any[]> = {};
+        // Fetch active enrollments (bookings where is_enrolled=true) for all handlers
+        let activeEnrollmentsMap: Record<string, { dog_id: string; class_type: string }[]> = {};
+        if (clientIds.length > 0) {
+          const { data: enrollmentData, error: enrollError } = await supabase
+            .from('bookings')
+            .select(`
+              client_id,
+              dog_id,
+              is_enrolled,
+              class_schedules:class_schedule_id (
+                classes:class_id (
+                  class_type
+                )
+              )
+            `)
+            .in('client_id', clientIds)
+            .eq('is_enrolled', true);
+
+          if (enrollError) {
+            console.error("Error fetching active enrollments:", enrollError);
+          } else {
+            for (const booking of enrollmentData || []) {
+              const classType = (booking as any).class_schedules?.classes?.class_type;
+              if (!classType || !booking.dog_id) continue;
+              const arr = activeEnrollmentsMap[booking.client_id] || [];
+              arr.push({ dog_id: booking.dog_id, class_type: classType });
+              activeEnrollmentsMap[booking.client_id] = arr;
+            }
+          }
+        }
+
         if (clientIds.length > 0) {
           // Fetch class statuses with direct dog info OR booking dog info
           const { data: classStatusData, error: classStatusError } = await supabase
