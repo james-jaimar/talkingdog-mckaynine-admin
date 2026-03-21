@@ -296,7 +296,7 @@ export function useHandlersData() {
                 // Determine target classes: from next_class_type or fallback progression map
                 const nextClassTypeStr = found.next_class_type;
                 const fallbackNext = allClassTypes?.find(ct => ct.name === classType)?.next_class_type;
-                const targetStr = nextClassTypeStr || fallbackNext;
+                const targetStr = nextClassTypeStr || fallbackNext || classType;
                 if (targetStr) {
                   const nextClasses = targetStr.split(',').map((s: string) => s.trim());
                   const dogId = found.dog_id;
