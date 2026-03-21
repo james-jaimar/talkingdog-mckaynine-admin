@@ -1,29 +1,83 @@
 
 
-# Fix: Status Icons Mismatch + Null dog_id Safety Net Bypass
+# Simplify Status Icons: Show Only What Needs Action
 
-## Problem
-Alex Martin shows "wants info for Puppy" icon, but Puppy is completed. The popover says "EO". Two bugs:
+## The Core Problem
 
-1. **Null `dog_id`**: 20+ status records have `dog_id = NULL`, so the safety net (which checks enrollment by dog_id) can never match and never suppresses the icon
-2. **Wrong label**: The status summary shows the SOURCE class (Puppy) instead of the TARGET class (EO) — confusing when `next_class_type` exists
+The status column currently shows **every historical action** — completed or not. Angela Glover has 4 status records all with `action_completed = true`, so they all show as green "Info Sent" icons. But this is noise: the info was sent months ago, the dogs are enrolled, and the only actionable items are 2 pending tasks for June 2026.
 
-## Fix
+The status column is trying to do two things at once:
+1. Show the **current state** of follow-up actions (historical record)
+2. Show what **needs attention now** (actionable items)
 
-### A. Handle null `dog_id` in safety net (`useHandlersData.ts`, ~line 295)
-When `dog_id` is null, change the enrollment/completion check to match ANY dog of this handler (not a specific dog). If any of the handler's dogs are enrolled in or have completed the target class, suppress the icon.
+These conflict. A handler who had "wants info" 3 months ago, got info sent, enrolled, and now has a future task — shows a green icon for something that's long resolved.
 
-### B. Show target class in status summary (`HandlerStatusCell.tsx`, ~line 59)
-When building the `entries` array, if the status has a `next_class_type`, display that instead of `class_type`. E.g., show "EO" not "Puppy" for a wants_info about EO.
+## Proposed Rules for Status Icons
 
-- Add `next_class_type` to the `ClassStatusItem` interface
-- When pushing entries, use `next_class_type || class_type` as the display label
+The status icon should answer ONE question: **"Does this handler need attention?"**
 
-### C. DB cleanup: backfill `dog_id` where handler has exactly one dog
-For status records with null `dog_id`, if the handler has only one dog, set `dog_id` to that dog's ID. This fixes the root cause for single-dog handlers.
+```text
+Decision tree for each status record:
+┌─────────────────────────────────────────┐
+│ Has next_action (not 'none')?           │
+│   NO → skip (no icon)                   │
+│   YES ↓                                 │
+│ Is action_completed = true?             │
+│   YES → Has pending tasks for this      │
+│          handler+dog+target class?      │
+│          YES → Show task icon (amber)   │
+│          NO  → skip (fully resolved)    │
+│   NO ↓                                  │
+│ Action type?                            │
+│   wants_info → blue mail icon           │
+│   continuing → green arrow icon         │
+│   stopping   → red stop icon            │
+└─────────────────────────────────────────┘
+```
+
+Key changes:
+- **Remove "Info Sent" as a status icon entirely** — once info is sent AND there are no pending tasks, the action is done. No icon needed.
+- **If info was sent but tasks remain** — show the task badge (already exists via `TaskBadge`), not a green mail icon
+- **Only show icons for actions that genuinely need attention**
+
+## Implementation
+
+### File 1: `src/components/handlers/table/HandlerStatusCell.tsx`
+
+**Change**: Skip statuses where `action_completed = true`. The "info_sent" concept is removed from the icon display. If a handler has completed actions but still has pending tasks, those show via the existing TaskBadge component (separate column).
+
+Lines 45-64 — replace the grouping logic:
+```typescript
+for (const s of classStatuses) {
+  if (!s.next_action || s.next_action === 'none') continue;
+  // Skip fully completed actions — they don't need attention
+  if (s.action_completed) continue;
+  
+  const effectiveType = s.next_action;
+  // ... rest of grouping
+}
+```
+
+This means Angela Glover would show **no status icon** (all her actions are completed), but she'd still show the task badge with her 2 pending June tasks.
+
+### File 2: `src/components/handlers/hooks/useHandlersData.ts`
+
+No changes needed — the safety net logic is correct. The filtering already works properly. The issue is purely in the display layer.
+
+### No DB changes needed
+
+Angela's data is correct: all `action_completed = true`, 2 pending tasks exist for June. The data is fine — we just need to stop displaying resolved actions as icons.
+
+## Impact
+
+- Handlers with only completed actions → **no icon** (clean)
+- Handlers with pending "wants info" → **blue mail icon** (needs attention)
+- Handlers with pending tasks → **amber task badge** (already works)
+- Handlers stopping → **red stop icon** (always shown, never auto-resolved)
+- Filter counts remain unchanged (they already check `!action_completed`)
 
 ## Files Changed
-1. `src/components/handlers/hooks/useHandlersData.ts` — null dog_id handling (~5 lines)
-2. `src/components/handlers/table/HandlerStatusCell.tsx` — show target class label (~3 lines)
-3. DB migration — backfill dog_id for single-dog handlers
+1. `src/components/handlers/table/HandlerStatusCell.tsx` — remove "info_sent" grouping, skip completed actions (~3 lines changed)
+
+This is a small, focused change that removes the confusing "Info Sent" green icon and lets the existing TaskBadge handle the "has pending work" signal.
 
