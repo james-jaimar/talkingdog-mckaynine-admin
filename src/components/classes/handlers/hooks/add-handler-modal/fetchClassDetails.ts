@@ -16,6 +16,7 @@ export const fetchClassDetails = async (classId: string): Promise<{
   branchId: string;
   reportMonthOverride: string | null;
   ioInventoryCode: string | null;
+  classType: string;
 } | null> => {
   try {
     console.log(`Fetching class details for class ID: ${classId}`);
