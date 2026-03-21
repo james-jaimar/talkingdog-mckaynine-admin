@@ -1,21 +1,36 @@
 
 
-# Fix: Route All Invoice Emails Through Review Queue
+# Fix: addToQueue Defaults to "pending" — Bypassing Review
 
-## Problem
-Two bypasses found:
-1. **Mark as Paid** (`useMarkInvoiceAsPaid.ts`): Payment receipt and class confirmation emails are inserted with `status: "pending"`, which means the queue processor picks them up and sends them immediately — no admin review.
-2. **Email Invoice Preview** (`EmailInvoicePreviewDialog.tsx`): After adding to queue, it calls `processQueue.mutate()` which triggers immediate sending. The email IS added with review status (via `addToQueue`), but then `processQueue` fires and sends anything pending.
+## Root Cause
+The `addToQueue` mutation in `useEmailQueue.ts` (line 104) inserts into `email_queue` without setting `status`. The database column default is `'pending'`, so the queue processor picks these up immediately.
+
+This affects: Invoice emails sent via `EmailInvoicePreviewDialog` (which calls `addToQueue`).
+
+The `useMarkInvoiceAsPaid.ts` fix is already correct (explicitly sets `status: "review"`). This is the remaining gap.
+
+## What Happened Today
+- 6 payment receipt + class confirmation emails (13:05-13:06): Ady was using old cached code before today's fix deployed — those used `status: "pending"`
+- 4 invoice emails (12:19-13:02): Sent via `EmailInvoicePreviewDialog` → `addToQueue` → no status set → DB default "pending" → queue processor sent them immediately
 
 ## Fix
 
-### File 1: `src/hooks/invoices/status/useMarkInvoiceAsPaid.ts`
-- Line 116: Change `status: "pending"` to `status: "review"` (payment receipt emails)
-- Line 145: Change `status: "pending"` to `status: "review"` (class confirmation emails)
-- Update toast messages to say "queued for review" instead of "queued"
+### File: `src/hooks/useEmailQueue.ts` (line 104)
+Add `status: "review"` to the insert in `addToQueue`:
 
-### File 2: `src/components/invoices/dialogs/EmailInvoicePreviewDialog.tsx`
-- Line 164: Remove `processQueue.mutate()` — the email should sit in the queue for admin review, not be sent immediately
+```typescript
+.insert({
+  branch_id: currentBranch.id,
+  to_email: input.to_email,
+  // ... other fields
+  status: "review",  // ← ADD THIS
+})
+```
 
-**3 lines changed across 2 files.**
+This ensures ALL emails added via the queue hook go to review. The only way emails get sent is when an admin explicitly approves them or processes the queue.
+
+**1 line added, 1 file.**
+
+## Emails Already Sent Today
+All 10 emails in the last hour were sent. The content was legitimate (real invoices, real receipts, real confirmations). No damage done — but they bypassed review.
 
