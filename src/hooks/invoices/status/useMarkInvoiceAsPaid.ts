@@ -142,7 +142,7 @@ export function useMarkInvoiceAsPaid() {
               subject: confirmationData.subject,
               html_content: confirmationData.html_content,
               handler_id: confirmationData.handler_id,
-              status: "pending",
+              status: "review",
             });
 
           if (confirmationError) {
