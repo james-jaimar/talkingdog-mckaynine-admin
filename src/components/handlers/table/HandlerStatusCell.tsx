@@ -58,7 +58,7 @@ export function HandlerStatusCell({ classStatuses, handlerId }: HandlerStatusCel
     }
 
     groups.get(effectiveType)!.entries.push({
-      classType: s.class_type,
+      classType: s.next_class_type || s.class_type,
       dogName: s.dog_name || null,
     });
   }
