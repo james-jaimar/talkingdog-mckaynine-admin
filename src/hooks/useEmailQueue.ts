@@ -112,6 +112,7 @@ export function useEmailQueue() {
           handler_id: input.handler_id,
           template_id: input.template_id,
           created_by: userData?.user?.id,
+          status: "review",
         })
         .select()
         .single();
