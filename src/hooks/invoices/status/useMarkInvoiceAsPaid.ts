@@ -113,7 +113,7 @@ export function useMarkInvoiceAsPaid() {
               subject: receiptData.subject,
               html_content: receiptData.html_content,
               handler_id: receiptData.handler_id,
-              status: "pending",
+              status: "review",
               attachments: receiptData.attachments || null,
             });
 
@@ -142,7 +142,7 @@ export function useMarkInvoiceAsPaid() {
               subject: confirmationData.subject,
               html_content: confirmationData.html_content,
               handler_id: confirmationData.handler_id,
-              status: "pending",
+              status: "review",
             });
 
           if (confirmationError) {
@@ -159,11 +159,11 @@ export function useMarkInvoiceAsPaid() {
       // Show appropriate toast based on emails queued and PDF attachment
       const hasIOPdf = !!paymentPdfBase64;
       if (emailsQueued > 2) {
-        toast.success(`Invoice marked as paid - ${emailsQueued} emails queued${hasIOPdf ? ' with IO receipt' : ''}`);
+        toast.success(`Invoice marked as paid - ${emailsQueued} emails queued for review${hasIOPdf ? ' with IO receipt' : ''}`);
       } else if (emailsQueued === 2) {
-        toast.success(`Invoice marked as paid - receipt & confirmation emails queued${hasIOPdf ? ' with IO receipt' : ''}`);
+        toast.success(`Invoice marked as paid - receipt & confirmation emails queued for review${hasIOPdf ? ' with IO receipt' : ''}`);
       } else if (emailsQueued === 1) {
-        toast.success(`Invoice marked as paid - email queued${hasIOPdf ? ' with IO receipt' : ''}`);
+        toast.success(`Invoice marked as paid - email queued for review${hasIOPdf ? ' with IO receipt' : ''}`);
       } else {
         toast.success("Invoice marked as paid");
       }
