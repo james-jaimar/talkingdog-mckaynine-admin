@@ -16,6 +16,7 @@ export const fetchClassDetails = async (classId: string): Promise<{
   branchId: string;
   reportMonthOverride: string | null;
   ioInventoryCode: string | null;
+  classType: string;
 } | null> => {
   try {
     console.log(`Fetching class details for class ID: ${classId}`);
@@ -24,6 +25,7 @@ export const fetchClassDetails = async (classId: string): Promise<{
       .from('classes')
       .select(`
         name, 
+        class_type,
         course_fee, 
         enrollment_fee,
         admin_fee_value, 
@@ -70,6 +72,7 @@ export const fetchClassDetails = async (classId: string): Promise<{
       branchId: data.branch_id,
       reportMonthOverride: data.report_month_override || null,
       ioInventoryCode: data.io_inventory_code || null,
+      classType: data.class_type,
     };
   } catch (err) {
     console.error("Error fetching class details:", err);
