@@ -173,9 +173,9 @@ export function EmailInvoicePreviewDialog({
       }
       
       onOpenChange(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Email queueing failed:", error);
-      toast.error("Failed to queue invoice email");
+      toast.error(error?.message || "Failed to queue invoice email");
     } finally {
       setIsSubmitting(false);
     }
