@@ -1,33 +1,30 @@
 
+Root cause is now clear: the app is inserting `status: "review"` into `email_queue`, but the live database constraint still only allows `pending/sending/sent/failed`. That mismatch causes the `400` insert failure you’re seeing in the invoice email modal.
 
-# Fix: Invoice Email Fails When Sent From InvoicesList or ClientInfoCard
+Implementation plan:
 
-## Root Cause
+1) Fix schema mismatch (database)
+- Add a migration to update `public.email_queue` status check constraint to include `review`.
+- Keep existing statuses intact (`pending`, `sending`, `sent`, `failed`) and add `review`.
+- Verify the constraint after migration with a read query.
 
-Three places open the `EmailInvoicePreviewDialog`:
+2) Close remaining invoice bypass path (code)
+- Update `src/components/invoices/table/actions/InvoiceBasicActions.tsx`:
+  - `handleSendClassConfirmation`: change insert status from `pending` → `review`
+  - `handleSendPaymentReceipt`: change insert status from `pending` → `review`
+- This ensures all invoice-related sends follow manual review, not immediate dispatch.
 
-1. **`InvoiceTableActions`** — Works correctly. It first opens `EmailInvoiceProgressDialog` (syncs to IO, fetches PDF), then passes `preparedPdfBase64` to the preview dialog.
-2. **`InvoicesList`** — Opens the preview dialog directly WITHOUT the progress/PDF step. `preparedPdfBase64` is always `undefined`.
-3. **`ClientInfoCard`** — Same problem. Opens preview dialog without PDF preparation.
+3) Improve error visibility (code hardening)
+- In `useEmailQueue` and invoice email modal catch blocks, surface Supabase error message text in logs/toast (instead of generic “Failed to queue” only), so future failures are instantly diagnosable.
 
-In the dialog, line 120-122 throws: `"No PDF available. Please go back and retry the email preparation."` because there's no PDF.
+4) Verification checklist
+- Send invoice from email preview modal → row inserts successfully with `status='review'`.
+- Mark invoice as paid → receipt/confirmation rows insert with `status='review'`.
+- Use “Send Class Confirmation” / “Send Payment Receipt” actions → rows insert with `status='review'`.
+- Confirm queue processor does not send `review` items until explicitly approved.
 
-## Fix
-
-Add the same two-step workflow (progress dialog then preview dialog) to both `InvoicesList` and `ClientInfoCard`.
-
-### File 1: `src/components/invoices/InvoicesList.tsx`
-- Add `EmailInvoiceProgressDialog` import and state for `preparedPdfBase64`, `emailProgressOpen`
-- When "Email Invoice" is triggered, open the progress dialog first
-- On PDF ready, transition to the preview dialog with the prepared PDF
-- Pass `preparedPdfBase64` to `EmailInvoicePreviewDialog`
-
-### File 2: `src/components/invoices/detail/ClientInfoCard.tsx`
-- Same pattern: add progress dialog, two-step workflow
-- The "Send by Email" button opens progress dialog first
-- On completion, transitions to preview dialog with PDF
-
-## Files Changed
-1. `src/components/invoices/InvoicesList.tsx` — add progress dialog + PDF handoff (~15 lines)
-2. `src/components/invoices/detail/ClientInfoCard.tsx` — add progress dialog + PDF handoff (~15 lines)
-
+Files to change:
+- `supabase/migrations/<new_migration>.sql`
+- `src/components/invoices/table/actions/InvoiceBasicActions.tsx`
+- `src/hooks/useEmailQueue.ts` (error reporting only)
+- `src/components/invoices/dialogs/EmailInvoicePreviewDialog.tsx` (error reporting only)
