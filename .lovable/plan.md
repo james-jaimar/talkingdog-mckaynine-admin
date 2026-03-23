@@ -1,36 +1,33 @@
 
 
-# Fix: addToQueue Defaults to "pending" — Bypassing Review
+# Fix: Invoice Email Fails When Sent From InvoicesList or ClientInfoCard
 
 ## Root Cause
-The `addToQueue` mutation in `useEmailQueue.ts` (line 104) inserts into `email_queue` without setting `status`. The database column default is `'pending'`, so the queue processor picks these up immediately.
 
-This affects: Invoice emails sent via `EmailInvoicePreviewDialog` (which calls `addToQueue`).
+Three places open the `EmailInvoicePreviewDialog`:
 
-The `useMarkInvoiceAsPaid.ts` fix is already correct (explicitly sets `status: "review"`). This is the remaining gap.
+1. **`InvoiceTableActions`** — Works correctly. It first opens `EmailInvoiceProgressDialog` (syncs to IO, fetches PDF), then passes `preparedPdfBase64` to the preview dialog.
+2. **`InvoicesList`** — Opens the preview dialog directly WITHOUT the progress/PDF step. `preparedPdfBase64` is always `undefined`.
+3. **`ClientInfoCard`** — Same problem. Opens preview dialog without PDF preparation.
 
-## What Happened Today
-- 6 payment receipt + class confirmation emails (13:05-13:06): Ady was using old cached code before today's fix deployed — those used `status: "pending"`
-- 4 invoice emails (12:19-13:02): Sent via `EmailInvoicePreviewDialog` → `addToQueue` → no status set → DB default "pending" → queue processor sent them immediately
+In the dialog, line 120-122 throws: `"No PDF available. Please go back and retry the email preparation."` because there's no PDF.
 
 ## Fix
 
-### File: `src/hooks/useEmailQueue.ts` (line 104)
-Add `status: "review"` to the insert in `addToQueue`:
+Add the same two-step workflow (progress dialog then preview dialog) to both `InvoicesList` and `ClientInfoCard`.
 
-```typescript
-.insert({
-  branch_id: currentBranch.id,
-  to_email: input.to_email,
-  // ... other fields
-  status: "review",  // ← ADD THIS
-})
-```
+### File 1: `src/components/invoices/InvoicesList.tsx`
+- Add `EmailInvoiceProgressDialog` import and state for `preparedPdfBase64`, `emailProgressOpen`
+- When "Email Invoice" is triggered, open the progress dialog first
+- On PDF ready, transition to the preview dialog with the prepared PDF
+- Pass `preparedPdfBase64` to `EmailInvoicePreviewDialog`
 
-This ensures ALL emails added via the queue hook go to review. The only way emails get sent is when an admin explicitly approves them or processes the queue.
+### File 2: `src/components/invoices/detail/ClientInfoCard.tsx`
+- Same pattern: add progress dialog, two-step workflow
+- The "Send by Email" button opens progress dialog first
+- On completion, transitions to preview dialog with PDF
 
-**1 line added, 1 file.**
-
-## Emails Already Sent Today
-All 10 emails in the last hour were sent. The content was legitimate (real invoices, real receipts, real confirmations). No damage done — but they bypassed review.
+## Files Changed
+1. `src/components/invoices/InvoicesList.tsx` — add progress dialog + PDF handoff (~15 lines)
+2. `src/components/invoices/detail/ClientInfoCard.tsx` — add progress dialog + PDF handoff (~15 lines)
 
