@@ -8,6 +8,8 @@ import { Invoice } from "@/hooks/invoices/types";
 import { formatCurrency } from "@/lib/formatters";
 import { formatDate } from "date-fns";
 import { EmailInvoicePreviewDialog } from "@/components/invoices/dialogs/EmailInvoicePreviewDialog";
+import { EmailInvoiceProgressDialog } from "@/components/invoices/dialogs/EmailInvoiceProgressDialog";
+import { toast } from "sonner";
 
 interface ClientInfoCardProps {
   invoice: Invoice;
@@ -15,10 +17,24 @@ interface ClientInfoCardProps {
 }
 
 export function ClientInfoCard({ invoice, onGeneratePDF }: ClientInfoCardProps) {
+  const [emailProgressOpen, setEmailProgressOpen] = useState(false);
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+  const [preparedPdfBase64, setPreparedPdfBase64] = useState<string | null>(null);
 
   const handleEmailInvoice = () => {
+    setPreparedPdfBase64(null);
+    setEmailProgressOpen(true);
+  };
+
+  const handlePdfReady = (pdfBase64: string) => {
+    setPreparedPdfBase64(pdfBase64);
+    setEmailProgressOpen(false);
     setEmailDialogOpen(true);
+  };
+
+  const handlePdfError = (error: string) => {
+    setEmailProgressOpen(false);
+    toast.error("Failed to prepare invoice PDF: " + error);
   };
 
   return (
@@ -90,10 +106,19 @@ export function ClientInfoCard({ invoice, onGeneratePDF }: ClientInfoCardProps) 
         </CardFooter>
       </Card>
 
+      <EmailInvoiceProgressDialog
+        open={emailProgressOpen}
+        onOpenChange={setEmailProgressOpen}
+        invoice={invoice}
+        onReady={handlePdfReady}
+        onError={handlePdfError}
+      />
+
       <EmailInvoicePreviewDialog 
         open={emailDialogOpen} 
         onOpenChange={setEmailDialogOpen}
         selectedInvoice={invoice}
+        preparedPdfBase64={preparedPdfBase64 || undefined}
       />
     </>
   );

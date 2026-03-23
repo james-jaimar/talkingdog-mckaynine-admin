@@ -12,6 +12,7 @@ import { InvoicesTable } from "./table/InvoicesTable";
 import { SearchInvoices } from "./SearchInvoices";
 import { DeleteInvoiceDialog } from "./dialogs/DeleteInvoiceDialog";
 import { EmailInvoicePreviewDialog } from "./dialogs/EmailInvoicePreviewDialog";
+import { EmailInvoiceProgressDialog } from "./dialogs/EmailInvoiceProgressDialog";
 import { TransferInvoiceDialog } from "./dialogs/TransferInvoiceDialog";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useBranch } from "@/context/BranchContext";
@@ -37,10 +38,12 @@ export function InvoicesList({
   const markAsPaidMutation = useMarkInvoiceAsPaid();
   const [searchTerm, setSearchTerm] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [emailProgressOpen, setEmailProgressOpen] = useState(false);
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [transferDialogOpen, setTransferDialogOpen] = useState(false);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [preparedPdfBase64, setPreparedPdfBase64] = useState<string | null>(null);
   const [duplicateInvoiceNumbers, setDuplicateInvoiceNumbers] = useState<string[]>([]);
 
   // Add effect to refresh data when component mounts or branch changes
@@ -92,7 +95,19 @@ export function InvoicesList({
 
   const handleEmailRequest = (invoice: Invoice) => {
     setSelectedInvoice(invoice);
+    setPreparedPdfBase64(null);
+    setEmailProgressOpen(true);
+  };
+
+  const handlePdfReady = (pdfBase64: string) => {
+    setPreparedPdfBase64(pdfBase64);
+    setEmailProgressOpen(false);
     setEmailDialogOpen(true);
+  };
+
+  const handlePdfError = (error: string) => {
+    setEmailProgressOpen(false);
+    toast.error("Failed to prepare invoice PDF: " + error);
   };
 
   const handleTransferRequest = (invoice: Invoice) => {
@@ -177,10 +192,21 @@ export function InvoicesList({
         selectedInvoiceId={selectedInvoiceId} 
       />
 
+      {selectedInvoice && (
+        <EmailInvoiceProgressDialog
+          open={emailProgressOpen}
+          onOpenChange={setEmailProgressOpen}
+          invoice={selectedInvoice}
+          onReady={handlePdfReady}
+          onError={handlePdfError}
+        />
+      )}
+
       <EmailInvoicePreviewDialog 
         open={emailDialogOpen} 
         onOpenChange={setEmailDialogOpen}
         selectedInvoice={selectedInvoice}
+        preparedPdfBase64={preparedPdfBase64 || undefined}
       />
 
       <TransferInvoiceDialog
