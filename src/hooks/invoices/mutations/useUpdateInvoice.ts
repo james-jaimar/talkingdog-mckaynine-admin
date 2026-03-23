@@ -5,6 +5,7 @@ import { InvoiceFormValues } from "../types";
 import { toast } from "sonner";
 import { handleMutationError } from "./useMutationUtils";
 import { calculateInvoiceComponents } from "@/lib/calculateInvoiceComponents";
+import { issueCreditNote } from "../useIOSync";
 
 /**
  * Hook to update an existing invoice
