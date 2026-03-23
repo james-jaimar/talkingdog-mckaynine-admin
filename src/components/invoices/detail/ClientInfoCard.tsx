@@ -106,10 +106,19 @@ export function ClientInfoCard({ invoice, onGeneratePDF }: ClientInfoCardProps) 
         </CardFooter>
       </Card>
 
+      <EmailInvoiceProgressDialog
+        open={emailProgressOpen}
+        onOpenChange={setEmailProgressOpen}
+        invoice={invoice}
+        onReady={handlePdfReady}
+        onError={handlePdfError}
+      />
+
       <EmailInvoicePreviewDialog 
         open={emailDialogOpen} 
         onOpenChange={setEmailDialogOpen}
         selectedInvoice={invoice}
+        preparedPdfBase64={preparedPdfBase64 || undefined}
       />
     </>
   );

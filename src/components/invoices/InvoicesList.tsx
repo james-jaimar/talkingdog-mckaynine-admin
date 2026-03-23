@@ -192,10 +192,21 @@ export function InvoicesList({
         selectedInvoiceId={selectedInvoiceId} 
       />
 
+      {selectedInvoice && (
+        <EmailInvoiceProgressDialog
+          open={emailProgressOpen}
+          onOpenChange={setEmailProgressOpen}
+          invoice={selectedInvoice}
+          onReady={handlePdfReady}
+          onError={handlePdfError}
+        />
+      )}
+
       <EmailInvoicePreviewDialog 
         open={emailDialogOpen} 
         onOpenChange={setEmailDialogOpen}
         selectedInvoice={selectedInvoice}
+        preparedPdfBase64={preparedPdfBase64 || undefined}
       />
 
       <TransferInvoiceDialog
