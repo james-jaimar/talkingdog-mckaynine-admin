@@ -94,6 +94,35 @@ export function useUpdateInvoice() {
 
         console.log("Invoice updated successfully:", updatedInvoice);
 
+        // If invoice was previously synced to IO, credit-note the old document and clear sync fields
+        if (updatedInvoice.io_document_id) {
+          console.log("[IO Sync] Invoice was synced to IO, issuing credit note and clearing sync fields...");
+          
+          try {
+            await issueCreditNote(invoiceId);
+          } catch (err) {
+            console.warn("[IO Sync] Credit note failed (non-blocking):", err);
+          }
+          
+          // Clear IO sync fields so next sync creates a fresh document
+          await supabase
+            .from('invoices')
+            .update({
+              io_document_id: null,
+              io_invoice_number: null,
+              io_invoice_url: null,
+              io_sync_status: null,
+              io_synced_at: null,
+              io_sync_error: null,
+              io_client_id: null,
+              io_payment_id: null,
+              io_payment_url: null,
+            })
+            .eq('id', invoiceId);
+          
+          console.log("[IO Sync] IO sync fields cleared - will re-sync on next email/pay action");
+        }
+
         // Delete existing items
         const { error: deleteError } = await supabase
           .from('invoice_items')
