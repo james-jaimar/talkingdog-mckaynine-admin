@@ -124,9 +124,9 @@ export function useEmailQueue() {
       queryClient.invalidateQueries({ queryKey: ["email-queue"] });
       toast.success("Email added to queue");
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error("Error adding to queue:", error);
-      toast.error("Failed to queue email");
+      toast.error(error?.message || "Failed to queue email");
     },
   });
 

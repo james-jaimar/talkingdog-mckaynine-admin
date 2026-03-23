@@ -61,7 +61,7 @@ export function InvoiceBasicActions({
             subject: emailData.subject,
             html_content: emailData.html_content,
             handler_id: emailData.handler_id,
-            status: "pending",
+            status: "review",
           });
 
         if (queueError) {
@@ -164,7 +164,7 @@ export function InvoiceBasicActions({
             subject: receiptData.subject,
             html_content: receiptData.html_content,
             handler_id: receiptData.handler_id,
-            status: "pending",
+            status: "review",
             attachments: receiptData.attachments || null,
           });
 
