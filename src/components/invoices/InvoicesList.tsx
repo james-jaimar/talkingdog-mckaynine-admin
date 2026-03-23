@@ -95,7 +95,19 @@ export function InvoicesList({
 
   const handleEmailRequest = (invoice: Invoice) => {
     setSelectedInvoice(invoice);
+    setPreparedPdfBase64(null);
+    setEmailProgressOpen(true);
+  };
+
+  const handlePdfReady = (pdfBase64: string) => {
+    setPreparedPdfBase64(pdfBase64);
+    setEmailProgressOpen(false);
     setEmailDialogOpen(true);
+  };
+
+  const handlePdfError = (error: string) => {
+    setEmailProgressOpen(false);
+    toast.error("Failed to prepare invoice PDF: " + error);
   };
 
   const handleTransferRequest = (invoice: Invoice) => {
