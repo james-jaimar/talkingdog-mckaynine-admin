@@ -875,7 +875,14 @@ Deno.serve(async (req) => {
         );
       }
       
-      const pdfResult = await fetchIOPDF(invoice.io_payment_url);
+      const paymentPdfCredentials = getIOCredentials(invoice.branch_id);
+      if (!paymentPdfCredentials) {
+        return new Response(
+          JSON.stringify({ error: "No IO credentials configured for this branch" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      const pdfResult = await fetchIOPDF(invoice.io_payment_url, paymentPdfCredentials);
       
       if (pdfResult.success) {
         return new Response(
