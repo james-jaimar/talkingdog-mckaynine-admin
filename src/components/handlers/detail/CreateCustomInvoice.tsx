@@ -45,6 +45,7 @@ export function CreateCustomInvoice({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { generateInvoiceNumber, createInvoice } = useInvoices();
   const { currentBranch } = useBranch();
+  const { termData } = useTerm();
 
   const form = useForm<InvoiceFormValues>({
     resolver: zodResolver(invoiceFormSchema),
