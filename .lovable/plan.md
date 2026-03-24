@@ -1,28 +1,84 @@
 
 
-# Fix: "Create Invoice" Button Appears Inactive
+# Fix: Changing Franchise Month Doesn't Update Term
 
 ## Problem
 
-The "Create Invoice" button appears greyed out / unresponsive. Two issues:
+When Ady changes an invoice's franchise billing month (e.g. from March → April), only `franchise_report_month` is updated in the database. The `term_id` remains unchanged (still Term 1). Since the Invoices page filters by `term_id`, the invoice stays visible under Term 1 instead of moving to Term 2.
 
-1. **No visible validation errors**: The item fields (`description`, `quantity`, `unit_price`) have no `FormMessage` components, so when validation fails, the user sees nothing -- it just looks like the button didn't work.
+## Root Cause
 
-2. **Default `unit_price: 0` fails validation**: The schema requires `min(0.01)`, but the default value is `0`. If react-hook-form is running in a validation mode that checks before submit, the form stays in an invalid state until the user changes the price field.
+`handleAllocateToMonth` in `InvoicesTable.tsx` (line 172-175) only updates `franchise_report_month`. It never touches `term_id`.
 
-## Fix
+Same issue exists in `MissingMonthAllocationWarning.tsx` (line 41-44).
 
-### File: `src/components/handlers/detail/CreateCustomInvoice.tsx`
+## Solution
 
-1. **Change default `unit_price`** from `0` to `0.01` (or just remove the min constraint for initial state)
-2. **Add `FormMessage`** to each item field so validation errors are visible
-3. **Add `mode: "onChange"`** to the form so validation state updates as the user types (rather than only on submit)
-4. **Import `FormMessage`** from the form components
+Create a database function `get_term_id_for_month(month_str text)` that maps a `YYYY-MM` string to the correct `term_id`. Then update both places that change `franchise_report_month` to also set `term_id`.
 
-Changes:
-- Line 5: add `FormMessage` to import
-- Line 49: add `mode: "onChange"` to useForm config  
-- Lines 168-174, 185-193, 200-212: add `<FormMessage />` after each `FormControl`
+### File 1: New migration
 
-**1 file, ~6 lines added.**
+```sql
+-- Function to resolve term_id from a YYYY-MM franchise month string
+CREATE OR REPLACE FUNCTION public.get_term_id_for_month(month_str text)
+RETURNS uuid
+LANGUAGE plpgsql STABLE
+SET search_path = public
+AS $$
+DECLARE
+  month_date date;
+  result_id uuid;
+BEGIN
+  month_date := (month_str || '-01')::date;
+  
+  SELECT t.id INTO result_id
+  FROM public.terms t
+  JOIN public.academic_years ay ON ay.id = t.academic_year_id
+  WHERE month_date BETWEEN t.start_date AND t.end_date
+  LIMIT 1;
+  
+  RETURN result_id;
+END;
+$$;
+```
+
+### File 2: `src/components/invoices/table/InvoicesTable.tsx`
+
+Update `handleAllocateToMonth` (~line 172-175) to also set `term_id`:
+
+```typescript
+// Resolve term_id from the franchise month
+let termId = null;
+if (franchiseMonth) {
+  const { data } = await supabase.rpc('get_term_id_for_month', { month_str: franchiseMonth });
+  termId = data;
+}
+
+const { error } = await supabase
+  .from('invoices')
+  .update({ 
+    franchise_report_month: franchiseMonth,
+    ...(termId ? { term_id: termId } : {})
+  })
+  .in('id', Array.from(selectedIds));
+```
+
+### File 3: `src/components/invoices/summary/MissingMonthAllocationWarning.tsx`
+
+Same pattern — when auto-allocating unallocated invoices (~line 41-44), also resolve and set `term_id`.
+
+### File 4: Data fix for Sophie's invoice
+
+```sql
+UPDATE invoices 
+SET term_id = (SELECT id FROM terms t 
+               JOIN academic_years ay ON ay.id = t.academic_year_id 
+               WHERE t.term_number = 2 AND ay.year = 2026)
+WHERE id = '9175d1fb-f4f0-434e-8d2b-11e7fbf0e607';
+```
+
+## Files Changed
+1. New migration — `get_term_id_for_month` function + Sophie data fix
+2. `src/components/invoices/table/InvoicesTable.tsx` — update `handleAllocateToMonth`
+3. `src/components/invoices/summary/MissingMonthAllocationWarning.tsx` — update auto-allocation
 
