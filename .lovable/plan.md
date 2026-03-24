@@ -1,75 +1,60 @@
 
 
-# Fix: Amended Invoices Create Duplicates on IO Instead of Replacing
+# Fix: Corrupted PDF Attachments From InvoicesOnline
 
 ## Problem
 
-When Ady edits an already-synced invoice (e.g. correcting Sophie Theodorou's amount), the local DB updates correctly. But IO documents are **write-once** — they cannot be modified via API. The edge function's idempotency check sees `io_document_id` already exists and skips the sync, so IO keeps the old (wrong) document. If sync is forced somehow, it creates a second document instead of replacing.
+When the edge function fetches a PDF from IO via `io_invoice_url`, it blindly encodes whatever the URL returns into base64 — no content-type validation. If IO returns an HTML page (login redirect, session timeout, error page), that HTML gets stored as the "PDF" attachment in the email queue. When Ady downloads it, Adobe can't open it because it's HTML, not a PDF.
 
-## Solution
+## Root Cause
 
-When an invoice is updated locally AND it was already synced to IO:
-1. **Credit-note the old IO document** (reverses it in IO's ledger)
-2. **Clear all IO sync fields** on the local invoice record
-3. The next time the invoice is emailed/paid, the normal sync flow creates a fresh IO document with the correct amounts
+`fetchIOPDF()` in `supabase/functions/sync-invoice-to-io/index.ts` (line 558-584):
+- Fetches the URL
+- Logs the content-type but never validates it
+- Converts whatever bytes come back to base64
+- Returns it as `pdfBase64`
 
-## Implementation
+No check that the response is actually `application/pdf`.
 
-### File 1: `src/hooks/invoices/mutations/useUpdateInvoice.ts`
+## Fix
 
-After the invoice update succeeds (line 94), check if the invoice was previously synced to IO. If so:
+### File 1: `supabase/functions/sync-invoice-to-io/index.ts` (line 570-575)
+
+Add content-type validation after the fetch:
 
 ```typescript
-// After successful update, check if invoice was synced to IO
-if (updatedInvoice.io_document_id) {
-  console.log("[IO Sync] Invoice was synced to IO, issuing credit note and clearing sync fields...");
-  
-  // Issue credit note for old IO document (fire-and-forget, don't block)
-  try {
-    await issueCreditNote(invoiceId);
-  } catch (err) {
-    console.warn("[IO Sync] Credit note failed (non-blocking):", err);
+const contentType = response.headers.get("content-type");
+console.log(`PDF response content-type: ${contentType}`);
+
+// Validate we actually got a PDF, not an HTML error page
+if (!contentType || !contentType.includes("application/pdf")) {
+  // Read first bytes to check for PDF magic number (%PDF)
+  const arrayBuffer = await response.arrayBuffer();
+  const header = new TextDecoder().decode(new Uint8Array(arrayBuffer).slice(0, 5));
+  if (!header.startsWith("%PDF")) {
+    return { 
+      success: false, 
+      error: `IO returned non-PDF content (${contentType || 'unknown'}). The invoice URL may have expired.` 
+    };
   }
-  
-  // Clear IO sync fields so next sync creates a fresh document
-  await supabase
-    .from('invoices')
-    .update({
-      io_document_id: null,
-      io_invoice_number: null,
-      io_invoice_url: null,
-      io_sync_status: null,
-      io_synced_at: null,
-      io_sync_error: null,
-      io_client_id: null,
-      io_payment_id: null,
-      io_payment_url: null,
-    })
-    .eq('id', invoiceId);
+  // Has PDF magic number despite wrong content-type — proceed
+  const uint8Array = new Uint8Array(arrayBuffer);
+  const pdfBase64 = base64Encode(uint8Array);
+  return { success: true, pdfBase64 };
 }
+
+const arrayBuffer = await response.arrayBuffer();
+const uint8Array = new Uint8Array(arrayBuffer);
+const pdfBase64 = base64Encode(uint8Array);
 ```
 
-- Import `issueCreditNote` from `useIOSync`
-- Add `io_document_id` to the `.select('*')` response (already there via `select('*')`)
+This ensures corrupted/HTML content never gets stored as a PDF attachment.
 
-### File 2: `src/hooks/invoices/mutations/useUpdateInvoice.ts` — onSuccess toast
+### File 2: Redeploy the edge function
 
-Update the success toast to mention IO will be re-synced if applicable:
-```typescript
-toast.success("Invoice updated successfully");
-// The IO re-sync happens automatically on next email/pay action
-```
-
-### No edge function changes needed
-
-The existing edge function logic is correct — once `io_document_id` is cleared, the next sync will create a new document as expected.
-
-## Impact
-- Editing a synced invoice → old IO doc gets credit-noted, sync fields cleared
-- Next email/pay action → fresh IO document created with correct amounts
-- Editing an un-synced invoice → no change (no IO fields to clear)
-- Paid invoices that are edited → credit note on old, re-sync on next action
+After modifying the edge function, it must be redeployed for the fix to take effect.
 
 ## Files Changed
-1. `src/hooks/invoices/mutations/useUpdateInvoice.ts` — add IO credit note + clear sync fields (~15 lines)
+1. `supabase/functions/sync-invoice-to-io/index.ts` — add PDF content validation (~10 lines)
+2. Edge function redeployment required
 
