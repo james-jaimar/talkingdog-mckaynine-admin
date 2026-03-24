@@ -45,7 +45,7 @@ export function HandlerStatusCell({ classStatuses, handlerId }: HandlerStatusCel
   for (const s of classStatuses) {
     if (!s.next_action || s.next_action === 'none') continue;
     // Skip fully completed/resolved actions — they don't need attention
-    if (s.action_completed && pendingTasks.length === 0) continue;
+    if (s.action_completed && pendingTasks.length === 0 && s.next_action !== 'stopping') continue;
 
     const effectiveType = s.next_action;
 
