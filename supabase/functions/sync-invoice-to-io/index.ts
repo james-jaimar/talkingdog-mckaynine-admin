@@ -554,60 +554,14 @@ async function createIOCreditNote(
   return { success: false, error: `Unexpected response: ${JSON.stringify(result)}` };
 }
 
-// Login to IO and get session cookie for PDF downloads
-async function loginToIO(credentials: IOCredentials): Promise<string | null> {
-  try {
-    console.log(`Logging into IO to get session cookie...`);
-    const response = await fetch(`${IO_API_BASE}/Login.php`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        username: credentials.username,
-        password: credentials.password,
-      }),
-      redirect: "manual",
-    });
-    
-    // Extract session cookie from Set-Cookie header
-    const setCookie = response.headers.get("set-cookie");
-    console.log(`Login response status: ${response.status}, has set-cookie: ${!!setCookie}`);
-    
-    if (setCookie) {
-      const match = setCookie.match(/PHPSESSID=([^;]+)/);
-      if (match) {
-        console.log(`Got PHPSESSID session cookie`);
-        return match[1];
-      }
-    }
-    
-    // Consume response body
-    await response.text();
-    console.warn(`No PHPSESSID cookie in login response`);
-    return null;
-  } catch (error) {
-    console.error(`IO login error: ${error.message}`);
-    return null;
-  }
-}
-
-// Fetch PDF from IO invoice URL (with authentication)
+// Fetch PDF from IO invoice URL (direct fetch - IO URLs are self-authenticating via query params)
 async function fetchIOPDF(
-  invoiceUrl: string,
-  credentials: IOCredentials
+  invoiceUrl: string
 ): Promise<{ success: boolean; pdfBase64?: string; error?: string }> {
   console.log(`Fetching PDF from IO URL: ${invoiceUrl}`);
   
   try {
-    // Login to IO first to get a session cookie
-    const sessionId = await loginToIO(credentials);
-    const headers: Record<string, string> = {};
-    if (sessionId) {
-      headers["Cookie"] = `PHPSESSID=${sessionId}`;
-    } else {
-      console.warn(`Could not get IO session - attempting fetch without auth`);
-    }
-    
-    const response = await fetch(invoiceUrl, { headers });
+    const response = await fetch(invoiceUrl);
     
     if (!response.ok) {
       return { success: false, error: `Failed to fetch PDF: ${response.status} ${response.statusText}` };
@@ -624,15 +578,13 @@ async function fetchIOPDF(
       console.error(`IO returned non-PDF content. Content-type: ${contentType}, header: ${header}`);
       return { 
         success: false, 
-        error: `IO returned non-PDF content (${contentType || 'unknown'}). The invoice URL may have expired or returned a login page.` 
+        error: `IO returned non-PDF content (${contentType || 'unknown'}).` 
       };
     }
     
     const uint8Array = new Uint8Array(arrayBuffer);
     const pdfBase64 = base64Encode(uint8Array);
-    
     console.log(`PDF fetched successfully, size: ${pdfBase64.length} chars`);
-    
     return { success: true, pdfBase64 };
   } catch (error) {
     console.error(`Error fetching PDF: ${error.message}`);
@@ -840,14 +792,7 @@ Deno.serve(async (req) => {
         );
       }
       
-      const pdfCredentials = getIOCredentials(invoice.branch_id);
-      if (!pdfCredentials) {
-        return new Response(
-          JSON.stringify({ error: "No IO credentials configured for this branch" }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      const pdfResult = await fetchIOPDF(invoice.io_invoice_url, pdfCredentials);
+      const pdfResult = await fetchIOPDF(invoice.io_invoice_url);
       
       if (pdfResult.success) {
         return new Response(
@@ -875,14 +820,7 @@ Deno.serve(async (req) => {
         );
       }
       
-      const paymentPdfCredentials = getIOCredentials(invoice.branch_id);
-      if (!paymentPdfCredentials) {
-        return new Response(
-          JSON.stringify({ error: "No IO credentials configured for this branch" }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      const pdfResult = await fetchIOPDF(invoice.io_payment_url, paymentPdfCredentials);
+      const pdfResult = await fetchIOPDF(invoice.io_payment_url);
       
       if (pdfResult.success) {
         return new Response(
