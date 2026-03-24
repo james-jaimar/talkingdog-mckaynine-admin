@@ -17,7 +17,7 @@ const RANDBURG_BRANCH_ID = "284817cf-de0d-43b9-a506-a3efa625ae1c";
 
 // IO Business IDs (from IO account settings) - needed for constructing PDF URLs
 const IO_BUSINESS_ID_DELTA = "8978";
-const IO_BUSINESS_ID_RANDBURG = "8978"; // TODO: Update with actual Randburg business ID when known
+const IO_BUSINESS_ID_RANDBURG = "8984";
 
 // IO API base URL
 const IO_API_BASE = "https://www.invoicesonline.co.za/api";
