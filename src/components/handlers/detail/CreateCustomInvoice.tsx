@@ -99,6 +99,7 @@ export function CreateCustomInvoice({
         total: subtotal,
         items: values.items,
         branch_id: currentBranch?.id || null,
+        term_id: termData?.id || null,
       };
       
       console.log("Creating custom invoice with data:", invoiceData);
