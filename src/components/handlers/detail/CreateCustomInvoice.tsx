@@ -54,7 +54,7 @@ export function CreateCustomInvoice({
     defaultValues: {
       notes: "",
       items: [
-        { description: "", quantity: 1, unit_price: 0 }
+        { description: "", quantity: 1, unit_price: 0, io_inventory_code: "" }
       ]
     }
   });
