@@ -554,14 +554,60 @@ async function createIOCreditNote(
   return { success: false, error: `Unexpected response: ${JSON.stringify(result)}` };
 }
 
-// Fetch PDF from IO invoice URL
+// Login to IO and get session cookie for PDF downloads
+async function loginToIO(credentials: IOCredentials): Promise<string | null> {
+  try {
+    console.log(`Logging into IO to get session cookie...`);
+    const response = await fetch(`${IO_API_BASE}/Login.php`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username: credentials.username,
+        password: credentials.password,
+      }),
+      redirect: "manual",
+    });
+    
+    // Extract session cookie from Set-Cookie header
+    const setCookie = response.headers.get("set-cookie");
+    console.log(`Login response status: ${response.status}, has set-cookie: ${!!setCookie}`);
+    
+    if (setCookie) {
+      const match = setCookie.match(/PHPSESSID=([^;]+)/);
+      if (match) {
+        console.log(`Got PHPSESSID session cookie`);
+        return match[1];
+      }
+    }
+    
+    // Consume response body
+    await response.text();
+    console.warn(`No PHPSESSID cookie in login response`);
+    return null;
+  } catch (error) {
+    console.error(`IO login error: ${error.message}`);
+    return null;
+  }
+}
+
+// Fetch PDF from IO invoice URL (with authentication)
 async function fetchIOPDF(
-  invoiceUrl: string
+  invoiceUrl: string,
+  credentials: IOCredentials
 ): Promise<{ success: boolean; pdfBase64?: string; error?: string }> {
   console.log(`Fetching PDF from IO URL: ${invoiceUrl}`);
   
   try {
-    const response = await fetch(invoiceUrl);
+    // Login to IO first to get a session cookie
+    const sessionId = await loginToIO(credentials);
+    const headers: Record<string, string> = {};
+    if (sessionId) {
+      headers["Cookie"] = `PHPSESSID=${sessionId}`;
+    } else {
+      console.warn(`Could not get IO session - attempting fetch without auth`);
+    }
+    
+    const response = await fetch(invoiceUrl, { headers });
     
     if (!response.ok) {
       return { success: false, error: `Failed to fetch PDF: ${response.status} ${response.statusText}` };
