@@ -169,9 +169,19 @@ export function InvoicesTable({
 
     setIsBulkActionLoading(true);
     try {
+      // Resolve term_id from the franchise month
+      let termId: string | null = null;
+      if (franchiseMonth) {
+        const { data } = await supabase.rpc('get_term_id_for_month', { month_str: franchiseMonth });
+        termId = data;
+      }
+
       const { error } = await supabase
         .from('invoices')
-        .update({ franchise_report_month: franchiseMonth })
+        .update({ 
+          franchise_report_month: franchiseMonth,
+          ...(termId ? { term_id: termId } : {})
+        })
         .in('id', Array.from(selectedIds));
 
       if (error) throw error;
