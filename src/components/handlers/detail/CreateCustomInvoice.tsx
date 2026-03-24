@@ -11,6 +11,7 @@ import { z } from "zod";
 import { useInvoices } from "@/hooks/useInvoices";
 import { Loader2, Plus, Trash } from "lucide-react";
 import { toast } from "sonner";
+import { useBranch } from "@/context/BranchContext";
 
 interface CreateCustomInvoiceProps {
   open: boolean;
@@ -21,14 +22,12 @@ interface CreateCustomInvoiceProps {
 }
 
 const invoiceFormSchema = z.object({
-  description: z.string().min(3, "Description is required"),
-  amount: z.number().min(0.01, "Amount must be greater than 0"),
   notes: z.string().optional(),
   items: z.array(
     z.object({
       description: z.string().min(1, "Description is required"),
       quantity: z.number().min(1, "Quantity must be at least 1"),
-      unit_price: z.number().min(0, "Price cannot be negative"),
+      unit_price: z.number().min(0.01, "Price must be greater than 0"),
     })
   ).min(1, "At least one item is required"),
 });
@@ -44,12 +43,11 @@ export function CreateCustomInvoice({
 }: CreateCustomInvoiceProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { generateInvoiceNumber, createInvoice } = useInvoices();
+  const { currentBranch } = useBranch();
 
   const form = useForm<InvoiceFormValues>({
     resolver: zodResolver(invoiceFormSchema),
     defaultValues: {
-      description: "",
-      amount: 0,
       notes: "",
       items: [
         { description: "", quantity: 1, unit_price: 0 }
@@ -82,13 +80,13 @@ export function CreateCustomInvoice({
         0
       );
 
-      // Create invoice data
+      // Create invoice data with branch_id for IO sync
       const invoiceData = {
         client_id: clientId,
         invoice_number: invoiceNumber,
         status: "draft",
         issued_date: new Date(),
-        due_date: new Date(), // Due date defaults to today (same as issued date)
+        due_date: new Date(),
         notes: values.notes || `Custom invoice for ${clientName}`,
         tax_rate: 0,
         discount_type: "fixed" as const,
@@ -97,6 +95,7 @@ export function CreateCustomInvoice({
         subtotal,
         total: subtotal,
         items: values.items,
+        branch_id: currentBranch?.id || null,
       };
       
       console.log("Creating custom invoice with data:", invoiceData);
@@ -256,7 +255,7 @@ export function CreateCustomInvoice({
               </Button>
               <Button 
                 type="submit" 
-                disabled={isSubmitting || !form.formState.isValid}
+                disabled={isSubmitting}
               >
                 {isSubmitting ? (
                   <>
