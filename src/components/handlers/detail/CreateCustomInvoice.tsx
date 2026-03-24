@@ -47,6 +47,7 @@ export function CreateCustomInvoice({
 
   const form = useForm<InvoiceFormValues>({
     resolver: zodResolver(invoiceFormSchema),
+    mode: "onChange",
     defaultValues: {
       notes: "",
       items: [
