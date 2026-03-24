@@ -1,0 +1,1 @@
+UPDATE invoices SET io_payment_url = REPLACE(io_payment_url, 'bid=8978', 'bid=8984') WHERE branch_id = '284817cf-de0d-43b9-a506-a3efa625ae1c' AND io_payment_url LIKE '%bid=8978%';
