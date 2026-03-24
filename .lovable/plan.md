@@ -1,41 +1,28 @@
 
 
-# Fix: Randburg Payment PDFs Fail — Wrong Business ID
+# Fix: "Create Invoice" Button Appears Inactive
 
-## Root Cause
+## Problem
 
-Line 20 of `sync-invoice-to-io/index.ts`:
-```
-const IO_BUSINESS_ID_RANDBURG = "8978"; // TODO: Update with actual Randburg business ID when known
-```
+The "Create Invoice" button appears greyed out / unresponsive. Two issues:
 
-The Randburg IO business ID is actually **8984**, not 8978. The code still has the Delta ID as a placeholder with a TODO comment.
+1. **No visible validation errors**: The item fields (`description`, `quantity`, `unit_price`) have no `FormMessage` components, so when validation fails, the user sees nothing -- it just looks like the button didn't work.
 
-This matters because:
-- **Invoice URLs** work fine — IO returns them directly, and they correctly contain `bid=8984`
-- **Payment URLs** are broken — we **construct them ourselves** using `getIOBusinessId()`, which returns `8978` for Randburg
-
-Proof from the database:
-- Francoise Harrison invoice URL: `bid=8984` (correct, IO-generated) → works
-- Francoise Harrison payment URL: `bid=8978` (wrong, we built it) → "We could not find the file"
-- Same payment URL with `bid=8984` → returns the actual receipt
-
-This affects ALL 21 Randburg payment URLs in the database. It has been broken since Randburg was added — previous Randburg receipt emails were sent with corrupted "We could not find the file" HTML as the PDF attachment (confirmed: `V2UgY291bGQg` base64 prefix = "We could..." on 4 historic Randburg receipts).
+2. **Default `unit_price: 0` fails validation**: The schema requires `min(0.01)`, but the default value is `0`. If react-hook-form is running in a validation mode that checks before submit, the form stays in an invalid state until the user changes the price field.
 
 ## Fix
 
-### File 1: `supabase/functions/sync-invoice-to-io/index.ts`
-Line 20: Change `"8978"` to `"8984"`
+### File: `src/components/handlers/detail/CreateCustomInvoice.tsx`
 
-### Database: Fix existing corrupted payment URLs
-Update all 21 Randburg invoices to replace `bid=8978` with `bid=8984` in their `io_payment_url`.
+1. **Change default `unit_price`** from `0` to `0.01` (or just remove the min constraint for initial state)
+2. **Add `FormMessage`** to each item field so validation errors are visible
+3. **Add `mode: "onChange"`** to the form so validation state updates as the user types (rather than only on submit)
+4. **Import `FormMessage`** from the form components
 
-### Redeploy edge function
+Changes:
+- Line 5: add `FormMessage` to import
+- Line 49: add `mode: "onChange"` to useForm config  
+- Lines 168-174, 185-193, 200-212: add `<FormMessage />` after each `FormControl`
 
-## Impact
-- Fixes all future Randburg payment receipt PDF fetches
-- Fixes existing 21 corrupted Randburg payment URLs
-- No effect on Delta (Delta's business ID is correctly 8978)
-
-**1 line changed + 1 data fix + redeploy**
+**1 file, ~6 lines added.**
 
