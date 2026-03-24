@@ -12,6 +12,7 @@ import { useInvoices } from "@/hooks/useInvoices";
 import { Loader2, Plus, Trash } from "lucide-react";
 import { toast } from "sonner";
 import { useBranch } from "@/context/BranchContext";
+import { useTerm } from "@/context/TermContext";
 
 interface CreateCustomInvoiceProps {
   open: boolean;
