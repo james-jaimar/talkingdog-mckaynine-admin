@@ -220,6 +220,20 @@ export function CreateCustomInvoice({
                       )}
                     />
                   </div>
+                  
+                  <FormField
+                    control={form.control}
+                    name={`items.${index}.io_inventory_code`}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>IO Inventory Code (Optional)</FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g. PUP, BN, EN" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
               ))}
             </div>
