@@ -29,6 +29,7 @@ const invoiceFormSchema = z.object({
       description: z.string().min(1, "Description is required"),
       quantity: z.number().min(1, "Quantity must be at least 1"),
       unit_price: z.number().min(0.01, "Price must be greater than 0"),
+      io_inventory_code: z.string().optional(),
     })
   ).min(1, "At least one item is required"),
 });
@@ -53,14 +54,14 @@ export function CreateCustomInvoice({
     defaultValues: {
       notes: "",
       items: [
-        { description: "", quantity: 1, unit_price: 0 }
+        { description: "", quantity: 1, unit_price: 0, io_inventory_code: "" }
       ]
     }
   });
 
   const addItem = () => {
     const items = form.getValues("items") || [];
-    form.setValue("items", [...items, { description: "", quantity: 1, unit_price: 0 }]);
+    form.setValue("items", [...items, { description: "", quantity: 1, unit_price: 0, io_inventory_code: "" }]);
   };
 
   const removeItem = (index: number) => {
@@ -219,6 +220,20 @@ export function CreateCustomInvoice({
                       )}
                     />
                   </div>
+                  
+                  <FormField
+                    control={form.control}
+                    name={`items.${index}.io_inventory_code`}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>IO Inventory Code (Optional)</FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g. PUP, BN, EN" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
               ))}
             </div>
