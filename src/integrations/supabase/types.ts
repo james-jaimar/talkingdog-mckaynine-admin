@@ -3233,6 +3233,7 @@ export type Database = {
         }[]
       }
       get_starter_kit_stock: { Args: never; Returns: number }
+      get_term_id_for_month: { Args: { month_str: string }; Returns: string }
       get_unread_message_count: {
         Args: { p_client_id: string }
         Returns: number
