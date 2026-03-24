@@ -571,6 +571,17 @@ async function fetchIOPDF(
     console.log(`PDF response content-type: ${contentType}`);
     
     const arrayBuffer = await response.arrayBuffer();
+    
+    // Validate we actually got a PDF, not an HTML error/login page
+    const header = new TextDecoder().decode(new Uint8Array(arrayBuffer).slice(0, 5));
+    if (!header.startsWith("%PDF")) {
+      console.error(`IO returned non-PDF content. Content-type: ${contentType}, header: ${header}`);
+      return { 
+        success: false, 
+        error: `IO returned non-PDF content (${contentType || 'unknown'}). The invoice URL may have expired or returned a login page.` 
+      };
+    }
+    
     const uint8Array = new Uint8Array(arrayBuffer);
     const pdfBase64 = base64Encode(uint8Array);
     
