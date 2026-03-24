@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Form, FormField, FormItem, FormLabel, FormControl } from "@/components/ui/form";
+import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
@@ -47,6 +47,7 @@ export function CreateCustomInvoice({
 
   const form = useForm<InvoiceFormValues>({
     resolver: zodResolver(invoiceFormSchema),
+    mode: "onChange",
     defaultValues: {
       notes: "",
       items: [
@@ -170,6 +171,7 @@ export function CreateCustomInvoice({
                         <FormControl>
                           <Input {...field} />
                         </FormControl>
+                        <FormMessage />
                       </FormItem>
                     )}
                   />
@@ -186,9 +188,10 @@ export function CreateCustomInvoice({
                               type="number" 
                               min="1" 
                               {...field}
-                              onChange={(e) => field.onChange(Number(e.target.value))}
+                             onChange={(e) => field.onChange(Number(e.target.value))}
                             />
                           </FormControl>
+                          <FormMessage />
                         </FormItem>
                       )}
                     />
@@ -208,6 +211,7 @@ export function CreateCustomInvoice({
                               onChange={(e) => field.onChange(Number(e.target.value))}
                             />
                           </FormControl>
+                          <FormMessage />
                         </FormItem>
                       )}
                     />
