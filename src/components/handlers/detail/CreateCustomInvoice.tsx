@@ -12,6 +12,7 @@ import { useInvoices } from "@/hooks/useInvoices";
 import { Loader2, Plus, Trash } from "lucide-react";
 import { toast } from "sonner";
 import { useBranch } from "@/context/BranchContext";
+import { useTerm } from "@/context/TermContext";
 
 interface CreateCustomInvoiceProps {
   open: boolean;
@@ -44,6 +45,7 @@ export function CreateCustomInvoice({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { generateInvoiceNumber, createInvoice } = useInvoices();
   const { currentBranch } = useBranch();
+  const { termData } = useTerm();
 
   const form = useForm<InvoiceFormValues>({
     resolver: zodResolver(invoiceFormSchema),
@@ -97,6 +99,7 @@ export function CreateCustomInvoice({
         total: subtotal,
         items: values.items,
         branch_id: currentBranch?.id || null,
+        term_id: termData?.id || null,
       };
       
       console.log("Creating custom invoice with data:", invoiceData);
