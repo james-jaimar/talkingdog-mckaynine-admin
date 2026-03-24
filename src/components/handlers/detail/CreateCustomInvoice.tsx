@@ -171,6 +171,7 @@ export function CreateCustomInvoice({
                         <FormControl>
                           <Input {...field} />
                         </FormControl>
+                        <FormMessage />
                       </FormItem>
                     )}
                   />
