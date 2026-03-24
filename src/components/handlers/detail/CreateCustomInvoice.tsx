@@ -29,6 +29,7 @@ const invoiceFormSchema = z.object({
       description: z.string().min(1, "Description is required"),
       quantity: z.number().min(1, "Quantity must be at least 1"),
       unit_price: z.number().min(0.01, "Price must be greater than 0"),
+      io_inventory_code: z.string().optional(),
     })
   ).min(1, "At least one item is required"),
 });
