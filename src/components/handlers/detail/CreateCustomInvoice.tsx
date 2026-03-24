@@ -61,7 +61,7 @@ export function CreateCustomInvoice({
 
   const addItem = () => {
     const items = form.getValues("items") || [];
-    form.setValue("items", [...items, { description: "", quantity: 1, unit_price: 0 }]);
+    form.setValue("items", [...items, { description: "", quantity: 1, unit_price: 0, io_inventory_code: "" }]);
   };
 
   const removeItem = (index: number) => {
