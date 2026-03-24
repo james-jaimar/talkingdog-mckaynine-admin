@@ -211,6 +211,7 @@ export function CreateCustomInvoice({
                               onChange={(e) => field.onChange(Number(e.target.value))}
                             />
                           </FormControl>
+                          <FormMessage />
                         </FormItem>
                       )}
                     />
