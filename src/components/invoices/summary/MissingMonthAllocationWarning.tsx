@@ -37,20 +37,10 @@ export function MissingMonthAllocationWarning({ invoices }: MissingMonthAllocati
     setIsAllocating(true);
     try {
       const invoiceIds = unallocatedInvoices.map((inv) => inv.id);
-      
-      // Resolve term_id from the franchise month
-      let termId: string | null = null;
-      if (franchiseMonth) {
-        const { data } = await supabase.rpc('get_term_id_for_month', { month_str: franchiseMonth });
-        termId = data;
-      }
 
       const { error } = await supabase
         .from("invoices")
-        .update({ 
-          franchise_report_month: franchiseMonth,
-          ...(termId ? { term_id: termId } : {})
-        })
+        .update({ franchise_report_month: franchiseMonth })
         .in("id", invoiceIds);
 
       if (error) throw error;
