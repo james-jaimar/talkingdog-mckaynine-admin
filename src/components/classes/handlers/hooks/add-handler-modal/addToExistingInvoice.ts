@@ -85,6 +85,26 @@ export const addToExistingInvoice = async ({
       };
     }
 
+    // Guard: check for existing items on this invoice for these bookings (prevent duplicates)
+    const { data: existingItems } = await supabase
+      .from('invoice_items')
+      .select('booking_id')
+      .eq('invoice_id', existingInvoiceId)
+      .in('booking_id', bookingIds);
+    
+    const alreadyLinkedBookings = new Set((existingItems || []).map(i => i.booking_id));
+    const newBookingIds = bookingIds.filter(id => !alreadyLinkedBookings.has(id));
+    
+    if (newBookingIds.length === 0) {
+      console.warn("ADD-TO-INVOICE: All bookings already have items on this invoice, skipping duplicate insert");
+      return {
+        success: true,
+        invoiceNumber: existingInvoice.invoice_number,
+        newSubtotal: existingInvoice.subtotal || 0,
+        discountApplied: 0,
+      };
+    }
+
     // Create new invoice items for each dog being added
     const newItems: Array<{
       invoice_id: string;

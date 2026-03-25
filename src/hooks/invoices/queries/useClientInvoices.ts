@@ -85,26 +85,12 @@ export function useClientInvoices(clientId?: string) {
         
         console.log(`Retrieved ${data?.length || 0} invoices for client ${clientId}`);
         
-        // Perform additional validation and data transformation
-        const processedInvoices = data.map(invoice => {
-          // Make sure items is always an array, even if null from database
-          const items = invoice.items || [];
-          
-          // Calculate totals to ensure consistency
-          const subtotal = items.reduce((sum: number, item: any) => sum + (item.amount || 0), 0);
-          const taxAmount = subtotal * (invoice.tax_rate / 100);
-          const total = subtotal + taxAmount;
-          
-          return {
-            ...invoice,
-            items,
-            subtotal,
-            tax_amount: taxAmount,
-            total
-          };
-        });
+        // Normalize items array (don't recalculate totals — DB values include discounts)
+        const processedInvoices = data.map(invoice => ({
+          ...invoice,
+          items: invoice.items || [],
+        }));
         
-        // Use explicit type assertion to resolve TypeScript error
         return processedInvoices as unknown as Invoice[];
       } catch (error) {
         return handleQueryError(error, "Error fetching client invoices");
