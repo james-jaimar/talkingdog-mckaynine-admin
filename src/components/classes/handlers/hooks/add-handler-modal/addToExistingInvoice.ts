@@ -123,6 +123,9 @@ export const addToExistingInvoice = async ({
     dogIds.forEach((dogId, index) => {
       const dogName = dogNames[index] || `Dog ${index + 1}`;
       const bookingId = bookingIds[index];
+      
+      // Skip if this booking was already linked (duplicate prevention)
+      if (!newBookingIds.includes(bookingId)) return;
 
       // Apply 25% discount since this is a 2nd dog across classes (round to nearest cent)
       const discountAmount = Math.round(classPrice * MULTI_DOG_DISCOUNT_PERCENT) / 100;
