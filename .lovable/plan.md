@@ -1,27 +1,22 @@
 
 
-# Fix: Stopping Icon Not Showing in Handler Status Lane
+# Fix: Sophie's Invoice Still in Term 1
 
 ## Problem
 
-Tanja Oosthuizen has `next_action = 'stopping'` with `action_completed = true` for Puppy (Rollo). The status icon is being suppressed by line 48 of `HandlerStatusCell.tsx`:
-
-```typescript
-if (s.action_completed && pendingTasks.length === 0) continue;
-```
-
-This logic is meant to hide resolved follow-up actions (like "wants info" after info has been sent). But **"stopping" is a terminal status** — it should always display so admins can see at a glance who is leaving.
+Invoice `INV-McR-2603-0007` has `franchise_report_month = '2026-04'` but `term_id` still points to Term 1. The franchise month was changed before our term-sync fix was deployed, so the term_id was never updated.
 
 ## Fix
 
-### File: `src/components/handlers/table/HandlerStatusCell.tsx`
+### Database update (1 row)
 
-Line 48 — exclude `stopping` from the suppression check:
+Update Sophie's invoice to set `term_id` to Term 2 (`c7951cbb-de96-47b1-bf05-69b512b7f5da`):
 
-```typescript
-// Skip fully completed/resolved actions — but never hide 'stopping' (terminal status)
-if (s.action_completed && pendingTasks.length === 0 && s.next_action !== 'stopping') continue;
+```sql
+UPDATE invoices 
+SET term_id = 'c7951cbb-de96-47b1-bf05-69b512b7f5da'
+WHERE id = '177844cb-8385-460e-96d0-46bdc2657316';
 ```
 
-One line changed. The stopping icon will now always appear in the status lane regardless of `action_completed`.
+No code changes needed — the fix we deployed earlier will handle future month changes correctly. This is just a data correction for the one invoice that was changed before the fix went live.
 
