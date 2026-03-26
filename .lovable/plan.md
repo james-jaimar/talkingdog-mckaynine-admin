@@ -1,69 +1,136 @@
 
 
-# Fix: Duncan Miller Invoice Mess — Root Cause Analysis & Plan
+# Fix: Login Hanging — AbortError Kills Auth Initialization
 
-## What Happened
+## Root Cause
 
-When Ady added Duncan Miller (dog: Darcy) to "14h00 Beginner Obedience", the system detected that Duncan is a **household member** of Dean Nolte (via the `handler_households` table). Dean Nolte already had a draft/sent invoice (`INV-McD-2603-0035`) for Bronze CGC (dog: Diggory, R1,680).
+The Supabase client is a **singleton**. In React StrictMode (development) or during hot-reload, the effect runs twice:
 
-The household discount logic kicked in and added Darcy's course fee to **Dean Nolte's invoice** with a 25% multi-dog discount (R1,327.50 instead of R1,770).
+1. Mount 1: subscribes + calls `getSession()` — cancelled1=false
+2. Cleanup 1: sets cancelled1=true, calls `subscription.unsubscribe()`
+3. Mount 2: subscribes + calls `getSession()` — cancelled2=false
+4. **Mount 2's `getSession()` rejects with AbortError** because the Supabase singleton's internal AbortController was disrupted by the unsubscribe in step 2
 
-### Three problems resulted:
+The catch handler on line 107-110 fires with `cancelled2 = false` (it's the second mount, not cancelled), so it logs the error and sets `isLoading(false)` with no session. The Auth page renders, the user enters credentials, `signInWithPassword` fires, the `onAuthStateChange` callback fires with a session — but then the `setTimeout(..., 0)` deferred profile fetch never resolves visibly because the UI already moved past the loading state, and the redirect logic gets confused.
 
-**1. Duplicate ghost item on Dean's invoice**
-The `addToExistingInvoice` function was called and inserted an item, but it appears there was a double execution — there are **two** items for "Darcy Beginner Obedience" on Dean's invoice:
-- Ghost item (no `booking_id`): R1,327.50 — created at 12:00:25
-- Real item (with `booking_id`): R1,327.50 — created at 12:01:29
+**On the published URL** (no StrictMode double-mount), this manifests differently: if the Supabase backend is slow or the connection times out (the Supabase metadata fetch above timed out — "Connection terminated due to connection timeout"), `getSession()` can also throw an AbortError, and the same catch handler kills the auth flow.
 
-This inflated the invoice total from the correct R3,007.50 to R4,335.00.
+## The Fix
 
-**2. Duncan's handler detail page shows inflated amount**
-The `useClientInvoices` hook (used in HandlerInvoices) correctly finds Dean's invoice via the `invoice_additional_recipients` table. However, it **recalculates the total from items** (lines 94-97), completely ignoring any invoice-level discounts. So the displayed total is wrong.
+Rewrite `useAuthSetup.ts` to follow the proven pattern from the Supabase docs:
 
-**3. "Not showing on invoices page"**
-Duncan's item is on Dean Nolte's invoice, which is allocated to April (`franchise_report_month = '2026-04'`). If Ady has the month filter set to "Current Month" (March), it won't appear. The invoice IS in the system — just under Dean's name in April.
+1. **Call `getSession()` first** to restore the session, set state, and mark `isReady`
+2. **Then** set up `onAuthStateChange` for subsequent events (login, logout, token refresh)
+3. **Ignore AbortError** — never treat it as a terminal state. If getSession fails with AbortError, leave `isLoading = true` and let `onAuthStateChange` handle it
+4. **Remove the `setTimeout` hack** — the deadlock concern it addressed is solved by not awaiting inside onAuthStateChange
 
-## Fix Plan
+### File: `src/context/auth/useAuthSetup.ts`
 
-### Step 1: Data cleanup — Remove the ghost invoice item
+Replace the entire file with:
 
-Delete the duplicate item with no `booking_id` from Dean Nolte's invoice, and recalculate the invoice total to the correct R3,007.50.
+```typescript
+import { useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { fetchUserProfile, ensureAdminRole } from './utils';
 
-```sql
--- Delete ghost item
-DELETE FROM invoice_items WHERE id = 'f7fe1e9f-951f-41ba-8472-cdef87167bb5';
+const resolveRole = async (userId: string, email: string | undefined) => {
+  const profileData = await fetchUserProfile(userId);
+  return ensureAdminRole(userId, email, profileData?.role);
+};
 
--- Fix invoice total: 1680 (Dean) + 1327.50 (Duncan discounted) = 3007.50
-UPDATE invoices SET subtotal = 3007.50, total = 3007.50 WHERE id = '4e2f6889-5e22-4296-9033-015ecbe1e13f';
+export const useAuthSetup = (authState: any) => {
+  const { setSession, setUser, setRole, setIsLoading } = authState;
+
+  useEffect(() => {
+    console.log("AuthProvider initializing");
+    let cancelled = false;
+
+    // 1. Restore session from storage FIRST
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (cancelled) return;
+      console.log("Initial session check:", !!session);
+      setSession(session);
+      setUser(session?.user ?? null);
+
+      if (session?.user) {
+        try {
+          const finalRole = await resolveRole(session.user.id, session.user.email);
+          if (cancelled) return;
+          console.log("Initial role resolved:", finalRole);
+          setRole(finalRole);
+        } catch (error) {
+          if (cancelled) return;
+          console.error("Error resolving initial role:", error);
+          setRole(null);
+        }
+      }
+      if (!cancelled) setIsLoading(false);
+    }).catch(error => {
+      if (cancelled) return;
+      // AbortError = StrictMode or network blip — do NOT mark loading done.
+      // onAuthStateChange will handle it.
+      if (error?.name === 'AbortError') {
+        console.warn("getSession aborted (StrictMode or network), waiting for onAuthStateChange");
+        return;
+      }
+      console.error("Error checking initial session:", error);
+      setIsLoading(false);
+    });
+
+    // 2. Listen for subsequent auth events (login, logout, token refresh)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (cancelled) return;
+        console.log("Auth state changed:", event);
+
+        // Synchronous state updates only — no awaits inside this callback
+        setSession(session);
+        setUser(session?.user ?? null);
+
+        if (session?.user) {
+          // Fire-and-forget role resolution
+          resolveRole(session.user.id, session.user.email)
+            .then(finalRole => {
+              if (cancelled) return;
+              console.log("User role set to:", finalRole);
+              setRole(finalRole);
+              setIsLoading(false);
+            })
+            .catch(error => {
+              if (cancelled) return;
+              console.error("Error resolving role:", error);
+              setRole(null);
+              setIsLoading(false);
+            });
+        } else {
+          setRole(null);
+          setIsLoading(false);
+        }
+      }
+    );
+
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
+  }, [setIsLoading, setSession, setUser, setRole]);
+};
 ```
 
-### Step 2: Fix `useClientInvoices` total recalculation
+### Key differences from current code:
 
-**File:** `src/hooks/invoices/queries/useClientInvoices.ts`
+1. **AbortError is ignored** — if `getSession()` is aborted, we leave `isLoading = true` and let `onAuthStateChange` handle it when it fires
+2. **No `setTimeout` hack** — role resolution uses fire-and-forget `.then()` chains instead of `setTimeout(async () => {}, 0)`
+3. **No duplicate logic** — the `resolveRole` helper is shared between initial check and state change handler
+4. **Single responsibility** — `getSession()` handles initial load, `onAuthStateChange` handles subsequent events
 
-Remove lines 94-104 that recalculate `subtotal`, `tax_amount`, and `total` from items. The invoice record already has the correct totals from the database (including discounts). The current code overwrites these with naive item sums, which is wrong whenever there's a discount.
+## Why This Fixes the Hang
 
-Replace with a simple items-array normalization without overwriting totals.
+Currently when a user types credentials and clicks Sign In:
+- `signInWithPassword` succeeds
+- `onAuthStateChange` fires with the session
+- The `setTimeout` deferred fetch runs but `isLoading` was already set to `false` by the AbortError handler
+- The redirect logic in `Auth.tsx` and `HandlerRedirect` sees `user` but `role` is still `null`, causing confusion
 
-### Step 3: Fix the race condition in `addToExistingInvoice`
-
-**File:** `src/components/classes/handlers/hooks/add-handler-modal/addToExistingInvoice.ts`
-
-The ghost item suggests that when `addToExistingInvoice` inserts items, it can sometimes insert items without the `booking_id` (the booking doesn't exist yet at that point? Or a double-click). Looking at the flow more carefully:
-
-In `addHandlerToClass.ts`, bookings are created BEFORE `addToExistingInvoice` is called (line 136 before line 196), so `bookingIds` should be populated. The ghost item's timestamp (12:00:25) is BEFORE the booking creation (12:01:28), which means either:
-- There was a first failed attempt (double-click) that inserted the item but failed to complete
-- Or there's a race condition
-
-Add a guard to prevent double-submission more robustly — the current `isProcessing` check is client-side only and doesn't prevent browser retries.
-
-### Step 4: Also fix Lesley Holm's invoice (INV-McD-2603-0037)
-
-This invoice has a single item with no `booking_id` for "Elementary Obedience for Gunner" at R680. This might be intentional (custom invoice) or another ghost. Need to verify with Ady, but it's only 1 item so it's not duplicated.
-
-## Summary of Changes
-
-1. **Data fix**: Delete ghost item, correct Dean Nolte's invoice total
-2. **Code fix in `useClientInvoices.ts`**: Stop recalculating totals from items — use DB totals
-3. **Code fix in `addHandlerToClass.ts`**: Add database-level duplicate prevention (check if item already exists for this booking before inserting)
+With the fix: `isLoading` stays `true` until role resolution completes, so the redirect only fires once everything is ready.
 
