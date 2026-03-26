@@ -18,11 +18,13 @@ export const useAuthSetup = (authState: any) => {
   // Auth state initialization and subscription
   useEffect(() => {
     console.log("AuthProvider initializing");
+    let cancelled = false;
     setIsLoading(true);
 
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        if (cancelled) return;
         console.log("Auth state changed:", event);
         
         // Handle synchronous updates first to avoid deadlocks
@@ -34,8 +36,10 @@ export const useAuthSetup = (authState: any) => {
           try {
             // Use setTimeout to avoid Supabase deadlock
             setTimeout(async () => {
+              if (cancelled) return;
               try {
                 const profileData = await fetchUserProfile(session.user.id);
+                if (cancelled) return;
                 
                 console.log("Fetched user profile data:", profileData);
                 
@@ -45,17 +49,20 @@ export const useAuthSetup = (authState: any) => {
                   session.user.email,
                   profileData?.role
                 );
+                if (cancelled) return;
                 
                 console.log("User role set to:", finalRole);
                 setRole(finalRole);
                 setIsLoading(false);
               } catch (error) {
+                if (cancelled) return;
                 console.error("Error in deferred profile fetch:", error);
                 setRole(null);
                 setIsLoading(false);
               }
             }, 0);
           } catch (error) {
+            if (cancelled) return;
             console.error("Error fetching user profile:", error);
             setRole(null);
             setIsLoading(false);
@@ -69,6 +76,7 @@ export const useAuthSetup = (authState: any) => {
 
     // Initial session check
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (cancelled) return;
       console.log("Initial session check:", !!session);
       setSession(session);
       setUser(session?.user ?? null);
@@ -77,15 +85,18 @@ export const useAuthSetup = (authState: any) => {
       if (session?.user) {
         fetchUserProfile(session.user.id)
           .then(profileData => {
+            if (cancelled) return;
             console.log("Fetched user profile data:", profileData);
             return ensureAdminRole(session.user.id, session.user.email, profileData?.role);
           })
           .then(finalRole => {
+            if (cancelled) return;
             console.log("Initial role check:", finalRole);
             setRole(finalRole);
             setIsLoading(false);
           })
           .catch(error => {
+            if (cancelled) return;
             console.error("Error in initial profile fetch:", error);
             setRole(null);
             setIsLoading(false);
@@ -94,12 +105,14 @@ export const useAuthSetup = (authState: any) => {
         setIsLoading(false);
       }
     }).catch(error => {
+      if (cancelled) return;
       console.error("Error checking initial session:", error);
       setIsLoading(false);
     });
 
     // Cleanup subscription on unmount
     return () => {
+      cancelled = true;
       subscription.unsubscribe();
     };
   }, [setIsLoading, setSession, setUser, setRole]);
