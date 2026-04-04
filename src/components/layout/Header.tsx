@@ -160,7 +160,7 @@ export function Header() {
       )}
       
       {/* Term Selector Row */}
-      {user && !isMobile && <TermSelectorRow />}
+      {user && <TermSelectorRow />}
       
       {/* Mobile Menu */}
       {isMobile && mobileMenuOpen && user && (
