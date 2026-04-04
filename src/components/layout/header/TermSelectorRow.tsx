@@ -79,29 +79,26 @@ export function TermSelectorRow() {
   return (
     <div className="border-b border-mckaynine-700 bg-mckaynine-600">
       <div className="container mx-auto px-4 py-2">
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-2 md:gap-4">
           <div className="flex items-center space-x-4 text-white">
             {isTermLoading && !termData ? (
               <div className="flex items-center space-x-2">
                 <Loader2 className="h-4 w-4 animate-spin text-white" />
-                <div className="space-y-2">
-                  <Skeleton className="h-6 w-32 bg-mckaynine-500" />
-                  <Skeleton className="h-4 w-48 bg-mckaynine-500" />
-                </div>
+                <Skeleton className="h-6 w-32 bg-mckaynine-500" />
               </div>
             ) : termData ? (
               <div className="flex items-center">
-                <Calendar className="h-5 w-5 mr-2" />
+                <Calendar className="h-4 w-4 md:h-5 md:w-5 mr-2" />
                 <div>
                   <div className="flex items-center gap-2">
-                    <p className="text-lg font-semibold">
+                    <p className="text-sm md:text-lg font-semibold">
                       Term {termData.term_number}, {selectedYear}
                     </p>
                     {termData.current && (
-                      <Badge variant="secondary" className="bg-green-500 text-white">Current</Badge>
+                      <Badge variant="secondary" className="bg-green-500 text-white text-xs">Current</Badge>
                     )}
                   </div>
-                  <p className="text-sm text-gray-200">
+                  <p className="text-xs text-gray-200 hidden md:block">
                     {termData.start_date ? format(new Date(termData.start_date), 'dd MMM yyyy') : ''} - 
                     {termData.end_date ? format(new Date(termData.end_date), 'dd MMM yyyy') : ''}
                   </p>
@@ -112,55 +109,51 @@ export function TermSelectorRow() {
             )}
           </div>
           
-          <div className="flex items-center gap-4">
-            <div>
-              <HeaderSelect
-                value={selectedYear.toString()}
-                onValueChange={handleYearChange}
-                disabled={isTermLoading && !termData}
-              >
-                <HeaderSelectTrigger className="w-[120px]">
-                  <HeaderSelectValue placeholder="Select year" />
-                </HeaderSelectTrigger>
-                <HeaderSelectContent>
-                  {years.map((year) => (
-                    <HeaderSelectItem key={year} value={year.toString()}>
-                      {year}
-                    </HeaderSelectItem>
-                  ))}
-                </HeaderSelectContent>
-              </HeaderSelect>
-            </div>
+          <div className="flex items-center gap-2 md:gap-4 w-full md:w-auto">
+            <HeaderSelect
+              value={selectedYear.toString()}
+              onValueChange={handleYearChange}
+              disabled={isTermLoading && !termData}
+            >
+              <HeaderSelectTrigger className="w-[90px] md:w-[120px]">
+                <HeaderSelectValue placeholder="Year" />
+              </HeaderSelectTrigger>
+              <HeaderSelectContent>
+                {years.map((year) => (
+                  <HeaderSelectItem key={year} value={year.toString()}>
+                    {year}
+                  </HeaderSelectItem>
+                ))}
+              </HeaderSelectContent>
+            </HeaderSelect>
 
-            <div>
-              <HeaderSelect
-                value={selectedTermNumber}
-                onValueChange={handleTermChange}
-                disabled={isTermLoading && !termData}
-              >
-                <HeaderSelectTrigger className="w-[120px]">
-                  <HeaderSelectValue placeholder="Select term" />
-                </HeaderSelectTrigger>
-                <HeaderSelectContent>
-                  {terms.map((term) => (
-                    <HeaderSelectItem key={term} value={term}>
-                      Term {term}
-                    </HeaderSelectItem>
-                  ))}
-                </HeaderSelectContent>
-              </HeaderSelect>
-            </div>
+            <HeaderSelect
+              value={selectedTermNumber}
+              onValueChange={handleTermChange}
+              disabled={isTermLoading && !termData}
+            >
+              <HeaderSelectTrigger className="w-[90px] md:w-[120px]">
+                <HeaderSelectValue placeholder="Term" />
+              </HeaderSelectTrigger>
+              <HeaderSelectContent>
+                {terms.map((term) => (
+                  <HeaderSelectItem key={term} value={term}>
+                    Term {term}
+                  </HeaderSelectItem>
+                ))}
+              </HeaderSelectContent>
+            </HeaderSelect>
             
             <button
               onClick={handleManualRefresh}
-              className="p-2 rounded-full hover:bg-mckaynine-700 transition-colors"
+              className="p-2 rounded-full hover:bg-mckaynine-700 transition-colors flex-shrink-0"
               title="Refresh term data"
               disabled={isTermLoading}
             >
               {isTermLoading ? (
-                <Loader2 className="h-5 w-5 animate-spin text-white" />
+                <Loader2 className="h-4 w-4 md:h-5 md:w-5 animate-spin text-white" />
               ) : (
-                <RefreshCw className="h-5 w-5 text-white" />
+                <RefreshCw className="h-4 w-4 md:h-5 md:w-5 text-white" />
               )}
             </button>
           </div>
