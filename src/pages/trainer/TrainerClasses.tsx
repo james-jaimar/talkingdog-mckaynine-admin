@@ -221,7 +221,12 @@ export default function TrainerClasses() {
                   <TableCell>
                     {format(schedule.displayDate, "HH:mm")} - {format(new Date(schedule.end_time), "HH:mm")}
                   </TableCell>
-                  <TableCell>{schedule.classes?.name}</TableCell>
+                  <TableCell>
+                    <span className="flex items-center gap-1.5">
+                      {schedule.classes?.name}
+                      {schedule.isSubstitute && <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Sub</Badge>}
+                    </span>
+                  </TableCell>
                   <TableCell>
                     <Badge variant="outline">{schedule.classes?.class_type}</Badge>
                   </TableCell>
