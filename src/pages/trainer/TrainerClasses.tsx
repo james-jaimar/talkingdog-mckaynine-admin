@@ -281,7 +281,10 @@ export default function TrainerClasses() {
                       </div>
                     </div>
                     <div className="flex-1">
-                      <h3 className="font-medium text-sm">{schedule.classes?.name}</h3>
+                      <h3 className="font-medium text-sm">
+                        {schedule.classes?.name}
+                        {schedule.isSubstitute && <Badge variant="secondary" className="ml-1.5 text-[10px] px-1.5 py-0">Sub</Badge>}
+                      </h3>
                       <div className="flex flex-wrap items-center gap-2 mt-1">
                         <Badge variant="secondary" className="text-xs">{schedule.classes?.class_type}</Badge>
                         <span className="text-xs text-muted-foreground">

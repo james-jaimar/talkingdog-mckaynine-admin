@@ -68,6 +68,7 @@ export default function TrainerClassDetail() {
     queryFn: async () => {
       if (!trainerProfile?.id || !scheduleId) return null;
 
+      // Fetch schedule by ID only (no trainer_id filter) to allow substitute access
       const { data, error } = await supabase
         .from('class_schedules')
         .select(`
@@ -108,12 +109,26 @@ export default function TrainerClassDetail() {
           )
         `)
         .eq('id', scheduleId)
-        .eq('trainer_id', trainerProfile.id)
         .single();
 
       if (error) {
         console.error("Error fetching class detail:", error);
         return null;
+      }
+
+      // Verify access: primary trainer OR substitute
+      if (data && data.trainer_id !== trainerProfile.id) {
+        const { data: subCheck } = await supabase
+          .from('class_date_substitutes')
+          .select('id')
+          .eq('class_schedule_id', scheduleId)
+          .eq('substitute_trainer_id', trainerProfile.id)
+          .limit(1);
+
+        if (!subCheck || subCheck.length === 0) {
+          console.error("Access denied: not primary or substitute trainer");
+          return null;
+        }
       }
 
       // Note: We no longer block trainers from viewing classes in other branches
