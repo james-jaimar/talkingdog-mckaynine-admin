@@ -40,6 +40,7 @@ interface ScheduleWithOccurrence {
   } | null;
   bookings: { id: string; status: string }[];
   displayDate: Date;
+  isSubstitute?: boolean;
 }
 
 export default function TrainerClasses() {
@@ -73,42 +74,71 @@ export default function TrainerClasses() {
     queryFn: async () => {
       if (!trainerProfile?.id) return { upcoming: [], past: [] };
 
-      const { data, error } = await supabase
-        .from('class_schedules')
-        .select(`
+      const scheduleSelect = `
+        id,
+        start_time,
+        end_time,
+        term_number,
+        academic_year,
+        selected_dates,
+        recurring,
+        recurrence_pattern,
+        classes:class_id (
           id,
-          start_time,
-          end_time,
-          term_number,
-          academic_year,
-          selected_dates,
-          recurring,
-          recurrence_pattern,
-          classes:class_id (
-            id,
-            name,
-            class_type,
-            capacity,
-            description,
-            branch_id
-          ),
-          bookings (
-            id,
-            status
-          )
-        `)
+          name,
+          class_type,
+          capacity,
+          description,
+          branch_id
+        ),
+        bookings (
+          id,
+          status
+        )
+      `;
+
+      // 1. Fetch primary schedules
+      const { data: primaryData, error: primaryError } = await supabase
+        .from('class_schedules')
+        .select(scheduleSelect)
         .eq('trainer_id', trainerProfile.id)
         .order('start_time', { ascending: true });
 
-      if (error) {
-        console.error("Error fetching trainer classes:", error);
+      if (primaryError) {
+        console.error("Error fetching trainer classes:", primaryError);
         return { upcoming: [], past: [] };
       }
 
-      // Filter by branch - if current branch is selected, only show that branch's classes
+      // 2. Fetch substitute assignments for this trainer
+      const { data: subRecords } = await supabase
+        .from('class_date_substitutes')
+        .select('class_schedule_id')
+        .eq('substitute_trainer_id', trainerProfile.id);
+
+      const primaryIds = new Set((primaryData || []).map((s: any) => s.id));
+      const subScheduleIds = [...new Set((subRecords || []).map(r => r.class_schedule_id))]
+        .filter(id => !primaryIds.has(id));
+
+      let subData: any[] = [];
+      if (subScheduleIds.length > 0) {
+        const { data: fetched } = await supabase
+          .from('class_schedules')
+          .select(scheduleSelect)
+          .in('id', subScheduleIds)
+          .order('start_time', { ascending: true });
+        subData = fetched || [];
+      }
+
+      // Merge: tag substitute schedules
+      const allSchedules = [
+        ...(primaryData || []).map((s: any) => ({ ...s, isSubstitute: false })),
+        ...subData.map((s: any) => ({ ...s, isSubstitute: true })),
+      ];
+
+      // Filter by branch
       const branchFiltered = currentBranch?.id 
-        ? (data || []).filter((item: any) => item.classes?.branch_id === currentBranch.id)
-        : data || [];
+        ? allSchedules.filter((item: any) => item.classes?.branch_id === currentBranch.id)
+        : allSchedules;
 
       const now = new Date();
       const upcomingSchedules: ScheduleWithOccurrence[] = [];
@@ -127,13 +157,11 @@ export default function TrainerClasses() {
         const lastOccurrence = getLastOccurrence(scheduleData, now);
 
         if (nextOccurrence) {
-          // Has future occurrences - it's upcoming
           upcomingSchedules.push({
             ...schedule,
             displayDate: nextOccurrence,
           });
         } else if (lastOccurrence) {
-          // No future occurrences but has past ones - it's past
           pastSchedules.push({
             ...schedule,
             displayDate: lastOccurrence,
@@ -141,10 +169,7 @@ export default function TrainerClasses() {
         }
       }
 
-      // Sort upcoming by next occurrence (soonest first)
       upcomingSchedules.sort((a, b) => a.displayDate.getTime() - b.displayDate.getTime());
-      
-      // Sort past by last occurrence (most recent first)
       pastSchedules.sort((a, b) => b.displayDate.getTime() - a.displayDate.getTime());
 
       return { upcoming: upcomingSchedules, past: pastSchedules };
@@ -196,7 +221,12 @@ export default function TrainerClasses() {
                   <TableCell>
                     {format(schedule.displayDate, "HH:mm")} - {format(new Date(schedule.end_time), "HH:mm")}
                   </TableCell>
-                  <TableCell>{schedule.classes?.name}</TableCell>
+                  <TableCell>
+                    <span className="flex items-center gap-1.5">
+                      {schedule.classes?.name}
+                      {schedule.isSubstitute && <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Sub</Badge>}
+                    </span>
+                  </TableCell>
                   <TableCell>
                     <Badge variant="outline">{schedule.classes?.class_type}</Badge>
                   </TableCell>
@@ -251,7 +281,10 @@ export default function TrainerClasses() {
                       </div>
                     </div>
                     <div className="flex-1">
-                      <h3 className="font-medium text-sm">{schedule.classes?.name}</h3>
+                      <h3 className="font-medium text-sm">
+                        {schedule.classes?.name}
+                        {schedule.isSubstitute && <Badge variant="secondary" className="ml-1.5 text-[10px] px-1.5 py-0">Sub</Badge>}
+                      </h3>
                       <div className="flex flex-wrap items-center gap-2 mt-1">
                         <Badge variant="secondary" className="text-xs">{schedule.classes?.class_type}</Badge>
                         <span className="text-xs text-muted-foreground">
