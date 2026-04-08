@@ -1,47 +1,75 @@
 
+Do I know what the issue is? Yes.
 
-# Add Class/Booking Link to Custom Invoices
+## What I confirmed
+- `INV-McD-2603-0058` still has a valid `client_id` in the database, and the Benjamin client record exists. So this is not data corruption.
+- `InvoiceEdit.tsx` already fetches the invoice with joined client data via `useInvoiceDetails()`.
+- The page still depends on a second client-hydration path (`useClientsData` + extra `useQuery`) to make the dropdown show the label.
+- The current form init uses a one-time `isLoaded` guard, which makes the client field brittle if the invoice or linked client resolves after the first reset.
 
-## Problem
+## Actual problem
+The edit form is treating the client dropdown as if it only knows the selected client once that client appears in the dropdown options.
 
-When Ady splits a client's payment into two invoices (e.g., R680 + R1,000 for Lesley Holm's Elementary Obedience), the second "custom" invoice has no `booking_id` on its items. This means:
-- Trainer payment reports don't include the revenue
-- IO sync has no automatic inventory code mapping
-- The invoice is orphaned from the class it relates to
+That is the wrong source of truth here.
 
-## Solution
+For edit mode, the authoritative source is the invoice itself:
+- the invoice already knows `client_id`
+- the invoice query already includes the joined client record
 
-Add a **class/booking selector** to the Custom Invoice form so each line item can optionally be linked to one of the client's active bookings. When a booking is selected, the item automatically inherits:
-- `booking_id` → links to trainer for commission reports
-- `io_inventory_code` → inherited from the class schedule (same logic as standard invoices)
+So even if the bulk client list is limited or late, the selected client should still be shown and kept in the form.
 
-### UX Changes to `CreateCustomInvoice.tsx`
+## Fix plan
 
-1. **Fetch client's bookings** — query bookings for the `clientId` with joined class schedule data (class name, trainer name, io_inventory_code)
-2. **Add a "Link to Class" dropdown per item** — optional Select field showing the client's classes (e.g., "14h00 Elementary Obedience - Gunner"). When selected, auto-fills `booking_id` and `io_inventory_code` on the item
-3. **Update the form schema** — add optional `booking_id: z.string().optional()` to the item schema
+### 1) Make `InvoiceEdit.tsx` use the invoice’s joined client as the primary selected client
+- Build the selected client from `invoice.client` first
+- Only use the direct `invoiceClient` query as a fallback if `invoice.client` is missing
+- Merge `[invoice.client, invoiceClient, ...clients]` into one deduped options list
 
-### Data Changes
+This removes the dependency on the 200-client list for the active invoice.
 
-Pass `booking_id` through to the invoice item creation. The existing `createInvoice` mutation already supports `booking_id` on items — it just hasn't been populated from this form.
+### 2) Remove the one-shot `isLoaded` hydration pattern
+In `src/pages/InvoiceEdit.tsx`:
+- remove the `isLoaded` gate
+- reset the form whenever the loaded invoice changes
+- always set `client_id` from `invoice.client_id` during reset
 
-### Files Changed
+This ensures the form value is actually populated, not just the invoice number/dates.
 
-1. **`src/components/handlers/detail/CreateCustomInvoice.tsx`**
-   - Add `useQuery` to fetch client bookings with class schedule details
-   - Add `booking_id` to the Zod schema items
-   - Add a Select dropdown per item row: "Link to Class (Optional)" showing `{class time} {class type} for {dog name}`
-   - When a booking is selected, auto-set `io_inventory_code` from the schedule data
-   - Pass `booking_id` through in the items array to `createInvoice`
+### 3) Render the selected client label explicitly in the Select trigger
+Instead of relying only on Radix discovering the selected item text from async-loaded options:
+- look up the selected client from the merged options list
+- render that name directly in the trigger when `field.value` exists
 
-2. **No backend/migration changes needed** — `invoice_items.booking_id` column already exists and is nullable
+This guarantees Ady sees Benjamin immediately, even if the option list hydrates later.
 
-### How It Works for Ady
+### 4) Keep the constrained-list pattern, but make it production-safe
+Do not remove the global `.limit(200)` from `useClientsData`.
+Instead:
+- keep the bulk list lightweight
+- hydrate the specific linked client for edit mode only
+- dedupe by `id`
 
-When creating a split payment custom invoice:
-1. Click "Custom Invoice" on the handler detail page
-2. Fill in the amount (e.g., R680)
-3. Select "14h00 Elementary Obedience - Gunner" from the "Link to Class" dropdown
-4. The IO code auto-fills, and the item gets linked to the booking
-5. Trainer sees this revenue in their payment report
+That matches the existing app pattern for records outside the default fetch window.
 
+## File to update
+### `src/pages/InvoiceEdit.tsx`
+Planned changes:
+- remove `isLoaded`
+- use invoice client as primary source
+- merge and dedupe client options
+- explicitly show selected client text in the Select trigger
+- keep direct client fetch only as fallback, not as the main dependency
+
+## Small polish
+Benjamin appears to have his full name stored in `first_name` with an empty `last_name`, so use a trimmed name formatter (`[first_name, last_name].filter(Boolean).join(" ")`) for the dropdown and trigger label.
+
+## QA to verify after implementation
+1. Open `INV-McD-2603-0058` directly in edit mode
+2. Confirm Benjamin shows in the client field before touching the dropdown
+3. Save without re-selecting the client
+4. Test one invoice whose client is inside the first 200 and one outside the first 200
+5. Verify the published site specifically, not only preview
+
+This should fix both symptoms:
+- client name not showing
+- save being blocked because the form thinks no client is selected
