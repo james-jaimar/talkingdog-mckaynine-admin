@@ -1,75 +1,47 @@
 
-Do I know what the issue is? Yes.
+# Fix: Substitute Trainers Can't See Their Classes
 
-## What I confirmed
-- `INV-McD-2603-0058` still has a valid `client_id` in the database, and the Benjamin client record exists. So this is not data corruption.
-- `InvoiceEdit.tsx` already fetches the invoice with joined client data via `useInvoiceDetails()`.
-- The page still depends on a second client-hydration path (`useClientsData` + extra `useQuery`) to make the dropdown show the label.
-- The current form init uses a one-time `isLoaded` guard, which makes the client field brittle if the invoice or linked client resolves after the first reset.
+## Problem
 
-## Actual problem
-The edit form is treating the client dropdown as if it only knows the selected client once that client appears in the dropdown options.
+Nadia (and all substitute trainers) can see earnings in "My Earnings" but cannot see any classes in "My Classes" or open class detail/attendance pages. This affects two pages:
 
-That is the wrong source of truth here.
+1. **TrainerClasses.tsx** (line 100): `.eq('trainer_id', trainerProfile.id)` — only fetches schedules where the trainer is the primary trainer
+2. **TrainerClassDetail.tsx** (line 111): `.eq('trainer_id', trainerProfile.id)` — blocks substitute trainers from viewing/managing attendance for classes they're substituting
 
-For edit mode, the authoritative source is the invoice itself:
-- the invoice already knows `client_id`
-- the invoice query already includes the joined client record
+## Fix
 
-So even if the bulk client list is limited or late, the selected client should still be shown and kept in the form.
+### 1. `src/pages/trainer/TrainerClasses.tsx`
+- After fetching the trainer's own schedules, also query `class_date_substitutes` for this trainer to find additional schedule IDs where they're a substitute
+- Fetch those extra schedules and merge them into the list
+- Mark substitute classes visually (e.g., a "Substitute" badge) so the trainer knows which are theirs vs. substituted
 
-## Fix plan
+### 2. `src/pages/trainer/TrainerClassDetail.tsx`
+- Remove `.eq('trainer_id', trainerProfile.id)` from the query
+- Instead, fetch the schedule by ID only, then verify access: check if the trainer is either the primary trainer OR has a substitute record for this schedule
+- This allows substitute trainers to view attendance and mark it for their assigned dates
 
-### 1) Make `InvoiceEdit.tsx` use the invoice’s joined client as the primary selected client
-- Build the selected client from `invoice.client` first
-- Only use the direct `invoiceClient` query as a fallback if `invoice.client` is missing
-- Merge `[invoice.client, invoiceClient, ...clients]` into one deduped options list
+### Implementation Detail
 
-This removes the dependency on the 200-client list for the active invoice.
+**TrainerClasses.tsx:**
+```text
+1. Add a query to fetch substitute records for this trainer
+2. Collect the schedule IDs from those records
+3. Fetch those schedules (excluding ones already fetched as primary)
+4. Merge both sets, tagging substituted ones with a flag
+5. Show a "Sub" badge on substitute class cards
+6. Filter substitute dates to only show relevant upcoming/past dates
+```
 
-### 2) Remove the one-shot `isLoaded` hydration pattern
-In `src/pages/InvoiceEdit.tsx`:
-- remove the `isLoaded` gate
-- reset the form whenever the loaded invoice changes
-- always set `client_id` from `invoice.client_id` during reset
+**TrainerClassDetail.tsx:**
+```text
+1. Change query: .eq('id', scheduleId) only (remove trainer_id filter)
+2. After fetching, verify access by checking:
+   - schedule.trainer_id === trainerProfile.id, OR
+   - EXISTS in class_date_substitutes for this schedule + trainer
+3. If neither, show "Access restricted"
+4. Optionally show a banner: "You are substituting for [original trainer]"
+```
 
-This ensures the form value is actually populated, not just the invoice number/dates.
-
-### 3) Render the selected client label explicitly in the Select trigger
-Instead of relying only on Radix discovering the selected item text from async-loaded options:
-- look up the selected client from the merged options list
-- render that name directly in the trigger when `field.value` exists
-
-This guarantees Ady sees Benjamin immediately, even if the option list hydrates later.
-
-### 4) Keep the constrained-list pattern, but make it production-safe
-Do not remove the global `.limit(200)` from `useClientsData`.
-Instead:
-- keep the bulk list lightweight
-- hydrate the specific linked client for edit mode only
-- dedupe by `id`
-
-That matches the existing app pattern for records outside the default fetch window.
-
-## File to update
-### `src/pages/InvoiceEdit.tsx`
-Planned changes:
-- remove `isLoaded`
-- use invoice client as primary source
-- merge and dedupe client options
-- explicitly show selected client text in the Select trigger
-- keep direct client fetch only as fallback, not as the main dependency
-
-## Small polish
-Benjamin appears to have his full name stored in `first_name` with an empty `last_name`, so use a trimmed name formatter (`[first_name, last_name].filter(Boolean).join(" ")`) for the dropdown and trigger label.
-
-## QA to verify after implementation
-1. Open `INV-McD-2603-0058` directly in edit mode
-2. Confirm Benjamin shows in the client field before touching the dropdown
-3. Save without re-selecting the client
-4. Test one invoice whose client is inside the first 200 and one outside the first 200
-5. Verify the published site specifically, not only preview
-
-This should fix both symptoms:
-- client name not showing
-- save being blocked because the form thinks no client is selected
+### Files Changed
+1. `src/pages/trainer/TrainerClasses.tsx` — add substitute schedule fetching + merge + badge
+2. `src/pages/trainer/TrainerClassDetail.tsx` — relax trainer_id filter, add substitute access check
