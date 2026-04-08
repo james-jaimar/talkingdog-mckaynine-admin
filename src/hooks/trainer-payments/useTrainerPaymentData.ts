@@ -9,6 +9,7 @@ import {
   fetchAllSubstitutes
 } from "./queries/fetchTrainerData";
 import { formatTrainerPaymentData } from "./utils/formatTrainerData";
+import { redistributeMultiTrainerItems } from "./utils/redistributeMultiTrainerItems";
 import { TrainerPaymentData } from "./types";
 import { useTerm } from "@/context/TermContext";
 
