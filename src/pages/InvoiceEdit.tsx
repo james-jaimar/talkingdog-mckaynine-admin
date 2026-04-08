@@ -278,7 +278,16 @@ export default function InvoiceEdit() {
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger>
-                              <SelectValue placeholder="Select client" />
+                              {field.value ? (
+                                <span>
+                                  {(() => {
+                                    const found = allClients?.find((c: any) => c.id === field.value);
+                                    return found ? formatClientName(found) : "Loading client...";
+                                  })()}
+                                </span>
+                              ) : (
+                                <SelectValue placeholder="Select client" />
+                              )}
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
@@ -288,9 +297,9 @@ export default function InvoiceEdit() {
                                 <span>Loading clients...</span>
                               </div>
                             ) : (
-                              allClients?.map((client) => (
+                              allClients?.map((client: any) => (
                                 <SelectItem key={client.id} value={client.id}>
-                                  {client.first_name} {client.last_name}
+                                  {formatClientName(client)}
                                 </SelectItem>
                               ))
                             )}
