@@ -113,19 +113,15 @@ export default function InvoiceEdit() {
   
   // Initialize form with invoice data
   useEffect(() => {
-    if (invoice && !isLoaded) {
+    if (invoice) {
       console.log("Initializing form with invoice data:", invoice);
       
-      // Handle discount value correctly based on type
-      // NOTE: In DB, percentage discounts should use original_discount_amount (preferred)
-      // but we support legacy rows where discount_amount may be monetary.
       let discountAmount = Number(invoice.discount_amount || 0);
       if (invoice.discount_type === 'percentage') {
         const original = invoice.original_discount_amount;
         if (original !== null && original !== undefined) {
           discountAmount = Number(original || 0);
         } else {
-          // Legacy fallback: if discount_amount looks like a percent, use it; otherwise derive from subtotal.
           if (discountAmount > 100 && invoice.subtotal > 0) {
             discountAmount = (discountAmount / invoice.subtotal) * 100;
           }
@@ -151,9 +147,8 @@ export default function InvoiceEdit() {
         discount_amount: discountAmount,
         discount_reason: invoice.discount_reason || ''
       });
-      setIsLoaded(true);
     }
-  }, [invoice, form, isLoaded]);
+  }, [invoice?.id]);
   
   // Use central invoice summary function
   const getSummary = () => {
