@@ -48,12 +48,20 @@ const invoiceSchema = z.object({
 export default function InvoiceEdit() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [isLoaded, setIsLoaded] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { useInvoiceDetails, updateInvoice } = useInvoices();
   const { clients, isLoading: clientsLoading } = useClientsData();
   const { data: invoice, isLoading, isError, error } = useInvoiceDetails(id);
-  const { data: invoiceClient } = useQuery({
+
+  // Build the linked client from the invoice's joined data (primary source)
+  const linkedClient = useMemo(() => {
+    const c = (invoice as any)?.client || (invoice as any)?.clients;
+    if (c?.id) return c;
+    return null;
+  }, [invoice]);
+
+  // Fallback: direct fetch if joined client data is missing
+  const { data: fetchedClient } = useQuery({
     queryKey: ['client', invoice?.client_id],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -64,17 +72,22 @@ export default function InvoiceEdit() {
       if (error) throw error;
       return data;
     },
-    enabled: !!invoice?.client_id,
+    enabled: !!invoice?.client_id && !linkedClient,
   });
 
-  // Ensure the invoice's client is always in the dropdown list
+  const invoiceClient = linkedClient || fetchedClient;
+
+  // Merge and dedupe: invoice client + bulk list
   const allClients = useMemo(() => {
-    if (!clients) return invoiceClient ? [invoiceClient] : [];
-    if (invoiceClient && !clients.find(c => c.id === invoiceClient.id)) {
-      return [invoiceClient, ...clients];
+    const list = clients || [];
+    if (invoiceClient && !list.find((c: any) => c.id === invoiceClient.id)) {
+      return [invoiceClient, ...list];
     }
-    return clients;
+    return list;
   }, [clients, invoiceClient]);
+
+  // Helper to format client name safely
+  const formatClientName = (c: any) => [c?.first_name, c?.last_name].filter(Boolean).join(" ").trim() || "Unknown";
   
   const form = useForm<InvoiceFormValues>({
     resolver: zodResolver(invoiceSchema),
