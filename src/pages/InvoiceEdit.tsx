@@ -266,7 +266,7 @@ export default function InvoiceEdit() {
                                 <span>Loading clients...</span>
                               </div>
                             ) : (
-                              clients?.map((client) => (
+                              allClients?.map((client) => (
                                 <SelectItem key={client.id} value={client.id}>
                                   {client.first_name} {client.last_name}
                                 </SelectItem>
