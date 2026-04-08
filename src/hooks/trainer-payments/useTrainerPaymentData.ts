@@ -9,6 +9,7 @@ import {
   fetchAllSubstitutes
 } from "./queries/fetchTrainerData";
 import { formatTrainerPaymentData } from "./utils/formatTrainerData";
+import { redistributeMultiTrainerItems } from "./utils/redistributeMultiTrainerItems";
 import { TrainerPaymentData } from "./types";
 import { useTerm } from "@/context/TermContext";
 
@@ -94,6 +95,9 @@ export function useTrainerPaymentData(branchId?: string, dateRange?: { from: Dat
         ]);
         console.log(`Found ${allInvoiceItems.length} invoice items, ${allSubstitutes.length} substitutes`);
         
+        // Redistribute multi-trainer invoice items for fair 50/50 commission split
+        const redistributedItems = redistributeMultiTrainerItems(allInvoiceItems, allBookings, allSchedules);
+        
         // Create substitute lookup by schedule ID
         const substitutesBySchedule = new Map<string, typeof allSubstitutes>();
         allSubstitutes.forEach(sub => {
@@ -102,9 +106,9 @@ export function useTrainerPaymentData(branchId?: string, dateRange?: { from: Dat
           substitutesBySchedule.set(sub.class_schedule_id, existing);
         });
         
-        // Create a lookup map by booking ID
-        const invoiceItemsByBooking = new Map<string, typeof allInvoiceItems>();
-        allInvoiceItems.forEach(item => {
+        // Create a lookup map by booking ID (using redistributed items)
+        const invoiceItemsByBooking = new Map<string, typeof redistributedItems>();
+        redistributedItems.forEach(item => {
           if (item.booking_id) {
             const existing = invoiceItemsByBooking.get(item.booking_id) || [];
             existing.push(item);
