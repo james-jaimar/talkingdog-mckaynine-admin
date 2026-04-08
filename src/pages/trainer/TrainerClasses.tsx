@@ -40,6 +40,7 @@ interface ScheduleWithOccurrence {
   } | null;
   bookings: { id: string; status: string }[];
   displayDate: Date;
+  isSubstitute?: boolean;
 }
 
 export default function TrainerClasses() {
