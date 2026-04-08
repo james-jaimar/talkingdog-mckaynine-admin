@@ -51,9 +51,21 @@ export default function InvoiceEdit() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { useInvoiceDetails, updateInvoice } = useInvoices();
-  const { clients, isLoading: clientsLoading, useClientById } = useClientsData();
+  const { clients, isLoading: clientsLoading } = useClientsData();
   const { data: invoice, isLoading, isError, error } = useInvoiceDetails(id);
-  const { data: invoiceClient } = useClientById(invoice?.client_id);
+  const { data: invoiceClient } = useQuery({
+    queryKey: ['client', invoice?.client_id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('clients')
+        .select('id, first_name, last_name, email, phone, address, city, postal_code, branch_id, notes, created_at, updated_at')
+        .eq('id', invoice!.client_id)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!invoice?.client_id,
+  });
 
   // Ensure the invoice's client is always in the dropdown list
   const allClients = useMemo(() => {
