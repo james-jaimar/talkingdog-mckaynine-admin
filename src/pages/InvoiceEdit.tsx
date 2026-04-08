@@ -48,12 +48,20 @@ const invoiceSchema = z.object({
 export default function InvoiceEdit() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [isLoaded, setIsLoaded] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { useInvoiceDetails, updateInvoice } = useInvoices();
   const { clients, isLoading: clientsLoading } = useClientsData();
   const { data: invoice, isLoading, isError, error } = useInvoiceDetails(id);
-  const { data: invoiceClient } = useQuery({
+
+  // Build the linked client from the invoice's joined data (primary source)
+  const linkedClient = useMemo(() => {
+    const c = (invoice as any)?.client || (invoice as any)?.clients;
+    if (c?.id) return c;
+    return null;
+  }, [invoice]);
+
+  // Fallback: direct fetch if joined client data is missing
+  const { data: fetchedClient } = useQuery({
     queryKey: ['client', invoice?.client_id],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -64,17 +72,22 @@ export default function InvoiceEdit() {
       if (error) throw error;
       return data;
     },
-    enabled: !!invoice?.client_id,
+    enabled: !!invoice?.client_id && !linkedClient,
   });
 
-  // Ensure the invoice's client is always in the dropdown list
+  const invoiceClient = linkedClient || fetchedClient;
+
+  // Merge and dedupe: invoice client + bulk list
   const allClients = useMemo(() => {
-    if (!clients) return invoiceClient ? [invoiceClient] : [];
-    if (invoiceClient && !clients.find(c => c.id === invoiceClient.id)) {
-      return [invoiceClient, ...clients];
+    const list = clients || [];
+    if (invoiceClient && !list.find((c: any) => c.id === invoiceClient.id)) {
+      return [invoiceClient, ...list];
     }
-    return clients;
+    return list;
   }, [clients, invoiceClient]);
+
+  // Helper to format client name safely
+  const formatClientName = (c: any) => [c?.first_name, c?.last_name].filter(Boolean).join(" ").trim() || "Unknown";
   
   const form = useForm<InvoiceFormValues>({
     resolver: zodResolver(invoiceSchema),
@@ -100,19 +113,15 @@ export default function InvoiceEdit() {
   
   // Initialize form with invoice data
   useEffect(() => {
-    if (invoice && !isLoaded) {
+    if (invoice) {
       console.log("Initializing form with invoice data:", invoice);
       
-      // Handle discount value correctly based on type
-      // NOTE: In DB, percentage discounts should use original_discount_amount (preferred)
-      // but we support legacy rows where discount_amount may be monetary.
       let discountAmount = Number(invoice.discount_amount || 0);
       if (invoice.discount_type === 'percentage') {
         const original = invoice.original_discount_amount;
         if (original !== null && original !== undefined) {
           discountAmount = Number(original || 0);
         } else {
-          // Legacy fallback: if discount_amount looks like a percent, use it; otherwise derive from subtotal.
           if (discountAmount > 100 && invoice.subtotal > 0) {
             discountAmount = (discountAmount / invoice.subtotal) * 100;
           }
@@ -138,9 +147,8 @@ export default function InvoiceEdit() {
         discount_amount: discountAmount,
         discount_reason: invoice.discount_reason || ''
       });
-      setIsLoaded(true);
     }
-  }, [invoice, form, isLoaded]);
+  }, [invoice?.id]);
   
   // Use central invoice summary function
   const getSummary = () => {
@@ -270,7 +278,16 @@ export default function InvoiceEdit() {
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger>
-                              <SelectValue placeholder="Select client" />
+                              {field.value ? (
+                                <span>
+                                  {(() => {
+                                    const found = allClients?.find((c: any) => c.id === field.value);
+                                    return found ? formatClientName(found) : "Loading client...";
+                                  })()}
+                                </span>
+                              ) : (
+                                <SelectValue placeholder="Select client" />
+                              )}
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
@@ -280,9 +297,9 @@ export default function InvoiceEdit() {
                                 <span>Loading clients...</span>
                               </div>
                             ) : (
-                              allClients?.map((client) => (
+                              allClients?.map((client: any) => (
                                 <SelectItem key={client.id} value={client.id}>
-                                  {client.first_name} {client.last_name}
+                                  {formatClientName(client)}
                                 </SelectItem>
                               ))
                             )}
