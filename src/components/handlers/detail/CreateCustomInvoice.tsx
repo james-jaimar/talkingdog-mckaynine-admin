@@ -5,14 +5,18 @@ import { Button } from "@/components/ui/button";
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useInvoices } from "@/hooks/useInvoices";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Plus, Trash } from "lucide-react";
 import { toast } from "sonner";
 import { useBranch } from "@/context/BranchContext";
 import { useTerm } from "@/context/TermContext";
+import { format } from "date-fns";
 
 interface CreateCustomInvoiceProps {
   open: boolean;
@@ -30,6 +34,7 @@ const invoiceFormSchema = z.object({
       quantity: z.number().min(1, "Quantity must be at least 1"),
       unit_price: z.number().min(0.01, "Price must be greater than 0"),
       io_inventory_code: z.string().optional(),
+      booking_id: z.string().optional(),
     })
   ).min(1, "At least one item is required"),
 });
@@ -48,20 +53,49 @@ export function CreateCustomInvoice({
   const { currentBranch } = useBranch();
   const { termData } = useTerm();
 
+  // Fetch client's active bookings with class details
+  const { data: clientBookings } = useQuery({
+    queryKey: ['client-bookings-for-invoice', clientId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('bookings')
+        .select(`
+          id,
+          dog_id,
+          class_schedule_id,
+          dogs:dog_id (id, name),
+          class_schedules:class_schedule_id (
+            id,
+            start_time,
+            class_id,
+            classes:class_id (
+              id, name, class_type, io_inventory_code
+            )
+          )
+        `)
+        .eq('client_id', clientId)
+        .eq('status', 'confirmed');
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: open && !!clientId,
+  });
+
   const form = useForm<InvoiceFormValues>({
     resolver: zodResolver(invoiceFormSchema),
     mode: "onChange",
     defaultValues: {
       notes: "",
       items: [
-        { description: "", quantity: 1, unit_price: 0, io_inventory_code: "" }
+        { description: "", quantity: 1, unit_price: 0, io_inventory_code: "", booking_id: "" }
       ]
     }
   });
 
   const addItem = () => {
     const items = form.getValues("items") || [];
-    form.setValue("items", [...items, { description: "", quantity: 1, unit_price: 0, io_inventory_code: "" }]);
+    form.setValue("items", [...items, { description: "", quantity: 1, unit_price: 0, io_inventory_code: "", booking_id: "" }]);
   };
 
   const removeItem = (index: number) => {
@@ -71,20 +105,46 @@ export function CreateCustomInvoice({
     }
   };
 
+  const handleBookingSelect = (bookingId: string, index: number) => {
+    if (bookingId === "none") {
+      form.setValue(`items.${index}.booking_id`, "");
+      return;
+    }
+    
+    form.setValue(`items.${index}.booking_id`, bookingId);
+    
+    // Auto-fill IO inventory code from the class
+    const booking = clientBookings?.find(b => b.id === bookingId);
+    if (booking) {
+      const schedule = booking.class_schedules as any;
+      const cls = schedule?.classes;
+      if (cls?.io_inventory_code) {
+        form.setValue(`items.${index}.io_inventory_code`, cls.io_inventory_code);
+      }
+    }
+  };
+
+  const getBookingLabel = (booking: any): string => {
+    const schedule = booking.class_schedules as any;
+    const cls = schedule?.classes;
+    const dog = booking.dogs as any;
+    const time = schedule?.start_time ? format(new Date(schedule.start_time), "HH:mm") : "";
+    const className = cls?.name || cls?.class_type || "Unknown class";
+    const dogName = dog?.name || "";
+    return `${time} ${className}${dogName ? ` - ${dogName}` : ""}`;
+  };
+
   const handleCreateInvoice = async (values: InvoiceFormValues) => {
     try {
       setIsSubmitting(true);
       
-      // Generate invoice number
       const invoiceNumber = await generateInvoiceNumber();
       
-      // Calculate totals
       const subtotal = values.items.reduce(
         (sum, item) => sum + (item.quantity * item.unit_price),
         0
       );
 
-      // Create invoice data with branch_id for IO sync
       const invoiceData = {
         client_id: clientId,
         invoice_number: invoiceNumber,
@@ -98,14 +158,16 @@ export function CreateCustomInvoice({
         discount_reason: "",
         subtotal,
         total: subtotal,
-        items: values.items,
+        items: values.items.map(item => ({
+          ...item,
+          booking_id: item.booking_id || undefined,
+        })),
         branch_id: currentBranch?.id || null,
         term_id: termData?.id || null,
       };
       
       console.log("Creating custom invoice with data:", invoiceData);
       
-      // Create the invoice
       await createInvoice.mutateAsync(invoiceData);
       
       toast.success("Custom invoice created successfully");
@@ -165,6 +227,38 @@ export function CreateCustomInvoice({
                       </Button>
                     )}
                   </div>
+
+                  {/* Link to Class booking */}
+                  {clientBookings && clientBookings.length > 0 && (
+                    <FormField
+                      control={form.control}
+                      name={`items.${index}.booking_id`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Link to Class (Optional)</FormLabel>
+                          <Select
+                            value={field.value || "none"}
+                            onValueChange={(val) => handleBookingSelect(val, index)}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select a class booking" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="none">No link</SelectItem>
+                              {clientBookings.map((booking) => (
+                                <SelectItem key={booking.id} value={booking.id}>
+                                  {getBookingLabel(booking)}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
                   
                   <FormField
                     control={form.control}
