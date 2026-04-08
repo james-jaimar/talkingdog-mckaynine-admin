@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -49,8 +49,18 @@ export default function InvoiceEdit() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { useInvoiceDetails, updateInvoice } = useInvoices();
-  const { clients, isLoading: clientsLoading } = useClientsData();
+  const { clients, isLoading: clientsLoading, useClientById } = useClientsData();
   const { data: invoice, isLoading, isError, error } = useInvoiceDetails(id);
+  const { data: invoiceClient } = useClientById(invoice?.client_id);
+
+  // Ensure the invoice's client is always in the dropdown list
+  const allClients = useMemo(() => {
+    if (!clients) return invoiceClient ? [invoiceClient] : [];
+    if (invoiceClient && !clients.find(c => c.id === invoiceClient.id)) {
+      return [invoiceClient, ...clients];
+    }
+    return clients;
+  }, [clients, invoiceClient]);
   
   const form = useForm<InvoiceFormValues>({
     resolver: zodResolver(invoiceSchema),
@@ -256,7 +266,7 @@ export default function InvoiceEdit() {
                                 <span>Loading clients...</span>
                               </div>
                             ) : (
-                              clients?.map((client) => (
+                              allClients?.map((client) => (
                                 <SelectItem key={client.id} value={client.id}>
                                   {client.first_name} {client.last_name}
                                 </SelectItem>
