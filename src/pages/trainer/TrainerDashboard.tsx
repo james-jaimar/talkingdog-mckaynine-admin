@@ -52,44 +52,69 @@ export default function TrainerDashboard() {
     queryFn: async () => {
       if (!trainerProfile?.id) return [];
       
-      // Fetch all schedules for this trainer (we'll filter upcoming client-side using occurrences)
-      let query = supabase
-        .from('class_schedules')
-        .select(`
+      const scheduleSelect = `
+        id,
+        start_time,
+        end_time,
+        term_number,
+        academic_year,
+        selected_dates,
+        recurring,
+        recurrence_pattern,
+        classes:class_id (
           id,
-          start_time,
-          end_time,
-          term_number,
-          academic_year,
-          selected_dates,
-          recurring,
-          recurrence_pattern,
-          classes:class_id (
-            id,
-            name,
-            class_type,
-            capacity,
-            branch_id
-          ),
-          bookings (
-            id,
-            status
-          )
-        `)
+          name,
+          class_type,
+          capacity,
+          branch_id
+        ),
+        bookings (
+          id,
+          status
+        )
+      `;
+
+      // 1. Fetch primary schedules
+      const { data: primaryData, error: primaryError } = await supabase
+        .from('class_schedules')
+        .select(scheduleSelect)
         .eq('trainer_id', trainerProfile.id)
         .order('start_time', { ascending: true });
       
-      const { data, error } = await query;
-      
-      if (error) {
-        console.error("Error fetching trainer classes:", error);
+      if (primaryError) {
+        console.error("Error fetching trainer classes:", primaryError);
         return [];
       }
+
+      // 2. Fetch substitute assignments
+      const { data: subRecords } = await supabase
+        .from('class_date_substitutes')
+        .select('class_schedule_id')
+        .eq('substitute_trainer_id', trainerProfile.id);
+
+      const primaryIds = new Set((primaryData || []).map((s: any) => s.id));
+      const subScheduleIds = [...new Set((subRecords || []).map(r => r.class_schedule_id))]
+        .filter(id => !primaryIds.has(id));
+
+      let subData: any[] = [];
+      if (subScheduleIds.length > 0) {
+        const { data: fetched } = await supabase
+          .from('class_schedules')
+          .select(scheduleSelect)
+          .in('id', subScheduleIds)
+          .order('start_time', { ascending: true });
+        subData = fetched || [];
+      }
+
+      const allSchedules = [
+        ...(primaryData || []),
+        ...subData,
+      ];
       
       // Filter by branch on client side (classes.branch_id is nested)
       const branchFiltered = currentBranch?.id 
-        ? (data || []).filter((item: any) => item.classes?.branch_id === currentBranch.id)
-        : data || [];
+        ? allSchedules.filter((item: any) => item.classes?.branch_id === currentBranch.id)
+        : allSchedules;
       
       const now = new Date();
       
@@ -130,13 +155,10 @@ export default function TrainerDashboard() {
     queryFn: async () => {
       if (!trainerProfile?.id) return { total: 0, thisMonth: 0, pending: 0 };
 
-      // First get all class schedules for this trainer in this branch
+      // Get primary schedules
       const { data: schedules, error: schedError } = await supabase
         .from('class_schedules')
-        .select(`
-          id,
-          classes:class_id (branch_id)
-        `)
+        .select(`id, classes:class_id (branch_id)`)
         .eq('trainer_id', trainerProfile.id);
 
       if (schedError) {
@@ -144,10 +166,32 @@ export default function TrainerDashboard() {
         return { total: 0, thisMonth: 0, pending: 0 };
       }
 
+      // Also get substitute schedule IDs
+      const { data: subRecords } = await supabase
+        .from('class_date_substitutes')
+        .select('class_schedule_id')
+        .eq('substitute_trainer_id', trainerProfile.id);
+
+      const primaryIds = new Set((schedules || []).map((s: any) => s.id));
+      const subScheduleIds = [...new Set((subRecords || []).map(r => r.class_schedule_id))]
+        .filter(id => !primaryIds.has(id));
+
+      // Fetch branch info for substitute schedules
+      let subSchedules: any[] = [];
+      if (subScheduleIds.length > 0) {
+        const { data: fetched } = await supabase
+          .from('class_schedules')
+          .select(`id, classes:class_id (branch_id)`)
+          .in('id', subScheduleIds);
+        subSchedules = fetched || [];
+      }
+
+      const allSchedules = [...(schedules || []), ...subSchedules];
+
       // Filter to schedules in this branch
       const branchScheduleIds = currentBranch?.id
-        ? (schedules || []).filter((s: any) => s.classes?.branch_id === currentBranch.id).map(s => s.id)
-        : (schedules || []).map(s => s.id);
+        ? allSchedules.filter((s: any) => s.classes?.branch_id === currentBranch.id).map(s => s.id)
+        : allSchedules.map(s => s.id);
 
       if (branchScheduleIds.length === 0) {
         return { total: 0, thisMonth: 0, pending: 0 };
