@@ -219,7 +219,7 @@ export default function TrainerClasses() {
                     {format(schedule.displayDate, "EEE, MMM d, yyyy")}
                   </TableCell>
                   <TableCell>
-                    {format(schedule.displayDate, "HH:mm")} - {format(new Date(schedule.end_time), "HH:mm")}
+                    {format(schedule.displayDate, "HH:mm")} - {format(new Date(schedule.displayDate.getTime() + (new Date(schedule.end_time).getTime() - new Date(schedule.start_time).getTime())), "HH:mm")}
                   </TableCell>
                   <TableCell>
                     <span className="flex items-center gap-1.5">

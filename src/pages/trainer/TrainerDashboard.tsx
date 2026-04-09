@@ -113,8 +113,8 @@ export default function TrainerDashboard() {
       
       // Filter by branch on client side (classes.branch_id is nested)
       const branchFiltered = currentBranch?.id 
-        ? (data || []).filter((item: any) => item.classes?.branch_id === currentBranch.id)
-        : data || [];
+        ? allSchedules.filter((item: any) => item.classes?.branch_id === currentBranch.id)
+        : allSchedules;
       
       const now = new Date();
       
