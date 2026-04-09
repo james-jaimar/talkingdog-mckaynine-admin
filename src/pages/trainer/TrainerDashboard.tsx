@@ -155,13 +155,10 @@ export default function TrainerDashboard() {
     queryFn: async () => {
       if (!trainerProfile?.id) return { total: 0, thisMonth: 0, pending: 0 };
 
-      // First get all class schedules for this trainer in this branch
+      // Get primary schedules
       const { data: schedules, error: schedError } = await supabase
         .from('class_schedules')
-        .select(`
-          id,
-          classes:class_id (branch_id)
-        `)
+        .select(`id, classes:class_id (branch_id)`)
         .eq('trainer_id', trainerProfile.id);
 
       if (schedError) {
@@ -169,10 +166,32 @@ export default function TrainerDashboard() {
         return { total: 0, thisMonth: 0, pending: 0 };
       }
 
+      // Also get substitute schedule IDs
+      const { data: subRecords } = await supabase
+        .from('class_date_substitutes')
+        .select('class_schedule_id')
+        .eq('substitute_trainer_id', trainerProfile.id);
+
+      const primaryIds = new Set((schedules || []).map((s: any) => s.id));
+      const subScheduleIds = [...new Set((subRecords || []).map(r => r.class_schedule_id))]
+        .filter(id => !primaryIds.has(id));
+
+      // Fetch branch info for substitute schedules
+      let subSchedules: any[] = [];
+      if (subScheduleIds.length > 0) {
+        const { data: fetched } = await supabase
+          .from('class_schedules')
+          .select(`id, classes:class_id (branch_id)`)
+          .in('id', subScheduleIds);
+        subSchedules = fetched || [];
+      }
+
+      const allSchedules = [...(schedules || []), ...subSchedules];
+
       // Filter to schedules in this branch
       const branchScheduleIds = currentBranch?.id
-        ? (schedules || []).filter((s: any) => s.classes?.branch_id === currentBranch.id).map(s => s.id)
-        : (schedules || []).map(s => s.id);
+        ? allSchedules.filter((s: any) => s.classes?.branch_id === currentBranch.id).map(s => s.id)
+        : allSchedules.map(s => s.id);
 
       if (branchScheduleIds.length === 0) {
         return { total: 0, thisMonth: 0, pending: 0 };
