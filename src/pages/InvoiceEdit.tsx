@@ -141,7 +141,9 @@ export default function InvoiceEdit() {
           description: item.description,
           quantity: item.quantity,
           unit_price: item.unit_price,
-          booking_id: item.booking_id
+          booking_id: item.booking_id,
+          io_inventory_code: (item as any).io_inventory_code || null,
+          item_type: (item as any).item_type || 'course_fee',
         })) : [{ description: "Invoice item", quantity: 1, unit_price: 0 }],
         discount_type: invoice.discount_type || 'fixed',
         discount_amount: discountAmount,
