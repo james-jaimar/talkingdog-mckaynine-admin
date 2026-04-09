@@ -17,8 +17,8 @@ export interface ScheduleForOccurrence {
 function extractTimeParts(isoString: string): { hours: number; minutes: number } {
   const date = new Date(isoString);
   return {
-    hours: date.getUTCHours(),
-    minutes: date.getUTCMinutes(),
+    hours: date.getHours(),
+    minutes: date.getMinutes(),
   };
 }
 
