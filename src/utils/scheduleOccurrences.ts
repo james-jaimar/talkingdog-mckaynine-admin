@@ -29,16 +29,16 @@ function combineDateWithTime(dateIso: string, timeIso: string): Date {
   const datePart = new Date(dateIso);
   const timeParts = extractTimeParts(timeIso);
   
-  // Use UTC to avoid timezone issues
-  return new Date(Date.UTC(
-    datePart.getUTCFullYear(),
-    datePart.getUTCMonth(),
-    datePart.getUTCDate(),
+  // Use local time methods to match how date-fns format() renders dates
+  return new Date(
+    datePart.getFullYear(),
+    datePart.getMonth(),
+    datePart.getDate(),
     timeParts.hours,
     timeParts.minutes,
     0,
     0
-  ));
+  );
 }
 
 /**
