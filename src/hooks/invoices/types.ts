@@ -122,6 +122,8 @@ export interface InvoiceFormValues {
     unit_price: number;
     booking_id?: string | null;
     id?: string;
+    io_inventory_code?: string | null;
+    item_type?: string;
   }[];
   discount_type: 'fixed' | 'percentage';
   discount_amount: number;

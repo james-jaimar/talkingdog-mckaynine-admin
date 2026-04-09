@@ -141,7 +141,9 @@ export function useUpdateInvoice() {
           quantity: item.quantity || 1,
           unit_price: item.unit_price || 0,
           amount: (item.quantity || 1) * (item.unit_price || 0),
-          booking_id: item.booking_id || null
+          booking_id: item.booking_id || null,
+          io_inventory_code: item.io_inventory_code || null,
+          item_type: item.item_type || 'course_fee',
         }));
 
         console.log("Inserting updated invoice items:", itemsToInsert);
