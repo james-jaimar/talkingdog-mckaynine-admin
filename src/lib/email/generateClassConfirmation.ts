@@ -97,6 +97,7 @@ export async function generateClassConfirmationEmails(
           id,
           dog_id,
           class_schedule_id,
+          assigned_dates,
           dogs (
             id,
             name
@@ -144,11 +145,19 @@ export async function generateClassConfirmationEmails(
       const schedule = booking?.class_schedules;
       const classInfo = schedule?.classes;
 
+      // Prefer the booking's per-handler assigned_dates (used for roll-on/roll-off
+      // classes like Randburg Puppy where each handler has their own session window).
+      // Fall back to the schedule's full selected_dates for normal classes.
+      const datesForEmail =
+        Array.isArray(booking?.assigned_dates) && booking.assigned_dates.length > 0
+          ? booking.assigned_dates
+          : schedule?.selected_dates;
+
       return {
         dogName: dog?.name || "Your dog",
         className: classInfo?.name || "Class",
         classType: classInfo?.class_type || "",
-        dates: formatClassDates(schedule?.selected_dates),
+        dates: formatClassDates(datesForEmail),
         dayTime: formatClassDayTime(schedule?.start_time),
       };
     });
