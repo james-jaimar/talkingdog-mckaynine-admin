@@ -115,14 +115,49 @@ export function AttendanceStatusCell({ booking, date, classId, classType, branch
         absent: 'Absent', 
         excused: 'Excused',
         not_marked: 'Cleared',
-        '1': 'Class 1', '2': 'Class 2', '3': 'Class 3',
-        '4': 'Class 4', '5': 'Class 5', '6': 'Class 6'
+        '1': 'Session 1', '2': 'Session 2', '3': 'Session 3',
+        '4': 'Session 4', '5': 'Session 5', '6': 'Session 6'
       };
       
       toast({
         title: `Marked as ${statusLabels[nextStatus] || nextStatus}`,
         duration: 1500,
       });
+
+      // Auto-complete handler when session 6 is recorded (Randburg Puppy only)
+      if (isRandburgPuppy && grade === '6' && booking.client_id && booking.dogs?.id && classId) {
+        try {
+          const { data: existing } = await supabase
+            .from('handler_class_status')
+            .select('id')
+            .eq('handler_id', booking.client_id)
+            .eq('dog_id', booking.dogs.id)
+            .eq('class_id', classId)
+            .eq('completed', true)
+            .maybeSingle();
+
+          if (!existing) {
+            await supabase.from('handler_class_status').insert({
+              handler_id: booking.client_id,
+              dog_id: booking.dogs.id,
+              class_id: classId,
+              booking_id: booking.id,
+              class_type: 'Puppy',
+              completed: true,
+              completed_at: new Date().toISOString(),
+              completion_method: 'auto',
+            });
+            queryClient.invalidateQueries({ queryKey: ['handler-completion'] });
+            toast({
+              title: 'Puppy class completed',
+              description: '6 of 6 sessions recorded.',
+              duration: 3000,
+            });
+          }
+        } catch (completionErr) {
+          console.warn('Failed to auto-complete handler at session 6:', completionErr);
+        }
+      }
     } catch (error) {
       console.error("Error updating attendance:", error);
       toast({
