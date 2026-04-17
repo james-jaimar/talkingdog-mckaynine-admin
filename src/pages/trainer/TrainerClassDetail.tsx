@@ -1230,6 +1230,7 @@ export default function TrainerClassDetail() {
             trainerName={trainerProfile.first_name && trainerProfile.last_name 
               ? `${trainerProfile.first_name} ${trainerProfile.last_name}` 
               : trainerProfile.email || "Trainer"}
+            classScheduleId={scheduleId}
           />
         )}
       </div>

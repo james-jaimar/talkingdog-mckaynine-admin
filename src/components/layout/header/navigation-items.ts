@@ -165,6 +165,11 @@ export const trainerNavItems = [
     icon: Calendar
   },
   {
+    name: "My Notes",
+    path: "/trainer/notes",
+    icon: MessageSquare
+  },
+  {
     name: "My Earnings",
     path: "/trainer/earnings",
     icon: FileText

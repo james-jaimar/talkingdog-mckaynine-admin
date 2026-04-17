@@ -2185,6 +2185,7 @@ export type Database = {
           completed_at: string | null
           completed_by: string | null
           created_at: string | null
+          created_by_trainer_id: string | null
           description: string | null
           dog_id: string | null
           dog_name: string | null
@@ -2194,6 +2195,7 @@ export type Database = {
           status: string | null
           target_month: string | null
           target_term_id: string | null
+          target_trainer_id: string | null
           task_type: string
           title: string
           updated_at: string | null
@@ -2206,6 +2208,7 @@ export type Database = {
           completed_at?: string | null
           completed_by?: string | null
           created_at?: string | null
+          created_by_trainer_id?: string | null
           description?: string | null
           dog_id?: string | null
           dog_name?: string | null
@@ -2215,6 +2218,7 @@ export type Database = {
           status?: string | null
           target_month?: string | null
           target_term_id?: string | null
+          target_trainer_id?: string | null
           task_type: string
           title: string
           updated_at?: string | null
@@ -2227,6 +2231,7 @@ export type Database = {
           completed_at?: string | null
           completed_by?: string | null
           created_at?: string | null
+          created_by_trainer_id?: string | null
           description?: string | null
           dog_id?: string | null
           dog_name?: string | null
@@ -2236,6 +2241,7 @@ export type Database = {
           status?: string | null
           target_month?: string | null
           target_term_id?: string | null
+          target_trainer_id?: string | null
           task_type?: string
           title?: string
           updated_at?: string | null
@@ -2253,6 +2259,13 @@ export type Database = {
             columns: ["class_status_id"]
             isOneToOne: false
             referencedRelation: "handler_class_status"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "handler_tasks_created_by_trainer_id_fkey"
+            columns: ["created_by_trainer_id"]
+            isOneToOne: false
+            referencedRelation: "trainers"
             referencedColumns: ["id"]
           },
           {
@@ -2274,6 +2287,13 @@ export type Database = {
             columns: ["target_term_id"]
             isOneToOne: false
             referencedRelation: "terms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "handler_tasks_target_trainer_id_fkey"
+            columns: ["target_trainer_id"]
+            isOneToOne: false
+            referencedRelation: "trainers"
             referencedColumns: ["id"]
           },
         ]

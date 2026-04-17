@@ -11,6 +11,8 @@ export interface TrainerNote {
   status: string | null;
   created_at: string | null;
   completed_at: string | null;
+  created_by_trainer_id?: string | null;
+  target_trainer_id?: string | null;
   handler?: {
     id: string;
     first_name: string;
@@ -22,6 +24,10 @@ export interface TrainerNote {
 interface TrainerNotesFilters {
   status?: string;
   search?: string;
+  /** When set, only return notes targeted at this trainer
+   *  (substitute-authored notes for them) OR authored by this trainer.
+   *  Admin views should leave this undefined. */
+  trainerId?: string;
 }
 
 export function useTrainerNotes(filters: TrainerNotesFilters = {}, branchId?: string) {
@@ -47,6 +53,13 @@ export function useTrainerNotes(filters: TrainerNotesFilters = {}, branchId?: st
       // Filter by branch
       if (branchId) {
         query = query.eq("branch_id", branchId);
+      }
+
+      // Trainer-scoped: notes targeted at them OR notes they wrote themselves
+      if (filters.trainerId) {
+        query = query.or(
+          `target_trainer_id.eq.${filters.trainerId},created_by_trainer_id.eq.${filters.trainerId}`
+        );
       }
 
       // Apply status filter
@@ -111,10 +124,11 @@ export function useTrainerNotes(filters: TrainerNotesFilters = {}, branchId?: st
   };
 }
 
-// Hook to get pending trainer note count
-export function usePendingTrainerNoteCount(branchId?: string) {
+// Hook to get pending trainer note count.
+// Pass `trainerId` to count only notes targeted at that trainer (substitute-authored).
+export function usePendingTrainerNoteCount(branchId?: string, trainerId?: string) {
   const countQuery = useQuery({
-    queryKey: ["pending-trainer-note-count", branchId],
+    queryKey: ["pending-trainer-note-count", branchId, trainerId],
     queryFn: async () => {
       let query = supabase
         .from("handler_tasks")
@@ -124,6 +138,10 @@ export function usePendingTrainerNoteCount(branchId?: string) {
 
       if (branchId) {
         query = query.eq("branch_id", branchId);
+      }
+
+      if (trainerId) {
+        query = query.eq("target_trainer_id", trainerId);
       }
 
       const { count, error } = await query;
