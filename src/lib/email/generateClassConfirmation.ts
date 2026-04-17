@@ -2,6 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { CLASS_CONFIRMATION_TEMPLATE, CLASS_CONFIRMATION_SUBJECT } from "./templates/class-confirmation-template";
 import { formatClassDates, formatClassDayTime } from "./utils/formatClassDates";
 import { renderTemplate, getVariablesWithSignature, TemplateVariables } from "./template-renderer";
+import { isRandburgPuppyClass } from "@/lib/classes/randburgPuppy";
 
 /**
  * Fetches the class confirmation email template from the database
