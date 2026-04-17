@@ -27,7 +27,7 @@ import {
   useTrainerNotes,
   usePendingTrainerNoteCount,
 } from "@/hooks/useTrainerNotes";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/context/auth";
 
 const STATUS_OPTIONS = [
   { value: "all", label: "All Notes" },
