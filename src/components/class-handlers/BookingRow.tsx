@@ -51,15 +51,19 @@ export function BookingRow({
     (branchName?.toLowerCase().includes("randburg") ?? false) &&
     (classType?.toLowerCase() === "puppy");
 
-  // Normalize assigned_dates into a Set of "YYYY-MM-DD" for quick lookup
-  const assignedDateKeys = new Set(
-    (booking.assigned_dates || []).map(d => new Date(d).toDateString())
-  );
-  const isDateAssigned = (date: string) => {
-    if (!isRandburgPuppy) return true;
-    if (assignedDateKeys.size === 0) return true; // no window set yet — show all
-    return assignedDateKeys.has(new Date(date).toDateString());
-  };
+  // For Randburg Puppy: count completed sessions (present + performance_grade 1-6)
+  const sessionCount = (() => {
+    if (!isRandburgPuppy || !booking.attendances) return 0;
+    const grades = new Set<string>();
+    booking.attendances.forEach((a: any) => {
+      if (a.attendance_status === 'present' && a.performance_grade && /^[1-6]$/.test(a.performance_grade)) {
+        grades.add(a.performance_grade);
+      }
+    });
+    return grades.size;
+  })();
+
+  const isCompleted = !!(completion && completion.completed);
 
   // Calculate puppy age in weeks
   const getPuppyAgeInWeeks = (): string => {
@@ -78,21 +82,21 @@ export function BookingRow({
   };
 
   return (
-    <TableRow key={booking.id}>
+    <TableRow key={booking.id} className={isCompleted ? "opacity-60" : undefined}>
       <TableCell className="font-medium">
         <BookingHandlerInfo booking={booking} />
         {/* Show completion status if available */}
-        {(completion && completion.completed) ? (
+        {isCompleted ? (
           <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded bg-green-100 text-green-800 text-xs">
-            Completed {completion.completed_at ? `(${new Date(completion.completed_at).toLocaleDateString()})` : ""}
-            {completion.completion_method === "auto" && (
+            Completed {completion!.completed_at ? `(${new Date(completion!.completed_at).toLocaleDateString()})` : ""}
+            {completion!.completion_method === "auto" && (
               <span className="ml-1 italic text-xs text-green-600">(Class closed)</span>
             )}
           </span>
         ) : null}
-        {isRandburgPuppy && (booking.assigned_dates?.length ?? 0) > 0 && (
+        {isRandburgPuppy && !isCompleted && (
           <div className="text-xs text-muted-foreground mt-1">
-            Assigned: {booking.assigned_dates!.length} of 6 sessions
+            Sessions: {sessionCount} / 6
           </div>
         )}
       </TableCell>
@@ -133,10 +137,7 @@ export function BookingRow({
       {/* Attendance date columns */}
       {scheduleDates.map((date) => (
         <TableCell key={date} className="text-center p-1">
-          {isDateAssigned(date)
-            ? (renderAttendanceStatus && renderAttendanceStatus(booking, date))
-            : <span className="text-muted-foreground/50" title="Not part of this handler's session window">—</span>
-          }
+          {renderAttendanceStatus && renderAttendanceStatus(booking, date)}
         </TableCell>
       ))}
       
