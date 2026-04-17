@@ -11,6 +11,8 @@ export interface TrainerNote {
   status: string | null;
   created_at: string | null;
   completed_at: string | null;
+  created_by_trainer_id?: string | null;
+  target_trainer_id?: string | null;
   handler?: {
     id: string;
     first_name: string;
