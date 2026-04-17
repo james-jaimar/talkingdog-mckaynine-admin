@@ -124,10 +124,11 @@ export function useTrainerNotes(filters: TrainerNotesFilters = {}, branchId?: st
   };
 }
 
-// Hook to get pending trainer note count
-export function usePendingTrainerNoteCount(branchId?: string) {
+// Hook to get pending trainer note count.
+// Pass `trainerId` to count only notes targeted at that trainer (substitute-authored).
+export function usePendingTrainerNoteCount(branchId?: string, trainerId?: string) {
   const countQuery = useQuery({
-    queryKey: ["pending-trainer-note-count", branchId],
+    queryKey: ["pending-trainer-note-count", branchId, trainerId],
     queryFn: async () => {
       let query = supabase
         .from("handler_tasks")
@@ -137,6 +138,10 @@ export function usePendingTrainerNoteCount(branchId?: string) {
 
       if (branchId) {
         query = query.eq("branch_id", branchId);
+      }
+
+      if (trainerId) {
+        query = query.eq("target_trainer_id", trainerId);
       }
 
       const { count, error } = await query;
