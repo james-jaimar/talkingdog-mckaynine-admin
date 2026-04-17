@@ -24,6 +24,9 @@ interface TrainerNoteModalProps {
   dogName?: string;
   trainerId: string;
   trainerName: string;
+  /** Optional: scope this note to a specific class schedule so the original
+   *  trainer (when the writer is a substitute) can also see it. */
+  classScheduleId?: string;
 }
 
 export function TrainerNoteModal({
@@ -34,6 +37,7 @@ export function TrainerNoteModal({
   dogName,
   trainerId,
   trainerName,
+  classScheduleId,
 }: TrainerNoteModalProps) {
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
