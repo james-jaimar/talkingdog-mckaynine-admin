@@ -53,14 +53,64 @@ export const addHandlerToClass = async ({
     if (!classDetails) {
       throw new Error("Could not fetch class details");
     }
-    
+
+    // Detect Randburg Puppy class — these are roll-on/roll-off and need a per-handler 6-session window
+    let assignedDatesForBooking: string[] | null = null;
+    try {
+      const { data: branchRow } = await supabase
+        .from('branches')
+        .select('name')
+        .eq('id', classDetails.branchId)
+        .maybeSingle();
+      const branchName = branchRow?.name || '';
+      const isRandburgPuppy =
+        branchName.toLowerCase().includes('randburg') &&
+        (classDetails.classType || '').toLowerCase() === 'puppy';
+
+      if (isRandburgPuppy) {
+        // Pull the schedule's selected_dates and pick the next 6 from today
+        const { data: scheduleRow } = await supabase
+          .from('class_schedules')
+          .select('selected_dates')
+          .eq('id', scheduleId)
+          .maybeSingle();
+
+        const allDates: string[] = (scheduleRow?.selected_dates as any[] | null) || [];
+        const now = new Date();
+        // Use start-of-day so today's date counts as "available"
+        now.setHours(0, 0, 0, 0);
+
+        const futureDates = allDates
+          .map(d => ({ raw: d as string, date: new Date(d as string) }))
+          .filter(x => !isNaN(x.date.getTime()) && x.date >= now)
+          .sort((a, b) => a.date.getTime() - b.date.getTime())
+          .slice(0, 6)
+          .map(x => x.raw);
+
+        if (futureDates.length === 0) {
+          console.warn(
+            `Randburg Puppy: no future dates available in schedule ${scheduleId}. Handler will be added without assigned dates — admin should extend the schedule.`
+          );
+        } else if (futureDates.length < 6) {
+          console.warn(
+            `Randburg Puppy: only ${futureDates.length} future date(s) available in schedule ${scheduleId} (expected 6). Saving available dates — admin should extend the schedule.`
+          );
+        }
+
+        assignedDatesForBooking = futureDates.length > 0 ? futureDates : null;
+      }
+    } catch (rolloverErr) {
+      console.warn("Failed to compute assigned_dates for Randburg Puppy booking:", rolloverErr);
+    }
+
     console.log("Adding handler to class schedule with details:", { 
       handlerId, 
       dogIds, 
       scheduleId,
       classDate,
       termId,
-      classDetails
+      classDetails,
+      assignedDatesForBooking,
     });
     
     // Check for existing bookings for each dog
@@ -140,7 +190,8 @@ export const addHandlerToClass = async ({
           dog_id: dogId,
           class_schedule_id: scheduleId,
           is_enrolled: true,
-          payment_status: 'pending'
+          payment_status: 'pending',
+          assigned_dates: assignedDatesForBooking,
         })
         .select('id')
         .single();
