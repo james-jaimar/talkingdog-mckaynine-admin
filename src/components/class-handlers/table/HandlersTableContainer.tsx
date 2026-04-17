@@ -14,6 +14,7 @@ interface HandlersTableContainerProps {
   scheduleDates: string[];
   renderAttendanceStatus?: (booking: any, date: string) => React.ReactNode;
   classType?: string;
+  branchName?: string;
 }
 
 export function HandlersTableContainer({ 
@@ -26,7 +27,8 @@ export function HandlersTableContainer({
   handleRemove,
   scheduleDates,
   renderAttendanceStatus,
-  classType
+  classType,
+  branchName,
 }: HandlersTableContainerProps) {
   return (
     <div className="overflow-x-auto hidden sm:block">
@@ -50,6 +52,7 @@ export function HandlersTableContainer({
                 scheduleDates={scheduleDates}
                 renderAttendanceStatus={renderAttendanceStatus}
                 classType={classType}
+                branchName={branchName}
               />
             );
           })}

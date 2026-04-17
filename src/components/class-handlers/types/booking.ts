@@ -34,4 +34,5 @@ export interface Booking {
   info_eo_status?: boolean | null;
   info_pg_status?: boolean | null;
   attendances?: any[];
+  assigned_dates?: string[] | null;
 }
