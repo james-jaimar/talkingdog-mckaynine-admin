@@ -170,6 +170,7 @@ export function ClassHandlersTable({ classId, classType, branchName }: ClassHand
           scheduleDates={sortedDates}
           renderAttendanceStatus={renderAttendanceStatus}
           classType={classType}
+          branchName={branchName}
         />
       )}
 
