@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useBranch } from '@/context/BranchContext';
 import { useTerm } from '@/context/TermContext';
 import { getCourseFeeAmount, getEnrollmentFeeAmount, applyInvoiceDiscountToItems } from '@/lib/invoiceItemUtils';
+import { isRandburgPuppyClass, RANDBURG_PUPPY_SESSION_COUNT } from '@/lib/classes/randburgPuppy';
 
 export interface FranchiseHandler {
   clientId: string;
@@ -201,8 +202,12 @@ export function useFranchiseClassesData(termId?: string) {
           totalAmount: 0
         };
 
+        const isRandburgPuppy = isRandburgPuppyClass(currentBranch.name, classItem.class_type);
+
         classSchedules.forEach(schedule => {
-          const totalClasses = (schedule.selected_dates || []).length;
+          const totalClasses = isRandburgPuppy
+            ? RANDBURG_PUPPY_SESSION_COUNT
+            : (schedule.selected_dates || []).length;
           console.log(`Schedule ${schedule.id} has ${schedule.bookings?.length || 0} bookings`);
           
           schedule.bookings?.forEach(booking => {
