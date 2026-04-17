@@ -33,7 +33,7 @@ export function AttendanceStatusCell({ booking, date, classId, classType, branch
   const queryClient = useQueryClient();
   const { toast } = useToast();
   
-  const isRandburgPuppy = (branchName?.toLowerCase().includes('randburg') ?? false) && classType?.toLowerCase() === 'puppy';
+  const isRandburgPuppy = isRandburgPuppyClass(branchName, classType);
   const statusCycle = isRandburgPuppy ? RANDBURG_STATUS_CYCLE : DEFAULT_STATUS_CYCLE;
 
   // Function to get the attendance record for a booking and date

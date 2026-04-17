@@ -34,7 +34,7 @@ export function MobileHandlerCard({
   const queryClient = useQueryClient();
   const { toast } = useToast();
   
-  const isRandburgPuppy = (branchName?.toLowerCase().includes('randburg') ?? false) && classType?.toLowerCase() === 'puppy';
+  const isRandburgPuppy = isRandburgPuppyClass(branchName, classType);
   
   // Use same invoice status hook as desktop for accurate payment status
   const { data: invoiceData, isLoading: isLoadingInvoice } = useInvoiceStatus(booking.id);

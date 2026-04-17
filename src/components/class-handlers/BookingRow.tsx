@@ -9,6 +9,7 @@ import { ConsentStatusBadge } from "@/components/handlers/status/ConsentStatusBa
 import { Check, Minus } from "lucide-react";
 import { useHandlerCompletion } from "./hooks/useHandlerCompletion";
 import { differenceInWeeks } from "date-fns";
+import { isRandburgPuppyClass } from "@/lib/classes/randburgPuppy";
 
 interface BookingRowProps {
   booking: Booking;
@@ -47,9 +48,7 @@ export function BookingRow({
   });
 
   const isPuppyClass = classType === "Puppy";
-  const isRandburgPuppy =
-    (branchName?.toLowerCase().includes("randburg") ?? false) &&
-    (classType?.toLowerCase() === "puppy");
+  const isRandburgPuppy = isRandburgPuppyClass(branchName, classType);
 
   // For Randburg Puppy: count completed sessions (present + performance_grade 1-6)
   const sessionCount = (() => {
