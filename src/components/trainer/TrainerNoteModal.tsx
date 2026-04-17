@@ -73,6 +73,28 @@ export function TrainerNoteModal({
 
       if (updateError) throw updateError;
 
+      // Determine the originally-allocated trainer for this class schedule (if provided).
+      // If the writer differs from the original trainer, they're a substitute — we tag
+      // target_trainer_id so the original trainer can see the note too.
+      let originalTrainerId: string | null = null;
+      if (classScheduleId) {
+        const { data: scheduleRow, error: scheduleErr } = await supabase
+          .from("class_schedules")
+          .select("trainer_id")
+          .eq("id", classScheduleId)
+          .maybeSingle();
+        if (scheduleErr) {
+          console.warn("Could not resolve original trainer for note:", scheduleErr);
+        } else {
+          originalTrainerId = scheduleRow?.trainer_id ?? null;
+        }
+      }
+
+      // The note is "for" the originally-allocated trainer when a sub writes it.
+      // When the original trainer writes their own note, target stays null (admin-only).
+      const targetTrainerId =
+        originalTrainerId && originalTrainerId !== trainerId ? originalTrainerId : null;
+
       // Create a task for admin (trainer_note type)
       const taskTitle = `Trainer note: ${handlerName}${dogName ? ` (${dogName})` : ""}`;
       const taskDescription = `${trainerName} left a note:\n\n${notes.trim()}`;
@@ -84,6 +106,8 @@ export function TrainerNoteModal({
         description: taskDescription,
         status: "pending",
         branch_id: currentBranch?.id || null,
+        created_by_trainer_id: trainerId,
+        target_trainer_id: targetTrainerId,
       });
 
       if (taskError) throw taskError;
