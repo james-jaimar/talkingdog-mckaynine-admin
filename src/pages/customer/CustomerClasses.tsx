@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/auth";
 import { format, parseISO, isAfter } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
+import { isRandburgPuppyClass, RANDBURG_PUPPY_SESSION_COUNT } from "@/lib/classes/randburgPuppy";
 
 interface ClassBooking {
   id: string;
@@ -31,12 +32,14 @@ interface ClassBooking {
       description: string;
       class_type: string;
       duration: number;
+      branches: { name: string } | null;
     };
     trainers: {
       id: string;
       name: string;
     };
   };
+  attendances?: Array<{ attendance_status: string; performance_grade: string | null }>;
 }
 
 export default function CustomerClasses() {
@@ -87,13 +90,15 @@ export default function CustomerClasses() {
               name,
               description,
               class_type,
-              duration
+              duration,
+              branches:branch_id ( name )
             ),
             trainers:trainer_id (
               id,
               name
             )
-          )
+          ),
+          attendances:class_attendance ( attendance_status, performance_grade )
         `)
         .eq('client_id', clientData.id)
         .order('created_at', { ascending: false });
@@ -162,8 +167,19 @@ export default function CustomerClasses() {
 
     if (!classInfo) return null;
 
-    const nextDate = schedule?.selected_dates?.[0];
+    const isRandburgPuppy = isRandburgPuppyClass(
+      classInfo.branches?.name,
+      classInfo.class_type
+    );
+
     const upcomingDates = schedule?.selected_dates?.filter(d => isAfter(parseISO(d), now)).slice(0, 3) || [];
+
+    // For Randburg Puppy, count completed sessions (present + grade 1-6)
+    const completedSessions = isRandburgPuppy
+      ? (booking.attendances || []).filter(
+          a => a.attendance_status === 'present' && ['1','2','3','4','5','6'].includes(a.performance_grade || '')
+        ).length
+      : 0;
 
     return (
       <Card className={`overflow-hidden transition-all hover:shadow-md ${isPast ? 'opacity-75' : ''}`}>
@@ -176,6 +192,11 @@ export default function CustomerClasses() {
                 <Badge variant="outline" className="mr-2">
                   {formatClassType(classInfo.class_type)}
                 </Badge>
+                {isRandburgPuppy && (
+                  <Badge variant="secondary" className="mr-2">
+                    {RANDBURG_PUPPY_SESSION_COUNT} sessions
+                  </Badge>
+                )}
               </CardDescription>
             </div>
             <div className="flex flex-col gap-1 items-end">
@@ -210,8 +231,26 @@ export default function CustomerClasses() {
             )}
           </div>
 
-          {/* Upcoming Dates */}
-          {!isPast && upcomingDates.length > 0 && (
+          {/* Randburg Puppy: session-count summary instead of date pills */}
+          {!isPast && isRandburgPuppy && (
+            <div className="space-y-2">
+              <p className="text-sm font-medium flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-customer-accent" />
+                Session Progress
+              </p>
+              <div className="rounded-lg bg-muted/50 p-3 space-y-1">
+                <p className="text-sm font-semibold">
+                  {completedSessions} of {RANDBURG_PUPPY_SESSION_COUNT} sessions completed
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Attend any {RANDBURG_PUPPY_SESSION_COUNT} of the available class dates — your trainer tracks each session.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Upcoming Dates (non-Randburg-Puppy only) */}
+          {!isPast && !isRandburgPuppy && upcomingDates.length > 0 && (
             <div className="space-y-2">
               <p className="text-sm font-medium flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-customer-accent" />

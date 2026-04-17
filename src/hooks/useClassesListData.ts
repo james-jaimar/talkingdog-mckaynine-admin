@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useBranch } from '@/context/BranchContext';
 import { useTerm } from '@/context/TermContext';
+import { isRandburgPuppyClass, RANDBURG_PUPPY_SESSION_COUNT } from '@/lib/classes/randburgPuppy';
 
 export interface Handler {
   clientId: string;
@@ -36,6 +37,7 @@ export function useClassesListData() {
         .select(`
           id,
           name,
+          class_type,
           class_schedules(
             id,
             selected_dates,
@@ -88,9 +90,12 @@ export function useClassesListData() {
       
       const classGroups: ClassGroup[] = classesWithSchedules.map(classItem => {
         const handlers: Handler[] = [];
+        const isRandburgPuppy = isRandburgPuppyClass(currentBranch.name, classItem.class_type);
         
         classItem.class_schedules?.forEach(schedule => {
-          const totalClasses = (schedule.selected_dates || []).length;
+          const totalClasses = isRandburgPuppy
+            ? RANDBURG_PUPPY_SESSION_COUNT
+            : (schedule.selected_dates || []).length;
           
           schedule.bookings?.forEach(booking => {
             if (!booking.clients || !booking.dogs) return;

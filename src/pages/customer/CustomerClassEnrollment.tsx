@@ -26,6 +26,7 @@ import {
 import { toast } from "sonner";
 import { useInvoices } from "@/hooks/useInvoices";
 import { createInvoice } from "@/lib/invoices/createInvoiceUtils";
+import { isRandburgPuppyClass, RANDBURG_PUPPY_SESSION_COUNT } from "@/lib/classes/randburgPuppy";
 
 interface InvitationData {
   id: string;
@@ -56,6 +57,8 @@ interface InvitationData {
       enrollment_fee: number;
       capacity: number;
       duration: number;
+      class_type: string;
+      branch: { name: string } | null;
     };
     trainer: {
       first_name: string;
@@ -111,7 +114,9 @@ export default function CustomerClassEnrollment() {
               course_fee,
               enrollment_fee,
               capacity,
-              duration
+              duration,
+              class_type,
+              branch:branches!branch_id ( name )
             ),
             trainer:trainers!trainer_id (
               first_name,
@@ -287,9 +292,18 @@ export default function CustomerClassEnrollment() {
     }
   };
 
+  // Detect Randburg Puppy (session-count, not date-locked)
+  const isRandburgPuppy = isRandburgPuppyClass(
+    invitation?.class_schedule?.class?.branch?.name,
+    invitation?.class_schedule?.class?.class_type
+  );
+
   // Format class dates
   const formatClassDates = () => {
     if (!invitation?.class_schedule) return "";
+    if (isRandburgPuppy) {
+      return `${RANDBURG_PUPPY_SESSION_COUNT} sessions — attend any ${RANDBURG_PUPPY_SESSION_COUNT} scheduled class dates`;
+    }
     const dates = invitation.class_schedule.selected_dates;
     if (dates && dates.length > 0) {
       return dates.map(d => format(parseISO(d), "EEEE, MMMM d")).join(" • ");
@@ -439,7 +453,7 @@ export default function CustomerClassEnrollment() {
                 </CardDescription>
               </div>
               <Badge variant="secondary" className="text-sm">
-                {classData.duration} weeks
+                {isRandburgPuppy ? `${RANDBURG_PUPPY_SESSION_COUNT} sessions` : `${classData.duration} weeks`}
               </Badge>
             </div>
           </CardHeader>

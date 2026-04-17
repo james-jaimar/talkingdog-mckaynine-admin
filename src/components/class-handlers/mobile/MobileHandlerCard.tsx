@@ -8,6 +8,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useInvoiceStatus } from "../booking-row/useInvoiceStatus";
 import { useMemo } from "react";
+import { isRandburgPuppyClass } from "@/lib/classes/randburgPuppy";
 
 interface MobileHandlerCardProps {
   booking: Booking;
@@ -34,7 +35,7 @@ export function MobileHandlerCard({
   const queryClient = useQueryClient();
   const { toast } = useToast();
   
-  const isRandburgPuppy = (branchName?.toLowerCase().includes('randburg') ?? false) && classType?.toLowerCase() === 'puppy';
+  const isRandburgPuppy = isRandburgPuppyClass(branchName, classType);
   
   // Use same invoice status hook as desktop for accurate payment status
   const { data: invoiceData, isLoading: isLoadingInvoice } = useInvoiceStatus(booking.id);
