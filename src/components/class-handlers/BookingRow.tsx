@@ -21,6 +21,7 @@ interface BookingRowProps {
   scheduleDates?: string[];
   renderAttendanceStatus?: (booking: any, date: string) => React.ReactNode;
   classType?: string;
+  branchName?: string;
 }
 
 export function BookingRow({
@@ -33,7 +34,8 @@ export function BookingRow({
   removeHandler,
   scheduleDates = [],
   renderAttendanceStatus,
-  classType
+  classType,
+  branchName,
 }: BookingRowProps) {
   // Use the extracted hook for invoice status
   const { data: invoiceData, isLoading: isLoadingInvoice } = useInvoiceStatus(booking.id);
@@ -45,6 +47,19 @@ export function BookingRow({
   });
 
   const isPuppyClass = classType === "Puppy";
+  const isRandburgPuppy =
+    (branchName?.toLowerCase().includes("randburg") ?? false) &&
+    (classType?.toLowerCase() === "puppy");
+
+  // Normalize assigned_dates into a Set of "YYYY-MM-DD" for quick lookup
+  const assignedDateKeys = new Set(
+    (booking.assigned_dates || []).map(d => new Date(d).toDateString())
+  );
+  const isDateAssigned = (date: string) => {
+    if (!isRandburgPuppy) return true;
+    if (assignedDateKeys.size === 0) return true; // no window set yet — show all
+    return assignedDateKeys.has(new Date(date).toDateString());
+  };
 
   // Calculate puppy age in weeks
   const getPuppyAgeInWeeks = (): string => {
@@ -75,6 +90,11 @@ export function BookingRow({
             )}
           </span>
         ) : null}
+        {isRandburgPuppy && (booking.assigned_dates?.length ?? 0) > 0 && (
+          <div className="text-xs text-muted-foreground mt-1">
+            Assigned: {booking.assigned_dates!.length} of 6 sessions
+          </div>
+        )}
       </TableCell>
       
       <TableCell className="text-sm text-muted-foreground">
@@ -113,7 +133,10 @@ export function BookingRow({
       {/* Attendance date columns */}
       {scheduleDates.map((date) => (
         <TableCell key={date} className="text-center p-1">
-          {renderAttendanceStatus && renderAttendanceStatus(booking, date)}
+          {isDateAssigned(date)
+            ? (renderAttendanceStatus && renderAttendanceStatus(booking, date))
+            : <span className="text-muted-foreground/50" title="Not part of this handler's session window">—</span>
+          }
         </TableCell>
       ))}
       
