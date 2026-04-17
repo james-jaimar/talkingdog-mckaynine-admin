@@ -74,15 +74,17 @@ export function MobileHandlerCard({
   const currentStatus: AttendanceStatus = (attendanceRecord?.attendance_status as AttendanceStatus) || 'not_marked';
   const currentGrade = attendanceRecord?.performance_grade || null;
 
-  // For Randburg Puppy: check if the selected date is in this handler's assigned window
-  const isDateAssigned = useMemo(() => {
-    if (!isRandburgPuppy) return true;
-    const assigned = booking.assigned_dates || [];
-    if (assigned.length === 0) return true; // no window set — fall back to allowing all
-    if (!selectedDate) return true;
-    const target = new Date(selectedDate).toDateString();
-    return assigned.some(d => new Date(d).toDateString() === target);
-  }, [isRandburgPuppy, booking.assigned_dates, selectedDate]);
+  // Randburg Puppy: count completed sessions (any 6 dates allowed)
+  const sessionCount = useMemo(() => {
+    if (!isRandburgPuppy || !booking.attendances) return 0;
+    const grades = new Set<string>();
+    booking.attendances.forEach((a: any) => {
+      if (a.attendance_status === 'present' && a.performance_grade && /^[1-6]$/.test(a.performance_grade)) {
+        grades.add(a.performance_grade);
+      }
+    });
+    return grades.size;
+  }, [isRandburgPuppy, booking.attendances]);
 
   // Handle attendance button click (for non-Randburg present, and absent/excused)
   const handleAttendanceClick = async (newStatus: AttendanceStatus, grade?: string | null) => {
@@ -187,9 +189,9 @@ export function MobileHandlerCard({
               </>
             )}
           </div>
-          {isRandburgPuppy && (booking.assigned_dates?.length ?? 0) > 0 && (
+          {isRandburgPuppy && (
             <div className="text-xs text-muted-foreground mt-0.5">
-              Assigned: {booking.assigned_dates!.length} of 6 sessions
+              Sessions: {sessionCount} / 6
             </div>
           )}
         </div>
@@ -227,24 +229,8 @@ export function MobileHandlerCard({
         </a>
       )}
 
-      {/* Attendance Buttons - Only show if date is selected AND date is in handler's window */}
-      {selectedDate && !isDateAssigned ? (
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground italic">
-            <CalendarDays className="h-4 w-4" />
-            <span>Not part of this handler's session window</span>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-10"
-            onClick={() => onEdit(booking)}
-          >
-            <Edit2 className="h-4 w-4 mr-1" />
-            Edit
-          </Button>
-        </div>
-      ) : selectedDate ? (
+      {/* Attendance Buttons */}
+      {selectedDate ? (
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 flex-wrap">
             {isRandburgPuppy ? (
