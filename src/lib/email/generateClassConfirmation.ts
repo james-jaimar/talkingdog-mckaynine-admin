@@ -138,6 +138,15 @@ export async function generateClassConfirmationEmails(
       return [];
     }
 
+    // Get branch name early so we can detect Randburg Puppy session-count classes
+    const branchId = invoiceData.branch_id;
+    const { data: branchDataEarly } = await supabase
+      .from("branches")
+      .select("name")
+      .eq("id", branchId)
+      .single();
+    const branchNameLower = (branchDataEarly?.name || "").toLowerCase();
+
     // Extract class enrollment details
     const enrollments: ClassEnrollmentDetails[] = bookingItems.map(item => {
       const booking = item.bookings as any;
@@ -145,30 +154,25 @@ export async function generateClassConfirmationEmails(
       const schedule = booking?.class_schedules;
       const classInfo = schedule?.classes;
 
-      // Prefer the booking's per-handler assigned_dates (used for roll-on/roll-off
-      // classes like Randburg Puppy where each handler has their own session window).
-      // Fall back to the schedule's full selected_dates for normal classes.
-      const datesForEmail =
-        Array.isArray(booking?.assigned_dates) && booking.assigned_dates.length > 0
-          ? booking.assigned_dates
-          : schedule?.selected_dates;
+      const classTypeLower = (classInfo?.class_type || "").toLowerCase();
+      const isRandburgPuppy = branchNameLower.includes("randburg") && classTypeLower === "puppy";
+
+      // Randburg Puppy is session-count based (any 6 dates) — show session-count copy
+      // instead of a fixed date list.
+      const dates = isRandburgPuppy
+        ? "6 sessions — attend any 6 of the scheduled class dates. Your trainer will track your progress (1 of 6 → 6 of 6)."
+        : formatClassDates(schedule?.selected_dates);
 
       return {
         dogName: dog?.name || "Your dog",
         className: classInfo?.name || "Class",
         classType: classInfo?.class_type || "",
-        dates: formatClassDates(datesForEmail),
+        dates,
         dayTime: formatClassDayTime(schedule?.start_time),
       };
     });
 
-    // Get branch name for signature - use invoice branch_id
-    const branchId = invoiceData.branch_id;
-    const { data: branchData } = await supabase
-      .from("branches")
-      .select("name")
-      .eq("id", branchId)
-      .single();
+    const branchData = branchDataEarly;
 
     // Build class details HTML
     const classDetailsHtml = buildClassDetailsHtml(enrollments);
