@@ -227,8 +227,24 @@ export function MobileHandlerCard({
         </a>
       )}
 
-      {/* Attendance Buttons - Only show if date is selected */}
-      {selectedDate ? (
+      {/* Attendance Buttons - Only show if date is selected AND date is in handler's window */}
+      {selectedDate && !isDateAssigned ? (
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground italic">
+            <CalendarDays className="h-4 w-4" />
+            <span>Not part of this handler's session window</span>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-10"
+            onClick={() => onEdit(booking)}
+          >
+            <Edit2 className="h-4 w-4 mr-1" />
+            Edit
+          </Button>
+        </div>
+      ) : selectedDate ? (
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 flex-wrap">
             {isRandburgPuppy ? (
