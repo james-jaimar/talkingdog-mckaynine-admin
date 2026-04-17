@@ -22,6 +22,10 @@ export interface TrainerNote {
 interface TrainerNotesFilters {
   status?: string;
   search?: string;
+  /** When set, only return notes targeted at this trainer
+   *  (substitute-authored notes for them) OR authored by this trainer.
+   *  Admin views should leave this undefined. */
+  trainerId?: string;
 }
 
 export function useTrainerNotes(filters: TrainerNotesFilters = {}, branchId?: string) {
@@ -47,6 +51,13 @@ export function useTrainerNotes(filters: TrainerNotesFilters = {}, branchId?: st
       // Filter by branch
       if (branchId) {
         query = query.eq("branch_id", branchId);
+      }
+
+      // Trainer-scoped: notes targeted at them OR notes they wrote themselves
+      if (filters.trainerId) {
+        query = query.or(
+          `target_trainer_id.eq.${filters.trainerId},created_by_trainer_id.eq.${filters.trainerId}`
+        );
       }
 
       // Apply status filter
