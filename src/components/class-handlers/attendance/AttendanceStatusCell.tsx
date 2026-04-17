@@ -11,6 +11,7 @@ import { useAttendance } from "./useAttendance";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { isRandburgPuppyClass } from "@/lib/classes/randburgPuppy";
 
 
 interface AttendanceStatusCellProps {

@@ -154,8 +154,7 @@ export async function generateClassConfirmationEmails(
       const schedule = booking?.class_schedules;
       const classInfo = schedule?.classes;
 
-      const classTypeLower = (classInfo?.class_type || "").toLowerCase();
-      const isRandburgPuppy = branchNameLower.includes("randburg") && classTypeLower === "puppy";
+      const isRandburgPuppy = isRandburgPuppyClass(branchNameLower, classInfo?.class_type);
 
       // Randburg Puppy is session-count based (any 6 dates) — show session-count copy
       // instead of a fixed date list.

@@ -8,6 +8,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useInvoiceStatus } from "../booking-row/useInvoiceStatus";
 import { useMemo } from "react";
+import { isRandburgPuppyClass } from "@/lib/classes/randburgPuppy";
 
 interface MobileHandlerCardProps {
   booking: Booking;
