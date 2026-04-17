@@ -39,6 +39,14 @@ export const trainerRoutes = [
       </ProtectedRoute>
     ),
   },
+  {
+    path: "/trainer/notes",
+    element: (
+      <ProtectedRoute requiredRole="trainer">
+        <TrainerNotes />
+      </ProtectedRoute>
+    ),
+  },
   // Legacy route redirects
   {
     path: "/trainer-dashboard",
