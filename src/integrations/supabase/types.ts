@@ -195,6 +195,7 @@ export type Database = {
       bookings: {
         Row: {
           additional_notes: string | null
+          assigned_dates: string[] | null
           class_schedule_id: string
           client_id: string
           created_at: string
@@ -212,6 +213,7 @@ export type Database = {
         }
         Insert: {
           additional_notes?: string | null
+          assigned_dates?: string[] | null
           class_schedule_id: string
           client_id: string
           created_at?: string
@@ -229,6 +231,7 @@ export type Database = {
         }
         Update: {
           additional_notes?: string | null
+          assigned_dates?: string[] | null
           class_schedule_id?: string
           client_id?: string
           created_at?: string
