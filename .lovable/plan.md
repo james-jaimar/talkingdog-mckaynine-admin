@@ -1,57 +1,50 @@
 
-You're right — let me re-check before planning further changes.
 
-## What I'll verify
+## What's actually happening
 
-Looking at `CreateCustomInvoice.tsx` (the handler-detail custom invoice flow), the file summary already shows:
-- A "Link to Class" select dropdown
-- A `handleBookingSelect` that auto-fills the IO inventory code
-- Booking data fetched via `useQuery` for the client's confirmed bookings
-- The submitted item carries `booking_id` through to `createInvoice`
+Benjamin McNally exists **twice** in the database:
 
-So the **UI capability already exists**. That means for Lesley Holm's R680 invoice, one of two things happened:
-1. The admin didn't pick a booking from the "Link to Class" dropdown when raising it (left as "None"), or
-2. The dropdown didn't surface Lesley's Elementary booking at the time (e.g. filter showed only unpaid/unenrolled, and her booking was already enrolled/paid)
+| Client ID | First / Last | Email | Phone | Created | Has |
+|---|---|---|---|---|---|
+| `cd0ded91…` | "Benjamin" / "McNally" | benjamin8… (lowercase) | 0724584328 | 2026-01-04 | The handler page you're viewing. Has dog *Gordon* (`bb432b88…`). 2 invoices: Beg & Novice Jul-Sep, Beg & Novice Oct-Dec. |
+| `4aac38aa…` | "Benjamin McNally" / "" (last_name empty, trailing space) | Benjamin8… (uppercase B) | 0724584328 | 2025-03-31 | The OLDER duplicate. Has its own dog *Gordon* (`e7676ff6…`). 1 custom invoice **INV-McD-2603-0058 R720** for "15h00 Working Trials training class for Gordon", linked to booking `af12412d…`. |
 
-## Revised plan
+Same person, same phone, same email (just case-different), two separate client rows — and they each carry independent bookings, dogs, and invoices. The custom invoice was raised against the older record, so it correctly shows everywhere that uses `client_id` broadly (Invoices list, Franchise report — because the booking + branch are right) but is **invisible on the handler detail page** for `cd0ded91…`, which only queries its own client_id.
 
-### Fix 1 — Repair Lesley's R680 (unchanged, still needed)
+This is **not a code bug** — `useClientInvoices` is doing exactly the right thing. It's a data integrity issue: a duplicate client.
 
-One-row update on `invoice_items.aacef2f1-887f-48c5-9825-f27b8c932f2f`:
-```
-booking_id = '435231ba-709d-4629-aa32-007834dfedbd'
-```
-This moves R680 from "Unallocated" into the Elementary class row in the franchise report and restores correct trainer commission.
+## Proposed fix — merge the duplicate into the canonical record
 
-### Fix 2 — Investigate why the link wasn't used
+Treat `cd0ded91…` (the one currently shown as the handler) as canonical and merge `4aac38aa…` into it. Concretely:
 
-Before changing any UI, I'll check `CreateCustomInvoice.tsx` to confirm:
-- **What bookings the dropdown shows** — if it filters to "unpaid only" or "unenrolled only", an already-enrolled handler getting a top-up wouldn't see their existing booking and the admin would have no choice but to leave it unlinked
-- **Whether selection is optional vs nudged** — if it's an unobtrusive optional field, easy to overlook on a top-up
+1. **Re-point the orphaned data** from `4aac38aa…` → `cd0ded91…`:
+   - `invoices.client_id` (the R720 custom invoice + any others)
+   - `bookings.client_id` (the Working Trials booking → `af12412d…`)
+   - `dogs.client_id` (the duplicate Gordon → `e7676ff6…`) — keep both Gordons for now; you can decide later whether to also dedupe the dog records
+   - `client_branches`, `invoice_additional_recipients`, `client_notes`, etc. — any FK referencing the old client_id
+2. **Delete the now-empty duplicate client** (`4aac38aa…`) so it can't trap future entries.
+3. After merge, the handler page will show **3 invoices** (the 2 existing + INV-McD-2603-0058 R720) and **2 dogs named Gordon** (you can dedupe manually via the Dogs panel if desired).
 
-Likely outcomes from that check:
+I'll do this as a single migration wrapped in a transaction so it either all succeeds or rolls back. I'll also list every table I touched in the migration comment.
 
-- **If filter is too narrow** → broaden it to show *all active bookings for the current term* (paid + enrolled included), so top-up invoices can attach to existing enrolments
-- **If selection was just skipped** → add a soft prompt: "This handler has 1 active booking — link this invoice to it?" (yes/no, defaults to yes), to make the right path the easy path
-- **If both are fine** → no UI change; just the DB repair, and we note the lesson (admins must remember to pick the booking on top-ups)
+## Why duplicates happened (and how to prevent more)
 
-### Fix 3 — Optional bulk audit
+The two emails differ only in case (`B` vs `b`). The `clients` table likely has no case-insensitive unique constraint on email or on (phone, email). Two paths could create this:
+- Public enrollment form submitted with a different capitalisation
+- Admin manually adding a handler when an existing one already matched on phone
 
-Run a read-only query to find other historical custom-invoice items where:
-- `booking_id IS NULL`
-- handler has an active booking in the same term
-- description hints at a class (contains words like "elementary", "puppy", "top-up", "balance")
-
-Surface as a list — we review together and bulk-link the obvious matches. No automatic changes.
-
-## Files I'll need to look at before finalising
-
-- `src/components/handlers/detail/CreateCustomInvoice.tsx` — confirm the dropdown's booking filter
-- The hook it uses to fetch bookings (likely `useClientBookings` or inline query)
+**Optional follow-up (not in this fix unless you want it):**
+- Add a partial unique index `UNIQUE (lower(email))` on `clients` so the next near-duplicate is rejected at the DB level
+- Add a "possible duplicate" warning in `AddHandlerModal` when phone OR `lower(email)` already matches an existing client
 
 ## Out of scope
 
-- Forcing the booking link to be mandatory — non-class billing (merch, fines, ad-hoc fees) still legitimately leaves it blank
-- IO document changes — internal attribution only
+- Auditing every other duplicate handler in the system (let me know if you want a separate sweep — easy to query)
+- Merging the two Gordon dog records (leaving both attached to the canonical handler; you can delete the unused one from the UI after confirming history)
+- Any change to the IO document — internal attribution only
 
-**Approve this and I'll switch to default mode, run the DB repair for Lesley, then inspect the dropdown filter and propose the smallest UI nudge needed (if any).**
+## Files affected
+
+- New migration: re-point FKs from `4aac38aa…` to `cd0ded91…`, then delete the duplicate client
+- No application code changes — `useClientInvoices` is correct as-is
+
