@@ -262,7 +262,7 @@ export function CreateCustomInvoice({
                                 <SelectTrigger
                                   className={
                                     isUnlinked
-                                      ? "border-amber-400 bg-amber-50 dark:bg-amber-950/20"
+                                      ? "border-destructive/50 bg-destructive/5"
                                       : ""
                                   }
                                 >
@@ -279,7 +279,7 @@ export function CreateCustomInvoice({
                               </SelectContent>
                             </Select>
                             {isUnlinked && (
-                              <p className="text-xs text-amber-700 dark:text-amber-400">
+                              <p className="text-xs text-destructive">
                                 This invoice will appear as "Unallocated" in the franchise
                                 report and earn 0% trainer commission. Pick a booking unless
                                 this is genuinely non-class billing (merch, fees, etc.).
