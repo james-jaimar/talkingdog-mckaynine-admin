@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
@@ -104,6 +104,17 @@ export function CreateCustomInvoice({
       form.setValue("items", items.filter((_, i) => i !== index));
     }
   };
+
+  // Auto-link to the only active booking (if exactly one) when the dialog opens.
+  // Top-up invoices on enrolled handlers were getting saved unlinked, landing as
+  // "Unallocated" in the franchise report — pre-selecting makes the right path the default.
+  useEffect(() => {
+    if (!open || !clientBookings || clientBookings.length !== 1) return;
+    const items = form.getValues("items") || [];
+    if (items.length !== 1 || items[0].booking_id) return;
+    handleBookingSelect(clientBookings[0].id, 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, clientBookings]);
 
   const handleBookingSelect = (bookingId: string, index: number) => {
     if (bookingId === "none") {
@@ -233,30 +244,51 @@ export function CreateCustomInvoice({
                     <FormField
                       control={form.control}
                       name={`items.${index}.booking_id`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Link to Class (Optional)</FormLabel>
-                          <Select
-                            value={field.value || "none"}
-                            onValueChange={(val) => handleBookingSelect(val, index)}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select a class booking" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="none">No link</SelectItem>
-                              {clientBookings.map((booking) => (
-                                <SelectItem key={booking.id} value={booking.id}>
-                                  {getBookingLabel(booking)}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
+                      render={({ field }) => {
+                        const isUnlinked = !field.value;
+                        return (
+                          <FormItem>
+                            <FormLabel>
+                              Link to Class booking{" "}
+                              <span className="text-muted-foreground font-normal">
+                                — recommended for top-ups so revenue attributes correctly
+                              </span>
+                            </FormLabel>
+                            <Select
+                              value={field.value || "none"}
+                              onValueChange={(val) => handleBookingSelect(val, index)}
+                            >
+                              <FormControl>
+                                <SelectTrigger
+                                  className={
+                                    isUnlinked
+                                      ? "border-destructive/50 bg-destructive/5"
+                                      : ""
+                                  }
+                                >
+                                  <SelectValue placeholder="Select a class booking" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="none">No link (general billing)</SelectItem>
+                                {clientBookings.map((booking) => (
+                                  <SelectItem key={booking.id} value={booking.id}>
+                                    {getBookingLabel(booking)}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            {isUnlinked && (
+                              <p className="text-xs text-destructive">
+                                This invoice will appear as "Unallocated" in the franchise
+                                report and earn 0% trainer commission. Pick a booking unless
+                                this is genuinely non-class billing (merch, fees, etc.).
+                              </p>
+                            )}
+                            <FormMessage />
+                          </FormItem>
+                        );
+                      }}
                     />
                   )}
                   
