@@ -1,50 +1,37 @@
 
 
-## What's actually happening
+## INV-McR-2603-0007 — Sophie Theodorou's R1,241.67 "Unallocated"
 
-Benjamin McNally exists **twice** in the database:
+### What I'll check
 
-| Client ID | First / Last | Email | Phone | Created | Has |
-|---|---|---|---|---|---|
-| `cd0ded91…` | "Benjamin" / "McNally" | benjamin8… (lowercase) | 0724584328 | 2026-01-04 | The handler page you're viewing. Has dog *Gordon* (`bb432b88…`). 2 invoices: Beg & Novice Jul-Sep, Beg & Novice Oct-Dec. |
-| `4aac38aa…` | "Benjamin McNally" / "" (last_name empty, trailing space) | Benjamin8… (uppercase B) | 0724584328 | 2025-03-31 | The OLDER duplicate. Has its own dog *Gordon* (`e7676ff6…`). 1 custom invoice **INV-McD-2603-0058 R720** for "15h00 Working Trials training class for Gordon", linked to booking `af12412d…`. |
+This is the same class of issue we've seen twice now (Lesley Holm, Benjamin McNally) — an invoice line item whose `booking_id` is `NULL`, so the franchise/class report has no class context to attribute it to and drops it into "Unallocated (no booking link)".
 
-Same person, same phone, same email (just case-different), two separate client rows — and they each carry independent bookings, dogs, and invoices. The custom invoice was raised against the older record, so it correctly shows everywhere that uses `client_id` broadly (Invoices list, Franchise report — because the booking + branch are right) but is **invisible on the handler detail page** for `cd0ded91…`, which only queries its own client_id.
+I need to query the DB to confirm exactly what's going on for Sophie's invoice. Specifically:
 
-This is **not a code bug** — `useClientInvoices` is doing exactly the right thing. It's a data integrity issue: a duplicate client.
+1. **Pull the invoice + items** for `INV-McR-2603-0007`:
+   - Item descriptions, amounts, `booking_id`, `io_inventory_code`, `item_type`
+   - Invoice's `branch_id`, `term_id`, `client_id`, `franchise_report_month`
+2. **Pull Sophie's client record(s)** — check whether there's a duplicate (like Benjamin) by searching on `lower(email) = 'sophietheodorou@hotmail.com'` and on phone
+3. **Pull Sophie's bookings** in the Randburg branch around April 2026 — see what class(es) she's actually enrolled in, with dog + class name + schedule
+4. **Cross-check**: does the item description (or amount) hint at which class it should be linked to?
 
-## Proposed fix — merge the duplicate into the canonical record
+### What I'll then propose (one of three outcomes)
 
-Treat `cd0ded91…` (the one currently shown as the handler) as canonical and merge `4aac38aa…` into it. Concretely:
+**A — Single client, just an unlinked custom invoice** (most likely)
+The invoice was raised via Custom Invoice without picking a booking. Fix: one-row UPDATE on `invoice_items.booking_id` to point at her actual class booking. R1,241.67 moves out of Unallocated into the correct class row, trainer commission gets calculated correctly.
 
-1. **Re-point the orphaned data** from `4aac38aa…` → `cd0ded91…`:
-   - `invoices.client_id` (the R720 custom invoice + any others)
-   - `bookings.client_id` (the Working Trials booking → `af12412d…`)
-   - `dogs.client_id` (the duplicate Gordon → `e7676ff6…`) — keep both Gordons for now; you can decide later whether to also dedupe the dog records
-   - `client_branches`, `invoice_additional_recipients`, `client_notes`, etc. — any FK referencing the old client_id
-2. **Delete the now-empty duplicate client** (`4aac38aa…`) so it can't trap future entries.
-3. After merge, the handler page will show **3 invoices** (the 2 existing + INV-McD-2603-0058 R720) and **2 dogs named Gordon** (you can dedupe manually via the Dogs panel if desired).
+**B — Duplicate client (Sophie exists twice, like Benjamin)**
+Merge migration repointing `invoices.client_id`, `bookings.client_id`, `dogs.client_id`, `client_branches`, etc. from the duplicate to the canonical record, then delete the duplicate. Then fix the booking link as in (A) if needed.
 
-I'll do this as a single migration wrapped in a transaction so it either all succeeds or rolls back. I'll also list every table I touched in the migration comment.
+**C — Genuinely non-class income** (e.g. merch, ad-hoc fee)
+No fix needed — Unallocated is the correct bucket. We'd just confirm and move on.
 
-## Why duplicates happened (and how to prevent more)
+### Out of scope until I see the data
 
-The two emails differ only in case (`B` vs `b`). The `clients` table likely has no case-insensitive unique constraint on email or on (phone, email). Two paths could create this:
-- Public enrollment form submitted with a different capitalisation
-- Admin manually adding a handler when an existing one already matched on phone
+- No code changes anticipated — the Custom Invoice form already supports linking, and we already added auto-select + the "0% commission" warning last round
+- No bulk audit yet (we discussed this earlier as an optional follow-up — happy to run it after we've cleared the immediate three cases if you want)
 
-**Optional follow-up (not in this fix unless you want it):**
-- Add a partial unique index `UNIQUE (lower(email))` on `clients` so the next near-duplicate is rejected at the DB level
-- Add a "possible duplicate" warning in `AddHandlerModal` when phone OR `lower(email)` already matches an existing client
+### Next step
 
-## Out of scope
-
-- Auditing every other duplicate handler in the system (let me know if you want a separate sweep — easy to query)
-- Merging the two Gordon dog records (leaving both attached to the canonical handler; you can delete the unused one from the UI after confirming history)
-- Any change to the IO document — internal attribution only
-
-## Files affected
-
-- New migration: re-point FKs from `4aac38aa…` to `cd0ded91…`, then delete the duplicate client
-- No application code changes — `useClientInvoices` is correct as-is
+On approval I switch to default mode, run the read queries above, present findings, and propose the precise migration (single UPDATE for case A, merge migration for case B, or no-op for case C).
 
