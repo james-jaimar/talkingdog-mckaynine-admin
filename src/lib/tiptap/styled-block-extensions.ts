@@ -1,4 +1,4 @@
-import Paragraph from "@tiptap/extension-paragraph";
+import { Paragraph } from "@tiptap/starter-kit";
 
 // Custom Paragraph that preserves inline styles (e.g. background shading from Word)
 export const StyledParagraph = Paragraph.extend({
