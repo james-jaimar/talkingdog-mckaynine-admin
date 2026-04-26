@@ -1,37 +1,33 @@
+## Fix AWS Amplify build — add `.npmrc` with `legacy-peer-deps`
 
+### What's wrong
 
-## INV-McR-2603-0007 — Sophie Theodorou's R1,241.67 "Unallocated"
+AWS Amplify runs `npm ci`, which strictly enforces peer-dependency rules. Our `package.json` has a mix of TipTap v2 and v3 packages (left over from incremental upgrades), and `npm` refuses to install them together. Bun (what Lovable uses) silently allows this, which is why the app builds fine here but fails on Amplify.
 
-### What I'll check
+### The fix
 
-This is the same class of issue we've seen twice now (Lesley Holm, Benjamin McNally) — an invoice line item whose `booking_id` is `NULL`, so the franchise/class report has no class context to attribute it to and drops it into "Unallocated (no booking link)".
+Create a single file at the repo root:
 
-I need to query the DB to confirm exactly what's going on for Sophie's invoice. Specifically:
+**`.npmrc`**
+```
+legacy-peer-deps=true
+```
 
-1. **Pull the invoice + items** for `INV-McR-2603-0007`:
-   - Item descriptions, amounts, `booking_id`, `io_inventory_code`, `item_type`
-   - Invoice's `branch_id`, `term_id`, `client_id`, `franchise_report_month`
-2. **Pull Sophie's client record(s)** — check whether there's a duplicate (like Benjamin) by searching on `lower(email) = 'sophietheodorou@hotmail.com'` and on phone
-3. **Pull Sophie's bookings** in the Randburg branch around April 2026 — see what class(es) she's actually enrolled in, with dog + class name + schedule
-4. **Cross-check**: does the item description (or amount) hint at which class it should be linked to?
+That's the entire file. It tells `npm` (and `npm ci`) to use the older, more lenient peer-dependency resolution — the same behaviour Bun uses by default. No code changes, no version bumps, no risk to the running app.
 
-### What I'll then propose (one of three outcomes)
+### Why this is safe
 
-**A — Single client, just an unlinked custom invoice** (most likely)
-The invoice was raised via Custom Invoice without picking a booking. Fix: one-row UPDATE on `invoice_items.booking_id` to point at her actual class booking. R1,241.67 moves out of Unallocated into the correct class row, trainer commission gets calculated correctly.
+- It only changes how `npm` *resolves* dependencies during install — it does not change which versions get installed (those are pinned in `package-lock.json`).
+- It's a widely-used, officially-supported npm flag — not a hack.
+- The Lovable preview is unaffected (Bun doesn't read `.npmrc` peer-dep settings the same way and is already lenient).
+- It's reversible — delete the file any time.
 
-**B — Duplicate client (Sophie exists twice, like Benjamin)**
-Merge migration repointing `invoices.client_id`, `bookings.client_id`, `dogs.client_id`, `client_branches`, etc. from the duplicate to the canonical record, then delete the duplicate. Then fix the booking link as in (A) if needed.
+### What happens next
 
-**C — Genuinely non-class income** (e.g. merch, ad-hoc fee)
-No fix needed — Unallocated is the correct bucket. We'd just confirm and move on.
+1. I create `.npmrc` with that one line.
+2. Lovable syncs to your GitHub repo automatically.
+3. AWS Amplify's next build picks it up and `npm ci` succeeds.
 
-### Out of scope until I see the data
+### Follow-up (separate piece of work, when you have time)
 
-- No code changes anticipated — the Custom Invoice form already supports linking, and we already added auto-select + the "0% commission" warning last round
-- No bulk audit yet (we discussed this earlier as an optional follow-up — happy to run it after we've cleared the immediate three cases if you want)
-
-### Next step
-
-On approval I switch to default mode, run the read queries above, present findings, and propose the precise migration (single UPDATE for case A, merge migration for case B, or no-op for case C).
-
+The underlying TipTap v2/v3 mix should still get cleaned up properly — ideally aligning everything to v3. That's a separate job that needs QA on every editor in the app (email templates, trainer notes, signatures, etc.). Not urgent now that the build will work, but worth doing eventually so we're not relying on the lenient flag forever. Happy to plan that as its own task whenever you want.
