@@ -11,8 +11,9 @@ import { Loader2, ArrowLeft, ArrowRight, Check, PawPrint } from "lucide-react";
 import { ProgressIndicator } from "./ProgressIndicator";
 import { Step1Privacy, Step2Owner, Step3Dog, Step4Home, Step5Training, Step6Class } from "./steps";
 import { useEnrollmentSubmission } from "./hooks/useEnrollmentSubmission";
-import { 
-  FullEnrollmentFormValues, 
+import { usePublicEnrollmentSubmission } from "./hooks/usePublicEnrollmentSubmission";
+import {
+  FullEnrollmentFormValues,
   defaultFormValues,
   privacySchema,
   ownerSchema,
@@ -32,12 +33,18 @@ const stepSchemas = [
   classSchema,
 ];
 
-export function EnrollmentForm() {
+interface EnrollmentFormProps {
+  mode?: "authenticated" | "public";
+}
+
+export function EnrollmentForm({ mode = "authenticated" }: EnrollmentFormProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [isComplete, setIsComplete] = useState(false);
   const navigate = useNavigate();
   const { submitEnrollment } = useEnrollmentSubmission();
+  const { submitPublicEnrollment } = usePublicEnrollmentSubmission();
 
   const form = useForm<FullEnrollmentFormValues>({
     resolver: zodResolver(fullEnrollmentSchema),
@@ -45,9 +52,8 @@ export function EnrollmentForm() {
     mode: "onChange",
   });
 
-  // Fetch branches
   const { data: branches = [] } = useQuery({
-    queryKey: ["branches"],
+    queryKey: ["branches", "public-enrollment"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("branches")
@@ -58,27 +64,18 @@ export function EnrollmentForm() {
     },
   });
 
-  const handleFileUpload = useCallback((file: File) => {
-    setUploadedFile(file);
-  }, []);
-
-  const handleRemoveFile = useCallback(() => {
-    setUploadedFile(null);
-  }, []);
+  const handleFileUpload = useCallback((file: File) => setUploadedFile(file), []);
+  const handleRemoveFile = useCallback(() => setUploadedFile(null), []);
 
   const validateCurrentStep = async () => {
     const schema = stepSchemas[currentStep - 1];
     const values = form.getValues();
-    
     try {
       await schema.parseAsync(values);
       return true;
     } catch {
-      // Trigger validation to show errors
       const fields = Object.keys(schema.shape);
-      fields.forEach((field) => {
-        form.trigger(field as any);
-      });
+      fields.forEach((field) => form.trigger(field as any));
       return false;
     }
   };
@@ -106,14 +103,19 @@ export function EnrollmentForm() {
 
     setIsSubmitting(true);
     try {
-      const result = await submitEnrollment(data, uploadedFile);
-      console.log("Enrollment submitted successfully:", result);
-
-      toast.success("Enrollment submitted successfully! We'll be in touch soon.");
-      navigate("/dashboard");
+      if (mode === "public") {
+        await submitPublicEnrollment(data, uploadedFile);
+        toast.success("Registration submitted! Check your email for confirmation.");
+        setIsComplete(true);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      } else {
+        await submitEnrollment(data, uploadedFile);
+        toast.success("Enrollment submitted successfully! We'll be in touch soon.");
+        navigate("/dashboard");
+      }
     } catch (error: any) {
       console.error("Submission error:", error);
-      toast.error(error.message || "Failed to submit enrollment. Please try again.");
+      toast.error(error.message || "Failed to submit. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -131,10 +133,26 @@ export function EnrollmentForm() {
     }
   };
 
+  if (isComplete) {
+    return (
+      <div className="min-h-screen bg-customer-bg py-8 px-4 flex items-center justify-center">
+        <Card className="max-w-xl w-full p-8 text-center bg-white shadow-lg border-0">
+          <div className="mx-auto w-16 h-16 rounded-full bg-customer-accent/10 flex items-center justify-center mb-4">
+            <Check className="h-8 w-8 text-customer-accent" />
+          </div>
+          <h1 className="text-2xl font-semibold mb-2">Registration received!</h1>
+          <p className="text-muted-foreground mb-6">
+            Thanks for registering. We've sent a confirmation to your email and a member of our team will be in touch shortly to confirm class details.
+          </p>
+          <p className="text-sm text-muted-foreground">You can close this page.</p>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-customer-bg py-4 sm:py-6 lg:py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
-        {/* Header with decorative gradient */}
         <div className="relative mb-4 sm:mb-6 text-center">
           <div className="absolute inset-0 bg-gradient-to-r from-customer-accent/20 via-customer-accent/10 to-transparent rounded-2xl blur-xl" />
           <div className="relative flex items-center justify-center gap-3 py-3 sm:py-4">
@@ -153,40 +171,21 @@ export function EnrollmentForm() {
           <form onSubmit={form.handleSubmit(onSubmit)} className="p-4 sm:p-6 lg:p-8">
             {renderStep()}
 
-            {/* Navigation Buttons */}
             <div className="flex justify-between mt-8 pt-6 border-t border-gray-100">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleBack}
-                disabled={currentStep === 1}
-                className="gap-2 border-gray-200 hover:bg-gray-50"
-              >
+              <Button type="button" variant="outline" onClick={handleBack} disabled={currentStep === 1} className="gap-2 border-gray-200 hover:bg-gray-50">
                 <ArrowLeft className="h-4 w-4" />
                 Back
               </Button>
 
               {currentStep < 6 ? (
-                <Button 
-                  type="button" 
-                  onClick={handleNext} 
-                  className="gap-2 bg-customer-accent hover:bg-customer-accent/90 text-white"
-                >
+                <Button type="button" onClick={handleNext} className="gap-2 bg-customer-accent hover:bg-customer-accent/90 text-white">
                   Next
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               ) : (
-                <Button 
-                  type="submit" 
-                  disabled={isSubmitting} 
-                  className="gap-2 bg-customer-accent hover:bg-customer-accent/90 text-white"
-                >
-                  {isSubmitting ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Check className="h-4 w-4" />
-                  )}
-                  Submit Enrollment
+                <Button type="submit" disabled={isSubmitting} className="gap-2 bg-customer-accent hover:bg-customer-accent/90 text-white">
+                  {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                  Submit Registration
                 </Button>
               )}
             </div>

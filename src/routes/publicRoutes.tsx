@@ -6,6 +6,7 @@ import CustomerLogin from "@/pages/CustomerLogin";
 import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
 import NotFound from "@/pages/NotFound";
+import PublicPuppyClassForm from "@/pages/PublicPuppyClassForm";
 import { useAuth } from "@/context/auth";
 import { Loader2 } from "lucide-react";
 
@@ -88,5 +89,9 @@ export const publicRoutes = [
   {
     path: "/reset-password",
     element: <ResetPassword />,
+  },
+  {
+    path: "/register/puppy-class",
+    element: <PublicPuppyClassForm />,
   },
 ];
