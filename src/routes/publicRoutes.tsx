@@ -90,4 +90,8 @@ export const publicRoutes = [
     path: "/reset-password",
     element: <ResetPassword />,
   },
+  {
+    path: "/register/puppy-class",
+    element: <PublicPuppyClassForm />,
+  },
 ];
