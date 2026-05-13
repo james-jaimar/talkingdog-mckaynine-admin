@@ -129,12 +129,43 @@ export function useHandlerTasks(handlerId?: string) {
   // Cancel a task
   const cancelTask = useMutation({
     mutationFn: async (taskId: string) => {
+      // Look up task context first so we can clear the linked status icon
+      const { data: task } = await supabase
+        .from("handler_tasks")
+        .select("class_status_id, handler_id, dog_id, class_type")
+        .eq("id", taskId)
+        .single();
+
       const { error } = await supabase
         .from("handler_tasks")
         .update({ status: "cancelled" })
         .eq("id", taskId);
 
       if (error) throw error;
+
+      // Also clear the handler_class_status action so the status icon goes away
+      if (task?.class_status_id) {
+        await supabase
+          .from("handler_class_status")
+          .update({
+            action_completed: true,
+            action_completed_at: new Date().toISOString(),
+          })
+          .eq("id", task.class_status_id);
+      } else if (task?.handler_id && task?.dog_id && task?.class_type) {
+        await supabase
+          .from("handler_class_status")
+          .update({
+            action_completed: true,
+            action_completed_at: new Date().toISOString(),
+          })
+          .eq("handler_id", task.handler_id)
+          .eq("dog_id", task.dog_id)
+          .eq("class_type", task.class_type)
+          .eq("action_completed", false)
+          .neq("next_action", "none")
+          .neq("next_action", "stopping");
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["handler-tasks"] });

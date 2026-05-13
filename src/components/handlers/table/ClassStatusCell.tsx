@@ -229,46 +229,66 @@ function StatusBox({
         return;
       }
 
-      // Create task if next_action changed
-      const actionChanged = nextAction !== initialNextAction;
-      
-      // Get dog context for task
+      // Reconcile pending task to current intent (create or update).
+      // We don't gate on "action changed" because the user may edit the target
+      // class without changing next_action, or a previous task may have been
+      // cancelled and they want a new one.
       const taskDogId = selectedDogId || initialDogId;
       const taskDogName = selectedDogName;
+      const statusIdForTask = upsertedStatus?.id;
 
-      if (nextAction === 'wants_info' && actionChanged) {
-        const classesForInfo = wantsInfoClasses.length > 0 ? wantsInfoClasses : [nextClassMap[classType] || "next class"];
-        const classesLabel = classesForInfo.join(", ");
-        await supabase.from("handler_tasks").insert({
-          handler_id: clientId,
-          class_type: classType,
-          class_status_id: upsertedStatus?.id,
-          task_type: "send_info_pack",
-          title: `Send ${classesLabel} info pack${taskDogName ? ` (${taskDogName})` : ''}`,
-          description: `Handler completed ${classType}. Send information about ${classesLabel} class${classesForInfo.length > 1 ? 'es' : ''}.`,
-          status: "pending",
-          branch_id: currentBranch?.id || null,
-          dog_id: taskDogId,
-          dog_name: taskDogName,
-        });
-      } else if (nextAction === 'continuing' && actionChanged) {
-        const nextClass = nextClassType || nextClassMap[classType] || "next class";
-        const termInfo = nextTermNumber && nextTermYear 
-          ? `Term ${nextTermNumber} ${nextTermYear}`
-          : "upcoming term";
-        
-        await supabase.from("handler_tasks").insert({
-          handler_id: clientId,
-          class_type: classType,
-          class_status_id: upsertedStatus?.id,
-          task_type: "enrollment",
-          title: `Enroll in ${nextClass} - ${termInfo}${taskDogName ? ` (${taskDogName})` : ''}`,
-          description: `Handler completed ${classType}. Follow up on enrollment for ${nextClass} in ${termInfo}.`,
-          status: "pending",
-          branch_id: currentBranch?.id || null,
-          dog_id: taskDogId,
-          dog_name: taskDogName,
-        });
+      if ((nextAction === 'wants_info' || nextAction === 'continuing') && statusIdForTask) {
+        // Find an existing pending task linked to this class_status row
+        const { data: existingPending } = await supabase
+          .from("handler_tasks")
+          .select("id")
+          .eq("class_status_id", statusIdForTask)
+          .eq("status", "pending")
+          .maybeSingle();
+
+        if (nextAction === 'wants_info') {
+          const classesForInfo = wantsInfoClasses.length > 0 ? wantsInfoClasses : [nextClassMap[classType] || "next class"];
+          const classesLabel = classesForInfo.join(", ");
+          const taskPayload = {
+            handler_id: clientId,
+            class_type: classType,
+            class_status_id: statusIdForTask,
+            task_type: "send_info_pack",
+            title: `Send ${classesLabel} info pack${taskDogName ? ` (${taskDogName})` : ''}`,
+            description: `Handler completed ${classType}. Send information about ${classesLabel} class${classesForInfo.length > 1 ? 'es' : ''}.`,
+            status: "pending",
+            branch_id: currentBranch?.id || null,
+            dog_id: taskDogId,
+            dog_name: taskDogName,
+          };
+          if (existingPending) {
+            await supabase.from("handler_tasks").update(taskPayload).eq("id", existingPending.id);
+          } else {
+            await supabase.from("handler_tasks").insert(taskPayload);
+          }
+        } else {
+          const nextClass = nextClassType || nextClassMap[classType] || "next class";
+          const termInfo = nextTermNumber && nextTermYear
+            ? `Term ${nextTermNumber} ${nextTermYear}`
+            : "upcoming term";
+          const taskPayload = {
+            handler_id: clientId,
+            class_type: classType,
+            class_status_id: statusIdForTask,
+            task_type: "enrollment",
+            title: `Enroll in ${nextClass} - ${termInfo}${taskDogName ? ` (${taskDogName})` : ''}`,
+            description: `Handler completed ${classType}. Follow up on enrollment for ${nextClass} in ${termInfo}.`,
+            status: "pending",
+            branch_id: currentBranch?.id || null,
+            dog_id: taskDogId,
+            dog_name: taskDogName,
+          };
+          if (existingPending) {
+            await supabase.from("handler_tasks").update(taskPayload).eq("id", existingPending.id);
+          } else {
+            await supabase.from("handler_tasks").insert(taskPayload);
+          }
+        }
       }
       
       // Invalidate queries so UI updates without refresh
@@ -277,6 +297,8 @@ function StatusBox({
       queryClient.invalidateQueries({ queryKey: ["handler-class-status"] });
       queryClient.invalidateQueries({ queryKey: ["handlers"] });
       queryClient.invalidateQueries({ queryKey: ["pending-task-count"] });
+      queryClient.invalidateQueries({ queryKey: ["handlers-pending-tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["handler-tasks-pending-count"] });
       
       toast.success(`${classType} class status updated`);
       setIsOpen(false);
