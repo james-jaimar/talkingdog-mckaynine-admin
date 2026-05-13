@@ -297,6 +297,8 @@ function StatusBox({
       queryClient.invalidateQueries({ queryKey: ["handler-class-status"] });
       queryClient.invalidateQueries({ queryKey: ["handlers"] });
       queryClient.invalidateQueries({ queryKey: ["pending-task-count"] });
+      queryClient.invalidateQueries({ queryKey: ["handlers-pending-tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["handler-tasks-pending-count"] });
       
       toast.success(`${classType} class status updated`);
       setIsOpen(false);
