@@ -1,57 +1,37 @@
 ## Findings
 
-Searched the database for handler intents (`handler_class_status` rows where Ady set `next_action = 'wants_info'` or `'continuing'` and the row is still open). Found **10 open intents in total**, of which **6 have zero `handler_tasks` ever created** — these are the missing tasks Ady is asking about.
+- The 6 backfilled “Send info pack” tasks do exist in `handler_tasks` and are still `pending`.
+- They are not visible on `/admin/tasks` when Delta is selected because their `handler_tasks.branch_id` is `NULL`.
+- The task page correctly filters by the current branch: `useAllTasks(..., currentBranch?.id)`, so branchless tasks are excluded.
+- The affected backfilled tasks all belong to Delta clients via `clients.branch_id`:
+  - Dominique Jarvis — EO (Miley)
+  - Susannah and Giana — CGC Bronze (Piper)
+  - Kirsten Dorkin — CGC Bronze (Scout)
+  - Jamie Peers — CGC Bronze (Phoenix)
+  - Jamie Peers — CGC Bronze
+  - Dean Nolte — CGC Silver
+- There are also older pending Delta tasks with `NULL` branch IDs, which explains other “missing” task counts under branch filtering.
 
-(Note: there is no `updated_at` on `handler_class_status`, only `created_at`. The 6 orphans were all created on 2026-03-17, so what looks like "last week" to Ady is actually a longer-running gap that the earlier `ClassStatusCell` bug (only inserting when `next_action` itself changed) never recovered from. The fix I just shipped prevents new orphans, but won't retroactively create tasks for these.)
+## Plan
 
-### The 6 orphans
+1. **Backfill existing branchless tasks**
+   - Run a database migration to set `handler_tasks.branch_id = clients.branch_id` for all existing tasks where:
+     - `handler_tasks.branch_id` is missing
+     - the task has a `handler_id`
+     - the linked client has a `branch_id`
+   - This will make the 6 new tasks appear under Delta immediately, and also restore visibility for older branchless Delta tasks.
 
-| Handler | Dog | Current class | Wants info on | Status row id |
-|---|---|---|---|---|
-| Dominique Jarvis | Miley | Puppy | EO | `f85e7605-…` |
-| Susannah and Giana | Piper | EO | CGC Bronze | `c449cbf9-…` |
-| Kirsten Dorkin | Scout | EO | CGC Bronze | `75a6ec01-…` |
-| Jamie Peers | Phoenix | EO | CGC Bronze | `e1e27a4f-…` |
-| Jamie Peers | *(no dog linked)* | EO | CGC Bronze | `84676a8b-…` |
-| Dean Nolte | *(no dog linked)* | CGC Bronze | CGC Silver | `0a630390-…` |
+2. **Fix the one-off backfill SQL pattern**
+   - Update the recent task backfill migration pattern in the codebase so any future/manual backfill includes `branch_id` from `clients.branch_id`.
+   - Keep the existing duplicate guard by `class_status_id`.
 
-All 6 are `next_action = 'wants_info'`. None are `continuing`. 4 have a dog linked, 2 do not.
+3. **Harden task creation paths**
+   - Review `CreateTaskModal` and task creation hooks so newly created tasks always include a branch:
+     - prefer the current selected branch
+     - fallback to the handler/client branch if needed
+   - Avoid changing unrelated task UI.
 
-## Fix Plan
-
-**One-off data backfill migration** — insert one pending `handler_tasks` row per orphan, mirroring what `ClassStatusCell` would have created had the bug not blocked it:
-
-```sql
-INSERT INTO handler_tasks (
-  handler_id, class_status_id, class_type, dog_id,
-  task_type, title, description, status
-)
-SELECT
-  hcs.handler_id,
-  hcs.id,
-  hcs.class_type,
-  hcs.dog_id,
-  'send_info_pack',
-  'Send info pack: ' || COALESCE(hcs.next_class_type, 'next class')
-    || COALESCE(' (' || d.name || ')', ''),
-  'Backfilled — handler asked for info on ' || COALESCE(hcs.next_class_type, 'next class')
-    || ' after ' || hcs.class_type || '.',
-  'pending'
-FROM handler_class_status hcs
-LEFT JOIN dogs d ON d.id = hcs.dog_id
-WHERE hcs.next_action = 'wants_info'
-  AND hcs.action_completed = false
-  AND NOT EXISTS (
-    SELECT 1 FROM handler_tasks ht WHERE ht.class_status_id = hcs.id
-  );
-```
-
-This only touches rows that have **zero** tasks (so it can't double-up on anything), and creates exactly one `send_info_pack` task per orphan. After it runs:
-- All 6 will appear on **Admin → Tasks**.
-- The status icon on the Handlers page will now have something to show in its popover (it already shows the icon — that's how Ady spotted them).
-- Handlers Ady processes from now on are protected by the `ClassStatusCell` reconcile fix shipped earlier.
-
-## Out of Scope
-- No code changes — the prevention fix is already live.
-- Not touching the 4 already-resolved-or-task-bearing rows.
-- Not creating `enrollment` tasks for any `continuing` rows because there are none in this orphan set.
+4. **Verify**
+   - Query `handler_tasks` grouped by branch/status after the migration.
+   - Confirm pending Delta tasks include the six Ady-related records and are no longer branchless.
+   - Check that `/admin/tasks` with Delta selected should return more than the three currently visible tasks.
