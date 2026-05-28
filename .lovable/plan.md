@@ -1,57 +1,119 @@
-## Item 1 — Will tasks now appear correctly going forward?
+## Goal
 
-I audited every code path that inserts into `handler_tasks`. All four UI paths already set `branch_id` correctly today:
+Stand up the receiving side first so we can accept submissions from Shannon's Google Form, save handlers/dogs/enrollments directly into our system, AND keep a raw copy of every payload for audit/replay. Once it's live, we give Shannon a short Apps Script to paste into her form.
 
-| Where tasks are created | Branch set? | Source of branch |
-|---|---|---|
-| `CreateTaskModal` (manual "+ New Task") | ✅ | `currentBranch?.id` |
-| `CreateTaskFromNotesModal` (handler row → notes) | ✅ | `currentBranch?.id` |
-| `ClassStatusCell` (Wants info / Continuing on Handlers grid) | ✅ | `currentBranch?.id` |
-| `ClassClosureModal` (close-out wizard, the main bulk creator) | ✅ | `classBranchId` (the class's own branch — most accurate) |
+## What gets built
 
-So new tasks Adi or anyone else creates from the UI from now on **will** carry a `branch_id` and **will** appear under the correct branch tab on `/admin/tasks`. No code change is required for this to keep working.
+### 1. New table: `google_form_submissions` (raw log)
 
-The one remaining risk is anyone running another raw SQL backfill — see Item 2.
+Stores every incoming payload verbatim, regardless of whether ingest succeeded. Lets us replay, debug mapping issues, and prove "yes that submission did arrive at 14:03".
 
-## Item 2 — Why did this happen? (Root cause)
+Columns:
+- `id`, `received_at`
+- `source` (text, e.g. `"shannon_puppy_form"`) — lets us add more forms later without a new endpoint
+- `raw_payload` (jsonb) — the full body as sent
+- `submitted_at` (timestamp from form, nullable)
+- `status` — `received` | `ingested` | `failed` | `duplicate`
+- `error_message` (nullable)
+- `client_id`, `dog_ids[]`, `enrollment_ids[]` — populated when ingest succeeds
+- `branch_id` (nullable) — resolved branch
 
-This was **not** caused by a UI/feature code change. The codebase that creates tasks day-to-day was unchanged. The cause was a one-off SQL backfill migration we ran a few days ago.
+RLS: admin-only read; service role full access (the edge function writes with service role).
 
-What happened, in order:
+### 2. New edge function: `google-form-intake`
 
-1. Six `handler_class_status` rows existed where Adi had marked "wants info" on a handler, but no matching pending task had been created (older flow / pre-fix data).
-2. To surface those as tasks for her to action, a backfill migration was run: `20260513173254_..._sql`. That migration inserts rows directly into `handler_tasks` with hard-coded columns:
-   ```
-   INSERT INTO handler_tasks
-     (handler_id, class_status_id, class_type, dog_id,
-      task_type, title, description, status)
-   SELECT ...
-   ```
-   Notice `branch_id` is **not** in that column list, so all 6 inserted tasks landed with `branch_id = NULL`.
-3. The Tasks page filters strictly by the selected branch (`useAllTasks(..., currentBranch?.id)` → `.eq('branch_id', branchId)`). Branchless tasks are correctly excluded — they belong to no branch as far as the filter is concerned.
-4. Result: the 6 backfilled tasks existed in the DB but were invisible under both Delta and Randburg. Same root cause for a handful of older "ghost" pending tasks that pre-date the branch_id column being populated.
-5. We fixed it with a second migration (`20260513175917_...`) that set `branch_id = clients.branch_id` for every branchless task. That's why they all showed up after that ran.
+Public endpoint (`verify_jwt = false`, same pattern as `public-puppy-enrollment`).
 
-So the "breakage" was scoped to a backfill SQL pattern, not to the app. Adi's normal workflow (closing out a class, marking "wants info" from the Handlers grid, manually creating a task) was already correct and unchanged.
+Flow:
+1. CORS / OPTIONS handler.
+2. Verify `x-webhook-secret` header against a new Supabase secret `GOOGLE_FORM_WEBHOOK_SECRET`. Reject 401 if missing/wrong.
+3. Parse body with Zod: `{ source: string, submittedAt?: string, answers: Record<string,string|string[]> }`.
+4. Insert a `google_form_submissions` row with `status = 'received'` immediately (so we always have the raw copy even if mapping crashes).
+5. Run the **mapper** (see §3): convert `answers` → our domain shape (owner + dogs + branch resolution + class type + acknowledgements).
+6. Reuse the existing ingest logic (same code path as `useSaveToDatabase` / `public-puppy-enrollment`):
+   - Find-or-update `clients` by lowercased email.
+   - Insert `dogs`.
+   - Insert `enrollment_registrations` with `status='submitted'`, branch_id resolved.
+7. Update the log row to `status='ingested'` with the IDs. On any failure, set `status='failed'` and `error_message`. Always return 200 to Apps Script (we don't want it retrying — we have the raw copy).
+8. Idempotency: if a row with the same `email + submitted_at + source` already exists in `google_form_submissions` with `status='ingested'`, mark new one as `duplicate` and skip — protects against accidental re-submits.
 
-## Plan
+### 3. Mapper module (inside the edge function)
 
-### 1. Document the backfill SQL pattern so this doesn't recur
-Add a short comment block to the existing one-off backfill migration noting that any future raw `INSERT INTO handler_tasks` MUST include `branch_id` (e.g. via `JOIN clients c ON c.id = hcs.handler_id` and selecting `c.branch_id`). This is the only realistic guard — migrations can't be re-run, but the next person writing one will see the warning.
+A single config object: `QUESTION_TITLE → field_path`. Built defensively:
+- Case-insensitive, trimmed key matching.
+- Multiple aliases per field (e.g. `"Email"`, `"Email address"`, `"Your email"` all → `owner.email`).
+- Unknown keys are ignored but preserved in `raw_payload` so we can extend mapping later without losing data.
+- Branch resolution: if there's a branch question, fuzzy-match against `branches.name` (same logic as `useSaveToDatabase`). If absent or unmatched, leave `branch_id` null and let admin assign from Handlers page (existing flow).
+- Class type: match against active `class_types` (case-insensitive). Default to `"Puppy"` if missing.
 
-### 2. (Optional, recommended) Add a defensive trigger
-Add a `BEFORE INSERT` trigger on `handler_tasks` that, when `branch_id IS NULL` and `handler_id IS NOT NULL`, automatically populates `branch_id` from `clients.branch_id`. This makes the table self-healing for any future code path or SQL backfill that forgets the column. Zero impact on existing correct inserts.
+We'll fill in the exact title-to-field map once we have the form. To start, I'll seed it with the same fields our public puppy form already collects (owner name/email/phone, dog name/breed/DOB/gender/spay-neuter, acquired from, other pets, training goal, behavior/health issues, acknowledgements, whatsapp/photo permission, signature name/date) and we'll tighten it after the first real submission lands in the log.
 
-### 3. No frontend code changes required
-All four UI insert paths already set `branch_id` correctly. I don't recommend changing them — they're working as intended.
+### 4. New admin page: `/admin/google-form-log`
 
-### 4. Verify
-- After step 2, run `INSERT INTO handler_tasks (handler_id, task_type, title, status) VALUES (...)` without `branch_id` and confirm it auto-fills.
-- Confirm Adi sees all current pending Delta tasks under the Delta filter (already true post-backfill).
+Simple table view of `google_form_submissions` so you can:
+- See submissions as they arrive.
+- See which ingested cleanly vs failed.
+- Click a failed row → view raw JSON + error → fix mapping → "Replay" button (calls the edge function with the stored raw payload).
+- Click an ingested row → jump to the resulting handler.
 
-## Out of scope
-- No UI changes.
-- No changes to `handler_class_status` logic.
-- Not re-touching the already-fixed historical tasks.
+Lives under the existing admin navigation hub. Read-only for everyone except admin.
 
-Would you like me to proceed with **step 2 (the defensive trigger)** in addition to the migration comment, or just the comment?
+### 5. Secret
+
+Add `GOOGLE_FORM_WEBHOOK_SECRET` to Supabase secrets (random 32-char string). You give the value to Shannon to paste into her Apps Script.
+
+---
+
+## What Shannon does (handed over AFTER ingest is tested)
+
+Once §1–4 are deployed, I'll give you a packet to send Shannon:
+
+1. **The webhook URL** — `https://vsgsagbpfclbuyqrepvf.supabase.co/functions/v1/google-form-intake`
+2. **The shared secret** — generated above
+3. **A ~20-line Apps Script** to paste into her form (Extensions → Apps Script), plus a 1-minute screenshot guide to install the `onFormSubmit` trigger.
+
+The script:
+```js
+const WEBHOOK_URL = "...";
+const SHARED_SECRET = "...";
+const SOURCE = "shannon_puppy_form";
+
+function onFormSubmit(e) {
+  const answers = {};
+  e.response.getItemResponses().forEach(r => {
+    answers[r.getItem().getTitle()] = r.getResponse();
+  });
+  UrlFetchApp.fetch(WEBHOOK_URL, {
+    method: "post",
+    contentType: "application/json",
+    headers: { "x-webhook-secret": SHARED_SECRET },
+    payload: JSON.stringify({
+      source: SOURCE,
+      submittedAt: new Date().toISOString(),
+      answers
+    }),
+    muteHttpExceptions: true
+  });
+}
+```
+
+## Testing flow
+
+1. After deploy, I'll hit the endpoint with `curl` using a fake payload that mirrors a real form submission. Verify: row appears in `google_form_submissions`, handler/dog/enrollment created, status='ingested'.
+2. Hit it with a bad secret → 401.
+3. Hit it with a payload missing email → status='failed' with clear error.
+4. Hit it twice with same data → second is 'duplicate'.
+5. Then Shannon installs the script, submits her own form once, we watch the log page populate live.
+
+## Out of scope (intentionally)
+
+- Updating existing handlers via the form (only insert/upsert by email — Shannon's form is for new enrollments).
+- Vet clearance file uploads (Google Forms file uploads land in Drive; we'd need separate Drive API work — defer unless Shannon's form actually asks for it).
+- Auto-creating handler login accounts (existing `auto_create_handler_account` flow still runs the same way for admin-driven creation; we can wire it in later if you want).
+
+## Technical notes
+
+- Edge function uses `supabase/functions/google-form-intake/index.ts`, service role client (it needs to bypass RLS to insert into `clients`/`dogs`/`enrollment_registrations`).
+- Reuses the field-mapping logic from `useSaveToDatabase.ts` for branch fuzzy-match and dog insert shape.
+- Always returns 200 to Google Apps Script — failures live in our log table, not in HTTP status. Apps Script retries on non-2xx are unhelpful here because the raw payload is already saved.
+- `google_form_submissions` gets standard `branch_id` and admin-only RLS per project memory rules.
