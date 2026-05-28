@@ -2005,6 +2005,57 @@ export type Database = {
           },
         ]
       }
+      google_form_submissions: {
+        Row: {
+          branch_id: string | null
+          client_id: string | null
+          created_at: string
+          dog_ids: string[] | null
+          email: string | null
+          enrollment_ids: string[] | null
+          error_message: string | null
+          id: string
+          raw_payload: Json
+          received_at: string
+          source: string
+          status: string
+          submitted_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          branch_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          dog_ids?: string[] | null
+          email?: string | null
+          enrollment_ids?: string[] | null
+          error_message?: string | null
+          id?: string
+          raw_payload: Json
+          received_at?: string
+          source: string
+          status?: string
+          submitted_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          branch_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          dog_ids?: string[] | null
+          email?: string | null
+          enrollment_ids?: string[] | null
+          error_message?: string | null
+          id?: string
+          raw_payload?: Json
+          received_at?: string
+          source?: string
+          status?: string
+          submitted_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       handler_class_status: {
         Row: {
           action_completed: boolean | null
