@@ -11,6 +11,7 @@ import Handlers from "@/pages/Handlers";
 import HandlerDetail from "@/pages/HandlerDetail";
 import FinancialReports from "@/pages/FinancialReports";
 import IntakeScans from "@/pages/admin/IntakeScans";
+import GoogleFormLog from "@/pages/admin/GoogleFormLog";
 import Tasks from "@/pages/admin/Tasks";
 import EmailTemplates from "@/pages/admin/EmailTemplates";
 import Email from "@/pages/admin/Email";
@@ -80,6 +81,10 @@ export const adminRoutes = [
   {
     path: "/admin/intake-scans",
     element: <IntakeScans />,
+  },
+  {
+    path: "/admin/google-form-log",
+    element: <GoogleFormLog />,
   },
   {
     path: "/admin/tasks",
