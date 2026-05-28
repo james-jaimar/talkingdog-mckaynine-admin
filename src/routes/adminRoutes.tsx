@@ -83,6 +83,10 @@ export const adminRoutes = [
     element: <IntakeScans />,
   },
   {
+    path: "/admin/google-form-log",
+    element: <GoogleFormLog />,
+  },
+  {
     path: "/admin/tasks",
     element: <Tasks />,
   },
