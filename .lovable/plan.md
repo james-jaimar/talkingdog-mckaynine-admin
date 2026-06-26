@@ -1,35 +1,62 @@
-## What's actually wrong
+Mirror the intake-scans review flow for Google Form submissions, and share the underlying save logic between both pipelines.
 
-The two invoices `INV-McD-2605-0017` and `INV-McD-2606-0013` are linked to booking `9185f2f2…`, which sits on class schedule `7353cf07…` — and that schedule is on **Term 1 2026** (start date 17 Jan).
+## 1. Shared save helper
 
-But the invoices themselves are tagged **Term 2 2026** (`franchise_report_month` 2026-05 and 2026-06).
+**New** `src/lib/enrollments/saveEnrollmentSubmission.ts`
+- Pure async function `saveEnrollmentSubmission(extracted: ExtractedData): Promise<{ clientId, dogIds, enrollmentIds }>`
+- Contains the client find-or-create, dog insert, and enrollment insert logic currently inline in `useSaveToDatabase`.
+- Branch resolution: prefer matching by `dog.branch_name`, fall back to first active branch.
+- Sets `onboarding_status: 'completed'` on the client (same as intake-scans today).
 
-The trainer payments view filters schedules by the current term. So when Heidi is in Term 2, Steve's Term 1 schedule is filtered out, and the May/June invoice items hanging off the Term 1 booking go with it. That's why "those two invoices don't show up for Steve."
+**Refactor** `src/components/intake-scans/hooks/useSaveToDatabase.ts`
+- Replace its inline insert logic with a call to `saveEnrollmentSubmission(extractedData)`.
+- Keep the post-save `scan_processing_jobs` status update (intake-scans-specific).
+- Behaviour and toast text unchanged.
 
-Steve *does* have a Term 2 2026 Working Trials schedule: `5ecd1fda…` (28 Mar). Benjamin already has a booking on that Term 2 schedule (`af12412d…`), and the March invoice `INV-McD-2603-0058` is already correctly linked to it (with a pending trainer payment of R288).
+## 2. Google Form payload → ExtractedData mapper
 
-So the two May/June invoices were linked to the wrong booking — the leftover Term 1 one — instead of the Term 2 one.
+**New** `src/lib/google-form/toExtractedData.ts`
+- `googleFormPayloadToExtractedData(payload: { source, answers, submittedAt }) => ExtractedData`
+- Ports the field aliasing + value normalisers (gender, spay/neuter, age bucket, social grid, ack grid, class type, heard-from, other-pets, training goal, health text) currently inside the edge function.
+- Output matches the same shape ReviewPanel/saveEnrollmentSubmission expect.
+- Branch name derived from `source` (e.g. "delta" → "Delta") so the existing branch matcher inside `saveEnrollmentSubmission` resolves it correctly.
 
-## The fix (data only, no IO, no code)
+## 3. Edge function: stop auto-ingesting
 
-Re-point the two invoice items from the Term 1 booking to the Term 2 booking, then refresh Steve's existing pending trainer payment for that Term 2 schedule:
+`supabase/functions/google-form-intake/index.ts`
+- Keep secret verification, payload validation, duplicate check, and raw-payload logging.
+- Remove the client/dog/enrollment inserts. Final status becomes `received` (or `duplicate`).
+- This means brand-new submissions sit in the queue until an admin approves them.
 
-1. `UPDATE invoice_items SET booking_id = 'af12412d-f23c-401e-a0fe-dfc7d93f8391' WHERE invoice_id IN ('a9e21816-9eb5-4723-a9de-d33666be04ac', '54ac1dfb-87e0-4105-b708-44b3e7fa0a14') AND booking_id = '9185f2f2-f491-4c79-be9d-30d5f3e497a1';`
-2. Recalculate Steve's pending trainer payment on schedule `5ecd1fda…` so it covers all three Term 2 invoices on booking `af12412d`:
-   - Total revenue on that booking after the move: R720 + R720 + R480 = R1920
-   - Trainer fee = 40% = **R768**
-   - `UPDATE trainer_payments SET amount = 768, updated_at = now() WHERE id = '130431d2-a59f-4f93-a6ba-356615a3107e';` (status stays `pending`)
+## 4. Google Forms admin tab (review queue)
 
-After this:
-- Steve sees both invoices on his Term 2 pending list (under the 28 Mar Working Trials schedule, alongside the March invoice), totalling R768 pending.
-- The previously-paid Term 1 payment of R1344 (from the January invoice on the same booking) is untouched.
-- No IO records are touched — only `invoice_items.booking_id` and `trainer_payments.amount` change. Invoice numbers, totals, IO sync fields, branch, term, franchise_report_month all stay exactly as they are.
+**New** `src/components/google-forms/GoogleFormsReviewTab.tsx` — two-pane layout, same proportions as intake-scans:
+- **Left pane**: queue of submissions with status `received`, plus filter chips for `ingested` / `failed` / `rejected` / `duplicate`. Each row shows source (branch), submitter email, received-at.
+- **Right pane**: review form. Reuses the field editors from `ReviewPanel` where practical (owner, dogs, class details, acknowledgements). Pre-filled from `googleFormPayloadToExtractedData`. No PDF viewer — instead a collapsible "Raw payload" panel for reference.
+- Buttons:
+  - **Approve & save handler** → calls `saveEnrollmentSubmission(editedData)`, then updates the `google_form_submissions` row to `status='ingested'` with `client_id`, `dog_ids`, `enrollment_ids`, then invalidates `handlers` queries and toasts.
+  - **Reject** → sets `status='rejected'` with an optional admin note (stored in `error_message`).
+  - **Replay** stays for `failed` rows (re-POSTs the raw payload to the edge function).
+- Invalidates `google-form-submissions` after every mutation.
 
-## Out of scope
+**Settings hub** `src/pages/admin/Settings.tsx`
+- Add a new `<TabsTrigger value="google-forms">` next to "Intake Scans" with a `FileInput` icon.
+- Add `<TabsContent value="google-forms">` rendering `<GoogleFormsReviewTab />`.
 
-- Why the invoices got linked to the wrong booking in the first place (likely Heidi picked the older Term 1 booking from the dropdown when creating these as custom invoices on the correct client). Preventive UX change is a separate task — flag if you want me to do it next.
-- The duplicate "Benjamin McNally (OLD)" client record — separate cleanup.
+**Existing standalone page** `/admin/google-form-log`
+- Keep the route working — repoint it to render `<GoogleFormsReviewTab />` wrapped in `DashboardLayout`, so deep links still work.
 
-## Technical summary
+## 5. ReviewPanel reuse decision
 
-Two SQL statements via the insert tool — one UPDATE on `invoice_items`, one UPDATE on `trainer_payments`. No migrations, no code changes, no edge function calls, no IO sync.
+`ReviewPanel.tsx` is tightly coupled to `ScanProcessingJob` (PDF viewer, confidence indicators, job-status branches). Rather than retro-fit it, the Google Forms tab will use the same shadcn primitives (Input/Select/Switch/Tabs) and import the dog-tab sub-section markup style by reading from the same `ExtractedData` shape. No changes to `ReviewPanel` itself.
+
+## 6. No DB schema changes
+
+`google_form_submissions.status` is free-text, so `rejected` is allowed without migration. Existing columns `client_id`, `dog_ids`, `enrollment_ids`, `error_message` are reused.
+
+## 7. Behaviour summary after the change
+
+- Shannon's form posts → row in queue with `status='received'`. Nothing else happens automatically.
+- Admin opens Google Forms tab → sees the row, clicks it, reviews/edits pre-filled fields, clicks Approve.
+- Approve runs the **same** save path intake-scans uses, so handlers/dogs/enrollments are created consistently and show up in the Handlers list immediately.
+- Existing `ingested` rows from prior auto-ingest behaviour stay untouched.
