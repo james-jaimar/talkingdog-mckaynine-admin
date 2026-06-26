@@ -9,11 +9,10 @@ import { format } from "date-fns";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import { CheckCircle2, RefreshCw } from "lucide-react";
-import { ExtractedData } from "@/components/intake-scans/types";
+import { ExtractedData, ScanProcessingJob } from "@/components/intake-scans/types";
+import { ReviewPanel } from "@/components/intake-scans/ReviewPanel";
 import { googleFormPayloadToExtractedData } from "@/lib/google-form/toExtractedData";
 import { saveEnrollmentSubmission } from "@/lib/enrollments/saveEnrollmentSubmission";
-import { OwnerSection } from "@/components/intake-scans/review-panel/OwnerSection";
-import { DogSection } from "@/components/intake-scans/review-panel/DogSection";
 
 type Submission = {
   id: string;
@@ -36,6 +35,26 @@ const statusColor: Record<string, string> = {
   failed: "bg-red-500/15 text-red-700 dark:text-red-400",
   duplicate: "bg-amber-500/15 text-amber-700 dark:text-amber-400",
 };
+
+function submissionToJob(sub: Submission, ed: ExtractedData): ScanProcessingJob {
+  return {
+    id: sub.id,
+    filename: `${sub.source}-${sub.id.slice(0, 8)}.json`,
+    file_url: "",
+    status: "needs_review",
+    page_count: 1,
+    extracted_data: ed,
+    field_confidence: {},
+    notes_for_review: [],
+    matched_client_id: null,
+    created_dog_ids: null,
+    enrollment_ids: null,
+    error_message: null,
+    uploaded_by: null,
+    created_at: sub.received_at,
+    updated_at: sub.received_at,
+  };
+}
 
 export function GoogleFormsReviewTab() {
   const qc = useQueryClient();
@@ -66,8 +85,7 @@ export function GoogleFormsReviewTab() {
       return;
     }
     try {
-      const ed = googleFormPayloadToExtractedData(selected.raw_payload);
-      setEdited(ed);
+      setEdited(googleFormPayloadToExtractedData(selected.raw_payload));
     } catch (e) {
       console.error("Map error", e);
       setEdited(null);
@@ -112,7 +130,11 @@ export function GoogleFormsReviewTab() {
     },
   });
 
-  const pendingCount = rows.filter((r) => r.status === "received" || r.status === "failed").length;
+  const pendingCount = rows.filter(
+    (r) => r.status === "received" || r.status === "failed"
+  ).length;
+
+  const syntheticJob = selected && edited ? submissionToJob(selected, edited) : null;
 
   return (
     <div className="grid grid-cols-12 gap-4 h-[calc(100vh-18rem)]">
@@ -179,72 +201,36 @@ export function GoogleFormsReviewTab() {
         </CardContent>
       </Card>
 
-      {/* Review pane */}
-      <Card className="col-span-8 flex flex-col min-h-0">
-        <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
-          <CardTitle className="text-base">
-            {selected ? `Review: ${selected.email || "submission"}` : "Select a submission"}
-          </CardTitle>
-          {selected && (
-            <div className="flex gap-2">
-              {selected.status === "ingested" ? (
-                <Badge className="bg-green-600">Already ingested</Badge>
-              ) : (
-                <Button
-                  onClick={() => approve.mutate()}
-                  disabled={approve.isPending || !edited}
-                  size="sm"
-                >
-                  <CheckCircle2 className="h-4 w-4 mr-2" />
-                  {approve.isPending ? "Saving…" : "Approve & Create Handler"}
-                </Button>
-              )}
+      {/* Review pane reuses the existing intake-scans ReviewPanel */}
+      <div className="col-span-8 flex flex-col min-h-0 space-y-2">
+        {selected && (
+          <div className="flex items-center justify-between bg-muted/50 rounded px-3 py-2">
+            <div className="text-sm">
+              <strong>{selected.email || "(no email)"}</strong> ·{" "}
+              {format(new Date(selected.received_at), "PPp")} · {selected.source}
             </div>
-          )}
-        </CardHeader>
-        <CardContent className="flex-1 min-h-0 p-0">
-          {!selected ? (
-            <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
-              Pick a submission from the left to review and ingest.
-            </div>
-          ) : !edited ? (
-            <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
-              Unable to map this payload. Inspect raw JSON below.
-            </div>
-          ) : (
-            <ScrollArea className="h-full">
-              <div className="p-4 space-y-4">
-                <OwnerSection
-                  owner={edited.owner}
-                  fieldConfidence={edited.field_confidence}
-                  onUpdate={(o) => setEdited({ ...edited, owner: o })}
-                />
-                {edited.dogs.map((dog, i) => (
-                  <DogSection
-                    key={i}
-                    dog={dog}
-                    dogIndex={i}
-                    fieldConfidence={edited.field_confidence}
-                    onUpdate={(d) => {
-                      const dogs = [...edited.dogs];
-                      dogs[i] = d;
-                      setEdited({ ...edited, dogs });
-                    }}
-                  />
-                ))}
-                <details className="text-xs">
-                  <summary className="cursor-pointer text-muted-foreground">
-                    Raw payload
-                  </summary>
-                  <pre className="mt-2 p-2 bg-muted rounded overflow-x-auto">
-                    {JSON.stringify(selected.raw_payload, null, 2)}
-                  </pre>
-                </details>
-              </div>
-            </ScrollArea>
-          )}
-        </CardContent>
-      </Card>
+            {selected.status === "ingested" ? (
+              <Badge className="bg-green-600">Already ingested</Badge>
+            ) : (
+              <Button
+                onClick={() => approve.mutate()}
+                disabled={approve.isPending || !edited}
+                size="sm"
+              >
+                <CheckCircle2 className="h-4 w-4 mr-2" />
+                {approve.isPending ? "Saving…" : "Approve & Create Handler"}
+              </Button>
+            )}
+          </div>
+        )}
+        <div className="flex-1 min-h-0">
+          <ReviewPanel
+            job={syntheticJob}
+            editedData={edited}
+            onUpdateData={(d) => setEdited(d)}
+          />
+        </div>
+      </div>
     </div>
   );
 }
