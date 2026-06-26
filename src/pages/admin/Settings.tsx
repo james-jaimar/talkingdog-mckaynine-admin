@@ -4,7 +4,8 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Helmet } from "react-helmet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Map, UserCog, ScanLine, Settings as SettingsIcon, AlertTriangle, Layers } from "lucide-react";
+import { Users, Map, UserCog, ScanLine, Settings as SettingsIcon, AlertTriangle, Layers, FormInput } from "lucide-react";
+import { GoogleFormsReviewTab } from "@/components/google-forms/GoogleFormsReviewTab";
 import RequireAdmin from "@/components/auth/RequireAdmin";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -237,6 +238,10 @@ export default function Settings() {
                 <Layers className="h-4 w-4" />
                 Class Types
               </TabsTrigger>
+              <TabsTrigger value="google-forms" className="gap-2">
+                <FormInput className="h-4 w-4" />
+                Google Forms
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="users">
@@ -347,6 +352,19 @@ export default function Settings() {
                   </p>
                 </div>
                 <ClassTypesManager />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="google-forms">
+              <div className="space-y-4">
+                <div>
+                  <h2 className="text-xl font-semibold">Google Form Submissions</h2>
+                  <p className="text-muted-foreground">
+                    Review incoming Google Form submissions, edit before ingest, then approve to
+                    create / update a handler — reuses the same pipeline as the intake-scans tab.
+                  </p>
+                </div>
+                <GoogleFormsReviewTab />
               </div>
             </TabsContent>
           </Tabs>
