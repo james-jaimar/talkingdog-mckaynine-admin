@@ -1,62 +1,109 @@
-Mirror the intake-scans review flow for Google Form submissions, and share the underlying save logic between both pipelines.
+# Shannon's Google Forms setup pack
 
-## 1. Shared save helper
+Deliver a single self-contained guide Shannon can follow end-to-end, plus the exact Apps Script she pastes into her form.
 
-**New** `src/lib/enrollments/saveEnrollmentSubmission.ts`
-- Pure async function `saveEnrollmentSubmission(extracted: ExtractedData): Promise<{ clientId, dogIds, enrollmentIds }>`
-- Contains the client find-or-create, dog insert, and enrollment insert logic currently inline in `useSaveToDatabase`.
-- Branch resolution: prefer matching by `dog.branch_name`, fall back to first active branch.
-- Sets `onboarding_status: 'completed'` on the client (same as intake-scans today).
+## 1. New file: `docs/google-forms-shannon-setup.md`
 
-**Refactor** `src/components/intake-scans/hooks/useSaveToDatabase.ts`
-- Replace its inline insert logic with a call to `saveEnrollmentSubmission(extractedData)`.
-- Keep the post-save `scan_processing_jobs` status update (intake-scans-specific).
-- Behaviour and toast text unchanged.
+A plain-English, step-by-step doc with:
 
-## 2. Google Form payload → ExtractedData mapper
+### Part A — What you'll need
+- Edit access to the Google Form (one form per branch — e.g. Delta, Randburg)
+- The webhook URL (pre-filled): `https://vsgsagbpfclbuyqrepvf.supabase.co/functions/v1/google-form-intake`
+- The webhook secret (provided privately, not in the doc): `Trinityhall20`
+- The `SOURCE` value for that form — `delta`, `randburg`, etc. (must match a branch name in our system, lowercase)
 
-**New** `src/lib/google-form/toExtractedData.ts`
-- `googleFormPayloadToExtractedData(payload: { source, answers, submittedAt }) => ExtractedData`
-- Ports the field aliasing + value normalisers (gender, spay/neuter, age bucket, social grid, ack grid, class type, heard-from, other-pets, training goal, health text) currently inside the edge function.
-- Output matches the same shape ReviewPanel/saveEnrollmentSubmission expect.
-- Branch name derived from `source` (e.g. "delta" → "Delta") so the existing branch matcher inside `saveEnrollmentSubmission` resolves it correctly.
+### Part B — Open the script editor
+1. Open the Google Form → click the three-dot menu (⋮) top-right → **Script editor**
+2. Apps Script opens in a new tab with an empty `Code.gs`
 
-## 3. Edge function: stop auto-ingesting
+### Part C — Paste the script
+Replace everything in `Code.gs` with the script in section 2 below. Update only the two CONFIG lines at the top (`SOURCE` and `SECRET`).
 
-`supabase/functions/google-form-intake/index.ts`
-- Keep secret verification, payload validation, duplicate check, and raw-payload logging.
-- Remove the client/dog/enrollment inserts. Final status becomes `received` (or `duplicate`).
-- This means brand-new submissions sit in the queue until an admin approves them.
+### Part D — Save & authorise
+1. Click the 💾 **Save** icon (name the project "McKaynine Intake")
+2. From the function dropdown choose `installTrigger`, click **Run**
+3. Google will prompt for permissions — click **Review permissions** → choose her Google account → **Advanced** → **Go to McKaynine Intake (unsafe)** → **Allow**
+   - This is normal for any custom script; it's only granting the form permission to call our webhook
+4. She should see "Trigger installed" in the execution log
 
-## 4. Google Forms admin tab (review queue)
+### Part E — Test
+1. Fill in the live form herself with a test submission
+2. In the Lovable admin → **Settings → Google Forms** tab, the submission appears in the queue within ~5 seconds
+3. We review, edit if needed, click **Approve & save handler** → handler appears in Handlers list
 
-**New** `src/components/google-forms/GoogleFormsReviewTab.tsx` — two-pane layout, same proportions as intake-scans:
-- **Left pane**: queue of submissions with status `received`, plus filter chips for `ingested` / `failed` / `rejected` / `duplicate`. Each row shows source (branch), submitter email, received-at.
-- **Right pane**: review form. Reuses the field editors from `ReviewPanel` where practical (owner, dogs, class details, acknowledgements). Pre-filled from `googleFormPayloadToExtractedData`. No PDF viewer — instead a collapsible "Raw payload" panel for reference.
-- Buttons:
-  - **Approve & save handler** → calls `saveEnrollmentSubmission(editedData)`, then updates the `google_form_submissions` row to `status='ingested'` with `client_id`, `dog_ids`, `enrollment_ids`, then invalidates `handlers` queries and toasts.
-  - **Reject** → sets `status='rejected'` with an optional admin note (stored in `error_message`).
-  - **Replay** stays for `failed` rows (re-POSTs the raw payload to the edge function).
-- Invalidates `google-form-submissions` after every mutation.
+### Part F — Troubleshooting
+- Nothing in the queue → re-run `installTrigger`, check `View → Executions` for errors
+- "Unauthorized" in execution log → `SECRET` doesn't match — re-check spelling/case
+- Submission lands but branch is wrong → `SOURCE` value doesn't match a branch name in our system
 
-**Settings hub** `src/pages/admin/Settings.tsx`
-- Add a new `<TabsTrigger value="google-forms">` next to "Intake Scans" with a `FileInput` icon.
-- Add `<TabsContent value="google-forms">` rendering `<GoogleFormsReviewTab />`.
+## 2. The exact Apps Script (included in the doc, in a code block)
 
-**Existing standalone page** `/admin/google-form-log`
-- Keep the route working — repoint it to render `<GoogleFormsReviewTab />` wrapped in `DashboardLayout`, so deep links still work.
+```javascript
+// ===== CONFIG — change these two lines only =====
+const SOURCE = 'delta';                 // branch name, lowercase: 'delta' | 'randburg' | ...
+const SECRET = 'PASTE_SECRET_HERE';     // provided privately by James
 
-## 5. ReviewPanel reuse decision
+// ===== Do not edit below this line =====
+const WEBHOOK_URL = 'https://vsgsagbpfclbuyqrepvf.supabase.co/functions/v1/google-form-intake';
 
-`ReviewPanel.tsx` is tightly coupled to `ScanProcessingJob` (PDF viewer, confidence indicators, job-status branches). Rather than retro-fit it, the Google Forms tab will use the same shadcn primitives (Input/Select/Switch/Tabs) and import the dog-tab sub-section markup style by reading from the same `ExtractedData` shape. No changes to `ReviewPanel` itself.
+function installTrigger() {
+  // Remove any existing triggers on this form so we don't double-post
+  const form = FormApp.getActiveForm();
+  ScriptApp.getProjectTriggers().forEach(t => {
+    if (t.getHandlerFunction() === 'onFormSubmit') ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger('onFormSubmit').forForm(form).onFormSubmit().create();
+  Logger.log('Trigger installed for form: ' + form.getTitle());
+}
 
-## 6. No DB schema changes
+function onFormSubmit(e) {
+  try {
+    const answers = flattenAnswers(e.response);
+    const payload = {
+      source: SOURCE,
+      submittedAt: new Date().toISOString(),
+      answers: answers
+    };
+    const res = UrlFetchApp.fetch(WEBHOOK_URL, {
+      method: 'post',
+      contentType: 'application/json',
+      headers: { 'x-webhook-secret': SECRET },
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true
+    });
+    Logger.log('Status ' + res.getResponseCode() + ': ' + res.getContentText());
+  } catch (err) {
+    Logger.log('Error posting submission: ' + err);
+  }
+}
 
-`google_form_submissions.status` is free-text, so `rejected` is allowed without migration. Existing columns `client_id`, `dog_ids`, `enrollment_ids`, `error_message` are reused.
+// Flatten Google Form responses, expanding grid questions into "Title [Row]" keys
+function flattenAnswers(formResponse) {
+  const out = {};
+  formResponse.getItemResponses().forEach(ir => {
+    const item = ir.getItem();
+    const title = item.getTitle();
+    const type = item.getType();
+    const resp = ir.getResponse();
 
-## 7. Behaviour summary after the change
+    if (type === FormApp.ItemType.GRID || type === FormApp.ItemType.CHECKBOX_GRID) {
+      const rows = item.asGridItem ? item.asGridItem().getRows()
+                                   : item.asCheckboxGridItem().getRows();
+      (Array.isArray(resp) ? resp : []).forEach((rowAns, i) => {
+        if (rowAns) out[title + ' [' + rows[i] + ']'] = rowAns;
+      });
+    } else {
+      out[title] = resp;
+    }
+  });
+  return out;
+}
+```
 
-- Shannon's form posts → row in queue with `status='received'`. Nothing else happens automatically.
-- Admin opens Google Forms tab → sees the row, clicks it, reviews/edits pre-filled fields, clicks Approve.
-- Approve runs the **same** save path intake-scans uses, so handlers/dogs/enrollments are created consistently and show up in the Handlers list immediately.
-- Existing `ingested` rows from prior auto-ingest behaviour stay untouched.
+## 3. Delivery
+
+- Doc lives in the repo so we can update it as Shannon's form evolves
+- I'll paste the same content in chat for you to forward to Shannon (with the real secret swapped in)
+- One form per branch = one copy of the script with a different `SOURCE` value
+
+No code changes to the app itself — the ingest function, queue, and review tab are already live.
