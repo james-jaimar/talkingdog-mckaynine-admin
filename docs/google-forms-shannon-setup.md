@@ -122,6 +122,7 @@ function onFormSubmit(e) {
 }
 
 // Flatten Google Form responses, expanding grid questions into "Title [Row]" keys
+// and converting FILE_UPLOAD answers into clickable Google Drive URLs.
 function flattenAnswers(formResponse) {
   const out = {};
   formResponse.getItemResponses().forEach(ir => {
@@ -137,6 +138,13 @@ function flattenAnswers(formResponse) {
       (Array.isArray(resp) ? resp : []).forEach((rowAns, i) => {
         if (rowAns) out[title + ' [' + rows[i] + ']'] = rowAns;
       });
+    } else if (type === FormApp.ItemType.FILE_UPLOAD) {
+      // Google returns file IDs; convert to URLs in Shannon's Drive so admins
+      // can click straight through (they already have share access).
+      const ids = Array.isArray(resp) ? resp : [resp];
+      out[title] = ids
+        .filter(Boolean)
+        .map(id => 'https://drive.google.com/file/d/' + id + '/view');
     } else {
       out[title] = resp;
     }
@@ -144,6 +152,22 @@ function flattenAnswers(formResponse) {
   return out;
 }
 ```
+
+---
+
+## Part H — File uploads (vaccination certs, etc.)
+
+If your form includes a **File upload** question, Google stores every uploaded file in a folder in your Drive automatically. The script above turns those uploads into clickable Drive links inside each submission so the McKaynine admin can open them straight from the review queue.
+
+**One-time setup:**
+
+1. In your form, add a **File upload** question (e.g. "Upload vaccination certificate"). Google will warn you that respondents must sign in to a Google account — that's expected.
+2. After your first test submission, find the auto-created folder in your Drive (named after the form, e.g. `<Form name> (File responses)`).
+3. **Share that folder with Ady** (and anyone else who needs to view the uploads). Give them at least **Viewer** access. Do this once per form.
+
+**That's it.** Future submissions will appear in the admin app with a "Drive attachments" panel listing each uploaded file. Clicking a link opens it in Drive using the admin's own Google sign-in.
+
+> Note: Google Forms requires respondents to be signed into Google to upload files. That's a Google limitation, not something we can change on our side.
 
 ---
 
