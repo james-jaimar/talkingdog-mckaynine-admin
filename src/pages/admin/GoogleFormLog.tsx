@@ -167,9 +167,25 @@ export default function GoogleFormLog() {
                 <div><strong>Received:</strong> {format(new Date(selected.received_at), "PPpp")}</div>
                 <div><strong>Source:</strong> {selected.source}</div>
                 <div><strong>Status:</strong> {selected.status}</div>
-                {selected.error_message && (
-                  <div className="text-red-600"><strong>Error:</strong> {selected.error_message}</div>
-                )}
+                {(() => {
+                  const urls = extractDriveUrls(selected.raw_payload);
+                  if (urls.length === 0) return null;
+                  return (
+                    <div>
+                      <strong>Drive attachments ({urls.length}):</strong>
+                      <ul className="mt-1 space-y-1">
+                        {urls.map((u) => (
+                          <li key={u} className="truncate">
+                            <a
+                              href={u} target="_blank" rel="noopener noreferrer"
+                              className="text-primary underline text-xs"
+                            >{u}</a>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  );
+                })()}
                 <div>
                   <strong>Raw payload:</strong>
                   <pre className="mt-2 p-3 bg-muted rounded text-xs overflow-x-auto">
