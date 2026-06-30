@@ -167,6 +167,9 @@ export default function GoogleFormLog() {
                 <div><strong>Received:</strong> {format(new Date(selected.received_at), "PPpp")}</div>
                 <div><strong>Source:</strong> {selected.source}</div>
                 <div><strong>Status:</strong> {selected.status}</div>
+                {selected.error_message && (
+                  <div className="text-red-600"><strong>Error:</strong> {selected.error_message}</div>
+                )}
                 {(() => {
                   const urls = extractDriveUrls(selected.raw_payload);
                   if (urls.length === 0) return null;
