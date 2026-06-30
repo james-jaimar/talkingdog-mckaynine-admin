@@ -17,6 +17,24 @@ const PayloadSchema = z.object({
   ),
 });
 
+// Extract any Google Drive URLs (or bare file IDs) so we can surface them
+// to admins as clickable links in the review UI.
+const DRIVE_URL_REGEX = /https?:\/\/(?:drive|docs)\.google\.com\/[^\s"'<>)]+/gi;
+const FILE_ID_REGEX = /^[a-zA-Z0-9_-]{20,}$/;
+function collectDriveUrls(value: unknown, out: Set<string>): void {
+  if (value == null) return;
+  if (typeof value === "string") {
+    const m = value.match(DRIVE_URL_REGEX);
+    if (m) m.forEach((u) => out.add(u));
+    else if (FILE_ID_REGEX.test(value.trim()))
+      out.add(`https://drive.google.com/file/d/${value.trim()}/view`);
+    return;
+  }
+  if (Array.isArray(value)) { value.forEach((v) => collectDriveUrls(v, out)); return; }
+  if (typeof value === "object")
+    Object.values(value as Record<string, unknown>).forEach((v) => collectDriveUrls(v, out));
+}
+
 // Light-weight email extractor so the log row has a useful summary column.
 function extractEmail(answers: Record<string, unknown>): string | null {
   for (const [k, v] of Object.entries(answers)) {
@@ -56,13 +74,20 @@ serve(async (req) => {
 
   const email = extractEmail(payload.answers);
 
+  // Collect Drive URLs (vaccination certs etc.) into the stored payload
+  // so the admin UI can show them as clickable links.
+  const driveUrlSet = new Set<string>();
+  collectDriveUrls(payload.answers, driveUrlSet);
+  const driveUrls = Array.from(driveUrlSet);
+  const enrichedPayload = { ...payload, driveUrls };
+
   const { data: log, error } = await supabase
     .from("google_form_submissions")
     .insert({
       source: payload.source,
       submitted_at: payload.submittedAt ?? null,
       email,
-      raw_payload: payload,
+      raw_payload: enrichedPayload,
       status: "received",
     })
     .select("id")
