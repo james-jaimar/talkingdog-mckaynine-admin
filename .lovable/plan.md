@@ -1,109 +1,39 @@
-# Shannon's Google Forms setup pack
+## Goal
 
-Deliver a single self-contained guide Shannon can follow end-to-end, plus the exact Apps Script she pastes into her form.
+When Shannon's Google Form includes file-upload questions (e.g. vaccination certs), Google stores the files in her Drive and the form response contains a Drive URL per file. Since Ady already has share access to Shannon's Drive folder, we just need to **capture those URLs in the payload, store them, and show them as clickable links** in the Google Forms review tab. No download, no re-upload — Ady clicks through to Drive.
 
-## 1. New file: `docs/google-forms-shannon-setup.md`
+## Changes
 
-A plain-English, step-by-step doc with:
-
-### Part A — What you'll need
-- Edit access to the Google Form (one form per branch — e.g. Delta, Randburg)
-- The webhook URL (pre-filled): `https://vsgsagbpfclbuyqrepvf.supabase.co/functions/v1/google-form-intake`
-- The webhook secret (provided privately, not in the doc): `Trinityhall20`
-- The `SOURCE` value for that form — `delta`, `randburg`, etc. (must match a branch name in our system, lowercase)
-
-### Part B — Open the script editor
-1. Open the Google Form → click the three-dot menu (⋮) top-right → **Script editor**
-2. Apps Script opens in a new tab with an empty `Code.gs`
-
-### Part C — Paste the script
-Replace everything in `Code.gs` with the script in section 2 below. Update only the two CONFIG lines at the top (`SOURCE` and `SECRET`).
-
-### Part D — Save & authorise
-1. Click the 💾 **Save** icon (name the project "McKaynine Intake")
-2. From the function dropdown choose `installTrigger`, click **Run**
-3. Google will prompt for permissions — click **Review permissions** → choose her Google account → **Advanced** → **Go to McKaynine Intake (unsafe)** → **Allow**
-   - This is normal for any custom script; it's only granting the form permission to call our webhook
-4. She should see "Trigger installed" in the execution log
-
-### Part E — Test
-1. Fill in the live form herself with a test submission
-2. In the Lovable admin → **Settings → Google Forms** tab, the submission appears in the queue within ~5 seconds
-3. We review, edit if needed, click **Approve & save handler** → handler appears in Handlers list
-
-### Part F — Troubleshooting
-- Nothing in the queue → re-run `installTrigger`, check `View → Executions` for errors
-- "Unauthorized" in execution log → `SECRET` doesn't match — re-check spelling/case
-- Submission lands but branch is wrong → `SOURCE` value doesn't match a branch name in our system
-
-## 2. The exact Apps Script (included in the doc, in a code block)
-
-```javascript
-// ===== CONFIG — change these two lines only =====
-const SOURCE = 'delta';                 // branch name, lowercase: 'delta' | 'randburg' | ...
-const SECRET = 'PASTE_SECRET_HERE';     // provided privately by James
-
-// ===== Do not edit below this line =====
-const WEBHOOK_URL = 'https://vsgsagbpfclbuyqrepvf.supabase.co/functions/v1/google-form-intake';
-
-function installTrigger() {
-  // Remove any existing triggers on this form so we don't double-post
-  const form = FormApp.getActiveForm();
-  ScriptApp.getProjectTriggers().forEach(t => {
-    if (t.getHandlerFunction() === 'onFormSubmit') ScriptApp.deleteTrigger(t);
-  });
-  ScriptApp.newTrigger('onFormSubmit').forForm(form).onFormSubmit().create();
-  Logger.log('Trigger installed for form: ' + form.getTitle());
-}
-
-function onFormSubmit(e) {
-  try {
-    const answers = flattenAnswers(e.response);
-    const payload = {
-      source: SOURCE,
-      submittedAt: new Date().toISOString(),
-      answers: answers
-    };
-    const res = UrlFetchApp.fetch(WEBHOOK_URL, {
-      method: 'post',
-      contentType: 'application/json',
-      headers: { 'x-webhook-secret': SECRET },
-      payload: JSON.stringify(payload),
-      muteHttpExceptions: true
-    });
-    Logger.log('Status ' + res.getResponseCode() + ': ' + res.getContentText());
-  } catch (err) {
-    Logger.log('Error posting submission: ' + err);
-  }
-}
-
-// Flatten Google Form responses, expanding grid questions into "Title [Row]" keys
-function flattenAnswers(formResponse) {
-  const out = {};
-  formResponse.getItemResponses().forEach(ir => {
-    const item = ir.getItem();
-    const title = item.getTitle();
-    const type = item.getType();
-    const resp = ir.getResponse();
-
-    if (type === FormApp.ItemType.GRID || type === FormApp.ItemType.CHECKBOX_GRID) {
-      const rows = item.asGridItem ? item.asGridItem().getRows()
-                                   : item.asCheckboxGridItem().getRows();
-      (Array.isArray(resp) ? resp : []).forEach((rowAns, i) => {
-        if (rowAns) out[title + ' [' + rows[i] + ']'] = rowAns;
-      });
-    } else {
-      out[title] = resp;
-    }
-  });
-  return out;
-}
+### 1. Apps Script (Shannon's side) — `docs/google-forms-shannon-setup.md`
+Update the script snippet so file-upload answers are serialised as Drive URLs (Forms returns file IDs by default). For each `FILE_UPLOAD` item response, emit either a single URL or an array of URLs:
 ```
+https://drive.google.com/file/d/{fileId}/view
+```
+Stored under the question title key in `answers`, same shape as other answers — so no schema change is needed.
 
-## 3. Delivery
+### 2. Edge function — `supabase/functions/google-form-intake/index.ts`
+No structural change. Drive URLs flow through into `raw_payload.answers` as-is. Optionally add a small helper that scans all answer values and extracts any `drive.google.com` URLs into a top-level `attachments: string[]` on the stored row for easy display (purely additive, no DB migration if we put it inside `raw_payload`; if we want a dedicated column, see "Technical" below).
 
-- Doc lives in the repo so we can update it as Shannon's form evolves
-- I'll paste the same content in chat for you to forward to Shannon (with the real secret swapped in)
-- One form per branch = one copy of the script with a different `SOURCE` value
+### 3. Mapper — `src/lib/google-form/toExtractedData.ts`
+Add aliases for the upload questions (e.g. "vaccination certificate", "proof of vaccination", "upload") and collect any Drive URLs found into `notes_for_review` so they surface in the review UI even before any custom rendering. Keeps existing handler-creation pipeline unchanged.
 
-No code changes to the app itself — the ingest function, queue, and review tab are already live.
+### 4. Review tab — `src/components/google-forms/GoogleFormsReviewTab.tsx` and `src/pages/admin/GoogleFormLog.tsx`
+- In the submission detail dialog (`GoogleFormLog`), render any `drive.google.com` URLs found in `raw_payload` as a dedicated **"Drive attachments"** section with clickable links (`target="_blank" rel="noopener"`).
+- In `GoogleFormsReviewTab`, show the same list above the review panel so the admin can open the certs in Drive while reviewing, then approve into a handler.
+
+### 5. Setup guide — `docs/google-forms-shannon-setup.md`
+Add a short Part covering:
+- How to add a "File upload" question to the form (requires respondents to be signed in to Google — note for Shannon).
+- That the destination Drive folder must already be shared with Ady (which it is).
+- Confirm the script now forwards the Drive URLs automatically.
+
+## Technical notes
+
+- We do **not** store the files in Supabase, do **not** call the Drive API, and do **not** need the Google Drive connector. Auth is handled by Ady's existing share access in her browser.
+- Storing URLs only inside `raw_payload` avoids any DB migration. If you'd prefer a dedicated `attachment_urls text[]` column on `google_form_submissions` for indexing/filtering, that's a one-line migration — say the word and I'll add it.
+- Limitation reminder: Google Forms file-upload questions require respondents to sign in to a Google account. That's Shannon's call to accept on her form; nothing we can change.
+
+## Out of scope
+
+- Downloading/mirroring files into Supabase storage (Pattern 2 from the earlier discussion).
+- Any automated processing of the certs.

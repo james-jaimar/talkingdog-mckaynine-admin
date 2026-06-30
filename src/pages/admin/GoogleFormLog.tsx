@@ -11,6 +11,7 @@ import { format } from "date-fns";
 import { RefreshCw, Eye, RotateCw } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
+import { extractDriveUrls } from "@/lib/google-form/extractDriveUrls";
 
 type Submission = {
   id: string;
@@ -169,6 +170,25 @@ export default function GoogleFormLog() {
                 {selected.error_message && (
                   <div className="text-red-600"><strong>Error:</strong> {selected.error_message}</div>
                 )}
+                {(() => {
+                  const urls = extractDriveUrls(selected.raw_payload);
+                  if (urls.length === 0) return null;
+                  return (
+                    <div>
+                      <strong>Drive attachments ({urls.length}):</strong>
+                      <ul className="mt-1 space-y-1">
+                        {urls.map((u) => (
+                          <li key={u} className="truncate">
+                            <a
+                              href={u} target="_blank" rel="noopener noreferrer"
+                              className="text-primary underline text-xs"
+                            >{u}</a>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  );
+                })()}
                 <div>
                   <strong>Raw payload:</strong>
                   <pre className="mt-2 p-3 bg-muted rounded text-xs overflow-x-auto">

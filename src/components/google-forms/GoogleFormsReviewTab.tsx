@@ -12,6 +12,7 @@ import { CheckCircle2, RefreshCw } from "lucide-react";
 import { ExtractedData, ScanProcessingJob } from "@/components/intake-scans/types";
 import { ReviewPanel } from "@/components/intake-scans/ReviewPanel";
 import { googleFormPayloadToExtractedData } from "@/lib/google-form/toExtractedData";
+import { extractDriveUrls } from "@/lib/google-form/extractDriveUrls";
 import { saveEnrollmentSubmission } from "@/lib/enrollments/saveEnrollmentSubmission";
 
 type Submission = {
@@ -223,6 +224,27 @@ export function GoogleFormsReviewTab() {
             )}
           </div>
         )}
+        {selected && (() => {
+          const urls = extractDriveUrls(selected.raw_payload);
+          if (urls.length === 0) return null;
+          return (
+            <div className="rounded border bg-amber-500/5 border-amber-500/30 px-3 py-2 text-sm">
+              <p className="font-medium mb-1">
+                Drive attachments ({urls.length}) — opens in Shannon's shared Drive folder
+              </p>
+              <ul className="space-y-0.5">
+                {urls.map((u) => (
+                  <li key={u} className="truncate">
+                    <a
+                      href={u} target="_blank" rel="noopener noreferrer"
+                      className="text-primary underline"
+                    >{u}</a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          );
+        })()}
         <div className="flex-1 min-h-0">
           <ReviewPanel
             job={syntheticJob}
