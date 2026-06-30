@@ -11,6 +11,7 @@ import { format } from "date-fns";
 import { RefreshCw, Eye, RotateCw } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
+import { extractDriveUrls } from "@/lib/google-form/extractDriveUrls";
 
 type Submission = {
   id: string;
