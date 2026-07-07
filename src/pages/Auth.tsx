@@ -65,29 +65,29 @@ export default function Auth() {
         <title>Authentication - McKaynine Training Centre</title>
       </Helmet>
       
-      <main className="flex-grow flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+      <main className="flex-grow flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="max-w-md w-full space-y-8">
           <div className="text-center">
             <div className="flex justify-center mb-4">
               <img 
                 src={logoSrc}
                 alt={logoAlt}
-                className="h-20 w-auto"
+                className="h-20 w-auto drop-shadow-lg"
               />
             </div>
-            <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
+            <h2 className="mt-6 text-3xl font-extrabold text-white drop-shadow-md">
               {logoAlt} Training Centre
             </h2>
-            <p className="mt-2 text-sm text-gray-600">
+            <p className="mt-2 text-sm text-gray-100 drop-shadow">
               Sign in to your account
             </p>
           </div>
           
-          <div className="bg-white shadow rounded-lg p-6">
+          <div className="bg-white/95 backdrop-blur shadow-xl rounded-lg p-6">
             <SignInForm isLoading={authLoading} onSubmit={handleSignIn} />
           </div>
           
-          <div className="text-center text-sm text-gray-500">
+          <div className="text-center text-sm text-gray-100 drop-shadow">
             <p>
               By signing in, you agree to our Terms of Service and Privacy Policy.
             </p>
