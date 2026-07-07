@@ -423,6 +423,7 @@ export function useHandlersData() {
 
   return {
     handlers: currentGroupHandlers,
+    handlersNoGroup: filteredByAction,
     allHandlers: handlers,
     isLoading,
     searchQuery,
