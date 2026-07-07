@@ -10,6 +10,9 @@ import { StickyNote } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { HandlerNotesSheet } from "./HandlerNotesSheet";
 import { HandlerStatusCell } from "./HandlerStatusCell";
+import { highlightMatch } from "../utils/highlightMatch";
+
+
 
 interface HandlerTableRowProps {
   handler: {
