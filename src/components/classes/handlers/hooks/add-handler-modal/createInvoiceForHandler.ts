@@ -185,6 +185,93 @@ export const createInvoiceForHandler = async ({
 
     console.log("CREATE-INVOICE: About to create invoice with data:", invoiceData);
 
+    // ---- MERGE-INTO-DRAFT: if handler already has a draft invoice for this branch,
+    // append the new items instead of creating a new invoice.
+    try {
+      const branchForMatch = classBranchId || currentBranch?.id || null;
+      const draftQuery = supabase
+        .from('invoices')
+        .select('id, invoice_number, subtotal, notes')
+        .eq('client_id', handlerId)
+        .eq('status', 'draft');
+      const { data: existingDrafts, error: draftErr } = branchForMatch
+        ? await draftQuery.eq('branch_id', branchForMatch).order('created_at', { ascending: false }).limit(1)
+        : await draftQuery.is('branch_id', null).order('created_at', { ascending: false }).limit(1);
+
+      if (draftErr) {
+        console.warn("CREATE-INVOICE: draft lookup failed, will create new invoice:", draftErr);
+      } else if (existingDrafts && existingDrafts.length > 0) {
+        const draft = existingDrafts[0];
+        console.log("CREATE-INVOICE: Found existing draft, appending items:", draft.invoice_number);
+
+        const newItemsRows = items.map((item) => ({
+          invoice_id: draft.id,
+          description: item.description,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          amount: item.quantity * item.unit_price,
+          booking_id: item.booking_id || null,
+          item_type: item.item_type || 'course_fee',
+          io_inventory_code: item.io_inventory_code || null,
+        }));
+
+        const { data: insertedItems, error: itemsError } = await supabase
+          .from('invoice_items')
+          .insert(newItemsRows)
+          .select();
+
+        if (itemsError) {
+          console.error("CREATE-INVOICE: Failed to append items to draft, falling back to new invoice:", itemsError);
+        } else {
+          const newSubtotal = Number(draft.subtotal || 0) + subtotal;
+          const appendedNote = dogIds.length === 2
+            ? `Added ${className} for ${dogNames.join(" and ")} (multi-dog discount).`
+            : `Added ${className} for ${dogNames[0]}.`;
+          const combinedNotes = draft.notes ? `${draft.notes}\n${appendedNote}` : appendedNote;
+
+          const { error: updateErr } = await supabase
+            .from('invoices')
+            .update({ subtotal: newSubtotal, notes: combinedNotes })
+            .eq('id', draft.id);
+
+          if (updateErr) {
+            console.error("CREATE-INVOICE: Failed to update draft totals:", updateErr);
+            // Best-effort: still allocate starter kit if applicable
+          }
+
+          // Allocate starter kit if enrollment fee item was appended
+          if (enrollmentFee && enrollmentFee > 0 && insertedItems) {
+            const enrollmentFeeItem = insertedItems.find(
+              (item: any) => item.item_type === 'enrollment_fee'
+            );
+            if (enrollmentFeeItem?.id) {
+              const branchId = classBranchId || currentBranch?.id;
+              const dogName = dogNames[0] || 'Unknown';
+              if (branchId) {
+                const allocationResult = await allocateStarterKit(
+                  enrollmentFeeItem.id,
+                  handlerId,
+                  dogName,
+                  branchId
+                );
+                if (allocationResult.success && allocationResult.remainingStock < 5) {
+                  toast.warning(`Low stock warning: Only ${allocationResult.remainingStock} starter kits remaining`);
+                } else if (!allocationResult.success) {
+                  toast.warning("Could not allocate starter kit - check stock levels");
+                }
+              }
+            }
+          }
+
+          toast.success(`Added to existing draft invoice ${draft.invoice_number}`);
+          return true;
+        }
+      }
+    } catch (mergeErr) {
+      console.warn("CREATE-INVOICE: merge-into-draft check failed, creating new invoice:", mergeErr);
+    }
+
+
     try {
       // Use the mutation function to create the invoice through our centralized utility
       const result = await createInvoiceMutation.mutateAsync(invoiceData);
