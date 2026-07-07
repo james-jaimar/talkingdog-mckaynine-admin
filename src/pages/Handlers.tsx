@@ -21,6 +21,7 @@ const VIEW_STORAGE_KEY = "handlers-view-mode";
 export default function Handlers() {
   const { 
     handlers, 
+    handlersNoGroup,
     isLoading, 
     searchQuery, 
     setSearchQuery, 
