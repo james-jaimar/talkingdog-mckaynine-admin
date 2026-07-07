@@ -1,17 +1,22 @@
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus } from "lucide-react";
+import { Plus, Rows, List } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { AddHandlerModal } from "@/components/handlers/AddHandlerModal";
 import { ImportHandlersModal } from "@/components/handlers/import/ImportHandlersModal";
 import { BulkCreateAccountsDialog } from "@/components/handlers/BulkCreateAccountsDialog";
 import { HandlerSearchBar } from "@/components/handlers/HandlerSearchBar";
 import { HandlerAlphabetPagination } from "@/components/handlers/HandlerAlphabetPagination";
 import { HandlerTable } from "@/components/handlers/HandlerTable";
+import { HandlerCompactList } from "@/components/handlers/HandlerCompactList";
 import { HandlerFilters, HandlerFilter } from "@/components/handlers/HandlerFilters";
 import { useHandlersData } from "@/components/handlers/hooks/useHandlersData";
 import { Helmet } from "react-helmet";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+
+type ViewMode = "matrix" | "list";
+const VIEW_STORAGE_KEY = "handlers-view-mode";
 
 export default function Handlers() {
   const { 
@@ -28,7 +33,15 @@ export default function Handlers() {
     refetch
   } = useHandlersData();
 
-  // Fetch data once on mount - no interval refetching
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    if (typeof window === "undefined") return "matrix";
+    return (localStorage.getItem(VIEW_STORAGE_KEY) as ViewMode) || "matrix";
+  });
+
+  useEffect(() => {
+    localStorage.setItem(VIEW_STORAGE_KEY, viewMode);
+  }, [viewMode]);
+
   useEffect(() => {
     refetch();
   }, [refetch]);
@@ -54,23 +67,35 @@ export default function Handlers() {
         </div>
         
         <div className="grid gap-6 grid-cols-1 w-full">
-          {/* Search and filter */}
           <div className="flex flex-col gap-4">
             <HandlerSearchBar 
               searchQuery={searchQuery} 
               onSearchChange={setSearchQuery} 
             />
             
-            {/* Action Filters */}
-            <HandlerFilters
-              currentFilter={actionFilter as HandlerFilter}
-              onFilterChange={(filter) => setActionFilter(filter)}
-              counts={filterCounts}
-            />
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <HandlerFilters
+                currentFilter={actionFilter as HandlerFilter}
+                onFilterChange={(filter) => setActionFilter(filter)}
+                counts={filterCounts}
+              />
+              <ToggleGroup
+                type="single"
+                value={viewMode}
+                onValueChange={(v) => v && setViewMode(v as ViewMode)}
+                className="border rounded-md"
+              >
+                <ToggleGroupItem value="matrix" aria-label="Matrix view" title="Matrix view">
+                  <Rows className="h-4 w-4 mr-1" /> Matrix
+                </ToggleGroupItem>
+                <ToggleGroupItem value="list" aria-label="List view" title="List view">
+                  <List className="h-4 w-4 mr-1" /> List
+                </ToggleGroupItem>
+              </ToggleGroup>
+            </div>
           </div>
           
-          {/* Alphabet pagination - only show when filter is 'all' and no search */}
-          {actionFilter === 'all' && !searchQuery && (
+          {viewMode === "matrix" && actionFilter === 'all' && !searchQuery && (
             <div className="overflow-x-auto">
               <HandlerAlphabetPagination 
                 currentGroup={currentGroup} 
@@ -82,15 +107,16 @@ export default function Handlers() {
             </div>
           )}
           
-          {/* Handlers list */}
           <Card className="border border-gray-200 shadow-sm w-full">
             <CardHeader className="bg-gray-50 border-b border-gray-200 flex flex-row items-center justify-between">
               <CardTitle>
-                {actionFilter !== 'all' 
-                  ? `Handlers with "${actionFilter.replace('_', ' ')}" status`
-                  : searchQuery 
-                    ? `Search: "${searchQuery}"` 
-                    : `All Handlers (${currentGroup})`
+                {viewMode === "list"
+                  ? `Handlers List${searchQuery ? ` - Search: "${searchQuery}"` : ''}`
+                  : actionFilter !== 'all' 
+                    ? `Handlers with "${actionFilter.replace('_', ' ')}" status`
+                    : searchQuery 
+                      ? `Search: "${searchQuery}"` 
+                      : `All Handlers (${currentGroup})`
                 }
                 {handlers.length > 0 && ` - ${handlers.length} found`}
               </CardTitle>
@@ -104,14 +130,22 @@ export default function Handlers() {
                 <span>Add New</span>
               </Button>
             </CardHeader>
-            {/* Important: make the table area the scroll container so sticky headers work reliably */}
             <CardContent className="p-0 max-h-[calc(100vh-260px)] overflow-auto">
-              <HandlerTable 
-                handlers={handlers} 
-                searchQuery={searchQuery}
-                itemsPerPage={itemsPerPage}
-                loading={isLoading}
-              />
+              {viewMode === "list" ? (
+                <HandlerCompactList
+                  handlers={handlers}
+                  searchQuery={searchQuery}
+                  itemsPerPage={25}
+                  loading={isLoading}
+                />
+              ) : (
+                <HandlerTable 
+                  handlers={handlers} 
+                  searchQuery={searchQuery}
+                  itemsPerPage={itemsPerPage}
+                  loading={isLoading}
+                />
+              )}
             </CardContent>
           </Card>
         </div>
