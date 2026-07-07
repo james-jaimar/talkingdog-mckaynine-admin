@@ -56,7 +56,11 @@ export default function Auth() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div
+      className="min-h-screen flex flex-col relative bg-cover bg-center"
+      style={{ backgroundImage: `url(${authBg.url})` }}
+    >
+      <div className="absolute inset-0 bg-black/40" aria-hidden="true" />
       <Helmet>
         <title>Authentication - McKaynine Training Centre</title>
       </Helmet>
