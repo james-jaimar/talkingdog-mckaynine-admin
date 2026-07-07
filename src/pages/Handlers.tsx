@@ -119,7 +119,7 @@ export default function Handlers() {
                       ? `Search: "${searchQuery}"` 
                       : `All Handlers (${currentGroup})`
                 }
-                {handlers.length > 0 && ` - ${handlers.length} found`}
+                {(viewMode === "list" ? handlersNoGroup.length : handlers.length) > 0 && ` - ${viewMode === "list" ? handlersNoGroup.length : handlers.length} found`}
               </CardTitle>
               <Button 
                 variant="outline" 
@@ -134,7 +134,7 @@ export default function Handlers() {
             <CardContent className="p-0 max-h-[calc(100vh-260px)] overflow-auto">
               {viewMode === "list" ? (
                 <HandlerCompactList
-                  handlers={handlers}
+                  handlers={handlersNoGroup}
                   searchQuery={searchQuery}
                   itemsPerPage={25}
                   loading={isLoading}
