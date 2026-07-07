@@ -68,7 +68,7 @@ export function HandlerTableRow({ handler, index = 0, searchQuery = "" }: Handle
               to={`/handlers/${handler.id}`}
               className="hover:text-blue-600"
             >
-              {fullName}
+              {highlightMatch(fullName, searchQuery)}
             </Link>
             <Button
               variant="ghost"
