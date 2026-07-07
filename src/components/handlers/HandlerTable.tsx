@@ -53,6 +53,7 @@ export function HandlerTable({
                 key={handler.id} 
                 handler={handler} 
                 index={index}
+                searchQuery={searchQuery}
               />
             ))
           )}

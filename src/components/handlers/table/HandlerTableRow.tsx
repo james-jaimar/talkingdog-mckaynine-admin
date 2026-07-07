@@ -10,6 +10,9 @@ import { StickyNote } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { HandlerNotesSheet } from "./HandlerNotesSheet";
 import { HandlerStatusCell } from "./HandlerStatusCell";
+import { highlightMatch } from "../utils/highlightMatch";
+
+
 
 interface HandlerTableRowProps {
   handler: {
@@ -39,9 +42,10 @@ interface HandlerTableRowProps {
     notes?: string;
   };
   index?: number;
+  searchQuery?: string;
 }
 
-export function HandlerTableRow({ handler, index = 0 }: HandlerTableRowProps) {
+export function HandlerTableRow({ handler, index = 0, searchQuery = "" }: HandlerTableRowProps) {
   const [showNotesSheet, setShowNotesSheet] = useState(false);
   const { classTypeNames } = useClassTypes(true);
   const fullName = `${handler.first_name} ${handler.last_name || ''}`.trim();
@@ -64,7 +68,7 @@ export function HandlerTableRow({ handler, index = 0 }: HandlerTableRowProps) {
               to={`/handlers/${handler.id}`}
               className="hover:text-blue-600"
             >
-              {fullName}
+              {highlightMatch(fullName, searchQuery)}
             </Link>
             <Button
               variant="ghost"

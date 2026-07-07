@@ -1,39 +1,52 @@
 ## Goal
 
-When Shannon's Google Form includes file-upload questions (e.g. vaccination certs), Google stores the files in her Drive and the form response contains a Drive URL per file. Since Ady already has share access to Shannon's Drive folder, we just need to **capture those URLs in the payload, store them, and show them as clickable links** in the Google Forms review tab. No download, no re-upload — Ady clicks through to Drive.
+Make it obvious when a search matches on **dog names** by giving the Handlers page a second, simpler view that puts handler + dogs front and centre — without the class matrix getting in the way.
 
-## Changes
+## What changes
 
-### 1. Apps Script (Shannon's side) — `docs/google-forms-shannon-setup.md`
-Update the script snippet so file-upload answers are serialised as Drive URLs (Forms returns file IDs by default). For each `FILE_UPLOAD` item response, emit either a single URL or an array of URLs:
+### 1. View toggle on `/handlers`
+- Add a small `Matrix | List` toggle beside the search bar (in `HandlerSearchBar` or in `Handlers.tsx` header area).
+- Default = **Matrix** (current `HandlerTable`) — no change to existing admin workflow.
+- Selection persists in `localStorage` (`handlers-view-mode`) so Ady's choice sticks.
+
+### 2. New Compact List view
+New component `HandlerCompactList.tsx` rendered in place of `HandlerTable` when list mode is active.
+
+Each row shows (one line, wraps on mobile):
+
+```text
+[Avatar]  Jane Smith                    jane@x.com · 082 123 4567    [Notes] [Actions]
+          Dogs: Rex (Labrador) · Bella (Poodle) · Max (Boxer)
 ```
-https://drive.google.com/file/d/{fileId}/view
-```
-Stored under the question title key in `answers`, same shape as other answers — so no schema change is needed.
 
-### 2. Edge function — `supabase/functions/google-form-intake/index.ts`
-No structural change. Drive URLs flow through into `raw_payload.answers` as-is. Optionally add a small helper that scans all answer values and extracts any `drive.google.com` URLs into a top-level `attachments: string[]` on the stored row for easy display (purely additive, no DB migration if we put it inside `raw_payload`; if we want a dedicated column, see "Technical" below).
+- Handler name links to `/handlers/:id` (same as matrix).
+- Dogs rendered as chips/inline text, comma or dot-separated.
+- Keep the notes sticky-note icon and `ActionMenu` on the right.
+- Reuse the same `handlers` array from `useHandlersData` — no new query, no business-logic changes.
+- Pagination: reuse `TablePagination` with same `itemsPerPage`.
 
-### 3. Mapper — `src/lib/google-form/toExtractedData.ts`
-Add aliases for the upload questions (e.g. "vaccination certificate", "proof of vaccination", "upload") and collect any Drive URLs found into `notes_for_review` so they surface in the review UI even before any custom rendering. Keeps existing handler-creation pipeline unchanged.
+### 3. Search-match highlighting
+- When `searchQuery` is non-empty, wrap the matching substring in **both** handler name and dog name with `<mark class="bg-yellow-200 rounded px-0.5">`.
+- Case-insensitive, applied via a small helper `highlightMatch(text, query)`.
+- Applies in **both** views (compact list and existing matrix name/dog cells) so a dog hit is visible in either.
 
-### 4. Review tab — `src/components/google-forms/GoogleFormsReviewTab.tsx` and `src/pages/admin/GoogleFormLog.tsx`
-- In the submission detail dialog (`GoogleFormLog`), render any `drive.google.com` URLs found in `raw_payload` as a dedicated **"Drive attachments"** section with clickable links (`target="_blank" rel="noopener"`).
-- In `GoogleFormsReviewTab`, show the same list above the review panel so the admin can open the certs in Drive while reviewing, then approve into a handler.
-
-### 5. Setup guide — `docs/google-forms-shannon-setup.md`
-Add a short Part covering:
-- How to add a "File upload" question to the form (requires respondents to be signed in to Google — note for Shannon).
-- That the destination Drive folder must already be shared with Ady (which it is).
-- Confirm the script now forwards the Drive URLs automatically.
-
-## Technical notes
-
-- We do **not** store the files in Supabase, do **not** call the Drive API, and do **not** need the Google Drive connector. Auth is handled by Ady's existing share access in her browser.
-- Storing URLs only inside `raw_payload` avoids any DB migration. If you'd prefer a dedicated `attachment_urls text[]` column on `google_form_submissions` for indexing/filtering, that's a one-line migration — say the word and I'll add it.
-- Limitation reminder: Google Forms file-upload questions require respondents to sign in to a Google account. That's Shannon's call to accept on her form; nothing we can change.
+### 4. Card header label
+- Update the `Handlers` page card title so when list view is active it reads `Handlers List` instead of `All Handlers (A-C)` etc., to reinforce the mode.
 
 ## Out of scope
 
-- Downloading/mirroring files into Supabase storage (Pattern 2 from the earlier discussion).
-- Any automated processing of the certs.
+- No changes to filters, alphabet pagination, data fetching, or class-status logic.
+- No dog-centric (one-row-per-dog) view.
+- No changes to mobile handler card in class-handlers.
+
+## Technical notes
+
+- Files touched:
+  - `src/pages/Handlers.tsx` — add view-mode state + toggle + conditional render.
+  - `src/components/handlers/HandlerCompactList.tsx` — **new**.
+  - `src/components/handlers/HandlerCompactRow.tsx` — **new** (row for the list).
+  - `src/components/handlers/utils/highlightMatch.tsx` — **new** small helper.
+  - `src/components/handlers/table/HandlerTableRow.tsx` — apply `highlightMatch` to handler name; pass `searchQuery` through from `HandlerTable` → row.
+  - `src/components/handlers/HandlerTable.tsx` — thread `searchQuery` to row.
+- Toggle uses shadcn `ToggleGroup` (`Rows` / `List` icons from lucide).
+- No new DB queries, no schema changes, no edge functions.
