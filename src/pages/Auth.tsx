@@ -58,7 +58,7 @@ export default function Auth() {
   return (
     <div
       className="min-h-screen flex flex-col relative bg-cover bg-center"
-      style={{ backgroundImage: `url(${authBg.url})` }}
+      style={{ backgroundImage: `url(${authBg})` }}
     >
       <div className="absolute inset-0 bg-black/40" aria-hidden="true" />
       <Helmet>
