@@ -68,15 +68,20 @@ export default function Auth() {
       <main className="flex-grow flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="max-w-md w-full space-y-8">
           <div className="text-center">
-            <div className="flex justify-center mb-4">
-              <img 
-                src={logoSrc}
-                alt={logoAlt}
+            <div className="flex justify-center items-center gap-4 mb-4 flex-wrap">
+              <img
+                src="/lovable-uploads/mckaynine_delta_long_2025.png"
+                alt="McKaynine Delta"
+                className="h-20 w-auto drop-shadow-lg"
+              />
+              <img
+                src="/lovable-uploads/mckaynine_randburg_long_2025.png"
+                alt="McKaynine Randburg"
                 className="h-20 w-auto drop-shadow-lg"
               />
             </div>
             <h2 className="mt-6 text-3xl font-extrabold text-white drop-shadow-md">
-              {logoAlt} Training Centre
+              McKaynine Training Centre
             </h2>
             <p className="mt-2 text-sm text-gray-100 drop-shadow">
               Sign in to your account
