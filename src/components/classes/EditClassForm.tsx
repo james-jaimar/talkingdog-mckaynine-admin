@@ -22,9 +22,18 @@ import { useClassForm } from "./hooks/useClassForm";
 import { Class } from "./types/class";
 import { FeeFields } from "./form-sections/FeeFields";
 import { useClassTypes } from "@/hooks/useClassTypes";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ClassWithSchedules } from "./hooks/types/class-with-schedules";
 import { format, addMonths } from "date-fns";
+import { computeCascadeDiff, CascadeDiff } from "./hooks/utils/cascade-diff";
+import {
+  previewClassCascade,
+  useCascadeClassEdit,
+  CascadePreview,
+} from "./hooks/utils/useCascadeClassEdit";
+import { CascadeConfirmDialog } from "./CascadeConfirmDialog";
+import { toast } from "@/hooks/use-toast";
+import { ClassFormValues } from "./schemas/classFormSchema";
 
 interface EditClassFormProps {
   // Accept either Class or ClassWithSchedules to make it more flexible
@@ -40,6 +49,65 @@ export function EditClassForm({ classData, currentBranchName, onSuccess, onCance
     onSuccess 
   });
   const { classTypeNames } = useClassTypes();
+  const { runCascade, isRunning } = useCascadeClassEdit();
+
+  const [pendingValues, setPendingValues] = useState<ClassFormValues | null>(null);
+  const [pendingDiff, setPendingDiff] = useState<CascadeDiff | null>(null);
+  const [preview, setPreview] = useState<CascadePreview | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+
+  const handleSubmit = async (values: ClassFormValues) => {
+    const diff = computeCascadeDiff(classData, values);
+    if (!diff.hasAny) {
+      await onSubmit(values);
+      return;
+    }
+    setPendingValues(values);
+    setPendingDiff(diff);
+    setPreview(null);
+    setDialogOpen(true);
+    try {
+      const p = await previewClassCascade(classData.id, diff);
+      setPreview(p);
+    } catch (e) {
+      console.error("preview cascade failed", e);
+      setPreview({
+        draftDescriptionsToUpdate: 0,
+        pendingTrainerPaymentsToRecalc: 0,
+        sentInvoicesUntouched: 0,
+      });
+    }
+  };
+
+  const doSave = async (cascade: boolean) => {
+    if (!pendingValues || !pendingDiff) return;
+    try {
+      await onSubmit(pendingValues);
+      if (cascade) {
+        const res = await runCascade({
+          classId: classData.id,
+          diff: pendingDiff,
+        });
+        toast({
+          title: "Cascade complete",
+          description: `${res.descriptionsUpdated} description(s) updated, ${res.trainerPaymentsRecalculated} trainer payment(s) recalculated${res.errors.length ? ` — ${res.errors.length} error(s)` : ""}`,
+        });
+      }
+    } catch (e) {
+      console.error("save/cascade failed", e);
+      toast({
+        title: "Error",
+        description: (e as Error).message,
+        variant: "destructive",
+      });
+    } finally {
+      setDialogOpen(false);
+      setPendingValues(null);
+      setPendingDiff(null);
+      setPreview(null);
+    }
+  };
+
 
   // Generate month options: "Auto" + next 18 months
   const monthOptions = useMemo(() => {
