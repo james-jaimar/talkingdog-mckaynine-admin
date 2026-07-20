@@ -326,11 +326,24 @@ export function EditClassForm({ classData, currentBranchName, onSuccess, onCance
               Cancel
             </Button>
           )}
-          <Button type="submit" disabled={isSubmitting}>
+          <Button type="submit" disabled={isSubmitting || isRunning}>
             {isSubmitting ? "Saving..." : "Update Class"}
           </Button>
         </div>
       </form>
     </Form>
+    {pendingDiff && (
+      <CascadeConfirmDialog
+        open={dialogOpen}
+        onOpenChange={(v) => { if (!v && !isRunning && !isSubmitting) { setDialogOpen(false); setPendingValues(null); setPendingDiff(null); setPreview(null); } }}
+        diff={pendingDiff}
+        preview={preview}
+        loading={isSubmitting || isRunning}
+        onSaveOnly={() => doSave(false)}
+        onSaveAndCascade={() => doSave(true)}
+      />
+    )}
+    </>
   );
 }
+
