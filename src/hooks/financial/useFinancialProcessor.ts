@@ -157,26 +157,27 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
       const adminValue = Number(classData.admin_fee_value ?? 0);
       const trainerValue = Number(classData.trainer_fee_value ?? 0);
 
-      // Franchise/Commission fee (round per-item to match Franchise Report)
-      if (isFixedAmount(classData.mckaynine_commission_type)) {
-        summary.franchiseFee += roundToCents(commissionValue);
-      } else {
-        summary.franchiseFee += roundToCents(amount * (commissionValue / 100));
-      }
+      // Franchise/Commission fee (round per-item)
+      const itemFranchise = isFixedAmount(classData.mckaynine_commission_type)
+        ? roundToCents(commissionValue)
+        : roundToCents(amount * (commissionValue / 100));
+      summary.franchiseFee += itemFranchise;
 
-      // Admin fee (round per-item for consistency)
-      if (isFixedAmount(classData.admin_fee_type)) {
-        summary.adminFee += roundToCents(adminValue);
-      } else {
-        summary.adminFee += roundToCents(amount * (adminValue / 100));
-      }
+      // Admin fee (round per-item)
+      const itemAdmin = isFixedAmount(classData.admin_fee_type)
+        ? roundToCents(adminValue)
+        : roundToCents(amount * (adminValue / 100));
+      summary.adminFee += itemAdmin;
 
-      // Trainer/Instructor fee (round per-item for consistency)
-      if (isFixedAmount(classData.trainer_fee_type)) {
-        summary.instructorFee += roundToCents(trainerValue);
-      } else {
-        summary.instructorFee += roundToCents(amount * (trainerValue / 100));
-      }
+      // Trainer/Instructor fee (round per-item)
+      const itemTrainer = isFixedAmount(classData.trainer_fee_type)
+        ? roundToCents(trainerValue)
+        : roundToCents(amount * (trainerValue / 100));
+      summary.instructorFee += itemTrainer;
+
+      // Accumulate profit per-item so totals always reconcile (no ±1c drift
+      // from summing rounded fees then subtracting from raw revenue).
+      summary.profit += roundToCents(amount - itemFranchise - itemAdmin - itemTrainer);
     });
 
     // Finalize class summaries
@@ -187,9 +188,7 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
       summary.bookingsCount = bookings?.size || 0;
       summary.invoiceCount = invoices?.size || 0;
       summary.invoiceIds = invoices ? Array.from(invoices) : [];
-      
-      // Calculate profit
-      summary.profit = summary.totalRevenue - summary.franchiseFee - summary.adminFee - summary.instructorFee;
+      // profit is already accumulated per-item above
     });
 
     // Add unallocated bucket if there's any
