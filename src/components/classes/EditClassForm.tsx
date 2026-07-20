@@ -145,8 +145,9 @@ export function EditClassForm({ classData, currentBranchName, onSuccess, onCance
   }, [classData, form, currentBranchName]);
 
   return (
+    <>
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
         <FormField
           control={form.control}
           name="name"
