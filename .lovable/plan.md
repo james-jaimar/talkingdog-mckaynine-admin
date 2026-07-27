@@ -1,29 +1,41 @@
+## Problem
 
-## What actually happened
-You were right — those four handlers (Carina/Lulu, Gael/Rusty, Kamal/Tyson, Dean/Bodhi) are all currently booked into the **15h00 Elementary Obedience** class (schedule `238ee692-7ef6-45b7-abe3-a435d837aeca`, class `794346d8-b14a-4035-b3ea-49ce4eaf6877`). The class was almost certainly created as "16h00", the invoice items were generated at that time (which is why the descriptions still say "16h00 Elementary Obedience"), and then the class time got changed to 15h00 later.
-
-When Ady renamed/rescheduled the class, the item descriptions weren't rewritten. More importantly, at some point the `booking_id` on those four invoice items got cleared (or the original booking was replaced with a new one), so the items no longer point at a booking — which is exactly why the financial report throws them into Unallocated and the handler page shows "Not Invoiced".
+Trainer commissions are being split across trainers for invoices that just happen to have two unrelated classes on them (one handler, two classes, two trainers, no discount). This is a side effect of the recent "merge new enrollments into existing draft invoice" change combined with the current redistribution rule, which fires whenever a single invoice has course-fee items resolving to more than one trainer.
 
 ## Fix
 
-Two data updates on the four `invoice_items`, no code changes:
+Tighten `redistributeMultiTrainerItems` (`src/hooks/trainer-payments/utils/redistributeMultiTrainerItems.ts`) so it only redistributes when **both** are true:
 
-1. Set `booking_id` on each item to the matching handler's booking in the 15h00 EO schedule:
+1. The invoice was created with a multi-dog discount — detected via `invoices.discount_reason` containing `"multi-dog"` (this is the exact literal set in `createInvoiceForHandler.ts`). Fallback: `monetary_discount > 0` **and** `discount_reason` mentions multi-dog. Either signal alone is not enough.
+2. The trainers' items resolve to bookings belonging to the **same handler** (`bookings.client_id` — already the only case we care about, but we assert it explicitly to be safe).
 
-| Invoice | Handler / Dog | invoice_item id | booking_id |
-|---|---|---|---|
-| INV-McD-2607-0007 | Carina Saunders / Lulu | `3ce0470f-ba29-4424-bd7d-e14f12781275` | `8bc2cac2-118c-4175-9b4d-8c974c03f825` |
-| INV-McD-2607-0012 | GAEL GILCHRIST / Rusty | `3e0b58cd-6087-42f2-848c-9726a50c98f9` | `5bb3f3a0-f795-4420-8160-e266c4ee4f10` |
-| INV-McD-2607-0015 | Kamal Patel / Tyson | `0a5908e2-55a7-4296-ac3c-3e9cc1a66458` | `95f43a3f-b146-402d-8bc7-747aa197803b` |
-| INV-McD-2607-0026 | DEAN ORMSBY / Bodhi | `32450f1c-8f77-4d56-83bb-7ff0f3bda651` | `117ac129-cc5f-441f-9887-12af622abfc1` |
+If either condition fails → pass items through unchanged, per-trainer commission on the exact invoiced amount.
 
-2. Update each item's `description` from `16h00 Elementary Obedience training class for X` to `15h00 Elementary Obedience training class for X`, so it matches reality on the invoice PDF too.
+## Implementation
 
-Attaching the `booking_id` will also fire the existing `create_trainer_payment_for_booking` trigger, which creates the trainer_payments row for that booking — so the trainer will get their commission on the R6,720, and the Unallocated row on the Term 3 report drops to zero (for these four).
+1. **Extend the input** to `redistributeMultiTrainerItems` with an `invoicesById` map containing `{ discount_reason, monetary_discount, client_id }` for each `invoice_id` in scope.
+2. **In `useTrainerPaymentData.ts`**, when we fetch `allInvoiceItems`, also fetch the parent invoices (already in scope for other logic — confirm and reuse; otherwise add a lightweight `invoices` select for the distinct invoice ids) and build the map, then pass it into `redistributeMultiTrainerItems`.
+3. **In the function**, before computing `sharePerTrainer`, gate on:
+   ```ts
+   const invoice = invoicesById.get(invoiceId);
+   const hasMultiDogDiscount =
+     !!invoice &&
+     (invoice.monetary_discount ?? 0) > 0 &&
+     /multi-?dog/i.test(invoice.discount_reason ?? "");
+   const sameHandler = /* all bookings for these items share one client_id */;
+   if (!hasMultiDogDiscount || !sameHandler) { result.push(...items); continue; }
+   ```
+4. Keep the existing scale-factor math for the qualifying case — that behavior is correct and matches the original intent.
+5. Update the console log to state which gate passed/failed, so future debugging is easy.
 
-Carina's invoice also has a duplicate "Enrolment Fee" line at R265 with `item_type = 'course_fee'` — that's a separate small data-hygiene issue I'll leave alone unless you want it corrected in the same pass.
+## Verification
 
-## Why the handler page said "Not Invoiced"
-The Payment column reads from `invoice_items.booking_id`, not from the invoice's client_id. With `booking_id = NULL`, the class handler row has no way to find the paid invoice, so it falls back to "Not Invoiced". Once the links are set, those four rows will flip to "Paid" automatically on the next load.
+- Query recent trainer_payments for the affected handler and confirm each trainer's amount matches `calculate_trainer_payment(booking_id)` for their own booking (no averaging).
+- Confirm a known 2-dogs-same-class multi-dog-discount invoice still averages correctly.
+- No schema changes. No edge function changes. No migration.
 
-Approve and I'll run the four updates.
+## Out of scope
+
+- No change to the draft-merge behavior in `createInvoiceForHandler.ts`.
+- No change to the 25% discount rule itself.
+- No backfill; existing `trainer_payments` rows will refresh next time `calculate_trainer_payment` runs for their booking (or we can trigger a manual recompute for the affected handler after the code fix — I'll flag which handler once you point me at them).

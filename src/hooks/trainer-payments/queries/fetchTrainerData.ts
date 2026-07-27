@@ -195,6 +195,7 @@ export async function fetchAllInvoiceItems(bookingIds: string[], branchId?: stri
         monetary_discount,
         discount_type,
         discount_amount,
+        discount_reason,
         branch_id,
         client:client_id (
           branch_id
@@ -232,6 +233,7 @@ export async function fetchAllInvoiceItems(bookingIds: string[], branchId?: stri
       monetary_discount: item.invoices.monetary_discount,
       discount_type: item.invoices.discount_type,
       discount_amount: item.invoices.discount_amount,
+      discount_reason: (item.invoices as any).discount_reason,
       client: item.invoices.client
     } : undefined,
     branch_id: item.invoices?.client?.branch_id
