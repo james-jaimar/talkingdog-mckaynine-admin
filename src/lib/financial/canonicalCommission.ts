@@ -99,12 +99,13 @@ function applyDiscountsByInvoice(items: CanonicalInvoiceItem[]): Map<string, num
   });
 
   itemsByInvoice.forEach((invoiceItems) => {
-    const invoice = invoiceItems[0]?.invoices;
+    const sortedInvoiceItems = [...invoiceItems].sort((a, b) => String(a.id).localeCompare(String(b.id)));
+    const invoice = sortedInvoiceItems[0]?.invoices;
     const subtotal = Number(invoice?.subtotal ?? 0);
     const monetaryDiscount = Number(invoice?.monetary_discount ?? 0);
 
     if (monetaryDiscount <= 0 || subtotal <= 0) {
-      invoiceItems.forEach((item) => {
+      sortedInvoiceItems.forEach((item) => {
         netAmountByItemId.set(item.id, roundToCents(Number(item.amount ?? 0)));
       });
       return;
@@ -114,9 +115,9 @@ function applyDiscountsByInvoice(items: CanonicalInvoiceItem[]): Map<string, num
     const discountRatio = monetaryDiscount / subtotal;
     let accumulatedNet = 0;
 
-    invoiceItems.forEach((item, index) => {
+    sortedInvoiceItems.forEach((item, index) => {
       const originalAmount = Number(item.amount ?? 0);
-      const isLast = index === invoiceItems.length - 1;
+      const isLast = index === sortedInvoiceItems.length - 1;
       const netAmount = isLast
         ? Math.max(0, roundToCents(targetNetTotal - accumulatedNet))
         : roundToCents(originalAmount - originalAmount * discountRatio);
