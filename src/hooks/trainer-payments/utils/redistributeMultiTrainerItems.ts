@@ -46,7 +46,7 @@ export function redistributeMultiTrainerItems(
 
   const result: InvoiceItem[] = [];
 
-  for (const [, items] of itemsByInvoice) {
+  for (const [invoiceId, items] of itemsByInvoice) {
     // Separate course fee items from enrollment fee items
     const courseFeeItems = items.filter(i => i.item_type !== 'enrollment_fee');
     const enrollmentFeeItems = items.filter(i => i.item_type === 'enrollment_fee');
@@ -68,9 +68,35 @@ export function redistributeMultiTrainerItems(
 
     const distinctTrainers = trainerToItems.size;
 
-    // Only redistribute if multiple trainers share the same invoice
+    // Gate 1: multiple trainers required
     if (distinctTrainers <= 1) {
-      // No redistribution needed — pass through unchanged
+      result.push(...items);
+      continue;
+    }
+
+    // Gate 2: invoice must have an actual multi-dog discount applied.
+    // createInvoiceForHandler writes discount_reason "Multi-dog discount (25% off 2nd dog)"
+    // and applies the discount inline in item prices (monetary_discount stays 0 in that
+    // flow), so match on discount_reason as the primary signal.
+    const invoice = items[0]?.invoices;
+    const discountReason = invoice?.discount_reason ?? "";
+    const hasMultiDogDiscount = /multi-?dog/i.test(discountReason);
+
+    // Gate 3: bookings must all belong to the same handler (household case).
+    const handlerIds = new Set<string>();
+    courseFeeItems.forEach(item => {
+      if (item.booking_id) {
+        const b = bookingMap.get(item.booking_id);
+        if (b?.client_id) handlerIds.add(b.client_id);
+      }
+    });
+    const sameHandler = handlerIds.size === 1;
+
+    if (!hasMultiDogDiscount || !sameHandler) {
+      console.log(
+        `[redistributeMultiTrainerItems] Invoice ${invoiceId}: skip split ` +
+        `(trainers=${distinctTrainers}, multiDogDiscount=${hasMultiDogDiscount}, sameHandler=${sameHandler})`
+      );
       result.push(...items);
       continue;
     }
@@ -80,9 +106,9 @@ export function redistributeMultiTrainerItems(
     const sharePerTrainer = totalCourseFees / distinctTrainers;
 
     console.log(
-      `[redistributeMultiTrainerItems] Invoice ${items[0]?.invoice_id}: ` +
-      `${distinctTrainers} trainers, total course fees R${totalCourseFees.toFixed(2)}, ` +
-      `share per trainer R${sharePerTrainer.toFixed(2)}`
+      `[redistributeMultiTrainerItems] Invoice ${invoiceId}: SPLIT applied ` +
+      `(${distinctTrainers} trainers, total R${totalCourseFees.toFixed(2)}, ` +
+      `share R${sharePerTrainer.toFixed(2)})`
     );
 
     // Scale each trainer's items so their total equals sharePerTrainer
