@@ -38,7 +38,7 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
 
     // STEP 1: Apply invoice-level discounts to get net amounts
     const discountedItems = applyInvoiceDiscountToItems(invoiceItems || []);
-    
+
     // Create a map for quick lookup of net_amount by item id
     const netAmountMap = new Map<string, number>();
     discountedItems.forEach(item => {
@@ -52,6 +52,77 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
     (bookingsWithInvoices || []).forEach(booking => {
       bookingMap.set(booking.id, booking);
     });
+
+    // STEP 1b: Compute an "instructor share" per item that mirrors the
+    // Trainer Payment Summary's multi-dog redistribution. This ONLY drives the
+    // instructor fee; revenue, franchise and admin fees still use the item's
+    // actual net_amount so per-class billing figures don't shift.
+    //
+    // Gates (same as redistributeMultiTrainerItems):
+    //   1. Invoice has multiple distinct trainers across course-fee items.
+    //   2. Invoice.discount_reason contains "multi-dog".
+    //   3. All course-fee bookings belong to the same handler.
+    const instructorNetMap = new Map<string, number>();
+    const itemsByInvoice = new Map<string, typeof discountedItems>();
+    discountedItems.forEach(item => {
+      if (!item.invoice_id) return;
+      const group = itemsByInvoice.get(item.invoice_id) || [];
+      group.push(item);
+      itemsByInvoice.set(item.invoice_id, group);
+    });
+
+    const resolveTrainerId = (item: any): string | null => {
+      if (!item?.booking_id) return null;
+      const b = bookingMap.get(item.booking_id);
+      return b?.class_schedules?.trainer_id ?? null;
+    };
+
+    itemsByInvoice.forEach((items, invoiceId) => {
+      const courseFeeItems = items.filter(i => (i as any).item_type !== 'enrollment_fee');
+
+      // Default: instructor share equals net amount
+      courseFeeItems.forEach(i => instructorNetMap.set(i.id, i.net_amount || 0));
+
+      const trainerToItems = new Map<string, typeof courseFeeItems>();
+      courseFeeItems.forEach(i => {
+        const tid = resolveTrainerId(i);
+        if (!tid) return;
+        const arr = trainerToItems.get(tid) || [];
+        arr.push(i);
+        trainerToItems.set(tid, arr);
+      });
+
+      if (trainerToItems.size <= 1) return;
+
+      const invoice = (items[0] as any)?.invoices;
+      const reason = invoice?.discount_reason ?? "";
+      if (!/multi-?dog/i.test(reason)) return;
+
+      const handlerIds = new Set<string>();
+      courseFeeItems.forEach(i => {
+        const b = i.booking_id ? bookingMap.get(i.booking_id) : null;
+        if (b?.client_id) handlerIds.add(b.client_id);
+      });
+      if (handlerIds.size !== 1) return;
+
+      const totalNet = courseFeeItems.reduce((s, i) => s + (i.net_amount || 0), 0);
+      const sharePerTrainer = totalNet / trainerToItems.size;
+
+      console.log(
+        `[FinancialProcessor] Invoice ${invoiceId}: instructor-fee redistribution ` +
+        `applied across ${trainerToItems.size} trainers (share R${sharePerTrainer.toFixed(2)})`
+      );
+
+      trainerToItems.forEach(trainerItems => {
+        const trainerTotal = trainerItems.reduce((s, i) => s + (i.net_amount || 0), 0);
+        if (trainerTotal === 0) return;
+        const scale = sharePerTrainer / trainerTotal;
+        trainerItems.forEach(i => {
+          instructorNetMap.set(i.id, roundToCents((i.net_amount || 0) * scale));
+        });
+      });
+    });
+
 
     // Track class finances
     const classSummaries = new Map<string, ClassFinance>();
@@ -169,10 +240,14 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
         : roundToCents(amount * (adminValue / 100));
       summary.adminFee += itemAdmin;
 
-      // Trainer/Instructor fee (round per-item)
+      // Trainer/Instructor fee — use the redistributed instructor share so this
+      // matches the Trainer Payment Summary on multi-dog household invoices.
+      const instructorBase = instructorNetMap.has(item.id)
+        ? (instructorNetMap.get(item.id) as number)
+        : amount;
       const itemTrainer = isFixedAmount(classData.trainer_fee_type)
         ? roundToCents(trainerValue)
-        : roundToCents(amount * (trainerValue / 100));
+        : roundToCents(instructorBase * (trainerValue / 100));
       summary.instructorFee += itemTrainer;
 
       // Accumulate profit per-item so totals always reconcile (no ±1c drift
