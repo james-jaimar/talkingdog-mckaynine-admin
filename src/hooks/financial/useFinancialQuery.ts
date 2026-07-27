@@ -63,6 +63,7 @@ export function useFinancialQuery(
           monetary_discount,
           discount_type,
           discount_amount,
+          discount_reason,
           branch_id,
           client:client_id (
             id,
@@ -207,6 +208,7 @@ export function useFinancialQuery(
               ),
               class_schedules:class_schedule_id (
                 id,
+                trainer_id,
                 classes:class_id (
                   id,
                   name,
@@ -269,6 +271,7 @@ export function useFinancialQuery(
             monetary_discount: invoice.monetary_discount,
             discount_type: invoice.discount_type,
             discount_amount: invoice.discount_amount,
+            discount_reason: (invoice as any).discount_reason,
             client: invoice.client
           } : null
         };
