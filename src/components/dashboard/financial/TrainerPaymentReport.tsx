@@ -60,7 +60,6 @@ export function TrainerPaymentReport({ branchId, dateRange, isLoading }: Trainer
             <TableRow>
               <TableHead>Trainer</TableHead>
               <TableHead className="text-right">Total Commission</TableHead>
-              <TableHead className="text-right">Allocated</TableHead>
               <TableHead className="text-right">Paid</TableHead>
               <TableHead className="text-right">Pending</TableHead>
               <TableHead className="text-center">Classes</TableHead>
@@ -73,7 +72,6 @@ export function TrainerPaymentReport({ branchId, dateRange, isLoading }: Trainer
               <TableRow key={trainer.id}>
                 <TableCell className="font-medium">{trainer.trainerName}</TableCell>
                 <TableCell className="text-right">{formatCurrency(trainer.totalEarned)}</TableCell>
-                <TableCell className="text-right">{formatCurrency(trainer.potentialEarnings)}</TableCell>
                 <TableCell className="text-right">{formatCurrency(trainer.paid)}</TableCell>
                 <TableCell className="text-right">{formatCurrency(trainer.pending)}</TableCell>
                 <TableCell className="text-center">{trainer.classesCount}</TableCell>
