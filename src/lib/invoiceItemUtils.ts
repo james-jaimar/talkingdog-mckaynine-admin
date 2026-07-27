@@ -14,7 +14,9 @@ export interface InvoiceItemLike {
 }
 
 export interface InvoiceItemWithDiscount extends InvoiceItemLike {
+  invoice_id?: string;
   invoices?: {
+    id?: string;
     subtotal?: number;
     monetary_discount?: number;
     discount_type?: string;
@@ -73,10 +75,7 @@ export function applyInvoiceDiscountToItems<T extends InvoiceItemWithDiscount & 
   const noInvoiceItems: T[] = [];
   
   items.forEach(item => {
-    const invoiceKey = item.invoices ? JSON.stringify({
-      subtotal: item.invoices.subtotal,
-      monetary_discount: item.invoices.monetary_discount
-    }) : null;
+    const invoiceKey = item.invoice_id || item.invoices?.id || null;
     
     if (!invoiceKey || !item.invoices) {
       noInvoiceItems.push(item);

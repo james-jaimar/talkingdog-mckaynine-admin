@@ -234,9 +234,10 @@ export async function fetchAllInvoiceItems(bookingIds: string[], branchId?: stri
       discount_type: item.invoices.discount_type,
       discount_amount: item.invoices.discount_amount,
       discount_reason: (item.invoices as any).discount_reason,
+      branch_id: item.invoices.branch_id,
       client: item.invoices.client
     } : undefined,
-    branch_id: item.invoices?.client?.branch_id
+    branch_id: item.invoices?.branch_id
   })) as InvoiceItem[];
 
   return completeInvoiceItems;
