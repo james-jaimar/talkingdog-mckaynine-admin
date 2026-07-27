@@ -195,6 +195,7 @@ export async function fetchAllInvoiceItems(bookingIds: string[], branchId?: stri
         monetary_discount,
         discount_type,
         discount_amount,
+        discount_reason,
         branch_id,
         client:client_id (
           branch_id
