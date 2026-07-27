@@ -14,7 +14,9 @@ export interface InvoiceItemLike {
 }
 
 export interface InvoiceItemWithDiscount extends InvoiceItemLike {
+  invoice_id?: string;
   invoices?: {
+    id?: string;
     subtotal?: number;
     monetary_discount?: number;
     discount_type?: string;
@@ -73,10 +75,7 @@ export function applyInvoiceDiscountToItems<T extends InvoiceItemWithDiscount & 
   const noInvoiceItems: T[] = [];
   
   items.forEach(item => {
-    const invoiceKey = item.invoices ? JSON.stringify({
-      subtotal: item.invoices.subtotal,
-      monetary_discount: item.invoices.monetary_discount
-    }) : null;
+    const invoiceKey = item.invoice_id || item.invoices?.id || null;
     
     if (!invoiceKey || !item.invoices) {
       noInvoiceItems.push(item);
@@ -106,13 +105,14 @@ export function applyInvoiceDiscountToItems<T extends InvoiceItemWithDiscount & 
   
   // Process items grouped by invoice
   itemsByInvoice.forEach((invoiceItems) => {
-    const invoice = invoiceItems[0].invoices!;
+    const sortedInvoiceItems = [...invoiceItems].sort((a, b) => String(a.id || '').localeCompare(String(b.id || '')));
+    const invoice = sortedInvoiceItems[0].invoices!;
     const subtotal = invoice.subtotal || 0;
     const monetaryDiscount = invoice.monetary_discount || 0;
     
     // If no discount or invalid subtotal, keep original amounts
     if (monetaryDiscount <= 0 || subtotal <= 0) {
-      invoiceItems.forEach(item => {
+      sortedInvoiceItems.forEach(item => {
         const originalAmount = item.amount || 0;
         result.push({
           amount: originalAmount,
@@ -135,9 +135,9 @@ export function applyInvoiceDiscountToItems<T extends InvoiceItemWithDiscount & 
     let accumulatedNet = 0;
     const processedItems: DiscountedInvoiceItem[] = [];
     
-    invoiceItems.forEach((item, index) => {
+    sortedInvoiceItems.forEach((item, index) => {
       const originalAmount = item.amount || 0;
-      const isLast = index === invoiceItems.length - 1;
+      const isLast = index === sortedInvoiceItems.length - 1;
       
       let netAmount: number;
       if (isLast) {

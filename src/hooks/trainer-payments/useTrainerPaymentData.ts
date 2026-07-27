@@ -9,9 +9,9 @@ import {
   fetchAllSubstitutes
 } from "./queries/fetchTrainerData";
 import { formatTrainerPaymentData } from "./utils/formatTrainerData";
-import { redistributeMultiTrainerItems } from "./utils/redistributeMultiTrainerItems";
 import { TrainerPaymentData } from "./types";
 import { useTerm } from "@/context/TermContext";
+import { buildCanonicalCommissionLines } from "@/lib/financial/canonicalCommission";
 
 export function useTrainerPaymentData(branchId?: string, dateRange?: { from: Date; to: Date }) {
   const { termData } = useTerm();
@@ -95,8 +95,7 @@ export function useTrainerPaymentData(branchId?: string, dateRange?: { from: Dat
         ]);
         console.log(`Found ${allInvoiceItems.length} invoice items, ${allSubstitutes.length} substitutes`);
         
-        // Redistribute multi-trainer invoice items for fair 50/50 commission split
-        const redistributedItems = redistributeMultiTrainerItems(allInvoiceItems, allBookings, allSchedules);
+        const commissionLines = buildCanonicalCommissionLines(allInvoiceItems, allBookings, allSchedules, branchId);
         
         // Create substitute lookup by schedule ID
         const substitutesBySchedule = new Map<string, typeof allSubstitutes>();
@@ -106,9 +105,9 @@ export function useTrainerPaymentData(branchId?: string, dateRange?: { from: Dat
           substitutesBySchedule.set(sub.class_schedule_id, existing);
         });
         
-        // Create a lookup map by booking ID (using redistributed items)
-        const invoiceItemsByBooking = new Map<string, typeof redistributedItems>();
-        redistributedItems.forEach(item => {
+        // Create a lookup map by booking ID
+        const invoiceItemsByBooking = new Map<string, typeof allInvoiceItems>();
+        allInvoiceItems.forEach(item => {
           if (item.booking_id) {
             const existing = invoiceItemsByBooking.get(item.booking_id) || [];
             existing.push(item);
@@ -160,7 +159,7 @@ export function useTrainerPaymentData(branchId?: string, dateRange?: { from: Dat
           });
           
           if (combinedSchedules.length === 0) {
-            return formatTrainerPaymentData(trainer, [], [], [], [], [], trainerNameMap);
+            return formatTrainerPaymentData(trainer, [], [], [], [], [], trainerNameMap, []);
           }
           
           // Collect bookings for this trainer's schedules
@@ -171,7 +170,7 @@ export function useTrainerPaymentData(branchId?: string, dateRange?: { from: Dat
           });
           
           if (trainerBookings.length === 0) {
-            return formatTrainerPaymentData(trainer, combinedSchedules, [], [], trainerPaymentsData, combinedSubstitutes, trainerNameMap);
+            return formatTrainerPaymentData(trainer, combinedSchedules, [], [], trainerPaymentsData, combinedSubstitutes, trainerNameMap, commissionLines);
           }
           
           // Collect invoice items for this trainer's bookings
@@ -181,7 +180,7 @@ export function useTrainerPaymentData(branchId?: string, dateRange?: { from: Dat
             trainerInvoiceItems.push(...bookingItems);
           });
           
-          return formatTrainerPaymentData(trainer, combinedSchedules, trainerBookings, trainerInvoiceItems, trainerPaymentsData, combinedSubstitutes, trainerNameMap);
+          return formatTrainerPaymentData(trainer, combinedSchedules, trainerBookings, trainerInvoiceItems, trainerPaymentsData, combinedSubstitutes, trainerNameMap, commissionLines);
         });
 
         // Filter out any null entries and sort alphabetically by name
