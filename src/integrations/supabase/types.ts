@@ -3257,6 +3257,10 @@ export type Database = {
         Args: { p_booking_id: string }
         Returns: number
       }
+      calculate_trainer_payment_for_schedule: {
+        Args: { p_class_schedule_id: string; p_trainer_id: string }
+        Returns: number
+      }
       check_user_role: { Args: { required_role: string }; Returns: boolean }
       count_invoices_with_prefix: { Args: { prefix: string }; Returns: number }
       delete_invoice_cascade: {
