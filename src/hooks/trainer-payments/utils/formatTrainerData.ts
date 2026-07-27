@@ -1,7 +1,6 @@
 import { TrainerPaymentData, TrainerClassDetail, Schedule, Booking, InvoiceItem, SubstituteRecord } from "../types";
-import { calculateClassRevenue } from "./calculateTrainerFees";
-import { getCourseFeeAmount, applyInvoiceDiscountToItems } from "@/lib/invoiceItemUtils";
 import { roundToCents } from "@/lib/invoiceMath";
+import { CanonicalCommissionLine } from "@/lib/financial/canonicalCommission";
 
 export function formatTrainerPaymentData(
   trainer: { id: string; first_name: string; last_name: string; email?: string },
@@ -10,7 +9,8 @@ export function formatTrainerPaymentData(
   invoiceItems: InvoiceItem[] = [],
   trainerPayments: any[] = [],
   substitutes: SubstituteRecord[] = [],
-  trainerNameMap: Map<string, string> = new Map()
+  trainerNameMap: Map<string, string> = new Map(),
+  commissionLines: CanonicalCommissionLine[] = []
 ): TrainerPaymentData {
   // Validate that we're dealing with a single branch's data
   const scheduleBranchIds = new Set(allSchedules.map(s => s.classes?.branch_id).filter(Boolean));
@@ -47,19 +47,6 @@ export function formatTrainerPaymentData(
       );
     }
   });
-
-  // Calculate totals from actual payments - these are the source of truth
-  const totalPaid = trainerPayments
-    .filter(payment => payment.status === 'paid' && payment.amount > 0)
-    .reduce((sum, payment) => sum + (payment.amount || 0), 0);
-
-  // Calculate pending amount from pending payments, filtering out zero-amount payments
-  const totalPending = trainerPayments
-    .filter(payment => payment.status === 'pending' && payment.amount > 0)
-    .reduce((sum, payment) => sum + (payment.amount || 0), 0);
-    
-  // Determine if there are any actual payments in the system
-  const hasActualPayments = trainerPayments && trainerPayments.length > 0;
 
   // Find last payment date from actual payments
   let lastPaymentDate: string | undefined;
@@ -138,24 +125,23 @@ export function formatTrainerPaymentData(
       }
     }
     
-    // Get all invoice items for this schedule's bookings
-    const scheduleInvoiceItems: InvoiceItem[] = [];
-    
-    scheduleBookings.forEach(booking => {
-      const items = invoiceItems.filter(item => item.booking_id === booking.id);
-      scheduleInvoiceItems.push(...items);
-    });
-
-    // Calculate revenue for this class based on NET amounts (using invoice totals)
-    const revenueDetails = calculateClassRevenue(
-      scheduleBookings, 
-      schedule, 
-      scheduleInvoiceItems
+    const scheduleLines = commissionLines.filter(line =>
+      line.scheduleId === schedule.id &&
+      !line.isEnrollmentFee &&
+      line.isAllocated &&
+      line.invoiceStatus !== 'cancelled'
     );
 
+    const paidCommission = roundToCents(scheduleLines
+      .filter(line => line.invoiceStatus === 'paid')
+      .reduce((sum, line) => sum + line.trainerCommission, 0));
+
+    const potentialCommission = roundToCents(scheduleLines
+      .reduce((sum, line) => sum + line.trainerCommission, 0));
+
     // Apply the date ratio to revenue
-    const proRatedRevenue = roundToCents(revenueDetails.revenue * trainerDateRatio);
-    const proRatedPotentialRevenue = roundToCents(revenueDetails.potentialRevenue * trainerDateRatio);
+    const proRatedRevenue = roundToCents(paidCommission * trainerDateRatio);
+    const proRatedPotentialRevenue = roundToCents(potentialCommission * trainerDateRatio);
 
     // A class is considered paid if we have it in the paidScheduleIds set from trainer_payments
     const classIsPaid = paidScheduleIds.has(schedule.id);
@@ -172,10 +158,6 @@ export function formatTrainerPaymentData(
     // Check if this schedule has a payment record with zero amount
     // We'll only flag it as having a "zero amount payment" if it's not supposed to have zero commission
     const hasZeroAmountPayment = !hasZeroCommission && zeroAmountScheduleIds.has(schedule.id);
-
-    // Get the fee configuration from the class
-    const trainerFeeType = schedule.classes?.trainer_fee_type || 'percentage';
-    const feeValue = schedule.classes?.trainer_fee_value ?? 70;
 
     // Build booking details for this class with actual client names and dog info
     const bookingsDetails = scheduleBookings.map(booking => {
@@ -198,33 +180,11 @@ export function formatTrainerPaymentData(
       const dogName = dogData?.name || 'Unknown Dog';
       const dogBreed = dogData?.breed || '';
       
-      // Get invoice items for this specific booking and apply invoice-level discounts
-      const bookingInvoiceItems = invoiceItems.filter(item => item.booking_id === booking.id);
-      
-      // Transform items for discount application
-      const itemsWithInvoiceData = bookingInvoiceItems.map(item => ({
-        ...item,
-        invoices: item.invoices ? {
-          subtotal: item.invoices.subtotal,
-          monetary_discount: item.invoices.monetary_discount,
-          discount_type: item.invoices.discount_type,
-          discount_amount: item.invoices.discount_amount,
-          status: item.invoices.status
-        } : null
-      }));
-      
-      // Apply discounts and get course fee (using net_amount)
-      const discountedItems = applyInvoiceDiscountToItems(itemsWithInvoiceData);
-      const courseFee = getCourseFeeAmount(discountedItems, true);
-        
-      // Calculate individual commission based on THIS booking's course fee (after discount)
-      // Apply the substitute date ratio so per-booking amounts reflect pro-rating
-      let perBookingCommission = 0;
-      if (trainerFeeType === 'percentage') {
-        perBookingCommission = roundToCents(courseFee * (feeValue / 100) * trainerDateRatio);
-      } else if (trainerFeeType === 'fixed') {
-        perBookingCommission = roundToCents(feeValue * trainerDateRatio);
-      }
+      const bookingLines = scheduleLines.filter(line => line.bookingId === booking.id);
+      const courseFee = roundToCents(bookingLines.reduce((sum, line) => sum + line.netAmount, 0));
+      const perBookingCommission = roundToCents(
+        bookingLines.reduce((sum, line) => sum + line.trainerCommission, 0) * trainerDateRatio
+      );
         
       return {
         bookingId: booking.id,
@@ -302,18 +262,19 @@ export function formatTrainerPaymentData(
     pendingAmount += zeroAmountPaymentClasses.reduce((sum, cls) => sum + cls.potentialRevenue, 0);
   }
 
+  const paidAmount = classDetails
+    .filter(cls => cls.isPaid && !cls.hasZeroCommission)
+    .reduce((sum, cls) => sum + cls.revenue, 0);
+
   // Calculate if this trainer has unpaid amounts (used for status display)
   const hasUnpaidCommission = pendingAmount > 0;
-  
-  // Ensure total commission matches the sum of paid + pending
-  const totalEarned = hasActualPayments ? totalPaid : totalCommission - pendingAmount;
 
   return {
     id: trainer.id,
     trainerName: `${trainer.first_name} ${trainer.last_name}`,
     trainerEmail: trainer.email,
     totalEarned: totalCommission,
-    paid: totalPaid,
+    paid: roundToCents(paidAmount),
     pending: pendingAmount,
     potentialEarnings: totalCommission, // Same as totalEarned for consistency
     classesCount: allSchedules.length,
