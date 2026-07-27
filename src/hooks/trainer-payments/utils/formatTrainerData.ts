@@ -252,14 +252,14 @@ export function formatTrainerPaymentData(
   const unpaidClassDetails = classDetails.filter(cls => !cls.isPaid && !cls.hasZeroCommission);
   
   // Sum up the potential revenue for unpaid classes
-  pendingAmount = unpaidClassDetails.reduce((sum, cls) => sum + cls.potentialRevenue, 0);
+  pendingAmount = roundToCents(unpaidClassDetails.reduce((sum, cls) => sum + cls.potentialRevenue, 0));
   
   // Make sure pending amount is accurate by checking for zero-amount payments
   // These represent a special case where the payment record exists but has an incorrect amount
   const zeroAmountPaymentClasses = classDetails.filter(cls => cls.hasZeroAmountPayment);
   if (zeroAmountPaymentClasses.length > 0) {
     // Add the potential revenue for classes with zero-amount payments
-    pendingAmount += zeroAmountPaymentClasses.reduce((sum, cls) => sum + cls.potentialRevenue, 0);
+    pendingAmount = roundToCents(pendingAmount + zeroAmountPaymentClasses.reduce((sum, cls) => sum + cls.potentialRevenue, 0));
   }
 
   const paidAmount = classDetails
@@ -273,10 +273,10 @@ export function formatTrainerPaymentData(
     id: trainer.id,
     trainerName: `${trainer.first_name} ${trainer.last_name}`,
     trainerEmail: trainer.email,
-    totalEarned: totalCommission,
+    totalEarned: roundToCents(totalCommission),
     paid: roundToCents(paidAmount),
-    pending: pendingAmount,
-    potentialEarnings: totalCommission, // Same as totalEarned for consistency
+    pending: roundToCents(pendingAmount),
+    potentialEarnings: roundToCents(totalCommission), // Same as totalEarned for consistency
     classesCount: allSchedules.length,
     clients: uniqueClientIds.size,
     lastPaymentDate,
