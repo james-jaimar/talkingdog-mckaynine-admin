@@ -240,10 +240,14 @@ export function useFinancialProcessor(financialData: FinancialData | undefined) 
         : roundToCents(amount * (adminValue / 100));
       summary.adminFee += itemAdmin;
 
-      // Trainer/Instructor fee (round per-item)
+      // Trainer/Instructor fee — use the redistributed instructor share so this
+      // matches the Trainer Payment Summary on multi-dog household invoices.
+      const instructorBase = instructorNetMap.has(item.id)
+        ? (instructorNetMap.get(item.id) as number)
+        : amount;
       const itemTrainer = isFixedAmount(classData.trainer_fee_type)
         ? roundToCents(trainerValue)
-        : roundToCents(amount * (trainerValue / 100));
+        : roundToCents(instructorBase * (trainerValue / 100));
       summary.instructorFee += itemTrainer;
 
       // Accumulate profit per-item so totals always reconcile (no ±1c drift
