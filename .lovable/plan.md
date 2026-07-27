@@ -1,41 +1,162 @@
-## Problem
+## What I found
 
-Trainer commissions are being split across trainers for invoices that just happen to have two unrelated classes on them (one handler, two classes, two trainers, no discount). This is a side effect of the recent "merge new enrollments into existing draft invoice" change combined with the current redistribution rule, which fires whenever a single invoice has course-fee items resolving to more than one trainer.
+You’re right to be irritated. This should be simple, but the app currently has **multiple calculation paths** for the same business concept.
 
-## Fix
+Verified from the code and live database:
 
-Tighten `redistributeMultiTrainerItems` (`src/hooks/trainer-payments/utils/redistributeMultiTrainerItems.ts`) so it only redistributes when **both** are true:
+1. **Class Financial Report has its own calculator**
+   - `useFinancialQuery` fetches invoices/items/bookings.
+   - `useFinancialProcessor` applies invoice discounts, groups by class, calculates franchise/admin/instructor/profit.
+   - I recently added a separate copy of the multi-dog redistribution logic there. That was a patch, not a proper consolidation.
 
-1. The invoice was created with a multi-dog discount — detected via `invoices.discount_reason` containing `"multi-dog"` (this is the exact literal set in `createInvoiceForHandler.ts`). Fallback: `monetary_discount > 0` **and** `discount_reason` mentions multi-dog. Either signal alone is not enough.
-2. The trainers' items resolve to bookings belonging to the **same handler** (`bookings.client_id` — already the only case we care about, but we assert it explicitly to be safe).
+2. **Trainer Payments Summary has a different calculator**
+   - `useTrainerPaymentData` fetches trainers/schedules/bookings/items.
+   - It runs `redistributeMultiTrainerItems` before calculating trainer totals.
+   - It uses `trainer_payments` mostly for paid/unpaid status, not as the source of all displayed totals.
 
-If either condition fails → pass items through unchanged, per-trainer commission on the exact invoiced amount.
+3. **The database function has a third formula**
+   - `calculate_trainer_payment(p_booking_id)` simply sums raw `invoice_items.amount` for a booking and applies the class trainer percentage.
+   - It does **not** apply invoice-level discounts.
+   - It does **not** know about the multi-dog fairness rule.
+   - It is used by the trigger and some recalculation utilities.
 
-## Implementation
+4. **There is another trainer report component with yet another formula**
+   - `TrainerPaymentReport.tsx` calculates directly from raw item amounts and booking creation dates.
+   - It is not using the same logic as the Trainers tab or the Class Financial Report.
 
-1. **Extend the input** to `redistributeMultiTrainerItems` with an `invoicesById` map containing `{ discount_reason, monetary_discount, client_id }` for each `invoice_id` in scope.
-2. **In `useTrainerPaymentData.ts`**, when we fetch `allInvoiceItems`, also fetch the parent invoices (already in scope for other logic — confirm and reuse; otherwise add a lightweight `invoices` select for the distinct invoice ids) and build the map, then pass it into `redistributeMultiTrainerItems`.
-3. **In the function**, before computing `sharePerTrainer`, gate on:
-   ```ts
-   const invoice = invoicesById.get(invoiceId);
-   const hasMultiDogDiscount =
-     !!invoice &&
-     (invoice.monetary_discount ?? 0) > 0 &&
-     /multi-?dog/i.test(invoice.discount_reason ?? "");
-   const sameHandler = /* all bookings for these items share one client_id */;
-   if (!hasMultiDogDiscount || !sameHandler) { result.push(...items); continue; }
-   ```
-4. Keep the existing scale-factor math for the qualifying case — that behavior is correct and matches the original intent.
-5. Update the console log to state which gate passed/failed, so future debugging is easy.
+5. **The persisted `trainer_payments` ledger is incomplete**
+   - Live DB check: **575 paid course-fee invoice items linked to bookings have no matching `trainer_payments` row**.
+   - So we cannot safely say “just use `trainer_payments` as source of truth” until it is repaired/backfilled.
 
-## Verification
+## Why the discrepancies happen
 
-- Query recent trainer_payments for the affected handler and confirm each trainer's amount matches `calculate_trainer_payment(booking_id)` for their own booking (no averaging).
-- Confirm a known 2-dogs-same-class multi-dog-discount invoice still averages correctly.
-- No schema changes. No edge function changes. No migration.
+The app is answering the same question in different ways:
 
-## Out of scope
+```text
+Invoice item amount → booking → class schedule → trainer → trainer fee %
+```
 
-- No change to the draft-merge behavior in `createInvoiceForHandler.ts`.
-- No change to the 25% discount rule itself.
-- No backfill; existing `trainer_payments` rows will refresh next time `calculate_trainer_payment` runs for their booking (or we can trigger a manual recompute for the affected handler after the code fix — I'll flag which handler once you point me at them).
+…but that calculation exists in several places, with slightly different assumptions:
+
+- raw amount vs discounted net amount
+- class-level rounding vs item-level rounding
+- persisted DB payment amount vs freshly recalculated frontend amount
+- multi-dog redistribution applied in one place but not another
+- hard-coded fallback rates for unallocated rows
+- paid status coming from `trainer_payments`, but amount sometimes coming from invoice items
+
+That is why a trainer can show one number on a statement and another number in the financial report.
+
+## The fix I recommend
+
+Consolidate to **one authoritative calculation model** and make every report use it.
+
+### 1. Define the canonical commission line
+
+Every course-fee invoice item should resolve to one financial line:
+
+```text
+invoice_item
+  → booking
+  → class_schedule
+  → class
+  → trainer
+```
+
+For each line we calculate:
+
+- actual class revenue from the invoice item net amount
+- trainer commission base
+- trainer commission amount
+- franchise fee
+- admin fee
+- profit
+- branch
+- term/month
+- invoice status
+- whether it is allocated or unallocated
+
+Enrollment fees stay excluded from trainer/franchise/admin fee calculations.
+
+### 2. Keep the one explicit exception: multi-dog fairness
+
+Because the Robin/Dan case was confirmed as correct:
+
+- Invoice total course fees: `R3030`
+- Two trainers/classes
+- Fair split base: `R1515` each
+- At 40%, each trainer gets `R606`
+
+This rule should exist **once**, not copied in report code.
+
+### 3. Move the calculation into one shared source
+
+Create a single canonical calculation service/query used by:
+
+- Class Financial Report
+- Trainers tab / Trainer Payment Summary
+- trainer statement PDFs
+- mark-as-paid flow
+- recalculation/backfill tools
+
+The current duplicated frontend functions should be removed or reduced to presentation-only grouping.
+
+### 4. Replace the database recalculation function
+
+Update `calculate_trainer_payment` so it uses the same canonical rule:
+
+- discounted net course-fee amount
+- correct class trainer percentage/fixed fee
+- same multi-dog fairness rule
+- cents rounding
+
+Then the trigger and repair tools stop creating stale/wrong rows.
+
+### 5. Backfill and repair `trainer_payments`
+
+Run a controlled repair:
+
+- create missing `trainer_payments` rows for linked course-fee invoice items
+- recalculate pending/unpaid records from the canonical calculation
+- audit already-paid records before changing historical paid amounts
+- preserve payment dates, documents and references
+
+### 6. Remove bad fallback maths
+
+For unallocated invoice items, stop inventing trainer/admin/franchise fees with hard-coded 40/10/15 rates.
+
+If an item has no booking link, we should show:
+
+```text
+Unallocated revenue: yes
+Trainer fee: unknown / 0 until linked
+Reason: no booking link
+```
+
+That makes the report honest instead of mathematically pretending we know which class/trainer it belongs to.
+
+### 7. Validate against the known problem cases
+
+Before calling it fixed, verify exact line-level output for:
+
+- **Suzette Nel / INV-McD-2607-0014**
+  - WT: `R2160 × 40% = R864`
+  - Yoga: `R600 × 40% = R240`
+
+- **Robin Williams and Dan Erasmus / INV-McD-2607-0008**
+  - Split base: `R1515 + R1515`
+  - Steve: `R606`
+  - Therese: `R606`
+
+- **Maria Branco discrepancy**
+  - Trainer statement and Class Financial Report must produce the same trainer fee total.
+
+## Outcome
+
+After this, there should be only one answer to:
+
+```text
+What is the trainer fee for this invoice item?
+```
+
+Every screen will either display that answer directly or group those same canonical lines by class/trainer/month/term.
