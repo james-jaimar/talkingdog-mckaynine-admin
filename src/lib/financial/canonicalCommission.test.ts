@@ -1,4 +1,3 @@
-import { describe, expect, it } from "bun:test";
 import { buildCanonicalCommissionLines, CanonicalBooking, CanonicalInvoiceItem, CanonicalSchedule } from "./canonicalCommission";
 
 const puppySchedule: CanonicalSchedule = {
