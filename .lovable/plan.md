@@ -1,162 +1,136 @@
-## What I found
+## Verified diagnosis
 
-You’re right to be irritated. This should be simple, but the app currently has **multiple calculation paths** for the same business concept.
+The July 2026 Delta financial report is showing a real calculation error, not a display issue.
 
-Verified from the code and live database:
+For **15h00 Puppy Class July August**, the database shows:
 
-1. **Class Financial Report has its own calculator**
-   - `useFinancialQuery` fetches invoices/items/bookings.
-   - `useFinancialProcessor` applies invoice discounts, groups by class, calculates franchise/admin/instructor/profit.
-   - I recently added a separate copy of the multi-dog redistribution logic there. That was a patch, not a proper consolidation.
+- Course revenue in the report: **R14,527.50**
+- Franchise fee: **15% = R2,179.13**
+- Admin fee: **10% = R1,452.75**
+- Trainer fee setting: **75%**
 
-2. **Trainer Payments Summary has a different calculator**
-   - `useTrainerPaymentData` fetches trainers/schedules/bookings/items.
-   - It runs `redistributeMultiTrainerItems` before calculating trainer totals.
-   - It uses `trainer_payments` mostly for paid/unpaid status, not as the source of all displayed totals.
-
-3. **The database function has a third formula**
-   - `calculate_trainer_payment(p_booking_id)` simply sums raw `invoice_items.amount` for a booking and applies the class trainer percentage.
-   - It does **not** apply invoice-level discounts.
-   - It does **not** know about the multi-dog fairness rule.
-   - It is used by the trigger and some recalculation utilities.
-
-4. **There is another trainer report component with yet another formula**
-   - `TrainerPaymentReport.tsx` calculates directly from raw item amounts and booking creation dates.
-   - It is not using the same logic as the Trainers tab or the Class Financial Report.
-
-5. **The persisted `trainer_payments` ledger is incomplete**
-   - Live DB check: **575 paid course-fee invoice items linked to bookings have no matching `trainer_payments` row**.
-   - So we cannot safely say “just use `trainer_payments` as source of truth” until it is repaired/backfilled.
-
-## Why the discrepancies happen
-
-The app is answering the same question in different ways:
+That means the class is configured to pay out exactly 100% of course revenue:
 
 ```text
-Invoice item amount → booking → class schedule → trainer → trainer fee %
+15% franchise + 10% admin + 75% trainer = 100%
 ```
 
-…but that calculation exists in several places, with slightly different assumptions:
+So profit should be **R0.00** apart from a possible 1c rounding adjustment.
 
-- raw amount vs discounted net amount
-- class-level rounding vs item-level rounding
-- persisted DB payment amount vs freshly recalculated frontend amount
-- multi-dog redistribution applied in one place but not another
-- hard-coded fallback rates for unallocated rows
-- paid status coming from `trainer_payments`, but amount sometimes coming from invoice items
+The actual bad number comes from one invoice:
 
-That is why a trainer can show one number on a statement and another number in the financial report.
+- **INV-McD-2607-0009**
+- Handler: Shannon de Vries
+- Puppy line: **R1,117.50**
+- Other class line: **R1,680.00**
+- Discount reason: multi-dog discount across different classes
+- Puppy trainer rate: **75%**
+- Other trainer rate: **40%**
 
-## The fix I recommend
-
-Consolidate to **one authoritative calculation model** and make every report use it.
-
-### 1. Define the canonical commission line
-
-Every course-fee invoice item should resolve to one financial line:
+The current shared calculator averages the trainer base across trainers for multi-dog invoices. That changes the Puppy trainer base from **R1,117.50** to **R1,398.75**, then applies the Puppy class’s **75%** rate:
 
 ```text
-invoice_item
-  → booking
-  → class_schedule
-  → class
-  → trainer
+Correct Puppy commission on actual Puppy line:
+R1,117.50 × 75% = R838.13
+
+Current redistributed Puppy commission:
+R1,398.75 × 75% = R1,049.06
+
+Overstatement:
+R210.93
 ```
 
-For each line we calculate:
-
-- actual class revenue from the invoice item net amount
-- trainer commission base
-- trainer commission amount
-- franchise fee
-- admin fee
-- profit
-- branch
-- term/month
-- invoice status
-- whether it is allocated or unallocated
-
-Enrollment fees stay excluded from trainer/franchise/admin fee calculations.
-
-### 2. Keep the one explicit exception: multi-dog fairness
-
-Because the Robin/Dan case was confirmed as correct:
-
-- Invoice total course fees: `R3030`
-- Two trainers/classes
-- Fair split base: `R1515` each
-- At 40%, each trainer gets `R606`
-
-This rule should exist **once**, not copied in report code.
-
-### 3. Move the calculation into one shared source
-
-Create a single canonical calculation service/query used by:
-
-- Class Financial Report
-- Trainers tab / Trainer Payment Summary
-- trainer statement PDFs
-- mark-as-paid flow
-- recalculation/backfill tools
-
-The current duplicated frontend functions should be removed or reduced to presentation-only grouping.
-
-### 4. Replace the database recalculation function
-
-Update `calculate_trainer_payment` so it uses the same canonical rule:
-
-- discounted net course-fee amount
-- correct class trainer percentage/fixed fee
-- same multi-dog fairness rule
-- cents rounding
-
-Then the trigger and repair tools stop creating stale/wrong rows.
-
-### 5. Backfill and repair `trainer_payments`
-
-Run a controlled repair:
-
-- create missing `trainer_payments` rows for linked course-fee invoice items
-- recalculate pending/unpaid records from the canonical calculation
-- audit already-paid records before changing historical paid amounts
-- preserve payment dates, documents and references
-
-### 6. Remove bad fallback maths
-
-For unallocated invoice items, stop inventing trainer/admin/franchise fees with hard-coded 40/10/15 rates.
-
-If an item has no booking link, we should show:
+That overstatement matches the negative profit almost exactly:
 
 ```text
-Unallocated revenue: yes
-Trainer fee: unknown / 0 until linked
-Reason: no booking link
+Expected normal profit: about -R0.01 rounding
+Current report profit: -R210.94
+Difference: R210.93
 ```
 
-That makes the report honest instead of mathematically pretending we know which class/trainer it belongs to.
+So the root issue is confirmed: **the multi-dog fairness rule is being applied to invoices where classes have different trainer percentages. That inflates the high-percentage class and creates impossible negative profit.**
 
-### 7. Validate against the known problem cases
+I also found a data hygiene issue on the same invoice: an enrollment fee row is marked as `course_fee`, and there is an extra unbooked enrollment row. The report’s current code excludes it by description, so it is not the main cause of the negative profit, but it should still be cleaned up/audited.
 
-Before calling it fixed, verify exact line-level output for:
+## Plan
 
-- **Suzette Nel / INV-McD-2607-0014**
-  - WT: `R2160 × 40% = R864`
-  - Yoga: `R600 × 40% = R240`
+### 1. Tighten the canonical multi-dog fairness rule
 
-- **Robin Williams and Dan Erasmus / INV-McD-2607-0008**
-  - Split base: `R1515 + R1515`
-  - Steve: `R606`
-  - Therese: `R606`
-
-- **Maria Branco discrepancy**
-  - Trainer statement and Class Financial Report must produce the same trainer fee total.
-
-## Outcome
-
-After this, there should be only one answer to:
+Update the shared calculator so redistribution only happens when it is mathematically valid:
 
 ```text
-What is the trainer fee for this invoice item?
+Apply fairness redistribution only when:
+- invoice has a multi-dog discount
+- all course lines belong to one handler
+- more than one trainer is involved
+- all affected course lines use the same trainer fee type
+- all affected course lines use the same trainer fee value
 ```
 
-Every screen will either display that answer directly or group those same canonical lines by class/trainer/month/term.
+If trainer percentages differ, do **not** redistribute. Each class gets commission from its own invoice line amount.
+
+For this case, Puppy remains:
+
+```text
+R1,117.50 × 75% = R838.13
+```
+
+and the other class remains:
+
+```text
+R1,680.00 × 40% = R672.00
+```
+
+### 2. Mirror the same rule in the database function
+
+Update `calculate_trainer_payment_for_schedule` so DB-generated/recalculated trainer payments use the same rule as the frontend calculator.
+
+This is essential because the UI and the stored `trainer_payments` ledger must not drift again.
+
+### 3. Add a financial invariant guard
+
+Add a line-level warning/guard in the shared calculator for impossible financial lines:
+
+```text
+If franchise fee + admin fee + trainer fee > line net revenue:
+- flag the line as invalid/overallocated
+- do not silently produce a negative profit without an audit signal
+```
+
+For now I would not hide the problem by clamping everything to zero. The system should expose impossible maths, not mask it. But for classes configured to total exactly 100%, we should eliminate recurring 1c display noise by normalizing near-zero totals to R0.00.
+
+### 4. Add regression checks for the known problem cases
+
+Create targeted tests/checks for:
+
+- **INV-McD-2607-0009**
+  - Puppy: **R838.13**, not **R1,049.06**
+  - Puppy profit returns to **R0.00 / near-zero**
+- **INV-McD-2607-0014**
+  - WT/Yoga stays full-price per actual line
+  - no unwanted averaging
+- Previous multi-dog fairness case where same-rate trainers should still split fairly
+
+### 5. Repair the dirty invoice item metadata
+
+Clean/audit the bad `INV-McD-2607-0009` enrollment rows:
+
+- enrollment fee attached to Puppy booking but marked `course_fee`
+- duplicate unbooked enrollment fee row also marked `course_fee`
+
+This is not the main negative-profit cause, but it is exactly the sort of data inconsistency that makes financial reports fragile.
+
+### 6. Verify in the live report
+
+After implementation, verify the July 2026 Delta report shows:
+
+```text
+15h00 Puppy Class July August
+Revenue: R14,527.50
+Franchise: R2,179.13
+Admin: R1,452.75
+Instructor: about R10,895.63
+Profit: R0.00 / no negative R210.94
+```
+
+Also verify the Trainers tab agrees with the same canonical line totals.
