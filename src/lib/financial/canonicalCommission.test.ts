@@ -32,11 +32,19 @@ const elementarySchedule: CanonicalSchedule = {
   },
 };
 
+const sameRatePuppySchedule: CanonicalSchedule = {
+  ...puppySchedule,
+  classes: {
+    ...puppySchedule.classes,
+    trainer_fee_value: 40,
+  },
+};
+
 const sameRateElementarySchedule: CanonicalSchedule = {
   ...elementarySchedule,
   classes: {
     ...elementarySchedule.classes,
-    trainer_fee_value: 75,
+    trainer_fee_value: 40,
   },
 };
 
@@ -109,6 +117,8 @@ describe("buildCanonicalCommissionLines", () => {
     const matchingBookings = bookings.map((booking) =>
       booking.id === "elementary-booking"
         ? { ...booking, class_schedules: sameRateElementarySchedule }
+        : booking.id === "puppy-booking"
+        ? { ...booking, class_schedules: sameRatePuppySchedule }
         : booking
     );
 
@@ -117,8 +127,8 @@ describe("buildCanonicalCommissionLines", () => {
     const elementaryLine = lines.find((line) => line.itemId === "elementary-item");
 
     expect(puppyLine?.trainerBaseAmount).toBe(1398.75);
-    expect(puppyLine?.trainerCommission).toBe(1049.06);
+    expect(puppyLine?.trainerCommission).toBe(559.5);
     expect(elementaryLine?.trainerBaseAmount).toBe(1398.75);
-    expect(elementaryLine?.trainerCommission).toBe(1049.06);
+    expect(elementaryLine?.trainerCommission).toBe(559.5);
   });
 });
