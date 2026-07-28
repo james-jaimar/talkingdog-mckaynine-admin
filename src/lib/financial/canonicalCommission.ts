@@ -61,10 +61,17 @@ export interface CanonicalCommissionLine {
   franchiseFee: number;
   adminFee: number;
   profit: number;
+  totalFees: number;
+  isOverallocated: boolean;
+  overallocatedAmount: number;
+}
+
+function normalizeFeeType(type: unknown): string {
+  return String(type ?? "percentage").toLowerCase().trim();
 }
 
 function isFixedAmount(type: unknown): boolean {
-  const normalized = String(type ?? "percentage").toLowerCase().trim();
+  const normalized = normalizeFeeType(type);
   return normalized === "fixed" || normalized === "amount";
 }
 
@@ -172,6 +179,9 @@ export function buildCanonicalCommissionLines(
       franchiseFee: 0,
       adminFee: 0,
       profit: 0,
+      totalFees: 0,
+      isOverallocated: false,
+      overallocatedAmount: 0,
     };
   });
 
@@ -191,8 +201,14 @@ export function buildCanonicalCommissionLines(
     const trainerIds = new Set(courseLines.map((line) => line.trainerId).filter(Boolean));
     const clientIds = new Set(courseLines.map((line) => line.clientId).filter(Boolean));
     const hasMultiDogDiscount = /multi-?dog/i.test(invoice?.discount_reason || "");
+    const feeSignatures = new Set(courseLines.map((line) => {
+      const booking = line.bookingId ? bookingMap.get(line.bookingId) : undefined;
+      const schedule = getScheduleFromBooking(booking, scheduleMap);
+      const classData = schedule?.classes;
+      return `${normalizeFeeType(classData?.trainer_fee_type)}:${Number(classData?.trainer_fee_value ?? 0)}`;
+    }));
 
-    if (trainerIds.size <= 1 || clientIds.size !== 1 || !hasMultiDogDiscount) return;
+    if (trainerIds.size <= 1 || clientIds.size !== 1 || !hasMultiDogDiscount || feeSignatures.size !== 1) return;
 
     const totalNet = courseLines.reduce((sum, line) => sum + line.netAmount, 0);
     const sharePerTrainer = totalNet / trainerIds.size;
@@ -221,7 +237,23 @@ export function buildCanonicalCommissionLines(
     line.franchiseFee = calculateFee(line.netAmount, classData.mckaynine_commission_type, classData.mckaynine_commission_value);
     line.adminFee = calculateFee(line.netAmount, classData.admin_fee_type, classData.admin_fee_value);
     line.trainerCommission = calculateFee(line.trainerBaseAmount, classData.trainer_fee_type, classData.trainer_fee_value);
-    line.profit = roundToCents(line.netAmount - line.franchiseFee - line.adminFee - line.trainerCommission);
+    line.totalFees = roundToCents(line.franchiseFee + line.adminFee + line.trainerCommission);
+    line.overallocatedAmount = roundToCents(Math.max(0, line.totalFees - line.netAmount));
+    line.isOverallocated = line.overallocatedAmount > 0.01;
+
+    const rawProfit = roundToCents(line.netAmount - line.totalFees);
+    line.profit = Math.abs(rawProfit) <= 0.01 ? 0 : rawProfit;
+
+    if (line.isOverallocated) {
+      console.warn("[CanonicalCommission] Overallocated financial line", {
+        itemId: line.itemId,
+        invoiceId: line.invoiceId,
+        className: line.className,
+        netAmount: line.netAmount,
+        totalFees: line.totalFees,
+        overallocatedAmount: line.overallocatedAmount,
+      });
+    }
   });
 
   return baseLines;
