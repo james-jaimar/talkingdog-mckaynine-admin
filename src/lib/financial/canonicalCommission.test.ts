@@ -1,3 +1,4 @@
+import { describe, expect, it } from "vitest";
 import { buildCanonicalCommissionLines, CanonicalBooking, CanonicalInvoiceItem, CanonicalSchedule } from "./canonicalCommission";
 
 const puppySchedule: CanonicalSchedule = {
@@ -45,6 +46,22 @@ const sameRateElementarySchedule: CanonicalSchedule = {
   classes: {
     ...elementarySchedule.classes,
     trainer_fee_value: 40,
+  },
+};
+
+const bronzeSchedule: CanonicalSchedule = {
+  id: "bronze-schedule",
+  trainer_id: "maria",
+  classes: {
+    id: "bronze-class",
+    name: "14h00 Bronze CGC",
+    trainer_fee_type: "percentage",
+    trainer_fee_value: 40,
+    mckaynine_commission_type: "percentage",
+    mckaynine_commission_value: 15,
+    admin_fee_type: "percentage",
+    admin_fee_value: 10,
+    branch_id: "delta",
   },
 };
 
@@ -100,6 +117,43 @@ function multiDogItems(): CanonicalInvoiceItem[] {
   ];
 }
 
+function angelaGloverItems(): CanonicalInvoiceItem[] {
+  return [
+    {
+      id: "angela-elementary-item",
+      invoice_id: "INV-McD-2607-0037",
+      booking_id: "angela-elementary-booking",
+      amount: 1260,
+      description: "14h00 Elementary Obedience training class for Cedar (25% multi-dog discount applied)",
+      item_type: "course_fee",
+      invoices: {
+        id: "INV-McD-2607-0037",
+        status: "paid",
+        subtotal: 2940,
+        monetary_discount: 0,
+        discount_reason: "Multi-dog discount (25% off 2nd dog in different class)",
+        branch_id: "delta",
+      },
+    },
+    {
+      id: "angela-bronze-item",
+      invoice_id: "INV-McD-2607-0037",
+      booking_id: "angela-bronze-booking",
+      amount: 1680,
+      description: "14h00 Bronze CGC training class for Pineapple",
+      item_type: "course_fee",
+      invoices: {
+        id: "INV-McD-2607-0037",
+        status: "paid",
+        subtotal: 2940,
+        monetary_discount: 0,
+        discount_reason: "Multi-dog discount (25% off 2nd dog in different class)",
+        branch_id: "delta",
+      },
+    },
+  ];
+}
+
 describe("buildCanonicalCommissionLines", () => {
   it("does not redistribute multi-dog revenue across trainers with different commission rates", () => {
     const lines = buildCanonicalCommissionLines(multiDogItems(), bookings, [], "delta");
@@ -130,5 +184,33 @@ describe("buildCanonicalCommissionLines", () => {
     expect(puppyLine?.trainerCommission).toBe(559.5);
     expect(elementaryLine?.trainerBaseAmount).toBe(1398.75);
     expect(elementaryLine?.trainerCommission).toBe(559.5);
+  });
+
+  it("shares Angela Glover's same-rate multi-dog discount evenly across Therese and Maria", () => {
+    const angelaBookings: CanonicalBooking[] = [
+      {
+        id: "angela-elementary-booking",
+        client_id: "angela",
+        class_schedule_id: sameRateElementarySchedule.id,
+        class_schedules: sameRateElementarySchedule,
+      },
+      {
+        id: "angela-bronze-booking",
+        client_id: "angela",
+        class_schedule_id: bronzeSchedule.id,
+        class_schedules: bronzeSchedule,
+      },
+    ];
+
+    const lines = buildCanonicalCommissionLines(angelaGloverItems(), angelaBookings, [], "delta");
+    const elementaryLine = lines.find((line) => line.itemId === "angela-elementary-item");
+    const bronzeLine = lines.find((line) => line.itemId === "angela-bronze-item");
+
+    expect(elementaryLine?.netAmount).toBe(1260);
+    expect(bronzeLine?.netAmount).toBe(1680);
+    expect(elementaryLine?.trainerBaseAmount).toBe(1470);
+    expect(bronzeLine?.trainerBaseAmount).toBe(1470);
+    expect(elementaryLine?.trainerCommission).toBe(588);
+    expect(bronzeLine?.trainerCommission).toBe(588);
   });
 });
