@@ -154,19 +154,25 @@ function angelaGloverItems(): CanonicalInvoiceItem[] {
 }
 
 describe("buildCanonicalCommissionLines", () => {
-  it("does not redistribute multi-dog revenue across trainers with different commission rates", () => {
+  it("splits multi-dog invoice evenly across trainers even when commission rates differ (each applies own rate to their half)", () => {
     const lines = buildCanonicalCommissionLines(multiDogItems(), bookings, [], "delta");
     const puppyLine = lines.find((line) => line.itemId === "puppy-item");
     const elementaryLine = lines.find((line) => line.itemId === "elementary-item");
 
-    expect(puppyLine?.trainerBaseAmount).toBe(1117.5);
-    expect(puppyLine?.trainerCommission).toBe(838.13);
-    expect(puppyLine?.profit).toBe(0);
-    expect(elementaryLine?.trainerBaseAmount).toBe(1680);
-    expect(elementaryLine?.trainerCommission).toBe(672);
+    // Net course total R2797.50 → R1398.75 each trainer base
+    expect(puppyLine?.trainerBaseAmount).toBe(1398.75);
+    expect(elementaryLine?.trainerBaseAmount).toBe(1398.75);
+    // Ady 75% × R1398.75 = R1049.06; Therese 40% × R1398.75 = R559.50
+    expect(puppyLine?.trainerCommission).toBe(1049.06);
+    expect(elementaryLine?.trainerCommission).toBe(559.5);
+    // Franchise/admin fees stay per-line on the actual line net (not redistributed)
+    expect(puppyLine?.franchiseFee).toBe(167.63);
+    expect(puppyLine?.adminFee).toBe(111.75);
+    expect(elementaryLine?.franchiseFee).toBe(252);
+    expect(elementaryLine?.adminFee).toBe(168);
   });
 
-  it("still redistributes multi-dog revenue across trainers with matching commission rates", () => {
+  it("splits multi-dog invoice evenly across trainers with matching commission rates", () => {
     const matchingBookings = bookings.map((booking) =>
       booking.id === "elementary-booking"
         ? { ...booking, class_schedules: sameRateElementarySchedule }
@@ -184,6 +190,7 @@ describe("buildCanonicalCommissionLines", () => {
     expect(elementaryLine?.trainerBaseAmount).toBe(1398.75);
     expect(elementaryLine?.trainerCommission).toBe(559.5);
   });
+
 
   it("shares Angela Glover's same-rate multi-dog discount evenly across Therese and Maria", () => {
     const angelaBookings: CanonicalBooking[] = [
