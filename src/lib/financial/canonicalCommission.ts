@@ -201,14 +201,9 @@ export function buildCanonicalCommissionLines(
     const trainerIds = new Set(courseLines.map((line) => line.trainerId).filter(Boolean));
     const clientIds = new Set(courseLines.map((line) => line.clientId).filter(Boolean));
     const hasMultiDogDiscount = /multi-?dog/i.test(invoice?.discount_reason || "");
-    const feeSignatures = new Set(courseLines.map((line) => {
-      const booking = line.bookingId ? bookingMap.get(line.bookingId) : undefined;
-      const schedule = getScheduleFromBooking(booking, scheduleMap);
-      const classData = schedule?.classes;
-      return `${normalizeFeeType(classData?.trainer_fee_type)}:${Number(classData?.trainer_fee_value ?? 0)}`;
-    }));
 
-    if (trainerIds.size <= 1 || clientIds.size !== 1 || !hasMultiDogDiscount || feeSignatures.size !== 1) return;
+    if (trainerIds.size <= 1 || clientIds.size !== 1 || !hasMultiDogDiscount) return;
+
 
     const totalNet = courseLines.reduce((sum, line) => sum + line.netAmount, 0);
     const sharePerTrainer = totalNet / trainerIds.size;
