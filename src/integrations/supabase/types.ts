@@ -2394,6 +2394,7 @@ export type Database = {
       }
       invoice_items: {
         Row: {
+          adjustment_reason: string | null
           amount: number
           booking_id: string | null
           created_at: string
@@ -2402,11 +2403,13 @@ export type Database = {
           invoice_id: string
           io_inventory_code: string | null
           item_type: string | null
+          original_amount: number | null
           quantity: number
           unit_price: number
           updated_at: string
         }
         Insert: {
+          adjustment_reason?: string | null
           amount: number
           booking_id?: string | null
           created_at?: string
@@ -2415,11 +2418,13 @@ export type Database = {
           invoice_id: string
           io_inventory_code?: string | null
           item_type?: string | null
+          original_amount?: number | null
           quantity?: number
           unit_price: number
           updated_at?: string
         }
         Update: {
+          adjustment_reason?: string | null
           amount?: number
           booking_id?: string | null
           created_at?: string
@@ -2428,6 +2433,7 @@ export type Database = {
           invoice_id?: string
           io_inventory_code?: string | null
           item_type?: string | null
+          original_amount?: number | null
           quantity?: number
           unit_price?: number
           updated_at?: string
@@ -3252,6 +3258,10 @@ export type Database = {
           remaining_total: number
           success: boolean
         }[]
+      }
+      apply_fair_share_to_invoice: {
+        Args: { p_invoice_id: string }
+        Returns: undefined
       }
       calculate_trainer_payment: {
         Args: { p_booking_id: string }

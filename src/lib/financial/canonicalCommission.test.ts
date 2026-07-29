@@ -1,6 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { buildCanonicalCommissionLines, CanonicalBooking, CanonicalInvoiceItem, CanonicalSchedule } from "./canonicalCommission";
 
+// NOTE: Fair-share redistribution is now performed by the database trigger
+// `apply_fair_share_to_invoice`, which rewrites `invoice_items.amount` in place
+// for multi-dog + multi-trainer + single-handler invoices. By the time these
+// items reach `buildCanonicalCommissionLines`, `amount` already IS the fair
+// share, so the canonical calculator simply reads it. These tests verify that
+// no runtime redistribution happens — commission is always rate × amount.
 
 const puppySchedule: CanonicalSchedule = {
   id: "puppy-schedule",
@@ -34,38 +40,6 @@ const elementarySchedule: CanonicalSchedule = {
   },
 };
 
-const sameRatePuppySchedule: CanonicalSchedule = {
-  ...puppySchedule,
-  classes: {
-    ...puppySchedule.classes,
-    trainer_fee_value: 40,
-  },
-};
-
-const sameRateElementarySchedule: CanonicalSchedule = {
-  ...elementarySchedule,
-  classes: {
-    ...elementarySchedule.classes,
-    trainer_fee_value: 40,
-  },
-};
-
-const bronzeSchedule: CanonicalSchedule = {
-  id: "bronze-schedule",
-  trainer_id: "maria",
-  classes: {
-    id: "bronze-class",
-    name: "14h00 Bronze CGC",
-    trainer_fee_type: "percentage",
-    trainer_fee_value: 40,
-    mckaynine_commission_type: "percentage",
-    mckaynine_commission_value: 15,
-    admin_fee_type: "percentage",
-    admin_fee_value: 10,
-    branch_id: "delta",
-  },
-};
-
 const bookings: CanonicalBooking[] = [
   {
     id: "puppy-booking",
@@ -81,14 +55,16 @@ const bookings: CanonicalBooking[] = [
   },
 ];
 
-function multiDogItems(): CanonicalInvoiceItem[] {
+// After the DB trigger rewrites line amounts to R1398.75 each (fair share of R2797.50 net),
+// the canonical calculator should just apply each trainer's own rate to it.
+function fairShareRewrittenItems(): CanonicalInvoiceItem[] {
   return [
     {
       id: "puppy-item",
       invoice_id: "invoice-1",
       booking_id: "puppy-booking",
-      amount: 1117.5,
-      description: "15h00 Puppy Class July August training class for Sammy (25% multi-dog discount applied)",
+      amount: 1398.75, // rewritten from 1117.5
+      description: "15h00 Puppy Class July August training class for Sammy",
       item_type: "course_fee",
       invoices: {
         id: "invoice-1",
@@ -103,7 +79,7 @@ function multiDogItems(): CanonicalInvoiceItem[] {
       id: "elementary-item",
       invoice_id: "invoice-1",
       booking_id: "elementary-booking",
-      amount: 1680,
+      amount: 1398.75, // rewritten from 1680
       description: "14h00 Elementary Obedience training class for Remi",
       item_type: "course_fee",
       invoices: {
@@ -118,107 +94,42 @@ function multiDogItems(): CanonicalInvoiceItem[] {
   ];
 }
 
-function angelaGloverItems(): CanonicalInvoiceItem[] {
-  return [
-    {
-      id: "angela-elementary-item",
-      invoice_id: "INV-McD-2607-0037",
-      booking_id: "angela-elementary-booking",
-      amount: 1260,
-      description: "14h00 Elementary Obedience training class for Cedar (25% multi-dog discount applied)",
-      item_type: "course_fee",
-      invoices: {
-        id: "INV-McD-2607-0037",
-        status: "paid",
-        subtotal: 2940,
-        monetary_discount: 0,
-        discount_reason: "Multi-dog discount (25% off 2nd dog in different class)",
-        branch_id: "delta",
-      },
-    },
-    {
-      id: "angela-bronze-item",
-      invoice_id: "INV-McD-2607-0037",
-      booking_id: "angela-bronze-booking",
-      amount: 1680,
-      description: "14h00 Bronze CGC training class for Pineapple",
-      item_type: "course_fee",
-      invoices: {
-        id: "INV-McD-2607-0037",
-        status: "paid",
-        subtotal: 2940,
-        monetary_discount: 0,
-        discount_reason: "Multi-dog discount (25% off 2nd dog in different class)",
-        branch_id: "delta",
-      },
-    },
-  ];
-}
-
 describe("buildCanonicalCommissionLines", () => {
-  it("splits multi-dog invoice evenly across trainers even when commission rates differ (each applies own rate to their half)", () => {
-    const lines = buildCanonicalCommissionLines(multiDogItems(), bookings, [], "delta");
+  it("applies each trainer's own commission rate to the already-rewritten line amount", () => {
+    const lines = buildCanonicalCommissionLines(fairShareRewrittenItems(), bookings, [], "delta");
     const puppyLine = lines.find((line) => line.itemId === "puppy-item");
     const elementaryLine = lines.find((line) => line.itemId === "elementary-item");
 
-    // Net course total R2797.50 → R1398.75 each trainer base
+    // trainerBaseAmount equals the stored (fair-share) amount — no runtime redistribution.
     expect(puppyLine?.trainerBaseAmount).toBe(1398.75);
     expect(elementaryLine?.trainerBaseAmount).toBe(1398.75);
-    // Ady 75% × R1398.75 = R1049.06; Therese 40% × R1398.75 = R559.50
-    expect(puppyLine?.trainerCommission).toBe(1049.06);
-    expect(elementaryLine?.trainerCommission).toBe(559.5);
-    // Franchise/admin fees stay per-line on the actual line net (not redistributed)
-    expect(puppyLine?.franchiseFee).toBe(167.63);
-    expect(puppyLine?.adminFee).toBe(111.75);
-    expect(elementaryLine?.franchiseFee).toBe(252);
-    expect(elementaryLine?.adminFee).toBe(168);
+
+    // Commission = rate × amount, applied per line.
+    expect(puppyLine?.trainerCommission).toBe(1049.06); // 75% × 1398.75
+    expect(elementaryLine?.trainerCommission).toBe(559.5); // 40% × 1398.75
+
+    // Franchise/admin fees are also computed off the (rewritten) line amount.
+    expect(puppyLine?.franchiseFee).toBe(209.81); // 15% × 1398.75
+    expect(puppyLine?.adminFee).toBe(139.88); // 10% × 1398.75
+    expect(elementaryLine?.franchiseFee).toBe(209.81);
+    expect(elementaryLine?.adminFee).toBe(139.88);
   });
 
-  it("splits multi-dog invoice evenly across trainers with matching commission rates", () => {
-    const matchingBookings = bookings.map((booking) =>
-      booking.id === "elementary-booking"
-        ? { ...booking, class_schedules: sameRateElementarySchedule }
-        : booking.id === "puppy-booking"
-        ? { ...booking, class_schedules: sameRatePuppySchedule }
-        : booking
-    );
-
-    const lines = buildCanonicalCommissionLines(multiDogItems(), matchingBookings, [], "delta");
-    const puppyLine = lines.find((line) => line.itemId === "puppy-item");
-    const elementaryLine = lines.find((line) => line.itemId === "elementary-item");
-
-    expect(puppyLine?.trainerBaseAmount).toBe(1398.75);
-    expect(puppyLine?.trainerCommission).toBe(559.5);
-    expect(elementaryLine?.trainerBaseAmount).toBe(1398.75);
-    expect(elementaryLine?.trainerCommission).toBe(559.5);
-  });
-
-
-  it("shares Angela Glover's same-rate multi-dog discount evenly across Therese and Maria", () => {
-    const angelaBookings: CanonicalBooking[] = [
-      {
-        id: "angela-elementary-booking",
-        client_id: "angela",
-        class_schedule_id: sameRateElementarySchedule.id,
-        class_schedules: sameRateElementarySchedule,
-      },
-      {
-        id: "angela-bronze-booking",
-        client_id: "angela",
-        class_schedule_id: bronzeSchedule.id,
-        class_schedules: bronzeSchedule,
-      },
+  it("does not redistribute for a single-trainer multi-dog invoice (trigger won't have rewritten it)", () => {
+    const singleTrainerBookings: CanonicalBooking[] = [
+      { id: "b1", client_id: "handler-x", class_schedule_id: elementarySchedule.id, class_schedules: elementarySchedule },
+      { id: "b2", client_id: "handler-x", class_schedule_id: elementarySchedule.id, class_schedules: elementarySchedule },
     ];
-
-    const lines = buildCanonicalCommissionLines(angelaGloverItems(), angelaBookings, [], "delta");
-    const elementaryLine = lines.find((line) => line.itemId === "angela-elementary-item");
-    const bronzeLine = lines.find((line) => line.itemId === "angela-bronze-item");
-
-    expect(elementaryLine?.netAmount).toBe(1260);
-    expect(bronzeLine?.netAmount).toBe(1680);
-    expect(elementaryLine?.trainerBaseAmount).toBe(1470);
-    expect(bronzeLine?.trainerBaseAmount).toBe(1470);
-    expect(elementaryLine?.trainerCommission).toBe(588);
-    expect(bronzeLine?.trainerCommission).toBe(588);
+    const items: CanonicalInvoiceItem[] = [
+      { id: "i1", invoice_id: "inv-2", booking_id: "b1", amount: 1260, item_type: "course_fee",
+        invoices: { id: "inv-2", status: "paid", subtotal: 2940, monetary_discount: 0,
+          discount_reason: "Multi-dog discount", branch_id: "delta" } },
+      { id: "i2", invoice_id: "inv-2", booking_id: "b2", amount: 1680, item_type: "course_fee",
+        invoices: { id: "inv-2", status: "paid", subtotal: 2940, monetary_discount: 0,
+          discount_reason: "Multi-dog discount", branch_id: "delta" } },
+    ];
+    const lines = buildCanonicalCommissionLines(items, singleTrainerBookings, [], "delta");
+    expect(lines.find((l) => l.itemId === "i1")?.trainerCommission).toBe(504); // 40% × 1260
+    expect(lines.find((l) => l.itemId === "i2")?.trainerCommission).toBe(672); // 40% × 1680
   });
 });

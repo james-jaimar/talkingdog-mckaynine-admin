@@ -82,10 +82,13 @@ export interface InvoiceItem {
   amount: number;
   booking_id?: string;
   item_type?: string; // 'course_fee' or 'enrollment_fee'
+  original_amount?: number | null; // pre-adjustment gross when line was rewritten
+  adjustment_reason?: string | null; // e.g. 'multi_dog_fair_share'
   
   // Optional bookings field to support nested data
   bookings?: BookingWithDetails;
 }
+
 
 // Add the BookingWithDetails interface for invoice item enhancer
 export interface BookingWithDetails {
