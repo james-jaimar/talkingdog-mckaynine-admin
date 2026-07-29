@@ -127,6 +127,7 @@ export function InvoiceItemRow({ item, index }: InvoiceItemRowProps) {
           </div>
         )}
       </TableCell>
-
+    </TableRow>
   );
+
 }
