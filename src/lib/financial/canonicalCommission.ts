@@ -185,42 +185,12 @@ export function buildCanonicalCommissionLines(
     };
   });
 
-  const linesByInvoice = new Map<string, CanonicalCommissionLine[]>();
-  baseLines.forEach((line) => {
-    if (!line.invoiceId) return;
-    const group = linesByInvoice.get(line.invoiceId) || [];
-    group.push(line);
-    linesByInvoice.set(line.invoiceId, group);
-  });
+  // Fair-share redistribution is no longer computed at runtime.
+  // The database trigger `apply_fair_share_to_invoice` rewrites the
+  // stored `invoice_items.amount` for multi-dog + multi-trainer + single-handler
+  // invoices so each line's amount IS the fair share. Commissions and reports
+  // therefore just read `netAmount` directly.
 
-  linesByInvoice.forEach((invoiceLines) => {
-    const courseLines = invoiceLines.filter((line) => !line.isEnrollmentFee && line.isAllocated && line.trainerId);
-    if (courseLines.length === 0) return;
-
-    const invoice = invoiceItems.find((item) => item.invoice_id === invoiceLines[0]?.invoiceId)?.invoices;
-    const trainerIds = new Set(courseLines.map((line) => line.trainerId).filter(Boolean));
-    const clientIds = new Set(courseLines.map((line) => line.clientId).filter(Boolean));
-    const hasMultiDogDiscount = /multi-?dog/i.test(invoice?.discount_reason || "");
-
-    if (trainerIds.size <= 1 || clientIds.size !== 1 || !hasMultiDogDiscount) return;
-
-
-    const totalNet = courseLines.reduce((sum, line) => sum + line.netAmount, 0);
-    const sharePerTrainer = totalNet / trainerIds.size;
-    const trainerTotals = new Map<string, number>();
-
-    courseLines.forEach((line) => {
-      if (!line.trainerId) return;
-      trainerTotals.set(line.trainerId, (trainerTotals.get(line.trainerId) || 0) + line.netAmount);
-    });
-
-    courseLines.forEach((line) => {
-      if (!line.trainerId) return;
-      const trainerTotal = trainerTotals.get(line.trainerId) || 0;
-      if (trainerTotal <= 0) return;
-      line.trainerBaseAmount = roundToCents(line.netAmount * (sharePerTrainer / trainerTotal));
-    });
-  });
 
   baseLines.forEach((line) => {
     if (line.isEnrollmentFee || !line.isAllocated) return;
