@@ -1,76 +1,66 @@
-## What I verified
+## Goal
 
-- The invoice in question is **INV-McD-2607-0037** for Angela Glover.
-- It has two course-fee lines:
-  - **14h00 Elementary Obedience / Therese**: R1,260.00
-  - **14h00 Bronze CGC / Maria**: R1,680.00
-- Invoice total course revenue is **R2,940.00**.
-- Both classes use the same trainer commission rate: **40%**.
-- Because it is a same-handler, multi-trainer, same-rate, multi-dog-discount case, the trainer base should be shared:
+1. Fix the multi-dog trainer fairness rule to match your definition.
+2. Audit every July 2026 multi-dog invoice and correct any calculations that drift from the rule.
 
-```text
-R2,940.00 / 2 trainers = R1,470.00 base each
-R1,470.00 * 40% = R588.00 commission each
-```
+## The corrected rule
 
-## Confirmed root cause
+When an invoice has:
+- A multi-dog discount reason, AND
+- More than one trainer across its course lines, AND
+- One handler (one client) across those lines
 
-The frontend canonical calculator already has the correct same-rate gate and should split this case correctly when it receives both invoice lines together.
+Then, regardless of the trainers' commission rates:
 
-The database function **`calculate_trainer_payment_for_schedule` is still schedule-scoped too early**. It starts from only the current schedule’s bookings, so when recalculating Therese’s class it only sees the R1,260 line; when recalculating Maria’s class it only sees the R1,680 line. It therefore cannot see the sibling trainer line on the same invoice and cannot apply the fairness split.
+- Take the invoice's net course total (sum of the discounted line amounts).
+- Split it evenly across the trainers — that is each trainer's "base amount".
+- Each trainer then applies THEIR OWN commission % to their half.
 
-That is why stored/recalculated trainer payments can show:
+The class-level franchise (15%) and admin (10%) fees stay tied to each actual line's net amount (they are not redistributed), because those fees follow revenue, not the trainer.
 
-```text
-Therese: R1,260 * 40% = R504.00
-Maria:   R1,680 * 40% = R672.00
-```
+### What changes in code
 
-instead of:
+`src/lib/financial/canonicalCommission.ts` — remove the "same-rate" gate. The redistribution block currently only runs when every trainer on the invoice has an identical fee signature (line 211: `feeSignatures.size !== 1` bails out). That gate is what's producing Ady's complaint on INV-McD-2607-0037: Therese is at 40% on a discounted line (R1,260), Maria is at 40% on a full-price line (R1,680) — same rate today so it happens to be fine there — but the rule should apply even when rates differ. Drop the `feeSignatures.size !== 1` check; keep the other gates (multi-trainer, single client, multi-dog reason).
 
-```text
-Therese: R588.00
-Maria:   R588.00
-```
+Mirror the same removal in Postgres `public.calculate_trainer_payment_for_schedule` so DB-side trainer payment totals agree with the UI.
 
-## Implementation plan
+Update `src/lib/financial/canonicalCommission.test.ts`:
+- Keep the Angela Glover case (same-rate) — result unchanged.
+- Change the "different-rate" test so it now EXPECTS redistribution: e.g. Ady 75% + Steve 40% on a R1,117.50 + R1,680 invoice → each trainer's base = R1,398.75 → Ady commission R1,049.06, Steve R559.50.
+- Add a case that also confirms franchise/admin fees are still computed off each line's own net (not the redistributed base).
 
-1. **Update the database trainer payment function**
-   - Change `calculate_trainer_payment_for_schedule` so it first finds invoices touched by the target schedule, then loads all course-fee booking lines on those invoices.
-   - Apply the existing canonical gates across the full invoice:
-     - more than one trainer
-     - one handler/client
-     - invoice has a multi-dog discount reason
-     - all affected lines have the same trainer fee type and value
-   - Then return only the amount for the requested schedule/trainer.
+### What this means for the earlier Puppy R210.94 regression
 
-2. **Keep the mixed-rate safety fix intact**
-   - The Puppy bug remains protected: if trainer rates differ, do not redistribute.
-   - Same-rate invoices like Angela’s do redistribute.
+That fix was gated on "same rate only" as a safety net against overallocation. Re-running the math with the correct rule on INV-McD-2607-0009 (Ady 75% + Steve 40%, net R2,797.50): trainer commissions total R1,608.56, franchise R419.63, admin R279.75 → total fees R2,307.94 → profit R489.56. No negative profit, no overallocation. Safe to remove the gate.
 
-3. **Add regression coverage**
-   - Add a test case for Angela’s invoice shape:
-     - R1,260 + R1,680
-     - same handler
-     - two trainers
-     - both at 40%
-     - expected trainer base R1,470 each and commission R588 each.
-   - Fix the existing Vitest file import issue (`describe/it/expect`) so the regression actually runs.
+## July 2026 audit
 
-4. **Recalculate/verify Angela’s case**
-   - After the DB function update, verify the function returns **R588.00** for both Therese and Maria’s schedules on this invoice context.
-   - If any stored `trainer_payments` rows for those schedules are stale, update/recreate them through the existing payment recalculation path rather than hand-editing unrelated report math.
+I've enumerated every July invoice flagged as multi-dog. Six invoices, all Delta, all with `monetary_discount = 0` (discounts were baked into line amounts, not stored as a monetary discount — so `net = amount` per line):
 
-5. **Validate report consistency**
-   - Confirm the trainer report and financial report agree for this invoice:
+| Invoice | Handler shape | Trainers | Course subtotal | Action after rule fix |
+|---|---|---|---|---|
+| INV-McD-2607-0008 | 1 handler, 2 dogs, 2 classes | Therese 40% + Steve 40% (R1,260 + R1,770) | R3,030 | Redistribute → R1,515 each. Therese R606, Steve R606. |
+| INV-McD-2607-0009 | 1 handler, 2 dogs, 2 classes (+2 enrollment) | Ady 75% + Therese 40% (R1,117.50 + R1,680) | R2,797.50 | Redistribute → R1,398.75 each. Ady R1,049.06, Therese R559.50. |
+| INV-McD-2607-0016 | 1 handler, 1 trainer only | Ady (single class) | R1,050 | No redistribution — single trainer. Verify commission = 75% × R1,050. |
+| INV-McD-2607-0017 | 1 handler, 1 trainer only | Therese (single class) | R1,050 | No redistribution — single trainer. Verify commission = 40% × R1,050. |
+| INV-McD-2607-0031 | 1 handler, 1 trainer only | (single class) | R3,780 | No redistribution. Verify commission at class's own rate. |
+| INV-McD-2607-0037 | 1 handler, 2 dogs, 2 classes | Therese 40% + Maria 40% (R1,260 + R1,680) | R2,940 | Redistribute → R1,470 each. Therese R588, Maria R588. (Already fixed manually; this makes it deterministic.) |
 
-```text
-Invoice source of truth: R2,940.00
-Therese commission:     R588.00
-Maria commission:       R588.00
-Total trainer cost:     R1,176.00
-```
+For the three single-trainer invoices (0016, 0017, 0031) the rule doesn't apply and existing math should already be right — I'll verify each stored trainer payment matches `class_rate × subtotal` after the migration runs.
 
-## Important note
+For the three multi-trainer invoices (0008, 0009, 0037), after the code + DB fix I'll call `update-trainer-payments` (or update `trainer_payments` rows directly) so the pending amounts reflect the recalculated schedule totals for those trainers, and then eyeball the Class Financial Report to confirm the two views match to the cent.
 
-The source of truth remains the **net course-fee invoice line total**. The only special rule here is not changing revenue; it is only changing the **trainer commission base** when a multi-dog discount was manually/structurally applied to one trainer’s line but the business rule says that discount should be shared fairly across same-rate trainers.
+## Sequence
+
+1. Edit `src/lib/financial/canonicalCommission.ts` — remove same-rate gate.
+2. Migration on `public.calculate_trainer_payment_for_schedule` — remove same-rate gate.
+3. Update `src/lib/financial/canonicalCommission.test.ts` — flip the different-rate expectation, keep same-rate case, add fees-not-redistributed check. Run `bunx vitest run canonicalCommission`.
+4. Refresh stored `trainer_payments` for the three affected July schedules (INV-McD-2607-0008, 0009, 0037) so pending amounts match the new recalculation.
+5. Verify by reading Class Financial Report (July) and Trainer Statements — every trainer total should equal the sum of their fair-share commissions from the report.
+6. Report exact before/after numbers per invoice back to you.
+
+## No changes required
+
+- Discount detection logic (already handles both stored `monetary_discount` and pre-discounted line amounts).
+- Franchise/admin fee computation (stays per-line on net).
+- Overallocation guards (kept; will only fire in true edge cases now).
