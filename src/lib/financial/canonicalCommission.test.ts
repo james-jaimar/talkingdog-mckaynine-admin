@@ -1,4 +1,6 @@
+import { describe, it, expect } from "vitest";
 import { buildCanonicalCommissionLines, CanonicalBooking, CanonicalInvoiceItem, CanonicalSchedule } from "./canonicalCommission";
+
 
 const puppySchedule: CanonicalSchedule = {
   id: "puppy-schedule",
