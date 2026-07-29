@@ -120,8 +120,13 @@ export function InvoiceItemRow({ item, index }: InvoiceItemRowProps) {
       <TableCell className="text-center">{quantity}</TableCell>
       <TableCell className="text-right">{formatCurrency(unitPrice)}</TableCell>
       <TableCell className="text-right">
-        {formatCurrency(itemAmount)}
+        <div>{formatCurrency(itemAmount)}</div>
+        {item.original_amount != null && item.adjustment_reason === 'multi_dog_fair_share' && (
+          <div className="text-[10px] text-amber-600 mt-0.5 whitespace-nowrap">
+            Adjusted from {formatCurrency(Number(item.original_amount))} · multi-dog fair share
+          </div>
+        )}
       </TableCell>
-    </TableRow>
+
   );
 }
