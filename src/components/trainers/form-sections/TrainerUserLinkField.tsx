@@ -28,14 +28,6 @@ interface UserOption {
   role: string;
 }
 
-type ProfileWithRoles = {
-  id: string;
-  username: string | null;
-  full_name: string | null;
-  role: string | null;
-  user_roles: Array<{ role: string }> | null;
-};
-
 export function TrainerUserLinkField({ 
   trainerId, 
   currentUserId, 
@@ -65,14 +57,24 @@ export function TrainerUserLinkField({
         const linkedUserIds = trainers?.map(t => t.user_id).filter(Boolean) || [];
 
         // Authorization is sourced from user_roles, not the legacy profiles.role field.
-        const { data: profiles, error } = await supabase
+        const { data: trainerRoles, error: rolesError } = await supabase
+          .from('user_roles')
+          .select('user_id')
+          .eq('role', 'trainer');
+
+        if (rolesError) throw rolesError;
+
+        const trainerUserIds = trainerRoles?.map(role => role.user_id) || [];
+        const { data: profiles, error } = trainerUserIds.length > 0
+          ? await supabase
           .from('profiles')
-          .select('id, username, full_name, role, user_roles!inner(role)')
-          .eq('user_roles.role', 'trainer');
+          .select('id, username, full_name, role')
+          .in('id', trainerUserIds)
+          : { data: [], error: null };
 
         if (error) throw error;
 
-        let eligibleProfiles = (profiles || []) as ProfileWithRoles[];
+        let eligibleProfiles = profiles || [];
 
         // Keep a currently linked legacy account visible so an admin can repair or unlink it.
         if (currentUserId && !eligibleProfiles.some(profile => profile.id === currentUserId)) {
@@ -84,7 +86,7 @@ export function TrainerUserLinkField({
 
           if (currentProfileError) throw currentProfileError;
           if (currentProfile) {
-            eligibleProfiles = [...eligibleProfiles, { ...currentProfile, user_roles: [] }];
+            eligibleProfiles = [...eligibleProfiles, currentProfile];
           }
         }
 
