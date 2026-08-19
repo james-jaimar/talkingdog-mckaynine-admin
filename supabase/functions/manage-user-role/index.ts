@@ -32,7 +32,7 @@ serve(async (req) => {
     }
 
     const requestData = await req.json();
-    const { userId, role, operation = "setRole" } = requestData;
+    const { userId, role, operation = "setRole", trainerId } = requestData;
     // operation: "setRole" (default, replaces non-platform_admin roles) or "addRole" (adds without removing)
 
     console.log(`Request: ${operation} for user ${userId}, role: ${role}`);
@@ -65,8 +65,55 @@ serve(async (req) => {
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Handle role operations
-    if (operation === "addRole") {
+    // Link a specific trainer record and grant the trainer role as one privileged operation.
+    if (operation === "linkTrainer") {
+      if (role !== "trainer" || !trainerId) {
+        return new Response(JSON.stringify({ error: "Bad Request", details: "trainerId and the trainer role are required" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      const { data: trainer, error: trainerError } = await supabaseAdmin
+        .from("trainers").select("id, user_id").eq("id", trainerId).single();
+
+      if (trainerError || !trainer) {
+        return new Response(JSON.stringify({ error: "Trainer not found", details: trainerError?.message }),
+          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      const { data: conflictingTrainer } = await supabaseAdmin
+        .from("trainers").select("id").eq("user_id", userId).neq("id", trainerId).maybeSingle();
+
+      if (conflictingTrainer) {
+        return new Response(JSON.stringify({ error: "Account already linked", details: "This user account is linked to another trainer." }),
+          { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      const { data: existingTrainerRole } = await supabaseAdmin
+        .from("user_roles").select("id").eq("user_id", userId).eq("role", "trainer").maybeSingle();
+
+      const { error: roleError } = await supabaseAdmin
+        .from("user_roles").upsert({ user_id: userId, role: "trainer" }, { onConflict: "user_id,role" });
+      if (roleError) {
+        return new Response(JSON.stringify({ error: "Database Error", details: roleError.message }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      const { error: linkError } = await supabaseAdmin
+        .from("trainers").update({ user_id: userId }).eq("id", trainerId);
+      if (linkError) {
+        if (!existingTrainerRole) {
+          await supabaseAdmin.from("user_roles").delete().eq("user_id", userId).eq("role", "trainer");
+        }
+        return new Response(JSON.stringify({ error: "Database Error", details: linkError.message }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      // Keep the legacy primary role meaningful without demoting admin accounts.
+      await supabaseAdmin.from("profiles").update({ role: "trainer" }).eq("id", userId).in("role", ["user", "trainer"]);
+
+      return new Response(JSON.stringify({ success: true, message: "Trainer account linked" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    } else if (operation === "addRole") {
       // Just insert the new role without removing existing ones
       const { error: insertError } = await supabaseAdmin
         .from("user_roles")

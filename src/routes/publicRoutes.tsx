@@ -9,6 +9,8 @@ import NotFound from "@/pages/NotFound";
 import PublicPuppyClassForm from "@/pages/PublicPuppyClassForm";
 import { useAuth } from "@/context/auth";
 import { Loader2 } from "lucide-react";
+import { RoleConfigurationError } from "@/components/auth/RoleConfigurationError";
+import { getHomeRouteForRole } from "@/lib/auth/roleRouting";
 
 // Simple loading screen component
 const LoadingScreen = () => (
@@ -41,24 +43,14 @@ export const HandlerRedirect = () => {
     return <Navigate to="/auth" replace />;
   }
   
-  // Priority-based redirect for multi-role users (e.g. "assistant,trainer")
-  // Higher-privilege roles take priority
-  if (role?.includes('platform_admin') || role?.includes('admin')) {
-    console.log("HandlerRedirect - User has admin role, redirecting to /dashboard");
-    return <Navigate to="/dashboard" replace />;
-  } else if (role?.includes('trainer')) {
-    console.log("HandlerRedirect - User has trainer role, redirecting to /trainer/dashboard");
-    return <Navigate to="/trainer/dashboard" replace />;
-  } else if (role?.includes('assistant')) {
-    console.log("HandlerRedirect - User has assistant role, redirecting to /assistant/schedule");
-    return <Navigate to="/assistant/schedule" replace />;
-  } else if (role?.includes('handler') || role?.includes('user')) {
-    console.log("HandlerRedirect - User has handler/user role, redirecting to /customer/dashboard");
-    return <Navigate to="/customer/dashboard" replace />;
-  } else {
-    console.log("HandlerRedirect - Unknown role, redirecting to /dashboard");
-    return <Navigate to="/dashboard" replace />;
+  const destination = getHomeRouteForRole(role);
+  if (!destination) {
+    console.error("HandlerRedirect - Authenticated user has no recognized role");
+    return <RoleConfigurationError />;
   }
+
+  console.log(`HandlerRedirect - Redirecting to ${destination}`);
+  return <Navigate to={destination} replace />;
 };
 
 export const publicRoutes = [

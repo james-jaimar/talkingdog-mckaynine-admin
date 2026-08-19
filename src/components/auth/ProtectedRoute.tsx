@@ -2,6 +2,8 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/auth";
 import { Loader2 } from "lucide-react";
+import { RoleConfigurationError } from "./RoleConfigurationError";
+import { getHomeRouteForRole } from "@/lib/auth/roleRouting";
 
 interface ProtectedRouteProps {
   children?: React.ReactNode;
@@ -53,15 +55,12 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       
     if (!hasRequiredRole) {
       console.log(`ProtectedRoute - User doesn't have required role: ${requiredRole}`);
-      
-      // Role-specific redirection when user doesn't have required role
-      if (hasHandlerRole && !hasStaffRole) {
-        return <Navigate to="/customer/dashboard" replace />;
-      } else if (role?.includes('trainer')) {
-        return <Navigate to="/trainer/dashboard" replace />;
-      } else {
-        return <Navigate to="/dashboard" replace />;
-      }
+
+      const destination = getHomeRouteForRole(role);
+      if (!destination) return <RoleConfigurationError />;
+      if (destination === location.pathname) return <RoleConfigurationError />;
+
+      return <Navigate to={destination} replace />;
     }
   }
   

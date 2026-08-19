@@ -1,11 +1,5 @@
 import { useState, useEffect } from "react";
-import { UseFormReturn } from "react-hook-form";
 import {
-  FormField,
-  FormItem,
-  FormLabel,
-  FormControl,
-  FormDescription,
 } from "@/components/ui/form";
 import {
   Select,
@@ -62,16 +56,42 @@ export function TrainerUserLinkField({
 
         const linkedUserIds = trainers?.map(t => t.user_id).filter(Boolean) || [];
 
-        // Fetch users with trainer role that are NOT already linked (except current)
-        const { data: profiles, error } = await supabase
+        // Authorization is sourced from user_roles, not the legacy profiles.role field.
+        const { data: trainerRoles, error: rolesError } = await supabase
+          .from('user_roles')
+          .select('user_id')
+          .eq('role', 'trainer');
+
+        if (rolesError) throw rolesError;
+
+        const trainerUserIds = trainerRoles?.map(role => role.user_id) || [];
+        const { data: profiles, error } = trainerUserIds.length > 0
+          ? await supabase
           .from('profiles')
           .select('id, username, full_name, role')
-          .or('role.eq.trainer,role.ilike.%trainer%');
+          .in('id', trainerUserIds)
+          : { data: [], error: null };
 
         if (error) throw error;
 
+        let eligibleProfiles = profiles || [];
+
+        // Keep a currently linked legacy account visible so an admin can repair or unlink it.
+        if (currentUserId && !eligibleProfiles.some(profile => profile.id === currentUserId)) {
+          const { data: currentProfile, error: currentProfileError } = await supabase
+            .from('profiles')
+            .select('id, username, full_name, role')
+            .eq('id', currentUserId)
+            .maybeSingle();
+
+          if (currentProfileError) throw currentProfileError;
+          if (currentProfile) {
+            eligibleProfiles = [...eligibleProfiles, currentProfile];
+          }
+        }
+
         // Filter out already linked users (except the current one for this trainer)
-        const availableUsers = (profiles || [])
+        const availableUsers = eligibleProfiles
           .filter(p => !linkedUserIds.includes(p.id) || p.id === currentUserId)
           .map(p => ({
             id: p.id,
@@ -102,12 +122,18 @@ export function TrainerUserLinkField({
 
     setIsLinking(true);
     try {
-      const { error } = await supabase
-        .from('trainers')
-        .update({ user_id: selectedUserId })
-        .eq('id', trainerId);
+      const { data, error } = await supabase.functions.invoke('manage-user-role', {
+        method: 'POST',
+        body: {
+          operation: 'linkTrainer',
+          role: 'trainer',
+          userId: selectedUserId,
+          trainerId,
+        },
+      });
 
       if (error) throw error;
+      if (!data?.success) throw new Error(data?.details || data?.error || "Failed to link trainer account");
 
       const linkedUserData = users.find(u => u.id === selectedUserId);
       setLinkedUser(linkedUserData || null);
