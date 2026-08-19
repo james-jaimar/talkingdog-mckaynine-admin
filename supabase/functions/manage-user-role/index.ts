@@ -88,6 +88,9 @@ serve(async (req) => {
           { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
+      const { data: existingTrainerRole } = await supabaseAdmin
+        .from("user_roles").select("id").eq("user_id", userId).eq("role", "trainer").maybeSingle();
+
       const { error: roleError } = await supabaseAdmin
         .from("user_roles").upsert({ user_id: userId, role: "trainer" }, { onConflict: "user_id,role" });
       if (roleError) {
@@ -98,6 +101,9 @@ serve(async (req) => {
       const { error: linkError } = await supabaseAdmin
         .from("trainers").update({ user_id: userId }).eq("id", trainerId);
       if (linkError) {
+        if (!existingTrainerRole) {
+          await supabaseAdmin.from("user_roles").delete().eq("user_id", userId).eq("role", "trainer");
+        }
         return new Response(JSON.stringify({ error: "Database Error", details: linkError.message }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
