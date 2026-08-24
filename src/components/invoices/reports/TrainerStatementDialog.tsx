@@ -320,6 +320,94 @@ export function TrainerStatementDialog({
             </DialogDescription>
           </DialogHeader>
 
+          {/* Statement period editor (display only) */}
+          <div className="flex-shrink-0 rounded-lg border bg-muted/40 p-3">
+            <div className="flex flex-col gap-3 md:flex-row md:items-end">
+              <div className="flex-1 space-y-1">
+                <Label htmlFor="statement-period-label" className="text-xs">
+                  Statement period label
+                </Label>
+                <Input
+                  id="statement-period-label"
+                  value={periodLabel}
+                  onChange={(e) => setPeriodLabel(e.target.value)}
+                  placeholder="e.g. August 2026"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-xs">From</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn("w-[150px] justify-start text-left font-normal")}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {format(periodFrom, "dd MMM yyyy")}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={periodFrom}
+                      onSelect={(d) => d && setPeriodFrom(d)}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-xs">To</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn("w-[150px] justify-start text-left font-normal")}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {format(periodTo, "dd MMM yyyy")}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={periodTo}
+                      onSelect={(d) => d && setPeriodTo(d)}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => snapToMonth(periodFrom)}
+                  title="Snap the period to the whole calendar month"
+                >
+                  Whole month
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={resetPeriod}
+                  title="Reset to selected classes"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Display only — this does not change which classes or amounts are included.
+            </p>
+          </div>
+
           {/* HTML Preview - scrollable */}
           <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y border rounded-lg">
             <TrainerStatementHTMLPreview
