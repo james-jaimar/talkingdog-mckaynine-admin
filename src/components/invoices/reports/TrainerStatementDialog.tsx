@@ -12,7 +12,13 @@ import {
   generateTrainerStatementPDF,
   downloadTrainerStatementPDF,
 } from "./pdf/TrainerStatementPDF";
-import { format } from "date-fns";
+import { format, isSameMonth, startOfMonth, endOfMonth } from "date-fns";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { CalendarIcon, RotateCcw } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { TrainerStatementHTMLPreview } from "./TrainerStatementHTMLPreview";
 import { TrainerStatementEmailDialog } from "./TrainerStatementEmailDialog";
