@@ -241,8 +241,8 @@ export function TrainerStatementDialog({
       const dataUrl = await generateTrainerStatementPDF({
         trainerName: trainer.trainerName,
         trainerEmail: trainer.trainerEmail || "No email on file",
-        termInfo,
-        dateRange,
+        termInfo: periodLabel,
+        dateRange: effectiveDateRange,
         totalCommission: recalculatedTotals.totalEarned,
         totalPaid: recalculatedTotals.paid,
         outstanding: recalculatedTotals.pending,
@@ -250,7 +250,7 @@ export function TrainerStatementDialog({
         branchName,
       });
 
-      downloadTrainerStatementPDF(dataUrl, trainer.trainerName, termInfo);
+      downloadTrainerStatementPDF(dataUrl, trainer.trainerName, periodLabel);
 
       toast({
         title: "Downloaded",
@@ -276,8 +276,8 @@ export function TrainerStatementDialog({
       const dataUrl = await generateTrainerStatementPDF({
         trainerName: trainer.trainerName,
         trainerEmail: trainer.trainerEmail || "No email on file",
-        termInfo,
-        dateRange,
+        termInfo: periodLabel,
+        dateRange: effectiveDateRange,
         totalCommission: recalculatedTotals.totalEarned,
         totalPaid: recalculatedTotals.paid,
         outstanding: recalculatedTotals.pending,
@@ -316,7 +316,7 @@ export function TrainerStatementDialog({
               Trainer Payment Statement
             </DialogTitle>
             <DialogDescription>
-              Statement for {trainer.trainerName} - {termInfo} ({selectionInfo})
+              Statement for {trainer.trainerName} - {periodLabel} ({selectionInfo})
             </DialogDescription>
           </DialogHeader>
 
@@ -325,8 +325,8 @@ export function TrainerStatementDialog({
             <TrainerStatementHTMLPreview
               trainerName={trainer.trainerName}
               trainerEmail={trainer.trainerEmail || "No email on file"}
-              termInfo={termInfo}
-              dateRange={dateRange}
+              termInfo={periodLabel}
+              dateRange={effectiveDateRange}
               totalCommission={recalculatedTotals.totalEarned}
               totalPaid={recalculatedTotals.paid}
               outstanding={recalculatedTotals.pending}
@@ -380,8 +380,8 @@ export function TrainerStatementDialog({
         onOpenChange={setEmailDialogOpen}
         trainerName={trainer.trainerName}
         trainerEmail={trainer.trainerEmail || ""}
-        termInfo={termInfo}
-        dateRange={dateRange}
+        termInfo={periodLabel}
+        dateRange={effectiveDateRange}
         totalCommission={recalculatedTotals.totalEarned}
         totalPaid={recalculatedTotals.paid}
         outstanding={recalculatedTotals.pending}
