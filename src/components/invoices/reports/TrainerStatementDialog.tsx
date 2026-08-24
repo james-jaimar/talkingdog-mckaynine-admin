@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -12,7 +12,13 @@ import {
   generateTrainerStatementPDF,
   downloadTrainerStatementPDF,
 } from "./pdf/TrainerStatementPDF";
-import { format } from "date-fns";
+import { format, isSameMonth, startOfMonth, endOfMonth } from "date-fns";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { CalendarIcon, RotateCcw } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { TrainerStatementHTMLPreview } from "./TrainerStatementHTMLPreview";
 import { TrainerStatementEmailDialog } from "./TrainerStatementEmailDialog";
@@ -112,6 +118,62 @@ export function TrainerStatementDialog({
     return { totalEarned, paid, pending };
   }, [filteredClassDetails]);
 
+  // Derive sensible defaults for the statement period from the selected classes
+  const derivedPeriod = useMemo(() => {
+    const dates: Date[] = [];
+    filteredClassDetails.forEach((cls: any) => {
+      const src = cls.classDate || cls.scheduleDate || cls.start_time;
+      if (!src) return;
+      const d = new Date(src);
+      if (!isNaN(d.getTime())) dates.push(d);
+    });
+
+    const hasSelection = !!selectedScheduleIds && selectedScheduleIds.length > 0;
+    if (!hasSelection || dates.length === 0) {
+      return { label: termInfo, from: dateRange.from, to: dateRange.to };
+    }
+
+    const from = new Date(Math.min(...dates.map((d) => d.getTime())));
+    const to = new Date(Math.max(...dates.map((d) => d.getTime())));
+    const label = isSameMonth(from, to)
+      ? format(from, "MMMM yyyy")
+      : `${format(from, "MMM")} - ${format(to, "MMM yyyy")}`;
+
+    return { label, from, to };
+  }, [filteredClassDetails, selectedScheduleIds, termInfo, dateRange.from, dateRange.to]);
+
+  const [periodLabel, setPeriodLabel] = useState(derivedPeriod.label);
+  const [periodFrom, setPeriodFrom] = useState<Date>(derivedPeriod.from);
+  const [periodTo, setPeriodTo] = useState<Date>(derivedPeriod.to);
+
+  // Re-seed each time the dialog opens
+  useEffect(() => {
+    if (open) {
+      setPeriodLabel(derivedPeriod.label);
+      setPeriodFrom(derivedPeriod.from);
+      setPeriodTo(derivedPeriod.to);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  const resetPeriod = () => {
+    setPeriodLabel(derivedPeriod.label);
+    setPeriodFrom(derivedPeriod.from);
+    setPeriodTo(derivedPeriod.to);
+  };
+
+  const snapToMonth = (d: Date) => {
+    setPeriodFrom(startOfMonth(d));
+    setPeriodTo(endOfMonth(d));
+    setPeriodLabel(format(d, "MMMM yyyy"));
+  };
+
+  const effectiveDateRange = useMemo(
+    () => ({ from: periodFrom, to: periodTo }),
+    [periodFrom, periodTo]
+  );
+
+
   const prepareClassData = (): ClassDetail[] => {
     if (filteredClassDetails.length === 0) {
       return [];
@@ -179,8 +241,8 @@ export function TrainerStatementDialog({
       const dataUrl = await generateTrainerStatementPDF({
         trainerName: trainer.trainerName,
         trainerEmail: trainer.trainerEmail || "No email on file",
-        termInfo,
-        dateRange,
+        termInfo: periodLabel,
+        dateRange: effectiveDateRange,
         totalCommission: recalculatedTotals.totalEarned,
         totalPaid: recalculatedTotals.paid,
         outstanding: recalculatedTotals.pending,
@@ -188,7 +250,7 @@ export function TrainerStatementDialog({
         branchName,
       });
 
-      downloadTrainerStatementPDF(dataUrl, trainer.trainerName, termInfo);
+      downloadTrainerStatementPDF(dataUrl, trainer.trainerName, periodLabel);
 
       toast({
         title: "Downloaded",
@@ -214,8 +276,8 @@ export function TrainerStatementDialog({
       const dataUrl = await generateTrainerStatementPDF({
         trainerName: trainer.trainerName,
         trainerEmail: trainer.trainerEmail || "No email on file",
-        termInfo,
-        dateRange,
+        termInfo: periodLabel,
+        dateRange: effectiveDateRange,
         totalCommission: recalculatedTotals.totalEarned,
         totalPaid: recalculatedTotals.paid,
         outstanding: recalculatedTotals.pending,
@@ -254,17 +316,105 @@ export function TrainerStatementDialog({
               Trainer Payment Statement
             </DialogTitle>
             <DialogDescription>
-              Statement for {trainer.trainerName} - {termInfo} ({selectionInfo})
+              Statement for {trainer.trainerName} - {periodLabel} ({selectionInfo})
             </DialogDescription>
           </DialogHeader>
+
+          {/* Statement period editor (display only) */}
+          <div className="flex-shrink-0 rounded-lg border bg-muted/40 p-3">
+            <div className="flex flex-col gap-3 md:flex-row md:items-end">
+              <div className="flex-1 space-y-1">
+                <Label htmlFor="statement-period-label" className="text-xs">
+                  Statement period label
+                </Label>
+                <Input
+                  id="statement-period-label"
+                  value={periodLabel}
+                  onChange={(e) => setPeriodLabel(e.target.value)}
+                  placeholder="e.g. August 2026"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-xs">From</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn("w-[150px] justify-start text-left font-normal")}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {format(periodFrom, "dd MMM yyyy")}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={periodFrom}
+                      onSelect={(d) => d && setPeriodFrom(d)}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-xs">To</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn("w-[150px] justify-start text-left font-normal")}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {format(periodTo, "dd MMM yyyy")}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={periodTo}
+                      onSelect={(d) => d && setPeriodTo(d)}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => snapToMonth(periodFrom)}
+                  title="Snap the period to the whole calendar month"
+                >
+                  Whole month
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={resetPeriod}
+                  title="Reset to selected classes"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Display only — this does not change which classes or amounts are included.
+            </p>
+          </div>
 
           {/* HTML Preview - scrollable */}
           <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y border rounded-lg">
             <TrainerStatementHTMLPreview
               trainerName={trainer.trainerName}
               trainerEmail={trainer.trainerEmail || "No email on file"}
-              termInfo={termInfo}
-              dateRange={dateRange}
+              termInfo={periodLabel}
+              dateRange={effectiveDateRange}
               totalCommission={recalculatedTotals.totalEarned}
               totalPaid={recalculatedTotals.paid}
               outstanding={recalculatedTotals.pending}
@@ -318,8 +468,8 @@ export function TrainerStatementDialog({
         onOpenChange={setEmailDialogOpen}
         trainerName={trainer.trainerName}
         trainerEmail={trainer.trainerEmail || ""}
-        termInfo={termInfo}
-        dateRange={dateRange}
+        termInfo={periodLabel}
+        dateRange={effectiveDateRange}
         totalCommission={recalculatedTotals.totalEarned}
         totalPaid={recalculatedTotals.paid}
         outstanding={recalculatedTotals.pending}
