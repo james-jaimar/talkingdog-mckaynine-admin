@@ -1,22 +1,28 @@
-# Save "always regenerate package-lock.json" rule to project memory
+# Editable statement period on trainer statements
 
-## Problem
-AWS Amplify builds run `npm ci` against the committed `package-lock.json`. When a dependency change is made without refreshing the lockfile, Amplify fails with a stale-lockfile error. This has happened across multiple apps.
+Ady pays some trainers monthly, not per term. Today the statement heading and "Statement Period" line are taken from the global term selector (`Term 3, 2026` / term start–end dates), so a statement built from only the August Yoga classes still reads "Term 3, 01 Jul – 30 Sep". She needs to control that text. It is display-only: it does not change which classes or amounts are included.
 
-## Change
-Persist a **preference** memory so the rule is auto-injected into context on every future turn and applied whenever dependencies change.
+## What changes
 
-### 1. New memory file: `mem://deployment/amplify-lockfile-rule`
-- type: `preference`
-- Body: After any `package.json` change (add/remove/version bump via `bun add`/`bun remove` or manual edit), run `npm install --legacy-peer-deps` to regenerate `package-lock.json` and commit it alongside `package.json`. Amplify uses `npm ci` against the committed lockfile; a stale lockfile fails the build. The project uses `legacy-peer-deps=true` (`.npmrc`). Applies to all AWS-Amplify-hosted apps.
+In the Generate Statement dialog, add a small "Statement period" editing area above the preview with:
 
-### 2. Update `mem://index.md`
-Add a Core line (applies to every dependency-touching action):
-> **Deployment**: Regenerate `package-lock.json` on any dependency change (Amplify runs `npm ci`; stale lockfile fails builds). Use `npm install --legacy-peer-deps`.
+1. **Period label** (free text) — what prints as the big heading, e.g. "August 2026" or "Term 3, 2026".
+2. **From / To dates** — what prints on the "Statement Period: …" line.
+3. A **Reset to selected classes** action.
 
-Add a Memories entry:
-> - [Amplify Lockfile Rule](mem://deployment/amplify-lockfile-rule) — Refresh package-lock.json on every dependency change for Amplify builds
+Smart defaults, applied each time the dialog opens:
 
-## Notes
-- No source code changes. This is a memory-only update.
-- Once saved, the rule is enforced automatically in future sessions without re-prompting.
+- From / To default to the earliest and latest class dates among the classes actually selected (so picking the two August Yoga classes gives 01 Aug – 01 Aug, and the label defaults to "August 2026").
+- If the selected classes span more than one month, the label defaults to e.g. "Aug – Sep 2026".
+- If nothing is selected (all classes), fall back to today's behaviour: the term label and the term date range.
+
+A quick month picker sits next to the label so she can snap the period to a whole calendar month (1st–last day) in one click.
+
+Everything downstream — the on-screen preview, the PDF, the emailed HTML summary, the email subject, and the PDF filename — uses the edited values instead of the term values.
+
+## Technical notes
+
+- `TrainerStatementDialog.tsx` holds new local state `periodLabel`, `periodFrom`, `periodTo`, seeded by a `useEffect` on `open` from the min/max of `filteredClassDetails` dates (`classDate`/`scheduleDate`/`start_time`), falling back to the `termInfo` and `dateRange` props.
+- Replace the current pass-through of `termInfo` / `dateRange` into `TrainerStatementHTMLPreview`, `generateTrainerStatementPDF`, and `TrainerStatementEmailDialog` with the state values. No changes needed inside `TrainerStatementPDF.tsx` or `generateTrainerStatementEmail.ts` — they already take `termInfo` and `dateRange` as params.
+- Date inputs use the shadcn Popover + Calendar pattern with `pointer-events-auto` so they work inside the dialog.
+- `TrainerPaymentsSummary.tsx` keeps supplying the term-derived defaults; no data-fetching or commission logic is touched.
