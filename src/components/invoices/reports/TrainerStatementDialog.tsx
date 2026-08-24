@@ -118,6 +118,62 @@ export function TrainerStatementDialog({
     return { totalEarned, paid, pending };
   }, [filteredClassDetails]);
 
+  // Derive sensible defaults for the statement period from the selected classes
+  const derivedPeriod = useMemo(() => {
+    const dates: Date[] = [];
+    filteredClassDetails.forEach((cls: any) => {
+      const src = cls.classDate || cls.scheduleDate || cls.start_time;
+      if (!src) return;
+      const d = new Date(src);
+      if (!isNaN(d.getTime())) dates.push(d);
+    });
+
+    const hasSelection = !!selectedScheduleIds && selectedScheduleIds.length > 0;
+    if (!hasSelection || dates.length === 0) {
+      return { label: termInfo, from: dateRange.from, to: dateRange.to };
+    }
+
+    const from = new Date(Math.min(...dates.map((d) => d.getTime())));
+    const to = new Date(Math.max(...dates.map((d) => d.getTime())));
+    const label = isSameMonth(from, to)
+      ? format(from, "MMMM yyyy")
+      : `${format(from, "MMM")} - ${format(to, "MMM yyyy")}`;
+
+    return { label, from, to };
+  }, [filteredClassDetails, selectedScheduleIds, termInfo, dateRange.from, dateRange.to]);
+
+  const [periodLabel, setPeriodLabel] = useState(derivedPeriod.label);
+  const [periodFrom, setPeriodFrom] = useState<Date>(derivedPeriod.from);
+  const [periodTo, setPeriodTo] = useState<Date>(derivedPeriod.to);
+
+  // Re-seed each time the dialog opens
+  useEffect(() => {
+    if (open) {
+      setPeriodLabel(derivedPeriod.label);
+      setPeriodFrom(derivedPeriod.from);
+      setPeriodTo(derivedPeriod.to);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  const resetPeriod = () => {
+    setPeriodLabel(derivedPeriod.label);
+    setPeriodFrom(derivedPeriod.from);
+    setPeriodTo(derivedPeriod.to);
+  };
+
+  const snapToMonth = (d: Date) => {
+    setPeriodFrom(startOfMonth(d));
+    setPeriodTo(endOfMonth(d));
+    setPeriodLabel(format(d, "MMMM yyyy"));
+  };
+
+  const effectiveDateRange = useMemo(
+    () => ({ from: periodFrom, to: periodTo }),
+    [periodFrom, periodTo]
+  );
+
+
   const prepareClassData = (): ClassDetail[] => {
     if (filteredClassDetails.length === 0) {
       return [];
