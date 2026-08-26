@@ -262,9 +262,10 @@ export function PuppyInfoPack({ packs, activePack, courses, onSelectBranch, onSt
                 </li>
               ))}
             </ul>
-            {activePack.schedule_note && (
+            {activePack.schedule_note && activePack.schedule_note !== activePack.missed_class_note && (
               <p className="mt-3 text-xs text-muted-foreground">{activePack.schedule_note}</p>
             )}
+
           </Card>
         </div>
       </div>
