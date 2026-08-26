@@ -14,15 +14,19 @@ export function PuppyClassLanding() {
     if (!branchId && packs.length > 0) setBranchId(packs[0].branch_id);
   }, [packs, branchId]);
 
-  const activePack = useMemo(() => packs.find((p) => p.branch_id === branchId), [packs, branchId]);
+  const activePack = useMemo(
+    () => packs.find((p) => p.branch_id === branchId),
+    [packs, branchId],
+  );
   const { data: courses = [] } = usePuppyCourses(branchId);
 
   const allowedBranches = useMemo(
     () => packs.map((p) => ({ id: p.branch_id, name: p.branch.name })),
-    [packs]
+    [packs],
   );
 
-  const scrollToForm = () => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const scrollToForm = () =>
+    formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
 
   if (isLoading) {
     return (
@@ -34,7 +38,7 @@ export function PuppyClassLanding() {
 
   return (
     <div className="min-h-screen bg-pack-bg">
-      <div className="mx-auto max-w-6xl space-y-5 px-4 py-6 sm:px-6 sm:py-10">
+      <div className="mx-auto max-w-[1560px] space-y-5 px-4 py-5 sm:px-6 sm:py-8 xl:px-8">
         <PuppyInfoPack
           packs={packs}
           activePack={activePack}
@@ -44,7 +48,6 @@ export function PuppyClassLanding() {
         />
         <LegalAccordions />
       </div>
-
 
       <div ref={formRef}>
         <EnrollmentForm

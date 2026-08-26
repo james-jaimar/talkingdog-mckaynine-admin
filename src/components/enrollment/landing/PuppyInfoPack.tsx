@@ -6,9 +6,10 @@ import {
   Banknote,
   Bone,
   CalendarDays,
-  ClipboardList,
-  Clock,
+  Check,
+  Clock3,
   Dog,
+  ExternalLink,
   Footprints,
   Heart,
   Info,
@@ -18,38 +19,49 @@ import {
   Phone,
   ShoppingBag,
   Sparkles,
-  CheckCircle2,
+  ClipboardCheck,
 } from "lucide-react";
-import puppyHero from "@/assets/puppy-hero.jpg.asset.json";
 import { InfoPack, PuppyCourse, formatLessonDates } from "./useInfoPackData";
+import deltaLogoFallback from "@/assets/mckaynine_delta_long_2025.png";
 
-const currency = (value: number) =>
-  new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR", minimumFractionDigits: 0 }).format(value);
-
-const HELP_ICONS = [Dog, Bone, Heart, Footprints, Sparkles, PawPrint];
-const TILE_STYLES = [
-  "bg-pack-tile-1 text-pack-tile-1-fg",
-  "bg-pack-tile-2 text-pack-tile-2-fg",
-  "bg-pack-tile-3 text-pack-tile-3-fg",
-  "bg-pack-tile-4 text-pack-tile-4-fg",
-  "bg-pack-tile-5 text-pack-tile-5-fg",
-  "bg-pack-tile-6 text-pack-tile-6-fg",
+const TRAINER = "/images/puppy-registration/trainer-and-puppy.jpg";
+const GREAT_DANE = "/images/puppy-registration/great-dane-puppy.jpg";
+const icons = [Dog, Bone, Heart, Footprints, Sparkles, PawPrint];
+const tones = [
+  "bg-sky-100 text-sky-700",
+  "bg-emerald-100 text-emerald-700",
+  "bg-violet-100 text-violet-700",
+  "bg-amber-100 text-amber-700",
+  "bg-rose-100 text-rose-700",
+  "bg-teal-100 text-teal-700",
 ];
+const money = (n: number) =>
+  new Intl.NumberFormat("en-ZA", {
+    style: "currency",
+    currency: "ZAR",
+    minimumFractionDigits: 0,
+  }).format(n);
 
-interface PuppyInfoPackProps {
+interface Props {
   packs: InfoPack[];
   activePack?: InfoPack;
   courses: PuppyCourse[];
-  onSelectBranch: (branchId: string) => void;
+  onSelectBranch: (id: string) => void;
   onStart: () => void;
 }
 
-function Card({ className, children }: { className?: string; children: React.ReactNode }) {
+function Card({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
   return (
     <section
       className={cn(
-        "rounded-2xl border border-pack-border bg-card p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)]",
-        className
+        "rounded-[1.4rem] border border-pack-border/90 bg-white shadow-[0_18px_50px_-35px_rgba(20,49,91,.45)]",
+        className,
       )}
     >
       {children}
@@ -57,341 +69,471 @@ function Card({ className, children }: { className?: string; children: React.Rea
   );
 }
 
-function CardTitle({ icon: Icon, tone, children }: { icon: typeof PawPrint; tone: string; children: React.ReactNode }) {
+function Heading({
+  icon: Icon,
+  children,
+}: {
+  icon: typeof PawPrint;
+  children: React.ReactNode;
+}) {
   return (
-    <h2 className="mb-3 flex items-center gap-2 text-base font-semibold text-pack-ink">
-      <span className={cn("flex h-8 w-8 items-center justify-center rounded-xl", tone)}>
-        <Icon className="h-4 w-4" />
+    <h2 className="flex items-center gap-2.5 text-lg font-extrabold tracking-tight text-pack-ink">
+      <span className="grid h-9 w-9 place-items-center rounded-xl bg-pack-blue-soft text-pack-blue">
+        <Icon className="h-[18px] w-[18px]" />
       </span>
       {children}
     </h2>
   );
 }
 
-export function PuppyInfoPack({ packs, activePack, courses, onSelectBranch, onStart }: PuppyInfoPackProps) {
-  if (!activePack) return null;
-
-  const nextCourse = courses[0];
-  const heroImage = activePack.hero_image_url || puppyHero.url;
-  const year = nextCourse ? new Date(nextCourse.startTime).getFullYear() : new Date().getFullYear();
-
+function Bullets({ items }: { items: string[] }) {
   return (
-    <div className="space-y-5">
-      {/* Hero */}
-      <div className="grid gap-5 lg:grid-cols-[1.35fr_1fr]">
-        <Card className="flex flex-col justify-between overflow-hidden p-0">
-          <div className="grid gap-0 sm:grid-cols-[1.15fr_1fr]">
-            <div className="p-6 sm:p-8">
-              {activePack.logo_url ? (
+    <ul className="mt-4 space-y-2.5">
+      {items.map((item) => (
+        <li
+          key={item}
+          className="flex items-start gap-2.5 text-sm leading-relaxed text-slate-600"
+        >
+          <span className="mt-0.5 grid h-[18px] w-[18px] shrink-0 place-items-center rounded-full border border-emerald-300 bg-emerald-50 text-emerald-700">
+            <Check className="h-3 w-3" />
+          </span>
+          {item}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function Branches({
+  packs,
+  active,
+  select,
+}: {
+  packs: InfoPack[];
+  active: InfoPack;
+  select: (id: string) => void;
+}) {
+  if (packs.length < 2) return null;
+  return (
+    <div className="inline-flex rounded-full border border-white/70 bg-white/80 p-1 shadow-sm backdrop-blur">
+      {packs.map((p) => (
+        <button
+          key={p.id}
+          type="button"
+          onClick={() => select(p.branch_id)}
+          className={cn(
+            "rounded-full px-4 py-1.5 text-xs font-bold transition",
+            p.branch_id === active.branch_id
+              ? "bg-pack-blue text-white"
+              : "text-pack-blue hover:bg-pack-blue-soft",
+          )}
+        >
+          {p.branch.name}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function Hero({
+  packs,
+  activePack: p,
+  courses,
+  onSelectBranch,
+  onStart,
+}: Props & { activePack: InfoPack }) {
+  const year = courses[0]
+    ? new Date(courses[0].startTime).getFullYear()
+    : new Date().getFullYear();
+  return (
+    <Card className="relative overflow-hidden border-0 bg-[#f8f4ed]">
+      <div className="relative grid min-h-[430px] lg:grid-cols-[1.08fr_.8fr_.56fr]">
+        <div className="z-10 flex flex-col justify-between p-6 sm:p-9 lg:p-11">
+          <div>
+            <div className="mb-8 flex flex-wrap items-center justify-between gap-4 lg:justify-start">
+              {p.logo_url ? (
                 <img
-                  src={activePack.logo_url}
-                  alt={`McKaynine ${activePack.branch.name} logo`}
-                  className="mb-5 h-10 w-auto object-contain"
+                  src={p.logo_url}
+                  onError={(event) => {
+                    event.currentTarget.src = deltaLogoFallback;
+                  }}
+                  alt={`McKaynine ${p.branch.name} logo`}
+                  className="h-12 w-auto max-w-[220px] object-contain mix-blend-multiply"
                 />
               ) : (
-                <p className="mb-5 text-sm font-semibold text-pack-blue">McKaynine {activePack.branch.name}</p>
+                <strong className="text-pack-blue">
+                  McKaynine {p.branch.name}
+                </strong>
               )}
-
-              {packs.length > 1 && (
-                <div className="mb-5 inline-flex rounded-full bg-pack-blue-soft p-1">
-                  {packs.map((pack) => (
-                    <button
-                      key={pack.id}
-                      type="button"
-                      onClick={() => onSelectBranch(pack.branch_id)}
-                      className={cn(
-                        "rounded-full px-4 py-1.5 text-xs font-semibold transition-colors",
-                        pack.branch_id === activePack.branch_id
-                          ? "bg-pack-blue text-pack-blue-foreground"
-                          : "text-pack-blue hover:bg-card/60"
-                      )}
-                    >
-                      {pack.branch.name}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              <h1 className="text-3xl font-bold leading-tight tracking-tight text-pack-ink sm:text-4xl">
-                {activePack.hero_heading}
-              </h1>
-              <p className="mt-3 max-w-md text-sm text-muted-foreground">{activePack.hero_subheading}</p>
-
-              <div className="mt-6 flex flex-wrap items-center gap-4">
-                <Button
-                  onClick={onStart}
-                  className="gap-2 rounded-xl bg-pack-blue px-5 text-pack-blue-foreground hover:bg-pack-blue/90"
+              <Branches packs={packs} active={p} select={onSelectBranch} />
+            </div>
+            <p className="mb-2 text-[11px] font-bold uppercase tracking-[.18em] text-pack-blue/65">
+              Puppy training · {p.branch.name}
+            </p>
+            <h1 className="max-w-xl text-[clamp(2.4rem,4.2vw,4.7rem)] font-extrabold leading-[.98] tracking-[-.045em] text-pack-ink">
+              {p.hero_heading}
+            </h1>
+            <p className="mt-5 max-w-lg text-base leading-relaxed text-slate-600 sm:text-lg">
+              {p.hero_subheading}
+            </p>
+          </div>
+          <div className="mt-8 flex flex-wrap items-center gap-4">
+            <Button
+              onClick={onStart}
+              size="lg"
+              className="h-12 rounded-xl bg-[#1457c8] px-6 font-bold text-white shadow-lg hover:bg-[#1049aa]"
+            >
+              Start enrolment <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+            <div className="flex flex-wrap gap-x-4 gap-y-2">
+              {p.trust_lines.slice(0, 2).map((line) => (
+                <span
+                  key={line}
+                  className="flex max-w-[180px] items-center gap-2 text-xs leading-snug text-slate-600"
                 >
-                  Start enrolment
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-                <div className="flex flex-wrap gap-x-4 gap-y-1">
-                  {activePack.trust_lines.map((line) => (
-                    <span key={line} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <BadgeCheck className="h-4 w-4 text-pack-blue" />
-                      {line}
-                    </span>
-                  ))}
-                </div>
+                  <BadgeCheck className="h-5 w-5 shrink-0 text-[#90775f]" />
+                  {line}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="relative min-h-[350px] overflow-hidden lg:min-h-full">
+          <img
+            src={TRAINER}
+            alt="McKaynine trainer holding a puppy"
+            className="absolute inset-0 h-full w-full object-cover object-[50%_32%]"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#f8f4ed] via-transparent to-transparent" />
+        </div>
+        <div className="z-10 flex items-center p-4 sm:p-6 lg:-ml-7">
+          <div className="w-full rounded-[1.35rem] border border-white/80 bg-white/95 p-5 shadow-2xl backdrop-blur">
+            <div className="mb-4 flex items-center gap-3">
+              <span className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-50 text-emerald-700">
+                <CalendarDays className="h-5 w-5" />
+              </span>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  Upcoming
+                </p>
+                <h2 className="text-lg font-extrabold text-pack-ink">
+                  {year} class dates
+                </h2>
               </div>
             </div>
-
-            <img
-              src={heroImage}
-              alt="A puppy at a McKaynine puppy training class"
-              className="h-56 w-full object-cover sm:h-full"
-              loading="eager"
-            />
+            {p.venue_time && (
+              <p className="mb-4 flex items-center gap-2 text-sm font-bold text-pack-ink">
+                <Clock3 className="h-4 w-4 text-pack-blue" />
+                {p.venue_time}
+              </p>
+            )}
+            {courses.length ? (
+              <div className="space-y-2">
+                {courses.slice(0, 3).map((c) => (
+                  <div
+                    key={c.id}
+                    className="rounded-xl border border-pack-border bg-slate-50 p-3"
+                  >
+                    <p className="text-sm font-bold text-pack-ink">
+                      {c.className}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {c.dates.length
+                        ? formatLessonDates(c.dates)
+                        : new Date(c.startTime).toLocaleDateString("en-ZA", {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                          })}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="rounded-xl bg-slate-50 p-3 text-sm leading-relaxed text-slate-600">
+                Enrol below and we&apos;ll confirm the next available course
+                dates with you.
+              </p>
+            )}
+            {p.venue_name && (
+              <p className="mt-4 flex items-start gap-2 text-xs leading-relaxed text-slate-600">
+                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-pack-blue" />
+                {p.venue_name}
+              </p>
+            )}
+            {p.missed_class_note && (
+              <p className="mt-4 rounded-xl bg-emerald-50 p-3 text-xs font-medium leading-relaxed text-emerald-900">
+                {p.missed_class_note}
+              </p>
+            )}
           </div>
-        </Card>
-
-        {/* Class dates */}
-        <Card>
-          <CardTitle icon={CalendarDays} tone="bg-pack-tile-1 text-pack-tile-1-fg">
-            {year} class dates
-          </CardTitle>
-          {activePack.venue_time && (
-            <p className="mb-3 inline-flex items-center gap-2 rounded-xl bg-pack-blue-soft px-3 py-1.5 text-sm font-semibold text-pack-blue">
-              <Clock className="h-4 w-4" />
-              {activePack.venue_time}
-            </p>
-          )}
-          {courses.length > 0 ? (
-            <ul className="space-y-2.5">
-              {courses.map((course) => (
-                <li key={course.id} className="rounded-xl border border-pack-border px-3 py-2">
-                  <p className="text-sm font-semibold text-pack-ink">{course.className}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {course.dates.length > 0
-                      ? formatLessonDates(course.dates)
-                      : new Date(course.startTime).toLocaleDateString("en-ZA", {
-                          day: "numeric",
-                          month: "short",
-                          year: "numeric",
-                        })}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Enrol below and we'll confirm the next available course dates with you.
-            </p>
-          )}
-          {activePack.venue_name && (
-            <p className="mt-3 flex items-start gap-2 text-xs text-muted-foreground">
-              <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-pack-blue" />
-              {activePack.venue_name}
-            </p>
-          )}
-          {activePack.missed_class_note && (
-            <p className="mt-3 rounded-xl bg-pack-tile-5 px-3 py-2 text-xs text-pack-tile-5-fg">
-              {activePack.missed_class_note}
-            </p>
-          )}
-        </Card>
+        </div>
       </div>
+    </Card>
+  );
+}
 
-      {/* Help with + fees + start */}
-      <div className="grid gap-5 lg:grid-cols-[1.35fr_1fr]">
-        <Card>
-          <CardTitle icon={PawPrint} tone="bg-pack-tile-3 text-pack-tile-3-fg">
-            What we help you with
-          </CardTitle>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {activePack.help_with.map((item, index) => {
-              const Icon = HELP_ICONS[index % HELP_ICONS.length];
+function Help({ p }: { p: InfoPack }) {
+  return (
+    <Card className="overflow-hidden">
+      <div className="grid lg:grid-cols-[.48fr_1fr]">
+        <div className="relative min-h-[250px] overflow-hidden">
+          <img
+            src={GREAT_DANE}
+            alt="Great Dane puppy running on grass"
+            className="absolute inset-0 h-full w-full object-cover object-center"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-pack-ink/60 via-transparent to-transparent" />
+          <div className="absolute bottom-5 left-5 right-5 text-white">
+            <p className="text-[10px] font-bold uppercase tracking-[.16em] text-white/75">
+              Confidence starts young
+            </p>
+            <p className="mt-1 text-xl font-bold leading-tight">
+              Skills for real life, taught with kindness.
+            </p>
+          </div>
+        </div>
+        <div className="p-6 sm:p-8">
+          <p className="mb-2 text-[11px] font-bold uppercase tracking-[.18em] text-pack-blue/65">
+            A confident start
+          </p>
+          <Heading icon={PawPrint}>What we help you with</Heading>
+          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {p.help_with.map((item, i) => {
+              const Icon = icons[i % icons.length];
               return (
-                <div key={item} className="flex flex-col items-center gap-2 rounded-xl border border-pack-border p-3 text-center">
+                <div
+                  key={item}
+                  className="rounded-2xl border border-pack-border bg-slate-50/65 p-4 transition hover:-translate-y-0.5 hover:bg-white hover:shadow-md"
+                >
                   <span
                     className={cn(
-                      "flex h-10 w-10 items-center justify-center rounded-full",
-                      TILE_STYLES[index % TILE_STYLES.length]
+                      "grid h-11 w-11 place-items-center rounded-full",
+                      tones[i % tones.length],
                     )}
                   >
                     <Icon className="h-5 w-5" />
                   </span>
-                  <span className="text-xs font-medium text-pack-ink">{item}</span>
+                  <p className="mt-3 text-sm font-bold text-pack-ink">{item}</p>
                 </div>
               );
             })}
           </div>
-        </Card>
-
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-1">
-          <Card>
-            <CardTitle icon={Banknote} tone="bg-pack-tile-2 text-pack-tile-2-fg">
-              Course fees
-            </CardTitle>
-            {nextCourse ? (
-              <div className="space-y-2 text-sm">
-                <div className="flex items-baseline justify-between">
-                  <span className="text-muted-foreground">Course fee</span>
-                  <span className="text-2xl font-bold text-pack-ink">{currency(nextCourse.courseFee)}</span>
-                </div>
-                {nextCourse.enrollmentFee > 0 && (
-                  <div className="flex items-baseline justify-between">
-                    <span className="text-muted-foreground">Once-off enrolment fee</span>
-                    <span className="font-semibold text-pack-ink">{currency(nextCourse.enrollmentFee)}</span>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">Fees are confirmed with your booking confirmation.</p>
-            )}
-            {activePack.fee_includes && <p className="mt-2 text-xs text-muted-foreground">{activePack.fee_includes}</p>}
-            {activePack.discount_note && (
-              <p className="mt-3 rounded-xl bg-pack-tile-3 px-3 py-2 text-xs font-medium text-pack-tile-3-fg">
-                {activePack.discount_note}
-              </p>
-            )}
-          </Card>
-
-          <Card>
-            <CardTitle icon={Clock} tone="bg-pack-tile-4 text-pack-tile-4-fg">
-              When can I start?
-            </CardTitle>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              {(activePack.start_notes.length > 0
-                ? activePack.start_notes
-                : [activePack.start_age_note, activePack.vaccination_note].filter(Boolean) as string[]
-              ).map((note) => (
-                <li key={note} className="flex items-start gap-2">
-                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-pack-blue" />
-                  <span>{note}</span>
-                </li>
-              ))}
-            </ul>
-            {activePack.schedule_note && activePack.schedule_note !== activePack.missed_class_note && (
-              <p className="mt-3 text-xs text-muted-foreground">{activePack.schedule_note}</p>
-            )}
-
-          </Card>
         </div>
       </div>
+    </Card>
+  );
+}
 
-      {/* Practical info band */}
-      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-        <Card>
-          <CardTitle icon={ShoppingBag} tone="bg-pack-tile-6 text-pack-tile-6-fg">
-            What to bring
-          </CardTitle>
-          <ul className="space-y-2 text-sm text-muted-foreground">
-            {activePack.what_to_bring.map((item) => (
-              <li key={item} className="flex items-start gap-2">
-                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-pack-blue" />
-                <span>{item}</span>
-              </li>
-            ))}
-          </ul>
-        </Card>
+function Fees({ p, courses }: { p: InfoPack; courses: PuppyCourse[] }) {
+  const c = courses[0];
+  const notes = p.start_notes.length
+    ? p.start_notes
+    : ([p.start_age_note, p.vaccination_note].filter(Boolean) as string[]);
+  return (
+    <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-1">
+      <Card className="overflow-hidden bg-[#f3e6d8] p-6">
+        <Heading icon={Banknote}>Course fees</Heading>
+        {c ? (
+          <div className="mt-5 grid grid-cols-2 gap-3">
+            <div className="rounded-2xl bg-white/80 p-4">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                Course
+              </p>
+              <p className="mt-1 text-3xl font-extrabold text-pack-ink">
+                {money(c.courseFee)}
+              </p>
+              <p className="text-xs text-slate-500">per puppy</p>
+            </div>
+            <div className="rounded-2xl bg-white/65 p-4">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                Enrolment
+              </p>
+              <p className="mt-1 text-2xl font-extrabold text-pack-ink">
+                {money(c.enrollmentFee)}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <p className="mt-5 rounded-xl bg-white/70 p-4 text-sm text-slate-600">
+            Fees are confirmed with your booking confirmation.
+          </p>
+        )}
+        {p.fee_includes && (
+          <p className="mt-4 text-sm text-slate-700">{p.fee_includes}</p>
+        )}
+        {p.discount_note && (
+          <p className="mt-4 rounded-xl border border-[#d6bfa9] bg-white/55 p-3 text-sm font-semibold text-pack-ink">
+            {p.discount_note}
+          </p>
+        )}
+      </Card>
+      <Card className="bg-[#edf6f2] p-6">
+        <Heading icon={Clock3}>When can my puppy start?</Heading>
+        <Bullets items={notes} />
+      </Card>
+    </div>
+  );
+}
 
-        <Card>
-          <CardTitle icon={ClipboardList} tone="bg-pack-tile-1 text-pack-tile-1-fg">
-            Joining details
-          </CardTitle>
-          <ol className="space-y-2.5 text-sm text-muted-foreground">
-            {activePack.joining_steps.map((step, index) => (
-              <li key={step} className="flex items-start gap-2.5">
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-pack-blue text-[11px] font-bold text-pack-blue-foreground">
-                  {index + 1}
+function Practical({ p }: { p: InfoPack }) {
+  const before = p.before_enrol_notes.length
+    ? p.before_enrol_notes
+    : ([p.cutoff_note].filter(Boolean) as string[]);
+  return (
+    <div className="grid gap-5 lg:grid-cols-12">
+      <Card className="p-6 lg:col-span-4">
+        <Heading icon={ShoppingBag}>What to bring</Heading>
+        <Bullets items={p.what_to_bring} />
+      </Card>
+      <Card className="p-6 lg:col-span-5">
+        <Heading icon={ClipboardCheck}>Joining details</Heading>
+        <ol className="mt-4 space-y-3">
+          {p.joining_steps.map((step, i) => (
+            <li
+              key={step}
+              className="flex items-start gap-3 text-sm leading-relaxed text-slate-600"
+            >
+              <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[#1457c8] text-[11px] font-extrabold text-white">
+                {i + 1}
+              </span>
+              {step}
+            </li>
+          ))}
+        </ol>
+        {p.banking_details && (
+          <p className="mt-4 rounded-xl border border-blue-100 bg-pack-blue-soft p-3 text-xs leading-relaxed text-pack-ink">
+            {p.banking_details}
+          </p>
+        )}
+      </Card>
+      <Card className="p-6 lg:col-span-3">
+        <Heading icon={Info}>Before you enrol</Heading>
+        <Bullets items={before} />
+        {p.weather_note && (
+          <p className="mt-3 text-sm leading-relaxed text-slate-600">
+            {p.weather_note}
+          </p>
+        )}
+        <div className="mt-5 space-y-2 border-t border-pack-border pt-4 text-xs font-semibold text-pack-ink">
+          {p.contact_phone && (
+            <a
+              href={`tel:${p.contact_phone.replace(/\s/g, "")}`}
+              className="flex items-center gap-2"
+            >
+              <Phone className="h-4 w-4 text-pack-blue" />
+              {p.contact_phone}
+            </a>
+          )}
+          {p.contact_email && (
+            <a
+              href={`mailto:${p.contact_email}`}
+              className="flex items-center gap-2"
+            >
+              <Mail className="h-4 w-4 text-pack-blue" />
+              {p.contact_email}
+            </a>
+          )}
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+function FindUs({ p }: { p: InfoPack }) {
+  return (
+    <Card className="overflow-hidden">
+      <div className="grid lg:grid-cols-[.92fr_1.08fr]">
+        <div className="p-6 sm:p-8">
+          <p className="mb-2 text-[11px] font-bold uppercase tracking-[.18em] text-pack-blue/65">
+            Plan your arrival
+          </p>
+          <Heading icon={MapPin}>Find us</Heading>
+          <ol className="mt-5 space-y-3">
+            {p.directions.map((step, i) => (
+              <li
+                key={step}
+                className="flex items-start gap-3 text-sm leading-relaxed text-slate-600"
+              >
+                <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-pack-blue-soft text-xs font-bold text-pack-blue">
+                  {i + 1}
                 </span>
-                <span>{step}</span>
+                {step}
               </li>
             ))}
           </ol>
-          {activePack.banking_details && (
-            <p className="mt-3 rounded-xl bg-pack-blue-soft px-3 py-2 text-xs text-pack-ink">
-              {activePack.banking_details}
+          {p.calls_note && (
+            <p className="mt-5 flex items-start gap-2.5 rounded-xl bg-amber-50 p-3 text-xs leading-relaxed text-amber-950">
+              <Info className="mt-0.5 h-4 w-4 shrink-0" />
+              {p.calls_note}
             </p>
           )}
-        </Card>
-
-        <Card>
-          <CardTitle icon={Info} tone="bg-pack-tile-5 text-pack-tile-5-fg">
-            Before you enrol
-          </CardTitle>
-          <ul className="space-y-2 text-sm text-muted-foreground">
-            {(activePack.before_enrol_notes.length > 0
-              ? activePack.before_enrol_notes
-              : [activePack.cutoff_note].filter(Boolean) as string[]
-            ).map((note) => (
-              <li key={note} className="flex items-start gap-2">
-                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-pack-blue" />
-                <span>{note}</span>
-              </li>
-            ))}
-            {activePack.weather_note && (
-              <li className="flex items-start gap-2">
-                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-pack-blue" />
-                <span>{activePack.weather_note}</span>
-              </li>
-            )}
-          </ul>
-          <div className="mt-3 space-y-1 text-xs">
-            {activePack.contact_phone && (
-              <p className="flex items-center gap-2 text-pack-ink">
-                <Phone className="h-3.5 w-3.5 text-pack-blue" />
-                <a href={`tel:${activePack.contact_phone.replace(/\s/g, "")}`}>{activePack.contact_phone}</a>
-              </p>
-            )}
-            {activePack.contact_email && (
-              <p className="flex items-center gap-2 text-pack-ink">
-                <Mail className="h-3.5 w-3.5 text-pack-blue" />
-                <a href={`mailto:${activePack.contact_email}`}>{activePack.contact_email}</a>
-              </p>
-            )}
-          </div>
-        </Card>
-
-        <Card>
-          <CardTitle icon={MapPin} tone="bg-pack-tile-2 text-pack-tile-2-fg">
-            Find us
-          </CardTitle>
-          {activePack.map_image_url && (
+        </div>
+        <div className="relative min-h-[360px] bg-pack-blue-soft">
+          {p.map_image_url && (
             <img
-              src={activePack.map_image_url}
-              alt={`Map showing the McKaynine ${activePack.branch.name} training venue`}
-              className="mb-3 h-32 w-full rounded-xl object-cover"
-              loading="lazy"
+              src={p.map_image_url}
+              alt={`Map showing the McKaynine ${p.branch.name} venue`}
+              className="absolute inset-0 h-full w-full object-cover"
             />
           )}
-          {activePack.directions.length > 0 && (
-            <ol className="list-decimal space-y-1 pl-4 text-xs text-muted-foreground">
-              {activePack.directions.map((step) => (
-                <li key={step}>{step}</li>
-              ))}
-            </ol>
-          )}
-          {activePack.calls_note && (
-            <p className="mt-3 rounded-xl bg-pack-tile-5 px-3 py-2 text-xs text-pack-tile-5-fg">
-              {activePack.calls_note}
-            </p>
-          )}
-          {activePack.map_link && (
-            <Button asChild variant="outline" size="sm" className="mt-3 w-full gap-2 rounded-xl">
-              <a href={activePack.map_link} target="_blank" rel="noopener noreferrer">
-                <MapPin className="h-4 w-4" />
-                Open in Maps
+          {p.map_link && (
+            <Button
+              asChild
+              className="absolute bottom-5 right-5 rounded-xl bg-white text-pack-blue shadow-xl hover:bg-slate-50"
+            >
+              <a href={p.map_link} target="_blank" rel="noreferrer">
+                Open in Maps <ExternalLink className="ml-2 h-4 w-4" />
               </a>
             </Button>
           )}
-        </Card>
-      </div>
-
-      {/* Ready banner */}
-      <Card className="flex flex-col items-start justify-between gap-4 bg-pack-blue sm:flex-row sm:items-center">
-        <div>
-          <h2 className="text-lg font-semibold text-pack-blue-foreground">Ready to get started?</h2>
-          <p className="text-sm text-pack-blue-foreground/80">
-            Complete the enrolment form below and we'll confirm your pup's place.
-          </p>
         </div>
-        <Button onClick={onStart} className="gap-2 rounded-xl bg-card text-pack-blue hover:bg-card/90">
-          Complete enrolment
-          <ArrowRight className="h-4 w-4" />
+      </div>
+    </Card>
+  );
+}
+
+function Ready({ onStart }: { onStart: () => void }) {
+  return (
+    <section className="relative overflow-hidden rounded-[1.4rem] bg-[#1457c8] px-6 py-7 text-white shadow-xl sm:px-9">
+      <div className="relative flex flex-col items-start justify-between gap-5 sm:flex-row sm:items-center">
+        <div className="flex items-center gap-4">
+          <span className="grid h-12 w-12 place-items-center rounded-2xl bg-white/15">
+            <PawPrint className="h-6 w-6" />
+          </span>
+          <div>
+            <h2 className="text-2xl font-extrabold">Ready to get started?</h2>
+            <p className="mt-1 text-sm text-white/75">
+              Complete the enrolment form and we&apos;ll confirm your
+              puppy&apos;s place.
+            </p>
+          </div>
+        </div>
+        <Button
+          onClick={onStart}
+          size="lg"
+          className="h-12 rounded-xl bg-white px-6 font-bold text-[#1457c8] hover:bg-blue-50"
+        >
+          Complete enrolment <ArrowRight className="ml-2 h-4 w-4" />
         </Button>
-      </Card>
+      </div>
+    </section>
+  );
+}
+
+export function PuppyInfoPack(props: Props) {
+  const p = props.activePack;
+  if (!p) return null;
+  return (
+    <div className="space-y-5">
+      <Hero {...props} activePack={p} />
+      <div className="grid gap-5 xl:grid-cols-[1.22fr_.78fr]">
+        <Help p={p} />
+        <Fees p={p} courses={props.courses} />
+      </div>
+      <Practical p={p} />
+      <FindUs p={p} />
+      <Ready onStart={props.onStart} />
     </div>
   );
 }
