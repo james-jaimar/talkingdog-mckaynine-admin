@@ -457,6 +457,7 @@ export type Database = {
       branch_info_packs: {
         Row: {
           banking_details: string | null
+          before_enrol_notes: Json
           branch_id: string
           calls_note: string | null
           contact_email: string | null
@@ -474,9 +475,13 @@ export type Database = {
           id: string
           is_published: boolean
           joining_steps: Json
+          logo_url: string | null
+          map_image_url: string | null
           map_link: string | null
+          missed_class_note: string | null
           schedule_note: string | null
           start_age_note: string | null
+          start_notes: Json
           testimonial_author: string | null
           testimonial_quote: string | null
           trust_lines: Json
@@ -489,6 +494,7 @@ export type Database = {
         }
         Insert: {
           banking_details?: string | null
+          before_enrol_notes?: Json
           branch_id: string
           calls_note?: string | null
           contact_email?: string | null
@@ -506,9 +512,13 @@ export type Database = {
           id?: string
           is_published?: boolean
           joining_steps?: Json
+          logo_url?: string | null
+          map_image_url?: string | null
           map_link?: string | null
+          missed_class_note?: string | null
           schedule_note?: string | null
           start_age_note?: string | null
+          start_notes?: Json
           testimonial_author?: string | null
           testimonial_quote?: string | null
           trust_lines?: Json
@@ -521,6 +531,7 @@ export type Database = {
         }
         Update: {
           banking_details?: string | null
+          before_enrol_notes?: Json
           branch_id?: string
           calls_note?: string | null
           contact_email?: string | null
@@ -538,9 +549,13 @@ export type Database = {
           id?: string
           is_published?: boolean
           joining_steps?: Json
+          logo_url?: string | null
+          map_image_url?: string | null
           map_link?: string | null
+          missed_class_note?: string | null
           schedule_note?: string | null
           start_age_note?: string | null
+          start_notes?: Json
           testimonial_author?: string | null
           testimonial_quote?: string | null
           trust_lines?: Json
