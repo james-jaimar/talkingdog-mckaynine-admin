@@ -454,6 +454,113 @@ export type Database = {
           },
         ]
       }
+      branch_info_packs: {
+        Row: {
+          banking_details: string | null
+          branch_id: string
+          calls_note: string | null
+          contact_email: string | null
+          contact_phone: string | null
+          contact_website: string | null
+          created_at: string
+          cutoff_note: string | null
+          directions: Json
+          discount_note: string | null
+          fee_includes: string | null
+          help_with: Json
+          hero_heading: string
+          hero_image_url: string | null
+          hero_subheading: string
+          id: string
+          is_published: boolean
+          joining_steps: Json
+          map_link: string | null
+          schedule_note: string | null
+          start_age_note: string | null
+          testimonial_author: string | null
+          testimonial_quote: string | null
+          trust_lines: Json
+          updated_at: string
+          vaccination_note: string | null
+          venue_name: string | null
+          venue_time: string | null
+          weather_note: string | null
+          what_to_bring: Json
+        }
+        Insert: {
+          banking_details?: string | null
+          branch_id: string
+          calls_note?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          contact_website?: string | null
+          created_at?: string
+          cutoff_note?: string | null
+          directions?: Json
+          discount_note?: string | null
+          fee_includes?: string | null
+          help_with?: Json
+          hero_heading?: string
+          hero_image_url?: string | null
+          hero_subheading?: string
+          id?: string
+          is_published?: boolean
+          joining_steps?: Json
+          map_link?: string | null
+          schedule_note?: string | null
+          start_age_note?: string | null
+          testimonial_author?: string | null
+          testimonial_quote?: string | null
+          trust_lines?: Json
+          updated_at?: string
+          vaccination_note?: string | null
+          venue_name?: string | null
+          venue_time?: string | null
+          weather_note?: string | null
+          what_to_bring?: Json
+        }
+        Update: {
+          banking_details?: string | null
+          branch_id?: string
+          calls_note?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          contact_website?: string | null
+          created_at?: string
+          cutoff_note?: string | null
+          directions?: Json
+          discount_note?: string | null
+          fee_includes?: string | null
+          help_with?: Json
+          hero_heading?: string
+          hero_image_url?: string | null
+          hero_subheading?: string
+          id?: string
+          is_published?: boolean
+          joining_steps?: Json
+          map_link?: string | null
+          schedule_note?: string | null
+          start_age_note?: string | null
+          testimonial_author?: string | null
+          testimonial_quote?: string | null
+          trust_lines?: Json
+          updated_at?: string
+          vaccination_note?: string | null
+          venue_name?: string | null
+          venue_time?: string | null
+          weather_note?: string | null
+          what_to_bring?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "branch_info_packs_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: true
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       branch_notifications: {
         Row: {
           branch_id: string
