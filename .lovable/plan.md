@@ -1,58 +1,64 @@
-# Puppy Registration: Info Pack Landing + Enrolment Form
+# Rebuild the puppy registration info pack to match the render
 
-Turn `/register/puppy-class` into a single, beautiful public page: an info-pack hero and content sections (Shannon's pages 1–2) driven from the database per branch and course, the existing 6-step wizard below it, and the legal material (T&Cs, HomeTrain addendum, vet clearance guidance) as tidy accordions at the bottom.
+Rebuild the marketing section above the enrolment form at `/register/puppy-class` so it matches the supplied render: a light, brochure-style, branded layout rather than the current dark photo hero and stacked cards.
 
-## 1. Landing page above the form
+## Layout to recreate
 
-New `PuppyClassLanding` section rendered above `<EnrollmentForm />`:
+```text
++--------------------------------------------------------------+
+| [logo]                                   |  2026 Class Dates  |
+| Give your puppy the best start in life   |  time / dates      |
+| sub-line                                 |  venue             |
+| [Start enrolment >]  trust 1  trust 2    |  missed-class note |
+|                       (hero photo right) |                    |
++--------------------------------------------------------------+
+| What we help with (6 icon tiles) | Course fees | When can I  |
+|                                  | + discount  | start?      |
++--------------------------------------------------------------+
+| What to bring | Joining details | Before you enrol | Find us  |
+|                                                    + map img  |
++--------------------------------------------------------------+
+| Ready to get started?                    [Complete enrolment] |
++--------------------------------------------------------------+
+```
 
-- **Hero** — "Give your puppy the best start in life", sub-line, branch logo, trust line ("Trusted by puppy owners since 1999", "Recommended by vets, breeders & dog professionals"), photo background.
-- **What we help with** — icon chips: nipping, chewing, social manners, lead walking, confidence, toilet training.
-- **When can I start** — age window and the two-vaccination requirement, as a highlighted note card.
-- **Where & when** — venue, time slot, and the actual course dates, pulled live from the selected branch's next puppy course.
-- **Course fees** — course fee, enrolment fee, what's included, and the 25% simultaneous-enrolment discount note.
-- **What to bring** — checklist card.
-- **Joining details** — numbered steps, banking/POP details, cut-off note.
-- **Getting there** — directions bullets, map image, "we're in class, can't take calls" and bad-weather notes.
-- **Testimonial** — single quote card.
-- Sticky "Start registration" CTA that smooth-scrolls to the form.
+Responsive behaviour: the four-column band collapses to 2 columns on tablet and 1 on mobile; the hero stacks (text, then dates card, then photo) on mobile; the icon tiles go 6 → 3 → 2 across.
 
-Visual language stays with the existing customer palette (`customer-accent`, white cards, rounded-2xl, soft gradients) so it reads as one page with the wizard, not a pasted brochure.
+## Visual direction
 
-## 2. Branch selector drives everything
+- Light background, white rounded cards with soft borders and subtle shadow, matching the render's calm brochure feel.
+- Brand blue for the headline, primary buttons and logo lockup; keep the existing teal accent only where it already reads well (checkmarks), or switch checkmarks to brand blue for consistency with the render.
+- Headline is large and tight-tracked; body text small and grey.
+- Each icon tile is a soft pastel circle with a line icon and a label underneath (Nipping, Chewing, Social manners, Lead walking, Confidence, Toilet training) — using Lucide icons with per-tile tinted circles.
+- Section cards each get a small coloured icon next to the heading (paw, calendar, bag, clipboard, clock, pin).
+- The discount line sits inside the fees card as a highlighted tinted strip.
+- The "staff may be unable to answer calls" note becomes a small info strip inside the Find us card.
+- Existing legal accordions and the vet clearance PDF download stay, styled to match the new cards, below the new sections.
 
-A branch selector sits at the top of the landing page, limited to **Randburg and Delta**. Choosing a branch swaps the whole info pack (venue, dates, fees, contact, banking, map) and pre-selects the branch in the wizard's Step 6, so the user never picks twice. Branch choice persists in the URL (`?branch=delta`) so Ady can share a direct link.
+## Content and data
 
-## 3. Dynamic content per branch and course
+Everything stays branch-driven from `branch_info_packs` (Delta / Randburg), with class dates and fees still coming live from `classes` / `class_schedules`.
 
-Course-level facts already live in the database and will be read, not retyped:
+The render needs a few things the table does not store yet, so the following columns get added and seeded for both branches:
 
-- Course fee and enrolment fee from `classes.course_fee` / `classes.enrollment_fee`
-- Class dates from `class_schedules.selected_dates`, time from `start_time` / `end_time`
-- Venue address, phone and email from `branches`
-- Logo from `branch_branding.logo_url`
+- `logo_url` — branch logo lockup for the hero.
+- `map_image_url` — static map image shown in the Find us card.
+- `missed_class_note` — "Missed the first class? …" callout in the dates card.
+- `before_enrol_notes` (jsonb array) — the "Before you enrol" bullets (cut-off, confirmation), replacing the ad-hoc use of `cutoff_note`.
+- `start_notes` (jsonb array) — the "When can I start?" bullets, seeded from the existing age and vaccination notes.
 
-The brochure-only content has no home yet, so a new table `branch_info_packs` holds it per branch: hero heading/sub-heading, hero image, trust lines, "what we help with" items, age-requirement text, what-to-bring list, joining steps, banking details, directions bullets, map image, weather note, testimonial (quote + author + photo), and contact/website lines. Public read for `anon`, admin write. Seeded with the Delta content from the PDF and the Randburg equivalents.
+The uploaded images (Delta logo, Randburg logo, hero puppy photo, Delta map, Randburg map) are uploaded as CDN assets and their URLs stored in the branch rows, so admins can swap them later without a code change.
 
-An **Info Pack editor** is added to admin Branch Management so Ady can edit any of this without a developer.
+The class-dates card shows the actual upcoming schedule for the selected branch: session time and the lesson dates in a compact "Sep 5, 12, 19 & Oct 3, 17, 24" style, derived from the schedule's selected dates.
 
-## 4. Legal accordions at the bottom
+## Branch switching
 
-Below the form, a collapsible section: Terms & Conditions V11-25 (full text, grouped by the numbered clauses), the Indemnity block, the Protection of Personal Information block, and the HomeTrain Addendum. Stored as content so they can be edited, with a "Download the full info pack (PDF)" link. The vet clearance requirement stays where it already works — the upload step in the wizard — with a short explainer ("only needed if the last vaccination wasn't given by a vet — look for BVSc after the signature").
-
-## 5. Form fields
-
-The wizard already captures everything Shannon's paper form asks for; age is derived from date of birth, and the vet clearance upload is already handled. The only change is the branch restriction (Randburg / Delta) and passing the landing page's branch choice through to Step 6.
+The branch chooser stays but moves to a compact pill pair in the hero area so the page opens as a branded brochure rather than a photo banner. Selecting Randburg swaps logo, hero copy, dates, venue, fees, directions and map.
 
 ## Technical notes
 
-- New table `public.branch_info_packs` (one row per branch, JSONB for the list-style content), with `GRANT SELECT` to `anon`/`authenticated` and full access to admins via RLS; admin writes gated by `has_role(auth.uid(),'admin')`.
-- Course data fetched in one joined query (`classes` → `class_schedules`) filtered by branch and `class_type = 'Puppy'`, upcoming only, via React Query — no extra round trips.
-- Landing content and legal text are components under `src/components/enrollment/landing/`; the wizard in `src/components/enrollment/` is untouched apart from branch pre-selection.
-- Images (hero, map, testimonial) go through Lovable assets, referenced by URL from `branch_info_packs` so they're swappable in admin.
-- SEO: proper `<h1>`, semantic sections, updated title/description, and JSON-LD `Course` markup for the puppy class.
-
-## Out of scope
-
-- Rebuilding the vet clearance form as a web form (still a downloadable PDF).
-- Any change to invoicing, bookings, or the submission edge function.
+- `PuppyInfoPack.tsx` is rewritten as a set of small presentational components in `src/components/enrollment/landing/`: `InfoHero`, `ClassDatesCard`, `HelpWithGrid`, `FeesCard`, `WhenToStartCard`, `WhatToBringCard`, `JoiningDetailsCard`, `BeforeYouEnrolCard`, `FindUsCard`, `ReadyBanner`.
+- `useInfoPackData.ts` gains the new fields on the `InfoPack` interface plus a date-formatting helper for the grouped lesson dates.
+- One migration adds the five nullable columns and updates the two seeded rows; no RLS or grant changes needed since the table's existing public-read policy covers them.
+- New colour tokens (brand blue, tile pastels) go into `index.css` and `tailwind.config.ts` as semantic tokens — no hardcoded hex in components.
+- No changes to the enrolment form itself, submission logic, or the legal content text.
