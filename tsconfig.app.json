@@ -22,10 +22,6 @@
       ]
     },
     "resolveJsonModule": true,
-      "@/*": [
-        "./src/*"
-      ]
-    },
     "skipLibCheck": true,
     "strict": false,
     "target": "ES2020",
