@@ -77,6 +77,9 @@ export function useInfoPacks() {
           what_to_bring: asArray(row.what_to_bring),
           joining_steps: asArray(row.joining_steps),
           directions: asArray(row.directions),
+          before_enrol_notes: asArray(row.before_enrol_notes),
+          start_notes: asArray(row.start_notes),
+
         }))
         .sort((a, b) => a.branch.name.localeCompare(b.branch.name));
     },
