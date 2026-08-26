@@ -164,7 +164,7 @@ export function EnrollmentForm({ mode = "authenticated", branchOptions, initialB
   }
 
   return (
-    <div className="min-h-screen bg-customer-bg py-4 sm:py-6 lg:py-8 px-4 sm:px-6 lg:px-8">
+    <div className={cn("bg-customer-bg py-4 sm:py-6 lg:py-8 px-4 sm:px-6 lg:px-8", !branchOptions && "min-h-screen")}>
       <div className="max-w-7xl mx-auto">
         <div className="relative mb-4 sm:mb-6 text-center">
           <div className="absolute inset-0 bg-gradient-to-r from-customer-accent/20 via-customer-accent/10 to-transparent rounded-2xl blur-xl" />
