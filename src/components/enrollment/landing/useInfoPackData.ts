@@ -107,7 +107,7 @@ export function usePuppyCourses(branchId?: string) {
         .select("id, name, course_fee, enrollment_fee")
         .eq("branch_id", branchId!)
         .eq("class_type", "Puppy")
-        .eq("status", "active");
+        .eq("status", "open");
       if (classesError) throw classesError;
       if (!classes?.length) return [];
 
