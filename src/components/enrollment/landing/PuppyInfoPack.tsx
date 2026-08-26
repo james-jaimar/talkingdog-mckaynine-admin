@@ -147,10 +147,10 @@ function Hero({
     : new Date().getFullYear();
   return (
     <Card className="relative overflow-hidden border-0 bg-[#f8f4ed]">
-      <div className="relative grid min-h-[430px] lg:grid-cols-[1.08fr_.8fr_.56fr]">
-        <div className="z-10 flex flex-col justify-between p-6 sm:p-9 lg:p-11">
+      <div className="relative grid min-h-[354px] lg:grid-cols-[1.04fr_.78fr_.46fr]">
+        <div className="z-10 flex flex-col justify-between p-6 sm:p-7 lg:p-8">
           <div>
-            <div className="mb-8 flex flex-wrap items-center justify-between gap-4 lg:justify-start">
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-3 lg:justify-start">
               {p.logo_url ? (
                 <img
                   src={p.logo_url}
@@ -158,7 +158,7 @@ function Hero({
                     event.currentTarget.src = deltaLogoFallback;
                   }}
                   alt={`McKaynine ${p.branch.name} logo`}
-                  className="h-12 w-auto max-w-[220px] object-contain mix-blend-multiply"
+                  className="h-10 w-auto max-w-[190px] object-contain mix-blend-multiply"
                 />
               ) : (
                 <strong className="text-pack-blue">
@@ -170,18 +170,18 @@ function Hero({
             <p className="mb-2 text-[11px] font-bold uppercase tracking-[.18em] text-pack-blue/65">
               Puppy training · {p.branch.name}
             </p>
-            <h1 className="max-w-xl text-[clamp(2.4rem,4.2vw,4.7rem)] font-extrabold leading-[.98] tracking-[-.045em] text-pack-ink">
+            <h1 className="max-w-xl text-[clamp(2.25rem,3.5vw,3.65rem)] font-extrabold leading-[.98] tracking-[-.045em] text-pack-ink">
               {p.hero_heading}
             </h1>
-            <p className="mt-5 max-w-lg text-base leading-relaxed text-slate-600 sm:text-lg">
+            <p className="mt-3 max-w-lg text-sm leading-relaxed text-slate-600 sm:text-base">
               {p.hero_subheading}
             </p>
           </div>
-          <div className="mt-8 flex flex-wrap items-center gap-4">
+          <div className="mt-5 flex flex-wrap items-center gap-3">
             <Button
               onClick={onStart}
               size="lg"
-              className="h-12 rounded-xl bg-[#1457c8] px-6 font-bold text-white shadow-lg hover:bg-[#1049aa]"
+              className="h-11 rounded-xl bg-[#1457c8] px-5 font-bold text-white shadow-lg hover:bg-[#1049aa]"
             >
               Start enrolment <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
@@ -198,7 +198,7 @@ function Hero({
             </div>
           </div>
         </div>
-        <div className="relative min-h-[350px] overflow-hidden lg:min-h-full">
+        <div className="relative min-h-[280px] overflow-hidden lg:min-h-full">
           <img
             src={TRAINER}
             alt="McKaynine trainer holding a puppy"
@@ -206,9 +206,9 @@ function Hero({
           />
           <div className="absolute inset-0 bg-gradient-to-r from-[#f8f4ed] via-transparent to-transparent" />
         </div>
-        <div className="z-10 flex items-center p-4 sm:p-6 lg:-ml-7">
-          <div className="w-full rounded-[1.35rem] border border-white/80 bg-white/95 p-5 shadow-2xl backdrop-blur">
-            <div className="mb-4 flex items-center gap-3">
+        <div className="z-10 flex items-center p-4 lg:-ml-6 lg:pr-5">
+          <div className="w-full rounded-[1.2rem] border border-white/80 bg-white/95 p-4 shadow-2xl backdrop-blur">
+            <div className="mb-3 flex items-center gap-2.5">
               <span className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-50 text-emerald-700">
                 <CalendarDays className="h-5 w-5" />
               </span>
@@ -216,13 +216,13 @@ function Hero({
                 <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                   Upcoming
                 </p>
-                <h2 className="text-lg font-extrabold text-pack-ink">
+                <h2 className="text-base font-extrabold text-pack-ink">
                   {year} class dates
                 </h2>
               </div>
             </div>
             {p.venue_time && (
-              <p className="mb-4 flex items-center gap-2 text-sm font-bold text-pack-ink">
+              <p className="mb-3 flex items-center gap-2 text-xs font-bold text-pack-ink">
                 <Clock3 className="h-4 w-4 text-pack-blue" />
                 {p.venue_time}
               </p>
@@ -232,9 +232,9 @@ function Hero({
                 {courses.slice(0, 3).map((c) => (
                   <div
                     key={c.id}
-                    className="rounded-xl border border-pack-border bg-slate-50 p-3"
+                    className="rounded-xl border border-pack-border bg-slate-50 p-2.5"
                   >
-                    <p className="text-sm font-bold text-pack-ink">
+                    <p className="text-xs font-bold text-pack-ink">
                       {c.className}
                     </p>
                     <p className="mt-1 text-xs text-slate-500">
@@ -250,7 +250,7 @@ function Hero({
                 ))}
               </div>
             ) : (
-              <p className="rounded-xl bg-slate-50 p-3 text-sm leading-relaxed text-slate-600">
+              <p className="rounded-xl bg-slate-50 p-3 text-xs leading-relaxed text-slate-600">
                 Enrol below and we&apos;ll confirm the next available course
                 dates with you.
               </p>
@@ -275,51 +275,37 @@ function Hero({
 
 function Help({ p }: { p: InfoPack }) {
   return (
-    <Card className="overflow-hidden">
-      <div className="grid lg:grid-cols-[.48fr_1fr]">
-        <div className="relative min-h-[250px] overflow-hidden">
-          <img
-            src={GREAT_DANE}
-            alt="Great Dane puppy running on grass"
-            className="absolute inset-0 h-full w-full object-cover object-center"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-pack-ink/60 via-transparent to-transparent" />
-          <div className="absolute bottom-5 left-5 right-5 text-white">
-            <p className="text-[10px] font-bold uppercase tracking-[.16em] text-white/75">
-              Confidence starts young
-            </p>
-            <p className="mt-1 text-xl font-bold leading-tight">
-              Skills for real life, taught with kindness.
-            </p>
-          </div>
-        </div>
-        <div className="p-6 sm:p-8">
-          <p className="mb-2 text-[11px] font-bold uppercase tracking-[.18em] text-pack-blue/65">
-            A confident start
-          </p>
-          <Heading icon={PawPrint}>What we help you with</Heading>
-          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {p.help_with.map((item, i) => {
-              const Icon = icons[i % icons.length];
-              return (
-                <div
-                  key={item}
-                  className="rounded-2xl border border-pack-border bg-slate-50/65 p-4 transition hover:-translate-y-0.5 hover:bg-white hover:shadow-md"
-                >
-                  <span
-                    className={cn(
-                      "grid h-11 w-11 place-items-center rounded-full",
-                      tones[i % tones.length],
-                    )}
-                  >
-                    <Icon className="h-5 w-5" />
-                  </span>
-                  <p className="mt-3 text-sm font-bold text-pack-ink">{item}</p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+    <Card className="relative overflow-hidden p-5">
+      <div className="flex items-center justify-between gap-4">
+        <Heading icon={PawPrint}>What we help with</Heading>
+        <img
+          src={GREAT_DANE}
+          alt="Great Dane puppy running on grass"
+          className="hidden h-12 w-20 rounded-xl object-cover sm:block"
+        />
+      </div>
+      <div className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-6">
+        {p.help_with.map((item, i) => {
+          const Icon = icons[i % icons.length];
+          return (
+            <div
+              key={item}
+              className="rounded-xl border border-pack-border bg-slate-50/65 px-2 py-3 text-center"
+            >
+              <span
+                className={cn(
+                  "mx-auto grid h-10 w-10 place-items-center rounded-full",
+                  tones[i % tones.length],
+                )}
+              >
+                <Icon className="h-[18px] w-[18px]" />
+              </span>
+              <p className="mt-2 text-xs font-bold leading-tight text-pack-ink">
+                {item}
+              </p>
+            </div>
+          );
+        })}
       </div>
     </Card>
   );
@@ -331,25 +317,24 @@ function Fees({ p, courses }: { p: InfoPack; courses: PuppyCourse[] }) {
     ? p.start_notes
     : ([p.start_age_note, p.vaccination_note].filter(Boolean) as string[]);
   return (
-    <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-1">
-      <Card className="overflow-hidden bg-[#f3e6d8] p-6">
+    <>
+      <Card className="overflow-hidden bg-[#f3e6d8] p-5">
         <Heading icon={Banknote}>Course fees</Heading>
         {c ? (
-          <div className="mt-5 grid grid-cols-2 gap-3">
-            <div className="rounded-2xl bg-white/80 p-4">
+          <div className="mt-4 space-y-2">
+            <div className="flex items-baseline justify-between rounded-xl bg-white/80 p-3">
               <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
                 Course
               </p>
-              <p className="mt-1 text-3xl font-extrabold text-pack-ink">
+              <p className="text-xl font-extrabold text-pack-ink">
                 {money(c.courseFee)}
               </p>
-              <p className="text-xs text-slate-500">per puppy</p>
             </div>
-            <div className="rounded-2xl bg-white/65 p-4">
+            <div className="flex items-baseline justify-between rounded-xl bg-white/65 p-3">
               <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
                 Enrolment
               </p>
-              <p className="mt-1 text-2xl font-extrabold text-pack-ink">
+              <p className="text-lg font-extrabold text-pack-ink">
                 {money(c.enrollmentFee)}
               </p>
             </div>
@@ -368,11 +353,11 @@ function Fees({ p, courses }: { p: InfoPack; courses: PuppyCourse[] }) {
           </p>
         )}
       </Card>
-      <Card className="bg-[#edf6f2] p-6">
+      <Card className="bg-[#edf6f2] p-5">
         <Heading icon={Clock3}>When can my puppy start?</Heading>
         <Bullets items={notes} />
       </Card>
-    </div>
+    </>
   );
 }
 
@@ -381,12 +366,12 @@ function Practical({ p }: { p: InfoPack }) {
     ? p.before_enrol_notes
     : ([p.cutoff_note].filter(Boolean) as string[]);
   return (
-    <div className="grid gap-5 lg:grid-cols-12">
-      <Card className="p-6 lg:col-span-4">
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-[.92fr_1.32fr_.88fr_1.18fr]">
+      <Card className="p-5">
         <Heading icon={ShoppingBag}>What to bring</Heading>
         <Bullets items={p.what_to_bring} />
       </Card>
-      <Card className="p-6 lg:col-span-5">
+      <Card className="p-5">
         <Heading icon={ClipboardCheck}>Joining details</Heading>
         <ol className="mt-4 space-y-3">
           {p.joining_steps.map((step, i) => (
@@ -407,7 +392,7 @@ function Practical({ p }: { p: InfoPack }) {
           </p>
         )}
       </Card>
-      <Card className="p-6 lg:col-span-3">
+      <Card className="p-5">
         <Heading icon={Info}>Before you enrol</Heading>
         <Bullets items={before} />
         {p.weather_note && (
@@ -436,59 +421,52 @@ function Practical({ p }: { p: InfoPack }) {
           )}
         </div>
       </Card>
+      <FindUs p={p} />
     </div>
   );
 }
 
 function FindUs({ p }: { p: InfoPack }) {
   return (
-    <Card className="overflow-hidden">
-      <div className="grid lg:grid-cols-[.92fr_1.08fr]">
-        <div className="p-6 sm:p-8">
-          <p className="mb-2 text-[11px] font-bold uppercase tracking-[.18em] text-pack-blue/65">
-            Plan your arrival
-          </p>
-          <Heading icon={MapPin}>Find us</Heading>
-          <ol className="mt-5 space-y-3">
-            {p.directions.map((step, i) => (
-              <li
-                key={step}
-                className="flex items-start gap-3 text-sm leading-relaxed text-slate-600"
-              >
-                <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-pack-blue-soft text-xs font-bold text-pack-blue">
-                  {i + 1}
-                </span>
-                {step}
-              </li>
-            ))}
-          </ol>
-          {p.calls_note && (
-            <p className="mt-5 flex items-start gap-2.5 rounded-xl bg-amber-50 p-3 text-xs leading-relaxed text-amber-950">
-              <Info className="mt-0.5 h-4 w-4 shrink-0" />
-              {p.calls_note}
-            </p>
-          )}
-        </div>
-        <div className="relative min-h-[360px] bg-pack-blue-soft">
-          {p.map_image_url && (
-            <img
-              src={p.map_image_url}
-              alt={`Map showing the McKaynine ${p.branch.name} venue`}
-              className="absolute inset-0 h-full w-full object-cover"
-            />
-          )}
-          {p.map_link && (
-            <Button
-              asChild
-              className="absolute bottom-5 right-5 rounded-xl bg-white text-pack-blue shadow-xl hover:bg-slate-50"
-            >
-              <a href={p.map_link} target="_blank" rel="noreferrer">
-                Open in Maps <ExternalLink className="ml-2 h-4 w-4" />
-              </a>
-            </Button>
-          )}
-        </div>
-      </div>
+    <Card className="overflow-hidden p-5">
+      <Heading icon={MapPin}>Find us</Heading>
+      {p.map_image_url && (
+        <img
+          src={p.map_image_url}
+          alt={`Map showing the McKaynine ${p.branch.name} venue`}
+          className="mt-4 h-28 w-full rounded-xl object-cover"
+        />
+      )}
+      <ol className="mt-3 space-y-1.5">
+        {p.directions.map((step, i) => (
+          <li
+            key={step}
+            className="flex items-start gap-2 text-[11px] leading-relaxed text-slate-600"
+          >
+            <span className="grid h-4 w-4 shrink-0 place-items-center rounded-full bg-pack-blue-soft text-[9px] font-bold text-pack-blue">
+              {i + 1}
+            </span>
+            {step}
+          </li>
+        ))}
+      </ol>
+      {p.calls_note && (
+        <p className="mt-3 rounded-lg bg-amber-50 p-2 text-[10px] leading-relaxed text-amber-950">
+          {p.calls_note}
+        </p>
+      )}
+      {p.map_link && (
+        <Button
+          asChild
+          variant="outline"
+          size="sm"
+          className="mt-3 w-full rounded-lg text-pack-blue"
+        >
+          <a href={p.map_link} target="_blank" rel="noreferrer">
+            Open in Maps <ExternalLink className="ml-2 h-3.5 w-3.5" />
+          </a>
+        </Button>
+      )}
     </Card>
   );
 }
@@ -527,12 +505,11 @@ export function PuppyInfoPack(props: Props) {
   return (
     <div className="space-y-5">
       <Hero {...props} activePack={p} />
-      <div className="grid gap-5 xl:grid-cols-[1.22fr_.78fr]">
+      <div className="grid gap-4 xl:grid-cols-[1.55fr_.68fr_.77fr]">
         <Help p={p} />
         <Fees p={p} courses={props.courses} />
       </div>
       <Practical p={p} />
-      <FindUs p={p} />
       <Ready onStart={props.onStart} />
     </div>
   );
