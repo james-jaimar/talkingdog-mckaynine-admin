@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "react-router-dom";
@@ -8,6 +8,8 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Loader2, ArrowLeft, ArrowRight, Check, PawPrint } from "lucide-react";
+import { cn } from "@/lib/utils";
+
 import { ProgressIndicator } from "./ProgressIndicator";
 import { Step1Privacy, Step2Owner, Step3Dog, Step4Home, Step5Training, Step6Class } from "./steps";
 import { useEnrollmentSubmission } from "./hooks/useEnrollmentSubmission";
@@ -35,9 +37,13 @@ const stepSchemas = [
 
 interface EnrollmentFormProps {
   mode?: "authenticated" | "public";
+  /** Restrict the branch picker to these branches (e.g. public puppy registrations). */
+  branchOptions?: Array<{ id: string; name: string }>;
+  /** Preselect a branch (kept in sync when the caller changes it). */
+  initialBranchId?: string;
 }
 
-export function EnrollmentForm({ mode = "authenticated" }: EnrollmentFormProps) {
+export function EnrollmentForm({ mode = "authenticated", branchOptions, initialBranchId }: EnrollmentFormProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
@@ -52,8 +58,9 @@ export function EnrollmentForm({ mode = "authenticated" }: EnrollmentFormProps) 
     mode: "onChange",
   });
 
-  const { data: branches = [] } = useQuery({
+  const { data: fetchedBranches = [] } = useQuery({
     queryKey: ["branches", "public-enrollment"],
+    enabled: !branchOptions,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("branches")
@@ -63,6 +70,14 @@ export function EnrollmentForm({ mode = "authenticated" }: EnrollmentFormProps) 
       return data || [];
     },
   });
+
+  const branches = branchOptions ?? fetchedBranches;
+
+  const { setValue } = form;
+  useEffect(() => {
+    if (initialBranchId) setValue("branchId", initialBranchId);
+  }, [initialBranchId, setValue]);
+
 
   const handleFileUpload = useCallback((file: File) => setUploadedFile(file), []);
   const handleRemoveFile = useCallback(() => setUploadedFile(null), []);
@@ -151,7 +166,7 @@ export function EnrollmentForm({ mode = "authenticated" }: EnrollmentFormProps) 
   }
 
   return (
-    <div className="min-h-screen bg-customer-bg py-4 sm:py-6 lg:py-8 px-4 sm:px-6 lg:px-8">
+    <div className={cn("bg-customer-bg py-4 sm:py-6 lg:py-8 px-4 sm:px-6 lg:px-8", !branchOptions && "min-h-screen")}>
       <div className="max-w-7xl mx-auto">
         <div className="relative mb-4 sm:mb-6 text-center">
           <div className="absolute inset-0 bg-gradient-to-r from-customer-accent/20 via-customer-accent/10 to-transparent rounded-2xl blur-xl" />
