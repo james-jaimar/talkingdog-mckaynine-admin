@@ -1,14 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
-import { EnrollmentForm } from "../EnrollmentForm";
 import { PuppyInfoPack } from "./PuppyInfoPack";
-import { LegalAccordions } from "./LegalAccordions";
 import { useInfoPacks, usePuppyCourses } from "./useInfoPackData";
 
 export function PuppyClassLanding() {
   const { data: packs = [], isLoading } = useInfoPacks();
   const [branchId, setBranchId] = useState<string | undefined>();
-  const formRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!branchId && packs.length > 0) setBranchId(packs[0].branch_id);
@@ -20,13 +19,12 @@ export function PuppyClassLanding() {
   );
   const { data: courses = [] } = usePuppyCourses(branchId);
 
-  const allowedBranches = useMemo(
-    () => packs.map((p) => ({ id: p.branch_id, name: p.branch.name })),
-    [packs],
-  );
-
-  const scrollToForm = () =>
-    formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const goToForm = () =>
+    navigate(
+      branchId
+        ? `/register/puppy-class/enrol?branch=${branchId}`
+        : "/register/puppy-class/enrol",
+    );
 
   if (isLoading) {
     return (
@@ -44,18 +42,10 @@ export function PuppyClassLanding() {
           activePack={activePack}
           courses={courses}
           onSelectBranch={setBranchId}
-          onStart={scrollToForm}
-        />
-        <LegalAccordions />
-      </div>
-
-      <div ref={formRef}>
-        <EnrollmentForm
-          mode="public"
-          branchOptions={allowedBranches}
-          initialBranchId={branchId}
+          onStart={goToForm}
         />
       </div>
     </div>
   );
 }
+
