@@ -35,9 +35,13 @@ const stepSchemas = [
 
 interface EnrollmentFormProps {
   mode?: "authenticated" | "public";
+  /** Restrict the branch picker to these branches (e.g. public puppy registrations). */
+  branchOptions?: Array<{ id: string; name: string }>;
+  /** Preselect a branch (kept in sync when the caller changes it). */
+  initialBranchId?: string;
 }
 
-export function EnrollmentForm({ mode = "authenticated" }: EnrollmentFormProps) {
+export function EnrollmentForm({ mode = "authenticated", branchOptions, initialBranchId }: EnrollmentFormProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
@@ -52,8 +56,9 @@ export function EnrollmentForm({ mode = "authenticated" }: EnrollmentFormProps) 
     mode: "onChange",
   });
 
-  const { data: branches = [] } = useQuery({
+  const { data: fetchedBranches = [] } = useQuery({
     queryKey: ["branches", "public-enrollment"],
+    enabled: !branchOptions,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("branches")
@@ -63,6 +68,14 @@ export function EnrollmentForm({ mode = "authenticated" }: EnrollmentFormProps) 
       return data || [];
     },
   });
+
+  const branches = branchOptions ?? fetchedBranches;
+
+  const { setValue } = form;
+  useEffect(() => {
+    if (initialBranchId) setValue("branchId", initialBranchId);
+  }, [initialBranchId, setValue]);
+
 
   const handleFileUpload = useCallback((file: File) => setUploadedFile(file), []);
   const handleRemoveFile = useCallback(() => setUploadedFile(null), []);
