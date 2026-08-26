@@ -8,6 +8,8 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Loader2, ArrowLeft, ArrowRight, Check, PawPrint } from "lucide-react";
+import { cn } from "@/lib/utils";
+
 import { ProgressIndicator } from "./ProgressIndicator";
 import { Step1Privacy, Step2Owner, Step3Dog, Step4Home, Step5Training, Step6Class } from "./steps";
 import { useEnrollmentSubmission } from "./hooks/useEnrollmentSubmission";
