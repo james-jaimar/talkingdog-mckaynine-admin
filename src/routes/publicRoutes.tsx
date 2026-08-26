@@ -7,6 +7,7 @@ import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
 import NotFound from "@/pages/NotFound";
 import PublicPuppyClassForm from "@/pages/PublicPuppyClassForm";
+import PublicPuppyClassEnrol from "@/pages/PublicPuppyClassEnrol";
 import { useAuth } from "@/context/auth";
 import { Loader2 } from "lucide-react";
 import { RoleConfigurationError } from "@/components/auth/RoleConfigurationError";
@@ -85,5 +86,9 @@ export const publicRoutes = [
   {
     path: "/register/puppy-class",
     element: <PublicPuppyClassForm />,
+  },
+  {
+    path: "/register/puppy-class/enrol",
+    element: <PublicPuppyClassEnrol />,
   },
 ];
