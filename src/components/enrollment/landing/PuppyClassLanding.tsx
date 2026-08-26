@@ -33,8 +33,8 @@ export function PuppyClassLanding() {
   }
 
   return (
-    <div className="min-h-screen bg-customer-bg">
-      <div className="mx-auto max-w-5xl space-y-8 px-4 py-6 sm:px-6 sm:py-10">
+    <div className="min-h-screen bg-pack-bg">
+      <div className="mx-auto max-w-6xl space-y-5 px-4 py-6 sm:px-6 sm:py-10">
         <PuppyInfoPack
           packs={packs}
           activePack={activePack}
@@ -44,6 +44,7 @@ export function PuppyClassLanding() {
         />
         <LegalAccordions />
       </div>
+
 
       <div ref={formRef}>
         <EnrollmentForm

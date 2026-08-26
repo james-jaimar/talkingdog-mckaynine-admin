@@ -31,11 +31,31 @@ export interface InfoPack {
   contact_phone: string | null;
   contact_email: string | null;
   contact_website: string | null;
+  logo_url: string | null;
+  map_image_url: string | null;
+  missed_class_note: string | null;
+  before_enrol_notes: string[];
+  start_notes: string[];
   branch: { id: string; name: string };
 }
 
 const asArray = (value: unknown): string[] =>
   Array.isArray(value) ? value.filter((v): v is string => typeof v === "string") : [];
+
+/** "Sep 5, 12, 19 · Oct 3, 17" from ISO date strings. */
+export function formatLessonDates(dates: string[]): string {
+  const groups: { month: string; days: number[] }[] = [];
+  for (const raw of [...dates].sort()) {
+    const d = new Date(raw);
+    if (Number.isNaN(d.getTime())) continue;
+    const month = d.toLocaleDateString("en-ZA", { month: "short" });
+    const last = groups[groups.length - 1];
+    if (last && last.month === month) last.days.push(d.getDate());
+    else groups.push({ month, days: [d.getDate()] });
+  }
+  return groups.map((g) => `${g.month} ${g.days.join(", ")}`).join(" · ");
+}
+
 
 /** Branches that accept public puppy registrations, with their info pack content. */
 export function useInfoPacks() {
@@ -57,6 +77,9 @@ export function useInfoPacks() {
           what_to_bring: asArray(row.what_to_bring),
           joining_steps: asArray(row.joining_steps),
           directions: asArray(row.directions),
+          before_enrol_notes: asArray(row.before_enrol_notes),
+          start_notes: asArray(row.start_notes),
+
         }))
         .sort((a, b) => a.branch.name.localeCompare(b.branch.name));
     },
