@@ -1919,6 +1919,8 @@ export type Database = {
           id: string
           onlead_socializing_acknowledged: boolean | null
           photo_permission: string | null
+          privacy_notice_accepted_at: string | null
+          privacy_notice_version: string | null
           privacy_policy_agreed: boolean | null
           signature_data: string | null
           signature_date: string | null
@@ -1946,6 +1948,8 @@ export type Database = {
           id?: string
           onlead_socializing_acknowledged?: boolean | null
           photo_permission?: string | null
+          privacy_notice_accepted_at?: string | null
+          privacy_notice_version?: string | null
           privacy_policy_agreed?: boolean | null
           signature_data?: string | null
           signature_date?: string | null
@@ -1973,6 +1977,8 @@ export type Database = {
           id?: string
           onlead_socializing_acknowledged?: boolean | null
           photo_permission?: string | null
+          privacy_notice_accepted_at?: string | null
+          privacy_notice_version?: string | null
           privacy_policy_agreed?: boolean | null
           signature_data?: string | null
           signature_date?: string | null
