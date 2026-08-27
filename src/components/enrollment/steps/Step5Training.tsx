@@ -45,7 +45,9 @@ export function Step5Training({ form, onFileUpload, uploadedFileName, onRemoveFi
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
-      'image/*': ['.jpeg', '.jpg', '.png', '.gif'],
+      'image/jpeg': ['.jpeg', '.jpg'],
+      'image/png': ['.png'],
+      'image/webp': ['.webp'],
       'application/pdf': ['.pdf']
     },
     maxFiles: 1,
@@ -189,7 +191,7 @@ export function Step5Training({ form, onFileUpload, uploadedFileName, onRemoveFi
                 {isDragActive ? "Drop your file here" : "Drag & drop or click to upload"}
               </p>
               <p className="text-sm text-gray-400 mt-1">
-                PDF, JPEG, or PNG (max 10MB)
+                PDF, JPEG, PNG, or WebP (max 10MB)
               </p>
             </div>
           )}

@@ -7,6 +7,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const PRIVACY_NOTICE_VERSION = "2026-08-27";
+
 const PayloadSchema = z.object({
   ownerName: z.string().min(2).max(200),
   accountHolderName: z.string().max(200).optional().nullable(),
@@ -93,9 +95,14 @@ serve(async (req) => {
       }
     }
 
-    // Resolve vet clearance public URL
-    const { data: urlData } = supabase.storage.from("vet-clearance-docs").getPublicUrl(data.vetClearancePath);
-    const vetClearanceUrl = urlData.publicUrl;
+    // Keep only the object path. The bucket is private; authorised staff create
+    // short-lived signed URLs when they need to view the document.
+    if (!data.vetClearancePath.startsWith("public/")) {
+      return new Response(JSON.stringify({ error: "Invalid document path" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const vetClearancePath = data.vetClearancePath;
 
     // Find or create client
     let clientId: string;
@@ -160,7 +167,9 @@ serve(async (req) => {
       waste_disposal_acknowledged: data.wasteDisposalAcknowledged,
       terms_agreed: data.termsAgreed,
       privacy_policy_agreed: data.privacyPolicyAgreed,
-      vet_clearance_url: vetClearanceUrl,
+      privacy_notice_version: PRIVACY_NOTICE_VERSION,
+      privacy_notice_accepted_at: new Date().toISOString(),
+      vet_clearance_url: vetClearancePath,
       signature_name: data.signatureName,
       signature_date: data.signatureDate,
       status: "submitted",
@@ -207,8 +216,7 @@ serve(async (req) => {
             <tr><td style="padding:6px;border-bottom:1px solid #eee;"><strong>Class</strong></td><td style="padding:6px;border-bottom:1px solid #eee;">${escapeHtml(data.classType)}</td></tr>
             <tr><td style="padding:6px;border-bottom:1px solid #eee;"><strong>Branch</strong></td><td style="padding:6px;border-bottom:1px solid #eee;">${escapeHtml(branchName)}</td></tr>
           </table>
-          <p style="margin-top:20px;"><a href="${vetClearanceUrl}">View vet clearance document</a></p>
-          <p style="font-size:12px;color:#999;margin-top:24px;">Open the admin portal to review and assign this handler to a class.</p>
+          <p style="font-size:12px;color:#999;margin-top:24px;">Open the admin portal to review the private vet-clearance document and assign this handler to a class.</p>
         </div>`;
       await supabase.from("email_queue").insert({
         branch_id: data.branchId,

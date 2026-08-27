@@ -53,13 +53,9 @@ function VetClearanceButton({ vetClearanceUrl }: { vetClearanceUrl: string }) {
   const handleViewDocument = async () => {
     setIsLoading(true);
     try {
-      // Extract the file path from the public URL
-      // URL format: https://xxx.supabase.co/storage/v1/object/public/vet-clearance-docs/userId/filename
       const urlParts = vetClearanceUrl.split('/vet-clearance-docs/');
-      if (urlParts.length < 2) {
-        throw new Error("Invalid vet clearance URL format");
-      }
-      const filePath = urlParts[1];
+      const filePath = urlParts.length >= 2 ? urlParts[1] : vetClearanceUrl;
+      if (!filePath || filePath.includes('..')) throw new Error("Invalid vet clearance path");
 
       // Generate a signed URL (valid for 1 hour)
       const { data, error } = await supabase.storage

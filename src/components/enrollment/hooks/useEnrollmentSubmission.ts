@@ -30,13 +30,9 @@ export function useEnrollmentSubmission() {
       throw new Error("Failed to upload vet clearance document");
     }
 
-    // Since bucket is private, we need to generate a signed URL for admin access
-    // Store the path for later retrieval by admins
-    const { data: urlData } = supabase.storage
-      .from("vet-clearance-docs")
-      .getPublicUrl(fileName);
-
-    return urlData.publicUrl;
+    // Store the private object path. Authorised staff create a short-lived
+    // signed URL only when viewing the document.
+    return fileName;
   };
 
   const findOrCreateClient = async (
