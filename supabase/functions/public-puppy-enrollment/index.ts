@@ -104,6 +104,29 @@ serve(async (req) => {
     }
     const vetClearancePath = data.vetClearancePath;
 
+    // Server-side enforcement of type/size for the uploaded clearance document.
+    const ALLOWED_MIME = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
+    const MAX_BYTES = 10 * 1024 * 1024;
+    const fileName = vetClearancePath.split("/").pop()!;
+    const { data: objects } = await supabase.storage
+      .from("vet-clearance-docs")
+      .list("public", { search: fileName, limit: 1 });
+    const uploaded = objects?.[0];
+    if (!uploaded) {
+      return new Response(JSON.stringify({ error: "Document not found" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const mimeType = (uploaded.metadata as Record<string, unknown> | null)?.mimetype as string | undefined;
+    const size = (uploaded.metadata as Record<string, unknown> | null)?.size as number | undefined;
+    if (!mimeType || !ALLOWED_MIME.includes(mimeType) || (size ?? 0) > MAX_BYTES) {
+      await supabase.storage.from("vet-clearance-docs").remove([vetClearancePath]);
+      return new Response(JSON.stringify({ error: "Vet clearance must be a PDF, JPEG, PNG or WebP under 10 MB" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+
     // Find or create client
     let clientId: string;
     const { data: existing } = await supabase
