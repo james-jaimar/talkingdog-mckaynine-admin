@@ -178,10 +178,11 @@ export function buildCanonicalCommissionLines(
       className: allocated ? classData?.name || "Unknown Class" : "Unallocated (no booking link)",
       branchId: itemBranchId || undefined,
       invoiceStatus: item.invoices?.status || undefined,
-      periodKey: resolvePeriodKey(item).periodKey,
-      periodInferred: resolvePeriodKey(item).periodInferred,
-
+      periodKey: period.periodKey,
+      periodInferred: period.periodInferred,
+      isEnrollmentFee: isEnrollmentFeeItem(item),
       isAllocated: allocated,
+
       grossAmount: roundToCents(Number(item.amount ?? 0)),
       netAmount,
       trainerBaseAmount: netAmount,
