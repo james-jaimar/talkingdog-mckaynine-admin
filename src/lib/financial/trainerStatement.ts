@@ -195,7 +195,7 @@ export function buildTrainerStatementGroups(
         dogName: booking?.dogName || "Unknown Dog",
         dogBreed: booking?.dogBreed || "",
         courseFee: roundToCents(line.netAmount),
-        commissionAmount: roundToCents(line.trainerCommission),
+        commissionAmount: roundToCents(line.trainerCommission * commissionRatio),
         paymentStatus,
         scheduleId: line.scheduleId,
         className,
