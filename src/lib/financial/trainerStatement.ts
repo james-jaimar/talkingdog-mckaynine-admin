@@ -125,6 +125,7 @@ interface BuildTrainerStatementOptions {
     classDate: string;
     sortDate: number;
     trainerId?: string | null;
+    commissionRatio?: number;
     isSubstitute?: boolean;
     substituteDates?: number;
     totalDates?: number;
