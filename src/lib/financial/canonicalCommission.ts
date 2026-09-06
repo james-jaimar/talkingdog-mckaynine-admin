@@ -15,7 +15,10 @@ export interface CanonicalInvoiceItem {
     monetary_discount?: number | null;
     discount_reason?: string | null;
     branch_id?: string | null;
+    franchise_report_month?: string | null;
+    issued_date?: string | null;
   } | null;
+
 }
 
 export interface CanonicalBooking {
@@ -52,8 +55,13 @@ export interface CanonicalCommissionLine {
   className: string;
   branchId?: string;
   invoiceStatus?: string;
+  /** Reporting period this line belongs to, as YYYY-MM. Empty when unknown. */
+  periodKey: string;
+  /** True when the period was inferred from the invoice date (no report month set). */
+  periodInferred: boolean;
   isEnrollmentFee: boolean;
   isAllocated: boolean;
+
   grossAmount: number;
   netAmount: number;
   trainerBaseAmount: number;
