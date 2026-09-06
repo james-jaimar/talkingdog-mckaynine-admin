@@ -1,4 +1,4 @@
-import { TrainerPaymentData, TrainerClassDetail, Schedule, Booking, InvoiceItem, SubstituteRecord } from "../types";
+import { TrainerPaymentData, TrainerClassDetail, Schedule, Booking, InvoiceItem, SubstituteRecord, PeriodBreakdownEntry } from "../types";
 import { roundToCents } from "@/lib/invoiceMath";
 import { CanonicalCommissionLine } from "@/lib/financial/canonicalCommission";
 
@@ -185,7 +185,30 @@ export function formatTrainerPaymentData(
       const perBookingCommission = roundToCents(
         bookingLines.reduce((sum, line) => sum + line.trainerCommission, 0) * trainerDateRatio
       );
-        
+
+      // Break the booking's amounts down by reporting period (YYYY-MM)
+      const periodMap = new Map<string, PeriodBreakdownEntry>();
+      bookingLines.forEach(line => {
+        const key = line.periodKey || 'unknown';
+        const existing = periodMap.get(key) || {
+          periodKey: key,
+          courseFee: 0,
+          commissionAmount: 0,
+          isPaid: line.invoiceStatus === 'paid',
+          periodInferred: line.periodInferred,
+        };
+        existing.courseFee = roundToCents(existing.courseFee + line.netAmount);
+        existing.commissionAmount = roundToCents(
+          existing.commissionAmount + line.trainerCommission * trainerDateRatio
+        );
+        existing.isPaid = existing.isPaid && line.invoiceStatus === 'paid';
+        existing.periodInferred = existing.periodInferred || line.periodInferred;
+        periodMap.set(key, existing);
+      });
+      const periodBreakdown = Array.from(periodMap.values()).sort((a, b) =>
+        a.periodKey.localeCompare(b.periodKey)
+      );
+
       return {
         bookingId: booking.id,
         clientId: booking.client_id || '',
@@ -195,9 +218,15 @@ export function formatTrainerPaymentData(
         dogBreed,
         commissionAmount: perBookingCommission,
         courseFee,
-        paymentStatus: booking.payment_status
+        paymentStatus: booking.payment_status,
+        periodBreakdown
       };
     });
+
+    const periodKeys = Array.from(
+      new Set(bookingsDetails.flatMap(b => (b.periodBreakdown || []).map(p => p.periodKey)))
+    ).sort();
+
 
     // Build substitution metadata for display
     const isSubstitute = !isOriginalTrainer;
