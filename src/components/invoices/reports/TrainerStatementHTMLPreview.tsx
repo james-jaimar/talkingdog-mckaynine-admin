@@ -10,6 +10,8 @@ interface HandlerDetail {
   courseFee?: number;
   commissionAmount: number;
   paymentStatus?: string;
+  periodLabel?: string;
+  periodInferred?: boolean;
 }
 
 interface ClassDetail {
