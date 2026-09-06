@@ -40,10 +40,10 @@ export interface BookingWithClass {
   };
 }
 
-export function useBookings(clientId: string, enabled: boolean) {
+export function useBookings(clientId: string, enabled: boolean, termId?: string) {
   // Fetch all bookings for this client with improved class data query
   const { data: allBookings, isLoading } = useQuery({
-    queryKey: ['client-bookings', clientId, enabled],
+    queryKey: ['client-bookings', clientId, termId, enabled],
     queryFn: async () => {
       console.log("Fetching bookings for client:", clientId);
       
@@ -90,7 +90,9 @@ export function useBookings(clientId: string, enabled: boolean) {
   });
 
   // Filter to get unpaid bookings (those without proof_of_payment)
-  const unpaidBookings = allBookings?.filter(b => !b.proof_of_payment) || [];
+  const unpaidBookings = allBookings?.filter(b =>
+    !b.proof_of_payment && !!termId && b.class_schedules?.term_id === termId
+  ) || [];
   
   // Filter to get bookings that are already in classes (paid or not)
   const enrolledBookings = allBookings?.filter(b => 

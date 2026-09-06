@@ -4,6 +4,7 @@ import {
   isInvoiceInStatementPeriod,
   statementPeriodFromMonthKeys,
   buildTrainerStatementGroups,
+  buildStatementFromTrainerClasses,
 } from "./trainerStatement";
 import { CanonicalCommissionLine } from "./canonicalCommission";
 
@@ -157,5 +158,41 @@ describe("buildTrainerStatementGroups", () => {
       line({ itemId: `i${i}`, netAmount: 1398.75, trainerCommission: 1049.06, periodKey: "2026-08" }));
     const summary = buildTrainerStatementGroups(lines, { bookingById, scheduleById });
     expect(summary.totalCommission).toBe(3147.18);
+  });
+});
+
+describe("buildStatementFromTrainerClasses", () => {
+  const classDetails = [{
+    scheduleId: "sched-1",
+    className: "15h00 Working Trials",
+    classDate: "11/07/2026",
+    scheduleDate: new Date(2026, 6, 11),
+    bookingsDetails: [{
+      bookingId: "booking-1",
+      handlerName: "Benjamin McNally",
+      dogName: "Gordon",
+      periodBreakdown: [
+        { periodKey: "2026-07", courseFee: 720, commissionAmount: 288, isPaid: true, periodInferred: false },
+        { periodKey: "2026-08", courseFee: 720, commissionAmount: 288, isPaid: true, periodInferred: false },
+        { periodKey: "2026-09", courseFee: 720, commissionAmount: 288, isPaid: true, periodInferred: false },
+      ],
+    }],
+  }];
+
+  it("shows one row for each monthly invoice in the selected term", () => {
+    const summary = buildStatementFromTrainerClasses(classDetails, ["2026-07", "2026-08", "2026-09"]);
+    expect(summary.classes[0].handlers).toHaveLength(3);
+    expect(summary.classes[0].handlers.map((row) => row.handlerName)).toEqual([
+      "Benjamin McNally", "Benjamin McNally", "Benjamin McNally",
+    ]);
+    expect(summary.classes[0].courseFee).toBe(2160);
+    expect(summary.totalCommission).toBe(864);
+  });
+
+  it("shows only August for an August-only period", () => {
+    const summary = buildStatementFromTrainerClasses(classDetails, ["2026-08"]);
+    expect(summary.classes[0].handlers).toHaveLength(1);
+    expect(summary.classes[0].handlers[0].courseFee).toBe(720);
+    expect(summary.totalCommission).toBe(288);
   });
 });

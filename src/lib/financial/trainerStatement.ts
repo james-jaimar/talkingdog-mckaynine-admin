@@ -113,6 +113,114 @@ export interface TrainerStatementSummary {
   periodKeys: string[];
 }
 
+interface TrainerClassLike {
+  scheduleId?: string;
+  className: string;
+  classDate: string;
+  scheduleDate?: Date | string;
+  isSubstitute?: boolean;
+  substituteDates?: number;
+  totalDates?: number;
+  originalTrainerName?: string;
+  substituteTrainerName?: string;
+  bookingsDetails?: Array<{
+    bookingId: string;
+    handlerName: string;
+    handlerEmail?: string;
+    dogName?: string;
+    dogBreed?: string;
+    periodBreakdown?: Array<{
+      periodKey: string;
+      courseFee: number;
+      commissionAmount: number;
+      isPaid: boolean;
+      periodInferred: boolean;
+    }>;
+  }>;
+}
+
+/** Build a date-filtered statement from the term-scoped trainer report data. */
+export function buildStatementFromTrainerClasses(
+  classDetails: TrainerClassLike[],
+  monthKeys: Iterable<string>
+): TrainerStatementSummary {
+  const monthSet = monthKeys instanceof Set ? monthKeys : new Set(monthKeys);
+  const classes: TrainerStatementClassGroup[] = [];
+  const includedPeriods = new Set<string>();
+
+  classDetails.forEach((classDetail) => {
+    const handlers: TrainerStatementHandlerRow[] = [];
+
+    (classDetail.bookingsDetails || []).forEach((booking) => {
+      (booking.periodBreakdown || []).forEach((period, index) => {
+        if (!monthSet.has(period.periodKey)) return;
+        includedPeriods.add(period.periodKey);
+        handlers.push({
+          key: `${booking.bookingId}-${period.periodKey}-${index}`,
+          invoiceItemId: `${booking.bookingId}-${period.periodKey}-${index}`,
+          invoiceId: "",
+          invoiceStatus: period.isPaid ? "paid" : "unpaid",
+          periodKey: period.periodKey,
+          periodLabel: format(new Date(`${period.periodKey}-01T00:00:00`), "MMM yyyy"),
+          periodInferred: period.periodInferred,
+          handlerName: booking.handlerName,
+          handlerEmail: booking.handlerEmail || "",
+          dogName: booking.dogName || "Unknown Dog",
+          dogBreed: booking.dogBreed || "",
+          courseFee: roundToCents(period.courseFee),
+          commissionAmount: roundToCents(period.commissionAmount),
+          paymentStatus: period.isPaid ? "paid" : "unpaid",
+          scheduleId: classDetail.scheduleId,
+          className: classDetail.className,
+          classDate: classDetail.classDate,
+          isSubstitute: !!classDetail.isSubstitute,
+          substituteDates: classDetail.substituteDates,
+          totalDates: classDetail.totalDates,
+          originalTrainerName: classDetail.originalTrainerName,
+          substituteTrainerName: classDetail.substituteTrainerName,
+        });
+      });
+    });
+
+    if (handlers.length === 0) return;
+    handlers.sort((a, b) => a.periodKey.localeCompare(b.periodKey) || a.handlerName.localeCompare(b.handlerName));
+    const commissionAmount = roundToCents(handlers.reduce((sum, handler) => sum + handler.commissionAmount, 0));
+    const paidCount = handlers.filter((handler) => handler.paymentStatus === "paid").length;
+    const scheduleDate = classDetail.scheduleDate ? new Date(classDetail.scheduleDate) : new Date(classDetail.classDate);
+
+    classes.push({
+      key: classDetail.scheduleId || classDetail.className,
+      className: classDetail.className,
+      classDate: classDetail.classDate,
+      sortDate: Number.isNaN(scheduleDate.getTime()) ? 0 : scheduleDate.getTime(),
+      handlers,
+      bookingsCount: handlers.length,
+      courseFee: roundToCents(handlers.reduce((sum, handler) => sum + handler.courseFee, 0)),
+      commissionAmount,
+      paymentStatus: paidCount === handlers.length ? "paid" : paidCount === 0 ? "unpaid" : "partial",
+      periodInferred: handlers.some((handler) => handler.periodInferred),
+      isSubstitute: !!classDetail.isSubstitute,
+      substituteDates: classDetail.substituteDates,
+      totalDates: classDetail.totalDates,
+      originalTrainerName: classDetail.originalTrainerName,
+      substituteTrainerName: classDetail.substituteTrainerName,
+    });
+  });
+
+  classes.sort((a, b) => a.sortDate - b.sortDate || a.className.localeCompare(b.className));
+  const totalCommission = roundToCents(classes.reduce((sum, cls) => sum + cls.commissionAmount, 0));
+  const totalPaid = roundToCents(classes.reduce((sum, cls) =>
+    sum + cls.handlers.reduce((paid, handler) => paid + (handler.paymentStatus === "paid" ? handler.commissionAmount : 0), 0), 0));
+
+  return {
+    classes,
+    totalCommission,
+    totalPaid,
+    outstanding: roundToCents(totalCommission - totalPaid),
+    periodKeys: Array.from(includedPeriods).sort(),
+  };
+}
+
 interface BuildTrainerStatementOptions {
   bookingById: Map<string, {
     clientName: string;
