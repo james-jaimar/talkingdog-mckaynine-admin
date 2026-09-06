@@ -236,11 +236,11 @@ export function TrainerStatementDialog({
 
 
   const prepareClassData = (): ClassDetail[] => {
-    if (filteredClassDetails.length === 0) {
+    if (periodScopedClasses.length === 0) {
       return [];
     }
 
-    return filteredClassDetails.map((cls: any) => {
+    return periodScopedClasses.map((cls: any) => {
       // Get the booking count - could be 'bookings' (number) or 'bookingsCount' or array length
       let bookingsCount = 0;
       if (typeof cls.bookings === 'number') {
@@ -465,7 +465,8 @@ export function TrainerStatementDialog({
               </div>
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
-              Display only — this does not change which classes or amounts are included.
+              Only invoices reported in this period are included. Invoices without a report
+              month fall back to their invoice date.
             </p>
           </div>
 
