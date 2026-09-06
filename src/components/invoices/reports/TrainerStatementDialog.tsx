@@ -103,6 +103,24 @@ export function TrainerStatementDialog({
 
   // Derive sensible defaults for the statement period from the selected classes
   const derivedPeriod = useMemo(() => {
+    const hasSelection = !!selectedScheduleIds && selectedScheduleIds.length > 0;
+
+    // Prefer the reporting months the invoices actually belong to
+    const monthKeys = Array.from(
+      new Set(
+        filteredClassDetails.flatMap((cls: any) => (cls.periodKeys || []) as string[]).filter(Boolean)
+      )
+    ).sort();
+
+    if (hasSelection && monthKeys.length > 0) {
+      const from = startOfMonth(new Date(`${monthKeys[0]}-01T00:00:00`));
+      const to = endOfMonth(new Date(`${monthKeys[monthKeys.length - 1]}-01T00:00:00`));
+      const label = isSameMonth(from, to)
+        ? format(from, "MMMM yyyy")
+        : `${format(from, "MMM")} - ${format(to, "MMM yyyy")}`;
+      return { label, from, to };
+    }
+
     const dates: Date[] = [];
     filteredClassDetails.forEach((cls: any) => {
       const src = cls.classDate || cls.scheduleDate || cls.start_time;
@@ -111,7 +129,6 @@ export function TrainerStatementDialog({
       if (!isNaN(d.getTime())) dates.push(d);
     });
 
-    const hasSelection = !!selectedScheduleIds && selectedScheduleIds.length > 0;
     if (!hasSelection || dates.length === 0) {
       return { label: termInfo, from: dateRange.from, to: dateRange.to };
     }
@@ -124,6 +141,7 @@ export function TrainerStatementDialog({
 
     return { label, from, to };
   }, [filteredClassDetails, selectedScheduleIds, termInfo, dateRange.from, dateRange.to]);
+
 
   const [periodLabel, setPeriodLabel] = useState(derivedPeriod.label);
   const [periodFrom, setPeriodFrom] = useState<Date>(derivedPeriod.from);
