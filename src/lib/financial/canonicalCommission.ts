@@ -15,7 +15,10 @@ export interface CanonicalInvoiceItem {
     monetary_discount?: number | null;
     discount_reason?: string | null;
     branch_id?: string | null;
+    franchise_report_month?: string | null;
+    issued_date?: string | null;
   } | null;
+
 }
 
 export interface CanonicalBooking {
@@ -52,8 +55,13 @@ export interface CanonicalCommissionLine {
   className: string;
   branchId?: string;
   invoiceStatus?: string;
+  /** Reporting period this line belongs to, as YYYY-MM. Empty when unknown. */
+  periodKey: string;
+  /** True when the period was inferred from the invoice date (no report month set). */
+  periodInferred: boolean;
   isEnrollmentFee: boolean;
   isAllocated: boolean;
+
   grossAmount: number;
   netAmount: number;
   trainerBaseAmount: number;
@@ -69,6 +77,23 @@ export interface CanonicalCommissionLine {
 function normalizeFeeType(type: unknown): string {
   return String(type ?? "percentage").toLowerCase().trim();
 }
+
+/**
+ * Resolve the reporting period (YYYY-MM) for an invoice item.
+ * Prefers the invoice's franchise report month; falls back to the issued date.
+ */
+export function resolvePeriodKey(item: CanonicalInvoiceItem): { periodKey: string; periodInferred: boolean } {
+  const reportMonth = item.invoices?.franchise_report_month;
+  if (reportMonth && /^\d{4}-\d{2}/.test(reportMonth)) {
+    return { periodKey: reportMonth.slice(0, 7), periodInferred: false };
+  }
+  const issued = item.invoices?.issued_date;
+  if (issued && /^\d{4}-\d{2}/.test(issued)) {
+    return { periodKey: issued.slice(0, 7), periodInferred: true };
+  }
+  return { periodKey: "", periodInferred: true };
+}
+
 
 function isFixedAmount(type: unknown): boolean {
   const normalized = normalizeFeeType(type);
@@ -158,6 +183,9 @@ export function buildCanonicalCommissionLines(
     const netAmount = netAmountByItemId.get(item.id) ?? roundToCents(Number(item.amount ?? 0));
     const itemBranchId = classData?.branch_id || item.invoices?.branch_id || branchId;
     const allocated = Boolean(booking && schedule && classData && (!branchId || !itemBranchId || itemBranchId === branchId));
+    const period = resolvePeriodKey(item);
+
+
 
     return {
       itemId: item.id,
@@ -170,8 +198,11 @@ export function buildCanonicalCommissionLines(
       className: allocated ? classData?.name || "Unknown Class" : "Unallocated (no booking link)",
       branchId: itemBranchId || undefined,
       invoiceStatus: item.invoices?.status || undefined,
+      periodKey: period.periodKey,
+      periodInferred: period.periodInferred,
       isEnrollmentFee: isEnrollmentFeeItem(item),
       isAllocated: allocated,
+
       grossAmount: roundToCents(Number(item.amount ?? 0)),
       netAmount,
       trainerBaseAmount: netAmount,

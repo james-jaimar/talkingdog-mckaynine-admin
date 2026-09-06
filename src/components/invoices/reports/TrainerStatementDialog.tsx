@@ -98,28 +98,29 @@ export function TrainerStatementDialog({
     );
   }, [trainer.classDetails, selectedScheduleIds]);
 
-  // Recalculate totals based on filtered classes
-  const recalculatedTotals = useMemo(() => {
-    let totalEarned = 0;
-    let paid = 0;
-    let pending = 0;
+  // (totals are computed further down, once the statement period is known)
 
-    filteredClassDetails.forEach((cls: any) => {
-      const commissionAmount = cls.potentialRevenue || cls.revenue || cls.commissionAmount || cls.trainerCommission || 0;
-      totalEarned += commissionAmount;
-      
-      if (cls.isPaid) {
-        paid += commissionAmount;
-      } else {
-        pending += commissionAmount;
-      }
-    });
-
-    return { totalEarned, paid, pending };
-  }, [filteredClassDetails]);
 
   // Derive sensible defaults for the statement period from the selected classes
   const derivedPeriod = useMemo(() => {
+    const hasSelection = !!selectedScheduleIds && selectedScheduleIds.length > 0;
+
+    // Prefer the reporting months the invoices actually belong to
+    const monthKeys = Array.from(
+      new Set(
+        filteredClassDetails.flatMap((cls: any) => (cls.periodKeys || []) as string[]).filter(Boolean)
+      )
+    ).sort();
+
+    if (hasSelection && monthKeys.length > 0) {
+      const from = startOfMonth(new Date(`${monthKeys[0]}-01T00:00:00`));
+      const to = endOfMonth(new Date(`${monthKeys[monthKeys.length - 1]}-01T00:00:00`));
+      const label = isSameMonth(from, to)
+        ? format(from, "MMMM yyyy")
+        : `${format(from, "MMM")} - ${format(to, "MMM yyyy")}`;
+      return { label, from, to };
+    }
+
     const dates: Date[] = [];
     filteredClassDetails.forEach((cls: any) => {
       const src = cls.classDate || cls.scheduleDate || cls.start_time;
@@ -128,7 +129,6 @@ export function TrainerStatementDialog({
       if (!isNaN(d.getTime())) dates.push(d);
     });
 
-    const hasSelection = !!selectedScheduleIds && selectedScheduleIds.length > 0;
     if (!hasSelection || dates.length === 0) {
       return { label: termInfo, from: dateRange.from, to: dateRange.to };
     }
@@ -141,6 +141,7 @@ export function TrainerStatementDialog({
 
     return { label, from, to };
   }, [filteredClassDetails, selectedScheduleIds, termInfo, dateRange.from, dateRange.to]);
+
 
   const [periodLabel, setPeriodLabel] = useState(derivedPeriod.label);
   const [periodFrom, setPeriodFrom] = useState<Date>(derivedPeriod.from);
@@ -173,13 +174,91 @@ export function TrainerStatementDialog({
     [periodFrom, periodTo]
   );
 
+  // Inclusive set of YYYY-MM reporting months covered by the chosen period
+  const periodMonthKeys = useMemo(() => {
+    const keys: string[] = [];
+    if (!periodFrom || !periodTo) return keys;
+    const cursor = startOfMonth(periodFrom);
+    const last = startOfMonth(periodTo);
+    while (cursor <= last) {
+      keys.push(format(cursor, "yyyy-MM"));
+      cursor.setMonth(cursor.getMonth() + 1);
+    }
+    return keys;
+  }, [periodFrom, periodTo]);
+
+  // Keep only the amounts that fall inside the chosen reporting months
+  const periodScopedClasses = useMemo(() => {
+    const monthSet = new Set(periodMonthKeys);
+    if (monthSet.size === 0) return filteredClassDetails;
+
+    return filteredClassDetails
+      .map((cls: any) => {
+        const details = cls.bookingsDetails || [];
+        const hasBreakdown = details.some((b: any) => Array.isArray(b.periodBreakdown) && b.periodBreakdown.length > 0);
+        // No period data available (older shapes) — leave the class untouched
+        if (!hasBreakdown) return cls;
+
+        let inferredUsed = false;
+        const scopedDetails = details
+          .map((b: any) => {
+            const entries = (b.periodBreakdown || []).filter((p: any) => monthSet.has(p.periodKey));
+            if (entries.length === 0) return null;
+            if (entries.some((p: any) => p.periodInferred)) inferredUsed = true;
+            return {
+              ...b,
+              courseFee: entries.reduce((s: number, p: any) => s + (p.courseFee || 0), 0),
+              commissionAmount: entries.reduce((s: number, p: any) => s + (p.commissionAmount || 0), 0),
+              paymentStatus: entries.every((p: any) => p.isPaid) ? "paid" : b.paymentStatus,
+            };
+          })
+          .filter(Boolean);
+
+        if (scopedDetails.length === 0) return null;
+
+        const commission = scopedDetails.reduce((s: number, b: any) => s + (b.commissionAmount || 0), 0);
+
+        return {
+          ...cls,
+          bookingsDetails: scopedDetails,
+          bookings: scopedDetails.length,
+          revenue: commission,
+          potentialRevenue: commission,
+          isPaid: scopedDetails.every((b: any) => b.paymentStatus === "paid"),
+          periodInferred: inferredUsed,
+        };
+      })
+      .filter(Boolean);
+  }, [filteredClassDetails, periodMonthKeys]);
+
+  // Totals follow the period-scoped classes
+  const recalculatedTotals = useMemo(() => {
+    let totalEarned = 0;
+    let paid = 0;
+    let pending = 0;
+
+    periodScopedClasses.forEach((cls: any) => {
+      const commissionAmount = cls.potentialRevenue || cls.revenue || cls.commissionAmount || cls.trainerCommission || 0;
+      totalEarned += commissionAmount;
+      if (cls.isPaid) {
+        paid += commissionAmount;
+      } else {
+        pending += commissionAmount;
+      }
+    });
+
+    return { totalEarned, paid, pending };
+  }, [periodScopedClasses]);
+
+
+
 
   const prepareClassData = (): ClassDetail[] => {
-    if (filteredClassDetails.length === 0) {
+    if (periodScopedClasses.length === 0) {
       return [];
     }
 
-    return filteredClassDetails.map((cls: any) => {
+    return periodScopedClasses.map((cls: any) => {
       // Get the booking count - could be 'bookings' (number) or 'bookingsCount' or array length
       let bookingsCount = 0;
       if (typeof cls.bookings === 'number') {
@@ -404,7 +483,8 @@ export function TrainerStatementDialog({
               </div>
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
-              Display only — this does not change which classes or amounts are included.
+              Only invoices reported in this period are included. Invoices without a report
+              month fall back to their invoice date.
             </p>
           </div>
 

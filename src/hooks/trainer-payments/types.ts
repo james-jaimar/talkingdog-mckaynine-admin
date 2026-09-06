@@ -76,6 +76,9 @@ export interface InvoiceItem {
     status: string;
     payment_date?: string;
     client_id?: string;
+    franchise_report_month?: string | null;
+    issued_date?: string | null;
+
     // Invoice discount fields for proper net amount calculation
     subtotal?: number;
     monetary_discount?: number;
@@ -109,6 +112,14 @@ export interface InvoiceItem {
   };
 }
 
+export interface PeriodBreakdownEntry {
+  periodKey: string; // YYYY-MM
+  courseFee: number;
+  commissionAmount: number;
+  isPaid: boolean;
+  periodInferred: boolean;
+}
+
 export interface BookingDetail {
   bookingId: string;
   clientId: string;
@@ -119,6 +130,7 @@ export interface BookingDetail {
   commissionAmount: number;
   courseFee?: number;
   paymentStatus?: string;
+  periodBreakdown?: PeriodBreakdownEntry[];
 }
 
 export interface TrainerClassDetail {
@@ -134,6 +146,7 @@ export interface TrainerClassDetail {
   hasZeroCommission?: boolean;
   branchId?: string;
   bookingsDetails: BookingDetail[];
+  periodKeys?: string[];
   // Substitution metadata
   isSubstitute?: boolean;
   substituteDates?: number;
@@ -142,6 +155,7 @@ export interface TrainerClassDetail {
   substituteTrainerName?: string;
   substituteDatesList?: string[];
 }
+
 
 export interface SubstituteRecord {
   id: string;
