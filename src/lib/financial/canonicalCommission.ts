@@ -78,6 +78,23 @@ function normalizeFeeType(type: unknown): string {
   return String(type ?? "percentage").toLowerCase().trim();
 }
 
+/**
+ * Resolve the reporting period (YYYY-MM) for an invoice item.
+ * Prefers the invoice's franchise report month; falls back to the issued date.
+ */
+export function resolvePeriodKey(item: CanonicalInvoiceItem): { periodKey: string; periodInferred: boolean } {
+  const reportMonth = item.invoices?.franchise_report_month;
+  if (reportMonth && /^\d{4}-\d{2}/.test(reportMonth)) {
+    return { periodKey: reportMonth.slice(0, 7), periodInferred: false };
+  }
+  const issued = item.invoices?.issued_date;
+  if (issued && /^\d{4}-\d{2}/.test(issued)) {
+    return { periodKey: issued.slice(0, 7), periodInferred: true };
+  }
+  return { periodKey: "", periodInferred: true };
+}
+
+
 function isFixedAmount(type: unknown): boolean {
   const normalized = normalizeFeeType(type);
   return normalized === "fixed" || normalized === "amount";
@@ -166,6 +183,9 @@ export function buildCanonicalCommissionLines(
     const netAmount = netAmountByItemId.get(item.id) ?? roundToCents(Number(item.amount ?? 0));
     const itemBranchId = classData?.branch_id || item.invoices?.branch_id || branchId;
     const allocated = Boolean(booking && schedule && classData && (!branchId || !itemBranchId || itemBranchId === branchId));
+    const period = resolvePeriodKey(item);
+
+
 
     return {
       itemId: item.id,
