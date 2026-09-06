@@ -98,25 +98,8 @@ export function TrainerStatementDialog({
     );
   }, [trainer.classDetails, selectedScheduleIds]);
 
-  // Recalculate totals based on filtered classes
-  const recalculatedTotals = useMemo(() => {
-    let totalEarned = 0;
-    let paid = 0;
-    let pending = 0;
+  // (totals are computed further down, once the statement period is known)
 
-    filteredClassDetails.forEach((cls: any) => {
-      const commissionAmount = cls.potentialRevenue || cls.revenue || cls.commissionAmount || cls.trainerCommission || 0;
-      totalEarned += commissionAmount;
-      
-      if (cls.isPaid) {
-        paid += commissionAmount;
-      } else {
-        pending += commissionAmount;
-      }
-    });
-
-    return { totalEarned, paid, pending };
-  }, [filteredClassDetails]);
 
   // Derive sensible defaults for the statement period from the selected classes
   const derivedPeriod = useMemo(() => {
