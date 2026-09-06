@@ -156,6 +156,84 @@ export function TrainerStatementDialog({
     [periodFrom, periodTo]
   );
 
+  // Inclusive set of YYYY-MM reporting months covered by the chosen period
+  const periodMonthKeys = useMemo(() => {
+    const keys: string[] = [];
+    if (!periodFrom || !periodTo) return keys;
+    const cursor = startOfMonth(periodFrom);
+    const last = startOfMonth(periodTo);
+    while (cursor <= last) {
+      keys.push(format(cursor, "yyyy-MM"));
+      cursor.setMonth(cursor.getMonth() + 1);
+    }
+    return keys;
+  }, [periodFrom, periodTo]);
+
+  // Keep only the amounts that fall inside the chosen reporting months
+  const periodScopedClasses = useMemo(() => {
+    const monthSet = new Set(periodMonthKeys);
+    if (monthSet.size === 0) return filteredClassDetails;
+
+    return filteredClassDetails
+      .map((cls: any) => {
+        const details = cls.bookingsDetails || [];
+        const hasBreakdown = details.some((b: any) => Array.isArray(b.periodBreakdown) && b.periodBreakdown.length > 0);
+        // No period data available (older shapes) — leave the class untouched
+        if (!hasBreakdown) return cls;
+
+        let inferredUsed = false;
+        const scopedDetails = details
+          .map((b: any) => {
+            const entries = (b.periodBreakdown || []).filter((p: any) => monthSet.has(p.periodKey));
+            if (entries.length === 0) return null;
+            if (entries.some((p: any) => p.periodInferred)) inferredUsed = true;
+            return {
+              ...b,
+              courseFee: entries.reduce((s: number, p: any) => s + (p.courseFee || 0), 0),
+              commissionAmount: entries.reduce((s: number, p: any) => s + (p.commissionAmount || 0), 0),
+              paymentStatus: entries.every((p: any) => p.isPaid) ? "paid" : b.paymentStatus,
+            };
+          })
+          .filter(Boolean);
+
+        if (scopedDetails.length === 0) return null;
+
+        const commission = scopedDetails.reduce((s: number, b: any) => s + (b.commissionAmount || 0), 0);
+
+        return {
+          ...cls,
+          bookingsDetails: scopedDetails,
+          bookings: scopedDetails.length,
+          revenue: commission,
+          potentialRevenue: commission,
+          isPaid: scopedDetails.every((b: any) => b.paymentStatus === "paid"),
+          periodInferred: inferredUsed,
+        };
+      })
+      .filter(Boolean);
+  }, [filteredClassDetails, periodMonthKeys]);
+
+  // Totals follow the period-scoped classes
+  const recalculatedTotals = useMemo(() => {
+    let totalEarned = 0;
+    let paid = 0;
+    let pending = 0;
+
+    periodScopedClasses.forEach((cls: any) => {
+      const commissionAmount = cls.potentialRevenue || cls.revenue || cls.commissionAmount || cls.trainerCommission || 0;
+      totalEarned += commissionAmount;
+      if (cls.isPaid) {
+        paid += commissionAmount;
+      } else {
+        pending += commissionAmount;
+      }
+    });
+
+    return { totalEarned, paid, pending };
+  }, [periodScopedClasses]);
+
+
+
 
   const prepareClassData = (): ClassDetail[] => {
     if (filteredClassDetails.length === 0) {
