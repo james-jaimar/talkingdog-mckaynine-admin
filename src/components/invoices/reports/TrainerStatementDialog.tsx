@@ -22,9 +22,11 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { TrainerStatementHTMLPreview } from "./TrainerStatementHTMLPreview";
 import { TrainerStatementEmailDialog } from "./TrainerStatementEmailDialog";
-import { useTrainerStatementData } from "@/hooks/trainer-payments/useTrainerStatementData";
-import { useBranch } from "@/context/BranchContext";
-import { statementPeriodFromMonthKeys } from "@/lib/financial/trainerStatement";
+import {
+  buildStatementFromTrainerClasses,
+  statementPeriodFromMonthKeys,
+  statementPeriodMonthKeys,
+} from "@/lib/financial/trainerStatement";
 
 interface HandlerDetail {
   handlerName: string;
@@ -67,7 +69,6 @@ interface TrainerStatementDialogProps {
   dateRange: { from: Date; to: Date };
   termInfo?: string;
   branchName?: string;
-  branchId?: string;
   selectedScheduleIds?: string[];
 }
 
@@ -78,15 +79,12 @@ export function TrainerStatementDialog({
   dateRange,
   termInfo = "Term Statement",
   branchName = "delta",
-  branchId,
 }: TrainerStatementDialogProps) {
   const [isDownloading, setIsDownloading] = useState(false);
   const [isGeneratingForEmail, setIsGeneratingForEmail] = useState(false);
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [pdfBase64, setPdfBase64] = useState<string | null>(null);
   const { toast } = useToast();
-  const { currentBranch } = useBranch();
-  const effectiveBranchId = branchId || currentBranch?.id;
 
   // Default the period from the reporting months available in the already-loaded
   // class details (any term), falling back to the page's current selection.
@@ -152,27 +150,13 @@ export function TrainerStatementDialog({
     [periodFrom, periodTo]
   );
 
-  // Fetch the statement's own data for the chosen period — independent of the
-  // term selected on the page behind this dialog.
-  const {
-    data: statementData,
-    isFetching: isLoadingStatement,
-    isError: isStatementError,
-  } = useTrainerStatementData({
-    enabled: open,
-    trainerId: trainer.id,
-    branchId: effectiveBranchId,
-    from: periodFrom,
-    to: periodTo,
-  });
-
-  const statement = statementData || {
-    classes: [],
-    totalCommission: 0,
-    totalPaid: 0,
-    outstanding: 0,
-    periodKeys: [] as string[],
-  };
+  const statement = useMemo(
+    () => buildStatementFromTrainerClasses(
+      trainer.classDetails || [],
+      statementPeriodMonthKeys(periodFrom, periodTo)
+    ),
+    [trainer.classDetails, periodFrom, periodTo]
+  );
 
   const prepareClassData = (): ClassDetail[] =>
     statement.classes.map((cls) => ({
@@ -367,24 +351,14 @@ export function TrainerStatementDialog({
               </div>
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
-              Only invoices reported in this period are included — across all terms.
+               Only invoices reported in this period from the selected term are included.
               Invoices without a report month fall back to their invoice date.
             </p>
           </div>
 
           {/* HTML Preview - scrollable */}
           <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y border rounded-lg relative">
-            {isLoadingStatement && (
-              <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/70">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              </div>
-            )}
-            {isStatementError ? (
-              <div className="p-8 text-center text-sm text-destructive">
-                Failed to load the statement data. Please close and try again.
-              </div>
-            ) : (
-              <TrainerStatementHTMLPreview
+            <TrainerStatementHTMLPreview
                 trainerName={trainer.trainerName}
                 trainerEmail={trainer.trainerEmail || "No email on file"}
                 termInfo={periodLabel}
@@ -394,8 +368,7 @@ export function TrainerStatementDialog({
                 outstanding={statement.outstanding}
                 classes={classes}
                 branchName={branchName}
-              />
-            )}
+            />
           </div>
 
           {/* Actions */}
@@ -406,7 +379,7 @@ export function TrainerStatementDialog({
             <Button
               variant="outline"
               onClick={handleEmailStatement}
-              disabled={isGeneratingForEmail || isDownloading || isLoadingStatement || classes.length === 0}
+              disabled={isGeneratingForEmail || isDownloading || classes.length === 0}
             >
               {isGeneratingForEmail ? (
                 <>
@@ -422,7 +395,7 @@ export function TrainerStatementDialog({
             </Button>
             <Button
               onClick={handleDownload}
-              disabled={isDownloading || isGeneratingForEmail || isLoadingStatement || classes.length === 0}
+              disabled={isDownloading || isGeneratingForEmail || classes.length === 0}
             >
               {isDownloading ? (
                 <>

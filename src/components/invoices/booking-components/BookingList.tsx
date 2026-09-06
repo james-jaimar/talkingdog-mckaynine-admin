@@ -98,7 +98,7 @@ export function BookingList({
             ) : (
               <TableRow>
                 <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                  No unpaid bookings found for this client.
+                  No unpaid bookings found for this client in the active term.
                 </TableCell>
               </TableRow>
             )}

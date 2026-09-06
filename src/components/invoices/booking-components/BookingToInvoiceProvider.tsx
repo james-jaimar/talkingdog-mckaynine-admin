@@ -5,6 +5,8 @@ import { InvoiceFormValues } from "@/types/invoice";
 import { toast } from "sonner";
 import { useBookings } from "./useBookings";
 import { calculateInvoiceTotals } from "@/lib/invoiceMath";
+import { useTerm } from "@/context/TermContext";
+import { validateBookingsForInvoiceTerm } from "@/lib/invoices/bookingTermValidation";
 
 interface BookingToInvoiceProviderProps {
   children: (props: BookingToInvoiceContextProps) => ReactNode;
@@ -37,6 +39,7 @@ export function BookingToInvoiceProvider({
   const [status, setStatus] = useState<"draft" | "sent">("draft");
   const [isProcessing, setIsProcessing] = useState(false);
   const { createInvoice, generateInvoiceNumber } = useInvoices();
+  const { termData } = useTerm();
   
   // Use the custom hook to fetch and process bookings
   const { 
@@ -44,7 +47,7 @@ export function BookingToInvoiceProvider({
     unpaidBookings, 
     enrolledBookings, 
     isLoading: bookingsLoading 
-  } = useBookings(clientId, true);
+  } = useBookings(clientId, true, termData?.id);
 
   // Select/deselect all bookings
   const toggleSelectAll = () => {
@@ -90,12 +93,12 @@ export function BookingToInvoiceProvider({
       // Log selected booking data for debugging
       console.log("Creating invoice with selected bookings:", selectedBookingData);
       
-      // Extract term_id from the first booking's class schedule
-      const firstBookingTermId = selectedBookingData[0]?.class_schedules?.term_id || null;
-      
       if (selectedBookingData.length === 0) {
         throw new Error("Failed to find selected bookings data");
       }
+
+      const termValidationError = validateBookingsForInvoiceTerm(selectedBookingData, termData?.id);
+      if (termValidationError) throw new Error(termValidationError);
       
       // Validate booking data
       const validBookings = selectedBookingData.filter(booking => {
@@ -154,7 +157,7 @@ export function BookingToInvoiceProvider({
         discount_amount: 0,
         discount_type: 'fixed',
         discount_reason: '',
-        term_id: firstBookingTermId,
+        term_id: termData?.id || null,
       };
       
       // Log complete invoice data before submission
