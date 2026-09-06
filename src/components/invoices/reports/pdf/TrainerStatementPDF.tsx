@@ -281,7 +281,9 @@ export async function generateTrainerStatementPDF({
     if (handlers.length > 0) {
       // Handler table for this class
       const handlerData = handlers.map((handler) => [
-        handler.handlerName,
+        handler.periodLabel
+          ? `${handler.handlerName}\nReported ${handler.periodLabel}${handler.periodInferred ? " (invoice date)" : ""}`
+          : handler.handlerName,
         `${handler.dogName || 'Unknown'}${handler.dogBreed ? ` (${handler.dogBreed})` : ''}`,
         handler.handlerEmail || '-',
         `R ${(handler.courseFee || 0).toLocaleString("en-ZA", { minimumFractionDigits: 2 })}`,

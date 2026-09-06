@@ -251,6 +251,12 @@ export function TrainerStatementHTMLPreview({
                             <tr key={hIndex} className="hover:bg-gray-50">
                               <td className="px-3 py-2 font-medium text-gray-900">
                                 {handler.handlerName}
+                                {handler.periodLabel && (
+                                  <span className="block text-xs font-normal text-gray-500">
+                                    Reported {handler.periodLabel}
+                                    {handler.periodInferred ? " (invoice date)" : ""}
+                                  </span>
+                                )}
                               </td>
                               <td className="px-3 py-2">
                                 <span className="font-medium text-gray-900">{handler.dogName || "—"}</span>
