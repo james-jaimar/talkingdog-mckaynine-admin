@@ -136,6 +136,15 @@ function scheduleDisplay(schedule: ScheduleQueryRow & { substituteRecords?: any[
   const mySubDates = isSubstitute
     ? subs.filter((sub) => sub.substitute_trainer_id === trainerId)
     : subs;
+
+  // Pro-rate commission by dates covered, matching formatTrainerData
+  let commissionRatio = 1;
+  if (subs.length > 0 && totalDates > 0) {
+    commissionRatio = isSubstitute
+      ? mySubDates.length / totalDates
+      : Math.max(0, (totalDates - subs.length) / totalDates);
+  }
+
   const originalTrainerName = isSubstitute
     ? trainerNameById.get(String(schedule.trainer_id || "")) || "Original Trainer"
     : undefined;
@@ -148,6 +157,7 @@ function scheduleDisplay(schedule: ScheduleQueryRow & { substituteRecords?: any[
     classDate: scheduleDate ? format(scheduleDate, "dd/MM/yyyy") : "N/A",
     sortDate: scheduleDate?.getTime() || 0,
     trainerId: schedule.trainer_id,
+    commissionRatio,
     isSubstitute,
     substituteDates: mySubDates.length || undefined,
     totalDates: totalDates > 1 ? totalDates : undefined,
