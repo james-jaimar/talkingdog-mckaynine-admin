@@ -22,6 +22,9 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { TrainerStatementHTMLPreview } from "./TrainerStatementHTMLPreview";
 import { TrainerStatementEmailDialog } from "./TrainerStatementEmailDialog";
+import { useTrainerStatementData } from "@/hooks/trainer-payments/useTrainerStatementData";
+import { useBranch } from "@/context/BranchContext";
+import { statementPeriodFromMonthKeys } from "@/lib/financial/trainerStatement";
 
 interface HandlerDetail {
   handlerName: string;
@@ -31,6 +34,8 @@ interface HandlerDetail {
   courseFee?: number;
   commissionAmount: number;
   paymentStatus?: string;
+  periodLabel?: string;
+  periodInferred?: boolean;
 }
 
 interface ClassDetail {
@@ -73,94 +78,67 @@ export function TrainerStatementDialog({
   dateRange,
   termInfo = "Term Statement",
   branchName = "delta",
-  selectedScheduleIds,
+  branchId,
 }: TrainerStatementDialogProps) {
   const [isDownloading, setIsDownloading] = useState(false);
   const [isGeneratingForEmail, setIsGeneratingForEmail] = useState(false);
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [pdfBase64, setPdfBase64] = useState<string | null>(null);
   const { toast } = useToast();
+  const { currentBranch } = useBranch();
+  const effectiveBranchId = branchId || currentBranch?.id;
 
-  // Filter class details based on selection
-  const filteredClassDetails = useMemo(() => {
-    if (!trainer.classDetails || trainer.classDetails.length === 0) {
-      return [];
-    }
-    
-    // If no selection provided or empty, use all classes
-    if (!selectedScheduleIds || selectedScheduleIds.length === 0) {
-      return trainer.classDetails;
-    }
-    
-    // Filter by selected schedule IDs
-    return trainer.classDetails.filter((cls: any) => 
-      selectedScheduleIds.includes(cls.scheduleId)
-    );
-  }, [trainer.classDetails, selectedScheduleIds]);
-
-  // (totals are computed further down, once the statement period is known)
-
-
-  // Derive sensible defaults for the statement period from the selected classes
-  const derivedPeriod = useMemo(() => {
-    const hasSelection = !!selectedScheduleIds && selectedScheduleIds.length > 0;
-
-    // Prefer the reporting months the invoices actually belong to
+  // Default the period from the reporting months available in the already-loaded
+  // class details (any term), falling back to the page's current selection.
+  const initialPeriod = useMemo(() => {
     const monthKeys = Array.from(
       new Set(
-        filteredClassDetails.flatMap((cls: any) => (cls.periodKeys || []) as string[]).filter(Boolean)
+        (trainer.classDetails || [])
+          .flatMap((cls: any) => ((cls.periodKeys || []) as string[]).filter(Boolean))
       )
     ).sort();
 
-    if (hasSelection && monthKeys.length > 0) {
-      const from = startOfMonth(new Date(`${monthKeys[0]}-01T00:00:00`));
-      const to = endOfMonth(new Date(`${monthKeys[monthKeys.length - 1]}-01T00:00:00`));
-      const label = isSameMonth(from, to)
-        ? format(from, "MMMM yyyy")
-        : `${format(from, "MMM")} - ${format(to, "MMM yyyy")}`;
-      return { label, from, to };
-    }
+    const derived = statementPeriodFromMonthKeys(monthKeys);
+    if (derived) return derived;
 
     const dates: Date[] = [];
-    filteredClassDetails.forEach((cls: any) => {
+    (trainer.classDetails || []).forEach((cls: any) => {
       const src = cls.classDate || cls.scheduleDate || cls.start_time;
       if (!src) return;
       const d = new Date(src);
       if (!isNaN(d.getTime())) dates.push(d);
     });
 
-    if (!hasSelection || dates.length === 0) {
-      return { label: termInfo, from: dateRange.from, to: dateRange.to };
+    if (dates.length > 0) {
+      const from = startOfMonth(new Date(Math.min(...dates.map((d) => d.getTime()))));
+      const to = endOfMonth(new Date(Math.max(...dates.map((d) => d.getTime()))));
+      const label = isSameMonth(from, to)
+        ? format(from, "MMMM yyyy")
+        : `${format(from, "MMM")} - ${format(to, "MMM yyyy")}`;
+      return { label, from, to };
     }
 
-    const from = new Date(Math.min(...dates.map((d) => d.getTime())));
-    const to = new Date(Math.max(...dates.map((d) => d.getTime())));
-    const label = isSameMonth(from, to)
-      ? format(from, "MMMM yyyy")
-      : `${format(from, "MMM")} - ${format(to, "MMM yyyy")}`;
+    return { label: termInfo, from: dateRange.from, to: dateRange.to };
+  }, [trainer.classDetails, termInfo, dateRange.from, dateRange.to]);
 
-    return { label, from, to };
-  }, [filteredClassDetails, selectedScheduleIds, termInfo, dateRange.from, dateRange.to]);
-
-
-  const [periodLabel, setPeriodLabel] = useState(derivedPeriod.label);
-  const [periodFrom, setPeriodFrom] = useState<Date>(derivedPeriod.from);
-  const [periodTo, setPeriodTo] = useState<Date>(derivedPeriod.to);
+  const [periodLabel, setPeriodLabel] = useState(initialPeriod.label);
+  const [periodFrom, setPeriodFrom] = useState<Date>(initialPeriod.from);
+  const [periodTo, setPeriodTo] = useState<Date>(initialPeriod.to);
 
   // Re-seed each time the dialog opens
   useEffect(() => {
     if (open) {
-      setPeriodLabel(derivedPeriod.label);
-      setPeriodFrom(derivedPeriod.from);
-      setPeriodTo(derivedPeriod.to);
+      setPeriodLabel(initialPeriod.label);
+      setPeriodFrom(initialPeriod.from);
+      setPeriodTo(initialPeriod.to);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   const resetPeriod = () => {
-    setPeriodLabel(derivedPeriod.label);
-    setPeriodFrom(derivedPeriod.from);
-    setPeriodTo(derivedPeriod.to);
+    setPeriodLabel(initialPeriod.label);
+    setPeriodFrom(initialPeriod.from);
+    setPeriodTo(initialPeriod.to);
   };
 
   const snapToMonth = (d: Date) => {
@@ -174,143 +152,52 @@ export function TrainerStatementDialog({
     [periodFrom, periodTo]
   );
 
-  // Inclusive set of YYYY-MM reporting months covered by the chosen period
-  const periodMonthKeys = useMemo(() => {
-    const keys: string[] = [];
-    if (!periodFrom || !periodTo) return keys;
-    const cursor = startOfMonth(periodFrom);
-    const last = startOfMonth(periodTo);
-    while (cursor <= last) {
-      keys.push(format(cursor, "yyyy-MM"));
-      cursor.setMonth(cursor.getMonth() + 1);
-    }
-    return keys;
-  }, [periodFrom, periodTo]);
+  // Fetch the statement's own data for the chosen period — independent of the
+  // term selected on the page behind this dialog.
+  const {
+    data: statementData,
+    isFetching: isLoadingStatement,
+    isError: isStatementError,
+  } = useTrainerStatementData({
+    enabled: open,
+    trainerId: trainer.id,
+    branchId: effectiveBranchId,
+    from: periodFrom,
+    to: periodTo,
+  });
 
-  // Keep only the amounts that fall inside the chosen reporting months
-  const periodScopedClasses = useMemo(() => {
-    const monthSet = new Set(periodMonthKeys);
-    if (monthSet.size === 0) return filteredClassDetails;
-
-    return filteredClassDetails
-      .map((cls: any) => {
-        const details = cls.bookingsDetails || [];
-        const hasBreakdown = details.some((b: any) => Array.isArray(b.periodBreakdown) && b.periodBreakdown.length > 0);
-        // No period data available (older shapes) — leave the class untouched
-        if (!hasBreakdown) return cls;
-
-        let inferredUsed = false;
-        const scopedDetails = details
-          .map((b: any) => {
-            const entries = (b.periodBreakdown || []).filter((p: any) => monthSet.has(p.periodKey));
-            if (entries.length === 0) return null;
-            if (entries.some((p: any) => p.periodInferred)) inferredUsed = true;
-            return {
-              ...b,
-              courseFee: entries.reduce((s: number, p: any) => s + (p.courseFee || 0), 0),
-              commissionAmount: entries.reduce((s: number, p: any) => s + (p.commissionAmount || 0), 0),
-              paymentStatus: entries.every((p: any) => p.isPaid) ? "paid" : b.paymentStatus,
-            };
-          })
-          .filter(Boolean);
-
-        if (scopedDetails.length === 0) return null;
-
-        const commission = scopedDetails.reduce((s: number, b: any) => s + (b.commissionAmount || 0), 0);
-
-        return {
-          ...cls,
-          bookingsDetails: scopedDetails,
-          bookings: scopedDetails.length,
-          revenue: commission,
-          potentialRevenue: commission,
-          isPaid: scopedDetails.every((b: any) => b.paymentStatus === "paid"),
-          periodInferred: inferredUsed,
-        };
-      })
-      .filter(Boolean);
-  }, [filteredClassDetails, periodMonthKeys]);
-
-  // Totals follow the period-scoped classes
-  const recalculatedTotals = useMemo(() => {
-    let totalEarned = 0;
-    let paid = 0;
-    let pending = 0;
-
-    periodScopedClasses.forEach((cls: any) => {
-      const commissionAmount = cls.potentialRevenue || cls.revenue || cls.commissionAmount || cls.trainerCommission || 0;
-      totalEarned += commissionAmount;
-      if (cls.isPaid) {
-        paid += commissionAmount;
-      } else {
-        pending += commissionAmount;
-      }
-    });
-
-    return { totalEarned, paid, pending };
-  }, [periodScopedClasses]);
-
-
-
-
-  const prepareClassData = (): ClassDetail[] => {
-    if (periodScopedClasses.length === 0) {
-      return [];
-    }
-
-    return periodScopedClasses.map((cls: any) => {
-      // Get the booking count - could be 'bookings' (number) or 'bookingsCount' or array length
-      let bookingsCount = 0;
-      if (typeof cls.bookings === 'number') {
-        bookingsCount = cls.bookings;
-      } else if (typeof cls.bookingsCount === 'number') {
-        bookingsCount = cls.bookingsCount;
-      } else if (Array.isArray(cls.bookings)) {
-        bookingsCount = cls.bookings.length;
-      } else if (Array.isArray(cls.bookingsDetails)) {
-        bookingsCount = cls.bookingsDetails.length;
-      }
-
-      // Get commission amount - use potentialRevenue or revenue from formatTrainerData
-      const commissionAmount = cls.potentialRevenue || cls.revenue || cls.commissionAmount || cls.trainerCommission || 0;
-
-      // Get class date
-      let classDate = "N/A";
-      const dateSource = cls.classDate || cls.scheduleDate || cls.start_time;
-      if (dateSource) {
-        try {
-          classDate = format(new Date(dateSource), "dd/MM/yyyy");
-        } catch {
-          classDate = "N/A";
-        }
-      }
-
-      // Extract handler details from bookingsDetails
-      const handlers: HandlerDetail[] = (cls.bookingsDetails || []).map((booking: any) => ({
-        handlerName: booking.handlerName || "Unknown Handler",
-        handlerEmail: booking.handlerEmail || booking.clientEmail || "",
-        dogName: booking.dogName || "",
-        dogBreed: booking.dogBreed || "",
-        courseFee: booking.courseFee || booking.amount || 0,
-        commissionAmount: booking.commissionAmount || 0,
-        paymentStatus: booking.paymentStatus || cls.paymentStatus || "unpaid"
-      }));
-
-      return {
-        className: cls.className || cls.class_name || "Unknown Class",
-        classDate,
-        bookingsCount,
-        commissionAmount,
-        paymentStatus: cls.paymentStatus || (cls.isPaid ? "paid" : "unpaid"),
-        handlers,
-        isSubstitute: cls.isSubstitute,
-        substituteDates: cls.substituteDates,
-        totalDates: cls.totalDates,
-        originalTrainerName: cls.originalTrainerName,
-        substituteTrainerName: cls.substituteTrainerName,
-      };
-    });
+  const statement = statementData || {
+    classes: [],
+    totalCommission: 0,
+    totalPaid: 0,
+    outstanding: 0,
+    periodKeys: [] as string[],
   };
+
+  const prepareClassData = (): ClassDetail[] =>
+    statement.classes.map((cls) => ({
+      className: cls.className,
+      classDate: cls.classDate,
+      bookingsCount: cls.bookingsCount,
+      commissionAmount: cls.commissionAmount,
+      paymentStatus: cls.paymentStatus,
+      handlers: cls.handlers.map((handler) => ({
+        handlerName: handler.handlerName,
+        handlerEmail: handler.handlerEmail,
+        dogName: handler.dogName,
+        dogBreed: handler.dogBreed,
+        courseFee: handler.courseFee,
+        commissionAmount: handler.commissionAmount,
+        paymentStatus: handler.paymentStatus,
+        periodLabel: handler.periodLabel,
+        periodInferred: handler.periodInferred,
+      })),
+      isSubstitute: cls.isSubstitute,
+      substituteDates: cls.substituteDates,
+      totalDates: cls.totalDates,
+      originalTrainerName: cls.originalTrainerName,
+      substituteTrainerName: cls.substituteTrainerName,
+    }));
 
   const handleDownload = async () => {
     setIsDownloading(true);
@@ -322,9 +209,9 @@ export function TrainerStatementDialog({
         trainerEmail: trainer.trainerEmail || "No email on file",
         termInfo: periodLabel,
         dateRange: effectiveDateRange,
-        totalCommission: recalculatedTotals.totalEarned,
-        totalPaid: recalculatedTotals.paid,
-        outstanding: recalculatedTotals.pending,
+        totalCommission: statement.totalCommission,
+        totalPaid: statement.totalPaid,
+        outstanding: statement.outstanding,
         classes,
         branchName,
       });
@@ -357,9 +244,9 @@ export function TrainerStatementDialog({
         trainerEmail: trainer.trainerEmail || "No email on file",
         termInfo: periodLabel,
         dateRange: effectiveDateRange,
-        totalCommission: recalculatedTotals.totalEarned,
-        totalPaid: recalculatedTotals.paid,
-        outstanding: recalculatedTotals.pending,
+        totalCommission: statement.totalCommission,
+        totalPaid: statement.totalPaid,
+        outstanding: statement.outstanding,
         classes,
         branchName,
       });
@@ -381,9 +268,6 @@ export function TrainerStatementDialog({
   };
 
   const classes = prepareClassData();
-  const selectionInfo = selectedScheduleIds && selectedScheduleIds.length > 0 
-    ? `${selectedScheduleIds.length} classes selected`
-    : "All classes";
 
   return (
     <>
@@ -395,11 +279,11 @@ export function TrainerStatementDialog({
               Trainer Payment Statement
             </DialogTitle>
             <DialogDescription>
-              Statement for {trainer.trainerName} - {periodLabel} ({selectionInfo})
+              Statement for {trainer.trainerName} - {periodLabel}
             </DialogDescription>
           </DialogHeader>
 
-          {/* Statement period editor (display only) */}
+          {/* Statement period editor — controls which invoice months are loaded */}
           <div className="flex-shrink-0 rounded-lg border bg-muted/40 p-3">
             <div className="flex flex-col gap-3 md:flex-row md:items-end">
               <div className="flex-1 space-y-1">
@@ -476,31 +360,42 @@ export function TrainerStatementDialog({
                   variant="ghost"
                   size="icon"
                   onClick={resetPeriod}
-                  title="Reset to selected classes"
+                  title="Reset to initial period"
                 >
                   <RotateCcw className="h-4 w-4" />
                 </Button>
               </div>
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
-              Only invoices reported in this period are included. Invoices without a report
-              month fall back to their invoice date.
+              Only invoices reported in this period are included — across all terms.
+              Invoices without a report month fall back to their invoice date.
             </p>
           </div>
 
           {/* HTML Preview - scrollable */}
-          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y border rounded-lg">
-            <TrainerStatementHTMLPreview
-              trainerName={trainer.trainerName}
-              trainerEmail={trainer.trainerEmail || "No email on file"}
-              termInfo={periodLabel}
-              dateRange={effectiveDateRange}
-              totalCommission={recalculatedTotals.totalEarned}
-              totalPaid={recalculatedTotals.paid}
-              outstanding={recalculatedTotals.pending}
-              classes={classes}
-              branchName={branchName}
-            />
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y border rounded-lg relative">
+            {isLoadingStatement && (
+              <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/70">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            )}
+            {isStatementError ? (
+              <div className="p-8 text-center text-sm text-destructive">
+                Failed to load the statement data. Please close and try again.
+              </div>
+            ) : (
+              <TrainerStatementHTMLPreview
+                trainerName={trainer.trainerName}
+                trainerEmail={trainer.trainerEmail || "No email on file"}
+                termInfo={periodLabel}
+                dateRange={effectiveDateRange}
+                totalCommission={statement.totalCommission}
+                totalPaid={statement.totalPaid}
+                outstanding={statement.outstanding}
+                classes={classes}
+                branchName={branchName}
+              />
+            )}
           </div>
 
           {/* Actions */}
@@ -508,10 +403,10 @@ export function TrainerStatementDialog({
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Close
             </Button>
-            <Button 
-              variant="outline" 
-              onClick={handleEmailStatement} 
-              disabled={isGeneratingForEmail || isDownloading}
+            <Button
+              variant="outline"
+              onClick={handleEmailStatement}
+              disabled={isGeneratingForEmail || isDownloading || isLoadingStatement || classes.length === 0}
             >
               {isGeneratingForEmail ? (
                 <>
@@ -525,7 +420,10 @@ export function TrainerStatementDialog({
                 </>
               )}
             </Button>
-            <Button onClick={handleDownload} disabled={isDownloading || isGeneratingForEmail}>
+            <Button
+              onClick={handleDownload}
+              disabled={isDownloading || isGeneratingForEmail || isLoadingStatement || classes.length === 0}
+            >
               {isDownloading ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -550,9 +448,9 @@ export function TrainerStatementDialog({
         trainerEmail={trainer.trainerEmail || ""}
         termInfo={periodLabel}
         dateRange={effectiveDateRange}
-        totalCommission={recalculatedTotals.totalEarned}
-        totalPaid={recalculatedTotals.paid}
-        outstanding={recalculatedTotals.pending}
+        totalCommission={statement.totalCommission}
+        totalPaid={statement.totalPaid}
+        outstanding={statement.outstanding}
         classes={classes}
         branchName={branchName}
         pdfBase64={pdfBase64}
