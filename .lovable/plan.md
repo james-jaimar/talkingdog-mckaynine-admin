@@ -2,7 +2,7 @@
 
 ## Confirmed cause
 
-The generated PDF proves the date fields changed while the figures did not. The database confirms Benjamin McNally has three paid R720 invoices reported in July, August, and September 2026, all allocated to Steve McClean's 15h00 Working Trials class. They sit on three separate schedule records assigned to Terms 3, 2, and 1.
+The generated PDF proves the date fields changed while the figures did not. The database confirms Benjamin McNally has three paid R720 invoices reported in July, August, and September 2026, all allocated to Steve McClean's 15h00 Working Trials class. This is not a manual invoice misallocation: each recurring Working Trials enrolment points to a new schedule record, and those schedule records carry Terms 3, 2, and 1.
 
 The Trainers screen currently loads schedules only for the globally selected term before the statement opens. The statement dialog can filter only that already-limited data, so changing its dates cannot bring the other two schedules into the statement. It also combines invoice amounts into one handler row per booking, instead of showing each monthly invoice separately.
 
