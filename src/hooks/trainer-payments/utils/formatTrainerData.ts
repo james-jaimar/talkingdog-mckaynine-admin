@@ -265,6 +265,7 @@ export function formatTrainerPaymentData(
       hasZeroCommission,
       branchId,
       bookingsDetails,
+      periodKeys,
       isSubstitute,
       substituteDates: substituteDatesCount > 0 ? substituteDatesCount : undefined,
       totalDates: totalDatesCount > 1 ? totalDatesCount : undefined,
