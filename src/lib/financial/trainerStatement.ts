@@ -155,6 +155,7 @@ export function buildTrainerStatementGroups(
       const invoiceStatus = (line.invoiceStatus || "unpaid").toLowerCase();
       const paymentStatus: "paid" | "unpaid" = invoiceStatus === "paid" ? "paid" : "unpaid";
       const periodLabel = periodKey === "unknown" ? "Unknown month" : format(new Date(`${periodKey}-01T00:00:00`), "MMM yyyy");
+      const commissionRatio = schedule?.commissionRatio ?? 1;
 
       periodKeys.add(periodKey);
 
