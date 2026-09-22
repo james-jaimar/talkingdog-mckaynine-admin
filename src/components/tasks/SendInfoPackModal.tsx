@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { TemplatePicker } from "@/components/email-templates/TemplatePicker";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { TaskWithHandler } from "@/hooks/useAllTasks";
@@ -315,25 +316,16 @@ export function SendInfoPackModal({ open, onOpenChange, task }: SendInfoPackModa
                   </div>
                 </div>
               ) : (
-                <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose a template..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableTemplates.map((template) => (
-                      <SelectItem key={template.id} value={template.id}>
-                        <div className="flex items-center gap-2">
-                          <span>{template.name}</span>
-                          {template.class_type && (
-                            <Badge variant="outline" className="text-xs">
-                              {template.class_type}
-                            </Badge>
-                          )}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <TemplatePicker
+                  value={selectedTemplateId}
+                  onChange={setSelectedTemplateId}
+                  options={availableTemplates.map((template) => ({
+                    value: template.id,
+                    label: template.name || template.type,
+                    badge: template.class_type,
+                    group: "Your Templates",
+                  }))}
+                />
               )}
             </div>
 

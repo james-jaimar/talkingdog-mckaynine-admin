@@ -165,7 +165,7 @@ export function TemplateEditorModal({ open, onOpenChange, template }: TemplateEd
       type,
       subject,
       content,
-      class_type: classType === "all" ? undefined : classType,
+      class_type: classType === "all" ? null : classType,
       is_active: isActive,
       variables: Object.keys(variables).length > 0 ? variables : [],
     };
