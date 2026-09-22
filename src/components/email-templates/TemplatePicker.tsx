@@ -44,7 +44,7 @@ export function TemplatePicker({
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={setOpen} modal>
       <PopoverTrigger asChild>
         <Button
           type="button"
@@ -65,7 +65,11 @@ export function TemplatePicker({
       >
         <Command>
           <CommandInput placeholder="Search templates..." />
-          <CommandList className="max-h-[320px]">
+          <CommandList
+            className="max-h-[320px]"
+            onWheel={(e) => e.stopPropagation()}
+            onTouchMove={(e) => e.stopPropagation()}
+          >
             <CommandEmpty>No template found.</CommandEmpty>
             {groups.map((group) => (
               <CommandGroup key={group} heading={group}>
