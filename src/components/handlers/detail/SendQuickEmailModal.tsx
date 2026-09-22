@@ -491,60 +491,28 @@ export function SendQuickEmailModal({ open, onOpenChange, handler }: SendQuickEm
                       No templates available. Create templates in Email Templates settings.
                     </div>
                   ) : (
-                    <Select 
-                      value={selectedTemplateId} 
-                      onValueChange={(value) => {
-                        // Determine if this is a custom template or prebuilt
+                    <TemplatePicker
+                      value={selectedTemplateId}
+                      onChange={(value) => {
                         const isCustom = availableCustomTemplates.some(t => t.id === value);
                         setTemplateType(isCustom ? "custom" : "prebuilt");
                         setSelectedTemplateId(value);
                       }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Choose a template..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {/* Custom Templates */}
-                        {availableCustomTemplates.length > 0 && (
-                          <>
-                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
-                              Your Templates
-                            </div>
-                            {availableCustomTemplates.map((template) => (
-                              <SelectItem key={template.id} value={template.id}>
-                                <div className="flex items-center gap-2">
-                                  <span>{template.name}</span>
-                                  {template.class_type && (
-                                    <Badge variant="outline" className="text-xs">
-                                      {template.class_type}
-                                    </Badge>
-                                  )}
-                                </div>
-                              </SelectItem>
-                            ))}
-                          </>
-                        )}
-                        
-                        {/* Prebuilt Templates */}
-                        {availablePrebuiltTemplates.length > 0 && (
-                          <>
-                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
-                              System Templates
-                            </div>
-                            {availablePrebuiltTemplates.map((template) => (
-                              <SelectItem key={template.code} value={template.code}>
-                                <div className="flex items-center gap-2">
-                                  <span>{template.name}</span>
-                                  <Badge variant="outline" className="text-xs">
-                                    {template.classType}
-                                  </Badge>
-                                </div>
-                              </SelectItem>
-                            ))}
-                          </>
-                        )}
-                      </SelectContent>
-                    </Select>
+                      options={[
+                        ...availableCustomTemplates.map((template) => ({
+                          value: template.id,
+                          label: template.name || template.type,
+                          badge: template.class_type,
+                          group: "Your Templates",
+                        })),
+                        ...availablePrebuiltTemplates.map((template) => ({
+                          value: template.code,
+                          label: template.name,
+                          badge: template.classType,
+                          group: "System Templates",
+                        })),
+                      ]}
+                    />
                   )}
                 </div>
 
