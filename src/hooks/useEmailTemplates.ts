@@ -23,7 +23,7 @@ export interface CreateTemplateInput {
   type: string;
   subject: string;
   content: string;
-  class_type?: string;
+  class_type?: string | null;
   variables?: any;
 }
 
@@ -44,7 +44,7 @@ export function useEmailTemplates() {
         .from("branch_email_templates")
         .select("*")
         .eq("branch_id", currentBranch.id)
-        .order("created_at", { ascending: false });
+        .order("name", { ascending: true });
       
       if (error) throw error;
       
