@@ -98,6 +98,9 @@ export function useClassSubmission() {
     
     // Comprehensive cache invalidation to ensure UI updates immediately
     await Promise.all([
+      ...["invoices", "invoice", "client-invoices", "my-invoices", "financial-data", "franchise-monthly-data", "franchise-classes-data", "trainer-payments", "admin-payments-data"].map((key) =>
+        queryClient.invalidateQueries({ queryKey: [key] })
+      ),
       // Invalidate all classes queries for the current branch
       queryClient.invalidateQueries({ 
         queryKey: ["classes", currentBranch?.id],

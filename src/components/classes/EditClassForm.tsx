@@ -22,9 +22,9 @@ import { useClassForm } from "./hooks/useClassForm";
 import { Class } from "./types/class";
 import { FeeFields } from "./form-sections/FeeFields";
 import { useClassTypes } from "@/hooks/useClassTypes";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { ClassWithSchedules } from "./hooks/types/class-with-schedules";
-import { format, addMonths } from "date-fns";
+import { ReportMonthField } from "./form-sections/ReportMonthField";
 import { computeCascadeDiff, CascadeDiff } from "./hooks/utils/cascade-diff";
 import {
   previewClassCascade,
@@ -108,23 +108,6 @@ export function EditClassForm({ classData, currentBranchName, onSuccess, onCance
     }
   };
 
-
-  // Generate month options: "Auto" + next 18 months
-  const monthOptions = useMemo(() => {
-    const options: { value: string; label: string }[] = [
-      { value: "", label: "Auto (use schedule date)" }
-    ];
-    
-    const now = new Date();
-    for (let i = 0; i < 18; i++) {
-      const date = addMonths(now, i);
-      const value = format(date, 'yyyy-MM');
-      const label = format(date, 'MMMM yyyy');
-      options.push({ value, label });
-    }
-    
-    return options;
-  }, []);
 
   // Log the classData and form values to verify they are correct
   useEffect(() => {
@@ -239,36 +222,7 @@ export function EditClassForm({ classData, currentBranchName, onSuccess, onCance
           )}
         />
 
-        <FormField
-          control={form.control}
-          name="report_month_override"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Report Month Override</FormLabel>
-              <Select 
-                onValueChange={(value) => field.onChange(value === "auto" ? null : value)} 
-                value={field.value || "auto"}
-              >
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Auto (use schedule date)" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {monthOptions.map((option) => (
-                    <SelectItem key={option.value || "auto"} value={option.value || "auto"}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormDescription>
-                Override the franchise report month for this class (e.g., a Jan 30th class reported in February)
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <ReportMonthField control={form.control} />
 
         <FormField
           control={form.control}
