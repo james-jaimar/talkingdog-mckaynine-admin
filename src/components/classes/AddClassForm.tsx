@@ -20,6 +20,7 @@ import {
 import { useClassForm } from "./hooks/useClassForm";
 import { FeeFields } from "./form-sections/FeeFields";
 import { useClassTypes } from "@/hooks/useClassTypes";
+import { ReportMonthField } from "./form-sections/ReportMonthField";
 
 interface AddClassFormProps {
   onSuccess: () => void;
@@ -171,6 +172,7 @@ export function AddClassForm({ onSuccess }: AddClassFormProps) {
           )}
         />
 
+        <ReportMonthField control={form.control} />
         <FeeFields control={form.control} />
 
         <div className="flex justify-end">
