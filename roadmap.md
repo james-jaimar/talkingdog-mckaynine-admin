@@ -1,6 +1,5 @@
 # Roadmap
 
-- Implement an on-open, date-scoped trainer statement query independent of the selected term.
-- Render one statement row per invoice item/reporting month and refresh preview/PDF/email totals on date changes.
-- Add focused tests for month bounds, report-month fallback, repeat invoices, and cent-safe totals.
-- Verify Steve McClean July–6 Sep includes Benjamin McNally three times and August-only narrows correctly.
+- [ ] Move INV-McD-2610-0053–0058 to November without changing amounts or InvoicesOnline documents.
+- [ ] Add Report Month Override to class creation and synchronise existing single-class invoices when it changes.
+- [ ] Refresh invoice/report views after class edits and verify allocation rules with focused tests.
