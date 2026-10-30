@@ -1,6 +1,7 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { generateInvoiceNumber } from "@/hooks/invoices/useInvoiceUtilities";
 import { autoCreateHandlerAccount } from "@/lib/account/autoCreateHandlerAccount";
+import { inventoryCodeForFee } from "@/lib/invoices/inventoryMetadata";
 export interface BulkImportRow {
   handler_name: string;
   email: string;
@@ -202,7 +203,8 @@ export async function processBulkClassImport(
             name,
             course_fee,
             enrollment_fee,
-            class_type
+            class_type,
+            io_inventory_code
           )
         `)
         .eq("id", row.schedule_id);
@@ -334,7 +336,8 @@ export async function processBulkClassImport(
           classInfo?.name || "Training Class",
           courseFee,
           enrollmentFee,
-          row.invoice_status
+          row.invoice_status,
+          classInfo?.io_inventory_code
         );
 
         if (invoiceCreated) summary.invoicesCreated++;
@@ -556,7 +559,8 @@ async function createInvoiceForImport(
   className: string,
   courseFee: number,
   enrollmentFee: number,
-  invoiceStatus?: string
+  invoiceStatus?: string,
+  classInventoryCode?: string | null
 ): Promise<boolean> {
   try {
     // Generate invoice number using class date
@@ -609,6 +613,7 @@ async function createInvoiceForImport(
         unit_price: item.amount,
         amount: item.amount,
         item_type: item.item_type,
+        io_inventory_code: inventoryCodeForFee(item.item_type, classInventoryCode),
       });
     }
 

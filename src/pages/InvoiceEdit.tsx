@@ -24,6 +24,7 @@ import { ArrowLeft, Plus, Trash2, CalendarIcon, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { DiscountFields } from "@/components/invoices/discount/DiscountFields";
 import { calculateInvoiceTotals } from "@/lib/invoiceMath";
+import { invoiceEditItemSchema } from "@/lib/invoices/inventoryMetadata";
 
 // Validation schema updated to include discount fields
 const invoiceSchema = z.object({
@@ -34,12 +35,7 @@ const invoiceSchema = z.object({
   due_date: z.date(),
   notes: z.string().optional(),
   tax_rate: z.number().min(0).max(100),
-  items: z.array(z.object({
-    description: z.string().min(1, "Description is required"),
-    quantity: z.number().min(1, "Quantity must be at least 1"),
-    unit_price: z.number().min(0, "Unit price can't be negative"),
-    booking_id: z.string().optional().nullable(),
-  })).min(1, "At least one item is required"),
+  items: z.array(invoiceEditItemSchema).min(1, "At least one item is required"),
   discount_type: z.enum(['fixed', 'percentage']),
   discount_amount: z.number().min(0),
   discount_reason: z.string().optional(),
