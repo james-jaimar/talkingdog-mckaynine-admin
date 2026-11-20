@@ -316,7 +316,7 @@ export function FranchiseClassesReport() {
                                 <td className="px-4 py-3 text-sm text-right">
                                   {formatCurrency(handler.courseFeeAmount)}
                                   {handler.courseDiscountNotes?.map((note, noteIndex) => (
-                                    <p key={noteIndex} className="mt-1 max-w-56 ml-auto text-xs text-muted-foreground">
+                                    <p key={noteIndex} className="mt-1 w-48 max-w-56 ml-auto text-xs text-muted-foreground">
                                       {formatFranchiseDiscount(note, formatCurrency)}
                                     </p>
                                   ))}

@@ -1,7 +1,7 @@
 # Roadmap
 
 - [x] Add course-fee discount explanations to the monthly franchise report and its PDF without changing financial calculations or Invoices Online.
-- [x] Verify discount attribution (23 focused tests passed) and inspect generated PDF layout using confirmed invoice values.
+- [x] Verify discount attribution (23 focused tests passed), inspect generated PDF layout, and check all sample rows on desktop/phone in light/dark with PDF downloads; keep the note readable within the horizontally scrolling phone table.
 - [ ] Verify the signed-in franchise report screen; blocked by the external unmanaged backend, which provides no testing session.
 
 - [x] Backfill nine confirmed missing October invoice inventory codes without changing financials or existing Invoices Online documents.
