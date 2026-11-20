@@ -1,5 +1,9 @@
 # Roadmap
 
+- [x] Add course-fee discount explanations to the monthly franchise report and its PDF without changing financial calculations or Invoices Online.
+- [x] Verify discount attribution (23 focused tests passed) and inspect generated PDF layout using confirmed invoice values.
+- [ ] Verify the signed-in franchise report screen; blocked by the external unmanaged backend, which provides no testing session.
+
 - [x] Backfill nine confirmed missing October invoice inventory codes without changing financials or existing Invoices Online documents.
 - [x] Trace creation, editing and sending paths; fix validation stripping codes and bulk import omitting codes. Class codes exist; individual edit history is not recorded, so no attribution to Ady is proven.
 - [x] Verify backfill with protected-data assertions and eight passing focused tests. Signed-in screen checks remain unavailable for the external backend.

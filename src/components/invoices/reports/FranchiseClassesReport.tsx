@@ -11,6 +11,7 @@ import { FranchisePaymentDialog } from "./FranchisePaymentDialog";
 import { useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { useBranch } from "@/context/BranchContext";
+import { formatFranchiseDiscount } from '@/lib/financial/franchiseDiscount';
 
 export function FranchiseClassesReport() {
   const currentDate = new Date();
@@ -314,6 +315,11 @@ export function FranchiseClassesReport() {
                                 </td>
                                 <td className="px-4 py-3 text-sm text-right">
                                   {formatCurrency(handler.courseFeeAmount)}
+                                  {handler.courseDiscountNotes?.map((note, noteIndex) => (
+                                    <p key={noteIndex} className="mt-1 max-w-56 ml-auto text-xs text-muted-foreground">
+                                      {formatFranchiseDiscount(note, formatCurrency)}
+                                    </p>
+                                  ))}
                                 </td>
                                 <td className="px-4 py-3 text-sm text-right text-green-600 font-medium">
                                   {formatCurrency(handler.franchiseFee)}

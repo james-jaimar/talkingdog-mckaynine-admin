@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useBranch } from '@/context/BranchContext';
 import { isEnrollmentFeeItem } from '@/lib/invoiceItemUtils';
 import { roundToCents } from '@/lib/invoiceMath';
+import { franchiseCourseDiscount, type FranchiseDiscountNote } from '@/lib/financial/franchiseDiscount';
 import { startOfMonth, endOfMonth, format } from 'date-fns';
 
 export interface FranchiseHandler {
@@ -20,6 +21,7 @@ export interface FranchiseHandler {
   franchiseFee: number;
   totalAmount: number;
   invoiceDate?: string;
+  courseDiscountNotes?: FranchiseDiscountNote[];
 }
 
 export interface FranchiseClassGroup {
@@ -143,6 +145,7 @@ export function useFranchiseMonthlyData({ month, year }: UseFranchiseMonthlyData
           monetary_discount,
           discount_type,
           discount_amount,
+          discount_reason,
           branch_id,
           client:client_id (
             id,
@@ -156,6 +159,7 @@ export function useFranchiseMonthlyData({ month, year }: UseFranchiseMonthlyData
             amount,
             description,
             item_type,
+            adjustment_reason,
             booking:booking_id (
               id,
               payment_status,
@@ -220,7 +224,8 @@ export function useFranchiseMonthlyData({ month, year }: UseFranchiseMonthlyData
             classHandlersMap.set(classId, { classData, handlers: [] });
           }
 
-          const entry = classHandlersMap.get(classId)!;
+          const entry = classHandlersMap.get(classId);
+          if (!entry) return;
           
           // Apply proportional discount to this item
           const originalAmount = item.amount || 0;
@@ -231,6 +236,14 @@ export function useFranchiseMonthlyData({ month, year }: UseFranchiseMonthlyData
           const isEnrollmentFee = isEnrollmentFeeItem({
             item_type: item.item_type,
             description: item.description
+          });
+          const discountNote = isEnrollmentFee ? undefined : franchiseCourseDiscount({
+            discountReason: invoice.discount_reason,
+            itemDiscount,
+            grossAmount: originalAmount,
+            netAmount,
+            courseFee: classData.course_fee || 0,
+            adjustmentReason: item.adjustment_reason,
           });
           
           // Check if this handler+dog combo already exists
@@ -244,6 +257,9 @@ export function useFranchiseMonthlyData({ month, year }: UseFranchiseMonthlyData
               existingHandler.enrollmentFeeAmount += netAmount;
             } else {
               existingHandler.courseFeeAmount += netAmount;
+            }
+            if (discountNote) {
+              existingHandler.courseDiscountNotes = [...(existingHandler.courseDiscountNotes || []), discountNote];
             }
             
             // Recalculate franchise fee based on updated course fee
@@ -276,7 +292,8 @@ export function useFranchiseMonthlyData({ month, year }: UseFranchiseMonthlyData
               enrollmentFeeAmount,
               franchiseFee,
               totalAmount: roundToCents(franchiseFee),
-              invoiceDate: invoice.issued_date
+              invoiceDate: invoice.issued_date,
+              courseDiscountNotes: discountNote ? [discountNote] : []
             });
           }
         });

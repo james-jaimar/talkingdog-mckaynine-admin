@@ -1,7 +1,8 @@
 
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-import { FranchiseReportData } from '@/hooks/useFranchiseClassesData';
+import type { FranchiseReportData, FranchiseClassGroup } from '@/hooks/useFranchiseMonthlyData';
+import { formatFranchiseDiscount } from '@/lib/financial/franchiseDiscount';
 import { addEmbeddedFonts, setFont } from '../../pdf/utils/embeddedFonts';
 import { getBranchLogo, getBranchDisplayName } from '@/lib/branchLogo';
 
@@ -155,7 +156,7 @@ export class FranchiseReportPDFGenerator {
     return currentY + cardHeight + 8;
   }
 
-  private addClassSection(classGroup: any, startY: number): number {
+  private addClassSection(classGroup: FranchiseClassGroup, startY: number): number {
     let currentY = startY + 5;
 
     // Check if we need a new page
@@ -193,11 +194,13 @@ export class FranchiseReportPDFGenerator {
     currentY += headerHeight;
     
     // Step 3: Prepare table data with new columns
-    const tableData = classGroup.handlers.map((handler: any) => [
+    const tableData = classGroup.handlers.map((handler) => [
       handler.clientName,
       `${handler.dogName} (${handler.dogBreed})`,
       handler.clientEmail,
-      this.formatCurrency(handler.courseFeeAmount),
+      [this.formatCurrency(handler.courseFeeAmount), ...(handler.courseDiscountNotes || []).map(
+        note => formatFranchiseDiscount(note, amount => this.formatCurrency(amount))
+      )].join('\n'),
       this.formatCurrency(handler.franchiseFee),
       this.formatCurrency(handler.totalAmount)
     ]);
@@ -213,6 +216,7 @@ export class FranchiseReportPDFGenerator {
       body: tableData,
       margin: { left: cardX + tableMargin, right: this.margin + tableMargin },
       tableWidth: availableTableWidth,
+      rowPageBreak: 'avoid',
       styles: { 
         fontSize: 7,
         cellPadding: 2,
